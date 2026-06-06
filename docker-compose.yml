@@ -1,0 +1,110 @@
+services:
+
+  nexvy-beauty:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: NexvyBeauty
+    container_name: nexvy-beauty
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.nexvy-beauty-http.rule=Host(`nexvybeauty.com.br`) || Host(`www.nexvybeauty.com.br`)
+      - traefik.http.routers.nexvy-beauty-http.entrypoints=web
+      - traefik.http.routers.nexvy-beauty-http.middlewares=redirect-to-https
+      - traefik.http.routers.nexvy-beauty-https.rule=Host(`nexvybeauty.com.br`) || Host(`www.nexvybeauty.com.br`)
+      - traefik.http.routers.nexvy-beauty-https.entrypoints=websecure
+      - traefik.http.routers.nexvy-beauty-https.tls.certresolver=letsencrypt
+      - traefik.http.services.nexvy-beauty.loadbalancer.server.port=80
+
+  nexvy-oficinas:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: NexvyOficinas
+    container_name: nexvy-oficinas-vite
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.nexvy-oficinas-http.rule=Host(`nexvygarage.com.br`) || Host(`www.nexvygarage.com.br`)
+      - traefik.http.routers.nexvy-oficinas-http.entrypoints=web
+      - traefik.http.routers.nexvy-oficinas-http.middlewares=redirect-to-https
+      - traefik.http.routers.nexvy-oficinas-https.rule=Host(`nexvygarage.com.br`) || Host(`www.nexvygarage.com.br`)
+      - traefik.http.routers.nexvy-oficinas-https.entrypoints=websecure
+      - traefik.http.routers.nexvy-oficinas-https.tls.certresolver=letsencrypt
+      - traefik.http.services.nexvy-oficinas.loadbalancer.server.port=80
+
+  barbeiro-pro:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: BarbeiroPro
+    container_name: nexvy-barbeiro
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.barbeiro-pro-http.rule=Host(`barbeiropr.com.br`) || Host(`www.barbeiropr.com.br`)
+      - traefik.http.routers.barbeiro-pro-http.entrypoints=web
+      - traefik.http.routers.barbeiro-pro-http.middlewares=redirect-to-https
+      - traefik.http.routers.barbeiro-pro-https.rule=Host(`barbeiropr.com.br`) || Host(`www.barbeiropr.com.br`)
+      - traefik.http.routers.barbeiro-pro-https.entrypoints=websecure
+      - traefik.http.routers.barbeiro-pro-https.tls.certresolver=letsencrypt
+      - traefik.http.services.barbeiro-pro.loadbalancer.server.port=80
+
+  nexvy-foods:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: NexvyFoods
+    container_name: nexvy-foods
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.nexvy-foods-http.rule=Host(`nexvyfoods.com.br`) || Host(`www.nexvyfoods.com.br`)
+      - traefik.http.routers.nexvy-foods-http.entrypoints=web
+      - traefik.http.routers.nexvy-foods-http.middlewares=redirect-to-https
+      - traefik.http.routers.nexvy-foods-https.rule=Host(`nexvyfoods.com.br`) || Host(`www.nexvyfoods.com.br`)
+      - traefik.http.routers.nexvy-foods-https.entrypoints=websecure
+      - traefik.http.routers.nexvy-foods-https.tls.certresolver=letsencrypt
+      - traefik.http.services.nexvy-foods.loadbalancer.server.port=80
+
+  nexvy-gym:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: NexvyGYM
+    container_name: nexvy-gym
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.http.routers.nexvy-gym-http.rule=Host(`nexvygym.com.br`) || Host(`www.nexvygym.com.br`)
+      - traefik.http.routers.nexvy-gym-http.entrypoints=web
+      - traefik.http.routers.nexvy-gym-http.middlewares=redirect-to-https
+      - traefik.http.routers.nexvy-gym-https.rule=Host(`nexvygym.com.br`) || Host(`www.nexvygym.com.br`)
+      - traefik.http.routers.nexvy-gym-https.entrypoints=websecure
+      - traefik.http.routers.nexvy-gym-https.tls.certresolver=letsencrypt
+      - traefik.http.services.nexvy-gym.loadbalancer.server.port=80
+
+networks:
+  traefik-public:
+    external: true
