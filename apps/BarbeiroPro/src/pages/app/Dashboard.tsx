@@ -1,6 +1,5 @@
-import AppLayout from '@/components/layout/AppLayout'
 import { db } from '@/lib/db'
-import { useCompany } from '@/hooks/useCompany'
+import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState } from 'react'
 import { Calendar, Users, DollarSign, CheckCircle } from 'lucide-react'
 import { format, startOfMonth } from 'date-fns'
@@ -28,8 +27,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 }
 
 export default function Dashboard() {
-  const { companyId } = useCompany()
-  const barbeariaId = companyId
+  const { barbeariaId } = useAuth()
 
   const [todayAppts, setTodayAppts] = useState<Appointment[]>([])
   const [customers, setCustomers]   = useState<Customer[]>([])
@@ -74,17 +72,14 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="p-8 flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-[#1B3A4B] border-t-transparent rounded-full animate-spin" />
-        </div>
-      </AppLayout>
+      <div className="p-8 flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="p-8">
+    <div className="p-8">
         <div className="mb-6">
           <h1 className="text-2xl font-black text-[#1B1C1E]">Dashboard</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -146,7 +141,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
-    </AppLayout>
+    </div>
   )
 }
