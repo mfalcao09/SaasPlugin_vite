@@ -2,6 +2,10 @@ node_modules/
 dist/
 .env
 .env.local
-.env.production
 *.local
 .DS_Store
+
+# .env.production É versionado — contém apenas a anon key Supabase (pública por design;
+# protegida por RLS). Nenhuma service key entra aqui.
+!.env.production
+!apps/**/.env.production
