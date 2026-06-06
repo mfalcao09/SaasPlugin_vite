@@ -1,0 +1,36 @@
+# Traefik dynamic config (FILE PROVIDER) — NexvyOficinasLP (landing page)
+# Renderizado por infra/deploy-vps.sh -> /opt/stacks/traefik/dynamic/__CONTAINER__.yml
+# Apex + www apontam pra LP. SaaS continua em app.nexvyoficinas.com.br
+# (gerenciado pelo router nexvy-oficinas-app em nexvy-oficinas-vite.yml).
+http:
+  routers:
+    __CONTAINER__-apex:
+      rule: "Host(`nexvyoficinas.com.br`) || Host(`www.nexvyoficinas.com.br`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: __CONTAINER__-svc
+      middlewares: [security-headers@file]
+      priority: 100
+    __CONTAINER__-http-redirect:
+      rule: "Host(`nexvyoficinas.com.br`) || Host(`www.nexvyoficinas.com.br`)"
+      entryPoints: [web]
+      service: __CONTAINER__-svc
+      middlewares: [redirect-to-https-lp]
+      priority: 100
+  services:
+    __CONTAINER__-svc:
+      loadBalancer:
+        servers:
+          - url: "http://__CONTAINER__:80"
+        passHostHeader: true
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+          scheme: "http"
+  middlewares:
+    redirect-to-https-lp:
+      redirectScheme:
+        scheme: https
+        permanent: true
