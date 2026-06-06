@@ -3,12 +3,11 @@
 VPS=root@145.223.29.96
 REMOTE_DIR=/opt/stacks/saasplugin-vite
 
-# Dominios por app. NexvyOficinas ja esta live.
-# Preencha os demais antes de rodar o deploy correspondente.
-DOMAIN_BEAUTY=
-DOMAIN_BARBEIRO=
-DOMAIN_FOODS=
-DOMAIN_GYM=
+# Dominios por app (descobertos via CF API + DNS criados 2026-06-06).
+DOMAIN_BEAUTY=nexvybeauty.com.br
+DOMAIN_BARBEIRO=nexvybarbershop.com.br
+DOMAIN_FOODS=nexvyfood.com.br
+DOMAIN_GYM=nexvygym.com.br
 DOMAIN_OFICINAS=nexvyoficinas.com.br
 
 setup-vps:
