@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, TrendingUp, TrendingDown, DollarSign, Pencil, Trash2, AlertCircle } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Financial, type Student } from "@/lib/db";
 import StatusBadge from "@/components/ui/StatusBadge";
 
@@ -22,8 +22,9 @@ const emptyForm = {
 };
 
 export default function Financeiro() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [financial, setFinancial] = useState<Financial[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

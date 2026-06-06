@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Target, TrendingUp, Users, Trophy } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Meta, type Student, type Financial } from "@/lib/db";
 
 const inputCls =
@@ -25,8 +25,9 @@ const emptyForm = {
 };
 
 export default function Metas() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [metas, setMetas] = useState<Meta[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

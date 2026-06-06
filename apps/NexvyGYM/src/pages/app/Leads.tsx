@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Pencil, Trash2, UserPlus, ArrowRight } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Lead } from "@/lib/db";
 
 const inputCls =
@@ -29,8 +29,9 @@ const emptyForm = {
 };
 
 export default function Leads() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Pencil, Trash2, Calendar } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Schedule, type Student } from "@/lib/db";
 import StatusBadge from "@/components/ui/StatusBadge";
 
@@ -31,8 +31,9 @@ const STATUS_CARD: Record<string, string> = {
 };
 
 export default function Agenda() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

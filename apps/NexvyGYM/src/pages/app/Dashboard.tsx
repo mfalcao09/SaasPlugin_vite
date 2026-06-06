@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Users, TrendingUp, AlertCircle, DollarSign, CheckSquare, UserPlus } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Student, type Checkin, type Financial } from "@/lib/db";
 import StatCard from "@/components/ui/StatCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 
 export default function Dashboard() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [checkins, setCheckins] = useState<Checkin[]>([]);

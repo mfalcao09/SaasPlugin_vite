@@ -8,6 +8,12 @@ import Signup from '@/pages/auth/Signup'
 import Onboarding from '@/pages/Onboarding'
 import Metas from '@/pages/app/Metas'
 import Leads from '@/pages/app/Leads'
+import Dashboard from '@/pages/app/Dashboard'
+import Pedidos from '@/pages/app/Pedidos'
+import Cardapio from '@/pages/app/Cardapio'
+import Clientes from '@/pages/app/Clientes'
+import Entregas from '@/pages/app/Entregas'
+import Financeiro from '@/pages/app/Financeiro'
 import PedirPublico from '@/pages/public/PedirPublico'
 
 // Placeholder para páginas ainda não portadas
@@ -50,12 +56,12 @@ function AppRoutes() {
         path="/"
         element={<PrivateRoute><AppLayout /></PrivateRoute>}
       >
-        <Route index element={<Placeholder title="Dashboard" />} />
-        <Route path="pedidos" element={<Placeholder title="Pedidos" />} />
-        <Route path="cardapio" element={<Placeholder title="Cardápio" />} />
-        <Route path="clientes" element={<Placeholder title="Clientes" />} />
-        <Route path="entregas" element={<Placeholder title="Entregas" />} />
-        <Route path="financeiro" element={<Placeholder title="Financeiro" />} />
+        <Route index element={<Dashboard />} />
+        <Route path="pedidos" element={<Pedidos />} />
+        <Route path="cardapio" element={<Cardapio />} />
+        <Route path="clientes" element={<Clientes />} />
+        <Route path="entregas" element={<Entregas />} />
+        <Route path="financeiro" element={<Financeiro />} />
         <Route path="relatorios" element={<Placeholder title="Relatórios" />} />
         <Route path="equipe" element={<Placeholder title="Equipe" />} />
         <Route path="configuracoes" element={<Placeholder title="Configurações" />} />

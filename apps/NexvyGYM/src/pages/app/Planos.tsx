@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, X, Tag, ToggleLeft, ToggleRight } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Plan, type Student } from "@/lib/db";
 import StatusBadge from "@/components/ui/StatusBadge";
 
@@ -31,8 +31,9 @@ const RECORRENCIAS: { value: Plan["recorrencia"]; label: string }[] = [
 ];
 
 export default function Planos() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

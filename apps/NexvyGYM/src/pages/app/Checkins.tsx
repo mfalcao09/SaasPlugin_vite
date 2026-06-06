@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, X, Search, CheckSquare, BarChart3, AlertCircle } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Checkin, type Student } from "@/lib/db";
 
 const inputCls =
@@ -15,8 +15,9 @@ const MODALIDADES = [
 const emptyForm = { student_id: "", modality: "Musculação", professor: "", notes: "" };
 
 export default function Checkins() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

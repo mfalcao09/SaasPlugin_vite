@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Users, Plus, Search, Pencil, Trash2, X } from "lucide-react";
-import { useAcademy } from "@/lib/AcademyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { db, type Student, type Plan } from "@/lib/db";
 import StatusBadge from "@/components/ui/StatusBadge";
 
@@ -19,8 +19,9 @@ const emptyForm = {
 };
 
 export default function Alunos() {
-  const { academy } = useAcademy();
-  const aid = academy?.id ?? "";
+  const { academiaId } = useAuth();
+  if (!academiaId) return null;
+  const aid = academiaId;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
