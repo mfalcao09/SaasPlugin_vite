@@ -9,3 +9,6 @@ dist/
 # protegida por RLS). Nenhuma service key entra aqui.
 !.env.production
 !apps/**/.env.production
+
+# Zips-fonte base44 (não versionar)
+*.zip

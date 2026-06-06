@@ -1,0 +1,38 @@
+# Traefik dynamic config (FILE PROVIDER) — BarbeiroPro
+# Renderizado por infra/deploy-vps.sh -> /opt/stacks/traefik/dynamic/__CONTAINER__.yml
+# Placeholders substituidos pelo script:
+#   DOMAIN_BARBEIRO -> dominio real        (sed s|DOMAIN_[A-Z]*|$DOMAIN|g)
+#   __CONTAINER__   -> nome do container   (sed s|__CONTAINER__|$CONTAINER|g)
+# Tenant e determinado por LOGIN (nao por subdominio) -> sem router wildcard.
+http:
+  routers:
+    __CONTAINER__-apex:
+      rule: "Host(`DOMAIN_BARBEIRO`) || Host(`www.DOMAIN_BARBEIRO`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: __CONTAINER__-svc
+      middlewares: [security-headers@file]
+      priority: 100
+    __CONTAINER__-http-redirect:
+      rule: "Host(`DOMAIN_BARBEIRO`) || Host(`www.DOMAIN_BARBEIRO`)"
+      entryPoints: [web]
+      service: __CONTAINER__-svc
+      middlewares: [redirect-to-https]
+      priority: 100
+  services:
+    __CONTAINER__-svc:
+      loadBalancer:
+        servers:
+          - url: "http://__CONTAINER__:80"
+        passHostHeader: true
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+          scheme: "http"
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
