@@ -1,0 +1,50 @@
+{
+  "name": "Plan",
+  "type": "object",
+  "properties": {
+    "academy_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "duration_days": {
+      "type": "number"
+    },
+    "value": {
+      "type": "number"
+    },
+    "modality": {
+      "type": "string"
+    },
+    "recurrence": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "trimestral",
+        "semestral",
+        "anual",
+        "avulso"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo"
+    },
+    "observations": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "academy_id",
+    "name",
+    "value"
+  ]
+}

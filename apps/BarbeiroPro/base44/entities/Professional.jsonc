@@ -1,0 +1,45 @@
+{
+  "name": "Professional",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "specialty": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "work_schedule": {
+      "type": "object"
+    },
+    "service_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commission_type": {
+      "type": "string",
+      "enum": [
+        "percent",
+        "fixed"
+      ]
+    },
+    "commission_value": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "company_id",
+    "name"
+  ]
+}

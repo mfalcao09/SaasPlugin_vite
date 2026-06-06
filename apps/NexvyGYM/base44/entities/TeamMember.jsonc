@@ -1,0 +1,41 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "academy_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "recepcao",
+        "professor",
+        "financeiro"
+      ],
+      "default": "recepcao"
+    },
+    "specialty": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "invited_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "academy_id",
+    "user_email",
+    "name",
+    "role"
+  ]
+}

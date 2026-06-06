@@ -1,0 +1,53 @@
+{
+  "name": "Schedule",
+  "type": "object",
+  "properties": {
+    "academy_id": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Avalia\u00e7\u00e3o Inicial",
+        "Retorno de Avalia\u00e7\u00e3o",
+        "Consulta",
+        "Aula Experimental",
+        "Outro"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string"
+    },
+    "professor": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "agendado",
+        "conclu\u00eddo",
+        "cancelado"
+      ],
+      "default": "agendado"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "academy_id",
+    "student_id",
+    "date",
+    "time"
+  ]
+}

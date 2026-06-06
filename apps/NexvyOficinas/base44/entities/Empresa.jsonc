@@ -1,0 +1,180 @@
+{
+  "name": "Empresa",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly identifier"
+    },
+    "slogan": {
+      "type": "string"
+    },
+    "telefone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "endereco": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "cor_primaria": {
+      "type": "string",
+      "default": "#F59E0B"
+    },
+    "cor_secundaria": {
+      "type": "string",
+      "default": "#EA580C"
+    },
+    "plano": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "basico",
+        "profissional"
+      ],
+      "default": "trial"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "trial",
+        "inativo"
+      ],
+      "default": "trial"
+    },
+    "onboarding_step": {
+      "type": "number",
+      "default": 0
+    },
+    "onboarding_concluido": {
+      "type": "boolean",
+      "default": false
+    },
+    "nome_fantasia": {
+      "type": "string"
+    },
+    "razao_social": {
+      "type": "string"
+    },
+    "cnpj": {
+      "type": "string"
+    },
+    "inscricao_estadual": {
+      "type": "string"
+    },
+    "email_contato": {
+      "type": "string"
+    },
+    "telefone_comercial": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "endereco_estruturado": {
+      "type": "object",
+      "properties": {
+        "cep": {
+          "type": "string"
+        },
+        "rua": {
+          "type": "string"
+        },
+        "numero": {
+          "type": "string"
+        },
+        "complemento": {
+          "type": "string"
+        },
+        "bairro": {
+          "type": "string"
+        },
+        "cidade": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        }
+      }
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "owner_nome": {
+      "type": "string"
+    },
+    "owner_cpf": {
+      "type": "string"
+    },
+    "owner_telefone": {
+      "type": "string"
+    },
+    "owner_data_nascimento": {
+      "type": "string",
+      "format": "date"
+    },
+    "ultimo_acesso_owner": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ciclo": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "anual"
+      ],
+      "default": "mensal"
+    },
+    "valor": {
+      "type": "number"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date"
+    },
+    "proximo_vencimento": {
+      "type": "string",
+      "format": "date"
+    },
+    "status_cobranca": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "ativo",
+        "inadimplente",
+        "suspenso",
+        "cancelado"
+      ],
+      "default": "trial"
+    },
+    "trial_ate": {
+      "type": "string",
+      "format": "date"
+    },
+    "forma_pagamento": {
+      "type": "string"
+    },
+    "observacoes_internas": {
+      "type": "string"
+    },
+    "limite_usuarios": {
+      "type": "number",
+      "default": 3
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "nome"
+  ]
+}

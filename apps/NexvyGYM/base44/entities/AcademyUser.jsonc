@@ -1,0 +1,69 @@
+{
+  "name": "AcademyUser",
+  "type": "object",
+  "properties": {
+    "academy_id": {
+      "type": "string",
+      "description": "ID da academia \u00e0 qual este usu\u00e1rio pertence"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "E-mail do usu\u00e1rio"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "recepcao",
+        "professor",
+        "financeiro"
+      ],
+      "default": "recepcao",
+      "description": "Papel dentro da academia"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "E-mail de quem fez o convite"
+    },
+    "last_access": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "senha_hash": {
+      "type": "string",
+      "description": "Hash sha256$salt$hex da senha"
+    },
+    "forcar_troca_senha": {
+      "type": "boolean",
+      "default": false
+    },
+    "token_reset": {
+      "type": "string"
+    },
+    "token_reset_expira_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ultimo_login": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "academy_id",
+    "user_email",
+    "role"
+  ]
+}

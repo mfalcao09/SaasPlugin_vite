@@ -1,0 +1,52 @@
+{
+  "name": "Veiculo",
+  "type": "object",
+  "properties": {
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente vinculado"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "marca": {
+      "type": "string"
+    },
+    "modelo": {
+      "type": "string"
+    },
+    "ano": {
+      "type": "number"
+    },
+    "placa": {
+      "type": "string"
+    },
+    "cor": {
+      "type": "string"
+    },
+    "quilometragem": {
+      "type": "number"
+    },
+    "ultima_revisao": {
+      "type": "string",
+      "format": "date"
+    },
+    "proxima_revisao": {
+      "type": "string",
+      "format": "date"
+    },
+    "observacoes": {
+      "type": "string"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da oficina (multiempresa)"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "marca",
+    "modelo",
+    "placa"
+  ]
+}

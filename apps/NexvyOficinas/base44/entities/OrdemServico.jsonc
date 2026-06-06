@@ -1,0 +1,108 @@
+{
+  "name": "OrdemServico",
+  "type": "object",
+  "properties": {
+    "numero": {
+      "type": "string"
+    },
+    "orcamento_id": {
+      "type": "string",
+      "description": "Or\u00e7amento de origem (opcional)"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "veiculo_id": {
+      "type": "string"
+    },
+    "veiculo_desc": {
+      "type": "string"
+    },
+    "data_abertura": {
+      "type": "string",
+      "format": "date"
+    },
+    "data_prevista": {
+      "type": "string",
+      "format": "date"
+    },
+    "data_conclusao": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "aberta",
+        "em_andamento",
+        "aguardando_peca",
+        "concluida",
+        "cancelada"
+      ],
+      "default": "aberta"
+    },
+    "tecnico": {
+      "type": "string"
+    },
+    "tecnico_id": {
+      "type": "string"
+    },
+    "prioridade": {
+      "type": "string",
+      "enum": [
+        "baixa",
+        "normal",
+        "alta"
+      ],
+      "default": "normal"
+    },
+    "total": {
+      "type": "number"
+    },
+    "itens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pendente",
+              "em_andamento",
+              "concluido",
+              "aguardando_peca"
+            ]
+          }
+        }
+      }
+    },
+    "observacoes": {
+      "type": "string"
+    },
+    "pagamento_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "pago",
+        "parcial"
+      ],
+      "default": "pendente"
+    },
+    "empresa_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "veiculo_id"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "name": "Financial",
+  "type": "object",
+  "properties": {
+    "academy_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "receita",
+        "despesa"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "value": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pago",
+        "pendente",
+        "cancelado"
+      ],
+      "default": "pendente"
+    }
+  },
+  "required": [
+    "academy_id",
+    "type",
+    "value",
+    "date",
+    "description"
+  ]
+}

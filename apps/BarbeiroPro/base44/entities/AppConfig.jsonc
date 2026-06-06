@@ -1,0 +1,20 @@
+{
+  "name": "AppConfig",
+  "type": "object",
+  "properties": {
+    "super_admin_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "app_name": {
+      "type": "string"
+    },
+    "system_settings": {
+      "type": "object"
+    }
+  },
+  "required": []
+}

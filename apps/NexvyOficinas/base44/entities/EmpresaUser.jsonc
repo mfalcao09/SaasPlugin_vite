@@ -1,0 +1,58 @@
+{
+  "name": "EmpresaUser",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da Empresa vinculada"
+    },
+    "email": {
+      "type": "string"
+    },
+    "nome": {
+      "type": "string"
+    },
+    "senha_hash": {
+      "type": "string",
+      "description": "Formato: sha256$salt$hex"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "tecnico",
+        "recepcao",
+        "financeiro"
+      ],
+      "default": "tecnico"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "forcar_troca_senha": {
+      "type": "boolean",
+      "default": false
+    },
+    "token_reset": {
+      "type": "string"
+    },
+    "token_reset_expira_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ultimo_login": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "invited_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "email",
+    "role"
+  ]
+}

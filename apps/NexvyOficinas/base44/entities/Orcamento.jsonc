@@ -1,0 +1,75 @@
+{
+  "name": "Orcamento",
+  "type": "object",
+  "properties": {
+    "numero": {
+      "type": "string"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "veiculo_id": {
+      "type": "string"
+    },
+    "veiculo_desc": {
+      "type": "string"
+    },
+    "data": {
+      "type": "string",
+      "format": "date"
+    },
+    "validade": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "aprovado",
+        "recusado"
+      ],
+      "default": "pendente"
+    },
+    "total": {
+      "type": "number"
+    },
+    "itens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "quantidade": {
+            "type": "number"
+          },
+          "valor": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "observacoes": {
+      "type": "string"
+    },
+    "convertido_em_os": {
+      "type": "boolean",
+      "default": false
+    },
+    "os_id": {
+      "type": "string"
+    },
+    "empresa_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "veiculo_id"
+  ]
+}

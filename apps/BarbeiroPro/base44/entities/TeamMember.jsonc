@@ -1,0 +1,35 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "recepcao",
+        "barbeiro",
+        "financeiro"
+      ],
+      "default": "recepcao"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "email",
+    "role"
+  ]
+}

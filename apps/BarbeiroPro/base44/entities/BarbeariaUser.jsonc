@@ -1,0 +1,55 @@
+{
+  "name": "BarbeariaUser",
+  "type": "object",
+  "properties": {
+    "barbearia_id": {
+      "type": "string",
+      "description": "ID da empresa (Company) \u00e0 qual este usu\u00e1rio pertence"
+    },
+    "email": {
+      "type": "string"
+    },
+    "senha_hash": {
+      "type": "string",
+      "description": "Hash bcrypt da senha"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "barbeiro",
+        "recepcao"
+      ],
+      "default": "recepcao"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "forcar_troca_senha": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se true, obriga o usu\u00e1rio a trocar a senha no pr\u00f3ximo login"
+    },
+    "token_reset": {
+      "type": "string",
+      "description": "Token tempor\u00e1rio para redefini\u00e7\u00e3o de senha"
+    },
+    "token_reset_expira_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora de expira\u00e7\u00e3o do token de reset"
+    },
+    "ultimo_login": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do \u00faltimo login registrado"
+    }
+  },
+  "required": [
+    "barbearia_id",
+    "email",
+    "role"
+  ]
+}

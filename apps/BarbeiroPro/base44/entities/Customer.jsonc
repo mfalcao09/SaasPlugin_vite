@@ -1,0 +1,55 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "total_appointments": {
+      "type": "number",
+      "default": 0
+    },
+    "last_appointment_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "favorite_service": {
+      "type": "string"
+    },
+    "favorite_professional": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "vip"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "phone"
+  ]
+}

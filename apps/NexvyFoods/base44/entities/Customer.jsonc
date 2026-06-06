@@ -1,0 +1,58 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do cliente"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endere\u00e7o do cliente"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Bairro ou regi\u00e3o"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas sobre o cliente"
+    },
+    "total_orders": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total de pedidos realizados"
+    },
+    "last_order_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data do \u00faltimo pedido"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo",
+      "description": "Status do cliente"
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "phone"
+  ]
+}

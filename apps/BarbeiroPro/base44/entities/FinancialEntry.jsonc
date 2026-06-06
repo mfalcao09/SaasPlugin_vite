@@ -1,0 +1,47 @@
+{
+  "name": "FinancialEntry",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "entrada",
+        "saida"
+      ],
+      "default": "entrada"
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "confirmado"
+      ],
+      "default": "confirmado"
+    },
+    "reference_appointment_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_id",
+    "type",
+    "amount",
+    "date"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "AppConfig",
+  "type": "object",
+  "properties": {
+    "app_name": {
+      "type": "string",
+      "default": "GymBoss AI",
+      "description": "Nome do SaaS"
+    },
+    "super_admin_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Lista adicional de e-mails com acesso de super admin (al\u00e9m do role=admin)"
+    },
+    "system_settings": {
+      "type": "object",
+      "description": "Configura\u00e7\u00f5es globais do sistema (opcional)"
+    },
+    "default_trial_days": {
+      "type": "number",
+      "default": 14,
+      "description": "Dias de trial para novas academias"
+    },
+    "support_email": {
+      "type": "string",
+      "description": "E-mail de suporte exibido nos pain\u00e9is"
+    }
+  },
+  "required": []
+}

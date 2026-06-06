@@ -1,0 +1,237 @@
+{
+  "name": "Company",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do estabelecimento"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Slug \u00fanico para link p\u00fablico de pedidos"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL da logo"
+    },
+    "primary_color": {
+      "type": "string",
+      "description": "Cor prim\u00e1ria em hex"
+    },
+    "secondary_color": {
+      "type": "string",
+      "description": "Cor secund\u00e1ria em hex"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone do estabelecimento"
+    },
+    "whatsapp": {
+      "type": "string",
+      "description": "N\u00famero de WhatsApp"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endere\u00e7o do estabelecimento (string legado)"
+    },
+    "business_hours": {
+      "type": "object",
+      "properties": {
+        "monday": {
+          "type": "string"
+        },
+        "tuesday": {
+          "type": "string"
+        },
+        "wednesday": {
+          "type": "string"
+        },
+        "thursday": {
+          "type": "string"
+        },
+        "friday": {
+          "type": "string"
+        },
+        "saturday": {
+          "type": "string"
+        },
+        "sunday": {
+          "type": "string"
+        }
+      },
+      "description": "Hor\u00e1rios de funcionamento por dia da semana"
+    },
+    "average_prep_time": {
+      "type": "integer",
+      "description": "Tempo m\u00e9dio de preparo em minutos"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo",
+        "bloqueado"
+      ],
+      "default": "ativo",
+      "description": "Status da empresa"
+    },
+    "plan_name": {
+      "type": "string",
+      "description": "Plano de assinatura (legado)"
+    },
+    "onboarding_step": {
+      "type": "integer",
+      "default": 0,
+      "description": "Etapa atual do onboarding (0-6)"
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Onboarding foi conclu\u00eddo"
+    },
+    "nome_fantasia": {
+      "type": "string",
+      "description": "Nome fantasia"
+    },
+    "razao_social": {
+      "type": "string",
+      "description": "Raz\u00e3o social"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ"
+    },
+    "inscricao_estadual": {
+      "type": "string",
+      "description": "Inscri\u00e7\u00e3o estadual"
+    },
+    "email_contato": {
+      "type": "string",
+      "description": "Email de contato"
+    },
+    "telefone_comercial": {
+      "type": "string",
+      "description": "Telefone comercial"
+    },
+    "endereco_estruturado": {
+      "type": "object",
+      "properties": {
+        "cep": {
+          "type": "string"
+        },
+        "rua": {
+          "type": "string"
+        },
+        "numero": {
+          "type": "string"
+        },
+        "complemento": {
+          "type": "string"
+        },
+        "bairro": {
+          "type": "string"
+        },
+        "cidade": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        }
+      },
+      "description": "Endere\u00e7o estruturado"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email do owner"
+    },
+    "owner_nome": {
+      "type": "string",
+      "description": "Nome do owner"
+    },
+    "owner_cpf": {
+      "type": "string",
+      "description": "CPF do owner"
+    },
+    "owner_telefone": {
+      "type": "string",
+      "description": "Telefone do owner"
+    },
+    "owner_data_nascimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento do owner"
+    },
+    "ultimo_acesso_owner": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltimo acesso do owner"
+    },
+    "plano": {
+      "type": "string",
+      "enum": [
+        "starter",
+        "pro",
+        "premium"
+      ],
+      "default": "starter",
+      "description": "Plano de assinatura"
+    },
+    "ciclo": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "anual"
+      ],
+      "default": "mensal",
+      "description": "Ciclo de cobran\u00e7a"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor da assinatura"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de in\u00edcio da assinatura"
+    },
+    "proximo_vencimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Pr\u00f3ximo vencimento"
+    },
+    "status_cobranca": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "ativo",
+        "inadimplente",
+        "suspenso",
+        "cancelado"
+      ],
+      "default": "trial",
+      "description": "Status de cobran\u00e7a"
+    },
+    "trial_ate": {
+      "type": "string",
+      "format": "date",
+      "description": "Trial v\u00e1lido at\u00e9"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "description": "Forma de pagamento"
+    },
+    "observacoes_internas": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es internas (admin)"
+    },
+    "limite_usuarios": {
+      "type": "number",
+      "default": 3,
+      "description": "Limite de usu\u00e1rios"
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}

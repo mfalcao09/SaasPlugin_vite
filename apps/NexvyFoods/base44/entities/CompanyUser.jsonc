@@ -1,0 +1,68 @@
+{
+  "name": "CompanyUser",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da Company propriet\u00e1ria"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do usu\u00e1rio (login)"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "senha_hash": {
+      "type": "string",
+      "description": "Hash da senha no formato sha256$salt$hex"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "atendimento",
+        "cozinha",
+        "motoboy",
+        "financeiro"
+      ],
+      "default": "atendimento",
+      "description": "Papel do usu\u00e1rio na empresa"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Usu\u00e1rio ativo"
+    },
+    "forcar_troca_senha": {
+      "type": "boolean",
+      "default": false,
+      "description": "For\u00e7ar troca de senha no pr\u00f3ximo login"
+    },
+    "token_reset": {
+      "type": "string",
+      "description": "Token de reset de senha"
+    },
+    "token_reset_expira_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expira\u00e7\u00e3o do token de reset"
+    },
+    "ultimo_login": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do \u00faltimo login"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "Email de quem convidou"
+    }
+  },
+  "required": [
+    "company_id",
+    "email",
+    "role"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do membro"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do membro"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "atendimento",
+        "cozinha",
+        "motoboy",
+        "financeiro",
+        "admin"
+      ],
+      "description": "Papel do membro na equipe"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Membro ativo"
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "email",
+    "role"
+  ]
+}

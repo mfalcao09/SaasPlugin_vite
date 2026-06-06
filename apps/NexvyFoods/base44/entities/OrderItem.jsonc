@@ -1,0 +1,46 @@
+{
+  "name": "OrderItem",
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "ID do pedido"
+    },
+    "menu_item_id": {
+      "type": "string",
+      "description": "ID do produto"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Nome do item"
+    },
+    "quantity": {
+      "type": "integer",
+      "description": "Quantidade"
+    },
+    "unit_price": {
+      "type": "number",
+      "description": "Pre\u00e7o unit\u00e1rio"
+    },
+    "total_price": {
+      "type": "number",
+      "description": "Pre\u00e7o total do item"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es do item"
+    },
+    "extras_summary": {
+      "type": "string",
+      "description": "Resumo dos extras/adicionais"
+    }
+  },
+  "required": [
+    "order_id",
+    "menu_item_id",
+    "item_name",
+    "quantity",
+    "unit_price",
+    "total_price"
+  ]
+}

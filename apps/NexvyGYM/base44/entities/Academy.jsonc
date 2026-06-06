@@ -1,0 +1,228 @@
+{
+  "name": "Academy",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome da academia"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Slug \u00fanico usado na URL do painel"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL do logotipo"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#FF6B35"
+    },
+    "secondary_color": {
+      "type": "string",
+      "default": "#1A1410"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip_code": {
+      "type": "string"
+    },
+    "hours": {
+      "type": "string",
+      "description": "Hor\u00e1rios de funcionamento (texto livre)"
+    },
+    "business_hours": {
+      "type": "object",
+      "description": "Hor\u00e1rios de funcionamento estruturado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "blocked"
+      ],
+      "default": "active"
+    },
+    "plan_name": {
+      "type": "string",
+      "enum": [
+        "Starter",
+        "Pro"
+      ],
+      "default": "Starter"
+    },
+    "max_students": {
+      "type": "number",
+      "description": "Limite de alunos permitido pelo plano"
+    },
+    "trial_ends_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de t\u00e9rmino do per\u00edodo de trial (legado)"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "active",
+        "past_due",
+        "canceled"
+      ],
+      "default": "trial",
+      "description": "Status da assinatura SaaS (legado)"
+    },
+    "onboarding_step": {
+      "type": "number",
+      "default": 1
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "onboarding_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "E-mail do dono/admin da academia"
+    },
+    "admin_user_email": {
+      "type": "string",
+      "description": "E-mail do admin (compatibilidade)"
+    },
+    "email": {
+      "type": "string",
+      "description": "E-mail de contato da academia"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es internas do super admin"
+    },
+    "nome_fantasia": {
+      "type": "string",
+      "description": "Nome fantasia da academia"
+    },
+    "razao_social": {
+      "type": "string"
+    },
+    "cnpj": {
+      "type": "string"
+    },
+    "inscricao_estadual": {
+      "type": "string"
+    },
+    "email_contato": {
+      "type": "string"
+    },
+    "telefone_comercial": {
+      "type": "string"
+    },
+    "endereco_estruturado": {
+      "type": "object",
+      "description": "Endere\u00e7o estruturado (n\u00e3o conflita com address legado)",
+      "properties": {
+        "cep": {
+          "type": "string"
+        },
+        "rua": {
+          "type": "string"
+        },
+        "numero": {
+          "type": "string"
+        },
+        "complemento": {
+          "type": "string"
+        },
+        "bairro": {
+          "type": "string"
+        },
+        "cidade": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        }
+      }
+    },
+    "owner_nome": {
+      "type": "string"
+    },
+    "owner_cpf": {
+      "type": "string"
+    },
+    "owner_telefone": {
+      "type": "string"
+    },
+    "owner_data_nascimento": {
+      "type": "string",
+      "format": "date"
+    },
+    "ultimo_acesso_owner": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ciclo": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "anual"
+      ],
+      "default": "mensal"
+    },
+    "valor": {
+      "type": "number"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date"
+    },
+    "proximo_vencimento": {
+      "type": "string",
+      "format": "date"
+    },
+    "status_cobranca": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "ativo",
+        "inadimplente",
+        "suspenso",
+        "cancelado"
+      ],
+      "default": "trial",
+      "description": "Status de cobran\u00e7a SaaS robusto"
+    },
+    "trial_ate": {
+      "type": "string",
+      "format": "date"
+    },
+    "forma_pagamento": {
+      "type": "string"
+    },
+    "observacoes_internas": {
+      "type": "string"
+    },
+    "limite_usuarios": {
+      "type": "number",
+      "default": 3
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

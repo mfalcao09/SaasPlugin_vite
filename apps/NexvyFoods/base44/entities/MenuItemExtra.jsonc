@@ -1,0 +1,38 @@
+{
+  "name": "MenuItemExtra",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "menu_item_id": {
+      "type": "string",
+      "description": "ID do produto"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do extra/adicional"
+    },
+    "extra_price": {
+      "type": "number",
+      "description": "Pre\u00e7o adicional"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Extra ativo ou inativo"
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "Ordem de exibi\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "company_id",
+    "menu_item_id",
+    "name",
+    "extra_price"
+  ]
+}

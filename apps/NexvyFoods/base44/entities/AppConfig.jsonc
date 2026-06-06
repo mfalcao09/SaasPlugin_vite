@@ -1,0 +1,25 @@
+{
+  "name": "AppConfig",
+  "type": "object",
+  "properties": {
+    "app_name": {
+      "type": "string",
+      "description": "Nome da aplica\u00e7\u00e3o"
+    },
+    "super_admin_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Lista de emails de super admin (lowercase)"
+    },
+    "system_settings": {
+      "type": "object",
+      "description": "Configura\u00e7\u00f5es do sistema"
+    }
+  },
+  "required": [
+    "app_name",
+    "super_admin_emails"
+  ]
+}

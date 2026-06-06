@@ -1,0 +1,124 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Nome do cliente (cache)"
+    },
+    "customer_phone": {
+      "type": "string",
+      "description": "Telefone do cliente (cache)"
+    },
+    "order_number": {
+      "type": "string",
+      "description": "N\u00famero do pedido \u00fanico"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "delivery",
+        "pickup"
+      ],
+      "description": "Tipo de pedido"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "novo",
+        "aceito",
+        "em_preparo",
+        "pronto",
+        "saiu_entrega",
+        "entregue",
+        "cancelado",
+        "recusado"
+      ],
+      "default": "novo",
+      "description": "Status do pedido"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal sem taxa"
+    },
+    "delivery_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "Taxa de entrega"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total do pedido"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "dinheiro",
+        "pix",
+        "cartao"
+      ],
+      "description": "Forma de pagamento"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "pago"
+      ],
+      "default": "pendente",
+      "description": "Status do pagamento"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endere\u00e7o de entrega"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Bairro ou regi\u00e3o"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es do pedido"
+    },
+    "items_summary": {
+      "type": "string",
+      "description": "JSON serializado dos itens do pedido"
+    },
+    "rider_id": {
+      "type": "string",
+      "description": "ID do motoboy"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de cria\u00e7\u00e3o"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de aceita\u00e7\u00e3o"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de entrega"
+    }
+  },
+  "required": [
+    "company_id",
+    "order_number",
+    "type",
+    "status",
+    "subtotal",
+    "total",
+    "payment_method"
+  ]
+}

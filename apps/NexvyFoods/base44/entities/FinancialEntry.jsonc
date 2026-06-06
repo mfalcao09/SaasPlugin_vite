@@ -1,0 +1,55 @@
+{
+  "name": "FinancialEntry",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "entrada",
+        "saida"
+      ],
+      "description": "Tipo de movimento"
+    },
+    "category": {
+      "type": "string",
+      "description": "Categoria da entrada/sa\u00edda"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do movimento"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Valor do movimento"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do movimento"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "concluido"
+      ],
+      "default": "concluido",
+      "description": "Status do movimento"
+    },
+    "reference_order_id": {
+      "type": "string",
+      "description": "ID do pedido relacionado (opcional)"
+    }
+  },
+  "required": [
+    "company_id",
+    "type",
+    "description",
+    "amount",
+    "date"
+  ]
+}

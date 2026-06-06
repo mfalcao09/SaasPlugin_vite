@@ -1,0 +1,38 @@
+{
+  "name": "Rider",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do motoboy"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone do motoboy"
+    },
+    "vehicle_type": {
+      "type": "string",
+      "enum": [
+        "bicicleta",
+        "moto",
+        "carro"
+      ],
+      "description": "Tipo de ve\u00edculo"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Motoboy ativo"
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "phone",
+    "vehicle_type"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "name": "MenuItem",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "ID da categoria"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do produto"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do produto"
+    },
+    "price": {
+      "type": "number",
+      "description": "Pre\u00e7o do produto"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL da imagem do produto"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Produto ativo ou inativo"
+    },
+    "available": {
+      "type": "boolean",
+      "default": true,
+      "description": "Produto dispon\u00edvel temporariamente"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Produto em destaque"
+    },
+    "allow_notes": {
+      "type": "boolean",
+      "default": true,
+      "description": "Permite observa\u00e7\u00f5es do cliente"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags do produto"
+    },
+    "estimated_prep_time": {
+      "type": "integer",
+      "description": "Tempo estimado de preparo em minutos"
+    }
+  },
+  "required": [
+    "company_id",
+    "category_id",
+    "name",
+    "price"
+  ]
+}

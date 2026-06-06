@@ -1,0 +1,39 @@
+{
+  "name": "Service",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "category_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "default": 30
+    },
+    "price": {
+      "type": "number"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "duration_minutes",
+    "price"
+  ]
+}

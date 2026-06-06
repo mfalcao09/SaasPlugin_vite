@@ -1,0 +1,32 @@
+{
+  "name": "DeliveryZone",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do bairro ou regi\u00e3o"
+    },
+    "fee": {
+      "type": "number",
+      "description": "Taxa de entrega"
+    },
+    "estimated_minutes": {
+      "type": "integer",
+      "description": "Tempo estimado de entrega em minutos"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Zona de entrega ativa"
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "fee"
+  ]
+}
