@@ -47,6 +47,8 @@ import AIGrowth from '@/pages/app/AIGrowth';
 import Equipe from '@/pages/app/Equipe';
 import Configuracoes from '@/pages/app/Configuracoes';
 import MasterPanelReal from '@/pages/app/MasterPanelReal';
+import Leads from '@/pages/app/Leads';
+import Metas from '@/pages/app/Metas';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -106,6 +108,8 @@ const AuthenticatedApp = () => {
       <Route path="/ai-growth" element={<TenantLayout><AIGrowth /></TenantLayout>} />
       <Route path="/equipe" element={<TenantLayout><Equipe /></TenantLayout>} />
       <Route path="/configuracoes" element={<TenantLayout><Configuracoes /></TenantLayout>} />
+      <Route path="/leads" element={<TenantLayout><Leads /></TenantLayout>} />
+      <Route path="/metas" element={<TenantLayout><Metas /></TenantLayout>} />
       <Route path="/master" element={<AppLayout><SuperAdminGuard><MasterPanelReal /></SuperAdminGuard></AppLayout>} />
       <Route path="/adminmaster" element={<AppLayout><AdminMaster /></AppLayout>} />
       <Route path="/onboarding" element={<Onboarding />} />

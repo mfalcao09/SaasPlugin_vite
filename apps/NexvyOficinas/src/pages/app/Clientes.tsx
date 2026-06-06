@@ -16,12 +16,12 @@ export default function Clientes() {
 
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ['clientes', empresaId],
-    queryFn: () => db.clientes.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.clientes.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 
   const criar = useMutation({
-    mutationFn: () => db.clientes.create({ empresa_id: empresaId!, nome, telefone, email, status: 'ativo' } as any),
+    mutationFn: async () => await db.clientes.create({ empresa_id: empresaId!, nome, telefone, email, status: 'ativo' } as any),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clientes', empresaId] })
       toast.success('Cliente cadastrado!')

@@ -9,19 +9,19 @@ export default function Dashboard() {
 
   const { data: clientes } = useQuery({
     queryKey: ['clientes', empresaId],
-    queryFn: () => db.clientes.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.clientes.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 
   const { data: ordens } = useQuery({
     queryKey: ['ordens_servico', empresaId],
-    queryFn: () => db.ordensServico.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.ordensServico.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 
   const { data: lancamentos } = useQuery({
     queryKey: ['lancamentos', empresaId],
-    queryFn: () => db.lancamentos.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.lancamentos.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 

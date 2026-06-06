@@ -4,7 +4,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, Car, FileText, ClipboardList,
-  DollarSign, BarChart3, Brain, Settings, Shield, Menu, Zap, LogOut
+  DollarSign, BarChart3, Brain, Settings, Shield, Menu, Zap, LogOut,
+  UserPlus, Target
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTenantAuth } from "@/lib/TenantAuthContext";
@@ -18,6 +19,8 @@ const navItems = [
   { icon: DollarSign,      label: "Financeiro",         path: "/financeiro" },
   { icon: BarChart3,       label: "Relatórios",         path: "/relatorios" },
   { icon: Brain,           label: "AI Growth",          path: "/ai-growth", badge: "IA" },
+  { icon: UserPlus,        label: "Leads",               path: "/leads" },
+  { icon: Target,          label: "Metas",               path: "/metas" },
 ];
 
 const secondaryItems = [

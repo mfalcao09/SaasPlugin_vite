@@ -1,6 +1,5 @@
-import AppLayout from '@/components/layout/AppLayout'
 import { db } from '@/lib/db'
-import { useCompany } from '@/hooks/useCompany'
+import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { format, addDays } from 'date-fns'
@@ -32,8 +31,7 @@ const emptyForm = {
 }
 
 export default function Agenda() {
-  const { companyId } = useCompany()
-  const barbeariaId = companyId
+  const { barbeariaId } = useAuth()
 
   const [currentDate, setCurrentDate] = useState(new Date())
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -63,7 +61,7 @@ export default function Agenda() {
     setLoading(true)
     db.appointments.listByDate(barbeariaId, dateStr)
       .then(res => setAppointments((res.data as Appointment[]) ?? []))
-      .finally(() => setLoading(false))
+      .then(() => setLoading(false), () => setLoading(false))
   }, [barbeariaId, dateStr])
 
   const reloadAppts = () =>
@@ -77,12 +75,19 @@ export default function Agenda() {
     const svc = services.find(s => s.id === form.servico_id)
     const pro = professionals.find(p => p.id === form.profissional_id)
     const payload = {
-      ...form,
       barbearia_id: barbeariaId,
       data: dateStr,
+      cliente_nome: form.cliente_nome,
+      cliente_telefone: form.cliente_telefone,
+      profissional_id: form.profissional_id,
       profissional_nome: pro?.nome ?? '',
+      servico_id: form.servico_id,
       servico_nome: svc?.nome ?? '',
-      preco: svc?.preco ?? 0,
+      hora: form.hora,
+      duracao_minutos: svc?.duracao_min ?? 30,
+      valor: svc?.preco ?? 0,
+      status: form.status,
+      observacoes: form.obs,
     }
     if (selectedAppt) {
       await db.appointments.update(selectedAppt.id, payload)
@@ -111,8 +116,8 @@ export default function Agenda() {
   const closeForm = () => { setShowForm(false); setSelectedAppt(null); setForm(emptyForm) }
 
   return (
-    <AppLayout>
-      <div className="p-8">
+    <>
+    <div className="p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -300,6 +305,6 @@ export default function Agenda() {
           </div>
         </div>
       )}
-    </AppLayout>
+    </>
   )
 }

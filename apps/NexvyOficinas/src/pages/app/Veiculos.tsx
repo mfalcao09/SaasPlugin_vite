@@ -19,18 +19,18 @@ export default function Veiculos() {
 
   const { data: veiculos = [], isLoading } = useQuery({
     queryKey: ['veiculos', empresaId],
-    queryFn: () => db.veiculos.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.veiculos.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', empresaId],
-    queryFn: () => db.clientes.list(empresaId!).then(r => r.data ?? []),
+    queryFn: async () => { const r = await db.clientes.list(empresaId!); return r.data ?? [] },
     enabled: !!empresaId,
   })
 
   const criar = useMutation({
-    mutationFn: () => db.veiculos.create({
+    mutationFn: async () => await db.veiculos.create({
       empresa_id: empresaId!, cliente_id: clienteId, marca, modelo, placa,
       ano: ano ? Number(ano) : undefined, cor,
     } as any),

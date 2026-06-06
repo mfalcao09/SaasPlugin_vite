@@ -6,8 +6,11 @@ import AppLayout from '@/components/layout/AppLayout'
 import Login from '@/pages/auth/Login'
 import Signup from '@/pages/auth/Signup'
 import Onboarding from '@/pages/Onboarding'
+import Metas from '@/pages/app/Metas'
+import Leads from '@/pages/app/Leads'
+import PedirPublico from '@/pages/public/PedirPublico'
 
-// Placeholders para páginas ainda não portadas
+// Placeholder para páginas ainda não portadas
 const Placeholder = ({ title }: { title: string }) => (
   <div className="p-8 text-center text-muted-foreground">{title} — em construção</div>
 )
@@ -56,13 +59,13 @@ function AppRoutes() {
         <Route path="relatorios" element={<Placeholder title="Relatórios" />} />
         <Route path="equipe" element={<Placeholder title="Equipe" />} />
         <Route path="configuracoes" element={<Placeholder title="Configurações" />} />
-        <Route path="leads" element={<Placeholder title="Leads" />} />
+        <Route path="leads" element={<Leads />} />
         <Route path="cadencia" element={<Placeholder title="Cadência" />} />
-        <Route path="metas" element={<Placeholder title="Metas" />} />
+        <Route path="metas" element={<Metas />} />
       </Route>
 
       {/* ── Pedido público ── */}
-      <Route path="pedir/:slug" element={<Placeholder title="Pedido Público" />} />
+      <Route path="pedir/:slug" element={<PedirPublico />} />
 
       {/* ── Fallback ── */}
       <Route path="*" element={<Navigate to="/" replace />} />
