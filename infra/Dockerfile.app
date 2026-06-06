@@ -8,7 +8,7 @@ FROM node:20-alpine AS builder
 ARG APP_DIR
 WORKDIR /app
 COPY apps/${APP_DIR}/package*.json ./
-RUN npm ci --silent
+RUN npm install --no-audit --no-fund --loglevel=error
 COPY apps/${APP_DIR}/ .
 RUN npm run build
 
