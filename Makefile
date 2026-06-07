@@ -1,4 +1,4 @@
-.PHONY: deploy-beauty deploy-oficinas deploy-barbeiro deploy-foods deploy-gym deploy-all setup-vps pull status
+.PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-all setup-vps pull status
 
 VPS=root@145.223.29.96
 REMOTE_DIR=/opt/stacks/saasplugin-vite
@@ -24,6 +24,10 @@ deploy-beauty: pull
 
 deploy-oficinas: pull
 	ssh $(VPS) "$(REMOTE_DIR)/infra/deploy-vps.sh NexvyOficinas nexvy-oficinas-vite $(DOMAIN_OFICINAS)"
+
+# Landing page (apex + www). SaaS Oficinas vai em app.$(DOMAIN_OFICINAS) (alvo deploy-oficinas).
+deploy-oficinas-lp: pull
+	ssh $(VPS) "$(REMOTE_DIR)/infra/deploy-vps.sh NexvyOficinasLP nexvy-oficinas-lp $(DOMAIN_OFICINAS)"
 
 deploy-barbeiro: pull
 	ssh $(VPS) "$(REMOTE_DIR)/infra/deploy-vps.sh BarbeiroPro nexvy-barbeiro $(DOMAIN_BARBEIRO)"

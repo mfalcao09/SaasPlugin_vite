@@ -1,20 +1,21 @@
-# Traefik dynamic config (FILE PROVIDER) — NexvyOficinas (JA LIVE)
+# Traefik dynamic config (FILE PROVIDER) — NexvyOficinas (SaaS)
 # Renderizado por infra/deploy-vps.sh -> /opt/stacks/traefik/dynamic/__CONTAINER__.yml
-# Dominio ja definido em producao (nexvyoficinas.com.br) -> literal, sem placeholder.
-#   __CONTAINER__ -> nome do container   (sed s|__CONTAINER__|$CONTAINER|g)
-# Tenant e determinado por LOGIN (nao por subdominio) -> sem router wildcard.
+#
+# IMPORTANTE: o apex (nexvyoficinas.com.br + www) é da LP — ver NexvyOficinasLP.yml.template.
+# O SaaS responde APENAS em app.nexvyoficinas.com.br.
+# Tenant é determinado por LOGIN (não por subdomínio).
 http:
   routers:
-    __CONTAINER__-apex:
-      rule: "Host(`nexvyoficinas.com.br`) || Host(`www.nexvyoficinas.com.br`)"
+    __CONTAINER__-app:
+      rule: "Host(`app.nexvyoficinas.com.br`)"
       entryPoints: [websecure]
       tls:
         certResolver: letsencrypt
       service: __CONTAINER__-svc
       middlewares: [security-headers@file]
       priority: 100
-    __CONTAINER__-http-redirect:
-      rule: "Host(`nexvyoficinas.com.br`) || Host(`www.nexvyoficinas.com.br`)"
+    __CONTAINER__-app-http-redirect:
+      rule: "Host(`app.nexvyoficinas.com.br`)"
       entryPoints: [web]
       service: __CONTAINER__-svc
       middlewares: [redirect-to-https]
