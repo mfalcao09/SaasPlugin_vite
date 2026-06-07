@@ -1,4 +1,4 @@
-.PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-all setup-vps pull status
+.PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-all deploy-evolution setup-vps pull status
 
 VPS=vps-hostinger
 REMOTE_DIR=/opt/stacks/saasplugin-vite
@@ -41,6 +41,11 @@ deploy-gym: pull
 # deploy-all: so reaproveita os alvos individuais (cada um valida seu DOMAIN).
 # Defina DOMAIN_* antes; alvos sem dominio vao falhar no script (DOMAIN obrigatorio).
 deploy-all: deploy-beauty deploy-oficinas deploy-barbeiro deploy-foods deploy-gym
+
+# Evolution API compartilhada (infra/stacks/evolution-api/)
+# Pré-requisito: .env em /opt/stacks/evolution-api/.env no VPS
+deploy-evolution: pull
+	ssh $(VPS) "bash $(REMOTE_DIR)/infra/stacks/evolution-api/deploy.sh"
 
 logs-%:
 	ssh $(VPS) "docker logs -f nexvy-$* --tail=100"

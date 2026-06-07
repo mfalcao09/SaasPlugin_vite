@@ -1,0 +1,52 @@
+# Traefik dynamic config (FILE PROVIDER) — Evolution API
+# Copiar para: /opt/stacks/traefik/dynamic/evolution-api.yml
+# API: https://evolution.nexvy.tech
+# Manager UI: https://manager.evolution.nexvy.tech
+
+http:
+  routers:
+    # ── API (porta 8080) ────────────────────────────────────────────────────
+    evolution-api-https:
+      rule: "Host(`evolution.nexvy.tech`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: evolution-api-svc
+      middlewares: [security-headers@file]
+      priority: 100
+    evolution-api-http:
+      rule: "Host(`evolution.nexvy.tech`)"
+      entryPoints: [web]
+      service: evolution-api-svc
+      middlewares: [redirect-to-https]
+      priority: 100
+
+    # ── Manager UI (porta 80) ───────────────────────────────────────────────
+    evolution-manager-https:
+      rule: "Host(`manager.evolution.nexvy.tech`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: evolution-manager-svc
+      middlewares: [security-headers@file]
+      priority: 100
+    evolution-manager-http:
+      rule: "Host(`manager.evolution.nexvy.tech`)"
+      entryPoints: [web]
+      service: evolution-manager-svc
+      middlewares: [redirect-to-https]
+      priority: 100
+
+  services:
+    evolution-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://evolution_api:8080"
+        passHostHeader: true
+
+    evolution-manager-svc:
+      loadBalancer:
+        servers:
+          - url: "http://evolution_frontend:80"
+        passHostHeader: true
+

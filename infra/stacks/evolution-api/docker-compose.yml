@@ -1,0 +1,82 @@
+version: "3.8"
+
+# Evolution API — compartilhado entre todos os produtos Nexvy
+# Domínio: evolution.nexvy.tech
+# Traefik: file provider em /opt/stacks/traefik/dynamic/evolution-api.yml
+# Docs: https://github.com/evolution-foundation/evolution-api
+
+services:
+  api:
+    container_name: evolution_api
+    image: evoapicloud/evolution-api:latest
+    restart: always
+    depends_on:
+      - redis
+      - evolution-postgres
+    expose:
+      - "8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - evolution-net
+      - traefik-public
+    env_file:
+      - .env
+
+  frontend:
+    container_name: evolution_frontend
+    image: evoapicloud/evolution-manager:latest
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - evolution-net
+      - traefik-public
+
+  redis:
+    container_name: evolution_redis
+    image: redis:latest
+    restart: always
+    command: >
+      redis-server --port 6379 --appendonly yes
+    volumes:
+      - evolution_redis:/data
+    networks:
+      - evolution-net
+    expose:
+      - "6379"
+
+  evolution-postgres:
+    container_name: evolution_postgres
+    image: postgres:15
+    restart: always
+    env_file:
+      - .env
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - listen_addresses=*
+    environment:
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - evolution-net
+    expose:
+      - "5432"
+
+volumes:
+  evolution_instances:
+  evolution_redis:
+  postgres_data:
+
+networks:
+  evolution-net:
+    name: evolution-net
+    driver: bridge
+  traefik-public:
+    external: true
