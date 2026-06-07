@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoria: sales-spark-ai-47 → NexvyOficinas — Inbox WhatsApp</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-2: #1e293b;
+    --bg-3: #334155;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --orange: #f97316;
+    --orange-dim: #fb923c;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem 6rem; }
+  h1 { font-size: 2rem; border-bottom: 3px solid var(--orange); padding-bottom: 0.75rem; margin: 0 0 0.5rem; line-height: 1.2; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--orange-dim); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; color: var(--text); }
+  h4 { font-size: 1rem; margin: 1.25rem 0 0.4rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p, ul, ol { margin: 0.5rem 0; }
+  ul, ol { padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  a { color: var(--orange-dim); text-decoration: none; }
+  a:hover { color: var(--orange); text-decoration: underline; }
+  blockquote { border-left: 4px solid var(--orange); margin: 1rem 0; padding: 0.75rem 1.25rem; background: var(--bg-2); color: var(--text-dim); border-radius: 4px; }
+  code { font-family: "JetBrains Mono", "Fira Code", Consolas, Monaco, monospace; background: var(--bg-2); border: 1px solid var(--border); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.88em; color: var(--orange-dim); }
+  pre { background: #020617; border: 1px solid var(--border); border-left: 3px solid var(--orange); padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; line-height: 1.5; }
+  pre code { background: transparent; border: none; padding: 0; color: var(--text); font-size: inherit; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92em; background: var(--bg-2); border-radius: 6px; overflow: hidden; }
+  th, td { text-align: left; padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: #020617; color: var(--orange); font-weight: 600; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(249, 115, 22, 0.05); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  strong { color: var(--text); }
+  em { color: var(--text-dim); }
+  .header-meta { color: var(--text-dim); font-size: 0.9em; margin-bottom: 2rem; }
+  .header-meta strong { color: var(--orange-dim); }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.75em; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+  .badge-p0 { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .badge-p1 { background: rgba(234,179,8,0.15); color: var(--yellow); border: 1px solid rgba(234,179,8,0.3); }
+  .badge-p2 { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .badge-p3 { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid rgba(100,116,139,0.3); }
+  .badge-ok { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-effort { background: var(--bg-3); color: var(--text-dim); border: 1px solid var(--border); font-family: "JetBrains Mono", monospace; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .kpi-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; text-align: center; }
+  .kpi-card .kpi-value { font-size: 2rem; font-weight: 700; color: var(--orange); line-height: 1; margin-bottom: 0.4rem; }
+  .kpi-card .kpi-label { font-size: 0.8em; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi-card.danger .kpi-value { color: var(--red); }
+  .kpi-card.warning .kpi-value { color: var(--yellow); }
+  .kpi-card.ok .kpi-value { color: var(--green); }
+  .bug-card { background: rgba(239, 68, 68, 0.07); border: 1px solid rgba(239, 68, 68, 0.3); border-left: 4px solid var(--red); border-radius: 6px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .bug-card h3 { margin-top: 0; color: var(--red); }
+  .sprint-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+  .sprint-card h3 { margin-top: 0; color: var(--orange); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .toc { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin: 1.5rem 0 2rem; }
+  .toc ol { margin: 0.5rem 0; }
+  @media (max-width: 700px) {
+    .container { padding: 1.5rem 1rem 4rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    table { font-size: 0.85em; }
+    th, td { padding: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Auditoria: sales-spark-ai-47 → NexvyOficinas</h1>
+<p style="font-size: 1.05em; color: var(--orange-dim); margin: 0 0 1.25rem;">Módulo Inbox WhatsApp — gap analysis e roadmap de implementação</p>
+
+<div class="header-meta">
+  <strong>Data:</strong> 2026-06-07 · <strong>Autor:</strong> Marcelo Silva (auditoria automática via Claude Code Workflow paralelo — 6 agentes, 741k tokens, 11 min)<br>
+  <strong>Origem:</strong> <a href="https://github.com/mfalcao09/sales-spark-ai-47">mfalcao09/sales-spark-ai-47</a> (CRM completo)<br>
+  <strong>Destino:</strong> <a href="https://github.com/mfalcao09/SaasPlugin_vite">mfalcao09/SaasPlugin_vite</a> — <code>apps/NexvyOficinas/</code> (piloto inbox)
+</div>
+
+<h2 id="tldr">TL;DR</h2>
+
+<div class="kpi-grid">
+  <div class="kpi-card warning"><div class="kpi-value">~18%</div><div class="kpi-label">Paridade atual</div></div>
+  <div class="kpi-card ok"><div class="kpi-value">15</div><div class="kpi-label">Implementadas</div></div>
+  <div class="kpi-card danger"><div class="kpi-value">34</div><div class="kpi-label">Faltam P0/P1</div></div>
+  <div class="kpi-card"><div class="kpi-value">26</div><div class="kpi-label">Faltam P2/P3</div></div>
+  <div class="kpi-card"><div class="kpi-value">12</div><div class="kpi-label">Out of scope</div></div>
+  <div class="kpi-card danger"><div class="kpi-value">2</div><div class="kpi-label">Bugs P0 descobertos</div></div>
+</div>
+
+<blockquote>
+  <strong>Veredito:</strong> o que foi instalado é um <strong>MVP funcional do inbox</strong> (lista realtime + chat realtime + envio de texto + setup de instâncias). Pra virar "atendimento profissional" como o sales-spark, faltam <strong>3 sprints de 2 semanas</strong> focadas em mídia → fila → CRM integration. Tudo depois disso (copiloto IA, transcrição, campanhas, multi-agente, RAG) é opcional e pode ser priorizado conforme demanda real dos pilotos.<br><br>
+  <strong>Não trazer do sales-spark:</strong> kanban de deals, comissões, capture/funis, Cakto/Hotmart/Sankhya, multi-canal (Instagram/SMS/email), webchat widget — fora do persona "dono de oficina".
+</blockquote>
+
+<div class="toc">
+  <strong>Sumário</strong>
+  <ol>
+    <li><a href="#bugs">Bugs encontrados na auditoria</a></li>
+    <li><a href="#implementado">O que JÁ está implementado (paridade ✓)</a></li>
+    <li><a href="#criticas">Faltam — críticas (P0/P1) — 34 itens</a></li>
+    <li><a href="#extended">Faltam — extended (P2/P3) — 26 itens</a></li>
+    <li><a href="#out-of-scope">Out of scope (não migrar) — 12 itens</a></li>
+    <li><a href="#roadmap">Roadmap proposto — 3 sprints</a></li>
+    <li><a href="#apendice">Apêndice: inventário sales-spark</a></li>
+  </ol>
+</div>
+
+<h2 id="bugs">🐞 Bugs encontrados na auditoria</h2>
+
+<div class="bug-card">
+  <h3>BUG-1 <span class="badge badge-p0">P0</span> — EvolutionSettings.tsx lê colunas inexistentes</h3>
+  <p><strong>Arquivo:</strong> <code>apps/NexvyOficinas/src/components/inbox/EvolutionSettings.tsx</code></p>
+  <p><strong>Problema:</strong> o <code>select(...)</code> pede <code>instance_name, display_name, connected_phone</code> — colunas que <strong>não existem</strong> na tabela <code>public.evolution_instances</code>. Schema real tem: <code>name, instance_id, phone_number</code>.</p>
+  <p><strong>Impacto:</strong> UI mostra <code>undefined</code> em produção. Display name e telefone conectado nunca aparecem.</p>
+  <p><strong>Fix:</strong></p>
+<pre><code>- .select('id,instance_name,display_name,status,qr_code,connected_phone')
++ .select('id,name,instance_id,phone_number,status,qr_code,is_default')</code></pre>
+  <p>E ajustar todas as referências <code>inst.display_name → inst.name</code>, <code>inst.connected_phone → inst.phone_number</code>.</p>
+  <p><strong>Esforço:</strong> <span class="badge badge-effort">S (15 min)</span></p>
+</div>
+
+<div class="bug-card">
+  <h3>BUG-2 <span class="badge badge-p0">P0</span> — ChatArea.tsx lê colunas inexistentes em inbox_messages</h3>
+  <p><strong>Arquivo:</strong> <code>apps/NexvyOficinas/src/components/inbox/ChatArea.tsx</code></p>
+  <p><strong>Problema:</strong> o <code>select(...)</code> pede <code>media_url, media_type, status</code> — esses <strong>não são colunas</strong> da tabela. As infos de mídia vivem em <code>metadata jsonb</code> e <code>inbox_messages</code> <strong>não tem</strong> coluna <code>status</code> (delivery status nunca foi modelado).</p>
+  <p><strong>Impacto:</strong> preview de imagem inbound sempre retorna <code>undefined</code> → não renderiza. Status de envio inexistente.</p>
+  <p><strong>Fix:</strong></p>
+<pre><code>- .select('id,sender_type,content,media_url,media_type,created_at,status')
++ .select('id,sender_type,content,content_type,metadata,created_at')</code></pre>
+  <p>E adaptar o render: <code>m.media_type</code> → <code>m.content_type</code>, <code>m.media_url</code> → <code>m.metadata?.url</code>.</p>
+  <p><strong>Esforço:</strong> <span class="badge badge-effort">S (30 min)</span></p>
+</div>
+
+<h2 id="implementado">✅ O que JÁ está implementado (paridade)</h2>
+
+<table>
+  <thead>
+    <tr><th style="width:40px">#</th><th>Feature</th><th>Evidência</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Lista de conversas com realtime</td><td><code>ConversationList.tsx</code> — query em <code>inbox_conversations</code> limitada a 100, ordem desc por <code>last_message_at</code>, subscription realtime filtro <code>empresa_id</code></td></tr>
+    <tr><td>2</td><td>Área de chat com mensagens realtime</td><td><code>ChatArea.tsx</code> — últimas 200 msgs asc, realtime INSERT, auto-scroll</td></tr>
+    <tr><td>3</td><td>Envio de mensagem de texto</td><td><code>supabase.functions.invoke('evolution-send', { type:'text' })</code></td></tr>
+    <tr><td>4</td><td>Reset de unread count ao abrir</td><td>RPC <code>reset_unread_count(conv_id)</code></td></tr>
+    <tr><td>5</td><td>Badge de status (4 estados)</td><td>bot_active / waiting_human / human_active / closed</td></tr>
+    <tr><td>6</td><td>Disable em conversa fechada</td><td>Input desabilitado quando <code>status==='closed'</code></td></tr>
+    <tr><td>7</td><td>Preview básico de imagem inbound</td><td>(parcial — quebrado por BUG-2)</td></tr>
+    <tr><td>8</td><td>Setup de instâncias Evolution</td><td><code>EvolutionSettings.tsx</code> + polling de QR + auto-stop ao conectar</td></tr>
+    <tr><td>9</td><td>Edge Function <code>evolution-proxy</code></td><td>verify_jwt=true, actions list/create/qrcode/delete/status</td></tr>
+    <tr><td>10</td><td>Edge Function <code>evolution-send</code></td><td>Resolve instance_id, envia texto/mídia/áudio via Evolution Go</td></tr>
+    <tr><td>11</td><td>Edge Function <code>evolution-webhook</code></td><td>MESSAGES_UPSERT/CONNECTION/QRCode + RPC race-safe + idempotent upsert</td></tr>
+    <tr><td>12</td><td>Roteamento <code>/inbox</code></td><td><code>App.tsx</code> dentro de AppLayout privado guardado por empresaId</td></tr>
+    <tr><td>13</td><td>Nav item "Inbox WhatsApp"</td><td><code>AppLayout.tsx</code> no salesNav (orange)</td></tr>
+    <tr><td>14</td><td>Layout two-pane</td><td><code>Inbox.tsx</code> 320px lista + flex chat</td></tr>
+    <tr><td>15</td><td>Empty state com CTA</td><td>ConversationList quando lista vazia</td></tr>
+  </tbody>
+</table>
+
+<h2 id="criticas">🔥 Faltam — críticas (P0/P1) — 34 itens</h2>
+
+<blockquote>
+  <strong>P0:</strong> sem isso, inbox não é viável como atendimento profissional. &nbsp; <strong>P1:</strong> operador sofre mas trabalha.
+</blockquote>
+
+<h3>Bloco A — Mídia <span class="badge badge-p0">P0</span> (sem isso não é WhatsApp)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Feature</th><th>Esforço</th><th>Caminho de implementação</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Upload e envio de imagens</strong></td><td><span class="badge badge-effort">M</span></td><td><code>composer/MediaUploadButton.tsx</code> + <code>MediaPreview.tsx</code> + <code>hooks/useMediaUpload.ts</code>. Storage bucket <code>inbox-media</code>. <code>evolution-send { type:'image' }</code></td></tr>
+<tr><td>2</td><td><strong>Envio de áudio (gravação inline)</strong></td><td><span class="badge badge-effort">M</span></td><td><code>composer/AudioRecorder.tsx</code>. MediaRecorder API + fallback webm/opus + timer + min 500ms. Reaproveita do sales-spark</td></tr>
+<tr><td>3</td><td><strong>Envio de documentos (PDF/DOCX)</strong></td><td><span class="badge badge-effort">M</span></td><td><code>composer/DocumentPicker.tsx</code> + <code>messages/DocumentBubble.tsx</code>. Drag&amp;drop, <code>evolution-send { type:'document' }</code></td></tr>
+<tr><td>4</td><td><strong>Player de áudio inline (inbound)</strong></td><td><span class="badge badge-effort">S</span></td><td><code>messages/AudioBubble.tsx</code>. <code>&lt;audio controls&gt;</code> + waveform opcional</td></tr>
+<tr><td>5</td><td><strong>Render de sticker e vídeo</strong></td><td><span class="badge badge-effort">S</span></td><td><code>StickerBubble.tsx</code> + <code>VideoBubble.tsx</code></td></tr>
+<tr><td>6</td><td>Render de localização e contato <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">S</span></td><td><code>LocationBubble.tsx</code> (thumb Maps) + <code>ContactBubble.tsx</code></td></tr>
+<tr><td>7</td><td><strong>Download automático de mídia → Storage</strong></td><td><span class="badge badge-effort">M</span></td><td>Edge <code>process-media-message</code>. Baixa via <code>/chat/getBase64FromMediaMessage</code>. Coluna <code>storage_url</code></td></tr>
+</tbody>
+</table>
+
+<h3>Bloco B — Operação de fila <span class="badge badge-p0">P0</span> (sem isso só 1 operador funciona)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Feature</th><th>Esforço</th><th>Caminho de implementação</th></tr></thead>
+<tbody>
+<tr><td>8</td><td><strong>Filtros e tabs de fila</strong> (Atendendo / Em fila / Resolvidos / Minhas)</td><td><span class="badge badge-effort">L</span></td><td>Refator <code>ConversationList.tsx</code> com tabs + <code>ConversationFilters.tsx</code>. Edge <code>inbox-conversations-list</code> server-side</td></tr>
+<tr><td>9</td><td><strong>Aceitar conversa da fila</strong></td><td><span class="badge badge-effort">M</span></td><td><code>AcceptTicketBar.tsx</code> + <code>AcceptTicketDialog.tsx</code> + <code>useAcceptConversation.ts</code>. Colunas <code>accepted_at</code>/<code>accepted_by</code></td></tr>
+<tr><td>10</td><td><strong>Transferir conversa entre agentes/setores</strong></td><td><span class="badge badge-effort">L</span></td><td><code>TransferConversationDialog.tsx</code>. Tabelas <code>inbox_sectors</code>, <code>conversation_transfers</code>. Coluna <code>sector_id</code></td></tr>
+<tr><td>11</td><td><strong>Encerrar / reabrir conversa</strong></td><td><span class="badge badge-effort">S</span></td><td><code>CloseConversationButton.tsx</code>. Edge <code>action=close|reopen</code>. <code>closed_at</code>, <code>closed_by</code>, <code>close_reason</code></td></tr>
+<tr><td>12</td><td><strong>Pausar bot / Reativar bot</strong></td><td><span class="badge badge-effort">S</span></td><td><code>BotToggleButton.tsx</code>. <code>bot_paused_until</code>, <code>bot_disabled</code></td></tr>
+<tr><td>13</td><td>Atribuição manual a usuário <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">S</span></td><td><code>AssignUserDialog.tsx</code>. <code>assigned_user_id</code> já existe</td></tr>
+<tr><td>14</td><td><strong>Notas internas</strong> (msg só visível ao time)</td><td><span class="badge badge-effort">S</span></td><td><code>InternalNoteToggle.tsx</code> + <code>InternalNoteBubble.tsx</code>. <code>sender_type='internal_note'</code> + flag <code>is_internal</code>. <strong>Nunca</strong> trafega pra Evolution</td></tr>
+</tbody>
+</table>
+
+<h3>Bloco C — UX essencial de mensageria <span class="badge badge-p0">P0</span><span class="badge badge-p1">P1</span></h3>
+
+<table>
+<thead><tr><th>#</th><th>Feature</th><th>Esforço</th><th>Caminho de implementação</th></tr></thead>
+<tbody>
+<tr><td>15</td><td><strong>Quick Replies</strong> (templates)</td><td><span class="badge badge-effort">M</span></td><td>Tabela <code>inbox_quick_replies</code> <strong>já existe e está vazia</strong>. Criar <code>QuickRepliesPopover.tsx</code> + <code>QuickRepliesPage.tsx</code>. Trigger <code>/</code> no textarea</td></tr>
+<tr><td>16</td><td>Indicador de digitando <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>TypingIndicator.tsx</code> + Supabase Realtime broadcast (não persistir)</td></tr>
+<tr><td>17</td><td><strong>Status de mensagem (sent/delivered/read)</strong></td><td><span class="badge badge-effort">M</span></td><td>Coluna <code>delivery_status</code> enum + <code>read_at</code>. Estender <code>evolution-webhook</code> para <code>MESSAGES_UPDATE</code></td></tr>
+<tr><td>18</td><td>Reply / citação <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>ReplyPreview.tsx</code> + <code>ReplyingTo.tsx</code>. Coluna <code>reply_to_message_id</code> FK</td></tr>
+<tr><td>19</td><td>Reações de emoji <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>MessageReactions.tsx</code> + <code>ReactionPicker.tsx</code>. Tabela <code>message_reactions</code></td></tr>
+<tr><td>20</td><td>Editar e apagar mensagem <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>MessageActionsMenu.tsx</code> + <code>EditMessageDialog.tsx</code>. <code>edited_at</code>, <code>original_content</code>, <code>is_deleted</code></td></tr>
+<tr><td>21</td><td>Encaminhar mensagem <span class="badge badge-p2">P2</span></td><td><span class="badge badge-effort">M</span></td><td><code>ForwardMessageDialog.tsx</code>. <code>forwarded_from_message_id</code></td></tr>
+<tr><td>22</td><td>Favoritar / estrelar <span class="badge badge-p2">P2</span></td><td><span class="badge badge-effort">S</span></td><td><code>StarToggle.tsx</code> + <code>StarredMessagesPanel.tsx</code>. <code>is_starred</code></td></tr>
+<tr><td>23</td><td>Pesquisa dentro da conversa <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>MessageSearch.tsx</code> no header da ChatArea</td></tr>
+<tr><td>24</td><td><strong>Paginação infinita scroll-up</strong></td><td><span class="badge badge-effort">M</span></td><td>Hoje só 200 — antigas inacessíveis. <code>IntersectionObserver</code> + cursor</td></tr>
+</tbody>
+</table>
+
+<h3>Bloco D — Integração CRM da oficina <span class="badge badge-p0">P0</span></h3>
+
+<table>
+<thead><tr><th>#</th><th>Feature</th><th>Esforço</th><th>Caminho de implementação</th></tr></thead>
+<tbody>
+<tr><td>25</td><td><strong>Vinculação cliente/OS/lead</strong></td><td><span class="badge badge-effort">L</span></td><td><code>sidebar/ConversationSidebar.tsx</code> + <code>LinkClienteDialog.tsx</code> + <code>CreateOSButton.tsx</code>. Colunas <code>cliente_id</code>, <code>ordem_servico_id</code>, <code>veiculo_id</code></td></tr>
+<tr><td>26</td><td>Tags / labels <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>ConversationTags.tsx</code>. Tabelas <code>inbox_tags</code> + <code>conversation_tags</code></td></tr>
+<tr><td>27</td><td>Histórico de atendimentos do contato <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">M</span></td><td><code>ConversationHistoryList.tsx</code> + <code>useVisitorHistory.ts</code></td></tr>
+<tr><td>28</td><td><strong>Compose nova conversa outbound</strong></td><td><span class="badge badge-effort">M</span></td><td><code>NewConversationDialog.tsx</code>. Edge <code>action=start-conversation</code>. Pesquisa cliente + instância + primeira msg</td></tr>
+</tbody>
+</table>
+
+<h3>Bloco E — Plataforma / responsivo</h3>
+
+<table>
+<thead><tr><th>#</th><th>Feature</th><th>Esforço</th><th>Caminho de implementação</th></tr></thead>
+<tbody>
+<tr><td>29</td><td>Deep-link <code>/inbox/:id</code> <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">S</span></td><td><code>useParams</code> + sync com state</td></tr>
+<tr><td>30</td><td><strong>Layout mobile (colapso panes)</strong></td><td><span class="badge badge-effort">M</span></td><td><code>useIsMobile</code> + <code>MobileBackButton.tsx</code>. Em mobile: só lista OU só chat</td></tr>
+<tr><td>31</td><td>Notificações sonoras + push <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">S</span></td><td><code>SoundToggle.tsx</code> + <code>useNotificationSound.ts</code> + Notification API</td></tr>
+<tr><td>32</td><td>Avatar do contato <span class="badge badge-p2">P2</span></td><td><span class="badge badge-effort">S</span></td><td>Usar <code>contact_avatar_url</code>. Webhook extrai <code>profilePicUrl</code></td></tr>
+<tr><td>33</td><td><strong>Reconectar / logout / restart instância</strong></td><td><span class="badge badge-effort">S</span></td><td>Botões na <code>EvolutionSettings.tsx</code>. <code>evolution-proxy</code> já tem actions, só wirar</td></tr>
+<tr><td>34</td><td>Toggle de instância padrão <span class="badge badge-p1">P1</span></td><td><span class="badge badge-effort">S</span></td><td>Star/check toggle. <code>action=set_default</code> atomicidade</td></tr>
+</tbody>
+</table>
+
+<h2 id="extended">🧠 Faltam — extended (P2/P3) — 26 itens</h2>
+
+<blockquote>
+  Valor agregado, mas inbox profissional roda sem. Priorizar conforme demanda dos pilotos.
+</blockquote>
+
+<h3>IA / Copiloto (5 itens)</h3>
+<table>
+<thead><tr><th>Feature</th><th>Esforço</th><th>Esboço</th></tr></thead>
+<tbody>
+<tr><td>Resumo IA da conversa (score + métricas)</td><td><span class="badge badge-effort">L</span></td><td><code>analyze-conversation</code> já existe no sales-spark. Tabela <code>conversation_analyses</code>. Reaproveitar <code>AISummaryTab</code></td></tr>
+<tr><td>Sugestão de próxima resposta (AI suggest reply)</td><td><span class="badge badge-effort">M</span></td><td>Botão no composer. Edge <code>suggest-reply</code> LLM</td></tr>
+<tr><td>Transcrição automática de áudio</td><td><span class="badge badge-effort">M</span></td><td>Edge <code>transcribe-audio</code> (Whisper). Coluna <code>transcript</code></td></tr>
+<tr><td>Análise de sentimento + priorização</td><td><span class="badge badge-effort">L</span></td><td>Edge <code>sentiment-analyzer</code>. <code>sentiment</code>, <code>urgency_score</code></td></tr>
+<tr><td>Memória semântica do cliente (RAG)</td><td><span class="badge badge-effort">XL</span></td><td><code>memory-search</code>. <code>lead_semantic_memory</code> com <code>embedding vector(1536)</code></td></tr>
+</tbody>
+</table>
+
+<h3>Automação (5 itens)</h3>
+<table>
+<thead><tr><th>Feature</th><th>Esforço</th><th>Esboço</th></tr></thead>
+<tbody>
+<tr><td>Mensagens agendadas</td><td><span class="badge badge-effort">L</span></td><td><code>ScheduleMessageDialog.tsx</code>. Tabela <code>scheduled_messages</code>. Edge cron pg_cron 1/min</td></tr>
+<tr><td>Follow-up automático após X dias sem resposta</td><td><span class="badge badge-effort">L</span></td><td><code>FollowUpRulesPage.tsx</code>. Tabelas <code>followup_rules</code> + <code>followup_log</code></td></tr>
+<tr><td>Campanhas em massa (broadcast)</td><td><span class="badge badge-effort">XL</span></td><td><code>CampanhasPage.tsx</code>. Respeita 80msg/min Evolution + templates aprovados</td></tr>
+<tr><td>Templates WhatsApp Business (aprovados)</td><td><span class="badge badge-effort">L</span></td><td><code>MessageTemplatesPage.tsx</code>. Janela 24h exige template</td></tr>
+<tr><td>Multi-agentes IA por especialidade</td><td><span class="badge badge-effort">XL</span></td><td>Orquestrador de intent. <code>inbox_agents</code> + <code>current_agent_id</code></td></tr>
+</tbody>
+</table>
+
+<h3>Bot / Configuração (4 itens)</h3>
+<table>
+<thead><tr><th>Feature</th><th>Esforço</th><th>Esboço</th></tr></thead>
+<tbody>
+<tr><td>Bot configurável (system prompt, KB, FAQ)</td><td><span class="badge badge-effort">XL</span></td><td><code>BotConfigPage.tsx</code>. Tabela <code>inbox_bot_configs</code></td></tr>
+<tr><td>Handoff automático bot→humano</td><td><span class="badge badge-effort">M</span></td><td>Trigger em <code>webchat-bot</code>. <code>handoff_triggers jsonb</code></td></tr>
+<tr><td>Horário comercial + msg fora expediente</td><td><span class="badge badge-effort">M</span></td><td><code>BusinessHoursPage.tsx</code>. <code>inbox_business_hours</code></td></tr>
+<tr><td>Reactions de bot/sistema (✓ recebido)</td><td><span class="badge badge-effort">S</span></td><td><code>evolution-send type=reaction</code> já existe — só wirar</td></tr>
+</tbody>
+</table>
+
+<h3>Outros operacionais (12 itens)</h3>
+<table>
+<thead><tr><th>Feature</th><th>Esforço</th></tr></thead>
+<tbody>
+<tr><td>Timeline / journey da conversa</td><td><span class="badge badge-effort">M</span></td></tr>
+<tr><td>Painel de contexto do cliente (sidebar direita rica)</td><td><span class="badge badge-effort">L</span></td></tr>
+<tr><td>Catálogo de produtos/serviços enviável no chat</td><td><span class="badge badge-effort">L</span></td></tr>
+<tr><td>Link de agendamento gerado a partir do chat</td><td><span class="badge badge-effort">S</span></td></tr>
+<tr><td>Enquetes (polls WhatsApp interativos)</td><td><span class="badge badge-effort">M</span></td></tr>
+<tr><td>Dashboard de atendimento (KPIs)</td><td><span class="badge badge-effort">L</span></td></tr>
+<tr><td>Anti-spam e blocklist de contatos</td><td><span class="badge badge-effort">S</span></td></tr>
+<tr><td>Múltiplas instâncias WhatsApp por empresa (UI explícita)</td><td><span class="badge badge-effort">M</span></td></tr>
+<tr><td>Webhook configurator UI</td><td><span class="badge badge-effort">S</span></td></tr>
+<tr><td>Audit log de ações do operador</td><td><span class="badge badge-effort">M</span></td></tr>
+<tr><td>Indicador de presença do operador</td><td><span class="badge badge-effort">S</span></td></tr>
+<tr><td>Vinculação produto na conversa</td><td><span class="badge badge-effort">S</span></td></tr>
+</tbody>
+</table>
+
+<h2 id="out-of-scope">🚫 Out of scope (não migrar) — 12 itens</h2>
+
+<table>
+<thead><tr><th>Feature do sales-spark</th><th>Por que NÃO trazer pra NexvyOficinas</th></tr></thead>
+<tbody>
+<tr><td>Kanban de deals + pipeline de vendas B2B</td><td>Equivalente já existe: fluxo de ordens de serviço</td></tr>
+<tr><td>Gestão de comissões e metas individuais</td><td>Oficina mede produtividade por OS, não por conversa fechada</td></tr>
+<tr><td>Planos e billing de super-admin SaaS</td><td>Billing centralizado pelo super-app Nexvy</td></tr>
+<tr><td>Capture/landing pages + funis de conversão</td><td>Leads vêm de Google Maps/indicação/WhatsApp direto</td></tr>
+<tr><td>Booking calendar tipo Calendly (slots)</td><td>Agendamento via OS/agenda mecânica (já no app)</td></tr>
+<tr><td>Integração Cakto / Hotmart</td><td>Infoproduto digital não é negócio de oficina</td></tr>
+<tr><td>Integração Sankhya ERP</td><td>Oficina futura seria Bling/Tiny/Omie, não Sankhya</td></tr>
+<tr><td>Multi-canal Instagram DM / SMS / Email</td><td>Escopo NexvyOficinas é <strong>WhatsApp-first</strong></td></tr>
+<tr><td>Widget de webchat embedável em site</td><td>Oficina raramente tem site com chat</td></tr>
+<tr><td>Webhooks BotConversa / IsiChat (legados)</td><td>Nasce direto na Evolution</td></tr>
+<tr><td>Análise de chamadas telefônicas / VOIP</td><td>Fora do escopo; módulo separado</td></tr>
+<tr><td>CPQ (Configure Price Quote) avançado B2B</td><td>Orçamento de oficina é simples</td></tr>
+</tbody>
+</table>
+
+<h2 id="roadmap">🗺️ Roadmap proposto — 3 sprints</h2>
+
+<div class="sprint-card">
+  <h3>🚀 Sprint 1 — "WhatsApp funcional de verdade" (2 semanas)</h3>
+  <p><strong>Objetivo:</strong> operador consegue trocar mídia e conversa flui sem bugs.</p>
+  <ul>
+    <li>🐞 Fix BUG-1 (EvolutionSettings columns)</li>
+    <li>🐞 Fix BUG-2 (ChatArea columns)</li>
+    <li>📷 Upload e envio de <strong>imagens</strong></li>
+    <li>🎙️ Envio de <strong>áudio</strong> (gravação inline)</li>
+    <li>📄 Envio de <strong>documentos</strong></li>
+    <li>🔊 <strong>Player de áudio inline</strong> (inbound)</li>
+    <li>🎨 Render de sticker + vídeo</li>
+    <li>📱 <strong>Layout mobile</strong> (colapso panes)</li>
+    <li>🔗 Deep-link <code>/inbox/:id</code></li>
+    <li>📊 Status badge correto + paginação infinita scroll-up</li>
+    <li>🔌 Botões reconectar/logout em EvolutionSettings + fix is_default</li>
+  </ul>
+  <p><strong>Entregável:</strong> atendimento WhatsApp completo de mídia, mobile-first.</p>
+</div>
+
+<div class="sprint-card">
+  <h3>🚀 Sprint 2 — "Operação de fila multi-agente" (2 semanas)</h3>
+  <p><strong>Objetivo:</strong> mais de um operador consegue trabalhar em paralelo sem caos.</p>
+  <ul>
+    <li>📋 <strong>Filtros e tabs de fila</strong> (Em fila / Atendendo / Resolvidos / Minhas)</li>
+    <li>✅ Aceitar conversa da fila</li>
+    <li>↔️ Transferir conversa entre usuários/setores</li>
+    <li>🔒 Encerrar / reabrir conversa</li>
+    <li>🤖 Pausar bot / Reativar bot</li>
+    <li>👤 Atribuição manual a usuário</li>
+    <li>📝 <strong>Notas internas</strong> (msg só interna)</li>
+    <li>⚡ <strong>Quick Replies</strong> (templates + atalhos <code>/</code>)</li>
+    <li>📞 Compose nova conversa outbound</li>
+    <li>🔔 Notificações sonoras + push</li>
+  </ul>
+  <p><strong>Entregável:</strong> mesa de atendimento operacional pra 3-10 operadores.</p>
+</div>
+
+<div class="sprint-card">
+  <h3>🚀 Sprint 3 — "Inbox 360 + integração CRM oficina" (2 semanas)</h3>
+  <p><strong>Objetivo:</strong> conversa vira OS no mesmo app, com contexto rico.</p>
+  <ul>
+    <li>🚗 <strong>Vinculação cliente / OS / veículo</strong> na conversa</li>
+    <li>🏷️ Tags / labels + filtro</li>
+    <li>📚 Histórico de atendimentos do contato</li>
+    <li>💬 Reply / citação de mensagem</li>
+    <li>✏️ Editar e apagar mensagem enviada</li>
+    <li>😀 Reações de emoji</li>
+    <li>🔍 Pesquisa dentro da conversa</li>
+    <li>✓✓ <strong>Status de leitura</strong> (sent/delivered/read) + ícones WhatsApp</li>
+    <li>⌨️ Indicador de digitando</li>
+    <li>👁️ Sidebar de contexto do cliente (veículos, últimas OS, LTV)</li>
+    <li>🖼️ Download automático de mídia → Storage permanente</li>
+    <li>📸 Avatar do contato (foto)</li>
+  </ul>
+  <p><strong>Entregável:</strong> inbox profissional integrado ao CRM da oficina.</p>
+</div>
+
+<h3>Replicação para os outros 4 SaaS</h3>
+<p>Após Sprint 1 estabilizar em NexvyOficinas, replicar para:</p>
+<ul>
+  <li><strong>NexvyFoods</strong> — cliente → mesa/comanda, OS → pedido, veículo → produto</li>
+  <li><strong>NexvyBeauty</strong> — cliente → cliente fidelidade, OS → agendamento, veículo → serviço</li>
+  <li><strong>NexvyGYM</strong> — cliente → aluno, OS → plano/aula, veículo → modalidade</li>
+  <li><strong>BarbeiroPro</strong> — cliente → cliente, OS → agendamento, veículo → corte/serviço</li>
+</ul>
+<p>Estimativa: 2-3 dias por app após o template em NexvyOficinas estar consolidado.</p>
+
+<h2 id="apendice">📦 Apêndice: inventário sales-spark</h2>
+
+<h4>Componentes seller/inbox (35 arquivos)</h4>
+<p style="font-size: 0.9em; color: var(--text-dim);">
+<code>AISummaryTab</code>, <code>AcceptTicketDialog</code>, <code>AudioRecorder</code>, <code>CatalogPickerDialog</code>, <code>ChannelBadge</code>, <code>ChatArea</code>, <code>ChatInput</code>, <code>ContactPickerDialog</code>, <code>ConversationAnalysisPanel</code>, <code>ConversationHistoryList</code>, <code>ConversationList</code>, <code>EditVisitorDialog</code>, <code>EmptyInboxState</code>, <code>ForwardMessageDialog</code>, <code>InboxMetricsHeader</code>, <code>InboxProductSelector</code>, <code>InternalNotes</code>, <code>JourneyTimeline</code>, <code>LeadContextPanel</code>, <code>MediaAttachment</code>, <code>MediaPreviewBar</code>, <code>MessageBubble</code>, <code>MessageBubbleWithButtons</code>, <code>MessageReactions</code>, <code>PaymentLinkDialog</code>, <code>PollComposerDialog</code>, <code>QuickActionBar</code>, <code>QuickRepliesPopover</code>, <code>ScheduleFollowupDialog</code>, <code>ScheduleMessageDialog</code>, <code>SendCadenceDialog</code>, <code>SendFlowDialog</code>, <code>StartConversationDialog</code>, <code>TransferConversationModal</code>, <code>TypingIndicator</code>. <strong>Mais:</strong> <code>inbox/AcceptTicketBar</code> + <code>inbox/InboxFiltersDrawer</code>.
+</p>
+
+<h4>Edge Functions de inbox (21 mapeadas)</h4>
+<ul>
+  <li><strong>Core Evolution:</strong> <code>evolution-proxy</code>, <code>evolution-send</code>, <code>evolution-webhook</code> ✅ (já no NexvyOficinas)</li>
+  <li><strong>WebChat:</strong> <code>webchat-api</code>, <code>webchat-bot</code> (motor IA multi-agente), <code>webchat-inbox</code> (CRUD interno)</li>
+  <li><strong>Outbound:</strong> <code>start-whatsapp-conversation</code>, <code>manual-outreach</code>, <code>process-scheduled-messages</code></li>
+  <li><strong>Mídia:</strong> <code>process-media-message</code>, <code>transcribe-audio</code></li>
+  <li><strong>IA:</strong> <code>agent-handoff-greeter</code>, <code>agent-supervisor</code>, <code>analyze-conversation</code>, <code>evaluate-conversation</code>, <code>sales-copilot</code>, <code>ai-followup-cron</code></li>
+  <li><strong>Memória:</strong> <code>memory-embedder</code>, <code>memory-search</code></li>
+  <li><strong>Catálogo:</strong> <code>send-catalog-item</code></li>
+  <li><strong>Legado:</strong> <code>whatsapp-webhook</code> (410 Gone)</li>
+</ul>
+
+<h4>Tabelas DB relevantes a inbox (13 + funções)</h4>
+<ul>
+  <li><strong>Core:</strong> <code>evolution_instances</code>, <code>webchat_conversations</code>, <code>webchat_messages</code>, <code>webchat_widgets</code>, <code>webchat_agent_configs</code></li>
+  <li><strong>Operação:</strong> <code>webchat_assignment_events</code>, <code>conversation_notes</code>, <code>conversation_transfers</code>, <code>message_reactions</code>, <code>scheduled_messages</code>, <code>quick_replies</code>, <code>chat_flows</code></li>
+  <li><strong>Suporte:</strong> <code>support_tickets</code>, <code>support_messages</code></li>
+  <li><strong>Funções críticas:</strong> <code>inbox_count_conversations(...)</code>, <code>inbox_list_conversations(...)</code>, trigger <code>enforce_single_attendant</code> (humano XOR IA), <code>fill_default_sector</code>, <code>validate_scheduled_message_status</code></li>
+</ul>
+
+<h4>Hooks de inbox (11)</h4>
+<p style="font-size: 0.9em; color: var(--text-dim);">
+<code>useAcceptConversation</code>, <code>useAttendancePanel</code>, <code>useConversationJourney</code>, <code>useConversationPresence</code>, <code>useEvolutionInstances</code>, <code>useMediaUpload</code>, <code>useMessageReactions</code>, <code>useWebChat</code>, <code>useAudioRecorder</code>, <code>useVisitorHistory</code>, <code>useChatFlows</code>
+</p>
+
+<hr>
+
+<p style="text-align: center; color: var(--text-muted); font-size: 0.85em; margin-top: 3rem;">
+  Relatório gerado automaticamente em 2026-06-07 · Versão inicial (sem sufixo) — Smart Versioning para revisões futuras<br>
+  Pareado com <code>auditoria-sales-spark-vs-nexvyoficinas.md</code>
+</p>
+
+</div>
+</body>
+</html>
