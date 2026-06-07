@@ -13,6 +13,7 @@ import {
   Target,
   Zap,
   Trophy,
+  MessageSquare,
   Settings,
   Menu,
   X,
@@ -43,6 +44,7 @@ const salesNav: NavItem[] = [
   { to: '/leads', label: 'Leads', icon: Target, orange: true },
   { to: '/cadencia', label: 'Cadência', icon: Zap, orange: true },
   { to: '/metas', label: 'Metas', icon: Trophy, orange: true },
+  { to: '/inbox', label: 'Inbox WhatsApp', icon: MessageSquare, orange: true },
 ]
 
 const bottomNav: NavItem[] = [
