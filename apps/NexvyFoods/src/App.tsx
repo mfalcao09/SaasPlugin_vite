@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import AppLayout from '@/components/layout/AppLayout'
+import { CompanyProvider } from '@/context/CompanyContext'
 import Login from '@/pages/auth/Login'
 import Signup from '@/pages/auth/Signup'
 import Onboarding from '@/pages/Onboarding'
@@ -54,7 +55,7 @@ function AppRoutes() {
       {/* ── App protegido (nested sob AppLayout) ── */}
       <Route
         path="/"
-        element={<PrivateRoute><AppLayout /></PrivateRoute>}
+        element={<PrivateRoute><CompanyProvider><AppLayout /></CompanyProvider></PrivateRoute>}
       >
         <Route index element={<Dashboard />} />
         <Route path="pedidos" element={<Pedidos />} />

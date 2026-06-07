@@ -12,3 +12,6 @@ dist/
 
 # Zips-fonte base44 (não versionar)
 *.zip
+
+# Artefatos de teste do Playwright MCP
+.playwright-mcp/
