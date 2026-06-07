@@ -29,6 +29,9 @@ services:
     restart: always
     expose:
       - "80"
+    volumes:
+      # Upstream image bug: gzip_proxied tem must-revalidate (inválido). Override com config corrigido.
+      - ./nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
     networks:
       - evolution-net
       - traefik-public
