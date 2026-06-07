@@ -1,6 +1,6 @@
 .PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-all setup-vps pull status
 
-VPS=root@145.223.29.96
+VPS=vps-hostinger
 REMOTE_DIR=/opt/stacks/saasplugin-vite
 
 # Dominios por app (descobertos via CF API + DNS criados 2026-06-06).
