@@ -27,11 +27,18 @@ docker compose pull --quiet
 docker compose up -d --remove-orphans
 echo "  ✓ Containers rodando"
 
-sleep 5
-if curl -sf "http://127.0.0.1:8080/" > /dev/null 2>&1; then
-  echo "  ✓ API respondendo em 127.0.0.1:8080"
+sleep 8
+if docker compose ps api | grep -q "Up\|running"; then
+  echo "  ✓ Container evolution_api rodando"
+  # Verifica health via exec interno (porta não exposta ao host)
+  if docker exec evolution_api curl -sf http://127.0.0.1:8080/ > /dev/null 2>&1; then
+    echo "  ✓ API respondendo internamente"
+  else
+    echo "  ⚠  Container up mas API ainda iniciando — aguarde 15s e verifique: docker compose logs api"
+  fi
 else
-  echo "  ⚠  API ainda não responde — aguarde 10s e verifique: docker compose logs api"
+  echo "  ✗ Container evolution_api não subiu — verifique: docker compose logs api"
+  exit 1
 fi
 
 echo ""
