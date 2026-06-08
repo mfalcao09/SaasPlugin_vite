@@ -54,6 +54,7 @@ function PrivateRoutes() {
         <Route path="cadencia" element={<Cadencia />} />
         <Route path="metas" element={<Metas />} />
         <Route path="inbox" element={<Inbox />} />
+        <Route path="inbox/:conversationId" element={<Inbox />} />
       </Route>
     </Routes>
   )

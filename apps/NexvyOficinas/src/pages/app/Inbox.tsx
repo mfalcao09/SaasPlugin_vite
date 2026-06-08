@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Settings, MessageCircle } from 'lucide-react'
 import ConversationList from '@/components/inbox/ConversationList'
 import ChatArea from '@/components/inbox/ChatArea'
@@ -7,14 +8,26 @@ import EvolutionSettings from '@/components/inbox/EvolutionSettings'
 type View = 'inbox' | 'settings'
 
 export default function Inbox() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { conversationId } = useParams<{ conversationId?: string }>()
+  const navigate = useNavigate()
+  const [selectedId, setSelectedId] = useState<string | null>(conversationId ?? null)
   const [view, setView] = useState<View>('inbox')
+
+  // Sincroniza state com URL param (deep-link, back/forward do browser)
+  useEffect(() => {
+    setSelectedId(conversationId ?? null)
+  }, [conversationId])
+
+  function handleSelect(id: string) {
+    setSelectedId(id)
+    setView('inbox')
+    navigate(`/inbox/${id}`, { replace: false })
+  }
 
   return (
     <div className="flex h-full bg-slate-950 overflow-hidden">
       {/* Left panel — conversation list */}
       <div className="w-80 shrink-0 flex flex-col h-full">
-        {/* Tab bar */}
         <div className="flex border-b border-slate-700 bg-slate-900">
           <button
             onClick={() => setView('inbox')}
@@ -42,13 +55,9 @@ export default function Inbox() {
           </button>
         </div>
 
-        {/* Panel content */}
         <div className="flex-1 overflow-hidden">
           {view === 'inbox' ? (
-            <ConversationList
-              selectedId={selectedId}
-              onSelect={id => { setSelectedId(id); setView('inbox') }}
-            />
+            <ConversationList selectedId={selectedId} onSelect={handleSelect} />
           ) : (
             <EvolutionSettings />
           )}

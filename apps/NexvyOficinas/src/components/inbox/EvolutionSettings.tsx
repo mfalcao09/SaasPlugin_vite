@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { QrCode, Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { QrCode, Plus, Trash2, RefreshCw, Loader2, Power, RotateCw, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -119,6 +119,28 @@ export default function EvolutionSettings() {
     await loadInstances()
   }
 
+  async function logoutInstance(instanceId: string) {
+    if (!confirm('Desconectar este WhatsApp? A sessão será encerrada e você precisará escanear o QR novamente.')) return
+    await supabase.functions.invoke('evolution-proxy', {
+      body: { action: 'logout', instance_id: instanceId },
+    })
+    await loadInstances()
+  }
+
+  async function restartInstance(instanceId: string) {
+    await supabase.functions.invoke('evolution-proxy', {
+      body: { action: 'restart', instance_id: instanceId },
+    })
+    await loadInstances()
+  }
+
+  async function setDefault(instanceId: string) {
+    await supabase.functions.invoke('evolution-proxy', {
+      body: { action: 'set_default', instance_id: instanceId },
+    })
+    await loadInstances()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -175,23 +197,64 @@ export default function EvolutionSettings() {
                     <p className="text-slate-400 text-xs">+{inst.phone_number}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={`${s.color} text-white text-xs`}>{s.label}</Badge>
+                <div className="flex items-center gap-1">
+                  <Badge className={`${s.color} text-white text-xs mr-1`}>{s.label}</Badge>
+
+                  {/* Star: marcar como padrão */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={`h-8 w-8 ${inst.is_default ? 'text-yellow-400' : 'text-slate-500 hover:text-yellow-400'}`}
+                    onClick={() => !inst.is_default && setDefault(inst.id)}
+                    title={inst.is_default ? 'Instância padrão' : 'Marcar como padrão'}
+                  >
+                    <Star className={`h-4 w-4 ${inst.is_default ? 'fill-current' : ''}`} />
+                  </Button>
+
+                  {/* QR Code: gerar novo QR (reconectar quando desconectado) */}
                   {inst.status !== 'connected' && (
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-slate-400 hover:text-white"
                       onClick={() => fetchQr(inst.id)}
+                      title="Gerar QR Code para conectar"
                     >
                       <QrCode className="h-4 w-4" />
                     </Button>
                   )}
+
+                  {/* Logout: desconectar WhatsApp (só quando conectado) */}
+                  {inst.status === 'connected' && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-slate-400 hover:text-orange-400"
+                      onClick={() => logoutInstance(inst.id)}
+                      title="Desconectar WhatsApp"
+                    >
+                      <Power className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {/* Restart: reiniciar instância */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-slate-400 hover:text-white"
+                    onClick={() => restartInstance(inst.id)}
+                    title="Reiniciar instância"
+                  >
+                    <RotateCw className="h-4 w-4" />
+                  </Button>
+
+                  {/* Delete: remover instância */}
                   <Button
                     size="icon"
                     variant="ghost"
                     className="h-8 w-8 text-slate-400 hover:text-red-400"
                     onClick={() => deleteInstance(inst.id)}
+                    title="Remover instância"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
