@@ -1,10 +1,14 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Video, FileText } from 'lucide-react'
+import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Video, FileText, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMediaUpload, type MediaType } from '@/hooks/useMediaUpload'
 import AudioRecorder from './AudioRecorder'
+import { useQuickReplies } from '@/hooks/useQuickReplies'
+import QuickReplyPicker from '@/components/inbox/QuickReplyPicker'
+
+type ComposerMode = 'message' | 'note'
 
 interface Props {
   conversationId: string
@@ -33,7 +37,11 @@ export default function Composer({ conversationId, disabled = false, placeholder
   const [recording, setRecording] = useState(false)
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
   const [pendingMedia, setPendingMedia] = useState<PendingMedia | null>(null)
+  const [composerMode, setComposerMode] = useState<ComposerMode>('message')
+  const [showQuickReplies, setShowQuickReplies] = useState(false)
+  const [quickReplyQuery, setQuickReplyQuery] = useState('')
   const { upload, state: uploadState } = useMediaUpload()
+  const quickReplies = useQuickReplies()
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const documentInputRef = useRef<HTMLInputElement>(null)
@@ -55,14 +63,45 @@ export default function Composer({ conversationId, disabled = false, placeholder
     })
   }
 
+  // Lida com mudanças no textarea — detecta "/" para quick replies
+  const handleTextChange = useCallback((value: string) => {
+    setText(value)
+    if (composerMode === 'message' && value.startsWith('/')) {
+      setShowQuickReplies(true)
+      setQuickReplyQuery(value.slice(1))   // tudo após "/"
+    } else {
+      setShowQuickReplies(false)
+      setQuickReplyQuery('')
+    }
+  }, [composerMode])
+
+  function handleQuickReplySelect(content: string) {
+    setText(content)
+    setShowQuickReplies(false)
+    setQuickReplyQuery('')
+  }
+
   async function sendText() {
     if (!text.trim() || sending) return
     setSending(true)
     try {
-      await supabase.functions.invoke('evolution-send', {
-        body: { conversation_id: conversationId, type: 'text', content: text.trim() },
-      })
+      if (composerMode === 'note') {
+        // Nota interna: INSERT direto no DB, sem chamar evolution-send
+        await supabase.from('inbox_messages').insert({
+          conversation_id: conversationId,
+          direction: 'outbound',
+          sender_type: 'agent',
+          content: text.trim(),
+          content_type: 'text',
+          metadata: { is_internal: true },
+        })
+      } else {
+        await supabase.functions.invoke('evolution-send', {
+          body: { conversation_id: conversationId, type: 'text', content: text.trim() },
+        })
+      }
       setText('')
+      setShowQuickReplies(false)
     } finally {
       setSending(false)
     }
@@ -114,6 +153,11 @@ export default function Composer({ conversationId, disabled = false, placeholder
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape' && showQuickReplies) {
+      e.preventDefault()
+      setShowQuickReplies(false)
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (pendingMedia) sendMedia()
@@ -194,8 +238,43 @@ export default function Composer({ conversationId, disabled = false, placeholder
   }
 
   // Modo normal
+  const isNote = composerMode === 'note'
   return (
-    <div className="px-4 py-3 bg-slate-900 border-t border-slate-700 relative">
+    <div className={[
+      'bg-slate-900 border-t relative',
+      isNote ? 'border-amber-700/60' : 'border-slate-700',
+    ].join(' ')}>
+      {/* Tabs: Mensagem | Nota Interna */}
+      {!disabled && (
+        <div className="flex border-b border-slate-700/60">
+          <button
+            onClick={() => { setComposerMode('message'); setShowQuickReplies(false) }}
+            className={[
+              'flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium transition-colors',
+              !isNote
+                ? 'text-orange-400 border-b-2 border-orange-500 -mb-px'
+                : 'text-slate-400 hover:text-slate-200',
+            ].join(' ')}
+          >
+            <Send className="h-3 w-3" />
+            Mensagem
+          </button>
+          <button
+            onClick={() => { setComposerMode('note'); setShowQuickReplies(false) }}
+            className={[
+              'flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium transition-colors',
+              isNote
+                ? 'text-amber-400 border-b-2 border-amber-500 -mb-px'
+                : 'text-slate-400 hover:text-slate-200',
+            ].join(' ')}
+          >
+            <StickyNote className="h-3 w-3" />
+            Nota Interna
+          </button>
+        </div>
+      )}
+
+      <div className="px-4 py-3 relative">
       {/* Attach menu popover */}
       {attachMenuOpen && (
         <div className="absolute bottom-full left-4 mb-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-2 grid grid-cols-3 gap-1 min-w-[220px]">
@@ -238,25 +317,49 @@ export default function Composer({ conversationId, disabled = false, placeholder
         onChange={e => handleFileSelected(e.target.files?.[0], 'document')}
       />
 
+      {/* Quick Reply Picker — aparece quando texto começa com "/" */}
+      {showQuickReplies && !disabled && (
+        <QuickReplyPicker
+          replies={quickReplies}
+          query={quickReplyQuery}
+          onSelect={handleQuickReplySelect}
+          onClose={() => setShowQuickReplies(false)}
+        />
+      )}
+
       <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          onClick={() => setAttachMenuOpen(prev => !prev)}
-          disabled={disabled || sending}
-          size="icon"
-          variant="ghost"
-          className="text-slate-400 hover:text-white shrink-0"
-          aria-label="Anexar arquivo"
-        >
-          <Paperclip className="h-4 w-4" />
-        </Button>
+        {/* Botão de anexo: só no modo mensagem */}
+        {!isNote && (
+          <Button
+            type="button"
+            onClick={() => setAttachMenuOpen(prev => !prev)}
+            disabled={disabled || sending}
+            size="icon"
+            variant="ghost"
+            className="text-slate-400 hover:text-white shrink-0"
+            aria-label="Anexar arquivo"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+        )}
 
         <Input
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={e => handleTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder ?? 'Digite uma mensagem... (Enter para enviar)'}
-          className="flex-1 bg-slate-800 border-slate-600 text-white placeholder:text-slate-500"
+          placeholder={
+            disabled
+              ? (placeholder ?? 'Conversa encerrada')
+              : isNote
+                ? 'Escreva uma nota interna... (visível apenas para operadores)'
+                : 'Digite uma mensagem... (Enter para enviar)'
+          }
+          className={[
+            'flex-1 border text-white placeholder:text-slate-500',
+            isNote
+              ? 'bg-amber-950/30 border-amber-700/50 focus-visible:ring-amber-600/50'
+              : 'bg-slate-800 border-slate-600',
+          ].join(' ')}
           disabled={disabled || sending}
         />
 
@@ -265,11 +368,16 @@ export default function Composer({ conversationId, disabled = false, placeholder
             onClick={sendText}
             disabled={sending || disabled}
             size="icon"
-            className="bg-orange-600 hover:bg-orange-500 text-white shrink-0"
+            className={[
+              'text-white shrink-0',
+              isNote
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-orange-600 hover:bg-orange-500',
+            ].join(' ')}
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
-        ) : (
+        ) : !isNote ? (
           <Button
             type="button"
             onClick={() => setRecording(true)}
@@ -280,7 +388,8 @@ export default function Composer({ conversationId, disabled = false, placeholder
           >
             <Mic className="h-4 w-4" />
           </Button>
-        )}
+        ) : null}
+      </div>
       </div>
     </div>
   )
