@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import QuickRepliesManager from './QuickRepliesManager'
+
+type SettingsTab = 'instances' | 'quick_replies'
 
 interface Instance {
   id: string
@@ -26,6 +29,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function EvolutionSettings() {
   const { empresaId } = useAuth()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('instances')
   const [instances, setInstances] = useState<Instance[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -150,7 +154,44 @@ export default function EvolutionSettings() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Tabs */}
+      <div className="flex border-b border-slate-700 px-6 pt-4 shrink-0">
+        <button
+          onClick={() => setActiveTab('instances')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'instances'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          Instâncias
+        </button>
+        <button
+          onClick={() => setActiveTab('quick_replies')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'quick_replies'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          Respostas Rápidas
+        </button>
+      </div>
+
+      {/* Conteúdo das abas */}
+      {activeTab === 'quick_replies' ? (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <h2 className="text-white font-semibold text-lg mb-1">Respostas Rápidas</h2>
+            <p className="text-slate-400 text-sm">Templates de mensagem para agilizar o atendimento.</p>
+          </div>
+          <QuickRepliesManager empresaId={empresaId} />
+        </div>
+      ) : (
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div>
         <h2 className="text-white font-semibold text-lg mb-1">Instâncias WhatsApp</h2>
         <p className="text-slate-400 text-sm">Cada instância conecta um número ao inbox desta empresa.</p>
@@ -299,6 +340,8 @@ export default function EvolutionSettings() {
           </Card>
         )
       })}
+      </div>
+      )}
     </div>
   )
 }
