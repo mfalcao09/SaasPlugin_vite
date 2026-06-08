@@ -105,9 +105,15 @@
 - Push GitHub `0433319..97a45c1`
 - Make deploy via Traefik file provider, hot-reload OK
 
-### Sprint 1.5 — pendente (não-bloqueante pro E2E)
-- Layout mobile (collapse panes via `useIsMobile`)
-- Paginação infinita scroll-up (IntersectionObserver + cursor)
+### Sprint 1.5 — CONCLUÍDO (2026-06-08)
+- [x] Layout mobile (useIsMobile + painel único + back button)
+- [x] Paginação infinita scroll-up (IntersectionObserver + cursor created_at + scroll restore)
+
+### Bonus: Mensagens apagadas (2026-06-08)
+- [x] DB: coluna `is_deleted boolean DEFAULT false` + index parcial
+- [x] evolution-webhook v5: MESSAGES_DELETE event + protocolMessage.type=5 → soft-delete
+- [x] MessageBubble: placeholder "🚫 Esta mensagem foi apagada" com timestamp
+- [x] ChatArea realtime: subscreve UPDATE além de INSERT
 
 ### Critérios verificáveis — checklist
 - [x] Fixes BUGs: `tsc --noEmit` zero erros
@@ -116,8 +122,9 @@
 - [x] Composer: textarea + attach (image/video/doc) + audio recorder + preview
 - [x] Deep-link: rota `/inbox/:id` registrada, `useParams` ativo
 - [x] Reconnect/logout/restart/star: actions deployed + UI wirada
-- [ ] Mobile: pendente Sprint 1.5
-- [ ] Paginação: pendente Sprint 1.5
+- [x] Mobile: layout responsivo, painel único, back button no header do chat
+- [x] Paginação: IntersectionObserver + cursor + scroll restore (useLayoutEffect)
+- [x] Mensagens apagadas: webhook v5 ACTIVE, placeholder UI, realtime UPDATE
 - [ ] E2E manual: aguardando teste de Marcelo com WhatsApp real
 
 ### Lições aprendidas (atualizar `tasks/lessons.md` se necessário)
