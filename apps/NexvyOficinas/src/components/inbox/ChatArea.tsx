@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Send, MoreVertical } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { MoreVertical } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
+import Composer from './composer/Composer'
 
 interface Conversation {
   id: string
@@ -28,8 +27,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function ChatArea({ conversationId }: Props) {
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<InboxMessage[]>([])
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load conversation metadata
@@ -81,26 +78,6 @@ export default function ChatArea({ conversationId }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function handleSend() {
-    if (!text.trim() || sending) return
-    setSending(true)
-    try {
-      await supabase.functions.invoke('evolution-send', {
-        body: { conversation_id: conversationId, type: 'text', content: text.trim() },
-      })
-      setText('')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
   if (!conversation) {
     return (
       <div className="flex items-center justify-center h-full text-slate-500 text-sm">
@@ -138,25 +115,12 @@ export default function ChatArea({ conversationId }: Props) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 bg-slate-900 border-t border-slate-700 flex items-center gap-2">
-        <Input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : 'Digite uma mensagem... (Enter para enviar)'}
-          className="flex-1 bg-slate-800 border-slate-600 text-white placeholder:text-slate-500"
-          disabled={conversation.status === 'closed'}
-        />
-        <Button
-          onClick={handleSend}
-          disabled={!text.trim() || sending || conversation.status === 'closed'}
-          size="icon"
-          className="bg-orange-600 hover:bg-orange-500 text-white shrink-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Composer (textarea + attach + audio recorder) */}
+      <Composer
+        conversationId={conversationId}
+        disabled={conversation.status === 'closed'}
+        placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : undefined}
+      />
     </div>
   )
 }
