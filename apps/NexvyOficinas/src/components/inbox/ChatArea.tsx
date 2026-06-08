@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Loader2, MoreVertical } from 'lucide-react'
+import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 import Composer from './composer/Composer'
+import AcceptTicketBar from './AcceptTicketBar'
+import TransferConversationDialog from './TransferConversationDialog'
 
 interface Conversation {
   id: string
@@ -33,6 +35,10 @@ export default function ChatArea({ conversationId, onBack }: Props) {
   const [messages, setMessages] = useState<InboxMessage[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showTransferDialog, setShowTransferDialog] = useState(false)
 
   const messagesEndRef      = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -45,14 +51,33 @@ export default function ChatArea({ conversationId, onBack }: Props) {
   // Controla scroll automático: apenas na carga inicial e quando usuário está próximo do fim
   const isFirstLoadRef = useRef(true)
 
-  // ── Carregar metadata da conversa ────────────────────────────────────────
+  // ── Carregar metadata da conversa + subscribe realtime ───────────────────
   useEffect(() => {
+    let ignore = false
+
     supabase
       .from('inbox_conversations')
       .select('id,contact_phone,contact_name,status,evolution_instance_id')
       .eq('id', conversationId)
       .single()
-      .then(({ data }) => data && setConversation(data))
+      .then(({ data }) => { if (!ignore && data) setConversation(data) })
+
+    // Realtime: status pode mudar (accept, close, transfer)
+    const convChannel = supabase
+      .channel(`inbox-conv-detail-${conversationId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'inbox_conversations', filter: `id=eq.${conversationId}` },
+        payload => {
+          if (!ignore) setConversation(prev => prev ? { ...prev, ...(payload.new as Conversation) } : prev)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      ignore = true
+      supabase.removeChannel(convChannel)
+    }
   }, [conversationId])
 
   // ── Carregar mensagens iniciais + subscribe realtime ──────────────────────
@@ -194,6 +219,19 @@ export default function ChatArea({ conversationId, onBack }: Props) {
     return () => obs.disconnect()
   }, [hasMore]) // recria apenas quando hasMore muda (ex: true → false ao esgotar)
 
+  // ── Encerrar conversa ─────────────────────────────────────────────────────
+  async function handleClose() {
+    if (closing) return
+    setClosing(true)
+    try {
+      await supabase.rpc('close_conversation', { conv_id: conversationId })
+      setShowCloseModal(false)
+      // A conversa atualiza via realtime (subscription de conversation)
+    } finally {
+      setClosing(false)
+    }
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   if (!conversation) {
     return (
@@ -205,11 +243,12 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
   const name   = conversation.contact_name || `+${conversation.contact_phone}`
   const status = STATUS_LABELS[conversation.status] ?? { label: conversation.status, color: 'bg-slate-500' }
+  const isClosed = conversation.status === 'closed'
 
   return (
     <div className="flex flex-col h-full bg-slate-950">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700">
+      <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700 relative">
         {/* Botão back — só renderiza em mobile quando onBack é fornecido */}
         {onBack && (
           <button
@@ -228,10 +267,100 @@ export default function ChatArea({ conversationId, onBack }: Props) {
           <p className="text-xs text-slate-400">+{conversation.contact_phone}</p>
         </div>
         <Badge className={`${status.color} text-white text-xs shrink-0`}>{status.label}</Badge>
-        <button className="text-slate-400 hover:text-white p-1 rounded">
-          <MoreVertical className="h-4 w-4" />
-        </button>
+
+        {/* Botão Encerrar — visível apenas quando não está encerrada */}
+        {!isClosed && (
+          <button
+            onClick={() => setShowCloseModal(true)}
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-400 px-2 py-1 rounded hover:bg-slate-800 transition-colors shrink-0"
+            title="Encerrar conversa"
+          >
+            <PhoneOff className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Encerrar</span>
+          </button>
+        )}
+
+        {/* More menu */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setShowMoreMenu(prev => !prev)}
+            className="text-slate-400 hover:text-white p-1 rounded"
+            aria-label="Mais opções"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+          {showMoreMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} aria-hidden="true" />
+              <div className="absolute right-0 top-full mt-1 z-20 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[160px]">
+                <button
+                  onClick={() => { setShowMoreMenu(false); setShowTransferDialog(true) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  <ArrowRightLeft className="h-4 w-4 text-orange-400" />
+                  Transferir conversa
+                </button>
+                {!isClosed && (
+                  <button
+                    onClick={() => { setShowMoreMenu(false); setShowCloseModal(true) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
+                  >
+                    <PhoneOff className="h-4 w-4" />
+                    Encerrar conversa
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* AcceptTicketBar — visível quando conversa aguarda atendimento */}
+      {conversation.status === 'waiting_human' && (
+        <AcceptTicketBar conversationId={conversationId} />
+      )}
+
+      {/* Modal de confirmação para encerrar conversa */}
+      {showCloseModal && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setShowCloseModal(false)} aria-hidden="true" />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl w-full max-w-sm p-5">
+              <h3 className="font-semibold text-white mb-2">Encerrar conversa?</h3>
+              <p className="text-sm text-slate-400 mb-5">
+                A conversa será marcada como encerrada. O histórico é preservado.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCloseModal(false)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm text-slate-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleClose}
+                  disabled={closing}
+                  className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-sm text-white font-medium transition-colors"
+                >
+                  {closing ? 'Encerrando...' : 'Encerrar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Transfer Dialog */}
+      {showTransferDialog && (
+        <TransferConversationDialog
+          conversationId={conversationId}
+          onClose={() => setShowTransferDialog(false)}
+        />
+      )}
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
