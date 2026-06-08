@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react'
+import { Bot, StickyNote } from 'lucide-react'
 import ImageBubble from './ImageBubble'
 import AudioBubble from './AudioBubble'
 import VideoBubble from './VideoBubble'
@@ -42,6 +42,23 @@ export default function MessageBubble({ message, isOutbound }: Props) {
   const name = metaString(message.metadata, 'name')
   const size = metaNumber(message.metadata, 'size')
   const duration = metaNumber(message.metadata, 'duration')
+  const isInternal = message.metadata?.is_internal === true
+
+  // ── Nota interna — visual amber, centralizada no chat (não outbound/inbound) ──
+  if (isInternal) {
+    return (
+      <div className="flex justify-center">
+        <div className="max-w-[80%] rounded-xl px-3 py-2 text-sm bg-amber-900/40 border border-amber-700/50">
+          <div className="flex items-center gap-1.5 mb-1 text-amber-400">
+            <StickyNote className="h-3 w-3" />
+            <span className="text-xs font-medium">Nota interna</span>
+          </div>
+          <p className="text-amber-100 whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="text-xs mt-1 text-amber-400/60 text-right">{time}</p>
+        </div>
+      </div>
+    )
+  }
 
   // Stickers NÃO usam chrome de bubble — render direto
   // Quando apagado: wrapper com opacity-50 + indicador de apagamento abaixo
