@@ -16,6 +16,15 @@ interface Conversation {
   unread_count: number
 }
 
+type TabKey = 'all' | 'waiting_human' | 'human_active' | 'closed'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'all',           label: 'Todos' },
+  { key: 'waiting_human', label: 'Aguardando' },
+  { key: 'human_active',  label: 'Atendendo' },
+  { key: 'closed',        label: 'Encerrado' },
+]
+
 interface Props {
   selectedId: string | null
   onSelect: (id: string) => void
@@ -36,6 +45,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
   const { empresaId } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<TabKey>('all')
 
   useEffect(() => {
     if (!empresaId) return
@@ -68,7 +78,18 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     }
   }, [empresaId])
 
+  // Contagens por aba
+  const counts: Record<TabKey, number> = {
+    all:           conversations.length,
+    waiting_human: conversations.filter(c => c.status === 'waiting_human').length,
+    human_active:  conversations.filter(c => c.status === 'human_active').length,
+    closed:        conversations.filter(c => c.status === 'closed').length,
+  }
+
   const filtered = conversations.filter(c => {
+    // Filtro por aba
+    if (activeTab !== 'all' && c.status !== activeTab) return false
+    // Filtro por busca
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -77,6 +98,8 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     )
   })
 
+  const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0)
+
   return (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-700">
       {/* Header */}
@@ -84,9 +107,9 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
         <div className="flex items-center gap-2 mb-3">
           <MessageCircle className="h-5 w-5 text-orange-400" />
           <span className="font-semibold text-white">WhatsApp</span>
-          {conversations.reduce((s, c) => s + c.unread_count, 0) > 0 && (
+          {totalUnread > 0 && (
             <Badge className="ml-auto bg-orange-600 text-white text-xs">
-              {conversations.reduce((s, c) => s + c.unread_count, 0)}
+              {totalUnread}
             </Badge>
           )}
         </div>
@@ -101,13 +124,51 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
         </div>
       </div>
 
+      {/* Status Tabs */}
+      <div className="flex border-b border-slate-700 bg-slate-900 shrink-0">
+        {TABS.map(tab => {
+          const isActive = activeTab === tab.key
+          const count = counts[tab.key]
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={[
+                'flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-colors',
+                isActive
+                  ? 'text-orange-400 border-b-2 border-orange-500 -mb-px'
+                  : 'text-slate-400 hover:text-slate-200',
+              ].join(' ')}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span
+                  className={[
+                    'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] flex items-center justify-center font-bold',
+                    isActive ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-300',
+                  ].join(' ')}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500 text-sm px-4 text-center">
             <MessageCircle className="h-10 w-10 opacity-30" />
-            <p>Nenhuma conversa ainda.</p>
-            <p className="text-xs">Configure uma instância WhatsApp em Configurações → Inbox.</p>
+            {conversations.length === 0 ? (
+              <>
+                <p>Nenhuma conversa ainda.</p>
+                <p className="text-xs">Configure uma instância WhatsApp em Configurações → Inbox.</p>
+              </>
+            ) : (
+              <p>Nenhuma conversa nesta aba.</p>
+            )}
           </div>
         )}
         {filtered.map(c => {
