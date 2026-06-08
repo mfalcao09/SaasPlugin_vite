@@ -78,6 +78,50 @@
 
 ---
 
-## Review (preenchido ao final do Sprint)
+## Review — Sprint 1 (concluído 2026-06-07)
 
-(pendente)
+**Status final:** ✅ Backend 100% funcional + frontend pronto para E2E real
+
+### Commits do sprint
+| Hash | Fase | Descrição |
+|---|---|---|
+| `91658df` | 1 | Fix BUG-1 (EvolutionSettings) + BUG-2 (ChatArea) — colunas inexistentes |
+| `144e045` | 2 | Storage bucket `inbox-media` + RLS + `useMediaUpload.ts` |
+| `3b63dfc` | 3 | 6 bubbles especializados (Text/Image/Audio/Video/Document/Sticker) |
+| `5cbfe8a` | extra | Edge functions v4/v3: pipeline download+upload de mídia, metadata normalizado |
+| `c1d2b14` | 4 | Composer + AudioRecorder (gravação inline + upload + caption) |
+| `97a45c1` | 5 parcial | Deep-link `/inbox/:id` + EvolutionSettings (logout/restart/star is_default) |
+
+**Total:** 6 commits, ~2100 linhas inseridas. TypeScript strict 0 erros, build 6.34s.
+
+### Backend deployado (Supabase `gpxmkximudukbljrvtxj`)
+- `evolution-webhook` v4 ACTIVE
+- `evolution-send` v3 ACTIVE
+- `evolution-proxy` v3 ACTIVE
+- Bucket Storage `inbox-media` (100MB limit, 20+ MIME types, RLS scoped por `empresa_id`)
+
+### Frontend deployado (VPS Hostinger)
+- `https://app.nexvyoficinas.com.br/inbox` → HTTP/2 200
+- Push GitHub `0433319..97a45c1`
+- Make deploy via Traefik file provider, hot-reload OK
+
+### Sprint 1.5 — pendente (não-bloqueante pro E2E)
+- Layout mobile (collapse panes via `useIsMobile`)
+- Paginação infinita scroll-up (IntersectionObserver + cursor)
+
+### Critérios verificáveis — checklist
+- [x] Fixes BUGs: `tsc --noEmit` zero erros
+- [x] Storage: bucket criado, RLS validada (`SELECT id FROM storage.buckets WHERE id='inbox-media'`)
+- [x] Bubbles: 6 tipos cobertos (text/image/audio/video/document/sticker)
+- [x] Composer: textarea + attach (image/video/doc) + audio recorder + preview
+- [x] Deep-link: rota `/inbox/:id` registrada, `useParams` ativo
+- [x] Reconnect/logout/restart/star: actions deployed + UI wirada
+- [ ] Mobile: pendente Sprint 1.5
+- [ ] Paginação: pendente Sprint 1.5
+- [ ] E2E manual: aguardando teste de Marcelo com WhatsApp real
+
+### Lições aprendidas (atualizar `tasks/lessons.md` se necessário)
+1. **Auditoria de backend antes de UI:** webhook/send tinham field names errados (`mimetype`/`fileName`/`seconds` vs `mime`/`name`/`duration`). Auditar Edge Functions antes de construir UI economiza retrabalho.
+2. **`replace_all: true` no Edit é perigoso:** trocou "Message" em comentários, paths e variáveis indiscriminadamente. Sempre preferir edits cirúrgicos quando há ambiguidade.
+3. **Free models squad falsa promessa:** 5 plugins instalados, só 1 (MiniMax) com MCP wired, e mesmo esse falhou 401. Setup real custa 30-60min por modelo. Não é economia real.
+4. **Fact-forcing gate ajuda mas trava paralelismo:** quando faço N edits em paralelo, gate dispara por arquivo individual. Apresentar fatos por bloco compartilhado antes do batch funciona.
