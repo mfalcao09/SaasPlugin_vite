@@ -1,13 +1,14 @@
-// Edge Function: evolution-webhook (v4)
+// Edge Function: evolution-webhook (v5)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
 // Responsabilidades:
-// 1. Receber webhooks da Evolution Go (MESSAGES_UPSERT, CONNECTION_UPDATE, QRCODE_UPDATED)
+// 1. Receber webhooks da Evolution API (MESSAGES_UPSERT, MESSAGES_DELETE, CONNECTION_UPDATE, QRCODE_UPDATED)
 // 2. Persistir mensagens inbound em inbox_messages (idempotente por wa_message_id)
 // 3. Para mídia (image/audio/video/document/sticker): baixar da Evolution + upload pro bucket inbox-media
 // 4. Normalizar metadata: { url, mime, size, name?, duration?, width?, height? }
 // 5. Atualizar status/qr_code de evolution_instances
+// 6. [v5] MESSAGES_DELETE + protocolMessage.type=5 → soft-delete (is_deleted=true)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -146,7 +147,7 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // CONNECTION_UPDATE
+  // ── CONNECTION_UPDATE ──────────────────────────────────────────────────────
   if (event === "connection.update" || event === "CONNECTION_UPDATE") {
     const state = (payload.data as { state?: string })?.state;
     const mapped = state === "open"
@@ -161,7 +162,7 @@ Deno.serve(async (req) => {
     return new Response("OK");
   }
 
-  // QRCODE_UPDATED
+  // ── QRCODE_UPDATED ─────────────────────────────────────────────────────────
   if (event === "qrcode.updated" || event === "QRCODE_UPDATED") {
     const data = payload.data as { qrcode?: { base64?: string }; base64?: string };
     const qr = data?.qrcode?.base64 ?? data?.base64 ?? null;
@@ -175,7 +176,36 @@ Deno.serve(async (req) => {
     return new Response("OK");
   }
 
-  // MESSAGES_UPSERT
+  // ── MESSAGES_DELETE ────────────────────────────────────────────────────────
+  // Emitido quando o remetente apaga a mensagem "para todos" no WhatsApp.
+  // Pode chegar como objeto único ou array de keys.
+  if (event === "messages.delete" || event === "MESSAGES_DELETE") {
+    const rawData = payload.data;
+    // Normaliza para array independente do formato
+    const items: Array<Record<string, unknown>> = Array.isArray(rawData)
+      ? rawData as Array<Record<string, unknown>>
+      : [rawData as Record<string, unknown>];
+
+    for (const item of items) {
+      // Evolution pode entregar { id, remoteJid } ou { key: { id } }
+      const waMessageId = (item?.id ?? (item?.key as Record<string, unknown>)?.id) as string | undefined;
+      if (!waMessageId) continue;
+
+      const { error } = await supabase
+        .from("inbox_messages")
+        .update({ is_deleted: true })
+        .eq("wa_message_id", waMessageId);
+
+      if (error) {
+        console.error(`[webhook] soft-delete error for ${waMessageId}:`, error.message);
+      } else {
+        console.log(`[webhook] soft-deleted message ${waMessageId}`);
+      }
+    }
+    return new Response("OK");
+  }
+
+  // ── MESSAGES_UPSERT ────────────────────────────────────────────────────────
   if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
     const dataField = payload.data;
     const messages = Array.isArray(dataField)
@@ -205,6 +235,25 @@ Deno.serve(async (req) => {
       const contactName: string | null = msg.pushName ?? null;
 
       const msgContent = msg.message ?? {};
+
+      // ── protocolMessage.type = 5 = REVOKE (apagar para todos via MESSAGES_UPSERT) ──
+      // Acontece em versões do Baileys que não emitem MESSAGES_DELETE separado.
+      if (msgContent.protocolMessage?.type === 5) {
+        const targetId = msgContent.protocolMessage?.key?.id as string | undefined;
+        if (targetId) {
+          const { error } = await supabase
+            .from("inbox_messages")
+            .update({ is_deleted: true })
+            .eq("wa_message_id", targetId);
+          if (error) {
+            console.error(`[webhook] protocolMessage soft-delete error for ${targetId}:`, error.message);
+          } else {
+            console.log(`[webhook] protocolMessage soft-deleted message ${targetId}`);
+          }
+        }
+        continue; // Não é uma mensagem normal — pula processamento
+      }
+
       let content = "";
       let contentType = "text";
       let metadata: Record<string, unknown> = {};
@@ -290,6 +339,7 @@ Deno.serve(async (req) => {
           content_type: contentType,
           wa_message_id: waMessageId || null,
           metadata,
+          is_deleted: false,
         },
         { onConflict: "wa_message_id", ignoreDuplicates: true },
       );

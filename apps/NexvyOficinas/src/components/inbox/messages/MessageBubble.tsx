@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react'
+import { Ban, Bot } from 'lucide-react'
 import ImageBubble from './ImageBubble'
 import AudioBubble from './AudioBubble'
 import VideoBubble from './VideoBubble'
@@ -13,6 +13,8 @@ export interface InboxMessage {
   content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'template'
   metadata: Record<string, unknown> | null
   created_at: string
+  /** True quando o remetente apagou a mensagem no WhatsApp. Soft-delete. */
+  is_deleted?: boolean
 }
 
 interface Props {
@@ -35,6 +37,19 @@ function metaNumber(meta: Record<string, unknown> | null, key: string): number |
 
 export default function MessageBubble({ message, isOutbound }: Props) {
   const time = formatTime(message.created_at)
+
+  // Mensagem apagada — mostra placeholder, sem conteúdo original
+  if (message.is_deleted) {
+    return (
+      <div className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 text-slate-500 text-xs italic max-w-[72%]">
+          <Ban className="h-3 w-3 shrink-0" />
+          <span>Esta mensagem foi apagada</span>
+          <span className="ml-1 opacity-60">{time}</span>
+        </div>
+      </div>
+    )
+  }
   const url = metaString(message.metadata, 'url')
   const mime = metaString(message.metadata, 'mime')
   const name = metaString(message.metadata, 'name')
