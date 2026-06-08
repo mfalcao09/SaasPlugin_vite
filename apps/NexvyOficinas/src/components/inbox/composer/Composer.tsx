@@ -7,6 +7,8 @@ import { useMediaUpload, type MediaType } from '@/hooks/useMediaUpload'
 import AudioRecorder from './AudioRecorder'
 import { useQuickReplies } from '@/hooks/useQuickReplies'
 import QuickReplyPicker from '@/components/inbox/QuickReplyPicker'
+import ReplyPreviewBar from './ReplyPreviewBar'
+import type { InboxMessage } from '../messages/MessageBubble'
 
 type ComposerMode = 'message' | 'note'
 
@@ -14,6 +16,10 @@ interface Props {
   conversationId: string
   disabled?: boolean
   placeholder?: string
+  /** F2 — mensagem sendo citada */
+  replyingTo?: InboxMessage | null
+  /** F2 — callback para cancelar a citação */
+  onCancelReply?: () => void
 }
 
 interface PendingMedia {
@@ -30,7 +36,7 @@ function inferType(file: File): MediaType {
   return 'document'
 }
 
-export default function Composer({ conversationId, disabled = false, placeholder }: Props) {
+export default function Composer({ conversationId, disabled = false, placeholder, replyingTo, onCancelReply }: Props) {
   const [text, setText] = useState('')
   const [caption, setCaption] = useState('')
   const [sending, setSending] = useState(false)
@@ -94,14 +100,21 @@ export default function Composer({ conversationId, disabled = false, placeholder
           content: text.trim(),
           content_type: 'text',
           metadata: { is_internal: true },
+          reply_to_message_id: replyingTo?.id ?? null,
         })
       } else {
         await supabase.functions.invoke('evolution-send', {
-          body: { conversation_id: conversationId, type: 'text', content: text.trim() },
+          body: {
+            conversation_id: conversationId,
+            type: 'text',
+            content: text.trim(),
+            reply_to_message_id: replyingTo?.id ?? null,
+          },
         })
       }
       setText('')
       setShowQuickReplies(false)
+      onCancelReply?.()
     } finally {
       setSending(false)
     }
@@ -244,6 +257,10 @@ export default function Composer({ conversationId, disabled = false, placeholder
       'bg-slate-900 border-t relative',
       isNote ? 'border-amber-700/60' : 'border-slate-700',
     ].join(' ')}>
+      {/* F2 — Reply preview bar */}
+      {replyingTo && onCancelReply && !disabled && (
+        <ReplyPreviewBar replyingTo={replyingTo} onCancel={onCancelReply} />
+      )}
       {/* Tabs: Mensagem | Nota Interna */}
       {!disabled && (
         <div className="flex border-b border-slate-700/60">
