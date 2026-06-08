@@ -1,18 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Send, Bot, MoreVertical } from 'lucide-react'
+import { Send, MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-
-interface Message {
-  id: string
-  sender_type: 'contact' | 'agent' | 'bot'
-  content: string | null
-  content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'template'
-  metadata: Record<string, unknown> | null
-  created_at: string
-}
+import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 
 interface Conversation {
   id: string
@@ -33,13 +25,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   closed:        { label: 'Encerrada',             color: 'bg-slate-500' },
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-
 export default function ChatArea({ conversationId }: Props) {
   const [conversation, setConversation] = useState<Conversation | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<InboxMessage[]>([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -77,7 +65,7 @@ export default function ChatArea({ conversationId }: Props) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'inbox_messages', filter: `conversation_id=eq.${conversationId}` },
         payload => {
-          if (!ignore) setMessages(prev => [...prev, payload.new as Message])
+          if (!ignore) setMessages(prev => [...prev, payload.new as InboxMessage])
         },
       )
       .subscribe()
@@ -145,32 +133,7 @@ export default function ChatArea({ conversationId }: Props) {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
         {messages.map(m => {
           const isOutbound = m.sender_type === 'agent' || m.sender_type === 'bot'
-          return (
-            <div key={m.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={[
-                  'max-w-[72%] rounded-2xl px-3 py-2 text-sm',
-                  isOutbound
-                    ? 'bg-orange-600 text-white rounded-br-sm'
-                    : 'bg-slate-800 text-slate-100 rounded-bl-sm',
-                ].join(' ')}
-              >
-                {m.sender_type === 'bot' && (
-                  <div className="flex items-center gap-1 mb-1 opacity-70">
-                    <Bot className="h-3 w-3" />
-                    <span className="text-xs">Bot</span>
-                  </div>
-                )}
-                {m.content_type === 'image' && typeof m.metadata?.url === 'string' && (
-                  <img src={m.metadata.url} alt="mídia" className="rounded-lg mb-1 max-w-full" />
-                )}
-                {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                <p className={`text-xs mt-1 ${isOutbound ? 'text-orange-200' : 'text-slate-500'} text-right`}>
-                  {formatTime(m.created_at)}
-                </p>
-              </div>
-            </div>
-          )
+          return <MessageBubble key={m.id} message={m} isOutbound={isOutbound} />
         })}
         <div ref={messagesEndRef} />
       </div>
