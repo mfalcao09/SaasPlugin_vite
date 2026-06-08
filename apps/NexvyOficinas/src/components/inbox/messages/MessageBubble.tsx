@@ -1,4 +1,4 @@
-import { Bot, StickyNote } from 'lucide-react'
+import { Bot, StickyNote, Check, CheckCheck, CornerDownLeft } from 'lucide-react'
 import ImageBubble from './ImageBubble'
 import AudioBubble from './AudioBubble'
 import VideoBubble from './VideoBubble'
@@ -15,11 +15,19 @@ export interface InboxMessage {
   created_at: string
   /** True quando o remetente apagou a mensagem no WhatsApp. Soft-delete. */
   is_deleted?: boolean
+  /** Status de entrega da mensagem outbound: sent | delivered | read */
+  delivery_status?: 'sent' | 'delivered' | 'read'
+  /** ID da mensagem citada (reply) */
+  reply_to_message_id?: string | null
 }
 
 interface Props {
   message: InboxMessage
   isOutbound: boolean
+  /** Todas as mensagens carregadas (para resolver reply_to) */
+  allMessages?: InboxMessage[]
+  /** Callback para citar esta mensagem */
+  onReply?: (msg: InboxMessage) => void
 }
 
 function formatTime(iso: string): string {
@@ -35,7 +43,13 @@ function metaNumber(meta: Record<string, unknown> | null, key: string): number |
   return typeof v === 'number' ? v : undefined
 }
 
-export default function MessageBubble({ message, isOutbound }: Props) {
+function DeliveryStatusIcon({ status }: { status?: 'sent' | 'delivered' | 'read' }) {
+  if (status === 'read') return <CheckCheck className="h-[10px] w-[10px] text-blue-400 shrink-0" />
+  if (status === 'delivered') return <CheckCheck className="h-[10px] w-[10px] text-slate-400 shrink-0" />
+  return <Check className="h-[10px] w-[10px] text-slate-400 shrink-0" />
+}
+
+export default function MessageBubble({ message, isOutbound, allMessages, onReply }: Props) {
   const time = formatTime(message.created_at)
   const url = metaString(message.metadata, 'url')
   const mime = metaString(message.metadata, 'mime')
@@ -43,6 +57,11 @@ export default function MessageBubble({ message, isOutbound }: Props) {
   const size = metaNumber(message.metadata, 'size')
   const duration = metaNumber(message.metadata, 'duration')
   const isInternal = message.metadata?.is_internal === true
+
+  // Resolve mensagem citada
+  const replyToMsg = message.reply_to_message_id && allMessages
+    ? allMessages.find(m => m.id === message.reply_to_message_id) ?? null
+    : null
 
   // ── Nota interna — visual amber, centralizada no chat (não outbound/inbound) ──
   if (isInternal) {
@@ -78,7 +97,18 @@ export default function MessageBubble({ message, isOutbound }: Props) {
   }
 
   return (
-    <div className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+    <div id={`msg-${message.id}`} className={`flex group ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+      {/* Botão reply — aparece no hover, lado oposto do bubble */}
+      {!isOutbound && onReply && (
+        <button
+          onClick={() => onReply(message)}
+          className="self-end mb-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-orange-400"
+          title="Responder"
+        >
+          <CornerDownLeft className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       <div
         className={[
           'max-w-[72%] rounded-2xl px-3 py-2 text-sm transition-opacity',
@@ -93,6 +123,18 @@ export default function MessageBubble({ message, isOutbound }: Props) {
           <div className="flex items-center gap-1 mb-1 opacity-70">
             <Bot className="h-3 w-3" />
             <span className="text-xs">Bot</span>
+          </div>
+        )}
+
+        {/* ReplySnippet — exibe citação da mensagem pai */}
+        {replyToMsg && (
+          <div className="border-l-2 border-orange-400 bg-black/20 rounded px-2 py-1 text-xs mb-1.5 opacity-80">
+            <p className="font-medium mb-0.5 text-orange-300">
+              {replyToMsg.sender_type === 'contact' ? 'Contato' : replyToMsg.sender_type === 'bot' ? 'Bot' : 'Agente'}
+            </p>
+            <p className="truncate">
+              {(replyToMsg.content ?? '[mídia]').slice(0, 60)}
+            </p>
           </div>
         )}
 
@@ -129,10 +171,27 @@ export default function MessageBubble({ message, isOutbound }: Props) {
           </p>
         )}
 
-        <p className={`text-xs mt-1 ${isOutbound ? 'text-orange-200' : 'text-slate-500'} text-right`}>
-          {time}
-        </p>
+        {/* Timestamp + ícone de entrega (apenas outbound não apagado) */}
+        <div className={`flex items-center gap-1 mt-1 ${isOutbound ? 'justify-end' : 'justify-end'}`}>
+          <p className={`text-xs ${isOutbound ? 'text-orange-200' : 'text-slate-500'}`}>
+            {time}
+          </p>
+          {isOutbound && !message.is_deleted && (
+            <DeliveryStatusIcon status={message.delivery_status} />
+          )}
+        </div>
       </div>
+
+      {/* Botão reply — lado direito para mensagens outbound */}
+      {isOutbound && onReply && (
+        <button
+          onClick={() => onReply(message)}
+          className="self-end mb-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-orange-400"
+          title="Responder"
+        >
+          <CornerDownLeft className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }

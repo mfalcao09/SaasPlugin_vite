@@ -1,14 +1,16 @@
-// Edge Function: evolution-webhook (v5)
+// Edge Function: evolution-webhook (v6)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
 // Responsabilidades:
-// 1. Receber webhooks da Evolution API (MESSAGES_UPSERT, MESSAGES_DELETE, CONNECTION_UPDATE, QRCODE_UPDATED)
+// 1. Receber webhooks da Evolution API (MESSAGES_UPSERT, MESSAGES_DELETE, MESSAGES_UPDATE, CONNECTION_UPDATE, QRCODE_UPDATED)
 // 2. Persistir mensagens inbound em inbox_messages (idempotente por wa_message_id)
 // 3. Para mídia (image/audio/video/document/sticker): baixar da Evolution + upload pro bucket inbox-media
 // 4. Normalizar metadata: { url, mime, size, name?, duration?, width?, height? }
 // 5. Atualizar status/qr_code de evolution_instances
 // 6. [v5] MESSAGES_DELETE + protocolMessage.type=5 → soft-delete (is_deleted=true)
+// 7. [v6] MESSAGES_UPDATE → atualiza delivery_status (DELIVERY_ACK → delivered, READ → read)
+// 8. [v6] MESSAGES_UPSERT: verifica bot_paused antes de acionar bot
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -205,6 +207,39 @@ Deno.serve(async (req) => {
     return new Response("OK");
   }
 
+  // ── MESSAGES_UPDATE ────────────────────────────────────────────────────────
+  // Emitido quando o status de entrega/leitura de uma mensagem muda.
+  if (event === "messages.update" || event === "MESSAGES_UPDATE") {
+    const dataField = payload.data as Array<Record<string, unknown>> | Record<string, unknown>;
+    const updates: Array<Record<string, unknown>> = Array.isArray(dataField) ? dataField : [dataField];
+
+    for (const item of updates) {
+      // Evolution entrega: { key: { id, fromMe, ... }, update: { status: 'DELIVERY_ACK' | 'READ' | ... } }
+      const waMessageId = ((item.key as Record<string, unknown>)?.id ?? item.id) as string | undefined;
+      const status = (item.update as Record<string, unknown> | undefined)?.status as string | undefined;
+
+      if (!waMessageId || !status) continue;
+
+      let deliveryStatus: "delivered" | "read" | null = null;
+      if (status === "DELIVERY_ACK") deliveryStatus = "delivered";
+      else if (status === "READ") deliveryStatus = "read";
+
+      if (!deliveryStatus) continue;
+
+      const { error } = await supabase
+        .from("inbox_messages")
+        .update({ delivery_status: deliveryStatus })
+        .eq("wa_message_id", waMessageId);
+
+      if (error) {
+        console.error(`[webhook] delivery_status update error for ${waMessageId}:`, error.message);
+      } else {
+        console.log(`[webhook] delivery_status=${deliveryStatus} for ${waMessageId}`);
+      }
+    }
+    return new Response("OK");
+  }
+
   // ── MESSAGES_UPSERT ────────────────────────────────────────────────────────
   if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
     const dataField = payload.data;
@@ -315,6 +350,36 @@ Deno.serve(async (req) => {
       if (rpcErr || !convId) {
         console.error("[webhook] find_or_create error:", rpcErr?.message);
         continue;
+      }
+
+      // [v6] Verifica bot_paused: se ativo, salva mensagem mas NÃO aciona bot nem muda status
+      if (!fromMe) {
+        const { data: convState } = await supabase
+          .from("inbox_conversations")
+          .select("bot_paused, status")
+          .eq("id", convId)
+          .single();
+
+        if (convState?.bot_paused) {
+          // Persiste a mensagem normalmente, mas para aqui sem tocar no status/bot
+          const { error: msgErrPaused } = await supabase.from("inbox_messages").upsert(
+            {
+              conversation_id: convId,
+              direction: "inbound",
+              sender_type: "contact",
+              content,
+              content_type: contentType,
+              wa_message_id: waMessageId || null,
+              metadata,
+              is_deleted: false,
+            },
+            { onConflict: "wa_message_id", ignoreDuplicates: true },
+          );
+          if (msgErrPaused) console.error("[webhook] bot_paused insert error:", msgErrPaused.message);
+          await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
+          console.log(`[webhook] bot_paused=true — mensagem salva sem acionar bot para conv ${convId}`);
+          continue; // Pula o restante do processamento (bot + status)
+        }
       }
 
       // Se for mídia, baixa da Evolution e faz upload pro Storage (fail-soft)

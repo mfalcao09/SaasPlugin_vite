@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft } from 'lucide-react'
+import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft, Search, Bell, BellOff, Bot, BotOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 import Composer from './composer/Composer'
 import AcceptTicketBar from './AcceptTicketBar'
 import TransferConversationDialog from './TransferConversationDialog'
+import MessageSearchBar from './MessageSearchBar'
+import { useInboxNotifications } from '@/hooks/useInboxNotifications'
 
 interface Conversation {
   id: string
@@ -13,6 +15,7 @@ interface Conversation {
   contact_name: string | null
   status: string
   evolution_instance_id: string
+  bot_paused: boolean
 }
 
 interface Props {
@@ -39,6 +42,16 @@ export default function ChatArea({ conversationId, onBack }: Props) {
   const [closing, setClosing] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
+  // F2 — reply
+  const [replyingTo, setReplyingTo] = useState<InboxMessage | null>(null)
+  // F4 — notificações
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem('inbox_notifications_v1') === 'true'
+  )
+  // F5 — search
+  const [searchOpen, setSearchOpen] = useState(false)
+  // F6 — bot pause (estado local otimista)
+  const [botPaused, setBotPaused] = useState(false)
 
   const messagesEndRef      = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -57,10 +70,15 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
     supabase
       .from('inbox_conversations')
-      .select('id,contact_phone,contact_name,status,evolution_instance_id')
+      .select('id,contact_phone,contact_name,status,evolution_instance_id,bot_paused')
       .eq('id', conversationId)
       .single()
-      .then(({ data }) => { if (!ignore && data) setConversation(data) })
+      .then(({ data }) => {
+        if (!ignore && data) {
+          setConversation(data)
+          setBotPaused(data.bot_paused ?? false)
+        }
+      })
 
     // Realtime: status pode mudar (accept, close, transfer)
     const convChannel = supabase
@@ -69,7 +87,11 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'inbox_conversations', filter: `id=eq.${conversationId}` },
         payload => {
-          if (!ignore) setConversation(prev => prev ? { ...prev, ...(payload.new as Conversation) } : prev)
+          if (!ignore) {
+            const updated = payload.new as Conversation
+            setConversation(prev => prev ? { ...prev, ...updated } : prev)
+            if (typeof updated.bot_paused === 'boolean') setBotPaused(updated.bot_paused)
+          }
         },
       )
       .subscribe()
@@ -94,7 +116,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
       // Busca as 100 mais recentes em ordem DESC, depois inverte para exibição
       const { data } = await supabase
         .from('inbox_messages')
-        .select('id,sender_type,content,content_type,metadata,created_at,is_deleted')
+        .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE)
@@ -181,7 +203,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
     const { data } = await supabase
       .from('inbox_messages')
-      .select('id,sender_type,content,content_type,metadata,created_at,is_deleted')
+      .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id')
       .eq('conversation_id', conversationId)
       .lt('created_at', cursorRef.current)
       .order('created_at', { ascending: false })
@@ -226,11 +248,40 @@ export default function ChatArea({ conversationId, onBack }: Props) {
     try {
       await supabase.rpc('close_conversation', { conv_id: conversationId })
       setShowCloseModal(false)
-      // A conversa atualiza via realtime (subscription de conversation)
     } finally {
       setClosing(false)
     }
   }
+
+  // ── F6 — Bot toggle ───────────────────────────────────────────────────────
+  async function handleBotToggle() {
+    const next = !botPaused
+    setBotPaused(next)  // otimista
+    const { error } = await supabase
+      .from('inbox_conversations')
+      .update({ bot_paused: next })
+      .eq('id', conversationId)
+    if (error) setBotPaused(!next)  // reverte em erro
+  }
+
+  // ── F4 — Notificações toggle ─────────────────────────────────────────────
+  function handleNotificationsToggle() {
+    const next = !notificationsEnabled
+    setNotificationsEnabled(next)
+    localStorage.setItem('inbox_notifications_v1', next ? 'true' : 'false')
+  }
+
+  // ── F5 — Scroll para mensagem por id ─────────────────────────────────────
+  function handleScrollTo(id: string) {
+    document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  // ── F4 — Hook de notificações ────────────────────────────────────────────
+  // (deve ficar após todos os hooks/state para não violar rules of hooks)
+  useInboxNotifications({
+    conversationId,
+    enabled: notificationsEnabled,
+  })
 
   // ────────────────────────────────────────────────────────────────────────
   if (!conversation) {
@@ -249,7 +300,6 @@ export default function ChatArea({ conversationId, onBack }: Props) {
     <div className="flex flex-col h-full bg-slate-950">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700 relative">
-        {/* Botão back — só renderiza em mobile quando onBack é fornecido */}
         {onBack && (
           <button
             onClick={onBack}
@@ -268,7 +318,34 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         </div>
         <Badge className={`${status.color} text-white text-xs shrink-0`}>{status.label}</Badge>
 
-        {/* Botão Encerrar — visível apenas quando não está encerrada */}
+        {/* F6 — Bot toggle */}
+        <button
+          onClick={handleBotToggle}
+          className={`p-1 rounded transition-colors shrink-0 ${botPaused ? 'text-amber-400 hover:text-amber-300' : 'text-green-400 hover:text-green-300'}`}
+          title={botPaused ? 'Bot pausado — clique para reativar' : 'Bot ativo — clique para pausar'}
+        >
+          {botPaused ? <BotOff className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        </button>
+
+        {/* F4 — Bell toggle */}
+        <button
+          onClick={handleNotificationsToggle}
+          className="p-1 rounded text-slate-400 hover:text-white transition-colors shrink-0"
+          title={notificationsEnabled ? 'Notificações ativas' : 'Notificações desativadas'}
+        >
+          {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+        </button>
+
+        {/* F5 — Search toggle */}
+        <button
+          onClick={() => setSearchOpen(prev => !prev)}
+          className={`p-1 rounded transition-colors shrink-0 ${searchOpen ? 'text-orange-400' : 'text-slate-400 hover:text-white'}`}
+          title="Pesquisar mensagens"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+
+        {/* Botão Encerrar */}
         {!isClosed && (
           <button
             onClick={() => setShowCloseModal(true)}
@@ -315,12 +392,21 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         </div>
       </div>
 
-      {/* AcceptTicketBar — visível quando conversa aguarda atendimento */}
+      {/* AcceptTicketBar */}
       {conversation.status === 'waiting_human' && (
         <AcceptTicketBar conversationId={conversationId} />
       )}
 
-      {/* Modal de confirmação para encerrar conversa */}
+      {/* F5 — Search bar */}
+      {searchOpen && (
+        <MessageSearchBar
+          messages={messages}
+          onClose={() => setSearchOpen(false)}
+          onScrollTo={handleScrollTo}
+        />
+      )}
+
+      {/* Modal encerrar */}
       {showCloseModal && (
         <>
           <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setShowCloseModal(false)} aria-hidden="true" />
@@ -364,7 +450,6 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-        {/* Sentinel invisível no topo — disparado pelo IntersectionObserver */}
         <div ref={topSentinelRef} className="h-1" />
 
         {loadingMore && (
@@ -378,6 +463,8 @@ export default function ChatArea({ conversationId, onBack }: Props) {
             key={m.id}
             message={m}
             isOutbound={m.sender_type === 'agent' || m.sender_type === 'bot'}
+            allMessages={messages}
+            onReply={isClosed ? undefined : setReplyingTo}
           />
         ))}
         <div ref={messagesEndRef} />
@@ -388,6 +475,8 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         conversationId={conversationId}
         disabled={conversation.status === 'closed'}
         placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : undefined}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
       />
     </div>
   )
