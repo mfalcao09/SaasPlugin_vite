@@ -9,10 +9,9 @@ interface Message {
   id: string
   sender_type: 'contact' | 'agent' | 'bot'
   content: string | null
-  media_url: string | null
-  media_type: string | null
+  content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'template'
+  metadata: Record<string, unknown> | null
   created_at: string
-  status: string
 }
 
 interface Conversation {
@@ -62,7 +61,7 @@ export default function ChatArea({ conversationId }: Props) {
     async function load() {
       const { data } = await supabase
         .from('inbox_messages')
-        .select('id,sender_type,content,media_url,media_type,created_at,status')
+        .select('id,sender_type,content,content_type,metadata,created_at')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
         .limit(200)
@@ -162,8 +161,8 @@ export default function ChatArea({ conversationId }: Props) {
                     <span className="text-xs">Bot</span>
                   </div>
                 )}
-                {m.media_url && m.media_type?.startsWith('image') && (
-                  <img src={m.media_url} alt="mídia" className="rounded-lg mb-1 max-w-full" />
+                {m.content_type === 'image' && typeof m.metadata?.url === 'string' && (
+                  <img src={m.metadata.url} alt="mídia" className="rounded-lg mb-1 max-w-full" />
                 )}
                 {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                 <p className={`text-xs mt-1 ${isOutbound ? 'text-orange-200' : 'text-slate-500'} text-right`}>

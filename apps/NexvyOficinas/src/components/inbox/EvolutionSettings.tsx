@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Instance {
   id: string
-  instance_name: string
-  display_name: string
+  name: string
+  instance_id: string | null
+  phone_number: string | null
   status: string
   qr_code: string | null
-  connected_phone: string | null
+  is_default: boolean
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -37,7 +38,7 @@ export default function EvolutionSettings() {
   const loadInstances = useCallback(async () => {
     const { data } = await supabase
       .from('evolution_instances')
-      .select('id,instance_name,display_name,status,qr_code,connected_phone')
+      .select('id,name,instance_id,phone_number,status,qr_code,is_default')
       .eq('empresa_id', empresaId)
       .order('created_at', { ascending: true })
     if (data) setInstances(data)
@@ -169,9 +170,9 @@ export default function EvolutionSettings() {
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white font-medium">{inst.display_name}</p>
-                  {inst.connected_phone && (
-                    <p className="text-slate-400 text-xs">+{inst.connected_phone}</p>
+                  <p className="text-white font-medium">{inst.name}</p>
+                  {inst.phone_number && (
+                    <p className="text-slate-400 text-xs">+{inst.phone_number}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
