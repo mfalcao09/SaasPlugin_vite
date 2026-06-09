@@ -20,6 +20,46 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const MEDIA_TYPES = new Set(["image", "audio", "video", "document", "sticker"]);
 
+// ── Sprint5 F4 — Verifica se estamos dentro do horário de atendimento ────────
+// Timezone: BRT = UTC-3. Sem configuração = sempre aberto.
+async function isWithinOfficeHours(
+  empresaId: string,
+  sb: ReturnType<typeof createClient>,
+): Promise<{ open: boolean; outMsg: string }> {
+  const now = new Date();
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const dayOfWeek = brt.getUTCDay(); // 0=Dom
+  const hh = String(brt.getUTCHours()).padStart(2, "0");
+  const mm = String(brt.getUTCMinutes()).padStart(2, "0");
+  const currentTime = `${hh}:${mm}`;
+
+  const { data: hours } = await sb
+    .from("inbox_office_hours")
+    .select("hora_inicio, hora_fim, ativo")
+    .eq("empresa_id", empresaId)
+    .eq("dia_semana", dayOfWeek)
+    .eq("ativo", true)
+    .single();
+
+  if (!hours) return { open: true, outMsg: "" }; // sem config = sempre aberto
+
+  const isOpen =
+    currentTime >= (hours.hora_inicio as string).slice(0, 5) &&
+    currentTime <= (hours.hora_fim as string).slice(0, 5);
+
+  let outMsg = "Olá! Nosso atendimento funciona em horário comercial. Em breve retornaremos! 🕐";
+  try {
+    const { data: emp } = await sb
+      .from("empresas")
+      .select("inbox_out_of_hours_message")
+      .eq("id", empresaId)
+      .single();
+    if (emp?.inbox_out_of_hours_message) outMsg = emp.inbox_out_of_hours_message;
+  } catch { /* ignore */ }
+
+  return { open: isOpen, outMsg: isOpen ? "" : outMsg };
+}
+
 function extFromMime(mime: string, contentType: string): string {
   const m = (mime ?? "").toLowerCase();
   if (m.includes("jpeg")) return "jpg";
@@ -505,6 +545,39 @@ Deno.serve(async (req) => {
           if (msgErrPaused) console.error("[webhook] bot_paused insert error:", msgErrPaused.message);
           await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
           console.log(`[webhook] bot_paused=true — mensagem salva sem acionar bot para conv ${convId}`);
+          continue;
+        }
+
+        // [Sprint5 F4] Verifica horário de atendimento (só para mensagens inbound, bot não pausado)
+        const { open: withinHours, outMsg: oohMsg } = await isWithinOfficeHours(
+          instance.empresa_id as string,
+          supabase,
+        );
+        if (!withinHours) {
+          // Salva mensagem normalmente, mas NÃO muda status nem aciona bot
+          await supabase.from("inbox_messages").upsert(
+            {
+              conversation_id: convId,
+              direction: "inbound",
+              sender_type: "contact",
+              content,
+              content_type: contentType,
+              wa_message_id: waMessageId || null,
+              metadata,
+              storage_url: null,
+              is_deleted: false,
+            },
+            { onConflict: "wa_message_id", ignoreDuplicates: true },
+          );
+          await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
+          if (oohMsg) {
+            await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "apikey": EVOLUTION_API_KEY },
+              body: JSON.stringify({ number: contactPhone, text: oohMsg }),
+            }).catch(() => {});
+          }
+          console.log(`[webhook] out-of-hours — mensagem salva, auto-reply enviado para conv ${convId}`);
           continue;
         }
       }
