@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2, Download } from 'lucide-react'
+import { Loader2, Download, Printer } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell,
@@ -401,11 +401,55 @@ export default function InboxMetrics() {
   // Sprint7 F1 — cores do CSAT por score (1=vermelho … 5=verde)
   const csatBarColors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e']
 
+  // Sprint9 F4 — Exportar PDF via window.print
+  function handleExportPdf() {
+    window.print()
+  }
+
+  // Sprint9 F4 — período legível para o cabeçalho de impressão
+  const periodLabel = PERIOD_OPTIONS.find(o => o.value === period)?.label ?? period
+  const generatedAt = new Date().toLocaleString('pt-BR')
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto inbox-metrics-printable">
+      {/* Sprint9 F4 — estilos print-only */}
+      <style>{`
+        @media print {
+          body, html { background: #ffffff !important; }
+          .inbox-metrics-printable { color: #0f172a; }
+          .inbox-metrics-printable .bg-slate-800,
+          .inbox-metrics-printable .bg-slate-700,
+          .inbox-metrics-printable .bg-slate-700\\/50,
+          .inbox-metrics-printable .bg-slate-700\\/20 {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .inbox-metrics-printable .text-white,
+          .inbox-metrics-printable .text-slate-200,
+          .inbox-metrics-printable .text-slate-300 {
+            color: #0f172a !important;
+          }
+          .inbox-metrics-printable .text-slate-400,
+          .inbox-metrics-printable .text-slate-500 {
+            color: #475569 !important;
+          }
+          .print\\:hidden { display: none !important; }
+          .print\\:block { display: block !important; }
+          @page { margin: 1cm; }
+        }
+        .print\\:block { display: none; }
+      `}</style>
+
+      {/* Sprint9 F4 — Cabeçalho print-only */}
+      <div className="print:block mb-4">
+        <p className="text-lg font-bold">Relatório de Métricas do Inbox</p>
+        <p className="text-sm text-slate-600">Período: {periodLabel} • Gerado em: {generatedAt}</p>
+      </div>
+
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-xl font-bold text-white">📊 Métricas do Inbox</h1>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap print:hidden">
           {/* Sprint9 F1 — Seletor de período */}
           <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
             {PERIOD_OPTIONS.map(opt => (
@@ -432,6 +476,15 @@ export default function InboxMetrics() {
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Download className="h-4 w-4" />}
             Exportar CSV
+          </button>
+          {/* Sprint9 F4 — Exportar PDF */}
+          <button
+            onClick={handleExportPdf}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Exportar PDF
           </button>
         </div>
       </div>
