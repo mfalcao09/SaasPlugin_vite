@@ -18,6 +18,8 @@ import {
   Menu,
   X,
   LogOut,
+  Globe,
+  Compass,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import NotificationBell from '@/components/inbox/NotificationBell'
@@ -48,6 +50,8 @@ const salesNav: NavItem[] = [
   { to: '/inbox', label: 'Inbox WhatsApp', icon: MessageSquare, orange: true },
   { to: '/inbox/metrics', label: 'Métricas Inbox', icon: BarChart2, orange: true },
   { to: '/inbox/my-stats', label: 'Meu Desempenho', icon: Trophy, orange: true },
+  { to: '/inbox/webchat', label: 'Webchat', icon: Globe, orange: true },
+  { to: '/inbox/onboarding', label: 'Config. Inicial', icon: Compass, orange: true },
 ]
 
 const bottomNav: NavItem[] = [
