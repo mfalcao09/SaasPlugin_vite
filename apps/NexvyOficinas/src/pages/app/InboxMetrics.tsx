@@ -13,6 +13,23 @@ interface MetricCard {
   color: string
 }
 
+// ── Sprint9 F1 — Filtro de período ────────────────────────────────────────────
+type Period = '7d' | '30d' | '90d' | 'month'
+
+function getPeriodStart(period: Period): string {
+  const now = new Date()
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: '7d', label: '7 dias' },
+  { value: '30d', label: '30 dias' },
+  { value: '90d', label: '90 dias' },
+  { value: 'month', label: 'Este mês' },
+]
+
 // ── Sprint7 F6 — CSV helpers ──────────────────────────────────────────────────
 function toCsv(rows: Record<string, unknown>[], cols: string[]): string {
   const header = cols.join(',')
@@ -41,6 +58,8 @@ function minutesBetween(a: string | null, b: string | null): number | null {
 export default function InboxMetrics() {
   const { empresaId } = useAuth()
   const [loading, setLoading] = useState(true)
+  // Sprint9 F1 — filtro de período
+  const [period, setPeriod] = useState<Period>('30d')
   const [cards, setCards] = useState<MetricCard[]>([
     { label: 'Conversas abertas',      value: null, color: 'text-blue-400' },
     { label: 'Em atendimento humano',  value: null, color: 'text-green-400' },
@@ -74,6 +93,8 @@ export default function InboxMetrics() {
     async function load() {
       setLoading(true)
       const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+      // Sprint9 F1 — período de análise
+      const periodStart = getPeriodStart(period)
 
       const [
         { count: abertas },
@@ -103,7 +124,7 @@ export default function InboxMetrics() {
           .select('*', { count: 'exact', head: true })
           .eq('empresa_id', empresaId)
           .eq('status', 'closed')
-          .gte('closed_at', todayStart),
+          .gte('closed_at', todayStart), // Encerradas HOJE: card sempre olha o dia
         supabase
           .from('inbox_conversations')
           .select('*', { count: 'exact', head: true })
@@ -138,8 +159,9 @@ export default function InboxMetrics() {
           .eq('empresa_id', empresaId)
           .eq('status', 'closed')
           .not('closed_at', 'is', null)
+          .gte('created_at', periodStart) // Sprint9 F1 — filtro de período
           .order('closed_at', { ascending: false })
-          .limit(200),
+          .limit(500),
       ])
 
       const slaFirstResponseMinutes = slaConfig?.sla_first_response_minutes ?? 30
@@ -171,12 +193,13 @@ export default function InboxMetrics() {
         setSlaStats(prev => ({ ...prev, slaFirstResponseMinutes }))
       }
 
-      // Sprint7 F1 — CSAT metrics
+      // Sprint7 F1 — CSAT metrics (Sprint9 F1: filtra por período via sent_at)
       const { data: csatData } = await supabase
         .from('inbox_csat_responses')
         .select('score, sent_at')
         .eq('empresa_id', empresaId)
         .not('sent_at', 'is', null)
+        .gte('sent_at', periodStart)
 
       if (csatData && csatData.length > 0) {
         const responded = csatData.filter(r => r.score !== null)
@@ -195,7 +218,7 @@ export default function InboxMetrics() {
     }
 
     load()
-  }, [empresaId])
+  }, [empresaId, period])
 
   // Sprint7 F6 — Exportar CSV
   async function handleExportCsv() {
@@ -257,19 +280,37 @@ export default function InboxMetrics() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-xl font-bold text-white">📊 Métricas do Inbox</h1>
-        {/* Sprint7 F6 — Exportar CSV */}
-        <button
-          onClick={handleExportCsv}
-          disabled={exporting || loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 transition-colors"
-        >
-          {exporting
-            ? <Loader2 className="h-4 w-4 animate-spin" />
-            : <Download className="h-4 w-4" />}
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Sprint9 F1 — Seletor de período */}
+          <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+            {PERIOD_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  period === opt.value
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* Sprint7 F6 — Exportar CSV */}
+          <button
+            onClick={handleExportCsv}
+            disabled={exporting || loading}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 transition-colors"
+          >
+            {exporting
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Download className="h-4 w-4" />}
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       {loading ? (
