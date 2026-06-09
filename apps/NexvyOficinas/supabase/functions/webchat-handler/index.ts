@@ -7,6 +7,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+async function sha256Hex(text: string): Promise<string> {
+  const buf = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
@@ -54,23 +62,25 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // 1. Validar api_key e identificar empresa
+  // 1. Validar api_key via hash SHA-256 (plaintext NUNCA persiste — Seção 11.1 CLAUDE.md)
+  const keyHash = await sha256Hex(apiKey);
   const { data: keyRow } = await supabase
     .from("empresa_api_keys")
-    .select("empresa_id, revoked_at")
-    .eq("api_key", apiKey)
+    .select("id, empresa_id, revoked_at")
+    .eq("key_hash", keyHash)
     .is("revoked_at", null)
     .single();
 
   if (!keyRow) return jsonResponse({ error: "invalid api key" }, 403);
 
   const empresaId = keyRow.empresa_id as string;
+  const keyId = keyRow.id as string;
 
   // Touch last_used_at (fire-and-forget)
   supabase
     .from("empresa_api_keys")
     .update({ last_used_at: new Date().toISOString() })
-    .eq("api_key", apiKey)
+    .eq("id", keyId)
     .then(() => {});
 
   // 2. Buscar/criar conversa (channel=webchat). contact_phone = "webchat_" + sessionId
