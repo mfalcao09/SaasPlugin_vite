@@ -92,6 +92,7 @@ export default function Inbox() {
             <ChatArea
               conversationId={selectedId}
               onBack={isMobile ? handleBack : undefined}
+              onSelectConversation={handleSelect}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
