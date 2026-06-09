@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft, Search, Bell, BellOff, Bot, BotOff } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft, Search, Bell, BellOff, Bot, BotOff, History, Tag, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 import Composer from './composer/Composer'
@@ -11,6 +12,7 @@ import { useInboxNotifications } from '@/hooks/useInboxNotifications'
 import { useTypingIndicator } from '@/hooks/useTypingIndicator'
 import TypingIndicator from './TypingIndicator'
 import ContactAvatar from './ContactAvatar'
+import ContactHistoryDrawer from './ContactHistoryDrawer'
 
 interface Conversation {
   id: string
@@ -20,12 +22,23 @@ interface Conversation {
   status: string
   evolution_instance_id: string
   bot_paused: boolean
+  assigned_user_id: string | null
+  tags: string[]
+}
+
+const TAG_PALETTE = ['bg-red-500','bg-blue-500','bg-green-500','bg-yellow-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-orange-500'] as const
+function tagColor(tag: string): string {
+  let h = 0
+  for (const c of tag) h = (h * 31 + c.charCodeAt(0)) % TAG_PALETTE.length
+  return TAG_PALETTE[Math.abs(h) % TAG_PALETTE.length]
 }
 
 interface Props {
   conversationId: string
   /** Mobile: callback para voltar à lista de conversas */
   onBack?: () => void
+  /** Navegar para outra conversa (histórico do contato) */
+  onSelectConversation?: (id: string) => void
 }
 
 const PAGE_SIZE = 100
@@ -37,7 +50,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   closed:        { label: 'Encerrada',             color: 'bg-slate-500' },
 }
 
-export default function ChatArea({ conversationId, onBack }: Props) {
+export default function ChatArea({ conversationId, onBack, onSelectConversation }: Props) {
+  const { empresaId } = useAuth()
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<InboxMessage[]>([])
   const [hasMore, setHasMore] = useState(false)
@@ -56,6 +70,13 @@ export default function ChatArea({ conversationId, onBack }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   // F6 — bot pause (estado local otimista)
   const [botPaused, setBotPaused] = useState(false)
+  // Sprint5 F5 — histórico do contato
+  const [showHistory, setShowHistory] = useState(false)
+  // Sprint5 F3 — tags menu
+  const [showTagsMenu, setShowTagsMenu] = useState(false)
+  const [tagInput, setTagInput] = useState('')
+  // Sprint5 F2 — agentes para atribuição
+  const [agents, setAgents] = useState<{id: string; display: string}[]>([])
 
   const messagesEndRef      = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -74,12 +95,12 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
     supabase
       .from('inbox_conversations')
-      .select('id,contact_phone,contact_name,contact_avatar_url,status,evolution_instance_id,bot_paused')
+      .select('id,contact_phone,contact_name,contact_avatar_url,status,evolution_instance_id,bot_paused,assigned_user_id,tags')
       .eq('id', conversationId)
       .single()
       .then(({ data }) => {
         if (!ignore && data) {
-          setConversation(data)
+          setConversation(data as Conversation)
           setBotPaused(data.bot_paused ?? false)
         }
       })
@@ -105,6 +126,18 @@ export default function ChatArea({ conversationId, onBack }: Props) {
       supabase.removeChannel(convChannel)
     }
   }, [conversationId])
+
+  // ── Sprint5 F2 — Carregar agentes da empresa ─────────────────────────────
+  useEffect(() => {
+    if (!empresaId) return
+    supabase
+      .from('empresa_users')
+      .select('user_id')
+      .eq('empresa_id', empresaId)
+      .then(({ data }) => {
+        setAgents((data ?? []).map(u => ({ id: u.user_id, display: u.user_id.slice(0, 8) })))
+      })
+  }, [empresaId])
 
   // ── Carregar mensagens iniciais + subscribe realtime ──────────────────────
   useEffect(() => {
@@ -290,6 +323,21 @@ export default function ChatArea({ conversationId, onBack }: Props) {
   // ── Sprint4 F1 — Typing indicator via Supabase Realtime Broadcast ────────
   const { isContactTyping, emitTyping } = useTypingIndicator({ conversationId })
 
+  // ── Sprint5 F3 — Tags add/remove ─────────────────────────────────────────
+  async function addTag(tag: string) {
+    const trimmed = tag.trim().toLowerCase()
+    if (!trimmed || conversation?.tags?.includes(trimmed)) return
+    const next = [...(conversation?.tags ?? []), trimmed]
+    await supabase.from('inbox_conversations').update({ tags: next }).eq('id', conversationId)
+    setConversation(prev => prev ? { ...prev, tags: next } : prev)
+  }
+
+  async function removeTag(tag: string) {
+    const next = (conversation?.tags ?? []).filter(t => t !== tag)
+    await supabase.from('inbox_conversations').update({ tags: next }).eq('id', conversationId)
+    setConversation(prev => prev ? { ...prev, tags: next } : prev)
+  }
+
   // ────────────────────────────────────────────────────────────────────────
   if (!conversation) {
     return (
@@ -322,6 +370,30 @@ export default function ChatArea({ conversationId, onBack }: Props) {
           <p className="text-xs text-slate-400">+{conversation.contact_phone}</p>
         </div>
         <Badge className={`${status.color} text-white text-xs shrink-0`}>{status.label}</Badge>
+
+        {/* Sprint5 F2 — Atribuir conversa */}
+        <select
+          value={conversation.assigned_user_id ?? ''}
+          onChange={async e => {
+            const val = e.target.value || null
+            await supabase.from('inbox_conversations').update({ assigned_user_id: val }).eq('id', conversationId)
+            setConversation(prev => prev ? { ...prev, assigned_user_id: val } : prev)
+          }}
+          className="text-xs bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 text-slate-200 shrink-0"
+          title="Atribuir conversa"
+        >
+          <option value="">Sem atendente</option>
+          {agents.map(a => <option key={a.id} value={a.id}>{a.display}</option>)}
+        </select>
+
+        {/* Sprint5 F5 — Histórico do contato */}
+        <button
+          onClick={() => setShowHistory(prev => !prev)}
+          className={`p-1 rounded transition-colors shrink-0 ${showHistory ? 'text-orange-400' : 'text-slate-400 hover:text-white'}`}
+          title="Histórico do contato"
+        >
+          <History className="h-4 w-4" />
+        </button>
 
         {/* F6 — Bot toggle */}
         <button
@@ -375,6 +447,13 @@ export default function ChatArea({ conversationId, onBack }: Props) {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} aria-hidden="true" />
               <div className="absolute right-0 top-full mt-1 z-20 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[160px]">
+                <button
+                  onClick={() => { setShowMoreMenu(false); setShowTagsMenu(prev => !prev) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                >
+                  <Tag className="h-4 w-4 text-orange-400" />
+                  Gerenciar tags
+                </button>
                 <button
                   onClick={() => { setShowMoreMenu(false); setShowTransferDialog(true) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
@@ -450,6 +529,64 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         <TransferConversationDialog
           conversationId={conversationId}
           onClose={() => setShowTransferDialog(false)}
+        />
+      )}
+
+      {/* Sprint5 F3 — Tags manager panel */}
+      {showTagsMenu && (
+        <div className="bg-slate-800 border-b border-slate-700 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-300">Tags da conversa</p>
+            <button onClick={() => setShowTagsMenu(false)} className="text-slate-400 hover:text-white">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {/* Tags atuais */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {(conversation.tags ?? []).map(tag => (
+              <span key={tag} className={`${tagColor(tag)} text-white text-[9px] px-1.5 py-0.5 rounded-full leading-tight flex items-center gap-0.5`}>
+                {tag}
+                <button
+                  onClick={() => removeTag(tag)}
+                  className="ml-0.5 hover:opacity-75"
+                  aria-label={`Remover tag ${tag}`}
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            ))}
+            {(conversation.tags ?? []).length === 0 && (
+              <span className="text-xs text-slate-500">Sem tags</span>
+            )}
+          </div>
+          {/* Input de nova tag */}
+          <div className="flex gap-2">
+            <input
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  addTag(tagInput)
+                  setTagInput('')
+                }
+              }}
+              placeholder="Nova tag + Enter"
+              className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Sprint5 F5 — Contact History Drawer */}
+      {showHistory && conversation && (
+        <ContactHistoryDrawer
+          phone={conversation.contact_phone}
+          currentConversationId={conversationId}
+          onClose={() => setShowHistory(false)}
+          onSelectConversation={(id) => {
+            setShowHistory(false)
+            onSelectConversation?.(id)
+          }}
         />
       )}
 

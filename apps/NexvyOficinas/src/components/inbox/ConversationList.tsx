@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { MessageCircle, Search, PlusCircle } from 'lucide-react'
+import { MessageCircle, Search, PlusCircle, Megaphone, User2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import ContactAvatar from './ContactAvatar'
 import NewConversationDialog from './NewConversationDialog'
+import BroadcastDialog from './BroadcastDialog'
 
 interface Conversation {
   id: string
@@ -17,16 +18,27 @@ interface Conversation {
   last_message_sender_type: string | null
   last_message_at: string | null
   unread_count: number
+  assigned_user_id: string | null
+  tags: string[]
 }
 
-type TabKey = 'all' | 'waiting_human' | 'human_active' | 'closed'
+type TabKey = 'all' | 'waiting_human' | 'human_active' | 'closed' | 'mine'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all',           label: 'Todos' },
   { key: 'waiting_human', label: 'Aguardando' },
   { key: 'human_active',  label: 'Atendendo' },
   { key: 'closed',        label: 'Encerrado' },
+  { key: 'mine',          label: 'Minhas' },
 ]
+
+const TAG_PALETTE = ['bg-red-500','bg-blue-500','bg-green-500','bg-yellow-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-orange-500'] as const
+
+function tagColor(tag: string): string {
+  let h = 0
+  for (const c of tag) h = (h * 31 + c.charCodeAt(0)) % TAG_PALETTE.length
+  return TAG_PALETTE[Math.abs(h) % TAG_PALETTE.length]
+}
 
 interface Props {
   selectedId: string | null
@@ -45,11 +57,12 @@ function timeAgo(iso: string | null): string {
 }
 
 export default function ConversationList({ selectedId, onSelect }: Props) {
-  const { empresaId } = useAuth()
+  const { empresaId, user } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('all')
   const [showNewDialog, setShowNewDialog] = useState(false)
+  const [showBroadcast, setShowBroadcast] = useState(false)
 
   useEffect(() => {
     if (!empresaId) return
@@ -58,11 +71,11 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     async function load() {
       const { data } = await supabase
         .from('inbox_conversations')
-        .select('id,contact_phone,contact_name,contact_avatar_url,status,last_message_content,last_message_sender_type,last_message_at,unread_count')
+        .select('id,contact_phone,contact_name,contact_avatar_url,status,last_message_content,last_message_sender_type,last_message_at,unread_count,assigned_user_id,tags')
         .eq('empresa_id', empresaId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(100)
-      if (!ignore && data) setConversations(data)
+      if (!ignore && data) setConversations(data as Conversation[])
     }
 
     load()
@@ -88,12 +101,12 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     waiting_human: conversations.filter(c => c.status === 'waiting_human').length,
     human_active:  conversations.filter(c => c.status === 'human_active').length,
     closed:        conversations.filter(c => c.status === 'closed').length,
+    mine:          conversations.filter(c => c.assigned_user_id === user?.id).length,
   }
 
   const filtered = conversations.filter(c => {
-    // Filtro por aba
+    if (activeTab === 'mine') return c.assigned_user_id === user?.id
     if (activeTab !== 'all' && c.status !== activeTab) return false
-    // Filtro por busca
     if (!search) return true
     const q = search.toLowerCase()
     return (
@@ -116,7 +129,17 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
               {totalUnread}
             </Badge>
           )}
-          {/* Sprint4 F2+F3 — botão Nova conversa */}
+          {/* Botão Broadcast */}
+          {empresaId && (
+            <button
+              onClick={() => setShowBroadcast(true)}
+              className="p-1 text-slate-400 hover:text-orange-400 transition-colors"
+              title="Enviar para múltiplos contatos"
+            >
+              <Megaphone className="h-4 w-4" />
+            </button>
+          )}
+          {/* Sprint4 F3 — botão Nova conversa */}
           <button
             onClick={() => empresaId && setShowNewDialog(true)}
             className="ml-auto p-1 text-slate-400 hover:text-orange-400 transition-colors"
@@ -125,6 +148,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
             <PlusCircle className="h-4 w-4" />
           </button>
         </div>
+
         {/* Sprint4 F3 — dialog nova conversa */}
         {showNewDialog && empresaId && (
           <NewConversationDialog
@@ -132,6 +156,14 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
             empresaId={empresaId}
           />
         )}
+        {/* Broadcast dialog */}
+        {showBroadcast && empresaId && (
+          <BroadcastDialog
+            onClose={() => setShowBroadcast(false)}
+            empresaId={empresaId}
+          />
+        )}
+
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
@@ -207,10 +239,16 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
                   : 'hover:bg-slate-800 border-l-2 border-transparent',
               ].join(' ')}
             >
+              {/* Sprint4 F2 — avatar do contato */}
               <ContactAvatar size="lg" avatarUrl={c.contact_avatar_url} name={name} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-medium text-sm text-white truncate">{name}</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="font-medium text-sm text-white truncate">{name}</span>
+                    {c.assigned_user_id && (
+                      <User2 className="h-3 w-3 text-slate-400 shrink-0" />
+                    )}
+                  </div>
                   <span className="text-xs text-slate-500 shrink-0">{timeAgo(c.last_message_at)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-1 mt-0.5">
@@ -221,6 +259,18 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
                     </span>
                   )}
                 </div>
+                {c.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {c.tags.slice(0, 3).map(tag => (
+                      <span
+                        key={tag}
+                        className={`${tagColor(tag)} text-white text-[9px] px-1.5 py-0.5 rounded-full leading-tight`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </button>
           )
