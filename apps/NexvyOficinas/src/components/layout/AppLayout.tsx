@@ -47,6 +47,7 @@ const salesNav: NavItem[] = [
   { to: '/metas', label: 'Metas', icon: Trophy, orange: true },
   { to: '/inbox', label: 'Inbox WhatsApp', icon: MessageSquare, orange: true },
   { to: '/inbox/metrics', label: 'Métricas Inbox', icon: BarChart2, orange: true },
+  { to: '/inbox/my-stats', label: 'Meu Desempenho', icon: Trophy, orange: true },
 ]
 
 const bottomNav: NavItem[] = [
