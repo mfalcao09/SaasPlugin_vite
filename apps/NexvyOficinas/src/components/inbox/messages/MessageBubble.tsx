@@ -4,6 +4,8 @@ import AudioBubble from './AudioBubble'
 import VideoBubble from './VideoBubble'
 import DocumentBubble from './DocumentBubble'
 import StickerBubble from './StickerBubble'
+import MessageActionsMenu from '../MessageActionsMenu'
+import MessageReactions from '../MessageReactions'
 
 /** Interface compartilhada de mensagem do inbox (lida de inbox_messages) */
 export interface InboxMessage {
@@ -115,9 +117,11 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
         </button>
       )}
 
+      {/* Wrapper coluna: bubble + reactions empilhados */}
+      <div className="flex flex-col max-w-[72%]">
       <div
         className={[
-          'max-w-[72%] rounded-2xl px-3 py-2 text-sm transition-opacity',
+          'relative rounded-2xl px-3 py-2 text-sm transition-opacity',
           // Transparência quando apagada — diferencia visualmente das mensagens ativas
           message.is_deleted ? 'opacity-50' : '',
           isOutbound
@@ -161,7 +165,20 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
           // Tachado quando apagada — conteúdo original permanece visível para contexto
           <p className={`whitespace-pre-wrap break-words ${message.is_deleted ? 'line-through' : ''}`}>
             {message.content}
+            {/* Sprint4 F5 — indicador de edição */}
+            {message.edited_at && !message.is_deleted && (
+              <span className="text-[10px] opacity-40 ml-1">(editado)</span>
+            )}
           </p>
+        )}
+
+        {/* Sprint4 F5 — menu de edição inline (só outbound + text + não deletado) */}
+        {isOutbound && message.content_type === 'text' && !message.is_deleted && message.content && (
+          <MessageActionsMenu
+            messageId={message.id}
+            currentContent={message.content}
+            onEdited={() => {/* Realtime UPDATE no ChatArea propaga automaticamente */}}
+          />
         )}
 
         {!['text', 'image', 'audio', 'video', 'document', 'sticker'].includes(message.content_type) && (
@@ -187,6 +204,12 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
           )}
         </div>
       </div>
+
+      {/* Sprint4 F6 — Emoji reactions (abaixo da bubble) */}
+      {!message.is_deleted && (
+        <MessageReactions messageId={message.id} />
+      )}
+      </div>{/* fim wrapper coluna */}
 
       {/* Botão reply — lado direito para mensagens outbound */}
       {isOutbound && onReply && (
