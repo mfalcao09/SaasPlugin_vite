@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 import Composer from './composer/Composer'
 import AcceptTicketBar from './AcceptTicketBar'
-import TransferConversationDialog from './TransferConversationDialog'
+import TransferDialog from './TransferDialog'
 import MessageSearchBar from './MessageSearchBar'
 import { useInboxNotifications } from '@/hooks/useInboxNotifications'
 import { useTypingIndicator } from '@/hooks/useTypingIndicator'
@@ -554,10 +554,12 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
         </>
       )}
 
-      {/* Transfer Dialog */}
-      {showTransferDialog && (
-        <TransferConversationDialog
+      {/* Transfer Dialog — Sprint8 F3: novo dialog com motivo + notificação */}
+      {showTransferDialog && empresaId && (
+        <TransferDialog
           conversationId={conversationId}
+          empresaId={empresaId}
+          currentAssignedId={conversation.assigned_user_id}
           onClose={() => setShowTransferDialog(false)}
         />
       )}
