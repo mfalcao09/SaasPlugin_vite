@@ -20,6 +20,7 @@ import Leads from '@/pages/app/Leads'
 import Cadencia from '@/pages/app/Cadencia'
 import Metas from '@/pages/app/Metas'
 import Inbox from '@/pages/app/Inbox'
+import InboxMetrics from '@/pages/app/InboxMetrics'
 
 const queryClient = new QueryClient()
 
@@ -53,6 +54,7 @@ function PrivateRoutes() {
         <Route path="leads" element={<Leads />} />
         <Route path="cadencia" element={<Cadencia />} />
         <Route path="metas" element={<Metas />} />
+        <Route path="inbox/metrics" element={<InboxMetrics />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="inbox/:conversationId" element={<Inbox />} />
       </Route>

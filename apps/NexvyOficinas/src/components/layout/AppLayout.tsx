@@ -45,6 +45,7 @@ const salesNav: NavItem[] = [
   { to: '/cadencia', label: 'Cadência', icon: Zap, orange: true },
   { to: '/metas', label: 'Metas', icon: Trophy, orange: true },
   { to: '/inbox', label: 'Inbox WhatsApp', icon: MessageSquare, orange: true },
+  { to: '/inbox/metrics', label: 'Métricas Inbox', icon: BarChart2, orange: true },
 ]
 
 const bottomNav: NavItem[] = [
