@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { MessageCircle, Search } from 'lucide-react'
+import { MessageCircle, Search, PlusCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import ContactAvatar from './ContactAvatar'
+import NewConversationDialog from './NewConversationDialog'
 
 interface Conversation {
   id: string
   contact_phone: string
   contact_name: string | null
+  contact_avatar_url: string | null
   status: string
   last_message_content: string | null
   last_message_sender_type: string | null
@@ -46,6 +49,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('all')
+  const [showNewDialog, setShowNewDialog] = useState(false)
 
   useEffect(() => {
     if (!empresaId) return
@@ -54,7 +58,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     async function load() {
       const { data } = await supabase
         .from('inbox_conversations')
-        .select('id,contact_phone,contact_name,status,last_message_content,last_message_sender_type,last_message_at,unread_count')
+        .select('id,contact_phone,contact_name,contact_avatar_url,status,last_message_content,last_message_sender_type,last_message_at,unread_count')
         .eq('empresa_id', empresaId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(100)
@@ -108,11 +112,26 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
           <MessageCircle className="h-5 w-5 text-orange-400" />
           <span className="font-semibold text-white">WhatsApp</span>
           {totalUnread > 0 && (
-            <Badge className="ml-auto bg-orange-600 text-white text-xs">
+            <Badge className="bg-orange-600 text-white text-xs">
               {totalUnread}
             </Badge>
           )}
+          {/* Sprint4 F2+F3 — botão Nova conversa */}
+          <button
+            onClick={() => empresaId && setShowNewDialog(true)}
+            className="ml-auto p-1 text-slate-400 hover:text-orange-400 transition-colors"
+            title="Nova conversa"
+          >
+            <PlusCircle className="h-4 w-4" />
+          </button>
         </div>
+        {/* Sprint4 F3 — dialog nova conversa */}
+        {showNewDialog && empresaId && (
+          <NewConversationDialog
+            onClose={() => setShowNewDialog(false)}
+            empresaId={empresaId}
+          />
+        )}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
@@ -188,9 +207,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
                   : 'hover:bg-slate-800 border-l-2 border-transparent',
               ].join(' ')}
             >
-              <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center shrink-0 text-sm font-bold text-white">
-                {name[0]?.toUpperCase() ?? '?'}
-              </div>
+              <ContactAvatar size="lg" avatarUrl={c.contact_avatar_url} name={name} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
                   <span className="font-medium text-sm text-white truncate">{name}</span>

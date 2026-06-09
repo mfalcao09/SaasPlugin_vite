@@ -10,11 +10,13 @@ import MessageSearchBar from './MessageSearchBar'
 import { useInboxNotifications } from '@/hooks/useInboxNotifications'
 import { useTypingIndicator } from '@/hooks/useTypingIndicator'
 import TypingIndicator from './TypingIndicator'
+import ContactAvatar from './ContactAvatar'
 
 interface Conversation {
   id: string
   contact_phone: string
   contact_name: string | null
+  contact_avatar_url: string | null
   status: string
   evolution_instance_id: string
   bot_paused: boolean
@@ -72,7 +74,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
     supabase
       .from('inbox_conversations')
-      .select('id,contact_phone,contact_name,status,evolution_instance_id,bot_paused')
+      .select('id,contact_phone,contact_name,contact_avatar_url,status,evolution_instance_id,bot_paused')
       .eq('id', conversationId)
       .single()
       .then(({ data }) => {
@@ -314,9 +316,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
-          {name[0]?.toUpperCase() ?? '?'}
-        </div>
+        <ContactAvatar size="lg" avatarUrl={conversation.contact_avatar_url} name={name} />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-white text-sm truncate">{name}</p>
           <p className="text-xs text-slate-400">+{conversation.contact_phone}</p>
