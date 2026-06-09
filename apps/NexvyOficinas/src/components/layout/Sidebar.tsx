@@ -19,7 +19,8 @@ import {
   DollarSign,
   Shield,
   MessageSquare,
-  CalendarCheck
+  CalendarCheck,
+  Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/Logo';
@@ -172,6 +173,14 @@ export function Sidebar({
 
       {/* Bottom Actions */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
+        {/* ERP Oficina */}
+        <Link
+          to="/oficina"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          <Wrench size={20} className="text-orange-400" />
+          {!collapsed && <span className="text-sm">ERP Oficina</span>}
+        </Link>
         {/* Super Admin Link */}
         {showSuperAdminLink && (
           <Link

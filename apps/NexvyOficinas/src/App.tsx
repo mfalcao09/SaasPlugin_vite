@@ -37,6 +37,14 @@ const Updates = lazyWithRetry(() => import("./pages/Updates"));
 const Unsubscribe = lazyWithRetry(() => import("./pages/Unsubscribe"));
 const Docs = lazyWithRetry(() => import("./pages/Docs"));
 
+// ERP Oficina (Clientes, Veículos, OS, Orçamentos, Financeiro)
+const OficinaDashboard = lazyWithRetry(() => import("./pages/oficina/Dashboard"));
+const OficinaClientes = lazyWithRetry(() => import("./pages/oficina/Clientes"));
+const OficinaVeiculos = lazyWithRetry(() => import("./pages/oficina/Veiculos"));
+const OficinaOrdens = lazyWithRetry(() => import("./pages/oficina/Ordens"));
+const OficinaOrcamentos = lazyWithRetry(() => import("./pages/oficina/Orcamentos"));
+const OficinaFinanceiro = lazyWithRetry(() => import("./pages/oficina/Financeiro"));
+
 // Global loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -181,8 +189,15 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/perfil" 
+              {/* ERP Oficina */}
+              <Route path="/oficina" element={<ProtectedRoute><OficinaDashboard /></ProtectedRoute>} />
+              <Route path="/oficina/clientes" element={<ProtectedRoute><OficinaClientes /></ProtectedRoute>} />
+              <Route path="/oficina/veiculos" element={<ProtectedRoute><OficinaVeiculos /></ProtectedRoute>} />
+              <Route path="/oficina/ordens" element={<ProtectedRoute><OficinaOrdens /></ProtectedRoute>} />
+              <Route path="/oficina/orcamentos" element={<ProtectedRoute><OficinaOrcamentos /></ProtectedRoute>} />
+              <Route path="/oficina/financeiro" element={<ProtectedRoute><OficinaFinanceiro /></ProtectedRoute>} />
+              <Route
+                path="/perfil"
                 element={
                   <ProtectedRoute>
                     <Profile />

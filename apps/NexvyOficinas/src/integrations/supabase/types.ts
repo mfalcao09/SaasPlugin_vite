@@ -3455,6 +3455,59 @@ export type Database = {
           },
         ]
       }
+      clientes: {
+        Row: {
+          cpf_cnpj: string | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          organization_id: string
+          status: string
+          tags: string[] | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          organization_id: string
+          status?: string
+          tags?: string[] | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          organization_id?: string
+          status?: string
+          tags?: string[] | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_rules: {
         Row: {
           applies_to: string | null
@@ -5288,6 +5341,75 @@ export type Database = {
           },
         ]
       }
+      lancamentos: {
+        Row: {
+          categoria: string | null
+          cliente_id: string | null
+          created_at: string
+          data: string | null
+          descricao: string
+          forma: string | null
+          id: string
+          observacoes: string | null
+          orcamento_id: string | null
+          organization_id: string
+          os_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          data?: string | null
+          descricao: string
+          forma?: string | null
+          id?: string
+          observacoes?: string | null
+          orcamento_id?: string | null
+          organization_id: string
+          os_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          data?: string | null
+          descricao?: string
+          forma?: string | null
+          id?: string
+          observacoes?: string | null
+          orcamento_id?: string | null
+          organization_id?: string
+          os_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_notes: {
         Row: {
           author_id: string
@@ -6501,6 +6623,88 @@ export type Database = {
         }
         Relationships: []
       }
+      orcamentos: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string | null
+          convertido_em_os: boolean
+          created_at: string
+          data: string | null
+          id: string
+          itens: Json | null
+          numero: string | null
+          observacoes: string | null
+          organization_id: string
+          os_id: string | null
+          status: string
+          total: number | null
+          updated_at: string
+          validade: string | null
+          veiculo_desc: string | null
+          veiculo_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          convertido_em_os?: boolean
+          created_at?: string
+          data?: string | null
+          id?: string
+          itens?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          organization_id: string
+          os_id?: string | null
+          status?: string
+          total?: number | null
+          updated_at?: string
+          validade?: string | null
+          veiculo_desc?: string | null
+          veiculo_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          convertido_em_os?: boolean
+          created_at?: string
+          data?: string | null
+          id?: string
+          itens?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          organization_id?: string
+          os_id?: string | null
+          status?: string
+          total?: number | null
+          updated_at?: string
+          validade?: string | null
+          veiculo_desc?: string | null
+          veiculo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orchestration_logs: {
         Row: {
           action: string
@@ -6587,6 +6791,100 @@ export type Database = {
             columns: ["produto_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          data_abertura: string | null
+          data_conclusao: string | null
+          data_prevista: string | null
+          id: string
+          itens: Json | null
+          numero: string | null
+          observacoes: string | null
+          orcamento_id: string | null
+          organization_id: string
+          pagamento_status: string
+          prioridade: string
+          status: string
+          tecnico: string | null
+          tecnico_id: string | null
+          total: number | null
+          updated_at: string
+          veiculo_desc: string | null
+          veiculo_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_abertura?: string | null
+          data_conclusao?: string | null
+          data_prevista?: string | null
+          id?: string
+          itens?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          orcamento_id?: string | null
+          organization_id: string
+          pagamento_status?: string
+          prioridade?: string
+          status?: string
+          tecnico?: string | null
+          tecnico_id?: string | null
+          total?: number | null
+          updated_at?: string
+          veiculo_desc?: string | null
+          veiculo_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_abertura?: string | null
+          data_conclusao?: string | null
+          data_prevista?: string | null
+          id?: string
+          itens?: Json | null
+          numero?: string | null
+          observacoes?: string | null
+          orcamento_id?: string | null
+          organization_id?: string
+          pagamento_status?: string
+          prioridade?: string
+          status?: string
+          tecnico?: string | null
+          tecnico_id?: string | null
+          total?: number | null
+          updated_at?: string
+          veiculo_desc?: string | null
+          veiculo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "veiculos"
             referencedColumns: ["id"]
           },
         ]
@@ -10240,6 +10538,75 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "public_booking_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      veiculos: {
+        Row: {
+          ano: number | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cor: string | null
+          created_at: string
+          id: string
+          marca: string | null
+          modelo: string | null
+          observacoes: string | null
+          organization_id: string
+          placa: string | null
+          proxima_revisao: string | null
+          quilometragem: number | null
+          ultima_revisao: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano?: number | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cor?: string | null
+          created_at?: string
+          id?: string
+          marca?: string | null
+          modelo?: string | null
+          observacoes?: string | null
+          organization_id: string
+          placa?: string | null
+          proxima_revisao?: string | null
+          quilometragem?: number | null
+          ultima_revisao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano?: number | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cor?: string | null
+          created_at?: string
+          id?: string
+          marca?: string | null
+          modelo?: string | null
+          observacoes?: string | null
+          organization_id?: string
+          placa?: string | null
+          proxima_revisao?: string | null
+          quilometragem?: number | null
+          ultima_revisao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "veiculos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "veiculos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
