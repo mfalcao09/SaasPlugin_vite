@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import ContactAvatar from './ContactAvatar'
 import NewConversationDialog from './NewConversationDialog'
 import BroadcastDialog from './BroadcastDialog'
+import SlaIndicator from './SlaIndicator'
 
 interface Conversation {
   id: string
@@ -20,6 +21,9 @@ interface Conversation {
   unread_count: number
   assigned_user_id: string | null
   tags: string[]
+  /** Sprint7 F2 — SLA */
+  created_at: string
+  first_response_at: string | null
 }
 
 type TabKey = 'all' | 'waiting_human' | 'human_active' | 'closed' | 'mine'
@@ -63,6 +67,21 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('all')
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [showBroadcast, setShowBroadcast] = useState(false)
+  // Sprint7 F2 — SLA config da empresa
+  const [slaMinutes, setSlaMinutes] = useState(30)
+
+  // Sprint7 F2 — Carregar SLA config da empresa
+  useEffect(() => {
+    if (!empresaId) return
+    supabase
+      .from('empresas')
+      .select('sla_first_response_minutes')
+      .eq('id', empresaId)
+      .single()
+      .then(({ data }) => {
+        if (data?.sla_first_response_minutes) setSlaMinutes(data.sla_first_response_minutes)
+      })
+  }, [empresaId])
 
   useEffect(() => {
     if (!empresaId) return
@@ -71,7 +90,7 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
     async function load() {
       const { data } = await supabase
         .from('inbox_conversations')
-        .select('id,contact_phone,contact_name,contact_avatar_url,status,last_message_content,last_message_sender_type,last_message_at,unread_count,assigned_user_id,tags')
+        .select('id,contact_phone,contact_name,contact_avatar_url,status,last_message_content,last_message_sender_type,last_message_at,unread_count,assigned_user_id,tags,created_at,first_response_at')
         .eq('empresa_id', empresaId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(100)
@@ -249,7 +268,17 @@ export default function ConversationList({ selectedId, onSelect }: Props) {
                       <User2 className="h-3 w-3 text-slate-400 shrink-0" />
                     )}
                   </div>
-                  <span className="text-xs text-slate-500 shrink-0">{timeAgo(c.last_message_at)}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Sprint7 F2 — SLA indicator (só para conversas abertas) */}
+                    {c.status !== 'closed' && (
+                      <SlaIndicator
+                        createdAt={c.created_at}
+                        firstResponseAt={c.first_response_at}
+                        slaMinutes={slaMinutes}
+                      />
+                    )}
+                    <span className="text-xs text-slate-500">{timeAgo(c.last_message_at)}</span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between gap-1 mt-0.5">
                   <p className="text-xs text-slate-400 truncate">{preview}</p>
