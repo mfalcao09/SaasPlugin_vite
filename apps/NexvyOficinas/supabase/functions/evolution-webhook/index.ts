@@ -713,6 +713,34 @@ Deno.serve(async (req) => {
           .is("contact_name", null);
       }
 
+      // [v9] F5 Notificações — dispara 'new_conversation' para agente atribuído
+      if (!fromMe) {
+        const { data: newConv } = await supabase
+          .from("inbox_conversations")
+          .select("assigned_user_id, contact_name, contact_phone")
+          .eq("id", convId)
+          .single();
+
+        if (newConv?.assigned_user_id) {
+          const { count: prevMsgCount } = await supabase
+            .from("inbox_messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", convId);
+
+          if ((prevMsgCount ?? 0) === 0) {
+            const displayName = newConv.contact_name ?? newConv.contact_phone ?? "desconhecido";
+            const { error: notifErr } = await supabase.from("inbox_agent_notifications").insert({
+              empresa_id: instance.empresa_id,
+              user_id: newConv.assigned_user_id,
+              type: "new_conversation",
+              content: `Nova conversa atribuída: ${displayName}`,
+              conversation_id: convId,
+            });
+            if (notifErr) console.warn("[webhook] notif insert error:", notifErr.message);
+          }
+        }
+      }
+
       // [v8] F5 Keywords — verifica ANTES de bot_paused (prioridade máxima)
       // Só para mensagens de contato (inbound)
       if (!fromMe && content && contentType === "text") {

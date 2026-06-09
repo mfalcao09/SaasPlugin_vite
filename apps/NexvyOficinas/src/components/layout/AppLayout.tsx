@@ -20,6 +20,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import NotificationBell from '@/components/inbox/NotificationBell'
 
 interface NavItem {
   to: string
@@ -188,6 +189,8 @@ export default function AppLayout() {
           </button>
 
           <div className="flex-1" />
+
+          <NotificationBell />
 
           <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium uppercase tracking-wider">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
