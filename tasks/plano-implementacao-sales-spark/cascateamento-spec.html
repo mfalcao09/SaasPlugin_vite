@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spec de Cascateamento — sales-spark → 4 SaaS</title>
+<style>
+  :root{--bg:#0b1220;--bg2:#111827;--panel:#1a2235;--line:#283248;--txt:#e5edff;--mut:#8ea1c2;--orange:#f97316;--orange2:#fdba74;--green:#22c55e;--yellow:#eab308;--red:#ef4444;--blue:#60a5fa;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;line-height:1.55;}
+  .container{max-width:1100px;margin:0 auto;padding:40px 24px 80px;}
+  h1{color:var(--orange2);font-size:27px;margin:0 0 8px;letter-spacing:-0.02em;}
+  h2{color:var(--orange);font-size:21px;margin-top:44px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  h3{color:var(--orange2);font-size:16px;margin-top:24px;}
+  a{color:var(--orange2);text-decoration:none;} a:hover{text-decoration:underline;}
+  blockquote{background:var(--panel);border-left:4px solid var(--orange);margin:16px 0;padding:12px 18px;color:var(--mut);border-radius:6px;}
+  blockquote p{margin:4px 0;}
+  ul,ol{padding-left:22px;} li{margin:4px 0;}
+  code{background:#1f2a44;color:#fde2c8;padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.88em;}
+  pre{background:#0d1525;color:#e0e8f5;padding:14px 16px;border-radius:8px;overflow-x:auto;border:1px solid var(--line);font-size:0.85em;}
+  pre code{background:transparent;color:inherit;padding:0;}
+  table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--panel);border-radius:8px;overflow:hidden;}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;font-size:0.9em;vertical-align:top;}
+  th{background:#243149;color:var(--orange2);font-weight:600;}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  .tldr{background:linear-gradient(135deg,#1a2440 0%,#1e2b4a 100%);border:1px solid var(--orange);border-radius:12px;padding:18px 22px;margin:18px 0 28px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0;}
+  .rec{color:var(--green);font-weight:600;}
+  footer{text-align:center;color:var(--mut);margin-top:60px;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Spec de Cascateamento — sales-spark core → 4 SaaS</h1>
+<blockquote>
+  <p><strong>Data:</strong> 2026-06-09</p>
+  <p><strong>Premissa:</strong> o core (schema + edges + frontend + crons) está <strong>provado no NexvyOficinas</strong>. Cascatear = <strong>replicar o core idêntico</strong> + <strong>personalizar</strong> cada SaaS.</p>
+  <p><strong>Alvos:</strong> NexvyBeauty, BarbeiroPro, NexvyFoods, NexvyGYM (cascas hoje).</p>
+</blockquote>
+
+<div class="tldr">
+<h2 style="border:0;margin-top:0;">Você está certo — com 2 ressalvas</h2>
+<p>Sim: o trabalho pesado foi feito uma vez no Oficinas. O resto é <strong>replicação mecânica + personalização</strong>. Duas ressalvas que o spec trata:</p>
+<ol>
+  <li><strong>Cada casca tem um vertical-template diferente no banco</strong> (Beauty=agendamentos/pacotes, Foods=cardapio/entregas, GYM=alunos/checkins, Barbeiro=booking). No reset (DROP SCHEMA) somem e viram o schema sales-spark — precisa ser intencional (greenfield, como no Oficinas).</li>
+  <li><strong>Domínios + branding + secrets + super-admin são por-app</strong> — domínios ainda são placeholders nos templates Traefik. São as entradas que você fornece.</li>
+</ol>
+</div>
+
+<h2>1. Anatomia: IDÊNTICO vs PERSONALIZA</h2>
+<h3>CORE — idêntico nos 4 (replicação mecânica)</h3>
+<table>
+  <tr><th>Artefato</th><th>Fonte</th><th>Como aplica</th></tr>
+  <tr><td>Schema (161 tabelas, 415 policies, 11 enums)</td><td><code>baseline-schema.sql</code></td><td>reset + db query -f (vector/pg_trgm em public)</td></tr>
+  <tr><td>Extensions (10)</td><td>bootstrap.md</td><td>CREATE EXTENSION antes do schema</td></tr>
+  <tr><td>Seeds (4 planos, 7 cats, 3 forms, 1 release)</td><td><code>seeds.sql</code></td><td>por-tabela</td></tr>
+  <tr><td>Storage (12 buckets + 45 policies)</td><td><code>storage-setup.sql</code></td><td>db query -f</td></tr>
+  <tr><td>Realtime (6 tabelas)</td><td><code>rpc-and-realtime.md</code></td><td>ALTER PUBLICATION</td></tr>
+  <tr><td>Cron (10 jobs)</td><td><code>cron-webhooks.md</code></td><td>template idempotente</td></tr>
+  <tr><td>115 edge functions</td><td><code>NexvyOficinas/supabase/functions/</code></td><td>cp + functions deploy</td></tr>
+  <tr><td>Frontend (490 comp + 22 pages)</td><td><code>NexvyOficinas/src/</code></td><td>cp src → app alvo</td></tr>
+</table>
+<h3>PERSONALIZAÇÃO — por SaaS (entradas suas)</h3>
+<table>
+  <tr><th>Item</th><th>Onde</th><th>Quem define</th></tr>
+  <tr><td><strong>Domínio</strong></td><td>traefik template + DNS Cloudflare</td><td>você</td></tr>
+  <tr><td><strong>Branding</strong> (nome, cores, logo)</td><td><code>platform_settings</code> ou wizard</td><td>você</td></tr>
+  <tr><td><strong>Secrets</strong> (IA/email)</td><td><code>supabase secrets set</code> por project</td><td>você</td></tr>
+  <tr><td><strong>Super admin</strong></td><td>secret <code>SUPER_ADMIN_EMAIL</code></td><td>você</td></tr>
+  <tr><td><strong>Auth</strong> (Site URL/redirect)</td><td>dashboard/API por project</td><td>eu (com seu OK)</td></tr>
+  <tr><td><strong>Vertical de nicho</strong></td><td>tabelas + UI extras</td><td>decisão: agora/depois</td></tr>
+</table>
+
+<h2>2. Matriz dos 4 SaaS</h2>
+<table>
+  <tr><th>App</th><th>Container</th><th>Supabase ref</th><th>Domínio (definir)</th><th>Nicho</th><th>Vertical-template (será resetado)</th></tr>
+  <tr><td>NexvyBeauty</td><td>nexvy-beauty</td><td><code>fzhlbwhdejumkyqosuvq</code></td><td>? nexvybeauty.com.br</td><td>Salão</td><td>agendamentos, pacotes</td></tr>
+  <tr><td>BarbeiroPro</td><td>nexvy-barbeiro</td><td><code>hjgobmfvejdhrpeqyspa</code></td><td>? barbeiropro.com.br</td><td>Barbearia</td><td>booking</td></tr>
+  <tr><td>NexvyFoods</td><td>nexvy-foods</td><td><code>qautueaaqooyiyrgnxeg</code></td><td>? nexvyfoods.com.br</td><td>Restaurante</td><td>cardapio, entregas</td></tr>
+  <tr><td>NexvyGYM</td><td>nexvy-gym</td><td><code>zgxptkokuxgdpoowjuty</code></td><td>? nexvygym.com.br</td><td>Academia</td><td>alunos, checkins</td></tr>
+</table>
+
+<h2>3. Decisão: vertical de nicho — agora ou depois?</h2>
+<p>O sales-spark é CRM/atendimento genérico que serve qualquer nicho.</p>
+<table>
+  <tr><th>Estratégia</th><th>Entrega</th><th>Esforço/SaaS</th></tr>
+  <tr><td><strong class="rec">A — Core puro primeiro ⭐</strong></td><td>sales-spark completo + branding do nicho. 100% das funções, operante.</td><td>~0,5 sprint</td></tr>
+  <tr><td>B — Core + vertical</td><td>+ tabelas/UI específicas (Beauty: serviços; Foods: cardápio/delivery; GYM: treinos; Barbeiro: agenda cortes)</td><td>+1-2 sprints</td></tr>
+</table>
+<p><strong class="rec">Recomendação: A primeiro</strong> (4 SaaS operantes rápido), B depois por demanda. Mesma lógica do Oficinas.</p>
+
+<h2>4. Runbook parametrizado</h2>
+<pre><code>APP_DIR=NexvyBeauty
+SUPABASE_REF=fzhlbwhdejumkyqosuvq
+CONTAINER=nexvy-beauty
+DOMAIN=nexvybeauty.com.br
+PLATFORM_NAME="NexvyBeauty"
+SUPER_ADMIN_EMAIL=&lt;email&gt;</code></pre>
+<div class="card">
+<strong>Fase A — Banco (~10 min):</strong> link → extensions (vector/pg_trgm em public) → DROP SCHEMA → baseline-schema → grants → seeds → storage → realtime → cron.<br><br>
+<strong>Fase B — Edges (~8 min):</strong> cp functions → config.toml com ref → <code>functions deploy</code>.<br><br>
+<strong>Fase C — Frontend (~5 min):</strong> cp src → .env do project → branding (platform_settings) → npm build.<br><br>
+<strong>Fase D — Deploy + Auth:</strong> DNS → traefik template → <code>deploy-vps.sh</code> → secrets → Auth Site URL → super admin signup.
+</div>
+<p><strong>Automação proposta:</strong> empacotar Fases A-C num <code>infra/cascade-core.sh &lt;APP_DIR&gt; &lt;REF&gt; &lt;CONTAINER&gt; &lt;DOMAIN&gt;</code>. Fase D fica semi-manual (inputs seus).</p>
+
+<h2>5. O que preciso de você</h2>
+<table>
+  <tr><th>#</th><th>Input</th><th>Para</th></tr>
+  <tr><td>1</td><td><strong>Domínios</strong> dos 4 SaaS</td><td>DNS + Traefik + Auth</td></tr>
+  <tr><td>2</td><td><strong>Branding</strong> (nome, cor, logo)</td><td>platform_settings</td></tr>
+  <tr><td>3</td><td><strong>Secrets</strong> — 1 LOVABLE_API_KEY compartilhado ou por SaaS?</td><td>IA/email</td></tr>
+  <tr><td>4</td><td><strong>Super admin email</strong> por SaaS</td><td>bootstrap</td></tr>
+  <tr><td>5</td><td><strong>Vertical</strong>: estratégia A ou B agora?</td><td>escopo</td></tr>
+</table>
+
+<h2>6. Ordem & esforço</h2>
+<table>
+  <tr><th>SaaS</th><th>Ordem</th><th>Esforço (estratégia A)</th></tr>
+  <tr><td>NexvyBeauty</td><td>1º (valida runbook replicado)</td><td>~0,5 sprint</td></tr>
+  <tr><td>BarbeiroPro</td><td>2º</td><td>~0,3 sprint</td></tr>
+  <tr><td>NexvyFoods</td><td>3º</td><td>~0,3 sprint</td></tr>
+  <tr><td>NexvyGYM</td><td>4º</td><td>~0,3 sprint</td></tr>
+</table>
+<p>Total estratégia A: <strong>~1,5 sprint</strong> para os 4 operantes.</p>
+
+<h2>7. Riscos & validação</h2>
+<ul>
+  <li><strong>Reset apaga vertical-template da casca</strong> → confirmar greenfield de cada.</li>
+  <li><strong>DNS não propagado</strong> → Traefik não roteia. Validar <code>curl https://$DOMAIN</code>.</li>
+  <li><strong>Secrets ausentes</strong> → IA/email inertes (não bloqueia subir).</li>
+  <li><strong>Done por SaaS:</strong> curl HTTP 200 + login super admin + 161 tabelas no banco.</li>
+</ul>
+
+<div class="tldr">
+<h2 style="border:0;margin-top:0;">Conclusão</h2>
+<p>Cascateamento = <strong>80% replicação mecânica</strong> (core idêntico, runbook provado) + <strong>20% personalização</strong> (domínio/branding/secrets/super-admin). Estratégia A → 4 SaaS operantes em <strong>~1,5 sprint</strong>. Vertical de nicho é incremento posterior.</p>
+<p><strong>Próximo passo:</strong> você dá os 5 inputs da Seção 5 (pelo menos domínio + super-admin de 1 SaaS) e eu cascateio o NexvyBeauty primeiro, validando o runbook ponta a ponta antes de repetir nos outros 3.</p>
+</div>
+
+<footer>Gerado em 2026-06-09 — Spec de Cascateamento sales-spark core → 4 SaaS Nexvy.</footer>
+</div>
+</body>
+</html>

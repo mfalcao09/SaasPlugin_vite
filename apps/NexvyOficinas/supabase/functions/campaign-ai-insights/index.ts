@@ -7,8 +7,9 @@ const corsHeaders = {
 };
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { aiChatCompletionsUrl, aiApiKey } from "../_shared/ai.ts";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const LOVABLE_API_KEY = aiApiKey();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -81,7 +82,7 @@ ${JSON.stringify(summary, null, 2)}
 Retorne JSON estrito no formato:
 { "insights": [ { "title": "...", "recommendation": "..." } ] }`;
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch(aiChatCompletionsUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
       body: JSON.stringify({

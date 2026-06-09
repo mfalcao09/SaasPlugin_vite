@@ -442,11 +442,11 @@ async function callAI(
   monitoredProductIds: string[] | null,
   tools: any[] = TOOLS,
 ): Promise<string> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
   if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
   for (let i = 0; i < 4; i++) {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

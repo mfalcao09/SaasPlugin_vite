@@ -1141,7 +1141,7 @@ async function executeAction(
     case 'ai_agent_outreach': {
       if (!existingLeadId) throw new Error('No lead for AI outreach');
 
-      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+      const lovableApiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
       if (!lovableApiKey) {
         return { lead_id: existingLeadId, skipped: true, reason: 'LOVABLE_API_KEY not configured' };
       }
@@ -1254,7 +1254,7 @@ Valor do Deal: ${lead?.deal_value || 'Não definido'}
 ${formResponses ? `\nRespostas do Formulário:\n${formResponses}` : ''}`;
 
       // 6. Call AI to generate message
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const aiResponse = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${lovableApiKey}`,

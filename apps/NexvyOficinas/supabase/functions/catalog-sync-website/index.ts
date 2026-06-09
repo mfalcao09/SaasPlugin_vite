@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-    const aiKey = Deno.env.get("LOVABLE_API_KEY");
+    const aiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Firecrawl not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
         if (!markdown) { failed++; continue; }
 
         // Extract via Lovable AI (tool calling pra structured output)
-        const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const extractRes = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${aiKey}`,

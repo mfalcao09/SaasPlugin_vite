@@ -1,6 +1,59 @@
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
+interface OutboundEmail {
+  run_id?: string
+  to: string
+  from: string
+  sender_domain?: string
+  subject: string
+  html: string
+  text?: string
+  purpose?: string
+  label?: string
+  idempotency_key?: string
+  unsubscribe_token?: string
+  message_id?: string
+}
+
+// Envio de email desacoplado do Lovable.
+// Preferência: Resend (quando RESEND_API_KEY existe) — mesmo padrão usado em
+// daily-report-ai / webhook-receiver. Senão, cai no @lovable.dev/email-js com
+// sendUrl env-driven (EMAIL_SEND_URL ?? LOVABLE_SEND_URL) como fallback.
+async function sendEmail(email: OutboundEmail, apiKey: string): Promise<void> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (resendApiKey) {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${resendApiKey}`,
+        ...(email.idempotency_key ? { 'Idempotency-Key': email.idempotency_key } : {}),
+      },
+      body: JSON.stringify({
+        from: email.from,
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+        ...(email.text ? { text: email.text } : {}),
+      }),
+    })
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '')
+      const err = new Error(`Resend ${resp.status}: ${body.slice(0, 300)}`) as Error & { status: number }
+      err.status = resp.status
+      throw err
+    }
+    return
+  }
+
+  // Fallback: Lovable email lib, com sendUrl env-driven.
+  await sendLovableEmail(email, {
+    apiKey,
+    sendUrl: Deno.env.get('EMAIL_SEND_URL') ?? Deno.env.get('LOVABLE_SEND_URL'),
+  })
+}
+
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
 const DEFAULT_SEND_DELAY_MS = 200
@@ -79,11 +132,13 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  // Chave do provedor de email para o fallback Lovable (não usada quando Resend está ativo).
+  const apiKey = Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY') ?? ''
+  const hasEmailProvider = Boolean(Deno.env.get('RESEND_API_KEY')) || Boolean(apiKey)
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
+  if (!hasEmailProvider || !supabaseUrl || !supabaseServiceKey) {
     console.error('Missing required environment variables')
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),
@@ -249,7 +304,7 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
+        await sendEmail(
           {
             run_id: payload.run_id,
             to: payload.to,
@@ -264,10 +319,7 @@ Deno.serve(async (req) => {
             unsubscribe_token: payload.unsubscribe_token,
             message_id: payload.message_id,
           },
-          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
-          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
-          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
+          apiKey
         )
 
         // Log success

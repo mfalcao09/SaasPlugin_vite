@@ -2,7 +2,10 @@
 // + org_ai_credentials. Falls back to Lovable AI Gateway when external key missing
 // (only if fallback_to_lovable=true).
 
-const LOVABLE_GATEWAY = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+import { aiChatCompletionsUrl, aiApiKey } from './ai.ts';
+
+// Gateway env-driven (default OpenRouter). Antes apontava fixo pro Lovable.
+const LOVABLE_GATEWAY = aiChatCompletionsUrl();
 const OPENAI_CHAT_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_EMBEDDINGS_ENDPOINT = 'https://api.openai.com/v1/embeddings';
 const OPENAI_TRANSCRIPTIONS_ENDPOINT = 'https://api.openai.com/v1/audio/transcriptions';
@@ -85,7 +88,7 @@ export async function resolveAIConfig(
   /** Optional model hint from caller. Will be adapted if provider differs. */
   preferredModel?: string,
 ): Promise<ResolvedAIConfig> {
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY') || '';
+  const lovableKey = aiApiKey();
   const lovableConfig: ResolvedAIConfig = {
     endpoint: LOVABLE_GATEWAY,
     headers: {

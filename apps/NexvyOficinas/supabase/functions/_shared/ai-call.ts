@@ -1,10 +1,13 @@
 // High-level AI call helper that automatically uses the org's routing config
-// (OpenAI direct or Lovable Gateway) and applies fallback when allowed.
-// Drop-in replacement for raw fetch() to ai.gateway.lovable.dev/v1/chat/completions.
+// (OpenAI direct or the env-driven AI gateway) and applies fallback when allowed.
+// Drop-in replacement for raw fetch() to the gateway's /v1/chat/completions endpoint.
+// Gateway base URL/key vêm de AI_GATEWAY_URL / AI_API_KEY (ver _shared/ai.ts).
 
 import { resolveAIConfig, logAIConfig, prepareAIRequestBody, ResolvedAIConfig, AICapability } from './ai-router.ts';
+import { aiChatCompletionsUrl, aiApiKey } from './ai.ts';
 
-const LOVABLE_GATEWAY = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+// Gateway env-driven (default OpenRouter). Antes apontava fixo pro Lovable.
+const LOVABLE_GATEWAY = aiChatCompletionsUrl();
 
 export interface AICallOptions {
   organizationId?: string | null;
@@ -22,7 +25,7 @@ export interface AICallOptions {
 }
 
 async function lovableFallbackResponse(model: string, body: Record<string, any>) {
-  const lovableKey = Deno.env.get('LOVABLE_API_KEY') ?? '';
+  const lovableKey = aiApiKey();
   return await fetch(LOVABLE_GATEWAY, {
     method: 'POST',
     headers: {
@@ -53,7 +56,7 @@ export async function aiChat(opts: AICallOptions): Promise<{
   if (supabase && organizationId) {
     cfg = await resolveAIConfig(supabase, organizationId, capability, model);
   } else {
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY') ?? '';
+    const lovableKey = aiApiKey();
     cfg = {
       endpoint: LOVABLE_GATEWAY,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lovableKey}` },

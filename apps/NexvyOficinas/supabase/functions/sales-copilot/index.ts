@@ -236,10 +236,10 @@ O QUE NUNCA FAZER
     const doCall = async (useFallback = false) => {
       const callCfg = useFallback
         ? {
-            endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+            endpoint: `${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`,
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${Deno.env.get('LOVABLE_API_KEY') ?? ''}`,
+              Authorization: `Bearer ${(Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY')) ?? ''}`,
             },
             model: 'google/gemini-2.5-flash',
           }

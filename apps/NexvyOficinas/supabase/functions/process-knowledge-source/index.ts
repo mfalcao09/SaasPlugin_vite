@@ -101,14 +101,14 @@ async function extractWebsiteContent(url: string): Promise<{ title: string; cont
 
 // Use Lovable AI to generate transcript summary for YouTube (since we can't get actual transcript)
 async function generateYouTubeSummary(videoInfo: any, videoId: string): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const LOVABLE_API_KEY = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
   
   if (!LOVABLE_API_KEY) {
     return `Vídeo: ${videoInfo.title}\nAutor: ${videoInfo.author_name}\n\nNota: Transcrição automática não disponível. Adicione manualmente os pontos-chave do vídeo.`;
   }
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,

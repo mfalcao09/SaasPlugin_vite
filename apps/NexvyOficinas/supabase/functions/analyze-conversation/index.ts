@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { aiChatCompletionsUrl, aiApiKey } from "../_shared/ai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,8 +50,8 @@ serve(async (req) => {
       .map((m: any) => `[${m.sender_type || m.direction}]: ${m.content}`)
       .join("\n");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const LOVABLE_API_KEY = aiApiKey();
+    if (!LOVABLE_API_KEY) throw new Error("AI_API_KEY (ou LOVABLE_API_KEY) not configured");
 
     const prompt = `Analise a seguinte conversa de atendimento comercial para o produto "${productName}".
 
@@ -59,7 +60,7 @@ ${transcript}
 
 Retorne a análise usando a ferramenta analyze_conversation.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(aiChatCompletionsUrl(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,

@@ -4,6 +4,7 @@
 // O roteador `org_ai_routing` decide qual provedor usar para cada capacidade.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiApiKey } from "./ai.ts";
 
 export type AICapability =
   | "agent_chat"
@@ -63,8 +64,8 @@ export async function resolveAIProvider(
 
   // 2) Resolve a chave.
   if (wanted.provider === "lovable") {
-    const key = Deno.env.get("LOVABLE_API_KEY");
-    if (!key) throw new Error("LOVABLE_API_KEY não configurada na plataforma");
+    const key = aiApiKey();
+    if (!key) throw new Error("AI_API_KEY (ou LOVABLE_API_KEY) não configurada na plataforma");
     return { provider: "lovable", apiKey: key, model: wanted.model, fallbackToLovable: false };
   }
 
@@ -94,7 +95,7 @@ export async function resolveAIProvider(
 
   // Fallback automático para Lovable AI.
   if (wanted.fallback) {
-    const lovKey = Deno.env.get("LOVABLE_API_KEY");
+    const lovKey = aiApiKey();
     if (lovKey) {
       console.warn(`[ai-credentials] org ${organizationId} pediu ${wanted.provider} para ${capability} mas não tem chave — usando Lovable AI`);
       return { provider: "lovable", apiKey: lovKey, model: DEFAULT_ROUTING[capability].model, fallbackToLovable: false };

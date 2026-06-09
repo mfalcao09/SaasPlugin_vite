@@ -33,7 +33,7 @@ async function llmFallback(
     description?: string;
   }>,
 ): Promise<{ specialist_id: string; reason: string } | null> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
   if (!apiKey || specialists.length === 0) return null;
 
   const conversationSnippet = (context.recent_messages ?? [])
@@ -68,7 +68,7 @@ ${
 
   try {
     const resp = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      `${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`,
       {
         method: "POST",
         headers: {

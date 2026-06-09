@@ -32,7 +32,7 @@ async function judgeConversation(
   }Conversa:\n${transcript.slice(0, 12000)}`;
 
   const resp = await fetch(
-    "https://ai.gateway.lovable.dev/v1/chat/completions",
+    `${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`,
     {
       method: "POST",
       headers: {
@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
     const body = (await req.json().catch(() => ({}))) as EvalRequest;

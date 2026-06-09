@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const LOVABLE_GATEWAY = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+const LOVABLE_GATEWAY = `${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`;
 const MODEL = 'google/gemini-2.5-flash';
 
 interface ScanFilters {
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
     if (!preview_only && !apiKey) {
       return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY não configurado no backend' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -246,7 +246,7 @@ async function fetchCandidates(supabase: any, orgId: string, f: ScanFilters) {
 }
 
 async function processScan(supabase: any, scanId: string, orgId: string, conversations: any[], actions: ActionsConfig) {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
   let hot = 0, warm = 0, cold = 0, lost = 0, analyzed = 0, potentialRev = 0;
 
   // Processar em batches de 8

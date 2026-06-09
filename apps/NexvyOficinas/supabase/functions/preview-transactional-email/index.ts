@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  const apiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'))
   if (!apiKey) {
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),

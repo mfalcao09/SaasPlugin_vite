@@ -48,7 +48,7 @@ serve(async (req) => {
     const { product_id, agent_type, custom_context, scope, optimize_field, current_value } =
       await req.json() as AgentGenerationRequest;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const LOVABLE_API_KEY = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'));
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -256,7 +256,7 @@ ${orgSupportMaterials ? `📚 MATERIAIS DE SUPORTE GLOBAIS:\n${orgSupportMateria
         handoff_triggers: "Sugira 3-5 situações em que o agente deve transferir para um humano.",
       };
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -396,7 +396,7 @@ NÃO retorne timing, splitting nem style — esses ficam no default do front (j�
       ? `Crie o agente ${agent_type.toUpperCase()} para o produto "${productCtx.name}" da ${orgName}. Use o cérebro do produto (descrição, ICP, objeções, pitch) para personalizar o additional_prompt. Use o template blindado como base.`
       : `Crie o agente ${agent_type.toUpperCase()} para a ${orgName}. Use o template blindado como base.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,

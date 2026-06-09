@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const lovableApiKey = (Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY'))!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const {
@@ -203,7 +203,7 @@ Telefone: ${leadPhone}
 Temperatura: ${lead?.temperature || "indefinida"}
 ${formResponses ? `\nRespostas do Formulário:\n${formResponses}` : ""}`;
 
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch(`${Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${lovableApiKey}`,
