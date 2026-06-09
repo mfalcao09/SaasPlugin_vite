@@ -578,6 +578,28 @@ Deno.serve(async (req) => {
               })
               .eq("id", pendingCsat.id);
             console.log(`[webhook] CSAT score=${csatScore} registrado para ${contactPhone}`);
+
+            // [v10] F2 Alertas — CSAT baixo (score <= 2)
+            if (csatScore <= 2) {
+              const { data: empAlert } = await supabase
+                .from("empresas")
+                .select("alert_low_csat, alert_phone")
+                .eq("id", instance.empresa_id)
+                .single();
+              if (
+                empAlert &&
+                (empAlert as { alert_low_csat?: boolean }).alert_low_csat &&
+                (empAlert as { alert_phone?: string }).alert_phone
+              ) {
+                const displayName = contactName ?? contactPhone;
+                await sendAlertWhatsApp({
+                  empresaId: instance.empresa_id as string,
+                  text: `⚠️ CSAT baixo (${csatScore}/5) de ${displayName}`,
+                  supabase,
+                });
+              }
+            }
+
             continue; // NÃO cria nova conversa
           }
         }
@@ -774,6 +796,8 @@ Deno.serve(async (req) => {
       }
 
       // [v9] F5 Notificações — dispara 'new_conversation' para agente atribuído
+      // [v10] F2 Alertas — dispara WhatsApp alert para empresa em nova conv (se configurado)
+      let isFirstMessage = false;
       if (!fromMe) {
         const { data: newConv } = await supabase
           .from("inbox_conversations")
@@ -781,22 +805,42 @@ Deno.serve(async (req) => {
           .eq("id", convId)
           .single();
 
-        if (newConv?.assigned_user_id) {
-          const { count: prevMsgCount } = await supabase
-            .from("inbox_messages")
-            .select("id", { count: "exact", head: true })
-            .eq("conversation_id", convId);
+        const { count: prevMsgCount } = await supabase
+          .from("inbox_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", convId);
+        isFirstMessage = (prevMsgCount ?? 0) === 0;
 
-          if ((prevMsgCount ?? 0) === 0) {
-            const displayName = newConv.contact_name ?? newConv.contact_phone ?? "desconhecido";
-            const { error: notifErr } = await supabase.from("inbox_agent_notifications").insert({
-              empresa_id: instance.empresa_id,
-              user_id: newConv.assigned_user_id,
-              type: "new_conversation",
-              content: `Nova conversa atribuída: ${displayName}`,
-              conversation_id: convId,
+        if (newConv?.assigned_user_id && isFirstMessage) {
+          const displayName = newConv.contact_name ?? newConv.contact_phone ?? "desconhecido";
+          const { error: notifErr } = await supabase.from("inbox_agent_notifications").insert({
+            empresa_id: instance.empresa_id,
+            user_id: newConv.assigned_user_id,
+            type: "new_conversation",
+            content: `Nova conversa atribuída: ${displayName}`,
+            conversation_id: convId,
+          });
+          if (notifErr) console.warn("[webhook] notif insert error:", notifErr.message);
+        }
+
+        // [v10] F2 Alertas — Trigger 1: Nova conversa
+        if (isFirstMessage) {
+          const { data: empAlert } = await supabase
+            .from("empresas")
+            .select("alert_new_conversation, alert_phone")
+            .eq("id", instance.empresa_id)
+            .single();
+          if (
+            empAlert &&
+            (empAlert as { alert_new_conversation?: boolean }).alert_new_conversation &&
+            (empAlert as { alert_phone?: string }).alert_phone
+          ) {
+            const displayName = newConv?.contact_name ?? newConv?.contact_phone ?? contactPhone;
+            await sendAlertWhatsApp({
+              empresaId: instance.empresa_id as string,
+              text: `📬 Nova conversa de ${displayName} (${contactPhone})`,
+              supabase,
             });
-            if (notifErr) console.warn("[webhook] notif insert error:", notifErr.message);
           }
         }
       }
@@ -994,6 +1038,43 @@ Deno.serve(async (req) => {
           convId: convId as string,
           supabase,
         }).catch(() => {});
+
+        // [v10] F2 Alertas — Trigger 3: Fila > threshold (debounce 5min via last_queue_alert_at)
+        if (isFirstMessage) {
+          const { data: empQ } = await supabase
+            .from("empresas")
+            .select("alert_queue_threshold, alert_phone, last_queue_alert_at")
+            .eq("id", instance.empresa_id)
+            .single();
+          const threshold = (empQ as { alert_queue_threshold?: number } | null)?.alert_queue_threshold ?? 0;
+          const alertPhone = (empQ as { alert_phone?: string } | null)?.alert_phone;
+          const lastAt = (empQ as { last_queue_alert_at?: string } | null)?.last_queue_alert_at;
+
+          if (threshold > 0 && alertPhone) {
+            const { count: waitingCount } = await supabase
+              .from("inbox_conversations")
+              .select("id", { count: "exact", head: true })
+              .eq("empresa_id", instance.empresa_id)
+              .eq("status", "waiting_human");
+
+            const count = waitingCount ?? 0;
+            if (count >= threshold) {
+              const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+              const lastAtMs = lastAt ? new Date(lastAt).getTime() : 0;
+              if (lastAtMs < fiveMinAgo) {
+                await sendAlertWhatsApp({
+                  empresaId: instance.empresa_id as string,
+                  text: `🔔 Fila: ${count} conversas aguardando atendimento`,
+                  supabase,
+                });
+                await supabase
+                  .from("empresas")
+                  .update({ last_queue_alert_at: new Date().toISOString() })
+                  .eq("id", instance.empresa_id);
+              }
+            }
+          }
+        }
       } else {
         // [v8] F2 SLA — set first_response_at na primeira mensagem do agente
         const { data: slaConv } = await supabase
