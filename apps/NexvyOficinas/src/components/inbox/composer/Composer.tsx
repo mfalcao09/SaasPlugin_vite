@@ -149,13 +149,13 @@ export default function Composer({ conversationId, disabled = false, placeholder
     setSending(true)
     try {
       if (composerMode === 'note') {
-        // Nota interna: INSERT direto no DB, sem chamar evolution-send
+        // Sprint8 F2 — Nota interna: INSERT direto no DB com content_type='internal_note', sem chamar Evolution API
         await supabase.from('inbox_messages').insert({
           conversation_id: conversationId,
           direction: 'outbound',
           sender_type: 'agent',
           content: text.trim(),
-          content_type: 'text',
+          content_type: 'internal_note',
           metadata: { is_internal: true },
           reply_to_message_id: replyingTo?.id ?? null,
         })

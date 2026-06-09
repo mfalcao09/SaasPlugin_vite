@@ -14,7 +14,7 @@ export interface InboxMessage {
   id: string
   sender_type: 'contact' | 'agent' | 'bot'
   content: string | null
-  content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'template'
+  content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'location' | 'contact' | 'template' | 'internal_note'
   metadata: Record<string, unknown> | null
   created_at: string
   /** True quando o remetente apagou a mensagem no WhatsApp. Soft-delete. */
@@ -76,15 +76,16 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
     : null
 
   // ── Nota interna — visual amber, centralizada no chat (não outbound/inbound) ──
-  if (isInternal) {
+  // Suporte tanto ao campo legado (metadata.is_internal) quanto ao novo content_type 'internal_note'
+  if (isInternal || message.content_type === 'internal_note') {
     return (
-      <div className="flex justify-center">
+      <div className="flex justify-center" id={`msg-${message.id}`}>
         <div className="max-w-[80%] rounded-xl px-3 py-2 text-sm bg-amber-900/40 border border-amber-700/50">
           <div className="flex items-center gap-1.5 mb-1 text-amber-400">
             <StickyNote className="h-3 w-3" />
             <span className="text-xs font-medium">Nota interna</span>
           </div>
-          <p className="text-amber-100 whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="text-amber-100 italic whitespace-pre-wrap break-words">{message.content}</p>
           <p className="text-xs mt-1 text-amber-400/60 text-right">{time}</p>
         </div>
       </div>
@@ -209,7 +210,7 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
           />
         )}
 
-        {!['text', 'image', 'audio', 'video', 'document', 'sticker', 'location', 'contact'].includes(message.content_type) && (
+        {!['text', 'image', 'audio', 'video', 'document', 'sticker', 'location', 'contact', 'internal_note'].includes(message.content_type) && (
           <p className={`italic opacity-70 ${message.is_deleted ? 'line-through' : ''}`}>
             [{message.content_type}] {message.content ?? 'mensagem não suportada'}
           </p>
