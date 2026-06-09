@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plano de Implementação 100% — sales-spark → SaaS Nexvy</title>
+<style>
+  :root{--bg:#0b1220;--bg2:#111827;--panel:#1a2235;--line:#283248;--txt:#e5edff;--mut:#8ea1c2;--orange:#f97316;--orange2:#fdba74;--green:#22c55e;--yellow:#eab308;--red:#ef4444;--blue:#60a5fa;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;line-height:1.55;}
+  .container{max-width:1100px;margin:0 auto;padding:40px 24px 80px;}
+  h1{color:var(--orange2);font-size:28px;margin:0 0 8px;letter-spacing:-0.02em;}
+  h2{color:var(--orange);font-size:22px;margin-top:46px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  h3{color:var(--orange2);font-size:17px;margin-top:26px;}
+  h4{color:var(--blue);font-size:15px;margin-top:18px;}
+  a{color:var(--orange2);text-decoration:none;} a:hover{text-decoration:underline;}
+  blockquote{background:var(--panel);border-left:4px solid var(--orange);margin:16px 0;padding:12px 18px;color:var(--mut);border-radius:6px;}
+  blockquote p{margin:4px 0;}
+  ul,ol{padding-left:22px;} li{margin:4px 0;}
+  code{background:#1f2a44;color:#fde2c8;padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em;}
+  pre{background:#0d1525;color:#e0e8f5;padding:14px 16px;border-radius:8px;overflow-x:auto;border:1px solid var(--line);font-size:0.86em;}
+  pre code{background:transparent;color:inherit;padding:0;}
+  table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--panel);border-radius:8px;overflow:hidden;}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;font-size:0.92em;vertical-align:top;}
+  th{background:#243149;color:var(--orange2);font-weight:600;}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  .tldr{background:linear-gradient(135deg,#1a2440 0%,#1e2b4a 100%);border:1px solid var(--orange);border-radius:12px;padding:18px 22px;margin:18px 0 28px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:12px 0;}
+  .warn{background:#2a1a0e;border:1px solid var(--orange);border-radius:10px;padding:16px;margin:14px 0;}
+  .rec{color:var(--green);font-weight:600;}
+  .xl{color:var(--red);font-weight:700;} .l{color:var(--yellow);font-weight:600;} .m{color:var(--blue);font-weight:600;}
+  .meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0;}
+  .meta-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;text-align:center;}
+  .meta-card .val{color:var(--orange2);font-size:24px;font-weight:700;}
+  .meta-card .label{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-top:4px;}
+  footer{text-align:center;color:var(--mut);margin-top:60px;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Plano de Implementação Completa (100%)</h1>
+<p style="color:var(--mut);font-size:15px;margin-top:0;">sales-spark → SaaS Nexvy — roadmap de migração total</p>
+
+<blockquote>
+  <p><strong>Data:</strong> 2026-06-09</p>
+  <p><strong>Objetivo:</strong> implementar 100% da ferramenta sales-spark (comprada) em todos os SaaS do ecossistema Nexvy.</p>
+  <p><strong>Premissa-mãe (corrigida):</strong> nada do sales-spark é "out of scope". Tudo entra. Métrica = "% implementado rumo a 100%" + "ordem de migração por dependência".</p>
+  <p><strong>Origem:</strong> <code>sales-spark-ai-47</code> — Supabase project <code>pfbjfhkhunzrgyzjgiuq</code><br>
+  <strong>Destino:</strong> <code>SaasPlugin_vite/apps/*</code> — 5 SaaS verticais</p>
+</blockquote>
+
+<h2>0. Correção de rota</h2>
+<div class="card">
+<p>O relatório de auditoria anterior classificou ~12 categorias do sales-spark como "out of scope / nunca virá / over-engineering". <strong>Isso estava errado</strong> — saiu de uma inferência não-solicitada de que módulos de CRM/venda/captura "não combinavam com a persona oficina". O sales-spark foi <strong>comprado para ser implementado a 100%</strong> em todos os SaaS. Este documento trata cada um dos 8 domínios como obrigatório e mede o que falta + em que ordem construir.</p>
+</div>
+
+<h2>1. Dimensão real do sales-spark</h2>
+<div class="meta-grid">
+  <div class="meta-card"><div class="val">139</div><div class="label">Tabelas</div></div>
+  <div class="meta-card"><div class="val">81</div><div class="label">Edge functions</div></div>
+  <div class="meta-card"><div class="val">~490</div><div class="label">Componentes</div></div>
+  <div class="meta-card"><div class="val">121</div><div class="label">Hooks</div></div>
+  <div class="meta-card"><div class="val">54</div><div class="label">Funções SQL</div></div>
+  <div class="meta-card"><div class="val">377</div><div class="label">RLS policies</div></div>
+</div>
+<p><strong>8 domínios:</strong> Multi-tenant · CRM · Atendimento · Captura · IA/Brain · Integrações · Booking · Plataforma. <strong>Stack:</strong> Vite + React + shadcn/ui + Supabase (mesma do NexvyOficinas — compatível). IA já é <strong>multi-LLM</strong> (lovable/openai/anthropic/gemini).</p>
+
+<h2>2. Estado atual dos 5 SaaS</h2>
+<table>
+  <tr><th>App</th><th>Components</th><th>Edge fns</th><th>Tabelas</th><th>Estado</th></tr>
+  <tr><td><strong>NexvyOficinas</strong></td><td>40</td><td>13</td><td>27</td><td><strong>Piloto</strong> — inbox maduro (supera sales-spark em CSAT/chatbot/keywords), CRM oficina próprio</td></tr>
+  <tr><td>BarbeiroPro</td><td>1</td><td>0</td><td>—</td><td>Casca (pages .jsx, sem backend)</td></tr>
+  <tr><td>NexvyBeauty</td><td>1</td><td>0</td><td>—</td><td>Casca</td></tr>
+  <tr><td>NexvyFoods</td><td>1</td><td>0</td><td>—</td><td>Casca</td></tr>
+  <tr><td>NexvyGYM</td><td>1</td><td>0</td><td>—</td><td>Casca</td></tr>
+  <tr><td>NexvyOficinasLP</td><td>29</td><td>0</td><td>—</td><td>Landing page</td></tr>
+</table>
+<p><strong>Implicação:</strong> só o NexvyOficinas tem sistema real. Os outros 4 recebem o núcleo <strong>depois</strong> que ele estiver provado no piloto. Plano: <strong>levar NexvyOficinas a 100% primeiro</strong>, depois replicar.</p>
+
+<h2>3. Mapa master de gap por domínio</h2>
+<table>
+  <tr><th>#</th><th>Domínio</th><th>Tabelas SS</th><th>% coberto</th><th>Comp.</th><th>Hooks</th><th>Complex.</th><th>Estado no Nexvy</th></tr>
+  <tr><td>1</td><td><strong>Multi-tenant</strong></td><td>8</td><td>25%</td><td>~25</td><td>14</td><td class="l">L</td><td>empresas≈orgs. Falta RBAC granular, squads, setores.</td></tr>
+  <tr><td>2</td><td><strong>CRM</strong></td><td>17</td><td>18%</td><td>~75</td><td>25</td><td class="xl">XL</td><td>leads/orcamentos parciais. Falta pipeline, deals, comissões, tarefas, objeções, radar.</td></tr>
+  <tr><td>3</td><td><strong>Atendimento</strong></td><td>17</td><td><strong>53%</strong></td><td>~55</td><td>12</td><td class="xl">XL</td><td><strong>Mais maduro.</strong> Falta webchat widget, agent configs IA, ticketing.</td></tr>
+  <tr><td>4</td><td><strong>Captura</strong></td><td>13</td><td><strong>0%</strong></td><td>~90</td><td>5</td><td class="l">L</td><td>Inexistente. Builders de funil/form/quiz do zero.</td></tr>
+  <tr><td>5</td><td><strong>IA/Brain</strong></td><td>22</td><td>5%</td><td>~32</td><td>13</td><td class="xl">XL</td><td>Só chatbot rule-based. Falta agentes IA, orquestrador, RAG, prompts A/B.</td></tr>
+  <tr><td>6</td><td><strong>Integrações</strong></td><td>22</td><td>9%</td><td>~60</td><td>18</td><td class="l">L</td><td>Falta Cakto, Hotmart, Sankhya, Facebook, webhooks, campanhas, cadências.</td></tr>
+  <tr><td>7</td><td><strong>Booking</strong></td><td>14</td><td>7%</td><td>~26</td><td>9</td><td class="m">M</td><td>Só office_hours. Falta motor de agendamento + Google Calendar.</td></tr>
+  <tr><td>8</td><td><strong>Plataforma</strong></td><td>25</td><td>12%</td><td>~75</td><td>22</td><td class="l">L</td><td>Falta superadmin, billing, help center, email, branding, PWA.</td></tr>
+  <tr><td></td><td><strong>TOTAL</strong></td><td><strong>~139</strong></td><td><strong>≈15%</strong></td><td><strong>~490</strong></td><td><strong>121</strong></td><td></td><td><strong>~118 tabelas faltam</strong></td></tr>
+</table>
+<p>Cobertura de <strong>nome exato</strong>: apenas 2 tabelas (<code>evolution_instances</code>, <code>message_reactions</code>). Todo o resto é equivalência conceitual ou gap.</p>
+
+<h2>4. ⚠️ Bloqueio P0 — recuperar o baseline de schema</h2>
+<div class="warn">
+<p><strong>Problema:</strong> o checkout local do sales-spark tem 210 migrations <strong>incrementais (deltas)</strong>, mas <strong>não tem o baseline consolidado</strong>. As tabelas-base (<code>organizations</code>, <code>profiles</code>, <code>leads</code>, <code>deals</code>, <code>pipeline_stages</code>, <code>funnels</code>…) <strong>não têm <code>CREATE TABLE</code> em nenhum arquivo</strong> — só aparecem como FK. Sem o baseline, ~80 tabelas e 7 dos 11 enums <strong>não têm DDL disponível</strong>.</p>
+<p><strong>Solução (executável):</strong> o sales-spark tem banco real ativo no project <code>pfbjfhkhunzrgyzjgiuq</code>. Recuperável via dump:</p>
+<pre><code>cd /Users/marcelosilva/Projects/sales-spark-ai-47
+supabase link --project-ref pfbjfhkhunzrgyzjgiuq
+supabase db dump --linked -f /tmp/sales-spark-baseline-schema.sql       # schema completo
+supabase db dump --linked --data-only -f /tmp/sales-spark-seeds.sql     # seeds</code></pre>
+<p><strong>Ação imediata:</strong> confirmar acesso ao project <code>pfbjfhkhunzrgyzjgiuq</code>. Se sim, destravo a Fase 0 hoje.</p>
+</div>
+
+<h2>5. Decisão de arquitetura — schema canônico vs vertical</h2>
+<p>O NexvyOficinas usa schema <strong>vertical de oficina</strong> (empresas/clientes/veiculos/ordens_servico). O sales-spark usa schema <strong>genérico CRM</strong> (organizations/profiles/leads/deals). Os 81 edges + 54 funções + 377 policies <strong>assumem o schema genérico</strong>, ancorado em <code>has_role(uuid, app_role)</code> + <code>organization_id</code>.</p>
+<table>
+  <tr><th>Rota</th><th>Descrição</th><th>Prós</th><th>Contras</th></tr>
+  <tr><td><strong class="rec">A — Adotar canônico ⭐</strong></td><td>Aplicar schema sales-spark completo como base. Domínio oficina vira extensão vertical.</td><td>81 edges + 54 funções + RLS <strong>sem reescrita</strong>. Multi-app trivial.</td><td>Reconciliar inbox já feito (empresas→organizations).</td></tr>
+  <tr><td>B — Manter oficina + portar</td><td>Manter empresas/etc. Trocar organization_id→empresa_id em 139 tabelas + reescrever 377 policies + 54 funções.</td><td>Preserva 100% do trabalho atual.</td><td><strong>Altíssimo risco/esforço.</strong> Inviável para 100%.</td></tr>
+  <tr><td>C — Híbrida (adapter)</td><td>Adotar canônico + camada de views expondo empresas como view de organizations.</td><td>Núcleo intacto + código atual via adapter.</td><td>Complexidade de manutenção; views limitam RLS.</td></tr>
+</table>
+<p><strong class="rec">Recomendação: Rota A.</strong> É a única que torna "migração 100%" viável no prazo — herda 81 edges + 54 funções + 377 policies prontos em vez de reescrevê-los. O domínio oficina (~6 tabelas) é re-pendurado sobre organizations. <strong>Decisão a validar antes da Fase 1.</strong></p>
+
+<h2>6. Estratégia multi-app (5 SaaS)</h2>
+<p>Cada SaaS tem seu próprio project Supabase. Para 100% em todos sem duplicar 490 componentes 5×:</p>
+<pre><code>SaasPlugin_vite/
+├── packages/
+│   ├── core-schema/     ← baseline sales-spark (139 tabelas)
+│   ├── core-ui/         ← ~490 components + 121 hooks compartilhados
+│   └── core-edges/      ← 81 edge functions
+├── apps/
+│   ├── NexvyOficinas/   ← core-* + vertical oficina (clientes/veiculos/ordens)
+│   ├── NexvyBeauty/     ← core-* + vertical beauty
+│   ├── BarbeiroPro/     ← core-* + vertical barbearia
+│   ├── NexvyFoods/      ← core-* + vertical food
+│   └── NexvyGYM/        ← core-* + vertical academia</code></pre>
+<p>Transforma "implementar 100% em 5 SaaS" em "implementar 100% no núcleo 1× + 5 camadas verticais finas".</p>
+
+<h2>7. Roadmap sequenciado por dependência</h2>
+<p>Unidade = <strong>sprint</strong> (≈6 features, padrão S7-S10). Foco: NexvyOficinas a 100%, depois replicação.</p>
+
+<div class="card">
+<h4>🔒 FASE 0 — Fundação (1 sprint) — bloqueante</h4>
+Recuperar baseline · decidir rota de schema · setup packages/core-* · aplicar baseline em staging · adapter ou migração de dados · CI multi-project.
+</div>
+<div class="card">
+<h4>FASE 1 — Multi-tenant & RBAC (2 sprints)</h4>
+<strong>1.1</strong> organizations, profiles, user_roles (app_role), user_permissions, has_role/is_super_admin/get_user_organization, guards de rota.<br>
+<strong>1.2</strong> sectors, squads, distribuição, disponibilidade, custom fields. UI: TeamManager, SquadManager.
+</div>
+<div class="card">
+<h4>FASE 2 — Atendimento → 100% (2 sprints)</h4>
+<strong>2.1</strong> reconciliar inbox_* ↔ webchat_conversations/messages/sessions + migrar dados (manter CSAT/keywords/chatbot/office_hours do Nexvy).<br>
+<strong>2.2</strong> webchat_widgets, webchat_agent_configs, support_tickets, enforce_single_attendant, locks. UI: AttendancePanel, AIResponseCorrector.
+</div>
+<div class="card">
+<h4>FASE 3 — CRM completo (4 sprints) — <span class="xl">XL</span></h4>
+<strong>3.1</strong> leads 360 (tags, notes, journey, queue) + ficha multi-abas.<br>
+<strong>3.2</strong> pipeline (deals, pipeline_stages, stage_values) + KanbanBoard.<br>
+<strong>3.3</strong> tasks, interactions, objections, commissions + calculate_commission, distribute_lead.<br>
+<strong>3.4</strong> radar de oportunidades, lead_transfer_history, OperationCenter, lead_semantic_memory (RAG).
+</div>
+<div class="card">
+<h4>FASE 4 — IA / Brain (4 sprints) — <span class="xl">XL</span></h4>
+<strong>4.1</strong> product_agents, editor de agente, generate-agent-ai.<br>
+<strong>4.2</strong> orquestrador (routing_rules, orchestrator_config, matriz produto×agente).<br>
+<strong>4.3</strong> Brain/RAG (knowledge_sources, embeddings, firecrawl, YouTube transcriber).<br>
+<strong>4.4</strong> prompts A/B, ai_quality, multi-LLM routing (keys server-side, Seção 11).
+</div>
+<div class="card">
+<h4>FASE 5 — Captura (3 sprints)</h4>
+<strong>5.1</strong> forms + FormBuilder + form-generate-ai + PublicForm.<br>
+<strong>5.2</strong> funnels + FlowCanvas + funnel-generate-ai.<br>
+<strong>5.3</strong> quiz builder, chat_flows, widgets, campaigns + páginas públicas.
+</div>
+<div class="card">
+<h4>FASE 6 — Integrações (3 sprints)</h4>
+<strong>6.1</strong> pagamentos (Cakto, Hotmart, Doppus) + tag automations + post-sale.<br>
+<strong>6.2</strong> webhooks, Facebook Leads, Sankhya ERP 2-way.<br>
+<strong>6.3</strong> campanhas + cadências + email mass (queue/suppression).
+</div>
+<div class="card">
+<h4>FASE 7 — Booking (2 sprints)</h4>
+<strong>7.1</strong> event_types, requests, business_hours/holidays, availability + páginas públicas.<br>
+<strong>7.2</strong> Google Calendar OAuth + sync + agendamento conversacional.
+</div>
+<div class="card">
+<h4>FASE 8 — Plataforma (3 sprints)</h4>
+<strong>8.1</strong> SuperAdmin (orgs, users, plans, subscriptions, billing, audit, health).<br>
+<strong>8.2</strong> help center, email infra, branding white-label.<br>
+<strong>8.3</strong> notificações, global search, shell mobile/PWA, onboarding guiado.
+</div>
+<div class="card">
+<h4>FASE 9 — Replicação multi-app (2 sprints)</h4>
+<strong>9.1</strong> aplicar baseline + core em Beauty/Barbeiro/Foods/GYM + verticais de cada.<br>
+<strong>9.2</strong> tema por app, deploy VPS dos 5 containers, smoke test multi-app.
+</div>
+
+<h2>8. Esforço total estimado</h2>
+<table>
+  <tr><th>Fase</th><th>Domínio</th><th>Sprints</th></tr>
+  <tr><td>0</td><td>Fundação</td><td>1</td></tr>
+  <tr><td>1</td><td>Multi-tenant & RBAC</td><td>2</td></tr>
+  <tr><td>2</td><td>Atendimento → 100%</td><td>2</td></tr>
+  <tr><td>3</td><td>CRM</td><td>4</td></tr>
+  <tr><td>4</td><td>IA/Brain</td><td>4</td></tr>
+  <tr><td>5</td><td>Captura</td><td>3</td></tr>
+  <tr><td>6</td><td>Integrações</td><td>3</td></tr>
+  <tr><td>7</td><td>Booking</td><td>2</td></tr>
+  <tr><td>8</td><td>Plataforma</td><td>3</td></tr>
+  <tr><td>9</td><td>Replicação multi-app</td><td>2</td></tr>
+  <tr><td></td><td><strong>TOTAL</strong></td><td><strong>~26 sprints</strong></td></tr>
+</table>
+<p><strong>Leitura honesta:</strong> é a reconstrução de um produto SaaS enterprise inteiro (139 tabelas, 81 edges, 490 componentes) + replicação em 5 verticais. ~26 sprints. No ritmo agêntico-paralelo (S7-S10 rodaram 24 features em 2 dias), é acelerável — mas é trabalho de <strong>meses</strong>. A Rota A comprime ~40% do backend ao herdar edges/funções/policies prontos.</p>
+
+<h2>9. Próximos passos imediatos</h2>
+<div class="tldr">
+<ol>
+  <li><strong>Confirmar acesso ao project <code>pfbjfhkhunzrgyzjgiuq</code></strong> → destrava o dump do baseline. Sem isso, ~80 tabelas não têm DDL.</li>
+  <li><strong>Decidir a Rota de schema</strong> (recomendo A — adotar canônico). Muda todo o resto.</li>
+  <li><strong>Decidir mono vs multi-repo</strong> para o núcleo (recomendo packages/ no monorepo atual).</li>
+  <li>Com 1-3 resolvidos → executar <strong>Fase 0</strong> e validar baseline em staging.</li>
+  <li>Seguir Fases 1→9 em ordem.</li>
+</ol>
+<p><strong>Decisão que preciso de você agora:</strong> itens 1, 2 e 3. São bifurcações que mudam o plano inteiro — não dá pra começar a Fase 1 sem eles. Respondidos, começo a Fase 0 imediatamente.</p>
+</div>
+
+<footer>
+Gerado em 2026-06-09 — Plano de Implementação 100% sales-spark → SaaS Nexvy.<br>
+Baseado em: docs oficiais do sales-spark (DATABASE.md + EDGE_FUNCTIONS.md), mapeamento de UI (8 domínios, ~490 comp) e gap de schema (139 tabelas vs 27).
+</footer>
+
+</div>
+</body>
+</html>

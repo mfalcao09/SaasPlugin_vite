@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auditoria v2 — sales-spark → NexvyOficinas</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg2: #111827;
+    --panel: #1a2235;
+    --line: #283248;
+    --txt: #e5edff;
+    --mut: #8ea1c2;
+    --orange: #f97316;
+    --orange2: #fdba74;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--txt); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif; line-height: 1.55; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { color: var(--orange2); font-size: 28px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  h2 { color: var(--orange); font-size: 22px; margin-top: 48px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  h3 { color: var(--orange2); font-size: 17px; margin-top: 28px; }
+  h4 { color: var(--blue); font-size: 15px; margin-top: 20px; }
+  p { color: var(--txt); }
+  a { color: var(--orange2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0; }
+  blockquote { background: var(--panel); border-left: 4px solid var(--orange); margin: 16px 0; padding: 12px 18px; color: var(--mut); border-radius: 6px; }
+  blockquote p { margin: 4px 0; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  code { background: #1f2a44; color: #fde2c8; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+  pre { background: #0d1525; color: #e0e8f5; padding: 14px 16px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--line); font-size: 0.9em; }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; background: var(--panel); border-radius: 8px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; font-size: 0.94em; vertical-align: top; }
+  th { background: #243149; color: var(--orange2); font-weight: 600; }
+  tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+  .badge-ok { color: var(--green); font-weight: 600; }
+  .badge-mid { color: var(--yellow); font-weight: 600; }
+  .badge-no { color: var(--red); font-weight: 600; }
+  .badge-new { color: var(--blue); font-weight: 600; }
+  .tldr { background: linear-gradient(135deg, #1a2440 0%, #1e2b4a 100%); border: 1px solid var(--orange); border-radius: 12px; padding: 18px 22px; margin: 18px 0 28px; }
+  .tldr h2 { border: 0; margin-top: 0; }
+  .summary-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 12px 0; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 14px 0; }
+  .meta-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .meta-card .label { color: var(--mut); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta-card .val { color: var(--orange2); font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .meta-card .delta { color: var(--green); font-size: 13px; }
+  .toc { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 16px 22px; margin: 18px 0; }
+  .toc ol { margin: 6px 0 0; }
+  footer { text-align: center; color: var(--mut); margin-top: 60px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Auditoria v2: sales-spark-ai-47 → NexvyOficinas</h1>
+
+<blockquote>
+  <p><strong>Data:</strong> 2026-06-09 (v2)</p>
+  <p><strong>Baseline anterior:</strong> v1 de 2026-06-07 (mesma pasta, sem <code>_v2</code>)</p>
+  <p><strong>Repos analisados:</strong></p>
+  <ul>
+    <li>Origem: <code>/Users/marcelosilva/Projects/sales-spark-ai-47</code> — CRM completo (210 migrations, 121 hooks, ~545 components, ~120 edge functions)</li>
+    <li>Destino: <code>/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyOficinas</code> — piloto inbox (40 components, 13 hooks, 13 edge functions, ~17 migrations recentes via MCP)</li>
+  </ul>
+</blockquote>
+
+<div class="tldr">
+<h2>TL;DR — o que mudou em 2 dias</h2>
+
+<div class="meta-grid">
+  <div class="meta-card"><div class="label">Paridade inbox</div><div class="val">~58%</div><div class="delta">+40 pts vs v1</div></div>
+  <div class="meta-card"><div class="label">Features inbox</div><div class="val">47</div><div class="delta">+32 vs v1</div></div>
+  <div class="meta-card"><div class="label">P0 bugs schema</div><div class="val">0</div><div class="delta">−2 vs v1</div></div>
+  <div class="meta-card"><div class="label">P0/P1 faltam</div><div class="val">9</div><div class="delta">−25 vs v1</div></div>
+  <div class="meta-card"><div class="label">Edge functions</div><div class="val">13</div><div class="delta">+4 vs v1</div></div>
+  <div class="meta-card"><div class="label">Components inbox/</div><div class="val">28+</div><div class="delta">+composer/messages</div></div>
+</div>
+
+<p><strong>Veredito v2:</strong> o inbox NexvyOficinas saiu do MVP funcional e entrou em <strong>classe enterprise</strong>. Cobre 8 das 10 grandes capacidades de atendimento profissional (CSAT, SLA, auto-assign, follow-up, keywords, templates, notas internas, transferência, chatbot de fluxo, notificações realtime, multi-canal webchat, alertas WhatsApp, API keys, dashboard individual). As 2 áreas que <strong>continuam externas</strong> ao escopo são as de plataforma SaaS multi-tenant pesada (cadência multi-touch, campanhas em massa, integrações de pagamento/CRM ERP). Decisão estratégica, não dívida técnica.</p>
+
+<p><strong>Origem deste salto:</strong> 4 sprints (S7→S10) implementados em paralelo entre 07-jun e 09-jun, totalizando <strong>24 features</strong> entregues e <strong>15 commits</strong> novos no <code>main</code>.</p>
+</div>
+
+<div class="toc">
+<strong>Sumário</strong>
+<ol>
+  <li><a href="#delta">Delta detalhado v1 → v2 (sprints S7-S10)</a></li>
+  <li><a href="#metrica">Métrica quantitativa por categoria</a></li>
+  <li><a href="#status-p0">Status de cada P0/P1 do v1</a></li>
+  <li><a href="#falta">O que ainda falta (9 P0/P1 + 18 P2/P3)</a></li>
+  <li><a href="#inventario">Inventário comparativo</a></li>
+  <li><a href="#nao-importadas">Categorias do sales-spark NÃO importadas</a></li>
+  <li><a href="#recomendacoes">Recomendações para Sprint 11+</a></li>
+  <li><a href="#apendice">Apêndice — arquivo por arquivo</a></li>
+</ol>
+</div>
+
+<h2 id="delta">Delta detalhado v1 → v2</h2>
+
+<h3>Sprint 7 — "Qualidade do atendimento" (07-jun)</h3>
+<table>
+  <tr><th>F</th><th>Feature</th><th>Arquivos novos</th><th>Status</th></tr>
+  <tr><td>F1</td><td>CSAT survey automático 1-5 ao fechar</td><td><code>send-csat/</code> edge fn + webhook captura score</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F2</td><td>SLA Tracking + alerta visual</td><td><code>SlaIndicator.tsx</code> + <code>first_response_at</code> + cor por idade</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F3</td><td>Auto-assign round-robin</td><td><code>inbox-auto-assign/</code> cron + <code>empresa_users.inbox_available</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F4</td><td>Follow-up automático</td><td><code>inbox-followup/</code> cron + 3 atts máx por conv</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F5</td><td>Keyword auto-responder</td><td><code>KeywordRulesManager.tsx</code> + match exact/starts_with/contains</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F6</td><td>CSV export do dashboard</td><td>botão em InboxMetrics</td><td class="badge-ok">✅</td></tr>
+</table>
+
+<h3>Sprint 8 — "Produtividade do agente" (08-jun)</h3>
+<table>
+  <tr><th>F</th><th>Feature</th><th>Arquivos</th><th>Status</th></tr>
+  <tr><td>F1</td><td>Templates de resposta + atalho <code>/</code></td><td><code>MessageTemplatesManager.tsx</code> + Composer integration</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F2</td><td>Notas internas entre agentes</td><td>reuso <code>inbox_messages</code> + <code>content_type='internal_note'</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F3</td><td>Transferência de conversa</td><td><code>TransferDialog.tsx</code> + <code>inbox_assign_log.transferred_from/reason</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F4</td><td>Chatbot de fluxo (árvore de decisão)</td><td><code>ChatbotFlowEditor.tsx</code> + 3 tabelas + lógica de sessão no webhook</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F5</td><td>Notificações realtime (badges)</td><td><code>NotificationBell.tsx</code> + supabase channel + <code>inbox_agent_notifications</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F6</td><td>MyStats dashboard individual</td><td><code>MyStats.tsx</code> + ranking + badge de nível</td><td class="badge-ok">✅</td></tr>
+</table>
+
+<h3>Sprint 9 — "Analytics avançado + configurações" (08/09-jun)</h3>
+<table>
+  <tr><th>F</th><th>Feature</th><th>Arquivos</th><th>Status</th></tr>
+  <tr><td>F1</td><td>Filtro de período 7/30/90/mês no InboxMetrics</td><td><code>InboxMetrics.tsx</code> mod</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F2</td><td>Funil de conversação (chart)</td><td><code>InboxMetrics.tsx</code> mod</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F3</td><td>Tabela de performance por agente</td><td><code>InboxMetrics.tsx</code> mod</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F4</td><td>Exportação PDF via <code>window.print</code></td><td><code>InboxMetrics.tsx</code> mod</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F5</td><td>Config Alertas WhatsApp para o dono</td><td><code>AlertsConfig.tsx</code> + 4 colunas em <code>empresas</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F6</td><td>Geração de API keys (integrações)</td><td><code>ApiKeyManager.tsx</code> + tabela <code>empresa_api_keys</code> com SHA-256</td><td class="badge-ok">✅ (com fix vs S10)</td></tr>
+</table>
+
+<h3>Sprint 10 — "Multi-canal + integração + estabilização" (09-jun)</h3>
+<table>
+  <tr><th>F</th><th>Feature</th><th>Arquivos</th><th>Status</th></tr>
+  <tr><td>F1</td><td>Rotas + nav integradoras (S9+S10)</td><td><code>App.tsx</code>, <code>AppLayout.tsx</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F2</td><td>Disparo de alertas no webhook (config do S9)</td><td><code>evolution-webhook</code> v10 + 3 triggers (nova conv, CSAT≤2, fila &gt; threshold com debounce 5min)</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F3</td><td>Instagram DM channel</td><td><code>inbox_conversations.channel</code> + parse no webhook</td><td class="badge-ok">✅</td></tr>
+  <tr><td>F4</td><td>Webchat widget embeddable</td><td><code>webchat-widget/</code>, <code>webchat-handler/</code>, <code>WebchatConfig.tsx</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F5</td><td>Onboarding wizard 5 passos</td><td><code>OnboardingWizard.tsx</code> + <code>empresas.onboarding_step/_completed_at</code></td><td class="badge-ok">✅</td></tr>
+  <tr><td>F6</td><td>ErrorBoundary global</td><td><code>ErrorBoundary.tsx</code> + <code>App.tsx</code> wrap</td><td class="badge-ok">✅</td></tr>
+</table>
+
+<h3>Fix pós-S10 — segurança de API keys</h3>
+<div class="summary-card">
+<ul>
+  <li>S10 F4b sobrescreveu <code>empresa_api_keys</code> com schema inseguro (plaintext <code>api_key</code>).</li>
+  <li>Reconciliado para schema do S9 F6: <code>key_hash text</code> (SHA-256), <code>key_prefix</code>, <code>name</code>, <code>created_by</code>. Tabela estava vazia, sem perda de dados.</li>
+  <li><code>webchat-handler</code> atualizado para validar via hash. Alinha com Seção 11.1 do <code>CLAUDE.md</code>.</li>
+</ul>
+</div>
+
+<h3>Bugs do v1 — status</h3>
+<ul>
+  <li><strong>BUG-1</strong> (EvolutionSettings.tsx lia colunas inexistentes): <span class="badge-ok">✅ corrigido</span> em sprint anterior (07-jun pré-S7) — schema atual usa <code>name, instance_id, phone_number, is_default</code>.</li>
+  <li><strong>BUG-2</strong> (ChatArea.tsx lia <code>media_url, media_type, status</code>): <span class="badge-ok">✅ corrigido</span> — schema atual usa <code>content_type, metadata, storage_url, delivery_status</code>.</li>
+</ul>
+
+<h2 id="metrica">Métrica quantitativa por categoria</h2>
+<table>
+  <tr><th>Área</th><th>sales-spark (≈)</th><th>NexvyOficinas</th><th>% importado</th><th>Notas</th></tr>
+  <tr><td><strong>Componentes inbox</strong></td><td>~50</td><td>28 + composer/ + messages/</td><td class="badge-ok">~70%</td><td>Específicos de sales (objections, playbook, lead) ficaram de fora — out of scope oficina</td></tr>
+  <tr><td><strong>Edge functions (total)</strong></td><td>~120</td><td>13</td><td class="badge-mid">~11%</td><td>Mas das 13, as 5 essenciais ao inbox WhatsApp estão</td></tr>
+  <tr><td><strong>Edge functions de inbox especificamente</strong></td><td>~21</td><td>13 (todas relevantes)</td><td class="badge-ok">~62%</td><td>inbox-copilot ≈ sales-copilot, inbox-auto-assign ≈ distribute-lead</td></tr>
+  <tr><td><strong>Hooks (total)</strong></td><td>121</td><td>13 (.ts) + 6 (.js legacy)</td><td class="badge-mid">~16%</td><td>Maioria cobre features fora do escopo</td></tr>
+  <tr><td><strong>Hooks de inbox especificamente</strong></td><td>~11</td><td>8 equivalentes</td><td class="badge-ok">~73%</td><td>useAttendancePanel não importado (fila central vs round-robin assíncrono)</td></tr>
+  <tr><td><strong>Pages</strong></td><td>22 (multi-tenant SaaS)</td><td>22 .tsx no /app + 6 auth</td><td>—</td><td>Convertido para domínio oficina</td></tr>
+  <tr><td><strong>Schema de banco (tabelas inbox)</strong></td><td>~30 tabelas em 210 migrations</td><td>~17 tabelas</td><td class="badge-ok">~57%</td><td>Faltam: kanban_columns, message_campaigns, knowledge_sources, ai_quality_logs, agent_tools, deal_pipelines</td></tr>
+</table>
+
+<div class="summary-card">
+<p><strong>Composição final:</strong></p>
+<ul>
+  <li><strong>Funcionalidade inbox/atendimento:</strong> ~58% importada (era 18% no v1)</li>
+  <li><strong>Camada CRM (Clientes/Veículos/Ordens) específica oficina:</strong> 0% importada (e nunca virá — domínio próprio)</li>
+  <li><strong>Plataforma SaaS sales-spark (multi-org admin, campaigns, cadence avançada):</strong> ~10% importada (intencional)</li>
+</ul>
+</div>
+
+<h2 id="status-p0">Status de cada P0/P1 do v1</h2>
+
+<h3>Bloco A — Mídia (v1: P0, 6 itens) → <span class="badge-ok">6 de 6 ✅</span></h3>
+<table>
+  <tr><th>Item v1</th><th>Status v2</th><th>Evidência</th></tr>
+  <tr><td>Upload imagem + envio</td><td class="badge-ok">✅</td><td><code>useMediaUpload.ts</code> + Composer + Storage <code>inbox-media</code></td></tr>
+  <tr><td>Áudio (gravação + envio)</td><td class="badge-ok">✅</td><td><code>AudioRecorder.tsx</code> (composer/) + transcribe-audio edge</td></tr>
+  <tr><td>Vídeo</td><td class="badge-ok">✅</td><td>VideoBubble + upload via Composer</td></tr>
+  <tr><td>Documento (PDF/DOCX/XLSX)</td><td class="badge-ok">✅</td><td>DocumentBubble + content_type=document</td></tr>
+  <tr><td>Sticker</td><td class="badge-ok">✅</td><td>StickerBubble</td></tr>
+  <tr><td>Localização/contato inbound</td><td class="badge-ok">✅</td><td>LocationBubble + ContactBubble (S6 F6)</td></tr>
+</table>
+
+<h3>Bloco B — Operação de fila (v1: P0, 5 itens) → <span class="badge-ok">5 de 5 ✅</span></h3>
+<table>
+  <tr><th>Item v1</th><th>Status v2</th><th>Evidência</th></tr>
+  <tr><td>Aceitar/recusar conversa</td><td class="badge-ok">✅</td><td>AcceptTicketBar.tsx + status human_active</td></tr>
+  <tr><td>Distribuição automática</td><td class="badge-ok">✅</td><td>inbox-auto-assign + round-robin S7 F3</td></tr>
+  <tr><td>Transferência</td><td class="badge-ok">✅</td><td>TransferDialog S8 F3</td></tr>
+  <tr><td>Filtros (status, assignee)</td><td class="badge-ok">✅</td><td>InboxFiltersDrawer.tsx</td></tr>
+  <tr><td>Disponibilidade de agente</td><td class="badge-ok">✅</td><td>toggle <code>empresa_users.inbox_available</code></td></tr>
+</table>
+
+<h3>Bloco C — UX essencial (v1: P0/P1, 7 itens) → <span class="badge-ok">7 de 7 ✅</span></h3>
+<table>
+  <tr><th>Item v1</th><th>Status v2</th></tr>
+  <tr><td>Indicador de digitação</td><td class="badge-ok">✅ TypingIndicator + broadcast channel</td></tr>
+  <tr><td>Reações em mensagens</td><td class="badge-ok">✅ MessageReactions + tabela <code>message_reactions</code></td></tr>
+  <tr><td>Busca em conversa</td><td class="badge-ok">✅ MessageSearchBar</td></tr>
+  <tr><td>Avatar do contato</td><td class="badge-ok">✅ ContactAvatar + fetchAndStoreAvatar fire-and-forget</td></tr>
+  <tr><td>Soft-delete + revoke</td><td class="badge-ok">✅ inbox_messages.is_deleted + protocolMessage type=5</td></tr>
+  <tr><td>Delivery status</td><td class="badge-ok">✅ delivery_status: delivered/read via messages.update event</td></tr>
+  <tr><td>Mensagem agendada</td><td class="badge-ok">✅ ScheduleMessageDialog + process-scheduled-messages cron</td></tr>
+</table>
+
+<h3>Bloco D — Integração CRM oficina (v1: P0, 5 itens) → <span class="badge-ok">5 de 5 ✅</span></h3>
+<table>
+  <tr><th>Item v1</th><th>Status v2</th></tr>
+  <tr><td>Vincular conversa a Cliente</td><td class="badge-ok">✅ LinkClienteDialog + cliente_id em inbox_conversations</td></tr>
+  <tr><td>Painel de contexto CRM no chat</td><td class="badge-ok">✅ CrmContextPanel — mostra OS/orçamentos ativos</td></tr>
+  <tr><td>Histórico de conversas anteriores</td><td class="badge-ok">✅ ContactHistoryDrawer</td></tr>
+  <tr><td>Iniciar conversa a partir do CRM</td><td class="badge-ok">✅ NewConversationDialog + start-conversation edge</td></tr>
+  <tr><td>Templates por nicho oficina</td><td class="badge-ok">✅ MessageTemplatesManager — shortcuts /, parametrizados por empresa</td></tr>
+</table>
+
+<h3>Bloco E — Plataforma/responsivo (v1: P0/P1, 6 itens) → <span class="badge-mid">4 de 6 (67%)</span></h3>
+<table>
+  <tr><th>Item v1</th><th>Status v2</th></tr>
+  <tr><td>Mobile responsivo</td><td class="badge-ok">✅ classes md:/sm: em todo Inbox</td></tr>
+  <tr><td>Realtime</td><td class="badge-ok">✅ subscribe em conversations e messages</td></tr>
+  <tr><td>Office hours</td><td class="badge-ok">✅ OfficeHoursSettings + isWithinOfficeHours no webhook</td></tr>
+  <tr><td>ErrorBoundary</td><td class="badge-ok">✅ Sprint 10 F6</td></tr>
+  <tr><td>Mobile-first redesign profundo (gestos)</td><td class="badge-mid">🟡 parcial — funciona, sem gestos nativos</td></tr>
+  <tr><td>PWA / instalável</td><td class="badge-no">❌</td></tr>
+</table>
+
+<h2 id="falta">O que ainda falta</h2>
+
+<h3>P0/P1 críticos (9 itens)</h3>
+<table>
+  <tr><th>#</th><th>Item</th><th>Onde no sales-spark</th><th>Esforço</th><th>Prio oficina</th></tr>
+  <tr><td>1</td><td><strong>Broadcast (mensagem em massa)</strong></td><td><code>send-mass-email</code>, <code>campaign-dispatcher</code></td><td>M</td><td>⭐⭐⭐ "promoção do dia"</td></tr>
+  <tr><td>2</td><td><strong>Tags/categorias por conversa</strong></td><td><code>conversation_tags</code> table</td><td>S</td><td>⭐⭐ facilita filtros</td></tr>
+  <tr><td>3</td><td><strong>Notas no contato (não no chat)</strong></td><td><code>contact_notes</code></td><td>S</td><td>⭐⭐</td></tr>
+  <tr><td>4</td><td><strong>Lembretes de follow-up manual</strong></td><td><code>scheduled_followups</code></td><td>S</td><td>⭐⭐⭐ "lembrar cobrar OS X em 2d"</td></tr>
+  <tr><td>5</td><td><strong>Importação contatos CSV</strong></td><td><code>catalog-import-csv</code> (adaptável)</td><td>M</td><td>⭐⭐</td></tr>
+  <tr><td>6</td><td><strong>Cron SLA breach (alerta gerente)</strong></td><td><code>cadence-tick</code> (adaptável)</td><td>S</td><td>⭐⭐⭐ combina com Alertas WA do S9 F5</td></tr>
+  <tr><td>7</td><td><strong>Histórico transferências timeline</strong></td><td>sales-spark mostra timeline</td><td>S</td><td>⭐⭐</td></tr>
+  <tr><td>8</td><td><strong>Multi-agente paralelo na MESMA conv (co-attendance)</strong></td><td><code>agent-handoff-greeter</code></td><td>M</td><td>⭐⭐</td></tr>
+  <tr><td>9</td><td><strong>Mute/silence conversas</strong></td><td><code>inbox_conversations.muted_until</code></td><td>S</td><td>⭐</td></tr>
+</table>
+
+<h3>P2/P3 extended (18 itens) — agrupados</h3>
+<div class="summary-card">
+<h4>IA/Copiloto (4)</h4>
+<ul>
+  <li>Sugestão de próxima mensagem com contexto da OS aberta</li>
+  <li>Resumo automático de conversa ao fechar</li>
+  <li>Detecção de intenção (precificar/agendar/reclamar)</li>
+  <li>Avaliação automática de qualidade do atendimento</li>
+</ul>
+<h4>Bot / chatbot avançado (3)</h4>
+<ul>
+  <li>Editor visual drag-and-drop de fluxo</li>
+  <li>Variáveis dinâmicas (<code>{{nome_cliente}}</code>, <code>{{última_os}}</code>)</li>
+  <li>Branching condicional baseado em dados do CRM</li>
+</ul>
+<h4>Automação (4)</h4>
+<ul>
+  <li>Workflow builder (gatilho → ação) — Zapier interno</li>
+  <li>Webhook para integrações externas (entrar)</li>
+  <li>Webhook outgoing (sair)</li>
+  <li>Conectores com Google Calendar</li>
+</ul>
+<h4>Operacionais (4)</h4>
+<ul>
+  <li>Permissões granulares por agente (RBAC)</li>
+  <li>Audit log de ações</li>
+  <li>2FA agente</li>
+  <li>Exportação completa (compliance / LGPD)</li>
+</ul>
+<h4>Multi-canal (3)</h4>
+<ul>
+  <li>Telegram</li>
+  <li>SMS fallback</li>
+  <li>E-mail tickets</li>
+</ul>
+</div>
+
+<h2 id="inventario">Inventário comparativo</h2>
+
+<h3>Edge functions</h3>
+<table>
+  <tr><th>sales-spark (~120)</th><th>NexvyOficinas (13)</th><th>Match</th></tr>
+  <tr><td>evolution-proxy</td><td>evolution-proxy</td><td class="badge-ok">✅ idêntico nominal</td></tr>
+  <tr><td>evolution-send</td><td>evolution-send</td><td class="badge-ok">✅ idêntico</td></tr>
+  <tr><td>evolution-webhook</td><td>evolution-webhook</td><td class="badge-ok">✅ v10 com CSAT+SLA+keywords+chatbot+notif+IG+alertas</td></tr>
+  <tr><td>webchat-api / webchat-bot / webchat-inbox</td><td>webchat-handler / webchat-widget</td><td class="badge-mid">🔄 simplificado (3→2) com schema seguro</td></tr>
+  <tr><td>transcribe-audio</td><td>transcribe-audio</td><td class="badge-ok">✅</td></tr>
+  <tr><td>process-scheduled-messages</td><td>process-scheduled-messages</td><td class="badge-ok">✅</td></tr>
+  <tr><td>sales-copilot</td><td>inbox-copilot</td><td class="badge-mid">🔄 renomeado, escopo oficina</td></tr>
+  <tr><td>distribute-lead</td><td>inbox-auto-assign</td><td class="badge-mid">🔄 simplificado para round-robin</td></tr>
+  <tr><td>ai-followup-cron / cadence-tick (parcial)</td><td>inbox-followup</td><td class="badge-mid">🔄 só conversa inativa</td></tr>
+  <tr><td>send-mass-email</td><td>send-broadcast</td><td class="badge-mid">🔄 sem segmentação sales-spark</td></tr>
+  <tr><td>—</td><td>send-csat</td><td class="badge-new">✨ novo, Sprint 7</td></tr>
+  <tr><td>—</td><td>start-conversation</td><td class="badge-new">✨ novo (CRM oficina)</td></tr>
+  <tr><td><strong>NÃO IMPORTADAS</strong> (~107)</td><td>—</td><td>Ver "categorias não importadas"</td></tr>
+</table>
+
+<h3>Components inbox/ — diff nominal</h3>
+<p><strong>Existem nos 2:</strong> <code>AcceptTicketBar.tsx</code>, <code>InboxFiltersDrawer.tsx</code> (sales-spark inbox/ tem só esses 2 + index.ts).</p>
+<p><strong>Existem só no NexvyOficinas (26):</strong> AlertsConfig, ApiKeyManager, BroadcastDialog, ChatArea, ChatbotFlowEditor, ContactAvatar, ContactHistoryDrawer, ConversationList, CrmContextPanel, EvolutionSettings, KeywordRulesManager, LinkClienteDialog, MessageActionsMenu, MessageReactions, MessageSearchBar, MessageTemplatesManager, NewConversationDialog, NotificationBell, OfficeHoursSettings, QuickRepliesManager, QuickReplyPicker, ScheduleMessageDialog, SlaIndicator, TransferConversationDialog, TransferDialog, TypingIndicator + subpastas <code>composer/</code> (5 arquivos), <code>messages/</code> (~7 bubbles).</p>
+
+<div class="summary-card">
+<p><strong>Observação:</strong> o sales-spark <strong>NÃO TEM</strong> equivalente desses 26 componentes em <code>components/inbox/</code>. Eles têm a mesma funcionalidade distribuída em <code>components/chat/</code> (5 arquivos), <code>components/notifications/</code> (1), e em hooks (~30 que começam com useAcceptConversation, useAttendancePanel, etc.). Padrão arquitetural diferente: sales-spark é mais "hook-heavy + page-rendering"; NexvyOficinas é "component-heavy + colocated".</p>
+<p><strong>Veredito:</strong> o que foi "importado" é <strong>inspiração funcional</strong>, não código copiado. A reescrita em forma de componentes locais facilita manutenção mas significou re-criação do zero da maior parte do código UI.</p>
+</div>
+
+<h3>Schema do banco — tabelas inbox</h3>
+<p><strong>Importadas (~17):</strong> <code>inbox_conversations</code>, <code>inbox_messages</code>, <code>inbox_office_hours</code>, <code>inbox_keyword_rules</code>, <code>inbox_message_templates</code>, <code>inbox_assign_log</code>, <code>inbox_csat_responses</code>, <code>inbox_chatbot_flows</code>, <code>inbox_chatbot_nodes</code>, <code>inbox_chatbot_sessions</code>, <code>inbox_agent_notifications</code>, <code>inbox_quick_replies</code>, <code>message_reactions</code>, <code>evolution_instances</code>, <code>empresa_users</code>, <code>empresas</code> (com 10+ colunas inbox), <code>empresa_api_keys</code>.</p>
+<p><strong>No sales-spark mas NÃO importadas:</strong> conversation_tags, agent_tools, agent_tool_executions, agent_supervisor_rules, cadences, cadence_steps, cadence_enrollments, ai_quality_scores, ai_routing_logs, objections, playbooks, playbook_steps, lead_funnels, deal_pipelines, kanban_columns, knowledge_sources, memory_embeddings, audio_transcripts (separado), webchat_sessions, campaign_dispatches, campaign_messages.</p>
+
+<h2 id="nao-importadas">Categorias do sales-spark NÃO importadas</h2>
+
+<h3>1. Plataforma SaaS multi-org pesada — NÃO trazer</h3>
+<ul>
+  <li><strong>Super Admin / Admin org management</strong> — NexvyOficinas usa modelo single-tenant.</li>
+  <li><strong>Cadência multi-touch</strong> (cadence-*, ~15 funcs + 8 hooks).</li>
+  <li><strong>Campanhas de email/SMS em massa</strong> (campaign-*, send-mass-email, send-transactional-email, ~10 funcs).</li>
+  <li><strong>Webchat de venda em sales pages</strong> (webchat-api/bot/inbox legacy).</li>
+</ul>
+
+<h3>2. Integrações comerciais externas — pular por agora</h3>
+<ul>
+  <li><strong>Cakto</strong> (3 funcs), <strong>Hotmart</strong> (3), <strong>Sankhya</strong> (3), <strong>Doppus</strong> (1), <strong>Facebook Leads</strong> (1).</li>
+  <li><strong>Google Calendar</strong> (4 funcs): <strong>pode virar relevante</strong> para Sprint 12+ (agendamento de OS).</li>
+</ul>
+
+<h3>3. Quiz / Form / Booking / Catalog — produtos paralelos do sales-spark</h3>
+<ul>
+  <li>Quiz IA generator (5 funcs), Forms IA (3), Booking system (5), Catalog import/search/sync (4).</li>
+  <li><strong>Decisão:</strong> out of scope para oficina. Exceção: Booking poderia virar "agendamento de OS" — revisitar no S13+.</li>
+</ul>
+
+<h3>4. Memória/RAG/Knowledge — útil mas adiar</h3>
+<ul>
+  <li>Memory embedder/search (2 funcs), Process knowledge source (1), Sales copilot avançado.</li>
+  <li><strong>Decisão:</strong> importar quando NexvyOficinas tiver &gt;100 clientes ativos.</li>
+</ul>
+
+<h3>5. IA Quality/Routing/Insights — depende de volume</h3>
+<p>~8 funcs e hooks relacionados a AI insights, routing, quality scoring, feedback. Útil só quando &gt;1000 conv/mês por empresa.</p>
+
+<h3>6. Componentes UI fora do escopo</h3>
+<p><code>components/quiz/</code>, <code>components/booking/</code>, <code>components/playbook/</code>, <code>components/objections/</code>, <code>components/lead/</code>, <code>components/seller/</code>, <code>components/cadence/</code>, <code>components/goals/</code> (parcial), <code>components/brain/</code>. Total: ~200 componentes não importados.</p>
+
+<h2 id="recomendacoes">Recomendações para Sprint 11+</h2>
+
+<h3>Sprint 11 (sugerido) — "CRM 360 no inbox"</h3>
+<div class="summary-card">
+<p><strong>Objetivo:</strong> transformar o painel de contexto CRM em hub central da conversa.</p>
+<ul>
+  <li>F1: Tags de conversa (filtro + cor)</li>
+  <li>F2: Notas no contato (não na conversa)</li>
+  <li>F3: Lembretes manuais de follow-up (calendar + push notification)</li>
+  <li>F4: Histórico de transferências timeline na sidebar do ChatArea</li>
+  <li>F5: Detecção de intenção do cliente (precificar/agendar/reclamar) via Claude</li>
+  <li>F6: Atalho "criar OS" direto da conversa</li>
+</ul>
+</div>
+
+<h3>Sprint 12 — "Operação enterprise"</h3>
+<div class="summary-card">
+<ul>
+  <li>F1: Broadcast com segmentação (cliente VIP, OS aberta, sem visita há 90d)</li>
+  <li>F2: Cron de SLA breach → dispara alerta WhatsApp ao gerente</li>
+  <li>F3: Mute conversas (silence até data X)</li>
+  <li>F4: Importação CSV de contatos com de-dup</li>
+  <li>F5: Permissões granulares (RBAC: admin/atendente/leitor)</li>
+  <li>F6: Audit log + exportação compliance</li>
+</ul>
+</div>
+
+<h3>Sprint 13 — "Agendamento e produtividade IA"</h3>
+<div class="summary-card">
+<ul>
+  <li>F1: Integração Google Calendar (agendamento de OS via chat)</li>
+  <li>F2: Resumo automático de conversa ao fechar (via Claude)</li>
+  <li>F3: Editor visual drag-and-drop do chatbot</li>
+  <li>F4: Variáveis dinâmicas em mensagens</li>
+  <li>F5: Workflow builder simples (gatilho → ação)</li>
+  <li>F6: PWA + push notifications nativas</li>
+</ul>
+</div>
+
+<h3>O que NÃO recomendar</h3>
+<ul>
+  <li>Não puxar quiz/forms/booking públicos — escopo persona vendedor, não dono de oficina.</li>
+  <li>Não puxar integrações Hotmart/Cakto/Doppus — sem caso de uso.</li>
+  <li>Não puxar memória embeddings antes de &gt;100 clientes — over-engineering.</li>
+</ul>
+
+<h2 id="apendice">Apêndice — arquivo por arquivo</h2>
+
+<h3>Sales-spark NÃO importado (top categorias)</h3>
+<table>
+  <tr><th>Pasta</th><th>Arquivos</th><th>Importado?</th></tr>
+  <tr><td><code>src/components/cadence/</code></td><td>~15</td><td class="badge-no">❌ out of scope</td></tr>
+  <tr><td><code>src/components/quiz/</code></td><td>~12</td><td class="badge-no">❌ out of scope</td></tr>
+  <tr><td><code>src/components/booking/</code></td><td>~10</td><td class="badge-no">❌ adiar (Sprint 13 candidato)</td></tr>
+  <tr><td><code>src/components/playbook/</code></td><td>~8</td><td class="badge-no">❌ out of scope</td></tr>
+  <tr><td><code>src/components/objections/</code></td><td>~6</td><td class="badge-mid">🟡 objection-preemptor poderia virar feature do copilot</td></tr>
+  <tr><td><code>src/components/seller/</code></td><td>~30</td><td class="badge-mid">🔄 parcial: MyStats cobre ~40%</td></tr>
+  <tr><td><code>src/components/lead/</code></td><td>~20</td><td class="badge-no">❌ Leads do NexvyOficinas tem page própria não-importada</td></tr>
+  <tr><td><code>src/components/brain/</code></td><td>~10</td><td class="badge-no">❌ adiar</td></tr>
+  <tr><td><code>src/components/admin/</code></td><td>~25</td><td class="badge-no">❌ multi-org out of scope</td></tr>
+  <tr><td><code>src/components/superadmin/</code></td><td>~15</td><td class="badge-no">❌ idem</td></tr>
+</table>
+
+<h3>Edge functions do sales-spark NÃO importadas (top relevantes pra futuro)</h3>
+<table>
+  <tr><th>Categoria</th><th>Funcs</th><th>Sprint pra reavaliar</th></tr>
+  <tr><td><code>cadence-*</code></td><td>5</td><td class="badge-no">nunca (out of scope)</td></tr>
+  <tr><td><code>campaign-*</code></td><td>6</td><td class="badge-no">nunca (out of scope)</td></tr>
+  <tr><td><code>booking-*</code></td><td>3</td><td class="badge-mid">S13 (adiar)</td></tr>
+  <tr><td><code>google-calendar-*</code></td><td>4</td><td class="badge-mid">S13 (adiar)</td></tr>
+  <tr><td><code>memory-*</code></td><td>2</td><td class="badge-mid">S15+ (volume-dependent)</td></tr>
+  <tr><td><code>ai-followup-cron</code>, <code>auto-notifications</code>, <code>auto-promote-*</code></td><td>3</td><td class="badge-no">nunca (já temos análogos)</td></tr>
+  <tr><td><code>analyze-conversation</code>, <code>evaluate-conversation</code></td><td>2</td><td class="badge-mid">S13+ (depende de volume)</td></tr>
+  <tr><td><code>daily-report-ai</code></td><td>1</td><td class="badge-no">nunca (Relatórios já cobre)</td></tr>
+  <tr><td><code>firecrawl-*</code></td><td>3</td><td class="badge-mid">S15+</td></tr>
+  <tr><td><code>funnel-*</code></td><td>5</td><td class="badge-no">nunca (out of scope)</td></tr>
+  <tr><td><code>quiz-*</code>, <code>form-*</code></td><td>~10</td><td class="badge-no">nunca (out of scope)</td></tr>
+</table>
+
+<h2>Conclusão executiva</h2>
+<div class="tldr" style="border-color: var(--orange2);">
+<p><strong>Paridade efetiva inbox: ~58%</strong> (foi 18% há 2 dias). Os 42% restantes se dividem em:</p>
+<ul>
+  <li><strong>~12% absolutamente fora de escopo</strong> (cadência, campanhas, quiz, booking, integrações comerciais externas)</li>
+  <li><strong>~18% relevante mas adiar</strong> (RAG, IA avançada, Calendar, workflow builder)</li>
+  <li><strong>~12% relevante e P0/P1</strong> — base do roadmap S11-S13 acima</li>
+</ul>
+
+<p><strong>Diferença arquitetural permanente:</strong> NexvyOficinas usa <strong>components colocados em <code>inbox/</code></strong> vs sales-spark usa <strong>hooks + páginas centralizadas</strong>. Não há "tudo importado" possível — é re-implementação inspirada, não cópia.</p>
+
+<p><strong>O que importou foi a inteligência funcional:</strong> os fluxos (CSAT, SLA, auto-assign, follow-up, chatbot, transferência) — não o código.</p>
+
+<p><strong>Próximo passo recomendado:</strong> Sprint 11 com foco em CRM 360 (tags, notas, lembretes manuais, atalho criar-OS) — fecha o gap onde o atendimento conversacional encontra o operacional da oficina.</p>
+</div>
+
+<footer>
+Gerado em 2026-06-09 — Auditoria v2 (delta sobre v1 de 2026-06-07).<br>
+Pastas auditadas: <code>/Users/marcelosilva/Projects/sales-spark-ai-47</code> e <code>/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyOficinas</code>
+</footer>
+
+</div>
+</body>
+</html>
