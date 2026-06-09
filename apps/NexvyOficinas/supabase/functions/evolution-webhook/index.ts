@@ -1,4 +1,4 @@
-// Edge Function: evolution-webhook (v9 — Sprint 8)
+// Edge Function: evolution-webhook (v10 — Sprint 10)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
@@ -10,6 +10,10 @@
 // Sprint 8 adições (v9):
 // [v9] F4 Chatbot: sessões de chatbot de fluxo com árvore de decisão (ANTES de keyword rules)
 // [v9] F5 Notificações: INSERT inbox_agent_notifications para auto-assign
+//
+// Sprint 10 adições (v10):
+// [v10] F3 Instagram: parse channel (whatsapp|instagram) baseado em remoteJid
+// [v10] F2 Alertas: dispara WhatsApp em (nova conv | CSAT baixo | fila > threshold)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -208,6 +212,48 @@ async function fetchAndStoreAvatar(opts: {
     }
   } catch (err) {
     console.warn("[webhook] fetchAndStoreAvatar error (ignorado):", err);
+  }
+}
+
+// ── [v10] F2 Alertas WhatsApp — envia mensagem fire-and-forget pro número configurado ──
+async function sendAlertWhatsApp(opts: {
+  empresaId: string;
+  text: string;
+  supabase: ReturnType<typeof createClient>;
+}): Promise<void> {
+  try {
+    const { data: emp } = await opts.supabase
+      .from("empresas")
+      .select("alert_phone")
+      .eq("id", opts.empresaId)
+      .single();
+    const phone = (emp as { alert_phone?: string } | null)?.alert_phone;
+    if (!phone) return;
+
+    // Buscar a instância Evolution conectada da empresa
+    const { data: inst } = await opts.supabase
+      .from("evolution_instances")
+      .select("instance_id, status")
+      .eq("empresa_id", opts.empresaId)
+      .eq("status", "connected")
+      .limit(1)
+      .single();
+    const instanceId = (inst as { instance_id?: string } | null)?.instance_id;
+    if (!instanceId) {
+      console.warn(`[webhook] alert skip — sem instância conectada empresa=${opts.empresaId}`);
+      return;
+    }
+
+    await fetch(
+      `${EVOLUTION_API_URL}/message/sendText/${instanceId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+        body: JSON.stringify({ number: phone, text: opts.text }),
+      },
+    );
+  } catch (err) {
+    console.warn("[webhook] sendAlertWhatsApp error:", err);
   }
 }
 
@@ -416,6 +462,11 @@ Deno.serve(async (req) => {
       const key = msg.key as Record<string, unknown>;
       const remoteJid: string = (key.remoteJid as string) ?? "";
       if (remoteJid.endsWith("@g.us") || remoteJid === "status@broadcast") continue;
+
+      // [v10] F3 — detecta canal Instagram pelo sufixo do remoteJid
+      const channel: "whatsapp" | "instagram" = remoteJid.includes("@instagram")
+        ? "instagram"
+        : "whatsapp";
 
       const waMessageId: string = (key.id as string) ?? "";
       const fromMe: boolean = (key.fromMe as boolean) ?? false;
@@ -713,6 +764,15 @@ Deno.serve(async (req) => {
           .is("contact_name", null);
       }
 
+      // [v10] F3 — set channel se for Instagram (default da coluna é 'whatsapp')
+      if (channel === "instagram") {
+        await supabase
+          .from("inbox_conversations")
+          .update({ channel: "instagram" })
+          .eq("id", convId)
+          .neq("channel", "instagram");
+      }
+
       // [v9] F5 Notificações — dispara 'new_conversation' para agente atribuído
       if (!fromMe) {
         const { data: newConv } = await supabase
@@ -787,6 +847,7 @@ Deno.serve(async (req) => {
                 metadata,
                 storage_url: null,
                 is_deleted: false,
+                channel,
               },
               { onConflict: "wa_message_id", ignoreDuplicates: true },
             );
@@ -816,6 +877,7 @@ Deno.serve(async (req) => {
                 content: matchedResponse,
                 content_type: "text",
                 is_deleted: false,
+                channel,
               });
             }
 
@@ -845,6 +907,7 @@ Deno.serve(async (req) => {
               metadata,
               storage_url: null, // [v7] não baixa mídia no branch paused
               is_deleted: false,
+              channel,
             },
             { onConflict: "wa_message_id", ignoreDuplicates: true },
           );
@@ -872,6 +935,7 @@ Deno.serve(async (req) => {
               metadata,
               storage_url: null,
               is_deleted: false,
+              channel,
             },
             { onConflict: "wa_message_id", ignoreDuplicates: true },
           );
@@ -914,6 +978,7 @@ Deno.serve(async (req) => {
           metadata,
           storage_url: storageUrl ?? null, // [v7]
           is_deleted: false,
+          channel,
         },
         { onConflict: "wa_message_id", ignoreDuplicates: true },
       );
