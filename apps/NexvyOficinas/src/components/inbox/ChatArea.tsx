@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft, Search, Bell, BellOff, Bot, BotOff, History, Tag, X } from 'lucide-react'
+import { ArrowLeft, Loader2, MoreVertical, PhoneOff, ArrowRightLeft, Search, Bell, BellOff, Bot, BotOff, History, Tag, X, UserCog, Link2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import MessageBubble, { type InboxMessage } from './messages/MessageBubble'
 import Composer from './composer/Composer'
@@ -13,6 +13,8 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator'
 import TypingIndicator from './TypingIndicator'
 import ContactAvatar from './ContactAvatar'
 import ContactHistoryDrawer from './ContactHistoryDrawer'
+import CrmContextPanel from './CrmContextPanel'
+import LinkClienteDialog from './LinkClienteDialog'
 
 interface Conversation {
   id: string
@@ -24,6 +26,10 @@ interface Conversation {
   bot_paused: boolean
   assigned_user_id: string | null
   tags: string[]
+  /** Sprint6 F2 — CRM links */
+  cliente_id: string | null
+  veiculo_id: string | null
+  os_id: string | null
 }
 
 const TAG_PALETTE = ['bg-red-500','bg-blue-500','bg-green-500','bg-yellow-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-orange-500'] as const
@@ -72,6 +78,10 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
   const [botPaused, setBotPaused] = useState(false)
   // Sprint5 F5 — histórico do contato
   const [showHistory, setShowHistory] = useState(false)
+  // Sprint6 F1 — CRM Context Panel
+  const [showCrmPanel, setShowCrmPanel] = useState(false)
+  // Sprint6 F2 — Link cliente dialog
+  const [showLinkClienteDialog, setShowLinkClienteDialog] = useState(false)
   // Sprint5 F3 — tags menu
   const [showTagsMenu, setShowTagsMenu] = useState(false)
   const [tagInput, setTagInput] = useState('')
@@ -95,7 +105,7 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
 
     supabase
       .from('inbox_conversations')
-      .select('id,contact_phone,contact_name,contact_avatar_url,status,evolution_instance_id,bot_paused,assigned_user_id,tags')
+      .select('id,contact_phone,contact_name,contact_avatar_url,status,evolution_instance_id,bot_paused,assigned_user_id,tags,cliente_id,veiculo_id,os_id')
       .eq('id', conversationId)
       .single()
       .then(({ data }) => {
@@ -386,6 +396,24 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
           {agents.map(a => <option key={a.id} value={a.id}>{a.display}</option>)}
         </select>
 
+        {/* Sprint6 F1 — CRM Context Panel */}
+        <button
+          onClick={() => setShowCrmPanel(prev => !prev)}
+          className={`p-1 rounded transition-colors shrink-0 ${showCrmPanel ? 'text-orange-400' : 'text-slate-400 hover:text-white'}`}
+          title="CRM do contato"
+        >
+          <UserCog className="h-4 w-4" />
+        </button>
+
+        {/* Sprint6 F2 — Vincular cliente */}
+        <button
+          onClick={() => setShowLinkClienteDialog(true)}
+          className={`p-1 rounded transition-colors shrink-0 ${conversation.cliente_id ? 'text-green-400' : 'text-slate-400 hover:text-white'}`}
+          title={conversation.cliente_id ? 'Cliente vinculado' : 'Vincular cliente'}
+        >
+          <Link2 className="h-4 w-4" />
+        </button>
+
         {/* Sprint5 F5 — Histórico do contato */}
         <button
           onClick={() => setShowHistory(prev => !prev)}
@@ -590,39 +618,67 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
         />
       )}
 
-      {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-        <div ref={topSentinelRef} className="h-1" />
+      {/* Sprint6 F2 — LinkClienteDialog */}
+      {showLinkClienteDialog && (
+        <LinkClienteDialog
+          conversationId={conversationId}
+          currentClienteId={conversation.cliente_id}
+          onClose={() => setShowLinkClienteDialog(false)}
+          onLinked={(clienteId, veiculoId, osId) => {
+            setConversation(prev => prev ? { ...prev, cliente_id: clienteId, veiculo_id: veiculoId, os_id: osId } : prev)
+            setShowLinkClienteDialog(false)
+          }}
+        />
+      )}
 
-        {loadingMore && (
-          <div className="flex justify-center py-2">
-            <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+      {/* Main content: chat + opcional painel CRM lateral */}
+      <div className="flex flex-1 min-h-0">
+        {/* Coluna principal */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Messages */}
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+            <div ref={topSentinelRef} className="h-1" />
+
+            {loadingMore && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+              </div>
+            )}
+
+            {messages.map(m => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                isOutbound={m.sender_type === 'agent' || m.sender_type === 'bot'}
+                allMessages={messages}
+                onReply={isClosed ? undefined : setReplyingTo}
+              />
+            ))}
+            {/* Sprint4 F1 — Typing indicator */}
+            <TypingIndicator visible={isContactTyping} />
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        {messages.map(m => (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            isOutbound={m.sender_type === 'agent' || m.sender_type === 'bot'}
-            allMessages={messages}
-            onReply={isClosed ? undefined : setReplyingTo}
+          {/* Composer */}
+          <Composer
+            conversationId={conversationId}
+            disabled={conversation.status === 'closed'}
+            placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : undefined}
+            replyingTo={replyingTo}
+            onCancelReply={() => setReplyingTo(null)}
+            onTyping={emitTyping}
           />
-        ))}
-        {/* Sprint4 F1 — Typing indicator */}
-        <TypingIndicator visible={isContactTyping} />
-        <div ref={messagesEndRef} />
-      </div>
+        </div>
 
-      {/* Composer */}
-      <Composer
-        conversationId={conversationId}
-        disabled={conversation.status === 'closed'}
-        placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : undefined}
-        replyingTo={replyingTo}
-        onCancelReply={() => setReplyingTo(null)}
-        onTyping={emitTyping}
-      />
+        {/* Sprint6 F1 — CRM Context Panel (coluna lateral direita) */}
+        {showCrmPanel && (
+          <CrmContextPanel
+            contactPhone={conversation.contact_phone}
+            clienteId={conversation.cliente_id}
+            onClose={() => setShowCrmPanel(false)}
+          />
+        )}
+      </div>
     </div>
   )
 }
