@@ -1,75 +1,31 @@
-import path from 'path'
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
-  plugins: [react()],
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
+  server: {
+    host: "::",
+    port: 8080,
+  },
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
-    extensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs'],
   },
   build: {
-    // Raise warning threshold slightly — any remaining chunk above this is genuinely large
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        /**
-         * Split node_modules into stable, cacheable vendor chunks.
-         * Groups by "change frequency family" so a supabase upgrade doesn't
-         * bust the react bundle cache, and vice-versa.
-         */
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return
-
-          // Extract package name — handles scoped (@supabase/supabase-js) and
-          // unscoped (lucide-react) packages correctly
-          const match = id.match(/node_modules\/(@[^/]+\/[^/]+|[^/]+)/)
-          if (!match) return
-          const pkg = match[1]
-
-          // ── React core ──────────────────────────────────────────────────
-          // Dependency chain that must all live in the same chunk to avoid cycles:
-          //   react-router-dom → react-router → @remix-run/router → (none)
-          //   react-router-dom → react-router → react (peer)
-          // @hookform/resolvers excluded: it imports zod which is in vendor-misc
-          if (
-            ['react', 'react-dom', 'scheduler', 'react-router-dom',
-             'react-router', '@remix-run/router', 'react-hook-form'].includes(pkg)
-          ) return 'vendor-react'
-
-          // ── Supabase client ─────────────────────────────────────────────
-          if (pkg.startsWith('@supabase/')) return 'vendor-supabase'
-
-          // ── Icon library ────────────────────────────────────────────────
-          if (pkg === 'lucide-react') return 'vendor-icons'
-
-          // ── Radix UI primitives (30+ packages) ──────────────────────────
-          if (pkg.startsWith('@radix-ui/')) return 'vendor-radix'
-
-          // ── TanStack (React Query) ───────────────────────────────────────
-          if (pkg.startsWith('@tanstack/')) return 'vendor-query'
-
-          // ── Animation ───────────────────────────────────────────────────
-          if (pkg === 'framer-motion') return 'vendor-motion'
-
-          // ── Charts ──────────────────────────────────────────────────────
-          if (pkg === 'recharts') return 'vendor-charts'
-
-          // ── 3D / WebGL ───────────────────────────────────────────────────
-          if (pkg === 'three') return 'vendor-3d'
-
-          // ── PDF generation ───────────────────────────────────────────────
-          if (['jspdf', 'html2canvas'].includes(pkg)) return 'vendor-pdf'
-
-          // ── Payments ─────────────────────────────────────────────────────
-          if (pkg.startsWith('@stripe/')) return 'vendor-stripe'
-
-          // ── Everything else in node_modules ──────────────────────────────
-          return 'vendor-misc'
-        },
-      },
-    },
+    chunkSizeWarningLimit: 1500,
+    // IMPORTANT: do NOT manually split React / Radix / etc. into separate chunks.
+    // The previous manualChunks config produced a circular dependency
+    // (ui-vendor -> react-vendor -> ui-vendor) which, in production builds,
+    // caused `ui-vendor` to evaluate before React exports were ready, throwing
+    // `Cannot read properties of undefined (reading 'forwardRef')` and leaving
+    // the app stuck on the boot loader (black screen + green spinner).
+    // Letting Rollup decide chunking is safe and avoids this class of bug.
   },
-})
+}));

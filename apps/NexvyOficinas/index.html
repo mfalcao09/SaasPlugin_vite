@@ -1,13 +1,79 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/wrench.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NexvyOficinas</title>
-  </head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Vendus</title>
+    <meta name="description" content="Vendus — Plataforma de vendas com IA">
+    <meta name="author" content="Vendus" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#84CC16" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Vendus" />
+    
+    <!-- Apple Touch Icons - múltiplos tamanhos para compatibilidade -->
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128x128.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph -->
+    
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a0b988b3-b5a8-4409-a250-12bc70317cc4/id-preview-2c610a9a--a8eba2ee-e02f-4902-afab-79cfdf3c59c1.lovable.app-1778074250543.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="" />
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a0b988b3-b5a8-4409-a250-12bc70317cc4/id-preview-2c610a9a--a8eba2ee-e02f-4902-afab-79cfdf3c59c1.lovable.app-1778074250543.png">
+
+    <!-- Boot styles: prevent white flash before React mounts -->
+    <style>
+      html, body {
+        background: #0a0d14;
+        color: #e5e7eb;
+        margin: 0;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      #root { min-height: 100vh; }
+      #boot-loader {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: #0a0d14;
+        z-index: 9999;
+      }
+      #boot-loader .spinner {
+        width: 36px; height: 36px;
+        border: 3px solid rgba(132, 204, 22, 0.18);
+        border-top-color: #84CC16;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      .app-mounted #boot-loader { display: none; }
+    </style>
+    <meta property="og:title" content="Vendus">
+  <meta name="twitter:title" content="Vendus">
+  <meta property="og:description" content="Vendus — Plataforma de vendas com IA">
+  <meta name="twitter:description" content="Vendus — Plataforma de vendas com IA">
+</head>
+
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-loader"><div class="spinner"></div></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

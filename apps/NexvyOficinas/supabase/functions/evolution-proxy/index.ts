@@ -1,283 +1,1259 @@
-// Edge Function: evolution-proxy (v3)
-// Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
-// verify_jwt: true (chamado pelo frontend autenticado)
-//
-// Actions (via ?action=... ou body.action):
-// - list           (GET)    — lista instâncias da empresa
-// - create         (POST)   — cria instância + registra webhook
-// - qrcode         (POST)   — gera QR code
-// - status         (POST)   — sincroniza status com Evolution
-// - logout         (POST)   — desconecta WhatsApp (mantém instance)
-// - restart        (POST)   — reinicia instance
-// - set_default    (POST)   — marca como padrão (zera as outras da empresa)
-// - delete         (POST)   — remove na Evolution + no DB
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EVO_URL = (Deno.env.get("EVOLUTION_API_URL") ?? "").replace(/\/$/, "");
-const EVO_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const WEBHOOK_SECRET = Deno.env.get("EVOLUTION_WEBHOOK_SECRET") ?? EVO_KEY;
+interface EvolutionConfig {
+  url: string;
+  globalApiKey: string;
+}
 
-async function evoCall(
+/**
+ * Reads the GLOBAL Evolution Go config from `platform_settings`.
+ * This is the single source of truth — no longer per-organization.
+ */
+async function getPlatformConfig(supabase: any): Promise<EvolutionConfig | null> {
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("evolution_go_url, evolution_go_global_api_key")
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.evolution_go_url || !data?.evolution_go_global_api_key) return null;
+
+  return {
+    url: String(data.evolution_go_url).replace(/\/$/, ""),
+    globalApiKey: String(data.evolution_go_global_api_key),
+  };
+}
+
+async function evoFetch(
+  config: EvolutionConfig,
   path: string,
-  method = "GET",
-  body?: unknown,
-  instanceToken?: string,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(`${EVO_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      apikey: instanceToken || EVO_KEY,
-    },
-    body: body != null ? JSON.stringify(body) : undefined,
-  });
+  init: RequestInit = {},
+  instanceToken?: string
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    apikey: instanceToken || config.globalApiKey,
+    ...(init.headers as Record<string, string> ?? {}),
+  };
+  let res: Response;
+  try {
+    res = await fetch(`${config.url}${path}`, { ...init, headers });
+  } catch (err: any) {
+    return {
+      ok: false,
+      status: 0,
+      body: null,
+      message: `Falha ao conectar em ${config.url}: ${err.message}`,
+    };
+  }
   const text = await res.text();
-  let data: unknown;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  return { ok: res.ok, status: res.status, data };
+  let body: any;
+  let isJson = false;
+  try {
+    body = text ? JSON.parse(text) : null;
+    isJson = true;
+  } catch {
+    body = text;
+    isJson = false;
+  }
+  let message: string | undefined;
+  if (!res.ok) {
+    if (!isJson && typeof body === "string") {
+      message = `Servidor respondeu ${res.status}: ${body.slice(0, 200)}`;
+    } else if (isJson && body?.message) {
+      message = String(body.message);
+    } else if (isJson && body?.error) {
+      message = String(body.error);
+    }
+  }
+  return { ok: res.ok, status: res.status, body, message, isJson };
+}
+
+function maskKey(k?: string | null): string {
+  if (!k) return "(empty)";
+  return k.length <= 8 ? "***" : `${k.slice(0, 5)}***${k.slice(-3)}`;
+}
+
+function normalizeQrString(value: any): string | null {
+  if (typeof value !== "string") return null;
+  const raw = value.trim();
+  if (raw.length <= 20) return null;
+
+  // Evolution Go may return "data:image/png;base64,...|2@raw-pairing".
+  // The QR must encode only the raw pairing string; storing the combined value
+  // creates a QR that looks valid visually but WhatsApp rejects it.
+  const pipeIndex = raw.indexOf("|");
+  if (pipeIndex >= 0) {
+    const afterPipe = raw.slice(pipeIndex + 1).trim();
+    if (afterPipe.length > 20) return afterPipe;
+    const beforePipe = raw.slice(0, pipeIndex).trim();
+    if (beforePipe.length > 20) return beforePipe;
+  }
+
+  return raw;
+}
+
+function extractQr(obj: any): string | null {
+  if (!obj) return null;
+  const normalized = normalizeQrString(obj);
+  if (normalized) return normalized;
+
+  const candidates = [
+    obj.qrcode, obj.qr, obj.base64, obj.code, obj.QRCode, obj.qr_code,
+    obj?.qrcode?.base64, obj?.qrcode?.code,
+    obj?.data?.qrcode, obj?.data?.qr, obj?.data?.base64, obj?.data?.QRCode, obj?.data?.code,
+    obj?.data?.qrcode?.base64, obj?.data?.qrcode?.code,
+    obj?.instance?.qrcode, obj?.instance?.qr,
+  ];
+  for (const c of candidates) {
+    const found = extractQr(c);
+    if (found) return found;
+  }
+  return null;
+}
+
+async function configureWebhook(
+  config: EvolutionConfig,
+  instanceUuid: string,
+  instanceToken: string | null | undefined,
+  webhookUrl: string,
+): Promise<{ ok: boolean; error?: string; status?: number; response?: any }> {
+  if (!instanceToken) {
+    return {
+      ok: false,
+      error:
+        "Token da instância ausente. Clique em 'Sincronizar do servidor' para reimportar o token desta instância.",
+    };
+  }
+
+  console.log(
+    `[configureWebhook] uuid=${instanceUuid} apikey=${maskKey(instanceToken)} (instance token)`,
+  );
+
+  const primary = await evoFetch(
+    config,
+    `/instance/connect`,
+    {
+      method: "POST",
+      headers: { instanceId: instanceUuid },
+      body: JSON.stringify({
+        webhookUrl,
+        subscribe: ["ALL"],
+        immediate: false,
+      }),
+    },
+    instanceToken,
+  );
+
+  console.log(
+    `[configureWebhook] uuid=${instanceUuid} status=${primary.status} ok=${primary.ok}`,
+    typeof primary.body === "string" ? primary.body.slice(0, 200) : primary.body,
+  );
+
+  if (primary.ok) {
+    return { ok: true, status: primary.status, response: primary.body };
+  }
+
+  const fallback = await evoFetch(
+    config,
+    `/instance/connect`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        instanceId: instanceUuid,
+        webhookUrl,
+        subscribe: ["ALL"],
+        immediate: false,
+      }),
+    },
+    instanceToken,
+  );
+
+  if (fallback.ok) {
+    return { ok: true, status: fallback.status, response: fallback.body };
+  }
+
+  return {
+    ok: false,
+    status: primary.status,
+    error:
+      primary.message ||
+      fallback.message ||
+      `Falha ao configurar webhook (status ${primary.status}).`,
+    response: primary.body ?? fallback.body,
+  };
+}
+
+function parseInstanceFromList(item: any) {
+  const name: string = item?.name || item?.instanceName || item?.instance?.instanceName;
+  const uuid: string | null = item?.id ?? item?.instanceId ?? item?.instance?.id ?? null;
+  const token = item?.token ?? item?.apikey ?? item?.hash?.apikey ?? null;
+  const jid: string | null = item?.jid ?? item?.owner ?? null;
+  const phoneRaw = jid
+    ? String(jid).split("@")[0].split(":")[0]
+    : (item?.number ?? item?.phoneNumber ?? null);
+  const phone = phoneRaw ? String(phoneRaw).replace(/\D/g, "") : null;
+  const qrcode = extractQr(item?.qrcode ?? item?.qr ?? item);
+  const connected =
+    item?.connected === true ||
+    item?.connectionStatus === "open" ||
+    item?.state === "open" ||
+    item?.status === "open" ||
+    item?.instance?.state === "open";
+  const status = connected
+    ? "connected"
+    : (qrcode && String(qrcode).length > 10 ? "qr_pending" : "disconnected");
+  return { name, uuid, token, phone, qrcode, connected, status };
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (authErr || !user) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { data: eu } = await supabase
-      .from("empresa_users").select("empresa_id").eq("user_id", user.id).single();
-    const empresaId = eu?.empresa_id;
-    if (!empresaId) {
-      return new Response(JSON.stringify({ error: "No empresa found for user" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action");
-    const body = req.method !== "GET" ? await req.json().catch(() => ({})) : {};
-    const actionFromBody = (body as { action?: string })?.action;
-    const finalAction = action ?? actionFromBody;
-
-    // ── list ──
-    if (finalAction === "list" || (!finalAction && req.method === "GET")) {
-      const { data: instances } = await supabase
-        .from("evolution_instances")
-        .select("*")
-        .eq("empresa_id", empresaId)
-        .order("created_at");
-      return new Response(JSON.stringify({ instances }), {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── create ──
-    if (finalAction === "create") {
-      const { name } = body as { name: string };
-      if (!name) return new Response(JSON.stringify({ error: "name required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
 
-      const instanceName = `oficinas-${empresaId.slice(0, 8)}-${name
-        .toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 20)}`;
+    // Check super admin role
+    const { data: superAdminRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    const isSuperAdmin = !!superAdminRow;
 
-      const evo = await evoCall("/instance/create", "POST", {
-        instanceName,
-        integration: "WHATSAPP-BAILEYS",
-        qrcode: true,
-      });
-      if (!evo.ok) {
-        return new Response(JSON.stringify({ error: "Evolution API error", detail: evo.data }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const body = req.method === "POST" || req.method === "PUT" || req.method === "PATCH"
+      ? await req.json().catch(() => ({}))
+      : {};
+    const action = body.action || new URL(req.url).searchParams.get("action");
+
+    const requireSuperAdmin = () => {
+      if (!isSuperAdmin) {
+        return new Response(JSON.stringify({ error: "Apenas o Super Admin da plataforma pode executar essa ação." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return null;
+    };
+
+    // ---- TEST_CONNECTION (super admin) ----
+    if (action === "test_connection") {
+      const denied = requireSuperAdmin();
+      if (denied) return denied;
+      const url = String(body.url || "").replace(/\/$/, "");
+      const globalApiKey = String(body.globalApiKey || "");
+      if (!url || !globalApiKey) {
+        return new Response(JSON.stringify({ error: "Missing url or globalApiKey" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const cfg = { url, globalApiKey };
+      const res = await evoFetch(cfg, "/instance/all", { method: "GET" });
+
+      if (res.ok) {
+        return new Response(
+          JSON.stringify({ ok: true, status: res.status, message: "Conexão estabelecida com sucesso!", data: res.body }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        return new Response(
+          JSON.stringify({ ok: false, status: res.status, message: "Servidor acessível, mas a Global API Key foi rejeitada." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ ok: false, status: res.status, message: res.message || `Erro ${res.status} ao conectar.` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // For all other actions, load global platform config
+    const config = await getPlatformConfig(supabase);
+    if (!config) {
+      return new Response(
+        JSON.stringify({ error: "Servidor Evolution Go ainda não foi configurado pelo administrador da plataforma." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- CREATE INSTANCE (super admin only) ----
+    if (action === "create_instance") {
+      const denied = requireSuperAdmin();
+      if (denied) return denied;
+      const name = String(body.name || "").trim();
+      const targetOrgId = String(body.organization_id || "").trim();
+      if (!name || !targetOrgId) {
+        return new Response(JSON.stringify({ error: "Missing name or organization_id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const evoData = evo.data as Record<string, any>;
-      const instanceToken = evoData?.hash?.apikey ?? evoData?.instance?.token ?? "";
+      // Evolution Go requires both `name` and `token` (instance API key) in the body.
+      // We generate a UUID v4 and use it as the instance token so we always have it
+      // even if the server response doesn't echo it back.
+      const generatedToken = crypto.randomUUID();
+      console.log(`[create_instance] -> POST /instance/create name="${name}" org=${targetOrgId} token=${maskKey(generatedToken)}`);
+      const createRes = await evoFetch(config, "/instance/create", {
+        method: "POST",
+        body: JSON.stringify({ name, token: generatedToken }),
+      });
+      console.log(
+        `[create_instance] <- status=${createRes.status} ok=${createRes.ok}`,
+        typeof createRes.body === "string" ? createRes.body.slice(0, 300) : createRes.body,
+      );
+      if (!createRes.ok) {
+        return new Response(
+          JSON.stringify({ ok: false, error: createRes.message || `Falha ao criar instância (status ${createRes.status})`, response: createRes.body }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      const webhookUrl = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
-      await evoCall(`/webhook/set/${instanceName}`, "POST", {
-        url: webhookUrl,
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
-        headers: { "x-webhook-secret": WEBHOOK_SECRET },
-      }, instanceToken || undefined);
+      // Evolution Go responde: { data: { id, name, token, ... }, message: "success" }
+      const created = createRes.body?.data ?? createRes.body?.instance ?? createRes.body ?? {};
+      const uuid = created?.id ?? created?.instanceId ?? created?.uuid ?? null;
+      const instanceToken = created?.token ?? created?.hash?.apikey ?? created?.apikey ?? generatedToken;
+      console.log(`[create_instance] parsed uuid=${uuid} token=${maskKey(instanceToken)}`);
 
-      const isDefault = !(await supabase
-        .from("evolution_instances").select("id").eq("empresa_id", empresaId).limit(1)
-        .then(r => r.data?.length));
+      if (!uuid) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "Servidor criou a instância mas não retornou UUID. Verifique a versão do Evolution Go.",
+            response: createRes.body,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      const { data: inst, error: dbErr } = await supabase
+      // Persist in DB linked to the chosen organization
+      const { data: inserted, error: insErr } = await supabase
         .from("evolution_instances")
         .insert({
-          empresa_id: empresaId,
+          organization_id: targetOrgId,
           name,
-          instance_id: instanceName,
+          instance_id: uuid || name,
           instance_token: instanceToken,
           status: "disconnected",
-          webhook_subscribed: true,
-          is_default: isDefault,
+          is_default: false,
+          created_by_super_admin: true,
+          metadata: {
+            instance_uuid: uuid,
+            instance_name: name,
+            created_via: "super_admin",
+            remote: createRes.body,
+          },
         })
         .select()
         .single();
 
-      if (dbErr) {
-        return new Response(JSON.stringify({ error: dbErr.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (insErr) {
+        return new Response(JSON.stringify({ ok: false, error: insErr.message }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ instance: inst }), {
-        status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    async function loadInstance(instance_id: string) {
-      const { data: inst } = await supabase
-        .from("evolution_instances").select("*")
-        .eq("id", instance_id).eq("empresa_id", empresaId).single();
-      return inst;
-    }
-
-    // ── qrcode ──
-    if (finalAction === "qrcode") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-      const evo = await evoCall(`/instance/connect/${inst.instance_id}`, "GET", undefined, inst.instance_token || undefined);
-      if (evo.ok) {
-        const qrData = evo.data as Record<string, any>;
-        const qr = qrData?.base64 || qrData?.qrcode?.base64 || null;
-        if (qr) {
-          await supabase.from("evolution_instances").update({
-            qr_code: qr,
-            qr_code_updated_at: new Date().toISOString(),
-            status: "connecting",
-          }).eq("id", instance_id);
-        }
+      // Best-effort: configure webhook now
+      if (uuid && instanceToken) {
+        const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+        const wh = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+        await supabase
+          .from("evolution_instances")
+          .update({
+            webhook_subscribed: wh.ok,
+            metadata: {
+              ...((inserted.metadata as any) || {}),
+              webhook_error: wh.ok ? null : wh.error,
+              webhook_last_attempt_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", inserted.id);
       }
-      return new Response(JSON.stringify({ ok: evo.ok, data: evo.data }), {
+
+      return new Response(JSON.stringify({ ok: true, instance: inserted }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── status ──
-    if (finalAction === "status") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-      const evo = await evoCall(`/instance/connectionState/${inst.instance_id}`, "GET", undefined, inst.instance_token || undefined);
-      if (evo.ok) {
-        const stateData = evo.data as Record<string, any>;
-        const state = stateData?.instance?.state;
-        const mapped = state === "open" ? "connected" : state === "connecting" ? "connecting" : "disconnected";
-        await supabase.from("evolution_instances")
-          .update({ status: mapped, last_connected_at: mapped === "connected" ? new Date().toISOString() : undefined })
-          .eq("id", instance_id);
+    // ---- CREATE INSTANCE SELF-SERVICE (admin/manager da org) ----
+    // Cliente cria instância para a própria empresa, respeitando o limite do plano.
+    if (action === "create_instance_self") {
+      // Authorization: precisa ser admin ou manager da organização
+      if (!profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Usuário sem empresa vinculada." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      return new Response(JSON.stringify({ ok: evo.ok, data: evo.data }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    // ── logout ──
-    if (finalAction === "logout") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const { data: hasAdmin } = await supabase.rpc("has_role", {
+        _user_id: user.id, _role: "admin",
       });
-      const evo = await evoCall(`/instance/logout/${inst.instance_id}`, "DELETE", undefined, inst.instance_token || undefined);
-      await supabase.from("evolution_instances")
-        .update({ status: "disconnected", qr_code: null })
-        .eq("id", instance_id);
-      return new Response(JSON.stringify({ ok: evo.ok, data: evo.data }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const { data: hasManager } = await supabase.rpc("has_role", {
+        _user_id: user.id, _role: "manager",
       });
-    }
+      if (!isSuperAdmin && !hasAdmin && !hasManager) {
+        return new Response(JSON.stringify({ error: "Apenas administradores ou gerentes podem criar conexões." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    // ── restart ──
-    if (finalAction === "restart") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-      const evo = await evoCall(`/instance/restart/${inst.instance_id}`, "PUT", undefined, inst.instance_token || undefined);
-      return new Response(JSON.stringify({ ok: evo.ok, data: evo.data }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      const orgId = profile.organization_id;
+      const rawName = String(body.name || "").trim().toLowerCase();
 
-    // ── set_default (atomicidade: zera as outras da empresa, marca essa) ──
-    if (finalAction === "set_default") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // Sanitiza: somente letras minúsculas, números e hífens; 3-40 chars
+      if (!/^[a-z0-9-]{3,40}$/.test(rawName)) {
+        return new Response(JSON.stringify({
+          error: "Nome inválido. Use apenas letras minúsculas, números e hífens (3 a 40 caracteres).",
+        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Verifica limites efetivos
+      const { data: limitsData, error: limitsErr } = await supabase.rpc("get_organization_effective_limits", {
+        p_org_id: orgId,
       });
-      await supabase.from("evolution_instances")
-        .update({ is_default: false })
-        .eq("empresa_id", empresaId);
-      const { data: updated, error: updErr } = await supabase.from("evolution_instances")
-        .update({ is_default: true })
-        .eq("id", instance_id)
+      if (limitsErr) {
+        return new Response(JSON.stringify({ error: "Falha ao carregar limites do plano: " + limitsErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const maxConnections: number = (limitsData as any)?.limits?.max_connections ?? 1;
+
+      const { count: currentCount } = await supabase
+        .from("evolution_instances")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId);
+
+      if ((currentCount ?? 0) >= maxConnections) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: `Limite de ${maxConnections} conexão(ões) do seu plano atingido. Faça upgrade para criar mais.`,
+          limit_reached: true,
+          current: currentCount,
+          limit: maxConnections,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Busca slug da org para prefixar nome (evita colisão global no Evolution Go)
+      const { data: orgRow } = await supabase
+        .from("organizations")
+        .select("slug, name")
+        .eq("id", orgId)
+        .maybeSingle();
+      const orgSlug = (orgRow?.slug || (orgRow?.name || "org")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 20)) || "org";
+      const finalName = `${orgSlug}-${rawName}`.slice(0, 50);
+
+      // Verifica se já existe localmente uma instância com esse nome
+      const { data: dup } = await supabase
+        .from("evolution_instances")
+        .select("id")
+        .eq("name", finalName)
+        .maybeSingle();
+      if (dup) {
+        return new Response(JSON.stringify({
+          error: "Já existe uma conexão com esse nome. Escolha outro.",
+        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const generatedToken = crypto.randomUUID();
+      console.log(`[create_instance_self] -> POST /instance/create name="${finalName}" org=${orgId} token=${maskKey(generatedToken)}`);
+      const createRes = await evoFetch(config, "/instance/create", {
+        method: "POST",
+        body: JSON.stringify({ name: finalName, token: generatedToken }),
+      });
+      console.log(
+        `[create_instance_self] <- status=${createRes.status} ok=${createRes.ok}`,
+        typeof createRes.body === "string" ? createRes.body.slice(0, 300) : createRes.body,
+      );
+
+      if (!createRes.ok) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: createRes.message || `Falha ao criar instância (status ${createRes.status})`,
+          response: createRes.body,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const created = createRes.body?.data ?? createRes.body?.instance ?? createRes.body ?? {};
+      const uuid = created?.id ?? created?.instanceId ?? created?.uuid ?? null;
+      const instanceToken = created?.token ?? created?.hash?.apikey ?? created?.apikey ?? generatedToken;
+
+      if (!uuid) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "Servidor criou a instância mas não retornou UUID.",
+          response: createRes.body,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("evolution_instances")
+        .insert({
+          organization_id: orgId,
+          name: finalName,
+          instance_id: uuid || finalName,
+          instance_token: instanceToken,
+          status: "disconnected",
+          is_default: (currentCount ?? 0) === 0, // primeira da empresa = padrão
+          created_by_super_admin: false,
+          metadata: {
+            instance_uuid: uuid,
+            instance_name: finalName,
+            display_name: rawName,
+            created_via: "self_service",
+            remote: createRes.body,
+          },
+        })
         .select()
         .single();
-      if (updErr) {
-        return new Response(JSON.stringify({ error: updErr.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+      if (insErr) {
+        return new Response(JSON.stringify({ ok: false, error: insErr.message }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ ok: true, instance: updated }), {
+
+      // Configura webhook (best-effort)
+      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+      const wh = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+      await supabase
+        .from("evolution_instances")
+        .update({
+          webhook_subscribed: wh.ok,
+          metadata: {
+            ...((inserted.metadata as any) || {}),
+            webhook_error: wh.ok ? null : wh.error,
+            webhook_last_attempt_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", inserted.id);
+
+      return new Response(JSON.stringify({ ok: true, instance: inserted }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── delete ──
-    if (finalAction === "delete") {
-      const { instance_id } = body as { instance_id: string };
-      const inst = await loadInstance(instance_id);
-      if (!inst) return new Response(JSON.stringify({ error: "Instance not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-      await evoCall(`/instance/delete/${inst.instance_id}`, "DELETE", undefined, inst.instance_token || undefined);
-      await supabase.from("evolution_instances").delete().eq("id", instance_id);
+    // ---- RENAME INSTANCE (org admin/manager OR super admin) ----
+    // Apenas atualiza o display_name local (Evolution Go não suporta rename).
+    if (action === "rename_instance_self") {
+      const id = String(body.id || "");
+      const rawName = String(body.name || "").trim();
+      if (!id || !rawName) {
+        return new Response(JSON.stringify({ error: "Parâmetros inválidos." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (rawName.length < 2 || rawName.length > 60) {
+        return new Response(JSON.stringify({ error: "Nome deve ter entre 2 e 60 caracteres." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: inst } = await supabase
+        .from("evolution_instances")
+        .select("organization_id, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (!inst) {
+        return new Response(JSON.stringify({ error: "Instância não encontrada." }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Sem permissão." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newMeta = { ...((inst.metadata as any) || {}), display_name: rawName };
+      const { error } = await supabase
+        .from("evolution_instances")
+        .update({ metadata: newMeta })
+        .eq("id", id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ error: `Unknown action: ${finalAction}` }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // ---- DELETE INSTANCE SELF (org admin/manager) ----
+    // Mesma lógica de delete_instance, mas escopada à organização do usuário.
+    if (action === "delete_instance_self") {
+      if (!profile?.organization_id && !isSuperAdmin) {
+        return new Response(JSON.stringify({ error: "Usuário sem empresa vinculada." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: hasAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      const { data: hasManager } = await supabase.rpc("has_role", { _user_id: user.id, _role: "manager" });
+      if (!isSuperAdmin && !hasAdmin && !hasManager) {
+        return new Response(JSON.stringify({ error: "Apenas administradores ou gerentes podem excluir conexões." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("[evolution-proxy] exception:", err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const id = String(body.id || "");
+      const { data: inst } = await supabase
+        .from("evolution_instances")
+        .select("organization_id, name, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (!inst) {
+        return new Response(JSON.stringify({ error: "Instância não encontrada." }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Sem permissão." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const uuid = (inst.metadata as any)?.instance_uuid;
+      if (uuid) {
+        await evoFetch(config, `/instance/delete/${uuid}`, { method: "DELETE" }).catch(() => null);
+      } else if (inst.name) {
+        await evoFetch(config, `/instance/delete/${inst.name}`, { method: "DELETE" }).catch(() => null);
+      }
+
+      const { error } = await supabase.from("evolution_instances").delete().eq("id", id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- CONNECT INSTANCE (returns QR code) — admin/manager of the org OR super admin ----
+    if (action === "connect_instance") {
+      const id = String(body.id || "");
+      if (!id) {
+        return new Response(JSON.stringify({ error: "Missing instance id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: inst, error: instErr } = await supabase
+        .from("evolution_instances")
+        .select("id, name, instance_id, instance_token, organization_id, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (instErr || !inst) {
+        return new Response(JSON.stringify({ error: instErr?.message || "Instance not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Authorization: must belong to org OR be super_admin
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const meta: any = inst.metadata || {};
+      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceToken = inst.instance_token || meta.instance_token || null;
+
+      if (!uuid || !instanceToken) {
+        return new Response(JSON.stringify({ error: "Instância sem UUID ou token. Solicite ao Super Admin para sincronizar do servidor." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Strategy:
+      // 1) Check current connection state on the server.
+      //    - connected/open => already connected, just sync DB and return.
+      //    - qr present     => store the SERVER QR exactly as returned now.
+      //    - otherwise      => POST /instance/connect to trigger a fresh QR.
+      // Never force logout here: it invalidates the active QR/session cycle on
+      // Evolution Go and makes the panel show a QR that WhatsApp no longer accepts.
+
+      // (1) Check current state
+      try {
+        const info = await evoFetch(
+          config,
+          `/instance/${uuid}`,
+          { method: "GET" },
+          instanceToken,
+        );
+        const state = info?.body?.connectionStatus ?? info?.body?.connection ?? info?.body?.status ?? null;
+        if (info.ok && (state === "open" || info?.body?.connected === true)) {
+          await supabase
+            .from("evolution_instances")
+            .update({
+              status: "connected",
+              qr_code: null,
+              qr_code_updated_at: null,
+              last_connected_at: new Date().toISOString(),
+            })
+            .eq("id", inst.id);
+          return new Response(
+            JSON.stringify({ ok: true, qr_code: null, already_connected: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const existingQr = extractQr(info?.body);
+        if (info.ok && existingQr) {
+          await supabase
+            .from("evolution_instances")
+            .update({
+              status: "qr_pending",
+              qr_code: existingQr,
+              qr_code_updated_at: new Date().toISOString(),
+              webhook_subscribed: true,
+            })
+            .eq("id", inst.id);
+          return new Response(
+            JSON.stringify({ ok: true, qr_code: existingQr, reused_server_qr: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } catch (e) {
+        console.warn(`[connect_instance] info check failed (continuing): ${e}`);
+      }
+
+      // Clear stale QR locally before asking Evolution Go for a new one.
+      await supabase
+        .from("evolution_instances")
+        .update({
+          status: "qr_pending",
+          qr_code: null,
+          qr_code_updated_at: null,
+        })
+        .eq("id", inst.id);
+
+      // Connect — this triggers QRCode/QRCODE_UPDATED webhook and may also return QR inline.
+      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+      const res = await evoFetch(
+        config,
+        `/instance/connect`,
+        {
+          method: "POST",
+          headers: { instanceId: uuid },
+          body: JSON.stringify({ webhookUrl, subscribe: ["ALL"], immediate: true }),
+        },
+        instanceToken,
+      );
+
+      if (!res.ok) {
+        return new Response(JSON.stringify({ ok: false, error: res.message || `Erro ${res.status}` }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let qrString = extractQr(res.body);
+
+      // (5) If QR not inline, poll the instance state up to ~6s — Evolution Go often
+      //     returns the QR inside GET /instance/{uuid} a second after connect.
+      if (!qrString) {
+        for (let i = 0; i < 4; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          try {
+            const info = await evoFetch(config, `/instance/${uuid}`, { method: "GET" }, instanceToken);
+            const found = extractQr(info?.body);
+            if (found) {
+              qrString = found;
+              break;
+            }
+          } catch (e) {
+            console.warn(`[connect_instance] poll info error: ${e}`);
+          }
+        }
+      }
+
+      if (qrString) {
+        await supabase
+          .from("evolution_instances")
+          .update({
+            status: "qr_pending",
+            qr_code: qrString,
+            qr_code_updated_at: new Date().toISOString(),
+            webhook_subscribed: true,
+          })
+          .eq("id", inst.id);
+      } else {
+        await supabase
+          .from("evolution_instances")
+          .update({ webhook_subscribed: true })
+          .eq("id", inst.id);
+      }
+
+      return new Response(JSON.stringify({ ok: true, qr_code: qrString, response: res.body }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- SYNC INSTANCES (super admin only) ----
+    // Optionally pass organization_id to restrict assignment of new ones
+    if (action === "sync_instances") {
+      const denied = requireSuperAdmin();
+      if (denied) return denied;
+      const targetOrgId = String(body.organization_id || "").trim() || null;
+
+      const res = await evoFetch(config, "/instance/all", { method: "GET" });
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ error: res.message || `Erro ${res.status} ao listar instâncias` }),
+          { status: res.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const list: any[] = Array.isArray(res.body)
+        ? res.body
+        : (res.body?.data ?? res.body?.instances ?? []);
+
+      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+      let imported = 0;
+      let updated = 0;
+      let webhooksOk = 0;
+      let webhooksFailed = 0;
+      const results: any[] = [];
+
+      for (const item of list) {
+        const parsed = parseInstanceFromList(item);
+        if (!parsed.name) continue;
+
+        let webhookRes: { ok: boolean; error?: string; status?: number; response?: any };
+        if (!parsed.uuid) {
+          webhookRes = { ok: false, error: "Servidor não retornou UUID." };
+        } else if (!parsed.token) {
+          webhookRes = { ok: false, error: "Servidor não retornou token da instância." };
+        } else {
+          webhookRes = await configureWebhook(config, parsed.uuid, parsed.token, webhookUrl);
+        }
+        if (webhookRes.ok) webhooksOk++; else webhooksFailed++;
+
+        // Match by name across ALL orgs (super admin scope)
+        const { data: existing } = await supabase
+          .from("evolution_instances")
+          .select("id, organization_id")
+          .eq("name", parsed.name)
+          .maybeSingle();
+
+        const baseRow: any = {
+          instance_id: parsed.uuid || parsed.name,
+          instance_token: parsed.token,
+          phone_number: parsed.phone,
+          status: parsed.status,
+          qr_code: parsed.connected ? null : parsed.qrcode,
+          qr_code_updated_at: !parsed.connected && parsed.qrcode ? new Date().toISOString() : null,
+          last_connected_at: parsed.connected ? new Date().toISOString() : null,
+          webhook_subscribed: webhookRes.ok,
+          metadata: {
+            synced_from: "evolution_go",
+            instance_uuid: parsed.uuid,
+            instance_name: parsed.name,
+            remote: item,
+            webhook_error: webhookRes.ok ? null : webhookRes.error,
+            webhook_last_attempt_at: new Date().toISOString(),
+          },
+        };
+
+        if (existing) {
+          const { error: updErr } = await supabase
+            .from("evolution_instances")
+            .update(baseRow)
+            .eq("id", existing.id);
+          if (!updErr) updated++;
+          results.push({ name: parsed.name, action: "updated", webhook: webhookRes.ok, error: updErr?.message });
+        } else {
+          // Insert as orphan (no organization) — super admin can attach later via assign_instance
+          const { error: insErr } = await supabase
+            .from("evolution_instances")
+            .insert({
+              organization_id: targetOrgId, // may be null
+              name: parsed.name,
+              ...baseRow,
+              is_default: false,
+              created_by_super_admin: true,
+            });
+          if (!insErr) imported++;
+          results.push({
+            name: parsed.name,
+            action: targetOrgId ? "imported" : "imported_orphan",
+            webhook: webhookRes.ok,
+            error: insErr?.message,
+          });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          imported,
+          updated,
+          total: list.length,
+          webhooks: { ok: webhooksOk, failed: webhooksFailed },
+          results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ---- ASSIGN INSTANCE TO ORGANIZATION (super admin only) ----
+    if (action === "assign_instance") {
+      const denied = requireSuperAdmin();
+      if (denied) return denied;
+      const id = String(body.id || "");
+      const orgId = body.organization_id ? String(body.organization_id) : null;
+      if (!id) {
+        return new Response(JSON.stringify({ error: "id é obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (orgId) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("id", orgId)
+          .maybeSingle();
+        if (!org) {
+          return new Response(JSON.stringify({ error: "Empresa não encontrada" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      const { error: updErr } = await supabase
+        .from("evolution_instances")
+        .update({ organization_id: orgId, is_default: false })
+        .eq("id", id);
+      if (updErr) {
+        return new Response(JSON.stringify({ error: updErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- SUBSCRIBE WEBHOOK (single instance) — super admin OR org admin ----
+    if (action === "subscribe_webhook") {
+      const id = String(body.id || "");
+      if (!id) {
+        return new Response(JSON.stringify({ error: "Missing instance id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: inst, error: instErr } = await supabase
+        .from("evolution_instances")
+        .select("id, name, instance_id, instance_token, organization_id, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (instErr || !inst) {
+        return new Response(JSON.stringify({ error: instErr?.message || "Instance not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+      const meta: any = inst.metadata || {};
+      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceToken = inst.instance_token || meta.instance_token || null;
+
+      if (!uuid || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const webhookRes = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+      await supabase
+        .from("evolution_instances")
+        .update({
+          webhook_subscribed: webhookRes.ok,
+          metadata: {
+            ...meta,
+            webhook_error: webhookRes.ok ? null : webhookRes.error,
+            webhook_last_attempt_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", inst.id);
+
+      if (!webhookRes.ok) {
+        return new Response(
+          JSON.stringify({ ok: false, error: webhookRes.error, status: webhookRes.status }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ ok: true, message: "Webhook configurado com sucesso" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- DELETE INSTANCE (super admin only) ----
+    if (action === "delete_instance") {
+      const denied = requireSuperAdmin();
+      if (denied) return denied;
+      const id = String(body.id || "");
+
+      // Try to delete on Evolution Go too (best-effort)
+      const { data: inst } = await supabase
+        .from("evolution_instances")
+        .select("name, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      const uuid = (inst?.metadata as any)?.instance_uuid;
+      if (uuid) {
+        await evoFetch(config, `/instance/delete/${uuid}`, { method: "DELETE" }).catch(() => null);
+      } else if (inst?.name) {
+        await evoFetch(config, `/instance/delete/${inst.name}`, { method: "DELETE" }).catch(() => null);
+      }
+
+      const { error } = await supabase.from("evolution_instances").delete().eq("id", id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- SET DEFAULT (admin/manager of the org OR super admin) ----
+    if (action === "set_default") {
+      const id = String(body.id || "");
+      const { data: inst } = await supabase
+        .from("evolution_instances")
+        .select("organization_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (!inst) {
+        return new Response(JSON.stringify({ error: "Instance not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await supabase
+        .from("evolution_instances")
+        .update({ is_default: false })
+        .eq("organization_id", inst.organization_id)
+        .eq("is_default", true);
+      const { error } = await supabase
+        .from("evolution_instances")
+        .update({ is_default: true })
+        .eq("id", id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- DISCONNECT INSTANCE (pause session, KEEP pairing) — admin/manager OR super admin ----
+    // Calls POST /instance/disconnect — closes the WebSocket session but keeps the device paired.
+    // Reconnect later returns to the same number WITHOUT a new QR.
+    if (action === "disconnect_instance") {
+      const id = String(body.id || "");
+      if (!id) {
+        return new Response(JSON.stringify({ error: "Missing instance id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: inst, error: instErr } = await supabase
+        .from("evolution_instances")
+        .select("id, name, instance_id, instance_token, organization_id, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (instErr || !inst) {
+        return new Response(JSON.stringify({ error: instErr?.message || "Instance not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const meta: any = inst.metadata || {};
+      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceToken = inst.instance_token || meta.instance_token || null;
+      if (!uuid || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const res = await evoFetch(
+        config,
+        `/instance/disconnect`,
+        { method: "POST", headers: { instanceId: uuid } },
+        instanceToken,
+      );
+      console.log(`[disconnect_instance] uuid=${uuid} status=${res.status} ok=${res.ok}`);
+
+      // Even if Evolution returns non-2xx (e.g. already disconnected), reflect locally
+      await supabase
+        .from("evolution_instances")
+        .update({
+          status: "disconnected",
+          qr_code: null,
+          qr_code_updated_at: null,
+        })
+        .eq("id", inst.id);
+
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ ok: false, error: res.message || `Erro ${res.status} ao pausar sessão` }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- LOGOUT INSTANCE (remove pairing, requires new QR) — admin/manager OR super admin ----
+    // Calls DELETE /instance/logout — fully unlinks the WhatsApp account from the instance.
+    // The number disappears from "Aparelhos conectados" and a NEW QR is required to pair again
+    // (same or different number).
+    if (action === "logout_instance") {
+      const id = String(body.id || "");
+      if (!id) {
+        return new Response(JSON.stringify({ error: "Missing instance id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: inst, error: instErr } = await supabase
+        .from("evolution_instances")
+        .select("id, name, instance_id, instance_token, organization_id, metadata")
+        .eq("id", id)
+        .maybeSingle();
+      if (instErr || !inst) {
+        return new Response(JSON.stringify({ error: instErr?.message || "Instance not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!isSuperAdmin && inst.organization_id !== profile?.organization_id) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const meta: any = inst.metadata || {};
+      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceToken = inst.instance_token || meta.instance_token || null;
+      if (!uuid || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const res = await evoFetch(
+        config,
+        `/instance/logout`,
+        { method: "DELETE", headers: { instanceId: uuid } },
+        instanceToken,
+      );
+      console.log(`[logout_instance] uuid=${uuid} status=${res.status} ok=${res.ok}`);
+
+      // Always clear local pairing data — even if Evolution complained, the user wants it unlinked
+      await supabase
+        .from("evolution_instances")
+        .update({
+          status: "disconnected",
+          phone_number: null,
+          qr_code: null,
+          qr_code_updated_at: null,
+          last_connected_at: null,
+        })
+        .eq("id", inst.id);
+
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ ok: false, error: res.message || `Erro ${res.status} ao desvincular` }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Unknown action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("evolution-proxy error:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

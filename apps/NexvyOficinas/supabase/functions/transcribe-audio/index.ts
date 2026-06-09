@@ -1,123 +1,77 @@
-// Edge Function: transcribe-audio
-// Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
-// verify_jwt: true
-//
-// Responsabilidades:
-// 1. Receber { storage_url, message_id }
-// 2. Fazer fetch do áudio no storage_url
-// 3. Enviar para OpenAI Whisper API (whisper-1, language: pt)
-// 4. UPDATE inbox_messages SET transcript WHERE id = message_id
-// 5. Retornar { transcript }
-//
-// Env vars: OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
-
-interface RequestBody {
-  storage_url: string;
-  message_id: string;
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-
-    // Validar JWT do usuário
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
+    if (!ELEVENLABS_API_KEY) {
+      throw new Error("ELEVENLABS_API_KEY is not configured");
     }
 
-    const body = (await req.json()) as RequestBody;
-    const { storage_url, message_id } = body;
-
-    if (!storage_url || !message_id) {
-      return new Response(JSON.stringify({ error: "storage_url and message_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const formData = await req.formData();
+    const audioFile = formData.get("audio") as File;
+    
+    if (!audioFile) {
+      return new Response(
+        JSON.stringify({ error: "No audio file provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log("Audio file received:", audioFile.name, audioFile.type, audioFile.size, "bytes");
 
-    // 1. Fetch do arquivo de áudio do storage
-    const audioResponse = await fetch(storage_url);
-    if (!audioResponse.ok) {
-      return new Response(JSON.stringify({ error: `Failed to fetch audio: ${audioResponse.status}` }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Use ElevenLabs Scribe API for transcription
+    const elevenLabsFormData = new FormData();
+    elevenLabsFormData.append("file", audioFile, audioFile.name || "recording.webm");
+    elevenLabsFormData.append("model_id", "scribe_v2");
+    elevenLabsFormData.append("language_code", "por"); // Portuguese
 
-    const buffer = await audioResponse.arrayBuffer();
+    console.log("Calling ElevenLabs Scribe API...");
 
-    // 2. Montar FormData para Whisper API
-    const formData = new FormData();
-    const audioBlob = new Blob([buffer], { type: "audio/ogg" });
-    formData.append("file", audioBlob, "audio.ogg");
-    formData.append("model", "whisper-1");
-    formData.append("language", "pt");
-
-    // 3. Chamar OpenAI Whisper via fetch direto (sem SDK — ambiente Deno)
-    const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "xi-api-key": ELEVENLABS_API_KEY,
       },
-      body: formData,
+      body: elevenLabsFormData,
     });
 
-    if (!whisperRes.ok) {
-      const errText = await whisperRes.text();
-      console.error("[transcribe-audio] Whisper API error:", whisperRes.status, errText);
-      return new Response(JSON.stringify({ error: "Whisper API error", detail: errText }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("ElevenLabs transcription error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      throw new Error(`Transcription failed: ${response.status} - ${errorText}`);
     }
 
-    const whisperData = await whisperRes.json() as { text: string };
-    const transcript = whisperData.text?.trim() ?? "";
+    const data = await response.json();
+    const transcribedText = data.text?.trim() || "";
+    
+    console.log("Transcription result:", transcribedText.substring(0, 100));
 
-    // 4. Persistir transcrição no banco
-    const { error: updateErr } = await supabase
-      .from("inbox_messages")
-      .update({ transcript })
-      .eq("id", message_id);
-
-    if (updateErr) {
-      console.error("[transcribe-audio] DB update error:", updateErr.message);
-      return new Response(JSON.stringify({ error: "Failed to save transcript", detail: updateErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ transcript }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("[transcribe-audio] exception:", err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ text: transcribedText }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Transcribe audio error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

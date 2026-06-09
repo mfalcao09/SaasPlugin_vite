@@ -1,153 +1,90 @@
-// Edge Function: process-scheduled-messages
-// Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
-// verify_jwt: false (chamado por cron)
-//
-// Responsabilidades:
-// 1. Validar HMAC via header X-Cron-Secret (comparação timing-safe)
-// 2. SELECT * FROM inbox_scheduled_messages WHERE status='pending' AND scheduled_at <= now()
-// 3. Para cada: chamar evolution API, persistir em inbox_messages, UPDATE status='sent'/'failed'
-//
-// Env vars: CRON_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY
-
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-const EVO_URL = (Deno.env.get("EVOLUTION_API_URL") ?? "").replace(/\/$/, "");
-const EVO_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-
-/** Comparação timing-safe para evitar timing attack na validação do secret */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-interface ScheduledMessage {
-  id: string;
-  empresa_id: string;
-  conversation_id: string;
-  content: string;
-  scheduled_at: string;
-}
-
-interface ConversationRow {
-  contact_phone: string;
-  evolution_instances: { instance_id: string; instance_token: string | null } | null;
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Validar CRON_SECRET via header X-Cron-Secret (timing-safe)
-  const providedSecret = req.headers.get("X-Cron-Secret") ?? "";
-  if (!CRON_SECRET || !timingSafeEqual(providedSecret, CRON_SECRET)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Buscar mensagens pendentes com scheduled_at <= agora
-    const { data: pending, error: fetchErr } = await supabase
-      .from("inbox_scheduled_messages")
-      .select("id,empresa_id,conversation_id,content,scheduled_at")
+    // Fetch pending messages that are due
+    const { data: pendingMessages, error: fetchError } = await supabase
+      .from("scheduled_messages")
+      .select("*")
       .eq("status", "pending")
-      .lte("scheduled_at", new Date().toISOString());
+      .lte("scheduled_at", new Date().toISOString())
+      .limit(50);
 
-    if (fetchErr) {
-      console.error("[process-scheduled-messages] fetch error:", fetchErr.message);
-      return new Response(JSON.stringify({ error: fetchErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (fetchError) throw fetchError;
+
+    if (!pendingMessages || pendingMessages.length === 0) {
+      return new Response(JSON.stringify({ processed: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const msgs = (pending ?? []) as ScheduledMessage[];
-    const results: { id: string; status: "sent" | "failed"; error?: string }[] = [];
+    let processed = 0;
+    let failed = 0;
 
-    for (const msg of msgs) {
+    for (const msg of pendingMessages) {
       try {
-        // 2. Resolver instância Evolution da conversa
-        const { data: conv } = await supabase
-          .from("inbox_conversations")
-          .select("contact_phone,evolution_instances(instance_id,instance_token)")
-          .eq("id", msg.conversation_id)
-          .single();
-
-        const conversation = conv as ConversationRow | null;
-        if (!conversation?.evolution_instances?.instance_id) {
-          throw new Error("No Evolution instance attached to conversation");
-        }
-
-        const { instance_id, instance_token } = conversation.evolution_instances;
-        const phone = conversation.contact_phone;
-
-        // 3. Enviar via Evolution Go API (sendText)
-        const evoRes = await fetch(`${EVO_URL}/message/sendText/${instance_id}`, {
+        // Send message via webchat-inbox
+        const inboxUrl = `${supabaseUrl}/functions/v1/webchat-inbox`;
+        const sendResponse = await fetch(inboxUrl, {
           method: "POST",
           headers: {
+            Authorization: `Bearer ${supabaseKey}`,
             "Content-Type": "application/json",
-            apikey: instance_token || EVO_KEY,
           },
-          body: JSON.stringify({ number: phone, text: msg.content }),
+          body: JSON.stringify({
+            action: "send",
+            conversationId: msg.conversation_id,
+            content: msg.content,
+            senderType: "agent",
+            senderName: "Mensagem Agendada",
+          }),
         });
 
-        if (!evoRes.ok) {
-          const errText = await evoRes.text();
-          throw new Error(`Evolution error ${evoRes.status}: ${errText}`);
+        if (sendResponse.ok) {
+          await supabase
+            .from("scheduled_messages")
+            .update({ status: "sent", sent_at: new Date().toISOString() })
+            .eq("id", msg.id);
+          processed++;
+        } else {
+          const errText = await sendResponse.text();
+          console.error(`Failed to send scheduled msg ${msg.id}:`, errText);
+          await supabase
+            .from("scheduled_messages")
+            .update({ status: "failed" })
+            .eq("id", msg.id);
+          failed++;
         }
-
-        // 4. Persistir mensagem enviada em inbox_messages
-        await supabase.from("inbox_messages").insert({
-          conversation_id: msg.conversation_id,
-          direction: "outbound",
-          sender_type: "agent",
-          content: msg.content,
-          content_type: "text",
-          metadata: { scheduled: true },
-        });
-
-        // 5. Marcar como enviada
+      } catch (msgError) {
+        console.error(`Error processing msg ${msg.id}:`, msgError);
         await supabase
-          .from("inbox_scheduled_messages")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .from("scheduled_messages")
+          .update({ status: "failed" })
           .eq("id", msg.id);
-
-        results.push({ id: msg.id, status: "sent" });
-
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.error(`[process-scheduled-messages] msg ${msg.id} failed:`, errMsg);
-
-        await supabase
-          .from("inbox_scheduled_messages")
-          .update({ status: "failed", error_message: errMsg })
-          .eq("id", msg.id);
-
-        results.push({ id: msg.id, status: "failed", error: errMsg });
+        failed++;
       }
     }
 
-    return new Response(JSON.stringify({ processed: msgs.length, results }), {
+    return new Response(JSON.stringify({ processed, failed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("[process-scheduled-messages] exception:", err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (e) {
+    console.error("process-scheduled-messages error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

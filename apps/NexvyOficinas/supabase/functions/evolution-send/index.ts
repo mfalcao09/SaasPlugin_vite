@@ -1,200 +1,301 @@
-// Edge Function: evolution-send (v3)
-// Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
-// verify_jwt: true (chamado pelo frontend autenticado)
-//
-// Responsabilidades:
-// 1. Receber pedido de envio do frontend ({ conversation_id, type, content|url, metadata })
-// 2. Resolver empresa + instância Evolution da conversa
-// 3. Disparar Evolution Go API (sendText | sendMedia | sendWhatsAppAudio)
-// 4. Persistir mensagem outbound em inbox_messages com metadata normalizado
-//    (consistente com webhook v4 e bubbles do frontend)
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EVO_URL = (Deno.env.get("EVOLUTION_API_URL") ?? "").replace(/\/$/, "");
-const EVO_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
 interface SendBody {
-  conversation_id: string;
-  type: "text" | "image" | "audio" | "video" | "document";
-  content?: string;     // texto puro
-  url?: string;         // URL pública da mídia (do bucket inbox-media)
-  caption?: string;     // legenda da mídia
-  // Metadados normalizados (consistentes com useMediaUpload no front + webhook v4):
-  mime?: string;
-  name?: string;
-  size?: number;
-  duration?: number;    // segundos (audio/video)
-  width?: number;       // px (image/video)
-  height?: number;
+  organization_id?: string;
+  instance_id?: string; // our DB id
+  type:
+    | "text"
+    | "media"
+    | "audio"
+    | "sticker"
+    | "location"
+    | "contact"
+    | "link"
+    | "poll"
+    | "reaction"
+    | "edit"
+    | "delete"
+    | "markRead"
+    | "presence";
+  to: string; // phone digits only
+  payload: Record<string, any>;
 }
 
-async function evoFetch(
-  path: string,
-  body: unknown,
-  instanceToken?: string,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(`${EVO_URL}${path}`, {
+async function evoFetch(url: string, apikey: string, path: string, body: any) {
+  const fullUrl = `${url}${path}`;
+  console.log(`[evolution-send] POST ${path} body=${JSON.stringify(body).slice(0, 300)}`);
+  const res = await fetch(fullUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: instanceToken || EVO_KEY,
-    },
+    headers: { "Content-Type": "application/json", apikey },
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  let data: unknown;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  return { ok: res.ok, status: res.status, data };
-}
-
-/** Remove chaves undefined/null/"" antes de salvar no banco (metadata enxuto) */
-function stripUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) if (v !== undefined && v !== null && v !== "") out[k] = v;
-  return out;
+  let parsed: any;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = text;
+  }
+  if (!res.ok) {
+    console.error(
+      `[evolution-send] error: status=${res.status} path=${path} body=${
+        typeof parsed === "string" ? parsed.slice(0, 500) : JSON.stringify(parsed).slice(0, 500)
+      }`
+    );
+  } else {
+    console.log(`[evolution-send] success: status=${res.status} path=${path}`);
+  }
+  return { ok: res.ok, status: res.status, body: parsed };
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", ""),
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: eu } = await supabase
-      .from("empresa_users").select("empresa_id").eq("user_id", user.id).single();
-    const empresaId = eu?.empresa_id;
-    if (!empresaId) {
-      return new Response(JSON.stringify({ error: "No empresa" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const body = (await req.json()) as SendBody;
-    const { conversation_id, type = "text", content, url, caption, mime, name, size, duration, width, height } = body;
+    let { organization_id, instance_id, type, to, payload } = body;
 
-    if (!conversation_id) {
-      return new Response(JSON.stringify({ error: "conversation_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (type !== "text" && !url) {
-      return new Response(JSON.stringify({ error: `url required for type=${type}` }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!type || !to || !payload) {
+      return new Response(JSON.stringify({ error: "Missing type/to/payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: conv } = await supabase
-      .from("inbox_conversations")
-      .select("*, evolution_instances(instance_id, instance_token)")
-      .eq("id", conversation_id)
-      .eq("empresa_id", empresaId)
-      .single();
+    // Auth: if Bearer present, derive org from user
+    if (!organization_id) {
+      const auth = req.headers.get("Authorization");
+      if (auth) {
+        const { data: { user } } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles").select("organization_id").eq("id", user.id).single();
+          organization_id = profile?.organization_id || undefined;
+        }
+      }
+    }
 
-    if (!conv) {
-      return new Response(JSON.stringify({ error: "Conversation not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!organization_id) {
+      return new Response(JSON.stringify({ error: "organization_id required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const inst = conv.evolution_instances as Record<string, any>;
-    if (!inst?.instance_id) {
-      return new Response(JSON.stringify({ error: "No Evolution instance attached" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Resolve instance
+    let instance: any;
+    if (instance_id) {
+      const { data } = await supabase
+        .from("evolution_instances").select("*")
+        .eq("id", instance_id).eq("organization_id", organization_id).single();
+      instance = data;
+    } else {
+      // Sem instance_id: pega a melhor instância conectada da org (default primeiro, senão mais recente)
+      const { data } = await supabase
+        .from("evolution_instances").select("*")
+        .eq("organization_id", organization_id)
+        .eq("status", "connected")
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1).maybeSingle();
+      instance = data;
+    }
+    if (!instance) {
+      return new Response(JSON.stringify({ error: "No Evolution instance found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const phone = conv.contact_phone;
-    const instanceToken = inst.instance_token || undefined;
-    let evo: { ok: boolean; status: number; data: unknown };
+    // Org-level settings (legacy/per-org override)
+    const { data: cfg } = await supabase
+      .from("integration_settings").select("settings")
+      .eq("organization_id", organization_id)
+      .eq("integration_type", "whatsapp_provider").maybeSingle();
+    const settings = cfg?.settings ?? {};
+    let url = String(settings.evolution_go_url || "").replace(/\/$/, "");
+    let globalKey = String(settings.evolution_go_global_api_key || "");
 
+    // Fallback to platform-wide Evolution Go server (current architecture)
+    if (!url || !globalKey) {
+      const { data: platformCfg } = await supabase
+        .from("platform_settings")
+        .select("evolution_go_url, evolution_go_global_api_key")
+        .maybeSingle();
+      url = url || String((platformCfg as any)?.evolution_go_url || "").replace(/\/$/, "");
+      globalKey = globalKey || String((platformCfg as any)?.evolution_go_global_api_key || "");
+    }
+
+    // Evolution Go: instance is identified by the instance_token in the apikey header
+    const apikey = instance.instance_token || globalKey;
+    if (!url || !apikey) {
+      console.error("[evolution-send] Evolution Go not configured", {
+        org_has_url: !!settings.evolution_go_url,
+        platform_has_url: !!url,
+        instance_has_token: !!instance.instance_token,
+      });
+      return new Response(JSON.stringify({ error: "Evolution Go not configured" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const phone = to.replace(/\D/g, "");
+
+    let res;
     switch (type) {
       case "text":
-        evo = await evoFetch(`/message/sendText/${inst.instance_id}`, {
+        res = await evoFetch(url, apikey, `/send/text`, {
           number: phone,
-          text: content ?? "",
-        }, instanceToken);
+          text: payload.text,
+        });
         break;
-      case "image":
-      case "video":
-      case "document":
-        evo = await evoFetch(`/message/sendMedia/${inst.instance_id}`, {
+      case "media": {
+        // Evolution Go contract (verified against live server):
+        //   POST /send/media
+        //   { number, type: "image"|"video"|"document"|"audio", url, caption, fileName }
+        // The server REQUIRES the field `type` (not `mediatype`) and `url`
+        // (not `media`). Sending the wrong names returns 400
+        // "media type is required" / "URL is required".
+        const rawMedia = payload.url ?? payload.media;
+        const mediaType = payload.type || payload.mediatype || "image";
+        const isDataUrl = typeof rawMedia === "string" && rawMedia.startsWith("data:");
+        const mediaPayload: Record<string, any> = {
           number: phone,
-          mediatype: type,
-          url,
-          caption: caption ?? "",
-          fileName: name,        // Evolution Go espera fileName
-          mimetype: mime,        // Evolution Go espera mimetype
-        }, instanceToken);
+          type: mediaType,
+          caption: payload.caption,
+          fileName: payload.fileName,
+        };
+        if (isDataUrl) {
+          mediaPayload.media = rawMedia;
+        } else {
+          mediaPayload.url = rawMedia;
+        }
+        if (payload.mimetype) mediaPayload.mimetype = payload.mimetype;
+        console.log(`[evolution-send] media transport=${isDataUrl ? "base64" : "url"} mimetype=${payload.mimetype || "unknown"}`);
+        res = await evoFetch(url, apikey, `/send/media`, mediaPayload);
         break;
-      case "audio":
-        // Endpoint específico de áudio PTT (voice note) na Evolution Go
-        evo = await evoFetch(`/message/sendWhatsAppAudio/${inst.instance_id}`, {
+      }
+      case "audio": {
+        // Servidor Evolution Go não tem rota /send/audio — usamos /send/media com type=audio.
+        const audioUrl = payload.audio || payload.url;
+        const isDataUrl = typeof audioUrl === "string" && audioUrl.startsWith("data:");
+        const audioPayload: Record<string, any> = {
           number: phone,
-          audio: url,
-          encoding: true,
-        }, instanceToken);
+          type: "audio",
+          mimetype: payload.mimetype || "audio/ogg",
+          fileName: payload.fileName || `audio-${Date.now()}.ogg`,
+        };
+        if (isDataUrl) audioPayload.media = audioUrl;
+        else audioPayload.url = audioUrl;
+        console.log(`[evolution-send] audio routed to /send/media transport=${isDataUrl ? "base64" : "url"}`);
+        res = await evoFetch(url, apikey, `/send/media`, audioPayload);
         break;
+      }
+      case "sticker":
+        res = await evoFetch(url, apikey, `/send/sticker`, {
+          number: phone,
+          sticker: payload.sticker,
+        });
+        break;
+      case "location":
+        res = await evoFetch(url, apikey, `/send/location`, {
+          number: phone,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          name: payload.name,
+          address: payload.address,
+        });
+        break;
+      case "contact":
+        res = await evoFetch(url, apikey, `/send/contact`, {
+          number: phone,
+          contact: payload.contacts || payload.contact,
+        });
+        break;
+      case "link":
+        res = await evoFetch(url, apikey, `/send/link`, {
+          number: phone,
+          link: payload.link,
+          text: payload.text,
+        });
+        break;
+      case "poll":
+        res = await evoFetch(url, apikey, `/send/poll`, {
+          number: phone,
+          name: payload.name,
+          selectableCount: payload.selectableCount || 1,
+          values: payload.values,
+        });
+        break;
+      case "reaction":
+        res = await evoFetch(url, apikey, `/send/reaction`, {
+          key: payload.key,
+          reaction: payload.reaction,
+        });
+        break;
+      case "edit":
+        res = await evoFetch(url, apikey, `/chat/updateMessage`, {
+          number: phone,
+          key: payload.key,
+          text: payload.text,
+        });
+        break;
+      case "delete":
+        res = await evoFetch(url, apikey, `/chat/deleteMessageForEveryone`, {
+          id: payload.id,
+          remoteJid: payload.remoteJid,
+          fromMe: payload.fromMe ?? true,
+          participant: payload.participant,
+        });
+        break;
+      case "markRead":
+        res = await evoFetch(url, apikey, `/chat/markMessageAsRead`, {
+          readMessages: payload.readMessages,
+        });
+        break;
+      case "presence": {
+        // Evolution Go contract: POST /message/presence { number, state, isAudio? }
+        // States Baileys: composing | recording | paused | available | unavailable
+        const state = String(payload.state || payload.presence || "composing");
+        const isAudio = payload.isAudio === true || state === "recording";
+        res = await evoFetch(url, apikey, `/message/presence`, {
+          number: phone,
+          state,
+          isAudio,
+        });
+        break;
+      }
       default:
         return new Response(JSON.stringify({ error: `Unknown type: ${type}` }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     }
 
-    if (!evo.ok) {
-      console.error("[evolution-send] Evolution API error:", evo.status, evo.data);
-      return new Response(JSON.stringify({ error: "Evolution API error", detail: evo.data }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Salva mensagem outbound com metadata normalizado
-    const evoData = evo.data as Record<string, any>;
-    const metadata = type === "text"
-      ? {}
-      : stripUndefined({ url, mime, name, size, duration, width, height });
-
-    const { data: savedMsg, error: insertErr } = await supabase.from("inbox_messages").insert({
-      conversation_id,
-      direction: "outbound",
-      sender_type: "agent",
-      sender_id: user.id,
-      content: content ?? caption ?? null,
-      content_type: type,
-      wa_message_id: evoData?.key?.id ?? null,
-      metadata,
-    }).select().single();
-
-    if (insertErr) {
-      console.warn("[evolution-send] message saved to WhatsApp but DB insert failed:", insertErr.message);
-    }
-
-    return new Response(JSON.stringify({ ok: true, message: savedMsg, evo: evo.data }), {
+    // Return real HTTP status when Evolution responds with error
+    return new Response(JSON.stringify(res), {
+      status: res.ok ? 200 : res.status >= 400 ? res.status : 502,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
+  } catch (err: any) {
     console.error("[evolution-send] exception:", err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

@@ -1,90 +1,219 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import AppLayout from '@/components/layout/AppLayout'
-import Login from '@/pages/auth/Login'
-import Signup from '@/pages/auth/Signup'
-import Onboarding from '@/pages/Onboarding'
-import Dashboard from '@/pages/app/Dashboard'
-import Clientes from '@/pages/app/Clientes'
-import Veiculos from '@/pages/app/Veiculos'
-import Ordens from '@/pages/app/Ordens'
-import Orcamentos from '@/pages/app/Orcamentos'
-import Financeiro from '@/pages/app/Financeiro'
-import Relatorios from '@/pages/app/Relatorios'
-import AIGrowth from '@/pages/app/AIGrowth'
-import Equipe from '@/pages/app/Equipe'
-import Configuracoes from '@/pages/app/Configuracoes'
-import Leads from '@/pages/app/Leads'
-import Cadencia from '@/pages/app/Cadencia'
-import Metas from '@/pages/app/Metas'
-import Inbox from '@/pages/app/Inbox'
-import InboxMetrics from '@/pages/app/InboxMetrics'
-import MyStats from '@/pages/app/MyStats'
-import WebchatConfig from '@/pages/app/WebchatConfig'
-import OnboardingWizard from '@/pages/app/OnboardingWizard'
+import { Component, Suspense, type ReactNode } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
-const queryClient = new QueryClient()
+// Lazy load all pages for code splitting
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
+const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const Install = lazyWithRetry(() => import("./pages/Install"));
+const PublicForm = lazyWithRetry(() => import("./pages/PublicForm"));
+const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
+const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
 
-function PrivateRoutes() {
-  const { user, loading, empresaId } = useAuth()
+const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
-        <div className="w-8 h-8 border-4 border-slate-700 border-t-orange-500 rounded-full animate-spin" />
-      </div>
-    )
+const PublicBooking = lazyWithRetry(() => import("./pages/PublicBooking"));
+const BookingConfirmation = lazyWithRetry(() => import("./pages/BookingConfirmation"));
+const Profile = lazyWithRetry(() => import("./pages/Profile"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const HelpCenter = lazyWithRetry(() => import("./pages/HelpCenter"));
+const HelpArticle = lazyWithRetry(() => import("./pages/HelpArticle"));
+const Updates = lazyWithRetry(() => import("./pages/Updates"));
+const Unsubscribe = lazyWithRetry(() => import("./pages/Unsubscribe"));
+const Docs = lazyWithRetry(() => import("./pages/Docs"));
+
+// Global loading fallback
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
+// Optimized QueryClient with global cache settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+      // 'online' (default) blocks queries while the browser thinks it is offline,
+      // which on mobile can leave the UI stuck on a spinner. 'always' lets the
+      // query run and surface a real error/empty state instead.
+      networkMode: 'always',
+    },
+    mutations: {
+      networkMode: 'always',
+    },
+  },
+});
+
+// Component to apply platform branding
+function PlatformBrandingLoader() {
+  usePlatformBranding();
+  return null;
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
   }
 
-  if (!user) return <Navigate to="/login" replace />
-  if (!empresaId) return <Navigate to="/onboarding" replace />
+  componentDidCatch(error: Error) {
+    console.error('[RouteErrorBoundary]', error);
+  }
 
-  return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="clientes" element={<Clientes />} />
-        <Route path="veiculos" element={<Veiculos />} />
-        <Route path="ordens" element={<Ordens />} />
-        <Route path="orcamentos" element={<Orcamentos />} />
-        <Route path="financeiro" element={<Financeiro />} />
-        <Route path="relatorios" element={<Relatorios />} />
-        <Route path="ai" element={<AIGrowth />} />
-        <Route path="equipe" element={<Equipe />} />
-        <Route path="configuracoes" element={<Configuracoes />} />
-        <Route path="leads" element={<Leads />} />
-        <Route path="cadencia" element={<Cadencia />} />
-        <Route path="metas" element={<Metas />} />
-        <Route path="inbox/metrics" element={<InboxMetrics />} />
-        <Route path="inbox/my-stats" element={<MyStats />} />
-        <Route path="inbox/webchat" element={<WebchatConfig />} />
-        <Route path="inbox/onboarding" element={<OnboardingWizard />} />
-        <Route path="inbox" element={<Inbox />} />
-        <Route path="inbox/:conversationId" element={<Inbox />} />
-      </Route>
-    </Routes>
-  )
+  handleReload = () => {
+    if ('caches' in window) {
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+    }
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+          <div className="max-w-sm space-y-4">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-lg font-semibold text-foreground">Não foi possível carregar a aplicação</h1>
+              <p className="text-sm text-muted-foreground">A versão local ficou desatualizada. Recarregue para buscar a versão mais recente.</p>
+            </div>
+            <button
+              type="button"
+              onClick={this.handleReload}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Recarregar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-export default function App() {
-  return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <Routes>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <AuthProvider>
+        <TooltipProvider>
+        <PlatformBrandingLoader />
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <RouteErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/*" element={<PrivateRoutes />} />
-            </Routes>
-          </BrowserRouter>
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
-  )
-}
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/aceitar-convite" element={<AcceptInvite />} />
+
+              <Route path="/install" element={<Install />} />
+              <Route path="/f/:slug" element={<PublicForm />} />
+              <Route path="/c/:slug" element={<PublicChat />} />
+              <Route path="/q/:slug" element={<PublicQuiz />} />
+              
+              <Route path="/agendar/:userSlug" element={<PublicBooking />} />
+              <Route path="/agendar/:userSlug/:eventSlug" element={<PublicBooking />} />
+              <Route path="/confirmar/:token" element={<BookingConfirmation />} />
+              <Route path="/vendas" element={<SalesPage />} />
+              <Route path="/whitelabel" element={<Navigate to="/" replace />} />
+              <Route path="/reagendar/:token" element={<BookingConfirmation />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
+
+              {/* Documentação pública (sem login) */}
+              <Route path="/docs" element={<Docs />} />
+              <Route path="/docs/:track" element={<Docs />} />
+              <Route path="/docs/:track/:slug" element={<Docs />} />
+
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* PWA / atalhos antigos podem abrir em /index ou /home — redireciona */}
+              <Route path="/index" element={<Navigate to="/" replace />} />
+              <Route path="/home" element={<Navigate to="/" replace />} />
+              <Route 
+                path="/ajuda" 
+                element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/ajuda/:slug" 
+                element={<ProtectedRoute><HelpArticle /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/novidades" 
+                element={<ProtectedRoute><Updates /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute>
+                    <Admin />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/perfil" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/configuracoes" 
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/super-admin" 
+                element={
+                  <SuperAdminRoute>
+                    <SuperAdmin />
+                  </SuperAdminRoute>
+                } 
+              />
+              <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </RouteErrorBoundary>
+        </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
+);
+
+export default App;
