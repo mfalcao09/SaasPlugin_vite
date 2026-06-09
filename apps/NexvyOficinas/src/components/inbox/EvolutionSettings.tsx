@@ -11,8 +11,10 @@ import OfficeHoursSettings from './OfficeHoursSettings'
 import KeywordRulesManager from './KeywordRulesManager'
 import MessageTemplatesManager from './MessageTemplatesManager'
 import ChatbotFlowEditor from './ChatbotFlowEditor'
+import AlertsConfig from './AlertsConfig'
+import ApiKeyManager from './ApiKeyManager'
 
-type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords' | 'templates' | 'chatbot'
+type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords' | 'templates' | 'chatbot' | 'alerts' | 'api'
 
 interface Instance {
   id: string
@@ -315,6 +317,28 @@ export default function EvolutionSettings() {
         >
           Chatbot
         </button>
+        <button
+          onClick={() => setActiveTab('alerts')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'alerts'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          Alertas
+        </button>
+        <button
+          onClick={() => setActiveTab('api')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'api'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          API
+        </button>
       </div>
 
       {/* Conteúdo das abas */}
@@ -357,6 +381,26 @@ export default function EvolutionSettings() {
             </p>
           </div>
           <ChatbotFlowEditor empresaId={empresaId} />
+        </div>
+      ) : activeTab === 'alerts' ? (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <h2 className="text-white font-semibold text-lg mb-1">Alertas WhatsApp</h2>
+            <p className="text-slate-400 text-sm">
+              Receba notificações operacionais no WhatsApp do dono da empresa.
+            </p>
+          </div>
+          <AlertsConfig empresaId={empresaId} />
+        </div>
+      ) : activeTab === 'api' ? (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <h2 className="text-white font-semibold text-lg mb-1">API Keys</h2>
+            <p className="text-slate-400 text-sm">
+              Gere chaves para integrar o inbox a sistemas externos (CRM, ERP, automações).
+            </p>
+          </div>
+          <ApiKeyManager empresaId={empresaId} />
         </div>
       ) : activeTab === 'auto_assign' ? (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
