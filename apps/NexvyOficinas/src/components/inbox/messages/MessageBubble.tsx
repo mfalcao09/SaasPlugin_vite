@@ -4,6 +4,8 @@ import AudioBubble from './AudioBubble'
 import VideoBubble from './VideoBubble'
 import DocumentBubble from './DocumentBubble'
 import StickerBubble from './StickerBubble'
+import LocationBubble from './LocationBubble'
+import ContactBubble from './ContactBubble'
 import MessageActionsMenu from '../MessageActionsMenu'
 import MessageReactions from '../MessageReactions'
 
@@ -169,6 +171,23 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
         {message.content_type === 'document' && url && (
           <DocumentBubble url={url} name={name} size={size} mime={mime} isOutbound={isOutbound} />
         )}
+        {message.content_type === 'location' && (
+          <LocationBubble
+            lat={metaNumber(message.metadata, 'latitude') ?? 0}
+            lng={metaNumber(message.metadata, 'longitude') ?? 0}
+            name={metaString(message.metadata, 'name')}
+            time={time}
+            isOutbound={isOutbound}
+          />
+        )}
+        {message.content_type === 'contact' && (
+          <ContactBubble
+            name={metaString(message.metadata, 'displayName') ?? metaString(message.metadata, 'name') ?? 'Contato'}
+            phone={metaString(message.metadata, 'phone') ?? ''}
+            time={time}
+            isOutbound={isOutbound}
+          />
+        )}
 
         {message.content_type === 'text' && message.content && (
           // Tachado quando apagada — conteúdo original permanece visível para contexto
@@ -190,7 +209,7 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
           />
         )}
 
-        {!['text', 'image', 'audio', 'video', 'document', 'sticker'].includes(message.content_type) && (
+        {!['text', 'image', 'audio', 'video', 'document', 'sticker', 'location', 'contact'].includes(message.content_type) && (
           <p className={`italic opacity-70 ${message.is_deleted ? 'line-through' : ''}`}>
             [{message.content_type}] {message.content ?? 'mensagem não suportada'}
           </p>
