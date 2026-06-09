@@ -120,7 +120,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
       // Busca as 100 mais recentes em ordem DESC, depois inverte para exibição
       const { data } = await supabase
         .from('inbox_messages')
-        .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id')
+        .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id,storage_url,edited_at,original_content')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE)
@@ -207,7 +207,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
 
     const { data } = await supabase
       .from('inbox_messages')
-      .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id')
+      .select('id,sender_type,content,content_type,metadata,created_at,is_deleted,delivery_status,reply_to_message_id,storage_url,edited_at,original_content')
       .eq('conversation_id', conversationId)
       .lt('created_at', cursorRef.current)
       .order('created_at', { ascending: false })

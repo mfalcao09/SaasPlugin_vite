@@ -19,6 +19,11 @@ export interface InboxMessage {
   delivery_status?: 'sent' | 'delivered' | 'read'
   /** ID da mensagem citada (reply) */
   reply_to_message_id?: string | null
+  /** Sprint4 F4 — URL permanente no Supabase Storage (preferencial sobre metadata.url) */
+  storage_url?: string | null
+  /** Sprint4 F5 — campos de edição inline */
+  edited_at?: string | null
+  original_content?: string | null
 }
 
 interface Props {
@@ -51,7 +56,8 @@ function DeliveryStatusIcon({ status }: { status?: 'sent' | 'delivered' | 'read'
 
 export default function MessageBubble({ message, isOutbound, allMessages, onReply }: Props) {
   const time = formatTime(message.created_at)
-  const url = metaString(message.metadata, 'url')
+  // Sprint4 F4: storage_url tem prioridade (permanente) sobre metadata.url (pode expirar)
+  const url = message.storage_url || metaString(message.metadata, 'url')
   const mime = metaString(message.metadata, 'mime')
   const name = metaString(message.metadata, 'name')
   const size = metaNumber(message.metadata, 'size')

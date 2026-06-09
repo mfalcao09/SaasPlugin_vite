@@ -1,16 +1,12 @@
-// Edge Function: evolution-webhook (v6)
+// Edge Function: evolution-webhook (v7)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
-// Responsabilidades:
-// 1. Receber webhooks da Evolution API (MESSAGES_UPSERT, MESSAGES_DELETE, MESSAGES_UPDATE, CONNECTION_UPDATE, QRCODE_UPDATED)
-// 2. Persistir mensagens inbound em inbox_messages (idempotente por wa_message_id)
-// 3. Para mídia (image/audio/video/document/sticker): baixar da Evolution + upload pro bucket inbox-media
-// 4. Normalizar metadata: { url, mime, size, name?, duration?, width?, height? }
-// 5. Atualizar status/qr_code de evolution_instances
-// 6. [v5] MESSAGES_DELETE + protocolMessage.type=5 → soft-delete (is_deleted=true)
-// 7. [v6] MESSAGES_UPDATE → atualiza delivery_status (DELIVERY_ACK → delivered, READ → read)
-// 8. [v6] MESSAGES_UPSERT: verifica bot_paused antes de acionar bot
+// Sprint 4 adições (v7):
+// [v7] storage_url como coluna dedicada no upsert de inbox_messages
+// [v7] Buscar avatar do contato via Evolution API (fire-and-forget, só se null)
+// [v7] presence.update → broadcast typing via Supabase Realtime
+// [v7] messages.reaction → INSERT/DELETE em message_reactions
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -128,6 +124,50 @@ async function fetchAndUploadMedia(opts: {
   }
 }
 
+/**
+ * [v7] Busca URL da foto do perfil do contato na Evolution API.
+ * Fire-and-forget: falha silenciosa não impacta processamento de mensagens.
+ */
+async function fetchAndStoreAvatar(opts: {
+  instanceName: string;
+  contactPhone: string;
+  convId: string;
+  supabase: ReturnType<typeof createClient>;
+}): Promise<void> {
+  try {
+    // Verificar se já tem avatar (evita chamada Evolution redundante)
+    const { data: convCheck } = await opts.supabase
+      .from("inbox_conversations")
+      .select("contact_avatar_url")
+      .eq("id", opts.convId)
+      .single();
+
+    if (convCheck?.contact_avatar_url) return;
+
+    const picRes = await fetch(
+      `${EVOLUTION_API_URL}/chat/fetchProfilePicture/${opts.instanceName}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": EVOLUTION_API_KEY },
+        body: JSON.stringify({ number: opts.contactPhone }),
+      },
+    );
+
+    if (!picRes.ok) return;
+
+    const picData = await picRes.json() as { profilePictureUrl?: string };
+    if (picData.profilePictureUrl) {
+      await opts.supabase
+        .from("inbox_conversations")
+        .update({ contact_avatar_url: picData.profilePictureUrl })
+        .eq("id", opts.convId);
+      console.log(`[webhook] avatar atualizado para conv ${opts.convId}`);
+    }
+  } catch (err) {
+    console.warn("[webhook] fetchAndStoreAvatar error (ignorado):", err);
+  }
+}
+
 Deno.serve(async (req) => {
   const incomingSecret = req.headers.get("x-webhook-secret") ?? "";
   if (WEBHOOK_SECRET && incomingSecret !== WEBHOOK_SECRET) {
@@ -179,17 +219,13 @@ Deno.serve(async (req) => {
   }
 
   // ── MESSAGES_DELETE ────────────────────────────────────────────────────────
-  // Emitido quando o remetente apaga a mensagem "para todos" no WhatsApp.
-  // Pode chegar como objeto único ou array de keys.
   if (event === "messages.delete" || event === "MESSAGES_DELETE") {
     const rawData = payload.data;
-    // Normaliza para array independente do formato
     const items: Array<Record<string, unknown>> = Array.isArray(rawData)
       ? rawData as Array<Record<string, unknown>>
       : [rawData as Record<string, unknown>];
 
     for (const item of items) {
-      // Evolution pode entregar { id, remoteJid } ou { key: { id } }
       const waMessageId = (item?.id ?? (item?.key as Record<string, unknown>)?.id) as string | undefined;
       if (!waMessageId) continue;
 
@@ -208,13 +244,11 @@ Deno.serve(async (req) => {
   }
 
   // ── MESSAGES_UPDATE ────────────────────────────────────────────────────────
-  // Emitido quando o status de entrega/leitura de uma mensagem muda.
   if (event === "messages.update" || event === "MESSAGES_UPDATE") {
     const dataField = payload.data as Array<Record<string, unknown>> | Record<string, unknown>;
     const updates: Array<Record<string, unknown>> = Array.isArray(dataField) ? dataField : [dataField];
 
     for (const item of updates) {
-      // Evolution entrega: { key: { id, fromMe, ... }, update: { status: 'DELIVERY_ACK' | 'READ' | ... } }
       const waMessageId = ((item.key as Record<string, unknown>)?.id ?? item.id) as string | undefined;
       const status = (item.update as Record<string, unknown> | undefined)?.status as string | undefined;
 
@@ -240,6 +274,81 @@ Deno.serve(async (req) => {
     return new Response("OK");
   }
 
+  // ── [v7] PRESENCE_UPDATE (typing indicator) ────────────────────────────────
+  // Evolution envia quando o contato começa/para de digitar.
+  // NOTA: Nem todas as versões da Evolution enviam este evento. Se não chegar,
+  // o indicador simplesmente não aparecerá — sem quebrar funcionalidade.
+  if (event === "presence.update" || event === "PRESENCE_UPDATE") {
+    const data = payload.data as {
+      id?: string;
+      presences?: Record<string, { lastKnownPresence?: string }>;
+    };
+    const remoteJid = data?.id ?? "";
+    if (!remoteJid || remoteJid.endsWith("@g.us")) return new Response("OK");
+
+    const presences = data?.presences ?? {};
+    const isComposing = Object.values(presences).some(
+      (p) => p.lastKnownPresence === "composing",
+    );
+
+    const { data: conv } = await supabase
+      .from("inbox_conversations")
+      .select("id")
+      .eq("wa_jid", remoteJid)
+      .single();
+
+    if (conv) {
+      const channel = supabase.channel(`typing:${conv.id}`);
+      await channel.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { sender: "contact", isTyping: isComposing },
+      });
+    }
+    return new Response("OK");
+  }
+
+  // ── [v7] MESSAGES_REACTION ─────────────────────────────────────────────────
+  if (event === "messages.reaction" || event === "MESSAGES_REACTION") {
+    const data = payload.data as {
+      key?: { id?: string };
+      reaction?: { text?: string };
+    };
+    const waMessageId = data?.key?.id;
+    const emoji = data?.reaction?.text;
+
+    if (!waMessageId) return new Response("OK");
+
+    const { data: msg } = await supabase
+      .from("inbox_messages")
+      .select("id")
+      .eq("wa_message_id", waMessageId)
+      .single();
+
+    if (msg) {
+      if (!emoji || emoji === "") {
+        // Remoção: contato remove reação (user_id é null para contato)
+        await supabase
+          .from("message_reactions")
+          .delete()
+          .eq("message_id", msg.id)
+          .eq("sender_type", "contact")
+          .is("user_id", null);
+        console.log(`[webhook] reaction removed for message ${msg.id}`);
+      } else {
+        // Upsert: contato só pode ter uma reação por mensagem
+        await supabase
+          .from("message_reactions")
+          .upsert(
+            { message_id: msg.id, sender_type: "contact", emoji, user_id: null },
+            { onConflict: "message_id,sender_type", ignoreDuplicates: false },
+          );
+        console.log(`[webhook] reaction ${emoji} upserted for message ${msg.id}`);
+      }
+    }
+    return new Response("OK");
+  }
+
   // ── MESSAGES_UPSERT ────────────────────────────────────────────────────────
   if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
     const dataField = payload.data;
@@ -258,23 +367,24 @@ Deno.serve(async (req) => {
     }
 
     for (const rawMsg of messages) {
-      const msg = rawMsg as Record<string, any>;
+      const msg = rawMsg as Record<string, unknown>;
       if (!msg?.key) continue;
 
-      const remoteJid: string = msg.key.remoteJid ?? "";
+      const key = msg.key as Record<string, unknown>;
+      const remoteJid: string = (key.remoteJid as string) ?? "";
       if (remoteJid.endsWith("@g.us") || remoteJid === "status@broadcast") continue;
 
-      const waMessageId: string = msg.key.id ?? "";
-      const fromMe: boolean = msg.key.fromMe ?? false;
+      const waMessageId: string = (key.id as string) ?? "";
+      const fromMe: boolean = (key.fromMe as boolean) ?? false;
       const contactPhone = remoteJid.split("@")[0] ?? remoteJid;
-      const contactName: string | null = msg.pushName ?? null;
+      const contactName: string | null = (msg.pushName as string) ?? null;
 
-      const msgContent = msg.message ?? {};
+      const msgContent = (msg.message as Record<string, unknown>) ?? {};
 
-      // ── protocolMessage.type = 5 = REVOKE (apagar para todos via MESSAGES_UPSERT) ──
-      // Acontece em versões do Baileys que não emitem MESSAGES_DELETE separado.
-      if (msgContent.protocolMessage?.type === 5) {
-        const targetId = msgContent.protocolMessage?.key?.id as string | undefined;
+      // ── protocolMessage.type = 5 = REVOKE ─────────────────────────────────
+      const protocolMsg = (msgContent.protocolMessage as Record<string, unknown>) ?? null;
+      if (protocolMsg && protocolMsg.type === 5) {
+        const targetId = ((protocolMsg.key as Record<string, unknown>) ?? {}).id as string | undefined;
         if (targetId) {
           const { error } = await supabase
             .from("inbox_messages")
@@ -286,51 +396,59 @@ Deno.serve(async (req) => {
             console.log(`[webhook] protocolMessage soft-deleted message ${targetId}`);
           }
         }
-        continue; // Não é uma mensagem normal — pula processamento
+        continue;
       }
 
       let content = "";
       let contentType = "text";
       let metadata: Record<string, unknown> = {};
 
-      if (msgContent.conversation) {
-        content = msgContent.conversation;
-      } else if (msgContent.extendedTextMessage?.text) {
-        content = msgContent.extendedTextMessage.text;
-      } else if (msgContent.imageMessage) {
-        content = msgContent.imageMessage.caption ?? "";
+      const imageMsg = (msgContent.imageMessage as Record<string, unknown>) ?? null;
+      const audioMsg = (msgContent.audioMessage as Record<string, unknown>) ?? null;
+      const videoMsg = (msgContent.videoMessage as Record<string, unknown>) ?? null;
+      const docMsg = (msgContent.documentMessage as Record<string, unknown>) ?? null;
+      const stickerMsg = (msgContent.stickerMessage as Record<string, unknown>) ?? null;
+      const convText = msgContent.conversation as string | undefined;
+      const extText = ((msgContent.extendedTextMessage as Record<string, unknown>) ?? {}).text as string | undefined;
+
+      if (convText) {
+        content = convText;
+      } else if (extText) {
+        content = extText;
+      } else if (imageMsg) {
+        content = (imageMsg.caption as string) ?? "";
         contentType = "image";
         metadata = {
-          mime: msgContent.imageMessage.mimetype,
-          width: msgContent.imageMessage.width,
-          height: msgContent.imageMessage.height,
+          mime: imageMsg.mimetype,
+          width: imageMsg.width,
+          height: imageMsg.height,
         };
-      } else if (msgContent.audioMessage) {
+      } else if (audioMsg) {
         contentType = "audio";
         metadata = {
-          mime: msgContent.audioMessage.mimetype,
-          duration: msgContent.audioMessage.seconds,
+          mime: audioMsg.mimetype,
+          duration: audioMsg.seconds,
         };
-      } else if (msgContent.videoMessage) {
-        content = msgContent.videoMessage.caption ?? "";
+      } else if (videoMsg) {
+        content = (videoMsg.caption as string) ?? "";
         contentType = "video";
         metadata = {
-          mime: msgContent.videoMessage.mimetype,
-          duration: msgContent.videoMessage.seconds,
-          width: msgContent.videoMessage.width,
-          height: msgContent.videoMessage.height,
+          mime: videoMsg.mimetype,
+          duration: videoMsg.seconds,
+          width: videoMsg.width,
+          height: videoMsg.height,
         };
-      } else if (msgContent.documentMessage) {
-        content = msgContent.documentMessage.caption ?? msgContent.documentMessage.fileName ?? "Documento";
+      } else if (docMsg) {
+        content = (docMsg.caption as string) ?? (docMsg.fileName as string) ?? "Documento";
         contentType = "document";
         metadata = {
-          mime: msgContent.documentMessage.mimetype,
-          name: msgContent.documentMessage.fileName,
+          mime: docMsg.mimetype,
+          name: docMsg.fileName,
         };
-      } else if (msgContent.stickerMessage) {
+      } else if (stickerMsg) {
         contentType = "sticker";
         metadata = {
-          mime: msgContent.stickerMessage.mimetype ?? "image/webp",
+          mime: (stickerMsg.mimetype as string) ?? "image/webp",
         };
       } else {
         content = "[mensagem não suportada]";
@@ -352,7 +470,16 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // [v6] Verifica bot_paused: se ativo, salva mensagem mas NÃO aciona bot nem muda status
+      // [v7] Atualizar contact_name se pushName fornecido e a conversa ainda não tem nome
+      if (contactName && !fromMe) {
+        await supabase
+          .from("inbox_conversations")
+          .update({ contact_name: contactName })
+          .eq("id", convId)
+          .is("contact_name", null);
+      }
+
+      // [v6] Verifica bot_paused: se ativo, salva mensagem mas NÃO aciona bot
       if (!fromMe) {
         const { data: convState } = await supabase
           .from("inbox_conversations")
@@ -361,7 +488,6 @@ Deno.serve(async (req) => {
           .single();
 
         if (convState?.bot_paused) {
-          // Persiste a mensagem normalmente, mas para aqui sem tocar no status/bot
           const { error: msgErrPaused } = await supabase.from("inbox_messages").upsert(
             {
               conversation_id: convId,
@@ -371,6 +497,7 @@ Deno.serve(async (req) => {
               content_type: contentType,
               wa_message_id: waMessageId || null,
               metadata,
+              storage_url: null, // [v7] não baixa mídia no branch paused
               is_deleted: false,
             },
             { onConflict: "wa_message_id", ignoreDuplicates: true },
@@ -378,11 +505,12 @@ Deno.serve(async (req) => {
           if (msgErrPaused) console.error("[webhook] bot_paused insert error:", msgErrPaused.message);
           await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
           console.log(`[webhook] bot_paused=true — mensagem salva sem acionar bot para conv ${convId}`);
-          continue; // Pula o restante do processamento (bot + status)
+          continue;
         }
       }
 
-      // Se for mídia, baixa da Evolution e faz upload pro Storage (fail-soft)
+      // [v7] Download mídia + upload Storage → preenche storage_url como coluna dedicada
+      let storageUrl: string | undefined;
       if (MEDIA_TYPES.has(contentType)) {
         const mediaResult = await fetchAndUploadMedia({
           msg,
@@ -392,6 +520,7 @@ Deno.serve(async (req) => {
           conversationId: convId as string,
           supabase,
         });
+        storageUrl = mediaResult.url;
         metadata = { ...metadata, ...mediaResult };
       }
 
@@ -404,6 +533,7 @@ Deno.serve(async (req) => {
           content_type: contentType,
           wa_message_id: waMessageId || null,
           metadata,
+          storage_url: storageUrl ?? null, // [v7]
           is_deleted: false,
         },
         { onConflict: "wa_message_id", ignoreDuplicates: true },
@@ -412,6 +542,14 @@ Deno.serve(async (req) => {
 
       if (!fromMe) {
         await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
+
+        // [v7] Buscar avatar do contato de forma assíncrona (fire-and-forget)
+        fetchAndStoreAvatar({
+          instanceName,
+          contactPhone,
+          convId: convId as string,
+          supabase,
+        }).catch(() => {});
       }
     }
     return new Response("OK");
