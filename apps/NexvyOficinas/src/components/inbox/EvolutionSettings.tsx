@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import QuickRepliesManager from './QuickRepliesManager'
 import OfficeHoursSettings from './OfficeHoursSettings'
 import KeywordRulesManager from './KeywordRulesManager'
+import MessageTemplatesManager from './MessageTemplatesManager'
 
-type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords'
+type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords' | 'templates'
 
 interface Instance {
   id: string
@@ -291,6 +292,17 @@ export default function EvolutionSettings() {
         >
           Keywords
         </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'templates'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          Templates
+        </button>
       </div>
 
       {/* Conteúdo das abas */}
@@ -313,6 +325,16 @@ export default function EvolutionSettings() {
             <p className="text-slate-400 text-sm">Resposta automática quando o contato enviar determinada palavra.</p>
           </div>
           {empresaId && <KeywordRulesManager empresaId={empresaId} />}
+        </div>
+      ) : activeTab === 'templates' ? (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <h2 className="text-white font-semibold text-lg mb-1">Templates de Resposta Rápida</h2>
+            <p className="text-slate-400 text-sm">
+              Mensagens pré-definidas para agilizar o atendimento. Digite "/" no compositor para ativar por atalho.
+            </p>
+          </div>
+          <MessageTemplatesManager empresaId={empresaId} />
         </div>
       ) : activeTab === 'auto_assign' ? (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

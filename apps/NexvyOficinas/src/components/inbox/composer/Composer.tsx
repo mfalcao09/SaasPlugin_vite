@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Video, FileText, StickyNote, Sparkles, Clock } from 'lucide-react'
@@ -11,6 +11,14 @@ import QuickReplyPicker from '@/components/inbox/QuickReplyPicker'
 import ReplyPreviewBar from './ReplyPreviewBar'
 import ScheduleMessageDialog from '../ScheduleMessageDialog'
 import type { InboxMessage } from '../messages/MessageBubble'
+
+interface MessageTemplate {
+  id: string
+  title: string
+  content: string
+  shortcut: string | null
+  is_active: boolean
+}
 
 type ComposerMode = 'message' | 'note'
 
@@ -55,8 +63,27 @@ export default function Composer({ conversationId, disabled = false, placeholder
   const [suggestingCopilot, setSuggestingCopilot] = useState(false)
   // Sprint6 F5 — Mensagem agendada
   const [showScheduleDialog, setShowScheduleDialog] = useState(false)
+  // Sprint8 F1 — Templates de resposta rápida
+  const [showTemplatePopover, setShowTemplatePopover] = useState(false)
+  const [templates, setTemplates] = useState<MessageTemplate[]>([])
+  const [templateQuery, setTemplateQuery] = useState('')
   const { upload, state: uploadState } = useMediaUpload()
   const quickReplies = useQuickReplies()
+
+  // Sprint8 F1 — carregar templates ativos da empresa
+  useEffect(() => {
+    if (!empresaId) return
+    supabase
+      .from('inbox_message_templates')
+      .select('id,title,content,shortcut,is_active')
+      .eq('empresa_id', empresaId)
+      .eq('is_active', true)
+      .order('title', { ascending: true })
+      .then(({ data }) => {
+        if (data) setTemplates(data as MessageTemplate[])
+      })
+  }, [empresaId])
+
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const documentInputRef = useRef<HTMLInputElement>(null)
@@ -78,15 +105,18 @@ export default function Composer({ conversationId, disabled = false, placeholder
     })
   }
 
-  // Lida com mudanças no textarea — detecta "/" para quick replies + emite typing indicator
+  // Lida com mudanças no textarea — detecta "/" para quick replies/templates + emite typing indicator
   const handleTextChange = useCallback((value: string) => {
     setText(value)
     if (composerMode === 'message' && value.startsWith('/')) {
       setShowQuickReplies(true)
       setQuickReplyQuery(value.slice(1))   // tudo após "/"
+      // Sprint8 F1 — também filtra templates pelo shortcut
+      setTemplateQuery(value.slice(1))
     } else {
       setShowQuickReplies(false)
       setQuickReplyQuery('')
+      setTemplateQuery('')
     }
     // Sprint4 F1 — typing indicator (só emite quando há texto e não está desabilitado)
     if (value.trim() && !disabled) onTyping?.()
@@ -97,6 +127,22 @@ export default function Composer({ conversationId, disabled = false, placeholder
     setShowQuickReplies(false)
     setQuickReplyQuery('')
   }
+
+  // Sprint8 F1 — selecionar template substitui conteúdo do textarea
+  function handleTemplateSelect(content: string) {
+    setText(content)
+    setShowTemplatePopover(false)
+    setShowQuickReplies(false)
+    setTemplateQuery('')
+  }
+
+  // Sprint8 F1 — templates filtrados pelo shortcut/query atual (fuzzy match por shortcut)
+  const filteredTemplates = templateQuery
+    ? templates.filter(t =>
+        (t.shortcut ?? '').toLowerCase().includes(templateQuery.toLowerCase()) ||
+        t.title.toLowerCase().includes(templateQuery.toLowerCase())
+      )
+    : templates
 
   async function sendText() {
     if (!text.trim() || sending) return
@@ -372,6 +418,42 @@ export default function Composer({ conversationId, disabled = false, placeholder
         />
       )}
 
+      {/* Sprint8 F1 — Template Picker: auto-suggest por "/" + popover manual */}
+      {(showTemplatePopover || (templateQuery && filteredTemplates.length > 0)) && !isNote && !disabled && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden z-30 max-h-56 overflow-y-auto">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-700">
+            <span className="text-xs text-slate-400 font-medium">Templates de resposta</span>
+            <button
+              onClick={() => { setShowTemplatePopover(false); setTemplateQuery('') }}
+              className="text-slate-500 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {filteredTemplates.length === 0 ? (
+            <p className="text-slate-500 text-xs px-3 py-2">Nenhum template encontrado.</p>
+          ) : (
+            filteredTemplates.map(t => (
+              <button
+                key={t.id}
+                onClick={() => handleTemplateSelect(t.content)}
+                className="w-full flex items-start gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white text-xs font-medium">{t.title}</span>
+                    {t.shortcut && (
+                      <span className="text-[10px] font-mono text-orange-400">{t.shortcut}</span>
+                    )}
+                  </div>
+                  <p className="text-slate-400 text-xs truncate">{t.content}</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {/* Botão de anexo: só no modo mensagem */}
         {!isNote && (
@@ -424,6 +506,22 @@ export default function Composer({ conversationId, disabled = false, placeholder
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Sparkles className="h-4 w-4" />
             }
+          </Button>
+        )}
+
+        {/* Sprint8 F1 — Botão de templates (só no modo mensagem, não fechada) */}
+        {!isNote && !disabled && (
+          <Button
+            type="button"
+            onClick={() => setShowTemplatePopover(prev => !prev)}
+            disabled={sending}
+            size="icon"
+            variant="ghost"
+            className={`shrink-0 transition-colors ${showTemplatePopover ? 'text-orange-400' : 'text-slate-400 hover:text-orange-400'}`}
+            aria-label="Templates de resposta"
+            title="Templates de resposta"
+          >
+            <FileText className="h-4 w-4" />
           </Button>
         )}
 
