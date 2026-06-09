@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Video, FileText, StickyNote } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { Send, Paperclip, Mic, X, Loader2, Image as ImageIcon, Video, FileText, StickyNote, Sparkles, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useMediaUpload, type MediaType } from '@/hooks/useMediaUpload'
@@ -8,6 +9,7 @@ import AudioRecorder from './AudioRecorder'
 import { useQuickReplies } from '@/hooks/useQuickReplies'
 import QuickReplyPicker from '@/components/inbox/QuickReplyPicker'
 import ReplyPreviewBar from './ReplyPreviewBar'
+import ScheduleMessageDialog from '../ScheduleMessageDialog'
 import type { InboxMessage } from '../messages/MessageBubble'
 
 type ComposerMode = 'message' | 'note'
@@ -39,6 +41,7 @@ function inferType(file: File): MediaType {
 }
 
 export default function Composer({ conversationId, disabled = false, placeholder, replyingTo, onCancelReply, onTyping }: Props) {
+  const { empresaId } = useAuth()
   const [text, setText] = useState('')
   const [caption, setCaption] = useState('')
   const [sending, setSending] = useState(false)
@@ -48,6 +51,10 @@ export default function Composer({ conversationId, disabled = false, placeholder
   const [composerMode, setComposerMode] = useState<ComposerMode>('message')
   const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [quickReplyQuery, setQuickReplyQuery] = useState('')
+  // Sprint6 F4 — AI Copilot
+  const [suggestingCopilot, setSuggestingCopilot] = useState(false)
+  // Sprint6 F5 — Mensagem agendada
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false)
   const { upload, state: uploadState } = useMediaUpload()
   const quickReplies = useQuickReplies()
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -166,6 +173,23 @@ export default function Composer({ conversationId, disabled = false, placeholder
       })
     } finally {
       setSending(false)
+    }
+  }
+
+  // Sprint6 F4 — AI Copilot: solicita sugestão de resposta e preenche o textarea
+  async function handleCopilot() {
+    if (suggestingCopilot || !empresaId) return
+    setSuggestingCopilot(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('inbox-copilot', {
+        body: { conversation_id: conversationId, empresa_id: empresaId },
+      })
+      if (!error && data?.suggestion) {
+        setText(data.suggestion as string)
+        setShowQuickReplies(false)
+      }
+    } finally {
+      setSuggestingCopilot(false)
     }
   }
 
@@ -384,6 +408,41 @@ export default function Composer({ conversationId, disabled = false, placeholder
           disabled={disabled || sending}
         />
 
+        {/* Sprint6 F4 — AI Copilot (só no modo mensagem, não fechada) */}
+        {!isNote && !disabled && (
+          <Button
+            type="button"
+            onClick={handleCopilot}
+            disabled={suggestingCopilot || sending}
+            size="icon"
+            variant="ghost"
+            className="text-slate-400 hover:text-orange-400 shrink-0 transition-colors"
+            aria-label="Sugestão de resposta (AI Copilot)"
+            title="Sugestão de resposta com IA"
+          >
+            {suggestingCopilot
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Sparkles className="h-4 w-4" />
+            }
+          </Button>
+        )}
+
+        {/* Sprint6 F5 — Agendar mensagem (só no modo mensagem, não fechada) */}
+        {!isNote && !disabled && (
+          <Button
+            type="button"
+            onClick={() => setShowScheduleDialog(true)}
+            disabled={sending}
+            size="icon"
+            variant="ghost"
+            className="text-slate-400 hover:text-orange-400 shrink-0 transition-colors"
+            aria-label="Agendar mensagem"
+            title="Agendar mensagem"
+          >
+            <Clock className="h-4 w-4" />
+          </Button>
+        )}
+
         {text.trim() ? (
           <Button
             onClick={sendText}
@@ -412,6 +471,14 @@ export default function Composer({ conversationId, disabled = false, placeholder
         ) : null}
       </div>
       </div>
+
+      {/* Sprint6 F5 — ScheduleMessageDialog */}
+      {showScheduleDialog && (
+        <ScheduleMessageDialog
+          conversationId={conversationId}
+          onClose={() => setShowScheduleDialog(false)}
+        />
+      )}
     </div>
   )
 }
