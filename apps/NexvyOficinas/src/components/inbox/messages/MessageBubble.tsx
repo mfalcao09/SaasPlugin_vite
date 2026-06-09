@@ -26,6 +26,8 @@ export interface InboxMessage {
   /** Sprint4 F5 — campos de edição inline */
   edited_at?: string | null
   original_content?: string | null
+  /** Sprint6 F3 — transcrição de áudio via Whisper */
+  transcript?: string | null
 }
 
 interface Props {
@@ -152,7 +154,14 @@ export default function MessageBubble({ message, isOutbound, allMessages, onRepl
           <ImageBubble url={url} caption={message.content} />
         )}
         {message.content_type === 'audio' && url && (
-          <AudioBubble url={url} duration={duration} isOutbound={isOutbound} />
+          <AudioBubble
+            url={url}
+            duration={duration}
+            isOutbound={isOutbound}
+            messageId={message.id}
+            storageUrl={message.storage_url}
+            transcript={message.transcript}
+          />
         )}
         {message.content_type === 'video' && url && (
           <VideoBubble url={url} caption={message.content} />
