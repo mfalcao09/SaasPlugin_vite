@@ -94,6 +94,16 @@ export default function InboxMetrics() {
     closed: number
   }>({ received: 0, reachedHuman: 0, closed: 0 })
 
+  // Sprint9 F3 — Performance por agente
+  const [agentPerf, setAgentPerf] = useState<{
+    user_id: string
+    name: string
+    total: number
+    closed: number
+    avgCsat: number | null
+    avgTmaMinutes: number | null
+  }[]>([])
+
   useEffect(() => {
     if (!empresaId) return
 
@@ -251,6 +261,81 @@ export default function InboxMetrics() {
         reachedHuman: humanCount ?? 0,
         closed: closedPeriodCount ?? 0,
       })
+
+      // Sprint9 F3 — Performance por agente
+      const [{ data: agentConvs }, { data: agentCsat }, { data: agentRows }] = await Promise.all([
+        supabase
+          .from('inbox_conversations')
+          .select('id, assigned_user_id, closed_at, first_response_at, created_at')
+          .eq('empresa_id', empresaId)
+          .not('assigned_user_id', 'is', null)
+          .gte('created_at', periodStart),
+        supabase
+          .from('inbox_csat_responses')
+          .select('score, conversation_id')
+          .eq('empresa_id', empresaId)
+          .not('score', 'is', null)
+          .gte('sent_at', periodStart),
+        supabase
+          .from('empresa_users')
+          .select('user_id')
+          .eq('empresa_id', empresaId),
+      ])
+
+      if (agentConvs && agentConvs.length > 0) {
+        // Mapa conversation_id → score
+        const csatByConv: Record<string, number> = {}
+        for (const r of agentCsat ?? []) {
+          if (r.score !== null && r.conversation_id) csatByConv[r.conversation_id] = r.score
+        }
+
+        // Agrupa por user
+        const byUser: Record<string, {
+          total: number
+          closed: number
+          csatSum: number
+          csatCount: number
+          tmaSum: number
+          tmaCount: number
+        }> = {}
+
+        for (const c of agentConvs) {
+          if (!c.assigned_user_id) continue
+          const uid = c.assigned_user_id
+          if (!byUser[uid]) byUser[uid] = { total: 0, closed: 0, csatSum: 0, csatCount: 0, tmaSum: 0, tmaCount: 0 }
+          byUser[uid].total++
+          if (c.closed_at) {
+            byUser[uid].closed++
+            const tma = minutesBetween(c.created_at, c.closed_at)
+            if (tma !== null) { byUser[uid].tmaSum += tma; byUser[uid].tmaCount++ }
+          }
+          const score = csatByConv[c.id]
+          if (typeof score === 'number') { byUser[uid].csatSum += score; byUser[uid].csatCount++ }
+        }
+
+        const knownIds = new Set((agentRows ?? []).map(r => r.user_id as string))
+        const rows = Object.entries(byUser)
+          .filter(([uid]) => knownIds.size === 0 || knownIds.has(uid))
+          .map(([uid, s]) => ({
+            user_id: uid,
+            name: `${uid.slice(0, 8)}…`,
+            total: s.total,
+            closed: s.closed,
+            avgCsat: s.csatCount > 0 ? s.csatSum / s.csatCount : null,
+            avgTmaMinutes: s.tmaCount > 0 ? s.tmaSum / s.tmaCount : null,
+          }))
+          .sort((a, b) => {
+            // CSAT desc; sem CSAT vai pro fim
+            if (a.avgCsat === null && b.avgCsat === null) return b.total - a.total
+            if (a.avgCsat === null) return 1
+            if (b.avgCsat === null) return -1
+            return b.avgCsat - a.avgCsat
+          })
+
+        setAgentPerf(rows)
+      } else {
+        setAgentPerf([])
+      }
 
       setLoading(false)
     }
@@ -465,6 +550,55 @@ export default function InboxMetrics() {
                   </span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Sprint9 F3 — Performance por Agente */}
+          {agentPerf.length > 0 && (
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6 overflow-x-auto">
+              <p className="text-sm font-semibold text-white mb-3">👥 Performance por Agente</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                    <th className="py-2 pr-3 font-medium">Agente</th>
+                    <th className="py-2 px-3 font-medium text-right">Conversas</th>
+                    <th className="py-2 px-3 font-medium text-right">Encerradas</th>
+                    <th className="py-2 px-3 font-medium text-right">CSAT médio</th>
+                    <th className="py-2 pl-3 font-medium text-right">TMA médio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentPerf.map((row, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null
+                    return (
+                      <tr key={row.user_id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
+                        <td className="py-2 pr-3 text-slate-200 font-mono text-xs">
+                          {medal && <span className="mr-1">{medal}</span>}
+                          {row.name}
+                        </td>
+                        <td className="py-2 px-3 text-right text-slate-300">{row.total}</td>
+                        <td className="py-2 px-3 text-right text-slate-300">{row.closed}</td>
+                        <td className="py-2 px-3 text-right">
+                          {row.avgCsat !== null ? (
+                            <span className={
+                              row.avgCsat >= 4 ? 'text-green-400 font-semibold'
+                              : row.avgCsat >= 3 ? 'text-yellow-400 font-semibold'
+                              : 'text-red-400 font-semibold'
+                            }>
+                              {row.avgCsat.toFixed(1)} ⭐
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                        <td className="py-2 pl-3 text-right text-slate-300">
+                          {row.avgTmaMinutes !== null ? `${Math.round(row.avgTmaMinutes)}min` : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
