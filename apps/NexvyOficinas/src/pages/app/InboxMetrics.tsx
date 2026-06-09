@@ -87,6 +87,13 @@ export default function InboxMetrics() {
   // Sprint7 F6 — export loading
   const [exporting, setExporting] = useState(false)
 
+  // Sprint9 F2 — Funil de conversação
+  const [funnel, setFunnel] = useState<{
+    received: number
+    reachedHuman: number
+    closed: number
+  }>({ received: 0, reachedHuman: 0, closed: 0 })
+
   useEffect(() => {
     if (!empresaId) return
 
@@ -213,6 +220,37 @@ export default function InboxMetrics() {
         }))
         setCsatStats({ avgScore, responseRate, distribution: dist })
       }
+
+      // Sprint9 F2 — Funil de conversação (no período selecionado)
+      const [
+        { count: receivedCount },
+        { count: humanCount },
+        { count: closedPeriodCount },
+      ] = await Promise.all([
+        supabase
+          .from('inbox_conversations')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', empresaId)
+          .gte('created_at', periodStart),
+        supabase
+          .from('inbox_conversations')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', empresaId)
+          .gte('created_at', periodStart)
+          .or('status.in.(human_active,waiting_human),closed_at.not.is.null'),
+        supabase
+          .from('inbox_conversations')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', empresaId)
+          .eq('status', 'closed')
+          .gte('created_at', periodStart),
+      ])
+
+      setFunnel({
+        received: receivedCount ?? 0,
+        reachedHuman: humanCount ?? 0,
+        closed: closedPeriodCount ?? 0,
+      })
 
       setLoading(false)
     }
@@ -361,6 +399,74 @@ export default function InboxMetrics() {
               </div>
             </div>
           </div>
+
+          {/* Sprint9 F2 — Funil de Conversação */}
+          {funnel.received > 0 && (
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+              <p className="text-sm font-semibold text-white mb-3">🔁 Funil de Conversação</p>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart
+                  data={[
+                    {
+                      name: '📥 Recebidas',
+                      value: funnel.received,
+                      pct: 100,
+                      fill: '#3b82f6',
+                    },
+                    {
+                      name: '👤 Chegaram ao humano',
+                      value: funnel.reachedHuman,
+                      pct: funnel.received > 0 ? Math.round((funnel.reachedHuman / funnel.received) * 100) : 0,
+                      fill: '#22c55e',
+                    },
+                    {
+                      name: '✅ Encerradas',
+                      value: funnel.closed,
+                      pct: funnel.received > 0 ? Math.round((funnel.closed / funnel.received) * 100) : 0,
+                      fill: '#a855f7',
+                    },
+                  ]}
+                  layout="vertical"
+                  margin={{ top: 4, right: 60, left: 100, bottom: 4 }}
+                >
+                  <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: '#cbd5e1', fontSize: 11 }} axisLine={false} tickLine={false} width={95} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                    labelStyle={{ color: '#f8fafc' }}
+                    formatter={(value: number, _name, props) => {
+                      const pct = (props.payload as { pct?: number }).pct ?? 0
+                      return [`${value} (${pct}%)`, 'Conversas']
+                    }}
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {[0, 1, 2].map(i => (
+                      <Cell key={`funnel-${i}`} fill={['#3b82f6', '#22c55e', '#a855f7'][i]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                <div className="text-xs">
+                  <span className="text-blue-400 font-bold">{funnel.received}</span>
+                  <span className="text-slate-500 ml-1">(100%)</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-green-400 font-bold">{funnel.reachedHuman}</span>
+                  <span className="text-slate-500 ml-1">
+                    ({funnel.received > 0 ? Math.round((funnel.reachedHuman / funnel.received) * 100) : 0}%)
+                  </span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-purple-400 font-bold">{funnel.closed}</span>
+                  <span className="text-slate-500 ml-1">
+                    ({funnel.received > 0 ? Math.round((funnel.closed / funnel.received) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Sprint7 F1 — CSAT Section (só quando há dados) */}
           {csatStats.distribution.some(d => d.count > 0) && (
