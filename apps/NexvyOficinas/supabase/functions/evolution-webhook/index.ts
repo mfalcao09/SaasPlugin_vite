@@ -1,4 +1,4 @@
-// Edge Function: evolution-webhook (v8 — Sprint 7)
+// Edge Function: evolution-webhook (v9 — Sprint 8)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
@@ -6,6 +6,10 @@
 // [v8] F1 CSAT: captura resposta 1-5 ANTES de find_or_create_inbox_conversation
 // [v8] F2 SLA: set first_response_at quando agente envia primeira mensagem
 // [v8] F5 Keywords: verifica regras de auto-resposta ANTES de bot_paused check
+//
+// Sprint 8 adições (v9):
+// [v9] F4 Chatbot: sessões de chatbot de fluxo com árvore de decisão (ANTES de keyword rules)
+// [v9] F5 Notificações: INSERT inbox_agent_notifications para auto-assign
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -524,6 +528,163 @@ Deno.serve(async (req) => {
               .eq("id", pendingCsat.id);
             console.log(`[webhook] CSAT score=${csatScore} registrado para ${contactPhone}`);
             continue; // NÃO cria nova conversa
+          }
+        }
+      }
+
+      // [v9] F4 Chatbot — processa sessões de fluxo ANTES de criar conversa normal
+      // Só para mensagens inbound de texto (fromMe=false)
+      if (!fromMe && contentType === "text") {
+        const instanceIdForChatbot = (await supabase
+          .from("evolution_instances")
+          .select("instance_id")
+          .eq("id", instance.id)
+          .single()).data?.instance_id ?? instanceName;
+
+        // 1. Verificar se há sessão ativa para este contato/empresa
+        const { data: activeSession } = await supabase
+          .from("inbox_chatbot_sessions")
+          .select("id, flow_id, current_node_id")
+          .eq("empresa_id", instance.empresa_id)
+          .eq("contact_phone", contactPhone)
+          .is("ended_at", null)
+          .limit(1)
+          .single();
+
+        if (activeSession) {
+          // Sessão ativa: avançar pelo fluxo
+          const currentNodeId = activeSession.current_node_id;
+
+          if (currentNodeId) {
+            const { data: currentNode } = await supabase
+              .from("inbox_chatbot_nodes")
+              .select("id, node_type, message, options")
+              .eq("id", currentNodeId)
+              .single();
+
+            if (currentNode) {
+              const options = (currentNode.options as Array<{ label: string; next_node_id: string | null }>) ?? [];
+              const msgLower = content.toLowerCase().trim();
+
+              // Match de opção pelo label (case-insensitive, contains)
+              const matched = options.find(
+                (opt) => opt.label && msgLower.includes(opt.label.toLowerCase().trim()),
+              );
+
+              const nextNodeId = matched?.next_node_id ?? null;
+
+              if (nextNodeId) {
+                // Avançar para o próximo nó
+                const { data: nextNode } = await supabase
+                  .from("inbox_chatbot_nodes")
+                  .select("id, node_type, message")
+                  .eq("id", nextNodeId)
+                  .single();
+
+                if (nextNode) {
+                  // Enviar mensagem do próximo nó
+                  await fetch(
+                    `${EVOLUTION_API_URL}/message/sendText/${instanceIdForChatbot}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                      body: JSON.stringify({ number: contactPhone, text: nextNode.message }),
+                    },
+                  ).catch(() => {});
+
+                  if (nextNode.node_type === "end") {
+                    // Encerrar sessão
+                    await supabase
+                      .from("inbox_chatbot_sessions")
+                      .update({ ended_at: new Date().toISOString(), current_node_id: nextNode.id })
+                      .eq("id", activeSession.id);
+                    console.log(`[webhook] chatbot sessão encerrada para ${contactPhone}`);
+                  } else {
+                    // Atualizar nó atual
+                    await supabase
+                      .from("inbox_chatbot_sessions")
+                      .update({ current_node_id: nextNode.id })
+                      .eq("id", activeSession.id);
+                  }
+                }
+              } else if (currentNode.node_type === "end") {
+                // Nó final sem opção de avanço: encerrar sessão
+                await supabase
+                  .from("inbox_chatbot_sessions")
+                  .update({ ended_at: new Date().toISOString() })
+                  .eq("id", activeSession.id);
+                console.log(`[webhook] chatbot sessão encerrada (nó end) para ${contactPhone}`);
+              }
+            }
+          }
+
+          console.log(`[webhook] chatbot sessão ativa processada para conv ${contactPhone}`);
+          continue; // NÃO cria conversa normal enquanto sessão de chatbot ativa
+        }
+
+        // 2. Sem sessão ativa: verificar se algum fluxo ativo tem keyword que bate
+        const { data: activeFlows } = await supabase
+          .from("inbox_chatbot_flows")
+          .select("id, trigger_keywords")
+          .eq("empresa_id", instance.empresa_id)
+          .eq("is_active", true);
+
+        if (activeFlows && activeFlows.length > 0) {
+          const msgLower = content.toLowerCase().trim();
+          let triggeredFlowId: string | null = null;
+
+          for (const flow of activeFlows) {
+            const keywords = (flow.trigger_keywords as string[]) ?? [];
+            if (keywords.some((kw) => msgLower.includes(kw.toLowerCase().trim()))) {
+              triggeredFlowId = flow.id as string;
+              break;
+            }
+          }
+
+          if (triggeredFlowId) {
+            // Buscar nó raiz do fluxo
+            const { data: rootNode } = await supabase
+              .from("inbox_chatbot_nodes")
+              .select("id, message, node_type")
+              .eq("flow_id", triggeredFlowId)
+              .eq("is_root", true)
+              .single();
+
+            if (rootNode) {
+              // Criar sessão de chatbot
+              await supabase
+                .from("inbox_chatbot_sessions")
+                .upsert(
+                  {
+                    empresa_id: instance.empresa_id,
+                    contact_phone: contactPhone,
+                    flow_id: triggeredFlowId,
+                    current_node_id: rootNode.id,
+                    started_at: new Date().toISOString(),
+                    ended_at: null,
+                  },
+                  { onConflict: "empresa_id,contact_phone,flow_id" },
+                );
+
+              // Enviar mensagem do nó raiz
+              const instanceIdForFlow = (await supabase
+                .from("evolution_instances")
+                .select("instance_id")
+                .eq("id", instance.id)
+                .single()).data?.instance_id ?? instanceName;
+
+              await fetch(
+                `${EVOLUTION_API_URL}/message/sendText/${instanceIdForFlow}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                  body: JSON.stringify({ number: contactPhone, text: rootNode.message }),
+                },
+              ).catch(() => {});
+
+              console.log(`[webhook] chatbot iniciado para ${contactPhone}, flow=${triggeredFlowId}`);
+              continue; // NÃO cria conversa normal
+            }
           }
         }
       }

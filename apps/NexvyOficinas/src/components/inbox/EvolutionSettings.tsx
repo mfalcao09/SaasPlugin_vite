@@ -10,8 +10,9 @@ import QuickRepliesManager from './QuickRepliesManager'
 import OfficeHoursSettings from './OfficeHoursSettings'
 import KeywordRulesManager from './KeywordRulesManager'
 import MessageTemplatesManager from './MessageTemplatesManager'
+import ChatbotFlowEditor from './ChatbotFlowEditor'
 
-type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords' | 'templates'
+type SettingsTab = 'instances' | 'quick_replies' | 'office_hours' | 'auto_assign' | 'automations' | 'keywords' | 'templates' | 'chatbot'
 
 interface Instance {
   id: string
@@ -303,6 +304,17 @@ export default function EvolutionSettings() {
         >
           Templates
         </button>
+        <button
+          onClick={() => setActiveTab('chatbot')}
+          className={[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeTab === 'chatbot'
+              ? 'text-orange-400 border-orange-500'
+              : 'text-slate-400 border-transparent hover:text-slate-200',
+          ].join(' ')}
+        >
+          Chatbot
+        </button>
       </div>
 
       {/* Conteúdo das abas */}
@@ -335,6 +347,16 @@ export default function EvolutionSettings() {
             </p>
           </div>
           <MessageTemplatesManager empresaId={empresaId} />
+        </div>
+      ) : activeTab === 'chatbot' ? (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <h2 className="text-white font-semibold text-lg mb-1">Chatbot de Fluxo</h2>
+            <p className="text-slate-400 text-sm">
+              Crie fluxos de atendimento automatizado com árvore de decisão. O chatbot responde antes de criar conversa humana.
+            </p>
+          </div>
+          <ChatbotFlowEditor empresaId={empresaId} />
         </div>
       ) : activeTab === 'auto_assign' ? (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
