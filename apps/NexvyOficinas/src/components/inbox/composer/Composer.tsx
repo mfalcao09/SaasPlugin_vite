@@ -20,6 +20,8 @@ interface Props {
   replyingTo?: InboxMessage | null
   /** F2 — callback para cancelar a citação */
   onCancelReply?: () => void
+  /** Sprint4 F1 — callback chamado ao digitar (typing indicator) */
+  onTyping?: () => void
 }
 
 interface PendingMedia {
@@ -36,7 +38,7 @@ function inferType(file: File): MediaType {
   return 'document'
 }
 
-export default function Composer({ conversationId, disabled = false, placeholder, replyingTo, onCancelReply }: Props) {
+export default function Composer({ conversationId, disabled = false, placeholder, replyingTo, onCancelReply, onTyping }: Props) {
   const [text, setText] = useState('')
   const [caption, setCaption] = useState('')
   const [sending, setSending] = useState(false)
@@ -69,7 +71,7 @@ export default function Composer({ conversationId, disabled = false, placeholder
     })
   }
 
-  // Lida com mudanças no textarea — detecta "/" para quick replies
+  // Lida com mudanças no textarea — detecta "/" para quick replies + emite typing indicator
   const handleTextChange = useCallback((value: string) => {
     setText(value)
     if (composerMode === 'message' && value.startsWith('/')) {
@@ -79,7 +81,9 @@ export default function Composer({ conversationId, disabled = false, placeholder
       setShowQuickReplies(false)
       setQuickReplyQuery('')
     }
-  }, [composerMode])
+    // Sprint4 F1 — typing indicator (só emite quando há texto e não está desabilitado)
+    if (value.trim() && !disabled) onTyping?.()
+  }, [composerMode, disabled, onTyping])
 
   function handleQuickReplySelect(content: string) {
     setText(content)

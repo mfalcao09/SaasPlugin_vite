@@ -8,6 +8,8 @@ import AcceptTicketBar from './AcceptTicketBar'
 import TransferConversationDialog from './TransferConversationDialog'
 import MessageSearchBar from './MessageSearchBar'
 import { useInboxNotifications } from '@/hooks/useInboxNotifications'
+import { useTypingIndicator } from '@/hooks/useTypingIndicator'
+import TypingIndicator from './TypingIndicator'
 
 interface Conversation {
   id: string
@@ -283,6 +285,9 @@ export default function ChatArea({ conversationId, onBack }: Props) {
     enabled: notificationsEnabled,
   })
 
+  // ── Sprint4 F1 — Typing indicator via Supabase Realtime Broadcast ────────
+  const { isContactTyping, emitTyping } = useTypingIndicator({ conversationId })
+
   // ────────────────────────────────────────────────────────────────────────
   if (!conversation) {
     return (
@@ -467,6 +472,8 @@ export default function ChatArea({ conversationId, onBack }: Props) {
             onReply={isClosed ? undefined : setReplyingTo}
           />
         ))}
+        {/* Sprint4 F1 — Typing indicator */}
+        <TypingIndicator visible={isContactTyping} />
         <div ref={messagesEndRef} />
       </div>
 
@@ -477,6 +484,7 @@ export default function ChatArea({ conversationId, onBack }: Props) {
         placeholder={conversation.status === 'closed' ? 'Conversa encerrada' : undefined}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
+        onTyping={emitTyping}
       />
     </div>
   )
