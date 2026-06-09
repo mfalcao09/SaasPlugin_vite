@@ -1,12 +1,11 @@
-// Edge Function: evolution-webhook (v7)
+// Edge Function: evolution-webhook (v8 — Sprint 7)
 // Deployed em: project gpxmkximudukbljrvtxj (NexvyOficinas)
 // verify_jwt: false (chamada por Evolution API com x-webhook-secret)
 //
-// Sprint 4 adições (v7):
-// [v7] storage_url como coluna dedicada no upsert de inbox_messages
-// [v7] Buscar avatar do contato via Evolution API (fire-and-forget, só se null)
-// [v7] presence.update → broadcast typing via Supabase Realtime
-// [v7] messages.reaction → INSERT/DELETE em message_reactions
+// Sprint 7 adições (v8):
+// [v8] F1 CSAT: captura resposta 1-5 ANTES de find_or_create_inbox_conversation
+// [v8] F2 SLA: set first_response_at quando agente envia primeira mensagem
+// [v8] F5 Keywords: verifica regras de auto-resposta ANTES de bot_paused check
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -495,6 +494,40 @@ Deno.serve(async (req) => {
         metadata = { raw_keys: Object.keys(msgContent) };
       }
 
+      // [v8] F1 CSAT — captura resposta ANTES de find_or_create_inbox_conversation
+      // Se o número tem CSAT pendente (score IS NULL, sent_at IS NOT NULL) e o
+      // content é número 1-5: registra score e NÃO cria nova conversa.
+      if (!fromMe && content) {
+        const trimmedContent = content.trim();
+        const csatScore = parseInt(trimmedContent, 10);
+        const isValidScore = !isNaN(csatScore) && csatScore >= 1 && csatScore <= 5 && trimmedContent === String(csatScore);
+
+        if (isValidScore) {
+          const { data: pendingCsat } = await supabase
+            .from("inbox_csat_responses")
+            .select("id")
+            .eq("contact_phone", contactPhone)
+            .eq("empresa_id", instance.empresa_id)
+            .is("score", null)
+            .not("sent_at", "is", null)
+            .order("sent_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (pendingCsat) {
+            await supabase
+              .from("inbox_csat_responses")
+              .update({
+                score: csatScore,
+                responded_at: new Date().toISOString(),
+              })
+              .eq("id", pendingCsat.id);
+            console.log(`[webhook] CSAT score=${csatScore} registrado para ${contactPhone}`);
+            continue; // NÃO cria nova conversa
+          }
+        }
+      }
+
       const { data: convId, error: rpcErr } = await supabase.rpc(
         "find_or_create_inbox_conversation",
         {
@@ -517,6 +550,90 @@ Deno.serve(async (req) => {
           .update({ contact_name: contactName })
           .eq("id", convId)
           .is("contact_name", null);
+      }
+
+      // [v8] F5 Keywords — verifica ANTES de bot_paused (prioridade máxima)
+      // Só para mensagens de contato (inbound)
+      if (!fromMe && content && contentType === "text") {
+        const { data: keywordRules } = await supabase
+          .from("inbox_keyword_rules")
+          .select("keyword, response, match_type")
+          .eq("empresa_id", instance.empresa_id)
+          .eq("is_active", true)
+          .order("priority", { ascending: false })
+          .limit(50);
+
+        if (keywordRules && keywordRules.length > 0) {
+          const msgLower = content.toLowerCase().trim();
+          let matchedResponse: string | null = null;
+
+          for (const rule of keywordRules) {
+            const kw = (rule.keyword as string).toLowerCase().trim();
+            const mt = rule.match_type as string;
+            let matched = false;
+            if (mt === "exact") {
+              matched = msgLower === kw;
+            } else if (mt === "starts_with") {
+              matched = msgLower.startsWith(kw);
+            } else {
+              // contains (default)
+              matched = msgLower.includes(kw);
+            }
+            if (matched) {
+              matchedResponse = rule.response as string;
+              break;
+            }
+          }
+
+          if (matchedResponse) {
+            // Salva mensagem do contato
+            await supabase.from("inbox_messages").upsert(
+              {
+                conversation_id: convId,
+                direction: "inbound",
+                sender_type: "contact",
+                content,
+                content_type: contentType,
+                wa_message_id: waMessageId || null,
+                metadata,
+                storage_url: null,
+                is_deleted: false,
+              },
+              { onConflict: "wa_message_id", ignoreDuplicates: true },
+            );
+            await supabase.rpc("increment_unread_count", { conv_id: convId }).catch(() => {});
+
+            // Envia auto-reply via Evolution + salva como bot
+            const instanceData = await supabase
+              .from("evolution_instances")
+              .select("instance_id")
+              .eq("id", instance.id)
+              .single();
+
+            if (instanceData.data?.instance_id) {
+              await fetch(
+                `${EVOLUTION_API_URL}/message/sendText/${instanceData.data.instance_id}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                  body: JSON.stringify({ number: contactPhone, text: matchedResponse }),
+                },
+              ).catch(() => {});
+
+              await supabase.from("inbox_messages").insert({
+                conversation_id: convId,
+                direction: "outbound",
+                sender_type: "bot",
+                content: matchedResponse,
+                content_type: "text",
+                is_deleted: false,
+              });
+            }
+
+            console.log(`[webhook] keyword match → auto-reply enviado para conv ${convId}`);
+            continue;
+          }
+        }
       }
 
       // [v6] Verifica bot_paused: se ativo, salva mensagem mas NÃO aciona bot
@@ -623,6 +740,22 @@ Deno.serve(async (req) => {
           convId: convId as string,
           supabase,
         }).catch(() => {});
+      } else {
+        // [v8] F2 SLA — set first_response_at na primeira mensagem do agente
+        const { data: slaConv } = await supabase
+          .from("inbox_conversations")
+          .select("first_response_at")
+          .eq("id", convId)
+          .single();
+
+        if (slaConv && slaConv.first_response_at === null) {
+          await supabase
+            .from("inbox_conversations")
+            .update({ first_response_at: new Date().toISOString() })
+            .eq("id", convId)
+            .is("first_response_at", null);
+          console.log(`[webhook] first_response_at definido para conv ${convId}`);
+        }
       }
     }
     return new Response("OK");

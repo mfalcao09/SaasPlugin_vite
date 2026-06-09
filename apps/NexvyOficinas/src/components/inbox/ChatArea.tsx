@@ -295,6 +295,8 @@ export default function ChatArea({ conversationId, onBack, onSelectConversation 
     try {
       await supabase.rpc('close_conversation', { conv_id: conversationId })
       setShowCloseModal(false)
+      // Sprint7 F1 — dispara CSAT (fire-and-forget, falha não bloqueia UI)
+      supabase.functions.invoke('send-csat', { body: { conversation_id: conversationId } }).catch(() => {})
     } finally {
       setClosing(false)
     }
