@@ -16,6 +16,7 @@ const BRAND = {
   tagline: 'Gestão completa para sua oficina',
   accent: '#F97316', // cor de destaque (laranja para oficinas)
   backgroundImage: null as string | null, // URL da foto do setor; null = fallback cinematográfico
+  backgroundVideo: null as string | null, // URL de vídeo (loop, sem áudio); imagem vira poster/fallback
   logoUrl: null as string | null, // se null, renderiza o name estilizado como wordmark
   metrics: '+40% conversão · −50% tempo de resposta',
   bgHint: 'carro esportivo em garagem premium',
@@ -41,16 +42,6 @@ function fallbackBg(accent: string): string {
     `linear-gradient(160deg, #141417 0%, #0A0A0B 70%)`,
   ].join(', ');
 }
-
-/* ---------- Google (SVG colorido inline — lucide não tem) ---------- */
-const GoogleIcon = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.17 3.57-8.81Z" />
-    <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.93-2.91l-3.87-3c-1.07.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.72-4.96H1.29v3.1A12 12 0 0 0 12 24Z" />
-    <path fill="#FBBC05" d="M5.28 14.28A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.56.38-2.28v-3.1H1.29a12 12 0 0 0 0 10.76l3.99-3.1Z" />
-    <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.43-3.43A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.29 6.62l3.99 3.1C6.22 6.88 8.87 4.77 12 4.77Z" />
-  </svg>
-);
 
 /* ---------- Wordmark ---------- */
 function Wordmark({ className = '' }: { className?: string }) {
@@ -94,7 +85,13 @@ type View = 'login' | 'forgot';
 export default function Login() {
   const [view, setView] = useState<View>('login');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Vídeo de fundo: só em desktop e sem prefers-reduced-motion (mobile/a11y caem na imagem/fallback)
+  const [canPlayVideo] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(min-width: 1024px)').matches &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -153,24 +150,6 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    try {
-      const { lovable } = await import('@/integrations/lovable');
-      const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
-      });
-      if (result.error) {
-        toast.error(translateAuthError(result.error.message));
-      }
-      // Se result.redirected === true, o navegador será redirecionado automaticamente
-    } catch (error) {
-      toast.error('Ocorreu um erro inesperado');
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
   const bgStyle: React.CSSProperties = BRAND.backgroundImage
     ? {
         backgroundImage: `url("${BRAND.backgroundImage}")`,
@@ -191,6 +170,20 @@ export default function Login() {
         className="relative h-[30vh] min-h-[200px] lg:absolute lg:inset-0 lg:h-auto lg:min-h-0"
         style={bgStyle}
       >
+        {/* Vídeo de fundo (opcional): loop mudo, poster = imagem, atrás dos overlays */}
+        {BRAND.backgroundVideo && canPlayVideo && (
+          <video
+            className="absolute inset-0 h-full w-full object-cover"
+            src={BRAND.backgroundVideo}
+            poster={BRAND.backgroundImage ?? undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          />
+        )}
         {/* Overlay: preto denso à esquerda/baixo → transparente */}
         <div
           className="absolute inset-0"
@@ -245,38 +238,7 @@ export default function Login() {
 
           {view === 'login' && (
             <>
-              {/* Google */}
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-                className="nx-focusable mt-7 flex h-12 w-full items-center justify-center gap-3 rounded-xl
-                           border border-white/15 bg-transparent text-sm font-medium text-zinc-100
-                           transition-colors duration-200 hover:border-white/25 hover:bg-white/5
-                           disabled:cursor-wait disabled:opacity-80"
-              >
-                {isGoogleLoading ? (
-                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
-                ) : (
-                  <>
-                    <GoogleIcon />
-                    Continuar com Google
-                  </>
-                )}
-              </button>
-
-              {/* Divisor */}
-              <div
-                className="my-6 flex items-center gap-4"
-                role="separator"
-                aria-label="ou continue com e-mail"
-              >
-                <span className="h-px flex-1 bg-white/10" />
-                <span className="text-xs text-zinc-500">ou continue com e-mail</span>
-                <span className="h-px flex-1 bg-white/10" />
-              </div>
-
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} className="mt-7">
                 {/* E-mail */}
                 <label htmlFor="login-email" className="block text-[13px] font-medium text-zinc-300">
                   E-mail
