@@ -1,15 +1,93 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { translateAuthError } from '@/lib/auth-errors';
-import { Logo } from '@/components/ui/Logo';
-import { usePlatformName } from '@/hooks/usePlatformName';
+
+/* ============================================================
+   BRAND — único ponto de customização por vertical.
+   TODO: ligar ao platform_settings via usePlatformBranding no
+   futuro (name/tagline/accent/backgroundImage/logoUrl dinâmicos).
+   ============================================================ */
+const BRAND = {
+  name: 'NexvyOficinas',
+  tagline: 'Gestão completa para sua oficina',
+  accent: '#F97316', // cor de destaque (laranja para oficinas)
+  backgroundImage: null as string | null, // URL da foto do setor; null = fallback cinematográfico
+  logoUrl: null as string | null, // se null, renderiza o name estilizado como wordmark
+  metrics: '+40% conversão · −50% tempo de resposta',
+  bgHint: 'carro esportivo em garagem premium',
+};
+
+/* ---------- Helpers ---------- */
+// Contraste AA no botão principal: texto escuro p/ accents claros, branco p/ escuros
+function textOnAccent(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return L > 0.3 ? '#0A0A0B' : '#FFFFFF';
+}
+
+// Fallback cinematográfico quando não há foto: luz do accent sobre garagem escura
+function fallbackBg(accent: string): string {
+  return [
+    `radial-gradient(120% 90% at 18% 80%, color-mix(in oklab, ${accent} 20%, #0a0a0b) 0%, transparent 60%)`,
+    `radial-gradient(90% 70% at 78% 8%, color-mix(in oklab, ${accent} 9%, #121214) 0%, transparent 55%)`,
+    `repeating-linear-gradient(115deg, rgba(255,255,255,0.016) 0px, rgba(255,255,255,0.016) 2px, transparent 2px, transparent 10px)`,
+    `linear-gradient(160deg, #141417 0%, #0A0A0B 70%)`,
+  ].join(', ');
+}
+
+/* ---------- Google (SVG colorido inline — lucide não tem) ---------- */
+const GoogleIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.87c2.26-2.09 3.57-5.17 3.57-8.81Z" />
+    <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.93-2.91l-3.87-3c-1.07.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.72-4.96H1.29v3.1A12 12 0 0 0 12 24Z" />
+    <path fill="#FBBC05" d="M5.28 14.28A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.56.38-2.28v-3.1H1.29a12 12 0 0 0 0 10.76l3.99-3.1Z" />
+    <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.43-3.43A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.29 6.62l3.99 3.1C6.22 6.88 8.87 4.77 12 4.77Z" />
+  </svg>
+);
+
+/* ---------- Wordmark ---------- */
+function Wordmark({ className = '' }: { className?: string }) {
+  if (BRAND.logoUrl) {
+    return <img src={BRAND.logoUrl} alt={BRAND.name} className={'h-8 w-auto ' + className} />;
+  }
+  return (
+    <span className={'font-bold tracking-tight text-white ' + className}>
+      {BRAND.name}
+      <span style={{ color: 'var(--accent)' }}>.</span>
+    </span>
+  );
+}
+
+/* ---------- CSS custom do login (focus ring na accent + animações) ---------- */
+const loginStyles = `
+@keyframes loginFadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .login-card-anim { animation: loginFadeUp .55s cubic-bezier(.22,.8,.32,1) both; }
+  .login-brand-anim { animation: loginFadeUp .65s cubic-bezier(.22,.8,.32,1) .1s both; }
+}
+.nx-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.nx-focusable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.nx-checkbox { accent-color: var(--accent); }
+.nx-link { color: var(--accent); }
+.nx-link:hover { filter: brightness(1.15); text-decoration: underline; }
+`;
 
 type View = 'login' | 'forgot';
 
@@ -19,10 +97,14 @@ export default function Login() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  // "Lembrar de mim": apenas visual + estado local (Supabase já persiste a sessão)
+  const [remember, setRemember] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
-  const { platformName, loginHeadline, loginSubheadline, loginStatsEnabled, footerText, loginBgImageUrl, loginBgLayout } = usePlatformName();
+
+  const accentText = textOnAccent(BRAND.accent);
 
   // Bootstrap idempotente do Super Admin padrão (no remix novo).
   useEffect(() => {
@@ -31,7 +113,6 @@ export default function Login() {
     sessionStorage.setItem('vendus_bootstrap_attempted', '1');
     supabase.functions.invoke('ensure-default-super-admin').catch(() => {});
   }, []);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +153,6 @@ export default function Login() {
     }
   };
 
-
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
@@ -91,284 +171,283 @@ export default function Login() {
     }
   };
 
-  // Processar headline com quebra de linha
-  const headlineParts = loginHeadline.split('\n');
-
-  const layout = loginBgImageUrl ? loginBgLayout : 'split-left';
-  const isFullscreen = layout === 'fullscreen';
-  const isSplitRight = layout === 'split-right';
+  const bgStyle: React.CSSProperties = BRAND.backgroundImage
+    ? {
+        backgroundImage: `url("${BRAND.backgroundImage}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : { backgroundImage: fallbackBg(BRAND.accent) };
 
   return (
     <div
-      className={`min-h-screen bg-background flex relative ${
-        isSplitRight ? 'lg:flex-row-reverse' : ''
-      }`}
-      style={
-        isFullscreen && loginBgImageUrl
-          ? {
-              backgroundImage: `url(${loginBgImageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundColor: 'hsl(var(--primary))',
-            }
-          : undefined
-      }
+      className="min-h-dvh w-full bg-[#0A0A0B] text-zinc-100 lg:relative"
+      style={{ '--accent': BRAND.accent } as React.CSSProperties}
     >
-      {/* Overlay quando imagem ocupa a tela toda, garante legibilidade do form */}
-      {isFullscreen && loginBgImageUrl && (
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm pointer-events-none" />
-      )}
+      <style>{loginStyles}</style>
 
-      {/* No mobile, mostra a imagem como fundo + overlay para legibilidade do form */}
-      {!isFullscreen && loginBgImageUrl && (
-        <>
-          <div
-            className="lg:hidden absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `url(${loginBgImageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <div className="lg:hidden absolute inset-0 bg-background/85 backdrop-blur-sm pointer-events-none" />
-        </>
-      )}
-
-      {/* Branding lateral — oculto em layout fullscreen */}
-      {!isFullscreen && (
+      {/* ===== Imagem de fundo / header mobile ===== */}
+      <div
+        className="relative h-[30vh] min-h-[200px] lg:absolute lg:inset-0 lg:h-auto lg:min-h-0"
+        style={bgStyle}
+      >
+        {/* Overlay: preto denso à esquerda/baixo → transparente */}
         <div
-          className="hidden lg:flex lg:w-1/2 p-12 flex-col justify-between relative overflow-hidden"
-          style={
-            loginBgImageUrl
-              ? {
-                  backgroundImage: `url(${loginBgImageUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundColor: 'hsl(var(--primary))',
-                }
-              : { background: 'var(--gradient-primary)' }
-          }
-        >
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative">
-            <Logo size="lg" />
-          </div>
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.12) 100%)',
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 45%)',
+          }}
+        />
 
-          <div className="space-y-6 relative">
-            <h1 className="text-4xl font-bold text-white leading-tight drop-shadow-sm">
-              {headlineParts.map((part, i) => (
-                <span key={i}>
-                  {part}
-                  {i < headlineParts.length - 1 && <br />}
-                </span>
-              ))}
-            </h1>
-            <p className="text-lg text-white/90 max-w-md">
-              {loginSubheadline}
-            </p>
-
-            {loginStatsEnabled && (
-              <div className="flex gap-8 pt-8">
-                <div>
-                  <p className="text-3xl font-bold text-white">+40%</p>
-                  <p className="text-sm text-white/80">Conversão</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-white">-50%</p>
-                  <p className="text-sm text-white/80">Tempo resposta</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-white">15+</p>
-                  <p className="text-sm text-white/80">Empresas</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <p className="text-sm text-white/80 relative">
-            {footerText || `© ${new Date().getFullYear()} ${platformName}. Todos os direitos reservados.`}
+        {/* Wordmark + tagline + micro-métricas (canto inferior esquerdo) */}
+        <div className="login-brand-anim absolute bottom-5 left-5 pr-4 lg:bottom-14 lg:left-14 lg:max-w-xl">
+          <h1 className="leading-none">
+            <Wordmark className="text-3xl lg:text-6xl" />
+          </h1>
+          <p className="mt-2 text-sm font-medium tracking-tight text-zinc-300 lg:mt-4 lg:text-xl">
+            {BRAND.tagline}
+          </p>
+          <p className="mt-6 hidden text-[13px] tracking-wide text-zinc-500 lg:block">
+            {BRAND.metrics}
           </p>
         </div>
-      )}
+      </div>
 
-      {/* Form — em fullscreen ocupa toda a largura e é centralizado em um card */}
-      <div
-        className={`w-full ${
-          isFullscreen ? '' : 'lg:w-1/2'
-        } flex items-center justify-center p-8 relative z-10`}
-      >
-        <div
-          className={`w-full max-w-md space-y-8 ${
-            isFullscreen
-              ? 'bg-background/95 backdrop-blur-md rounded-2xl border border-border shadow-2xl p-8'
-              : ''
-          }`}
+      {/* ===== Card de login ===== */}
+      <div className="lg:relative lg:flex lg:min-h-dvh lg:items-center lg:justify-end lg:px-[6vw] lg:py-10 lg:pointer-events-none">
+        <main
+          className="login-card-anim w-full bg-[#0E0E10] px-6 py-8
+                     lg:pointer-events-auto lg:w-full lg:max-w-md lg:rounded-2xl lg:border lg:border-white/10
+                     lg:bg-zinc-950/55 lg:px-9 lg:py-9 lg:backdrop-blur-xl
+                     lg:shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)]"
+          aria-label="Acesso à conta"
         >
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center mb-8">
-            <Logo size="lg" />
+          {/* Logo pequeno */}
+          <div className="mb-7 hidden lg:block">
+            <Wordmark className="text-lg" />
           </div>
 
-          <div className="text-center lg:text-left">
-            <h2 className="text-2xl font-bold text-foreground">
-              {view === 'login' ? 'Entrar na conta' : 'Recuperar senha'}
-            </h2>
-            <p className="text-muted-foreground mt-2">
-              {view === 'login'
-                ? 'Entre com suas credenciais para acessar'
-                : 'Digite seu email e enviaremos um link para redefinir sua senha'}
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-white">
+            {view === 'login' ? 'Bem-vindo de volta' : 'Recuperar senha'}
+          </h2>
+          <p className="mt-1.5 text-sm text-zinc-400">
+            {view === 'login'
+              ? 'Entre na sua conta para continuar'
+              : 'Digite seu email e enviaremos um link para redefinir sua senha'}
+          </p>
 
           {view === 'login' && (
             <>
-              {/* Google Sign In Button */}
-              <Button
+              {/* Google */}
+              <button
                 type="button"
-                variant="outline"
-                className="w-full h-12 text-base gap-3"
                 onClick={handleGoogleSignIn}
                 disabled={isGoogleLoading}
+                className="nx-focusable mt-7 flex h-12 w-full items-center justify-center gap-3 rounded-xl
+                           border border-white/15 bg-transparent text-sm font-medium text-zinc-100
+                           transition-colors duration-200 hover:border-white/25 hover:bg-white/5
+                           disabled:cursor-wait disabled:opacity-80"
               >
                 {isGoogleLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
                 ) : (
                   <>
-                    <svg className="h-5 w-5" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
+                    <GoogleIcon />
                     Continuar com Google
                   </>
                 )}
-              </Button>
+              </button>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    ou continue com email
-                  </span>
-                </div>
+              {/* Divisor */}
+              <div
+                className="my-6 flex items-center gap-4"
+                role="separator"
+                aria-label="ou continue com e-mail"
+              >
+                <span className="h-px flex-1 bg-white/10" />
+                <span className="text-xs text-zinc-500">ou continue com e-mail</span>
+                <span className="h-px flex-1 bg-white/10" />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 bg-card border-border"
-                      required
-                    />
-                  </div>
+              <form onSubmit={handleSubmit}>
+                {/* E-mail */}
+                <label htmlFor="login-email" className="block text-[13px] font-medium text-zinc-300">
+                  E-mail
+                </label>
+                <div className="relative mt-1.5">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="nx-input h-12 w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-4
+                               text-sm text-white placeholder:text-zinc-600 transition-shadow duration-200"
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-12 bg-card border-border"
-                      required
-                      minLength={6}
-                    />
-                  </div>
+                {/* Senha */}
+                <label
+                  htmlFor="login-password"
+                  className="mt-5 block text-[13px] font-medium text-zinc-300"
+                >
+                  Senha
+                </label>
+                <div className="relative mt-1.5">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500" />
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="nx-input h-12 w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-12
+                               text-sm text-white placeholder:text-zinc-600 transition-shadow duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showPassword}
+                    className="nx-focusable absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center
+                               justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-200"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-[18px] w-[18px]" />
+                    ) : (
+                      <Eye className="h-[18px] w-[18px]" />
+                    )}
+                  </button>
                 </div>
 
-                <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
+                {/* Lembrar / esqueci */}
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <label className="flex cursor-pointer select-none items-center gap-2.5 text-[13px] text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="nx-checkbox nx-focusable h-4 w-4 rounded"
+                    />
+                    Lembrar de mim
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('forgot');
+                      setForgotSent(false);
+                    }}
+                    className="nx-link nx-focusable rounded text-[13px] font-medium"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+
+                {/* Entrar */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="nx-focusable mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl
+                             text-sm font-semibold transition-all duration-200
+                             hover:brightness-110 active:scale-[0.99] disabled:cursor-wait disabled:opacity-80"
+                  style={{ backgroundColor: 'var(--accent)', color: accentText }}
+                >
                   {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <>
+                      <Loader2 className="h-[18px] w-[18px] animate-spin" /> Entrando…
+                    </>
                   ) : (
                     <>
-                      Entrar
-                      <ArrowRight className="ml-2 h-5 w-5" />
+                      Entrar <ArrowRight className="h-4 w-4" />
                     </>
                   )}
-                </Button>
-              </form>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView('forgot');
-                    setForgotSent(false);
-                  }}
-                  className="text-primary hover:underline text-sm"
-                >
-                  Esqueci minha senha
                 </button>
-              </div>
+              </form>
             </>
           )}
 
           {view === 'forgot' && (
             <>
               {forgotSent ? (
-                <div className="space-y-4">
-                  <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-                    Se este email estiver cadastrado, enviaremos um link de recuperação em alguns instantes. Verifique sua caixa de entrada e a pasta de spam.
+                <div className="mt-7 space-y-4">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-400">
+                    Se este email estiver cadastrado, enviaremos um link de recuperação em alguns
+                    instantes. Verifique sua caixa de entrada e a pasta de spam.
                   </div>
-                  <Button
+                  <button
                     type="button"
-                    className="w-full h-12 text-base"
                     onClick={() => {
                       setView('login');
                       setForgotSent(false);
                     }}
+                    className="nx-focusable flex h-12 w-full items-center justify-center gap-2 rounded-xl
+                               text-sm font-semibold transition-all duration-200
+                               hover:brightness-110 active:scale-[0.99]"
+                    style={{ backgroundColor: 'var(--accent)', color: accentText }}
                   >
                     Voltar ao login
-                  </Button>
+                  </button>
                 </div>
               ) : (
-                <form onSubmit={handleForgotSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="forgot-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="forgot-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-12 bg-card border-border"
-                        required
-                      />
-                    </div>
+                <form onSubmit={handleForgotSubmit} className="mt-7">
+                  <label
+                    htmlFor="forgot-email"
+                    className="block text-[13px] font-medium text-zinc-300"
+                  >
+                    E-mail
+                  </label>
+                  <div className="relative mt-1.5">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-500" />
+                    <input
+                      id="forgot-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="nx-input h-12 w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-4
+                                 text-sm text-white placeholder:text-zinc-600 transition-shadow duration-200"
+                    />
                   </div>
 
-                  <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="nx-focusable mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl
+                               text-sm font-semibold transition-all duration-200
+                               hover:brightness-110 active:scale-[0.99] disabled:cursor-wait disabled:opacity-80"
+                    style={{ backgroundColor: 'var(--accent)', color: accentText }}
+                  >
                     {isLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <>
+                        <Loader2 className="h-[18px] w-[18px] animate-spin" /> Enviando…
+                      </>
                     ) : (
                       <>
-                        Enviar link de recuperação
-                        <ArrowRight className="ml-2 h-5 w-5" />
+                        Enviar link de recuperação <ArrowRight className="h-4 w-4" />
                       </>
                     )}
-                  </Button>
+                  </button>
 
-                  <div className="text-center">
+                  <div className="mt-4 text-center">
                     <button
                       type="button"
                       onClick={() => setView('login')}
-                      className="text-primary hover:underline text-sm"
+                      className="nx-link nx-focusable rounded text-[13px] font-medium"
                     >
                       Voltar ao login
                     </button>
@@ -378,8 +457,32 @@ export default function Login() {
             </>
           )}
 
-        </div>
+          <p className="mt-7 text-center text-xs text-zinc-600">
+            © {new Date().getFullYear()} {BRAND.name}. Todos os direitos reservados.
+          </p>
+        </main>
       </div>
     </div>
   );
 }
+
+/* ============================================================
+   VARIAÇÕES DE BRAND — família de SaaS verticais Nexvy
+   (catálogo de referência; cada SaaS embarca apenas o seu BRAND)
+   ============================================================
+   | SaaS          | name           | tagline                          | accent  | backgroundImage (sugestão)                                        |
+   |---------------|----------------|----------------------------------|---------|-------------------------------------------------------------------|
+   | Oficinas      | NexvyOficinas  | Gestão completa para sua oficina | #F97316 | Carro esportivo em garagem premium, luz dramática lateral          |
+   | Barbearia     | BarbeiroPro    | Sua barbearia no controle        | #D9A441 | Cadeira de barbeiro vintage em couro, luz quente incandescente     |
+   | Salão         | NexvyBeauty    | Beleza com gestão inteligente    | #EC4899 | Bancada de salão com espelhos hollywood iluminados, fundo escuro   |
+   | Restaurante   | NexvyFoods     | Do pedido à entrega, sem fricção | #EF4444 | Chef finalizando prato na passe, cozinha profissional em penumbra  |
+   | Academia      | NexvyGYM       | Performance para sua academia    | #84CC16 | Área de pesos livres, luz dura de spot, alto contraste             |
+   ============================================================
+
+   Métricas/bgHint por vertical (do catálogo BRANDS do design original):
+   - NexvyOficinas: "+40% conversão · −50% tempo de resposta · 1.200+ oficinas" / carro esportivo em garagem premium, iluminação dramática
+   - BarbeiroPro:   "+35% agendamentos · −60% faltas · 800+ barbearias"          / cadeira de barbeiro vintage em luz quente, fundo escuro
+   - NexvyBeauty:   "+45% retenção · agenda 100% online · 950+ salões"           / salão elegante com espelhos iluminados, tons escuros
+   - NexvyFoods:    "+38% pedidos · −45% erros de comanda · 1.500+ restaurantes" / chef finalizando prato na passe, cozinha em chiaroscuro
+   - NexvyGYM:      "+50% renovações · check-in digital · 600+ academias"        / área de pesos livres com luz dura e contraste alto
+   ============================================================ */
