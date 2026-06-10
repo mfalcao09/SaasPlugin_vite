@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Crown, Sparkles, LayoutGrid } from 'lucide-react';
+import { ChevronRight, Crown, Sparkles, LayoutGrid, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +41,7 @@ function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => vo
 const ModuleHub = () => {
   const navigate = useNavigate();
   const { profile, roles, isAdmin, isManager, isSuperAdmin } = useAuth();
-  const { shouldForceSetup } = useSuperAdminFirstAccess();
+  const { shouldForceSetup, isLoading: setupLoading } = useSuperAdminFirstAccess();
 
   const organizationId = profile?.organization_id ?? null;
   const { data: orgName } = useQuery({
@@ -69,6 +69,15 @@ const ModuleHub = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [roles]
   );
+
+  // Hold: evita o hub "piscar" antes do redirect enquanto o status de setup carrega
+  if (isSuperAdmin() && setupLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Guard (a): primeiro acesso do super admin → setup obrigatório
   if (isSuperAdmin() && shouldForceSetup) {
