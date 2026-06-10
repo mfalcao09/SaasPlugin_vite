@@ -14,6 +14,7 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
+const ModuleHub = lazyWithRetry(() => import("./pages/ModuleHub"));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -158,13 +159,23 @@ const App = () => (
               <Route path="/docs/:track" element={<Docs />} />
               <Route path="/docs/:track/:slug" element={<Docs />} />
 
-              <Route 
-                path="/" 
+              {/* Hub de Módulos = home permanente (padrão Intentus) */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <ModuleHub />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CRM de Vendas (app do vendedor — antigo "/") */}
+              <Route
+                path="/crm"
                 element={
                   <ProtectedRoute>
                     <Index />
                   </ProtectedRoute>
-                } 
+                }
               />
               {/* PWA / atalhos antigos podem abrir em /index ou /home — redireciona */}
               <Route path="/index" element={<Navigate to="/" replace />} />

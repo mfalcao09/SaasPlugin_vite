@@ -70,67 +70,67 @@ export default function Veiculos() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Veículos</h1>
-          <p className="text-slate-400 text-sm mt-1">{(veiculos as any[]).length} veículos cadastrados</p>
+          <h1 className="text-2xl font-bold text-foreground">Veículos</h1>
+          <p className="text-muted-foreground text-sm mt-1">{(veiculos as any[]).length} veículos cadastrados</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold transition-colors">
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors">
           <Plus className="h-4 w-4" />Novo Veículo
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 space-y-3">
-          <h2 className="font-semibold text-white">Novo Veículo</h2>
+        <div className="bg-card border rounded-xl p-5 space-y-3">
+          <h2 className="font-semibold text-foreground">Novo Veículo</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:outline-none focus:border-orange-500">
+            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
               <option value="">Selecionar cliente *</option>
               {(clientes as any[]).map((c: any) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
-            <input value={marca} onChange={e => setMarca(e.target.value)} placeholder="Marca *" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
-            <input value={modelo} onChange={e => setModelo(e.target.value)} placeholder="Modelo *" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
-            <input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} placeholder="Placa *" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
-            <input value={ano} onChange={e => setAno(e.target.value)} placeholder="Ano" type="number" min="1950" max="2030" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
-            <input value={cor} onChange={e => setCor(e.target.value)} placeholder="Cor" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
+            <input value={marca} onChange={e => setMarca(e.target.value)} placeholder="Marca *" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={modelo} onChange={e => setModelo(e.target.value)} placeholder="Modelo *" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} placeholder="Placa *" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={ano} onChange={e => setAno(e.target.value)} placeholder="Ano" type="number" min="1950" max="2030" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={cor} onChange={e => setCor(e.target.value)} placeholder="Cor" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => criar.mutate()} disabled={!clienteId || !marca || !modelo || !placa || criar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors">
+            <button onClick={() => criar.mutate()} disabled={!clienteId || !marca || !modelo || !placa || criar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-colors">
               {criar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Salvar
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm transition-colors">Cancelar</button>
           </div>
         </div>
       )}
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por placa, marca ou modelo..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por placa, marca ou modelo..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
       </div>
 
-      <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
+          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center">
-            <Car className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">{search ? 'Nenhum veículo encontrado.' : 'Nenhum veículo cadastrado ainda.'}</p>
+            <Car className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">{search ? 'Nenhum veículo encontrado.' : 'Nenhum veículo cadastrado ainda.'}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-700">
-              <tr className="text-left text-slate-400">
+            <thead className="border-b">
+              <tr className="text-left text-muted-foreground">
                 <th className="px-5 py-3 font-medium">Placa</th>
                 <th className="px-5 py-3 font-medium">Veículo</th>
                 <th className="px-5 py-3 font-medium hidden sm:table-cell">Cliente</th>
                 <th className="px-5 py-3 font-medium hidden md:table-cell">Ano / Cor</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody className="divide-y divide-border">
               {filtered.map((v: any) => (
-                <tr key={v.id} className="hover:bg-slate-800/50 transition-colors">
-                  <td className="px-5 py-3 text-orange-400 font-mono font-semibold">{v.placa}</td>
-                  <td className="px-5 py-3 text-white">{v.marca} {v.modelo}</td>
-                  <td className="px-5 py-3 text-slate-400 hidden sm:table-cell">{v.clientes?.nome ?? v.cliente_nome ?? '—'}</td>
-                  <td className="px-5 py-3 text-slate-400 hidden md:table-cell">{v.ano ?? '—'}{v.cor ? ` · ${v.cor}` : ''}</td>
+                <tr key={v.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-5 py-3 text-primary font-mono font-semibold">{v.placa}</td>
+                  <td className="px-5 py-3 text-foreground">{v.marca} {v.modelo}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{v.clientes?.nome ?? v.cliente_nome ?? '—'}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{v.ano ?? '—'}{v.cor ? ` · ${v.cor}` : ''}</td>
                 </tr>
               ))}
             </tbody>

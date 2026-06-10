@@ -20,7 +20,8 @@ import {
   Shield,
   MessageSquare,
   CalendarCheck,
-  Wrench
+  Wrench,
+  LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/Logo';
@@ -105,6 +106,15 @@ export function Sidebar({
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {/* Hub de Módulos (home) */}
+        <Link
+          to="/"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          <LayoutGrid size={20} className="text-primary" />
+          {!collapsed && <span className="text-sm font-medium">Hub de Módulos</span>}
+        </Link>
+        <div className="my-1 border-t border-sidebar-border" />
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

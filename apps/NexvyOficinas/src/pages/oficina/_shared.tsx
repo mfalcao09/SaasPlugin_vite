@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  LayoutDashboard, Users, Car, Wrench, FileText, DollarSign, ArrowLeft,
+  LayoutDashboard, Users, Car, Wrench, FileText, DollarSign, LayoutGrid,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,10 +36,10 @@ const NAV = [
 export function OficinaLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      <aside className="w-60 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col">
-        <div className="h-16 flex items-center px-5 border-b border-slate-800">
-          <span className="text-lg font-bold text-white">ERP Oficina</span>
+    <div className="min-h-screen bg-background flex">
+      <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
+        <div className="h-16 flex items-center px-5 border-b">
+          <span className="text-lg font-bold text-foreground">ERP Oficina</span>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -49,7 +49,7 @@ export function OficinaLayout({ children }: { children: ReactNode }) {
               end={end}
               className={({ isActive }) => cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive ? 'bg-orange-600/15 text-orange-400' : 'text-slate-300 hover:bg-slate-800',
+                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -57,13 +57,13 @@ export function OficinaLayout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-slate-800">
+        <div className="p-3 border-t">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao CRM
+            <LayoutGrid className="h-4 w-4" />
+            Hub de Módulos
           </button>
         </div>
       </aside>
@@ -74,7 +74,7 @@ export function OficinaLayout({ children }: { children: ReactNode }) {
 
 export function NoOrg() {
   return (
-    <div className="p-12 text-center text-slate-400 text-sm">
+    <div className="p-12 text-center text-muted-foreground text-sm">
       Sua conta ainda não está vinculada a uma organização. Conclua o onboarding para usar o ERP.
     </div>
   )

@@ -99,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoles([]);
           setPermissions(null);
           setIsLoading(false);
+          // Duplo perfil (DualRoleDialog): escolha vale por sessão — re-pergunta no próximo login
+          try { localStorage.removeItem('nx_view_mode'); } catch { /* indisponível */ }
         }
       }
     );
@@ -217,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     await supabase.auth.signOut();
+    try { localStorage.removeItem('nx_view_mode'); } catch { /* indisponível */ }
     setUser(null);
     setSession(null);
     setProfile(null);

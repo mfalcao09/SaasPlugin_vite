@@ -6,9 +6,9 @@ import { toast } from 'sonner'
 import { OficinaLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
 
 const STATUS_COLOR: Record<string, string> = {
-  pendente: 'bg-yellow-500/15 text-yellow-400',
-  aprovado: 'bg-green-500/15 text-green-400',
-  recusado: 'bg-red-500/15 text-red-400',
+  pendente: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  aprovado: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  recusado: 'bg-red-500/15 text-red-600 dark:text-red-400',
 }
 
 export default function Orcamentos() {
@@ -90,55 +90,55 @@ export default function Orcamentos() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Orçamentos</h1>
-          <p className="text-slate-400 text-sm mt-1">{(orcamentos as any[]).length} orçamentos cadastrados</p>
+          <h1 className="text-2xl font-bold text-foreground">Orçamentos</h1>
+          <p className="text-muted-foreground text-sm mt-1">{(orcamentos as any[]).length} orçamentos cadastrados</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold transition-colors">
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors">
           <Plus className="h-4 w-4" />Novo Orçamento
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 space-y-3">
-          <h2 className="font-semibold text-white">Novo Orçamento</h2>
+        <div className="bg-card border rounded-xl p-5 space-y-3">
+          <h2 className="font-semibold text-foreground">Novo Orçamento</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:outline-none focus:border-orange-500">
+            <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
               <option value="">Selecionar cliente *</option>
               {(clientes as any[]).map((c: any) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
-            <select value={veiculoId} onChange={e => setVeiculoId(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white text-sm focus:outline-none focus:border-orange-500">
+            <select value={veiculoId} onChange={e => setVeiculoId(e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
               <option value="">Selecionar veículo *</option>
               {(veiculos as any[]).filter((v: any) => !clienteId || v.cliente_id === clienteId).map((v: any) => <option key={v.id} value={v.id}>{v.marca} {v.modelo} - {v.placa}</option>)}
             </select>
-            <input value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição dos serviços" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
-            <input value={valor} onChange={e => setValor(e.target.value)} placeholder="Valor total (R$)" className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
+            <input value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição dos serviços" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={valor} onChange={e => setValor(e.target.value)} placeholder="Valor total (R$)" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => criar.mutate()} disabled={!clienteId || !veiculoId || criar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors">
+            <button onClick={() => criar.mutate()} disabled={!clienteId || !veiculoId || criar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-colors">
               {criar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Salvar
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">Cancelar</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm transition-colors">Cancelar</button>
           </div>
         </div>
       )}
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar orçamentos..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-orange-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar orçamentos..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
       </div>
 
-      <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+      <div className="bg-card border rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
+          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center">
-            <FileText className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Nenhum orçamento cadastrado ainda.</p>
+            <FileText className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">Nenhum orçamento cadastrado ainda.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-700">
-              <tr className="text-left text-slate-400">
+            <thead className="border-b">
+              <tr className="text-left text-muted-foreground">
                 <th className="px-5 py-3 font-medium">Nº / Data</th>
                 <th className="px-5 py-3 font-medium">Cliente</th>
                 <th className="px-5 py-3 font-medium hidden sm:table-cell">Veículo</th>
@@ -146,19 +146,19 @@ export default function Orcamentos() {
                 <th className="px-5 py-3 font-medium text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody className="divide-y divide-border">
               {filtered.map((o: any) => (
-                <tr key={o.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={o.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-5 py-3">
-                    <p className="text-white font-medium">{o.numero ?? o.id.slice(0, 8)}</p>
-                    <p className="text-xs text-slate-500">{o.data ? formatDate(o.data) : '-'}</p>
+                    <p className="text-foreground font-medium">{o.numero ?? o.id.slice(0, 8)}</p>
+                    <p className="text-xs text-muted-foreground">{o.data ? formatDate(o.data) : '-'}</p>
                   </td>
-                  <td className="px-5 py-3 text-slate-300">{o.cliente_nome ?? '-'}</td>
-                  <td className="px-5 py-3 text-slate-400 hidden sm:table-cell">{o.veiculo_desc ?? '-'}</td>
+                  <td className="px-5 py-3 text-foreground">{o.cliente_nome ?? '-'}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{o.veiculo_desc ?? '-'}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[o.status] ?? 'bg-slate-500/15 text-slate-400'}`}>{o.status}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[o.status] ?? 'bg-muted text-muted-foreground'}`}>{o.status}</span>
                   </td>
-                  <td className="px-5 py-3 text-right text-white font-medium">{o.total ? formatCurrency(o.total) : '-'}</td>
+                  <td className="px-5 py-3 text-right text-foreground font-medium">{o.total ? formatCurrency(o.total) : '-'}</td>
                 </tr>
               ))}
             </tbody>
