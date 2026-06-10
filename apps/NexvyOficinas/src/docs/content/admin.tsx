@@ -821,7 +821,7 @@ export const adminPages: DocPage[] = [
             ["Moeda", "Padrão BRL. Afeta exibição de valores."],
             ["Business hours", "Dias e horas úteis (alimenta cadências e IA)."],
             ["Logo e cores", "Branding interno (white label vem do Super Admin)."],
-            ["Domínio de e-mail", "Configurado em Lovable Cloud → Emails."],
+            ["Domínio de e-mail", "Configurado via Resend (Super-admin → E-mail)."],
           ]}
         />
       </>

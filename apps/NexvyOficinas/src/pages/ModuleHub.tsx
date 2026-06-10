@@ -9,10 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Crown, Sparkles, LayoutGrid, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess';
+import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DualRoleDialog } from '@/components/auth/DualRoleDialog';
+import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { MODULE_DEFINITIONS, type ModuleDefinition } from '@/config/modules';
 
 function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => void }) {
@@ -42,6 +44,10 @@ const ModuleHub = () => {
   const navigate = useNavigate();
   const { profile, roles, isAdmin, isManager, isSuperAdmin } = useAuth();
   const { shouldForceSetup, isLoading: setupLoading } = useSuperAdminFirstAccess();
+  // Onboarding guiado módulo-aware: dispara no 1º acesso de um admin de
+  // organização (sem módulos ativados ainda). Super admin é coberto pelo
+  // fluxo de setup acima e nunca cai aqui (isFirstAccess exige !superAdmin).
+  const { isFirstAccess: showOnboarding, markCompleted, markSkipped } = useGuidedOnboarding();
 
   const organizationId = profile?.organization_id ?? null;
   const { data: orgName } = useQuery({
@@ -91,6 +97,18 @@ const ModuleHub = () => {
     <div className="min-h-screen bg-background">
       {/* Guard (b): dialog bloqueante de duplo perfil */}
       <DualRoleDialog orgName={orgName} />
+
+      {/* Onboarding guiado (admin de organização, 1º acesso) — disjunto do
+          DualRoleDialog (este exige super admin; o onboarding exige NÃO super
+          admin), então nunca se sobrepõem. */}
+      {showOnboarding && (
+        <GuidedOnboarding
+          open={showOnboarding}
+          onClose={markSkipped}
+          onComplete={markCompleted}
+          onSkipAll={markSkipped}
+        />
+      )}
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* ─── Header: saudação + org + badges de papel ─────────── */}

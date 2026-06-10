@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 83 81% 44%;
+    --primary: 24 95% 53%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -25,7 +25,7 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 8% 46%;
 
-    --accent: 83 81% 44%;
+    --accent: 24 95% 53%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -39,31 +39,31 @@
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 83 81% 44%;
+    --ring: 24 95% 53%;
 
     --radius: 0.75rem;
 
     /* Sidebar Light */
     --sidebar-background: 220 14% 98%;
     --sidebar-foreground: 222 47% 20%;
-    --sidebar-primary: 83 81% 44%;
+    --sidebar-primary: 24 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 94%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 83 81% 44%;
+    --sidebar-ring: 24 95% 53%;
 
-    /* Vendus Gradients - Verde escuro → Lime → Verde claro */
-    --gradient-primary: linear-gradient(135deg, hsl(83 90% 25%), hsl(83 81% 44%), hsl(83 90% 70%));
+    /* Oficinas Gradients - Laranja escuro → Laranja → Laranja claro */
+    --gradient-primary: linear-gradient(135deg, hsl(24 90% 35%), hsl(24 95% 53%), hsl(30 95% 65%));
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
-    --gradient-hero: linear-gradient(135deg, hsl(83 90% 70% / 0.08), hsl(83 81% 44% / 0.04));
-    --gradient-accent: linear-gradient(135deg, hsl(83 81% 44% / 0.10), hsl(83 90% 70% / 0.04));
+    --gradient-hero: linear-gradient(135deg, hsl(30 95% 65% / 0.08), hsl(24 95% 53% / 0.04));
+    --gradient-accent: linear-gradient(135deg, hsl(24 95% 53% / 0.10), hsl(30 95% 65% / 0.04));
 
     /* Sombras Light - Suaves e naturais */
     --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
     --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.06), 0 2px 4px -2px hsl(222 47% 11% / 0.04);
     --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.08), 0 4px 6px -4px hsl(222 47% 11% / 0.04);
-    --shadow-glow: 0 0 20px hsl(83 81% 44% / 0.20);
+    --shadow-glow: 0 0 20px hsl(24 95% 53% / 0.20);
   }
 
   /* TEMA DARK - Premium */
@@ -77,7 +77,7 @@
     --popover: 222 47% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 83 75% 50%;
+    --primary: 24 95% 55%;
     --primary-foreground: 222 47% 6%;
 
     --secondary: 222 30% 14%;
@@ -86,7 +86,7 @@
     --muted: 222 30% 12%;
     --muted-foreground: 215 20% 55%;
 
-    --accent: 83 75% 50%;
+    --accent: 24 95% 55%;
     --accent-foreground: 222 47% 6%;
 
     --destructive: 0 72% 51%;
@@ -100,29 +100,29 @@
 
     --border: 222 30% 18%;
     --input: 222 30% 14%;
-    --ring: 83 75% 50%;
+    --ring: 24 95% 55%;
 
     /* Sidebar Dark */
     --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 210 40% 85%;
-    --sidebar-primary: 83 75% 50%;
+    --sidebar-primary: 24 95% 55%;
     --sidebar-primary-foreground: 222 47% 6%;
     --sidebar-accent: 222 30% 12%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 30% 15%;
-    --sidebar-ring: 83 75% 50%;
+    --sidebar-ring: 24 95% 55%;
 
-    /* Vendus Gradients - Dark */
-    --gradient-primary: linear-gradient(135deg, hsl(83 90% 25%), hsl(83 75% 50%), hsl(83 90% 70%));
+    /* Oficinas Gradients - Dark */
+    --gradient-primary: linear-gradient(135deg, hsl(24 90% 35%), hsl(24 95% 55%), hsl(30 95% 65%));
     --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
     --gradient-hero: linear-gradient(135deg, hsl(222 47% 8%), hsl(222 47% 4%));
-    --gradient-accent: linear-gradient(135deg, hsl(83 75% 50% / 0.18), hsl(83 90% 70% / 0.06));
+    --gradient-accent: linear-gradient(135deg, hsl(24 95% 55% / 0.18), hsl(30 95% 65% / 0.06));
 
     /* Shadows - Dark */
     --shadow-sm: 0 1px 2px 0 hsl(222 47% 4% / 0.3);
     --shadow-md: 0 4px 6px -1px hsl(222 47% 4% / 0.4), 0 2px 4px -2px hsl(222 47% 4% / 0.3);
     --shadow-lg: 0 10px 15px -3px hsl(222 47% 4% / 0.5), 0 4px 6px -4px hsl(222 47% 4% / 0.4);
-    --shadow-glow: 0 0 20px hsl(83 75% 50% / 0.35);
+    --shadow-glow: 0 0 20px hsl(24 95% 55% / 0.35);
   }
 }
 
@@ -332,7 +332,7 @@
       box-shadow: var(--shadow-glow);
     }
     50% {
-      box-shadow: 0 0 30px hsl(83 75% 50% / 0.45);
+      box-shadow: 0 0 30px hsl(24 95% 55% / 0.45);
     }
   }
 

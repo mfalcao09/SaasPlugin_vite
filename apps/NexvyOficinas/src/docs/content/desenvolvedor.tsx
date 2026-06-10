@@ -504,7 +504,8 @@ export const devPages: DocPage[] = [
             ["429 — rate limit", "Reduza polling. Use Realtime ao invés de loops."],
             ["webhook 401 invalid token", "x-webhook-token errado. Confira em /admin → Webhooks."],
             ["Evolution: disconnected", "Instância caiu. Super Admin reconecta pelo QR."],
-            ["IA não responde", "Confira webchat-bot logs. Provável: provider sem chave em org_ai_credentials e créditos Lovable esgotados."],
+            ["IA não responde", "Confira webchat-bot logs. Provável: provider sem chave (ou chave inválida) em org_ai_credentials, ou créditos do provider esgotados."],
+            ["E-mail não envia", "Verifique RESEND_API_KEY nos secrets e o domínio de envio verificado no Resend. Logs da edge de envio mostram o erro retornado."],
           ]}
         />
         <Callout type="tip" title="Logs">

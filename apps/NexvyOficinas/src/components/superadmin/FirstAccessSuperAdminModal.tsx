@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -25,8 +26,9 @@ import {
   XCircle,
   Eye,
   EyeOff,
-  ExternalLink,
+  Send,
   Server,
+  Palette,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,12 +41,22 @@ import {
 import { toast } from 'sonner';
 import { PlanFormBody } from './plans/PlanFormDialog';
 import { OrganizationCreateForm } from './OrganizationCreateForm';
+import { PlatformLogoUpload } from './PlatformLogoUpload';
 
-type Step = 'password' | 'name' | 'plan' | 'evolution' | 'email' | 'organization' | 'done';
+type Step =
+  | 'password'
+  | 'name'
+  | 'identity'
+  | 'plan'
+  | 'evolution'
+  | 'email'
+  | 'organization'
+  | 'done';
 
 const STEPS: { id: Step; label: string; required: boolean }[] = [
   { id: 'password', label: 'Senha', required: true },
   { id: 'name', label: 'Nome', required: true },
+  { id: 'identity', label: 'Identidade', required: false },
   { id: 'plan', label: 'Plano', required: true },
   { id: 'evolution', label: 'WhatsApp', required: false },
   { id: 'email', label: 'E-mail', required: false },
@@ -57,6 +69,7 @@ export function FirstAccessSuperAdminModal() {
   const { user, profile } = useAuth();
   const { shouldForceSetup, refetch } = useSuperAdminFirstAccess();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('password');
   const [opened, setOpened] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -72,7 +85,9 @@ export function FirstAccessSuperAdminModal() {
       const [settings, plans, orgs] = await Promise.all([
         supabase
           .from('platform_settings')
-          .select('default_password_changed, evolution_go_url, support_email, remix_setup_completed')
+          .select(
+            'default_password_changed, evolution_go_url, support_email, remix_setup_completed, platform_name, logo_url, primary_color'
+          )
           .maybeSingle(),
         supabase
           .from('platform_plans')
@@ -80,14 +95,16 @@ export function FirstAccessSuperAdminModal() {
           .eq('is_active', true),
         supabase.from('organizations').select('id', { count: 'exact', head: true }),
       ]);
+      const s = settings.data as any;
       return {
-        passwordChanged: !!(settings.data as any)?.default_password_changed,
+        passwordChanged: !!s?.default_password_changed,
         nameSet: !!profile?.full_name && profile.full_name !== 'Super Admin',
+        hasIdentity: !!s?.platform_name && !!s?.logo_url,
         hasPlan: (plans.count ?? 0) > 0,
-        hasEvolution: !!(settings.data as any)?.evolution_go_url,
-        hasEmail: !!(settings.data as any)?.support_email,
+        hasEvolution: !!s?.evolution_go_url,
+        hasEmail: !!s?.support_email,
         hasOrg: (orgs.count ?? 0) > 0,
-        completed: !!(settings.data as any)?.remix_setup_completed,
+        completed: !!s?.remix_setup_completed,
       };
     },
   });
@@ -117,6 +134,7 @@ export function FirstAccessSuperAdminModal() {
     await qc.invalidateQueries({ queryKey: ['super-admin-setup-checklist'] });
     await qc.invalidateQueries({ queryKey: ['platform-settings'] });
     setDismissed(true);
+    navigate('/');
   };
 
   return (
@@ -163,6 +181,7 @@ export function FirstAccessSuperAdminModal() {
 
         {step === 'password' && <StepPassword onDone={goNext} alreadyDone={state?.passwordChanged} refetchAccess={refetch} />}
         {step === 'name' && <StepName userId={user!.id} initial={profile?.full_name && profile.full_name !== 'Super Admin' ? profile.full_name : ''} onDone={goNext} alreadyDone={state?.nameSet} />}
+        {step === 'identity' && <StepIdentity onDone={goNext} alreadyDone={state?.hasIdentity} />}
         {step === 'plan' && <StepPlan onDone={goNext} alreadyDone={state?.hasPlan} />}
         {step === 'evolution' && <StepEvolution onDone={goNext} alreadyDone={state?.hasEvolution} />}
         {step === 'email' && <StepEmail onDone={goNext} alreadyDone={state?.hasEmail} />}
@@ -178,7 +197,7 @@ export function FirstAccessSuperAdminModal() {
               Você concluiu a configuração inicial. Bons negócios!
             </p>
             <Button className="w-full" onClick={finish}>
-              Ir para o dashboard
+              Ir para o Hub de Módulos
             </Button>
           </div>
         )}
@@ -282,6 +301,140 @@ function StepName({ userId, initial, onDone, alreadyDone }: { userId: string; in
         {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
         Salvar e avançar
       </Button>
+    </div>
+  );
+}
+
+function StepIdentity({ onDone, alreadyDone }: { onDone: () => void; alreadyDone?: boolean }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [color, setColor] = useState('#F97316');
+  const [loading, setLoading] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('platform_name, logo_url, primary_color')
+        .maybeSingle();
+      if (!active) return;
+      const s = data as any;
+      if (s?.platform_name) setName(s.platform_name);
+      if (s?.logo_url) setLogoUrl(s.logo_url);
+      if (s?.primary_color) setColor(s.primary_color);
+      setLoadingInitial(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (alreadyDone) return <AlreadyDone label="Identidade da plataforma configurada" onContinue={onDone} />;
+
+  const save = async () => {
+    if (!name.trim()) return toast.error('Informe o nome da plataforma.');
+    setLoading(true);
+    const { data: existing } = await supabase
+      .from('platform_settings')
+      .select('id')
+      .maybeSingle();
+    if (!existing?.id) {
+      setLoading(false);
+      return toast.error('Configuração da plataforma ainda não inicializada.');
+    }
+    const { error } = await supabase
+      .from('platform_settings')
+      .update({
+        platform_name: name.trim(),
+        logo_url: logoUrl || null,
+        primary_color: color,
+      } as any)
+      .eq('id', existing.id);
+    if (error) {
+      setLoading(false);
+      return toast.error('Erro ao salvar identidade', { description: error.message });
+    }
+    // Aplica branding na hora: limpa o cache visual antigo e revalida as queries
+    try {
+      localStorage.removeItem('platform-branding-cache-v1');
+    } catch {
+      // ignore
+    }
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['platform-settings'] }),
+      qc.invalidateQueries({ queryKey: ['platform-branding'] }),
+      qc.invalidateQueries({ queryKey: ['first-access-wizard-state'] }),
+    ]);
+    await qc.refetchQueries({ queryKey: ['platform-branding'] });
+    setLoading(false);
+    toast.success('Identidade da plataforma salva!');
+    onDone();
+  };
+
+  return (
+    <div className="space-y-4">
+      <Alert>
+        <Palette className="h-4 w-4" />
+        <AlertDescription>
+          Opcional — defina a marca da sua plataforma. Você pode ajustar tudo depois em Identidade Visual.
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-2">
+        <Label>Nome da plataforma</Label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Minha Plataforma"
+          disabled={loadingInitial}
+        />
+      </div>
+
+      <PlatformLogoUpload
+        currentUrl={logoUrl}
+        onUpload={(url) => setLogoUrl(url)}
+        onRemove={() => setLogoUrl('')}
+        type="logo"
+        label="Logo Principal"
+        description="Usado em toda a plataforma. PNG, JPG, SVG ou WEBP. Máx 2MB."
+        previewBg="light"
+        aspectRatio="wide"
+      />
+
+      <div className="space-y-2">
+        <Label htmlFor="identity-color">Cor primária</Label>
+        <div className="flex items-center gap-3">
+          <Input
+            id="identity-color"
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="h-10 w-16 p-1 cursor-pointer"
+            disabled={loadingInitial}
+          />
+          <Input
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            placeholder="#F97316"
+            className="flex-1 font-mono"
+            disabled={loadingInitial}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Alimenta botões, links, sidebar e gradientes da plataforma.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onDone}>Pular</Button>
+        <Button className="flex-1" onClick={save} disabled={loading || loadingInitial}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+          Salvar e avançar
+        </Button>
+      </div>
     </div>
   );
 }
@@ -436,29 +589,114 @@ function StepEvolution({ onDone, alreadyDone }: { onDone: () => void; alreadyDon
 }
 
 function StepEmail({ onDone, alreadyDone }: { onDone: () => void; alreadyDone?: boolean }) {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState('');
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('support_email')
+        .maybeSingle();
+      if (!active) return;
+      const s = data as any;
+      if (s?.support_email) setEmail(s.support_email);
+      setLoadingInitial(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (alreadyDone) return <AlreadyDone label="E-mail transacional configurado" onContinue={onDone} />;
+
+  const handleTest = async () => {
+    if (!email || !email.includes('@')) {
+      toast.error('Informe um e-mail válido');
+      return;
+    }
+    setTesting(true);
+    try {
+      const { error } = await supabase.functions.invoke('test-integration', {
+        body: { type: 'email', email },
+      });
+      if (error) throw error;
+      toast.success(`E-mail de teste enviado para ${email}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao enviar e-mail de teste');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!email || !email.includes('@')) {
+      toast.error('Informe um e-mail válido');
+      return;
+    }
+    setSaving(true);
+    const { data: existing } = await supabase
+      .from('platform_settings')
+      .select('id')
+      .maybeSingle();
+    if (!existing?.id) {
+      setSaving(false);
+      return toast.error('Configuração da plataforma ainda não inicializada.');
+    }
+    const { error } = await supabase
+      .from('platform_settings')
+      .update({ support_email: email.trim() } as any)
+      .eq('id', existing.id);
+    if (error) {
+      setSaving(false);
+      return toast.error('Erro ao salvar e-mail', { description: error.message });
+    }
+    setSaving(false);
+    toast.success('E-mail de suporte salvo!');
+    onDone();
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <Alert>
         <Mail className="h-4 w-4" />
         <AlertDescription>
-          Opcional — configure o domínio de envio de e-mails na Lovable Cloud.
+          Opcional — os e-mails transacionais da plataforma são enviados via Resend. Defina o
+          e-mail de suporte/remetente e envie um teste para confirmar.
         </AlertDescription>
       </Alert>
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() =>
-          window.open(
-            'https://lovable.dev/projects/f6728bcf-44ef-470a-82a0-e0613d40999f?view=cloud&section=email',
-            '_blank'
-          )
-        }
-      >
-        <ExternalLink className="h-4 w-4 mr-2" />
-        Abrir configuração na Lovable Cloud
-      </Button>
-      <Button className="w-full" onClick={onDone}>Avançar</Button>
+
+      <div className="space-y-2">
+        <Label htmlFor="support-email">E-mail de suporte/remetente</Label>
+        <Input
+          id="support-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="suporte@seudominio.com"
+          disabled={loadingInitial}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onDone}>Pular</Button>
+        <Button
+          variant="outline"
+          onClick={handleTest}
+          disabled={testing || loadingInitial || !email}
+        >
+          {testing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+          Enviar e-mail de teste
+        </Button>
+        <Button className="flex-1" onClick={handleSave} disabled={saving || loadingInitial || !email}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+          Salvar e avançar
+        </Button>
+      </div>
     </div>
   );
 }

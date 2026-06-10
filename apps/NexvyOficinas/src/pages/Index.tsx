@@ -17,8 +17,6 @@ import { TaskAlerts } from '@/components/tasks/TaskAlerts';
 import { Loader2 } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { onIdle, prefetch } from '@/lib/lazyWithRetry';
-import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
-import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding';
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess';
 
 // Factories nomeadas para reaproveitar no prefetch.
@@ -158,7 +156,8 @@ const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [, startTransition] = useTransition();
   const { toast } = useToast();
-  const { shouldShow: showGuided, markCompleted, markSkipped } = useGuidedOnboarding();
+  // O onboarding guiado agora é disparado no ModuleHub (rota "/"), no 1º acesso
+  // de um admin de organização. Aqui em /crm não duplicamos o lançamento.
   const { shouldForceSetup } = useSuperAdminFirstAccess();
 
   const productsQuery = useProducts();
@@ -441,21 +440,10 @@ const Index = () => {
     );
   };
 
-  // Modal de onboarding guiado (admin, primeira vez)
-  const guidedModal = showGuided ? (
-    <GuidedOnboarding
-      open={showGuided}
-      onClose={markSkipped}
-      onComplete={markCompleted}
-      onSkipAll={markSkipped}
-    />
-  ) : null;
-
   // Mobile Layout
   if (isMobile) {
     return (
       <>
-        {guidedModal}
         <MobileLayout
           title={headerInfo.title}
           subtitle={headerInfo.subtitle}
@@ -475,7 +463,6 @@ const Index = () => {
   // Desktop Layout
   return (
     <div className="min-h-screen bg-background">
-      {guidedModal}
       <TaskAlerts />
 
       <Sidebar

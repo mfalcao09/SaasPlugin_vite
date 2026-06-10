@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — Redesign do Onboarding · NexvyOficinas</title>
+<style>
+  :root{--bg:#0a0d14;--card:#111623;--border:#1e2638;--text:#e5e7eb;--muted:#94a3b8;--orange:#F97316;--green:#84CC16;--red:#f87171;--ok:#34d399}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:26px;margin-bottom:6px}
+  h1 .accent{color:var(--orange)}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:28px}
+  h2{font-size:20px;margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);color:var(--orange)}
+  h3{font-size:16px;margin:22px 0 10px}
+  p,li{color:var(--text)}
+  ul,ol{padding-left:22px;margin:10px 0}
+  li{margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--card);color:var(--muted);font-weight:600}
+  code{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:13px;font-family:ui-monospace,Menlo,monospace;color:#fbbf24}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin:14px 0}
+  .pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600;margin-right:6px}
+  .pill.red{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+  .pill.ok{background:rgba(52,211,153,.12);color:var(--ok);border:1px solid rgba(52,211,153,.3)}
+  .pill.orange{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.35)}
+  .swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px;border:1px solid rgba(255,255,255,.2)}
+  .verify{border-left:3px solid var(--ok);padding:10px 16px;background:rgba(52,211,153,.06);border-radius:0 8px 8px 0;margin:10px 0;font-size:14px}
+  .verify b{color:var(--ok)}
+  blockquote{border-left:3px solid var(--orange);padding:10px 16px;background:rgba(249,115,22,.06);border-radius:0 8px 8px 0;margin:14px 0;color:var(--muted)}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Plano — Redesign do <span class="accent">Onboarding</span></h1>
+<p class="meta">2026-06-10 · Status: <b>aguardando validação de Marcelo</b> · Escopo: NexvyOficinas primeiro, padrão replicável pros 5 SaaS · Pareado com <code>plano-onboarding-redesign.md</code></p>
+
+<h2>1. Diagnóstico (lido do código)</h2>
+
+<h3>1.1 Existem DOIS onboardings — ambos CRM-cêntricos</h3>
+<table>
+  <tr><th>Camada</th><th>Arquivo</th><th>Para quem</th><th>Passos hoje</th></tr>
+  <tr><td><b>A. Wizard da plataforma</b></td><td><code>FirstAccessSuperAdminModal.tsx</code> (480 l.)</td><td>Super admin, 1º acesso</td><td>Senha → Nome → Plano → WhatsApp → <span class="pill red">E-mail Lovable</span> → Empresa</td></tr>
+  <tr><td><b>B. Onboarding do cliente</b></td><td><code>GuidedOnboarding.tsx</code> (1.166 l.)</td><td>Admin da empresa</td><td>Welcome → Identidade → Produto+IA → WhatsApp → Agente IA → Equipe → Done</td></tr>
+</table>
+<div class="card">
+  <span class="pill red">Problema</span> B é 100% vendas ("pronto para vender") — <b>zero ERP Oficina</b> (clientes, veículos, OS, orçamentos, financeiro), o módulo-âncora.<br>
+  <span class="pill red">Problema</span> B só renderiza em <code>/crm</code> e <code>/admin</code> — quem entra pelo Hub novo nunca o vê.<br>
+  <span class="pill red">Problema</span> A termina em "Bons negócios!" → CRM; não apresenta módulos nem leva ao Hub.<br>
+  <span class="pill red">Problema</span> A <b>não tem passo de identidade visual</b> → "Vendus" verde sobrevive ao setup.
+</div>
+
+<h3>1.2 Lovable Cloud no e-mail — só na UI <span class="pill ok">backend já é Resend</span></h3>
+<ul>
+  <li><code>FirstAccessSuperAdminModal.tsx:445-460</code> — StepEmail abre <b>URL hardcoded do projeto remix</b> em lovable.dev</li>
+  <li><code>useSuperAdminSetupChecklist.ts:44-47</code> — "Configure o domínio na Lovable Cloud"</li>
+  <li><code>docs/content/superAdmin.tsx:303-309</code>, <code>admin.tsx:824</code> — DNS <code>_lovable</code>, "Lovable Cloud → Emails"</li>
+  <li><b>Já desacoplado no backend:</b> <code>process-email-queue</code>, <code>send-transactional-email</code>, <code>send-invite-email</code>, <code>preview-transactional-email</code> usam <code>RESEND_API_KEY</code>; tela <code>EmailSettings.tsx</code> já existe</li>
+</ul>
+
+<h3>1.3 Verde herdado do sales-spark — raiz identificada</h3>
+<table>
+  <tr><th>Onde</th><th>O quê</th><th>Fix</th></tr>
+  <tr><td><code>src/index.css:19-103</code></td><td><span class="swatch" style="background:#84CC16"></span><code>--primary/--accent/--ring: 83 81% 44%</code> (lime #84CC16)</td><td><span class="swatch" style="background:#F97316"></span><code>24 95% 53%</code> (laranja #F97316)</td></tr>
+  <tr><td><code>usePlatformBranding.ts:132</code></td><td>fallback <code>'#84CC16'</code></td><td><code>'#F97316'</code></td></tr>
+  <tr><td><code>index.html</code></td><td>boot-spinner + theme-color #84CC16 + apple-title "Vendus"</td><td>laranja + "NexvyOficinas"</td></tr>
+  <tr><td>~15 componentes</td><td><code>green-*/emerald-*</code> hardcoded</td><td>manter onde é semântico (success), trocar onde é marca</td></tr>
+</table>
+<blockquote>O wizard usa <code>bg-primary</code> (token) — fica laranja "de graça" ao corrigir a raiz. Branding dinâmico por tenant continua sobrescrevendo (white-label preservado).</blockquote>
+
+<h2>2. Visão-alvo</h2>
+<div class="card">
+  <b>Wizard A (plataforma):</b> Senha → <span class="pill orange">Identidade (nome+logo+cor)</span> → Plano → E-mail (Resend nativo) → WhatsApp → Empresa → <b>fim no Hub de Módulos</b><br><br>
+  <b>Onboarding B (cliente):</b> Welcome (tom do setor) → Identidade → <span class="pill orange">Seleção de módulos</span> (cards do <code>MODULE_DEFINITIONS</code>) → <b>mini-setup por módulo</b> (Oficina: serviços-padrão · CRM: produto+agente, reusa steps · Atendimento: WhatsApp) → Equipe → Done <b>no Hub</b><br><br>
+  <b>Arquitetura:</b> registry de steps por módulo; wizard compõe a sequência pelos módulos marcados. Disparo movido pro <b>ModuleHub</b>.
+</div>
+
+<h2>3. Fases (com critério verificável)</h2>
+
+<h3>Fase 1 — Tema laranja + des-Lovable (quick wins) · ~1 sessão</h3>
+<ol>
+  <li><code>index.css</code> light+dark → laranja; fallback do branding; <code>index.html</code> (spinner, theme-color, apple-title)</li>
+  <li>StepEmail → Resend nativo: <code>support_email</code> + status <code>RESEND_API_KEY</code> + e-mail de teste (edges existentes)</li>
+  <li>Checklist: copy + destino → tela <code>EmailSettings</code> interna</li>
+  <li>Docs: Lovable Cloud → instruções Resend (domínio, SPF/DKIM)</li>
+  <li>Copy A: "Bons negócios!" → neutro; final → "Ir para o Hub de Módulos"</li>
+</ol>
+<div class="verify"><b>Verificação:</b> build ok · screenshots sem lime e sem "Lovable" · grep <code>lovable</code> zerado no setup · e-mail de teste chega.</div>
+
+<h3>Fase 2 — Passo "Identidade da plataforma" no wizard A · pequena</h3>
+<p>Step 2 novo: nome + logo (bucket <code>platform-assets</code>) + cor primária (default laranja) → <code>platform_settings</code> (campos já existem; aplica na hora). Mata "Vendus"/verde na origem pra remix/cascade.</p>
+<div class="verify"><b>Verificação:</b> wizard em org zerada → plataforma sai nomeada e na cor escolhida, sem telas escondidas.</div>
+
+<h3>Fase 3 — Onboarding B module-aware (o grosso) · 1-2 sessões</h3>
+<ol>
+  <li>Registry <code>onboarding/steps/{oficina,crm,inbox}.tsx</code> — steps CRM atuais viram pacote <code>crm</code> (reuso ~80%)</li>
+  <li>Step "Quais módulos sua oficina vai usar?" → <code>organization_settings.enabled_modules</code> (jsonb)</li>
+  <li>Mini-setup Oficina: 3-5 serviços padrão (troca de óleo, revisão, freios…) + opcional OS de exemplo</li>
+  <li>Disparo no ModuleHub (1º acesso de admin) + Hub destaca módulos habilitados</li>
+  <li>Copy global: "vender" → "gerir sua oficina" (tom por SaaS via config)</li>
+</ol>
+<div class="verify"><b>Verificação:</b> org nova → só ERP pula steps de CRM e Done leva ao Hub com ERP destacado · CRM+Atendimento reproduz fluxo atual.</div>
+
+<h3>Fase 4 — Cascade pros outros 4 SaaS</h3>
+<p>Cor por SaaS, copy de setor e módulos default viram <b>config</b> (1 arquivo por SaaS) — entra no <code>cascade-core.sh</code>.</p>
+
+<h2>4. Decisões tomadas (Marcelo, 2026-06-10)</h2>
+<ol>
+  <li><b>Seleção de módulos (B):</b> <span class="pill ok">travada pelo plano contratado</span> — onboarding configura só o que o cliente comprou. Implica relação plano→módulos (<code>platform_plans.modules</code> jsonb) e registry filtrando por ela.</li>
+  <li><b>Mini-setup ERP:</b> <span class="pill ok">só serviços-padrão</span> (lista pronta pra marcar) — <b>sem</b> OS de exemplo (dados limpos).</li>
+  <li><b>Ordem:</b> <span class="pill orange">execução aguarda OK formal</span> — Marcelo valida este documento antes da Fase 1 começar.</li>
+</ol>
+
+<h2>5. Fora de escopo (registrado)</h2>
+<ul>
+  <li>Vídeo/estética do login (pausado — "perfumaria depois", 2026-06-10)</li>
+  <li>MCP Magnific (aguardando suporte/entitlement)</li>
+  <li>56 help_articles re-import · destino do domínio raiz</li>
+</ul>
+
+</div></body>
+</html>

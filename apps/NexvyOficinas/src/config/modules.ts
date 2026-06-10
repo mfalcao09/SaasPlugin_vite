@@ -28,6 +28,8 @@ export interface ModuleDefinition {
   description: string;
   route: string;
   visibility: ModuleVisibility;
+  /** Dica curta exibida no onboarding guiado (opcional). */
+  onboardingHint?: string;
 }
 
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
@@ -39,6 +41,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     description: 'Clientes, veículos, ordens de serviço, orçamentos e financeiro',
     route: '/oficina',
     visibility: 'all',
+    onboardingHint: 'Cadastre os serviços que sua oficina oferece.',
   },
   {
     id: 'crm_vendas',
@@ -57,6 +60,7 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     description: 'Inbox WhatsApp e webchat',
     route: '/admin?tab=inbox',
     visibility: 'admin',
+    onboardingHint: 'Conecte um número de WhatsApp ao seu inbox.',
   },
   {
     id: 'administracao',

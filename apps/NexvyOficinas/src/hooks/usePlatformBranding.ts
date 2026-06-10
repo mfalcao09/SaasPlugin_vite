@@ -129,7 +129,7 @@ export function usePlatformBranding() {
     const root = document.documentElement;
 
     // ===== COLORS =====
-    const primary = settings.primary_color || '#84CC16';
+    const primary = settings.primary_color || '#F97316';
     const scale = generateColorScale(primary);
     if (scale) {
       root.style.setProperty('--primary', scale.baseStr);
@@ -217,7 +217,7 @@ export function usePlatformBranding() {
           display: 'standalone',
           orientation: 'portrait',
           background_color: '#0a0d14',
-          theme_color: settings.primary_color || '#84CC16',
+          theme_color: settings.primary_color || '#F97316',
           icons: [192, 384, 512].map((s) => ({
             src: settings.favicon_url!,
             sizes: `${s}x${s}`,

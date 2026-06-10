@@ -41,10 +41,10 @@ export function useSuperAdminSetupChecklist() {
         {
           id: 'email',
           label: 'E-mail transacional',
-          description: 'Configure o domínio de envio na Lovable Cloud.',
+          description: 'Configure o e-mail transacional (Resend).',
           done: !!s?.support_email,
           required: false,
-          navigateTo: 'lovable-email',
+          navigateTo: 'email',
         },
         {
           id: 'plans',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type FC } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +26,17 @@ import {
   Globe,
   PenLine,
   ExternalLink,
+  LayoutGrid,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { MODULE_DEFINITIONS, type ModuleId } from '@/config/modules';
+import { usePlanModules } from '@/hooks/usePlanModules';
+import {
+  MODULE_ONBOARDING_STEPS,
+  type OnboardingStepProps,
+} from '@/components/onboarding/registry';
 import {
   useCompanySettings,
   useUpdateCompanySettings,
@@ -52,16 +60,12 @@ import { cn } from '@/lib/utils';
 import { DEFAULT_PIPELINE_STAGES } from '@/hooks/usePipelineMutations';
 import { AgentType, ToneStyle } from '@/types/agents';
 
-type StepId = 'welcome' | 'identity' | 'product' | 'whatsapp' | 'agent' | 'team' | 'done';
-
 interface GuidedOnboardingProps {
   open: boolean;
   onClose: () => void;
   onComplete: () => void;
   onSkipAll: () => void;
 }
-
-const STEP_ORDER: StepId[] = ['welcome', 'identity', 'product', 'whatsapp', 'agent', 'team', 'done'];
 
 const PRESET_COLORS = [
   '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444',
@@ -77,12 +81,71 @@ interface OnboardingShared {
   instancePhone: string | null;
   agentId: string | null;
   agentName: string | null;
+  /** Módulos que o admin escolheu configurar agora (Seleção de Módulos). */
+  selectedModules: ModuleId[];
+}
+
+// ─── Sequência dinâmica de passos ─────────────────────────────────────────
+// Cada passo é um "node" que sabe se renderiza um conteúdo fixo (welcome,
+// identity, modules, team, done), um passo de CRM já existente neste arquivo
+// (product/whatsapp/agent — condicional à escolha de 'crm_vendas') ou um
+// passo vindo do registry MODULE_ONBOARDING_STEPS (erp_oficina, atendimento).
+type StepNode =
+  | { kind: 'welcome' }
+  | { kind: 'identity' }
+  | { kind: 'modules' }
+  | { kind: 'crm-product' }
+  | { kind: 'crm-whatsapp' }
+  | { kind: 'crm-agent' }
+  | { kind: 'module'; moduleId: ModuleId; Component: FC<OnboardingStepProps>; label: string }
+  | { kind: 'team' }
+  | { kind: 'done' };
+
+// Passos de CRM (mantidos neste arquivo) expostos na ordem original.
+const CRM_STEP_KINDS: StepNode[] = [
+  { kind: 'crm-product' },
+  { kind: 'crm-whatsapp' },
+  { kind: 'crm-agent' },
+];
+
+/**
+ * Monta a lista de passos a partir dos módulos escolhidos.
+ * Welcome → Identity → Modules → (passos dos módulos) → Team → Done.
+ * A ordem dos módulos segue MODULE_DEFINITIONS para previsibilidade.
+ */
+function buildSteps(selected: ModuleId[]): StepNode[] {
+  const moduleSteps: StepNode[] = [];
+  for (const def of MODULE_DEFINITIONS) {
+    if (!selected.includes(def.id)) continue;
+    if (def.id === 'crm_vendas') {
+      // CRM usa os passos ricos já existentes aqui.
+      moduleSteps.push(...CRM_STEP_KINDS);
+      continue;
+    }
+    // Demais módulos: passos do registry (erp_oficina, atendimento, ...).
+    const regSteps = MODULE_ONBOARDING_STEPS[def.id] ?? [];
+    for (const s of regSteps) {
+      moduleSteps.push({
+        kind: 'module',
+        moduleId: def.id,
+        Component: s.Component,
+        label: s.label,
+      });
+    }
+  }
+
+  return [
+    { kind: 'welcome' },
+    { kind: 'identity' },
+    { kind: 'modules' },
+    ...moduleSteps,
+    { kind: 'team' },
+    { kind: 'done' },
+  ];
 }
 
 export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: GuidedOnboardingProps) {
   const [stepIdx, setStepIdx] = useState(0);
-  const stepId = STEP_ORDER[stepIdx];
-  const progress = (stepIdx / (STEP_ORDER.length - 1)) * 100;
 
   const [shared, setShared] = useState<OnboardingShared>({
     productId: null,
@@ -92,12 +155,21 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
     instancePhone: null,
     agentId: null,
     agentName: null,
+    selectedModules: [],
   });
 
   const update = (patch: Partial<OnboardingShared>) =>
     setShared((s) => ({ ...s, ...patch }));
 
-  const goNext = () => setStepIdx((i) => Math.min(i + 1, STEP_ORDER.length - 1));
+  // A sequência é recomputada quando a seleção de módulos muda. Até o passo
+  // de módulos rodar, selectedModules é [] e a sequência é só
+  // welcome→identity→modules→team→done (mínima válida).
+  const steps = buildSteps(shared.selectedModules);
+  const safeIdx = Math.min(stepIdx, steps.length - 1);
+  const node = steps[safeIdx];
+  const progress = (safeIdx / Math.max(steps.length - 1, 1)) * 100;
+
+  const goNext = () => setStepIdx((i) => Math.min(i + 1, steps.length - 1));
   const goPrev = () => setStepIdx((i) => Math.max(i - 1, 0));
 
   return (
@@ -108,7 +180,7 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span>Configuração guiada · {stepIdx + 1} de {STEP_ORDER.length}</span>
+              <span>Configuração guiada · {safeIdx + 1} de {steps.length}</span>
             </div>
             <button
               onClick={onSkipAll}
@@ -122,13 +194,22 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
 
         {/* Body */}
         <div className="px-6 py-8 min-h-[420px] flex flex-col overflow-y-auto">
-          {stepId === 'welcome' && (
+          {node.kind === 'welcome' && (
             <WelcomeStep onNext={goNext} onSkipAll={onSkipAll} />
           )}
-          {stepId === 'identity' && (
+          {node.kind === 'identity' && (
             <IdentityStep onNext={goNext} onSkip={goNext} onBack={goPrev} />
           )}
-          {stepId === 'product' && (
+          {node.kind === 'modules' && (
+            <ModulesStep
+              onNext={goNext}
+              onSkip={goNext}
+              onBack={goPrev}
+              selected={shared.selectedModules}
+              update={update}
+            />
+          )}
+          {node.kind === 'crm-product' && (
             <ProductStep
               onNext={goNext}
               onSkip={goNext}
@@ -136,7 +217,7 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               update={update}
             />
           )}
-          {stepId === 'whatsapp' && (
+          {node.kind === 'crm-whatsapp' && (
             <WhatsAppStep
               onNext={goNext}
               onSkip={goNext}
@@ -144,7 +225,7 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               update={update}
             />
           )}
-          {stepId === 'agent' && (
+          {node.kind === 'crm-agent' && (
             <AgentStep
               onNext={goNext}
               onSkip={goNext}
@@ -153,10 +234,13 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               update={update}
             />
           )}
-          {stepId === 'team' && (
+          {node.kind === 'module' && (
+            <node.Component onNext={goNext} onSkip={goNext} onBack={goPrev} />
+          )}
+          {node.kind === 'team' && (
             <TeamStep onNext={goNext} onSkip={goNext} onBack={goPrev} />
           )}
-          {stepId === 'done' && (
+          {node.kind === 'done' && (
             <DoneStep onFinish={onComplete} shared={shared} />
           )}
         </div>
@@ -177,7 +261,7 @@ function WelcomeStep({ onNext, onSkipAll }: { onNext: () => void; onSkipAll: () 
       </div>
       <h2 className="text-2xl font-bold mb-2">Olá, {firstName}!</h2>
       <p className="text-muted-foreground max-w-sm mb-8">
-        Em poucos minutos você sai com produto, WhatsApp conectado e um agente treinado pronto para vender.
+        Em poucos minutos vamos configurar sua oficina e seus módulos: escolha o que ativar agora e deixe tudo pronto para o dia a dia.
       </p>
       <div className="flex gap-3 w-full max-w-xs">
         <Button variant="outline" onClick={onSkipAll} className="flex-1">
@@ -306,6 +390,176 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
         onPrimary={handleSave}
         primaryLabel="Salvar e continuar"
         loading={updateCompany.isPending}
+      />
+    </div>
+  );
+}
+
+/* ---------------- SELEÇÃO DE MÓDULOS ---------------- */
+// Módulos de negócio que fazem sentido escolher/configurar no onboarding.
+// Infra (administracao, gestao_plataforma) fica de fora.
+const ONBOARDABLE_MODULE_IDS: ModuleId[] = ['erp_oficina', 'crm_vendas', 'atendimento'];
+
+function ModulesStep({
+  onNext,
+  onSkip,
+  onBack,
+  selected,
+  update,
+}: {
+  onNext: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+  selected: ModuleId[];
+  update: (p: Partial<OnboardingShared>) => void;
+}) {
+  const { profile } = useAuth();
+  const { planModules, planId, isLoading } = usePlanModules();
+  const [saving, setSaving] = useState(false);
+  const [picked, setPicked] = useState<Set<ModuleId>>(() => new Set(selected));
+
+  // Cards exibidos: módulos de negócio definidos no catálogo.
+  const cards = MODULE_DEFINITIONS.filter((m) =>
+    ONBOARDABLE_MODULE_IDS.includes(m.id),
+  );
+
+  // Pré-seleção: ao abrir sem escolha prévia, marca os módulos liberados pelo
+  // plano (assim o caminho feliz é só "avançar"). Roda uma vez quando o plano
+  // resolve.
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || prefilledRef.current) return;
+    prefilledRef.current = true;
+    if (selected.length === 0 && planModules.length > 0) {
+      setPicked(new Set(planModules.filter((m) => ONBOARDABLE_MODULE_IDS.includes(m))));
+    }
+  }, [isLoading, planModules, selected.length]);
+
+  const isAllowed = (id: ModuleId) =>
+    // Se o plano não declara módulos (org sem plano configurado), não bloqueia:
+    // permite escolher qualquer módulo de negócio.
+    planModules.length === 0 || planModules.includes(id);
+
+  const toggle = (id: ModuleId) => {
+    if (!isAllowed(id)) return;
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    const chosen = cards.map((c) => c.id).filter((id) => picked.has(id));
+    if (chosen.length === 0) {
+      toast.error('Escolha pelo menos um módulo para configurar agora');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (profile?.organization_id) {
+        // Coluna nova (enabled_modules) ainda não está em types.ts → cast.
+        await supabase
+          .from('organizations')
+          .update({ enabled_modules: chosen } as any)
+          .eq('id', profile.organization_id);
+      }
+      update({ selectedModules: chosen });
+      onNext();
+    } catch {
+      toast.error('Erro ao salvar a escolha de módulos');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <StepHeader
+        icon={LayoutGrid}
+        title="O que você quer ativar agora?"
+        description="Escolha os módulos que sua oficina vai usar. Você configura cada um em seguida — e pode ativar o resto depois."
+      />
+
+      <div className="space-y-3 flex-1">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          cards.map((mod) => {
+            const Icon = mod.icon;
+            const allowed = isAllowed(mod.id);
+            const checked = picked.has(mod.id) && allowed;
+            return (
+              <button
+                key={mod.id}
+                type="button"
+                onClick={() => toggle(mod.id)}
+                disabled={!allowed}
+                className={cn(
+                  'w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-all',
+                  !allowed && 'opacity-60 cursor-not-allowed',
+                  checked
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : allowed
+                      ? 'border-border hover:border-primary/50'
+                      : 'border-border',
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-11 h-11 rounded-lg flex items-center justify-center text-white shrink-0',
+                    mod.color,
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">{mod.label}</span>
+                    {!allowed && (
+                      <Badge variant="outline" className="gap-1 text-[10px] py-0">
+                        <Lock className="h-3 w-3" />
+                        {planId ? 'Fora do seu plano' : 'Indisponível'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    {mod.description}
+                  </p>
+                  {mod.onboardingHint && allowed && (
+                    <p className="text-xs text-primary/80 mt-1">{mod.onboardingHint}</p>
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    'w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5',
+                    checked ? 'bg-primary border-primary' : 'border-input',
+                  )}
+                >
+                  {checked && <CheckCircle2 className="h-4 w-4 text-primary-foreground" />}
+                </div>
+              </button>
+            );
+          })
+        )}
+
+        {!isLoading && cards.every((c) => !isAllowed(c.id)) && (
+          <p className="text-xs text-muted-foreground text-center pt-2">
+            Seu plano ainda não libera módulos configuráveis. Fale com o administrador da plataforma.
+          </p>
+        )}
+      </div>
+
+      <StepFooter
+        onBack={onBack}
+        onSkip={onSkip}
+        onPrimary={handleSave}
+        primaryLabel="Salvar e configurar"
+        loading={saving}
+        disabled={picked.size === 0}
       />
     </div>
   );
@@ -1071,6 +1325,9 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
   const waLink = phone
     ? `https://wa.me/${phone}?text=${encodeURIComponent('Olá! Quero testar o atendimento.')}`
     : null;
+  const moduleLabels = MODULE_DEFINITIONS.filter((m) =>
+    shared.selectedModules.includes(m.id),
+  ).map((m) => m.label);
 
   return (
     <div className="flex-1 flex flex-col items-center text-center">
@@ -1079,10 +1336,19 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
       </div>
       <h2 className="text-2xl font-bold mb-2">Tudo pronto!</h2>
       <p className="text-muted-foreground max-w-sm mb-6">
-        Sua empresa está configurada. Faça um teste real agora.
+        Sua oficina está configurada e os módulos escolhidos já estão prontos para uso.
       </p>
 
       <div className="w-full max-w-sm space-y-2 text-left mb-8 bg-muted/40 rounded-lg p-4">
+        {/* Módulos ativados — sempre reflete a escolha do passo de módulos. */}
+        {moduleLabels.length > 0 && (
+          <div className="flex items-start gap-2 text-sm">
+            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+            <span>
+              Módulos ativados: <strong>{moduleLabels.join(', ')}</strong>
+            </span>
+          </div>
+        )}
         {shared.productName && (
           <div className="flex items-center gap-2 text-sm">
             <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
@@ -1111,8 +1377,8 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
             </a>
           </Button>
         ) : (
-          <Button asChild size="lg" variant="outline" className="gap-2">
-            <a href="/admin?tab=inbox">Abrir Inbox</a>
+          <Button onClick={onFinish} size="lg" className="gap-2">
+            Ir para o painel <ArrowRight className="h-4 w-4" />
           </Button>
         )}
         <Button onClick={onFinish} variant="ghost" size="sm">

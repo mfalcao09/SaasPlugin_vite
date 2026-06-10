@@ -15,8 +15,8 @@ const BRAND = {
   name: 'NexvyOficinas',
   tagline: 'Gestão completa para sua oficina',
   accent: '#F97316', // cor de destaque (laranja para oficinas)
-  backgroundImage: null as string | null, // URL da foto do setor; null = fallback cinematográfico
-  backgroundVideo: null as string | null, // URL de vídeo (loop, sem áudio); imagem vira poster/fallback
+  backgroundImage: '/login-poster.jpg' as string | null, // poster/fallback (frame do vídeo) — mobile e enquanto o vídeo carrega
+  backgroundVideo: '/login-bg.mp4' as string | null, // loop cinematográfico (carro no elevador, Magnific VEO), sem áudio
   logoUrl: null as string | null, // se null, renderiza o name estilizado como wordmark
   metrics: '+40% conversão · −50% tempo de resposta',
   bgHint: 'carro esportivo em garagem premium',

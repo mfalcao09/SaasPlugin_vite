@@ -16,3 +16,4 @@ dist/
 # Artefatos de teste do Playwright MCP
 .playwright-mcp/
 apps/NexvyOficinas/supabase/.temp/
+*.tsbuildinfo

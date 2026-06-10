@@ -300,14 +300,15 @@ export const superAdminPages: DocPage[] = [
         <h2>App</h2>
         <Steps>
           <Step title="Em Project Settings → Domains, clique em Connect Domain">Insira seu domínio.</Step>
-          <Step title="Crie os registros DNS no seu registrador">A (185.158.133.1) + TXT (_lovable).</Step>
+          <Step title="Crie os registros DNS no seu registrador">A (185.158.133.1) + os registros de verificação que o painel indicar.</Step>
           <Step title="SSL é provisionado automaticamente">Em até 72h, normalmente em minutos.</Step>
         </Steps>
 
         <h2>E-mail (envio)</h2>
         <p>
-          Em <strong>Lovable Cloud → Emails</strong>, configure o domínio de envio. Configure SPF, DKIM e DMARC
-          conforme o painel mostra. Após verificação, e-mails saem como <code>vendas@suaempresa.com.br</code>.
+          Adicione o domínio de envio no painel do <strong>Resend</strong> e crie no seu registrador DNS os registros{" "}
+          <strong>SPF, DKIM e DMARC</strong> que o Resend fornece. Após a verificação, defina o e-mail de suporte em{" "}
+          <strong>Super-admin → E-mail</strong>. A partir daí, e-mails saem como <code>vendas@suaempresa.com.br</code>.
         </p>
 
         <h2>Docs (esta documentação)</h2>

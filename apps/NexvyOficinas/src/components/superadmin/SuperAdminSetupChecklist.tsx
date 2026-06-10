@@ -62,19 +62,9 @@ export function SuperAdminSetupChecklist({ onNavigate }: Props) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  if (item.navigateTo === 'lovable-email') {
-                    window.open(
-                      'https://lovable.dev/projects/f6728bcf-44ef-470a-82a0-e0613d40999f?view=cloud&section=email',
-                      '_blank'
-                    );
-                  } else {
-                    onNavigate(item.navigateTo);
-                  }
-                }}
+                onClick={() => onNavigate(item.navigateTo)}
               >
-                {item.navigateTo === 'lovable-email' ? 'Configurar' : 'Ir'}{' '}
-                <ArrowRight className="h-3 w-3 ml-1" />
+                Ir <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             )}
           </div>
