@@ -74,6 +74,15 @@ TBL=$(q "SELECT count(*) AS n FROM information_schema.tables WHERE table_schema=
 log "tabelas aplicadas: $TBL (esperado ~161)"
 [ "${TBL:-0}" -ge 150 ] || { echo "ABORT: schema incompleto ($TBL tabelas)"; exit 1; }
 
+log "FASE A.3b — GRANTs (CRÍTICO: o reset do schema apaga privilégios; sem isso o app dá 'permission denied' apesar da RLS)"
+q "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+   GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+   GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+   GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;" >/dev/null
+
 log "FASE A.4 — seeds (por tabela; help_articles opcional)"
 for t in platform_plans help_categories platform_releases form_templates; do
   grep "INSERT INTO public.$t " "$CFG/seeds.sql" > "$TMP/seed_$t.sql" 2>/dev/null || true
