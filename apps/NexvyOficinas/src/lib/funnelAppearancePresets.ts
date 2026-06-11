@@ -188,7 +188,7 @@ export const APPEARANCE_PRESETS: AppearancePreset[] = [
       dark_mode: 'light',
       avatar_enabled: true,
       avatar_shape: 'circle',
-      bot_name: 'Vendus',
+      bot_name: 'NexvyOficinas',
       show_online_status: true,
     },
     perChannelOptions: {
@@ -215,7 +215,7 @@ export const APPEARANCE_PRESETS: AppearancePreset[] = [
       dark_mode: 'dark',
       avatar_enabled: true,
       avatar_shape: 'circle',
-      bot_name: 'Vendus',
+      bot_name: 'NexvyOficinas',
       show_online_status: true,
     },
     perChannelOptions: {
@@ -242,7 +242,7 @@ export const APPEARANCE_PRESETS: AppearancePreset[] = [
       dark_mode: 'dark',
       avatar_enabled: true,
       avatar_shape: 'circle',
-      bot_name: 'Vendus',
+      bot_name: 'NexvyOficinas',
       show_online_status: true,
     },
     perChannelOptions: {
@@ -349,7 +349,7 @@ export const APPEARANCE_PRESETS: AppearancePreset[] = [
       dark_mode: 'light',
       avatar_enabled: true,
       avatar_shape: 'circle',
-      bot_name: 'Vendus',
+      bot_name: 'NexvyOficinas',
       show_online_status: true,
     },
   },

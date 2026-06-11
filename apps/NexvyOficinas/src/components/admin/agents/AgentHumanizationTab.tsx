@@ -728,7 +728,7 @@ function NumberField({
 
 function PreviewCard({ cfg }: { cfg: HumanizationConfig }) {
   const [input, setInput] = useState(
-    'Boa pergunta! O Vendus funciona como uma plataforma white label. Você consegue revender pros seus clientes. Quer que eu te explique como funciona o modelo de receita?'
+    'Boa pergunta! O NexvyOficinas funciona como uma plataforma white label. Você consegue revender pros seus clientes. Quer que eu te explique como funciona o modelo de receita?'
   );
   const [bubbles, setBubbles] = useState<string[]>([]);
   const [delays, setDelays] = useState<{ first: number; between: number[] } | null>(null);

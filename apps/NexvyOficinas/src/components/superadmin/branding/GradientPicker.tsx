@@ -28,7 +28,7 @@ export function GradientPicker({
   const scale = generateColorScale(primaryColor);
   const safeCustom = custom || {
     start: '#3F6212',
-    mid: primaryColor || '#84CC16',
+    mid: primaryColor || '#F97316',
     end: '#BEF264',
   };
 

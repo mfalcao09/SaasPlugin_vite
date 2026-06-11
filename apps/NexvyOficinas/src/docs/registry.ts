@@ -30,7 +30,7 @@ export const TRACKS: DocTrack[] = [
     id: "vendedor",
     label: "Trilha do Vendedor",
     short: "Vendedor",
-    description: "Para SDRs, closers e atendentes que usam o Vendus no dia a dia.",
+    description: "Para SDRs, closers e atendentes que usam o NexvyOficinas no dia a dia.",
     icon: Headphones,
     accent: "text-emerald-500",
     sections: groupBySection(vendedorPages),
@@ -64,7 +64,7 @@ export const TRACKS: DocTrack[] = [
   },
   {
     id: "conceitos",
-    label: "Conceitos do Vendus",
+    label: "Conceitos do NexvyOficinas",
     short: "Conceitos",
     description: "Glossário profundo dos conceitos principais.",
     icon: BookMarked,

@@ -46,12 +46,12 @@ export const adminPages: DocPage[] = [
     content: (
       <>
         <PageHero eyebrow="Trilha do Admin" icon={SettingsIcon} title="Conceitos rápidos" description="5 palavras que você vai ouvir todo dia. Entenda agora para não se confundir depois." />
-        <Screenshot src="/docs-screenshots/admin/conceitos.jpg" alt="Painel administrativo do Vendus" caption="Centro do Admin: equipe, produtos, IA e integrações em um só lugar." />
+        <Screenshot src="/docs-screenshots/admin/conceitos.jpg" alt="Painel administrativo do NexvyOficinas" caption="Centro do Admin: equipe, produtos, IA e integrações em um só lugar." />
 
 
         <KeyValue
           rows={[
-            ["Organização", "Sua empresa dentro do Vendus. Tudo (leads, conversas, produtos) é isolado por organização. Multi-tenant real."],
+            ["Organização", "Sua empresa dentro do NexvyOficinas. Tudo (leads, conversas, produtos) é isolado por organização. Multi-tenant real."],
             ["Setor", "Agrupamento de atendentes por especialidade (Comercial, Suporte, Pós-venda). Governa visibilidade da Inbox."],
             ["Squad", "Time comercial que recebe leads via Auto Dispatch. Um vendedor pertence a 1 squad principal."],
             ["Produto", "O que você vende. Carrega pitch, ICP, planos & preços, Brain de conhecimento, agentes de IA."],
@@ -157,7 +157,7 @@ export const adminPages: DocPage[] = [
 
         <h2>Por que produtos importam</h2>
         <p>
-          O produto é o centro do Vendus: alimenta agentes de IA, define pricing automático para deals,
+          O produto é o centro do NexvyOficinas: alimenta agentes de IA, define pricing automático para deals,
           conecta Brain de conhecimento, vincula squads e agentes específicos.
         </p>
 
@@ -202,7 +202,7 @@ export const adminPages: DocPage[] = [
 
         <h2>Fontes suportadas</h2>
         <FeatureGrid items={[
-          { icon: FileText, title: "PDFs", description: "Arrastar e soltar. O Vendus extrai e indexa." },
+          { icon: FileText, title: "PDFs", description: "Arrastar e soltar. O NexvyOficinas extrai e indexa." },
           { icon: Globe, title: "URLs", description: "Crawler via Firecrawl. Pode listar todas as páginas do site." },
           { icon: Boxes, title: "FAQs", description: "Pergunta + resposta direto na UI." },
           { icon: Sparkles, title: "YouTube", description: "Cola URL → transcrição automática." },
@@ -242,7 +242,7 @@ export const adminPages: DocPage[] = [
         <h2>Importar</h2>
         <ul>
           <li><strong>CSV</strong>: coluna obrigatória <code>name</code>; opcionais <code>price</code>, <code>sku</code>, <code>image_url</code>, <code>description</code>, <code>tags</code>.</li>
-          <li><strong>Site (Firecrawl)</strong>: cole a URL da loja. O Vendus identifica produtos e importa.</li>
+          <li><strong>Site (Firecrawl)</strong>: cole a URL da loja. O NexvyOficinas identifica produtos e importa.</li>
         </ul>
         <h2>Buscar e enviar</h2>
         <p>
@@ -322,7 +322,7 @@ export const adminPages: DocPage[] = [
 
         <h2>Quando usar</h2>
         <p>
-          Para qualquer entrada controlada: webchat, formulário multi-step, quiz, widget de site. O Vendus monta
+          Para qualquer entrada controlada: webchat, formulário multi-step, quiz, widget de site. O NexvyOficinas monta
           a árvore visual e renderiza no canal escolhido.
         </p>
 
@@ -438,7 +438,7 @@ export const adminPages: DocPage[] = [
 </script>`}</CodeBlock>
         <Callout type="info" title="O que o widget faz">
           Sem dependências externas. Renderiza o funil, captura UTMs do site host, aplica tags e score informados,
-          e cria o lead via API pública do Vendus.
+          e cria o lead via API pública do NexvyOficinas.
         </Callout>
       </>
     ),
@@ -459,14 +459,14 @@ export const adminPages: DocPage[] = [
         <h2>Anatomia</h2>
         <p>
           Cada cadência tem N passos (steps). Cada step pode ser <strong>mensagem</strong> (texto/áudio/material/CTA)
-          + <strong>delay</strong> (horas/dias). O Vendus executa via cron <code>cadence-tick</code> a cada 5 min,
+          + <strong>delay</strong> (horas/dias). O NexvyOficinas executa via cron <code>cadence-tick</code> a cada 5 min,
           respeitando business hours.
         </p>
 
         <h2>Gerador por IA</h2>
         <p>
           Descreva: produto, objetivo (recuperar carrinho, follow-up demo, nutrir lead frio), tom (formal, casual,
-          provocador). O Vendus cria 5-7 steps prontos para revisar.
+          provocador). O NexvyOficinas cria 5-7 steps prontos para revisar.
         </p>
 
         <h2>Disparadores</h2>
@@ -513,7 +513,7 @@ export const adminPages: DocPage[] = [
         <h2>Google Calendar</h2>
         <p>
           Cada vendedor conecta o próprio Google em Perfil → Integrações. A sincronização é <strong>bidirecional</strong>:
-          eventos do Google bloqueiam slots, eventos do Vendus aparecem no Google.
+          eventos do Google bloqueiam slots, eventos do NexvyOficinas aparecem no Google.
         </p>
 
         <h2>Horário comercial</h2>
@@ -606,7 +606,7 @@ export const adminPages: DocPage[] = [
     order: 16,
     content: (
       <>
-        <PageHero eyebrow="Integrações" icon={Plug} title="Integrações" description="Conecte o Vendus aos sistemas que sua empresa já usa." />
+        <PageHero eyebrow="Integrações" icon={Plug} title="Integrações" description="Conecte o NexvyOficinas aos sistemas que sua empresa já usa." />
         <Screenshot src="/docs-screenshots/admin/integracoes.jpg" alt="Central de integrações disponíveis" caption="Integrações: Hotmart, Sankhya, Facebook Lead Ads, ERPs e mais." />
 
 

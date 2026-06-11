@@ -17,7 +17,7 @@ const SAMPLE = {
   modalidade: 'online',
   nome_evento: 'Reunião comercial',
   link_reuniao: 'https://meet.google.com/abc-defg-hij',
-  empresa: 'Vendus',
+  empresa: 'NexvyOficinas',
 };
 
 export function MessagePreview({ template, whatsappNumber }: Props) {

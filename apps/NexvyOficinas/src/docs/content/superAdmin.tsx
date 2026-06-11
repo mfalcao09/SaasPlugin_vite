@@ -33,14 +33,14 @@ export const superAdminPages: DocPage[] = [
     order: 1,
     content: (
       <>
-        <PageHero eyebrow="Super Admin" icon={Crown} title="Visão geral do white label" description="Você opera a plataforma sob sua marca. Cada cliente vê o Vendus como seu próprio sistema." />
+        <PageHero eyebrow="Super Admin" icon={Crown} title="Visão geral do white label" description="Você opera a plataforma sob sua marca. Cada cliente vê o NexvyOficinas como seu próprio sistema." />
 
         <h2>O que muda</h2>
         <KeyValue
           rows={[
             ["Marca", "Logo, cores (HSL), nome da plataforma e domínio próprio."],
             ["Isolamento", "Cada empresa é uma organização totalmente isolada (RLS + organization_id)."],
-            ["Planos", "Você cria os planos e cobra. O Vendus aplica os limites."],
+            ["Planos", "Você cria os planos e cobra. O NexvyOficinas aplica os limites."],
             ["Suporte", "Você é o ponto de contato. A Central de Ajuda mostra sua marca."],
           ]}
         />
@@ -70,7 +70,7 @@ export const superAdminPages: DocPage[] = [
         <h2>O que você pode customizar</h2>
         <KeyValue
           rows={[
-            ["Nome da plataforma", "Substitui 'Vendus' em todos os lugares."],
+            ["Nome da plataforma", "Substitui 'NexvyOficinas' em todos os lugares."],
             ["Logo principal", "Header e tela de login. Recomendado SVG ou PNG transparente."],
             ["Favicon", "Aparece na aba do navegador e PWA."],
             ["Cor primária (HSL)", "Injetada em --primary. Use HSL ou hex; o sistema converte."],
@@ -83,7 +83,7 @@ export const superAdminPages: DocPage[] = [
         />
 
         <Callout type="warn" title="Cores devem ser HSL">
-          O Vendus usa HSL nas variáveis CSS para temas claro/escuro. Se você colar hex, o sistema converte — mas
+          O NexvyOficinas usa HSL nas variáveis CSS para temas claro/escuro. Se você colar hex, o sistema converte — mas
           o ideal é já enviar HSL para garantir contraste correto.
         </Callout>
       </>
@@ -115,7 +115,7 @@ export const superAdminPages: DocPage[] = [
 
         <h2>Como funciona o enforcement</h2>
         <p>
-          Ao atingir o limite, o Vendus mostra um banner pedindo upgrade e bloqueia novas criações (não apaga
+          Ao atingir o limite, o NexvyOficinas mostra um banner pedindo upgrade e bloqueia novas criações (não apaga
           existente). O fluxo de upgrade é via Stripe/Cakto/Hotmart (você escolhe).
         </p>
       </>

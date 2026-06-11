@@ -351,7 +351,7 @@ export function CampaignWizard({
         <CardContent className="space-y-3">
           <div>
             <Label>Nome da campanha *</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Reativação Live Vendus" />
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Reativação Live NexvyOficinas" />
           </div>
           <div>
             <Label>Descrição</Label>

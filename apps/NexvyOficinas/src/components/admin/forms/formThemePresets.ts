@@ -13,7 +13,7 @@ export interface FormThemePreset {
 export const FORM_THEME_PRESETS: FormThemePreset[] = [
   {
     id: 'vendus',
-    name: 'Vendus',
+    name: 'NexvyOficinas',
     description: 'Preto + verde neon, títulos em caixa alta',
     category: 'generic',
     theme: {

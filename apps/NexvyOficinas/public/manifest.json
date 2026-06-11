@@ -1,12 +1,12 @@
 {
-  "name": "Vendus",
-  "short_name": "Vendus",
-  "description": "Vendus — Plataforma de vendas com IA",
+  "name": "NexvyOficinas",
+  "short_name": "NexvyOficinas",
+  "description": "NexvyOficinas — Plataforma de vendas com IA",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0d14",
-  "theme_color": "#84CC16",
+  "theme_color": "#F97316",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
