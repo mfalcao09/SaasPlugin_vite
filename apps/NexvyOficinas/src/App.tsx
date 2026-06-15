@@ -8,7 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
@@ -49,7 +50,7 @@ const OficinaFinanceiro = lazyWithRetry(() => import("./pages/oficina/Financeiro
 // Global loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
-    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <WheelLoader size={64} />
   </div>
 );
 

@@ -132,3 +132,16 @@
 2. **`replace_all: true` no Edit é perigoso:** trocou "Message" em comentários, paths e variáveis indiscriminadamente. Sempre preferir edits cirúrgicos quando há ambiguidade.
 3. **Free models squad falsa promessa:** 5 plugins instalados, só 1 (MiniMax) com MCP wired, e mesmo esse falhou 401. Setup real custa 30-60min por modelo. Não é economia real.
 4. **Fact-forcing gate ajuda mas trava paralelismo:** quando faço N edits em paralelo, gate dispara por arquivo individual. Apresentar fatos por bloco compartilhado antes do batch funciona.
+
+## Sessão 2026-06-12 — Identidade visual "estrada" (conceito v7 aprovado)
+Aprovações Marcelo: (1) loader roda única ✅ · (2) progresso com roadster do item 4 ✅ · (3) hub circular = radar, NÃO implementar · (4) rodapé estrada no hub ✅
+- [x] Componentes `src/components/brand/`: RoadsterCar (compartilhado), WheelLoader, RoadProgress, RoadFooter → verifica: `tsc -b` 0 erros
+- [x] Wire: App.tsx PageLoader → WheelLoader; ModuleHub hold → WheelLoader + `<RoadFooter/>`; GuidedOnboarding `<Progress>` → `<RoadProgress>` → verifica: `vite build` passa
+- [x] Visual: dev server + screenshot /dev/brand (rota temp, removida) (rodapé com carro andando, rodas no eixo) → verifica: screenshot ok
+- Escopo: micro-spinners inline (seller/inbox, ~20 arquivos) FICAM Loader2 — impacto mínimo; cascatear depois se aprovado
+
+### Review (2026-06-12)
+- 4 componentes novos em `src/components/brand/` (RoadsterCar compartilhado + WheelLoader + RoadProgress + RoadFooter), tokens `--primary`/`--muted`/`--border` pro cascateamento
+- Bug raiz do 'fora de eixo' v6: animateTransform com centro (cx,cy) pós-translate → órbita; fix = rotação na origem local (validado por render PNG comparativo)
+- Verificado: tsc 0 erros nos arquivos tocados · vite build 18.6s OK · screenshot dark+light OK · console sem erros novos
+- Pendente: aprovação p/ commit · hub circular (item 3) no radar

@@ -6,7 +6,9 @@
 import { useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Crown, Sparkles, LayoutGrid, Loader2 } from 'lucide-react';
+import { ChevronRight, Crown, Sparkles, LayoutGrid } from 'lucide-react';
+import { WheelLoader } from '@/components/brand/WheelLoader';
+import { RoadFooter } from '@/components/brand/RoadFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess';
 import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding';
@@ -80,7 +82,7 @@ const ModuleHub = () => {
   if (isSuperAdmin() && setupLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <WheelLoader size={64} />
       </div>
     );
   }
@@ -94,7 +96,7 @@ const ModuleHub = () => {
   const isPlainAdmin = roles.includes('admin') && !isSuperAdmin();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Guard (b): dialog bloqueante de duplo perfil */}
       <DualRoleDialog orgName={orgName} />
 
@@ -153,6 +155,11 @@ const ModuleHub = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ─── Rodapé: estrada ondulada com o roadster (identidade) ── */}
+      <div className="mt-auto">
+        <RoadFooter />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
+import { RoadProgress } from '@/components/brand/RoadProgress';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -189,7 +189,7 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               Pular tudo <X className="h-3 w-3" />
             </button>
           </div>
-          <Progress value={progress} className="h-1.5" />
+          <RoadProgress value={progress} />
         </div>
 
         {/* Body */}
