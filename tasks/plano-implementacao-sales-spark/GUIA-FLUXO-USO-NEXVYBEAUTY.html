@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guia — Fluxo de uso NexvyBeauty</title><style>
+:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px 20px}
+.wrap{max-width:920px;margin:0 auto}h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
+h2{font-size:20px;color:#fff;margin-top:34px;border-left:3px solid var(--pri);padding-left:12px}h3{font-size:16px;color:var(--pri)}
+blockquote{background:var(--card);border-left:3px solid var(--pri);padding:14px 18px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--card);border-radius:8px;overflow:hidden}
+th{background:#1b2334;color:#fff;text-align:left;padding:10px 12px;border-bottom:2px solid var(--pri)}
+td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}tr:last-child td{border-bottom:none}
+code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:13px/1 "SF Mono",Menlo,monospace}
+pre{background:#0e1118;color:#9fd3ff;padding:16px;border-radius:8px;overflow-x:auto;font:13px/1.5 "SF Mono",Menlo,monospace;border:1px solid var(--bd)}
+strong{color:#fff}ul{padding-left:8px;list-style:none}li{margin:6px 0;padding-left:20px;position:relative}li::before{content:"▸";color:var(--pri);position:absolute;left:4px}
+hr{border:none;border-top:1px solid var(--bd);margin:28px 0}.wrap>p{color:var(--mut)}
+</style></head><body><div class="wrap"><h1>Guia: como o NexvyBeauty é usado (fluxo de ponta a ponta)</h1>
+<blockquote><strong>Para:</strong> Marcelo (fundador) · <strong>Data:</strong> 2026-06-18<br><strong>Objetivo:</strong> entender o fluxo de uso/onboarding, onde estão as funções, e separar &quot;quebra real&quot; de &quot;fluxo não-explicado&quot;.</blockquote>
+<hr>
+<h2>1. O modelo em 1 minuto</h2>
+<p>O sistema é uma <strong>plataforma SaaS multi-empresa</strong>. A hierarquia é:</p>
+<pre>PLATAFORMA (você, super admin)
+   └── EMPRESAS / tenants  (cada salão = 1 organização)
+          └── USUÁRIOS  (papéis: admin · gerente · vendedor)
+                 └── PRODUTOS  (o que a empresa vende)
+                        └── MÓDULOS  (CRM, Salão, Atendimento, Admin)</pre>
+<p><strong>Regra de ouro:</strong> quase tudo é &quot;por empresa&quot;. Um usuário pertence a <strong>uma</strong> empresa (<code>organization_id</code>). A segurança (RLS) garante que cada empresa só vê os próprios dados.</p>
+<hr>
+<h2>2. Os 3 níveis de usuário (papéis)</h2>
+<table><tr><th>Papel</th><th>Quem é</th><th>O que vê/faz</th></tr><tr><td><strong>Super Admin</strong> (você)</td><td>Dono da plataforma</td><td>TODAS as empresas. Cria empresas, planos, billing. Pode &quot;entrar&quot; em qualquer empresa (impersonar). É o único que vê &quot;Gestão da Plataforma&quot;.</td></tr><tr><td><strong>Admin da empresa</strong></td><td>Dono/gerente de 1 salão</td><td>Configura a empresa: produtos, equipe, integrações, identidade. Vê os módulos do plano dela.</td></tr><tr><td><strong>Vendedor / Profissional</strong> (seller)</td><td>Operador do dia a dia</td><td>Opera no CRM os produtos que o admin liberou pra ele.</td></tr></table>
+<hr>
+<h2>3. O fluxo de uso — passo a passo (6 fases)</h2>
+<table><tr><th>Fase</th><th>Quem</th><th>O que acontece</th><th>Onde</th></tr><tr><td><strong>1. Setup da plataforma</strong> (1x)</td><td>Super admin</td><td>1º acesso: define senha, marca plataforma como pronta</td><td><code>/super-admin</code></td></tr><tr><td><strong>2. Criar empresa</strong> (N×)</td><td>Super admin</td><td>Cria a organização (nome, plano) → o sistema cria o <strong>admin</strong> dela e um convite</td><td><code>/super-admin → Organizações</code> (<code>OrganizationCreateForm</code>)</td></tr><tr><td><strong>3. Admin entra</strong></td><td>Admin</td><td>Aceita o convite / loga → cai no <strong>Hub de Módulos</strong></td><td><code>/aceitar-convite</code> ou <code>/login</code> → <code>/</code></td></tr><tr><td><strong>4. Onboarding guiado</strong></td><td>Admin</td><td>Wizard de 6-8 passos: identidade (logo/cor) → escolhe módulos → <strong>cria produto</strong> → conecta WhatsApp → cria agente IA → convida equipe</td><td><code>GuidedOnboarding</code> (dispara no 1º acesso do admin)</td></tr><tr><td><strong>5. Equipe usa</strong></td><td>Vendedores</td><td>Aceitam convite → veem os produtos atribuídos → trabalham o CRM</td><td><code>/crm</code></td></tr><tr><td><strong>6. Suporte</strong></td><td>Super admin</td><td>&quot;Entra&quot; em qualquer empresa (impersonação) para configurar/testar</td><td>botão <strong>&quot;Acessar Empresa...&quot;</strong> na topbar</td></tr></table>
+<hr>
+<h2>4. Os 5 módulos e o que cada um faz (onde estão as funções)</h2>
+<table><tr><th>Módulo</th><th>Rota</th><th>O que tem dentro</th></tr><tr><td><strong>Gestão do Salão</strong> ✂️</td><td><code>/salao</code></td><td>Dashboard, <strong>Agenda</strong>, Profissionais, Serviços, Clientes, Financeiro. *(vertical novo, feito no cascateamento)*</td></tr><tr><td><strong>CRM de Vendas</strong> 📈</td><td><code>/crm</code></td><td>Pipeline (Kanban), Leads, Inbox, Tarefas, Agendamentos, Cadências, Playbooks, Objeções, Materiais, <strong>IA Copiloto</strong> — tudo <strong>por produto</strong></td></tr><tr><td><strong>Atendimento</strong> 💬</td><td><code>/admin?tab=inbox</code></td><td>Inbox central: WhatsApp, webchat, templates, filas</td></tr><tr><td><strong>Administração</strong> ⚙️</td><td><code>/admin</code></td><td><strong>Produtos</strong>, Equipe, Integrações (Cakto/Hotmart/FB/Google), Captura (formulários/quiz/chatbot/funis), Agentes IA, Webhooks, Campanhas, Cadências</td></tr><tr><td><strong>Gestão da Plataforma</strong> 👑</td><td><code>/super-admin</code></td><td>*(super admin só)* Organizações, Usuários, Planos, Billing, White-label, Auditoria, Saúde</td></tr></table>
+<hr>
+<h2>5. A distinção-chave (a fonte da confusão)</h2>
+<p>O NexvyBeauty tem <strong>dois &quot;cérebros&quot;</strong> convivendo:</p>
+<ul><li><strong>🅰️ Operacional do salão</strong> (<code>Gestão do Salão</code>) — construído no cascateamento. <strong>Pronto pra usar</strong>: cadastra profissionais/serviços, agenda horários, atende clientes. <strong>É o coração de um salão.</strong></li><li><strong>🅱️ Máquina de vendas</strong> (<code>CRM de Vendas</code> + Captura + IA) — herdada do sales-spark (Oficinas). É um CRM <strong>organizado por PRODUTO</strong>, pensado pra <strong>vender</strong> (pacotes, planos, alto ticket) com pipeline, leads, cadências e IA. <strong>Só funciona depois de cadastrar produtos.</strong></li></ul>
+<blockquote><strong>Para um salão, o uso natural começa pelo 🅰️ (Agenda).</strong> O 🅱️ (CRM) é opcional/avançado — útil se o salão quiser vender pacotes e prospectar leads. <strong>Não é obrigatório pra operar.</strong></blockquote>
+<hr>
+<h2>6. Por que o CRM mostra &quot;Configure sua plataforma&quot;</h2>
+<p>A tela &quot;Configure sua plataforma&quot; <strong>não é um erro</strong> — é o <strong>estado-vazio do CRM</strong>, que aparece quando a empresa ativa <strong>não tem nenhum produto cadastrado</strong>. Como o CRM é &quot;por produto&quot;, sem produto não há pipeline pra mostrar.</p>
+<p><strong>A quebra real (que vale corrigir):</strong> a mensagem manda *&quot;Ir ao painel Super Admin&quot;*. Isso faz sentido quando você é super admin <strong>sem empresa</strong>. Mas quando você está <strong>operando uma empresa</strong> (ex.: impersonando &quot;Salão Bella Hair&quot;), o certo seria: *&quot;Cadastre um produto em Administração → Produtos&quot;*. A mensagem está dando o caminho errado pro contexto.</p>
+<hr>
+<h2>7. Paridade — tudo do sales-spark foi trazido? ✅ SIM</h2>
+<p>Auditoria (Oficinas → Beauty):</p>
+<table><tr><th>Item</th><th>Oficinas</th><th>Beauty</th></tr><tr><td>Edge functions</td><td>118</td><td><strong>118</strong> ✅</td></tr><tr><td>Componentes admin</td><td>300+</td><td><strong>300+</strong> ✅</td></tr><tr><td>Páginas core</td><td>26</td><td><strong>26</strong> ✅</td></tr><tr><td>Adições no Beauty</td><td>—</td><td>+7 telas <code>salao/</code> + impersonação</td></tr></table>
+<p><strong>As 24 capacidades do sales-spark</strong> (CRM, pipeline, captura, IA de vendas, cadências, campanhas, inbox WhatsApp, agendamento, playbooks, comissões, metas, dashboards, integrações, super-admin…) <strong>estão todas presentes.</strong> Nada foi removido; só foi <strong>adicionado</strong> o vertical salão.</p>
+<hr>
+<h2>8. As &quot;quebras&quot; — reais vs esperadas</h2>
+<table><tr><th>Situação</th><th>É quebra?</th><th>Explicação</th></tr><tr><td>CRM mostra &quot;Configure sua plataforma&quot;</td><td>⚠️ <strong>Meia-quebra</strong></td><td>Estado-vazio correto, mas a <strong>mensagem dá o caminho errado</strong> na impersonação → corrigir</td></tr><tr><td>CRM/Leads/Agenda vazios numa empresa nova</td><td>✅ Esperado</td><td>Empresa nova não tem dados; popula com o uso</td></tr><tr><td>Integrações (WhatsApp/IA/Cakto) inativas</td><td>✅ Esperado</td><td>Dormentes até cadastrar as chaves</td></tr><tr><td>Vendedor vê &quot;Aguardando liberação&quot;</td><td>✅ Esperado</td><td>Admin precisa atribuir produtos ao vendedor</td></tr><tr><td>Super admin &quot;vira&quot; empresa mas não percebe</td><td>⚠️ Menor</td><td>Há o badge âmbar &quot;Acessando: X&quot; — mas pode ser reforçado</td></tr><tr><td>Opções de super-admin para não-super</td><td>✅ <strong>Não acontece</strong></td><td>7 guardas confirmadas — super-admin só aparece pra super admin</td></tr></table>
+<hr>
+<h2>9. Confirmação da pergunta 2 — gating de super-admin ✅</h2>
+<p>Verificado em 7 pontos (ModuleHub, badge, OrganizationSelector, SuperAdminRoute, dialog, Sidebar, App.tsx): <strong>as opções de super-admin aparecem SOMENTE para usuários <code>super_admin</code>.</strong> Um admin de empresa comum <strong>não vê</strong> &quot;Gestão da Plataforma&quot;, nem o badge &quot;Super Admin&quot;, nem o botão &quot;Acessar Empresa…&quot;. Sem vazamentos.</p>
+<hr>
+<h2>10. O que fazer agora (recomendação)</h2>
+<ul><li><strong>Decisão de produto:</strong> o Beauty entra como <strong>&quot;salão com gestão&quot;</strong> (foco Agenda, 🅰️) ou <strong>&quot;salão + vendas&quot;</strong> (usa o CRM 🅱️ também)? Isso define o que mostrar no onboarding e no hub.</li><li><strong>Corrigir a mensagem do EmptyState</strong> do CRM (caminho contextual: produto na Administração quando há empresa ativa).</li><li><strong>(Opcional)</strong> simplificar o hub para o salão: se o foco é Agenda, o CRM pode entrar como módulo secundário/avançado.</li></ul>
+<hr><p style="text-align:center;color:var(--mut);font-size:12px">NexvyBeauty · guia de fluxo · 2026-06-18</p></div></body></html>
