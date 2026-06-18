@@ -31,18 +31,14 @@ export function Logo({ className, showText = true, size = 'md' }: LogoProps) {
   });
 
   const effective = settings ?? readCachedBrandingSync();
+  const hasCustomLogo = !!(effective?.logo_url || effective?.logo_dark_url);
 
   const logoSrc = useMemo(() => {
     const isDark = resolvedTheme === 'dark' || resolvedTheme === undefined;
-
-    if (effective?.logo_url || effective?.logo_dark_url) {
-      if (isDark) {
-        return effective.logo_dark_url || effective.logo_url || logoLight;
-      }
-      return effective.logo_url || effective.logo_dark_url || logoDark;
+    if (isDark) {
+      return effective?.logo_dark_url || effective?.logo_url || logoLight;
     }
-
-    return isDark ? logoLight : logoDark;
+    return effective?.logo_url || effective?.logo_dark_url || logoDark;
   }, [resolvedTheme, effective]);
 
   const sizeClasses = {
@@ -50,6 +46,24 @@ export function Logo({ className, showText = true, size = 'md' }: LogoProps) {
     md: 'h-6',
     lg: 'h-8',
   };
+  const textClasses = {
+    sm: 'text-sm',
+    md: 'text-base',
+    lg: 'text-xl',
+  };
+
+  // Sem logo custom configurado: renderiza o nome da plataforma como
+  // wordmark dinâmico — evita exibir o logo da marca-base (legado) quando
+  // platform_settings.logo_url está vazio (caso típico de SaaS cascateado).
+  if (!hasCustomLogo) {
+    return (
+      <div className={cn('flex items-center', className)}>
+        <span className={cn('font-bold text-foreground leading-none', textClasses[size])}>
+          {effective?.platform_name || 'Plataforma'}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex items-center gap-2', className)}>

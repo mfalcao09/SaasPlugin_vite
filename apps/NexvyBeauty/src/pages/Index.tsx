@@ -300,13 +300,12 @@ const Index = () => {
     return <Navigate to="/admin" replace />;
   }
 
-  // Super Admin nunca fica preso no EmptyState: vai direto ao painel global
-  // para configurar a plataforma. Independente do estado de platform_settings.
-  if (isSuperAdmin() && products.length === 0) {
-    return <Navigate to="/super-admin" replace />;
-  }
+  // NOTA: o super admin acessa o CRM (/crm) explicitamente pelo hub de
+  // módulos. Não redirecionar para /super-admin quando não há produtos —
+  // ele vê o CRM com EmptyState (com Header + navegação) como qualquer
+  // empresa nova. O painel de plataforma é o módulo "Gestão da Plataforma".
 
-  // Estado vazio - vendedor/manager sem produtos atribuídos
+  // Estado vazio - vendedor/manager/super admin sem produtos atribuídos
   if (products.length === 0) {
     return (
       <div className="min-h-screen bg-background">
