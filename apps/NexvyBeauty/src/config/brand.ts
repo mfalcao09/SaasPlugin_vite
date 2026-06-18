@@ -1,7 +1,7 @@
 // ─── BRAND CONFIG CENTRAL — fonte única de verdade de marca/setor ───────────
 //
 // ▸ PONTO DE CASCADE (Fase 4)
-//   Este arquivo é o ÚNICO ponto que muda quando se forka o NexvyOficinas para
+//   Este arquivo é o ÚNICO ponto que muda quando se forka o NexvyBeauty para
 //   um novo SaaS vertical (NexvyClínicas, NexvyAdvocacia, etc.). A ideia da
 //   cascade é: trocar ESTE arquivo (e os assets que ele aponta) reconfigura a
 //   identidade do produto inteiro — sem caçar strings espalhadas pelo código.

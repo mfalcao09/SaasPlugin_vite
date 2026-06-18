@@ -1,6 +1,6 @@
 import { useState, type FC } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Wrench, Loader2, Check } from 'lucide-react'
+import { Scissors, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useOrganizationId } from '@/pages/oficina/_shared'
@@ -12,26 +12,26 @@ interface StepProps {
   onBack: () => void
 }
 
-// Serviços-padrão de oficina sugeridos no onboarding. Marcados são
-// inseridos em servico_catalogo (sem criar OS de exemplo).
+// Serviços-padrão de salão sugeridos no onboarding. Marcados são
+// inseridos em servico_catalogo (sem criar agendamento de exemplo).
 const SERVICOS_PADRAO = [
-  'Troca de óleo',
-  'Revisão geral',
-  'Freios',
-  'Suspensão',
-  'Alinhamento e balanceamento',
-  'Ar-condicionado',
-  'Elétrica',
-  'Troca de pneus',
-  'Embreagem',
-  'Injeção eletrônica',
+  'Corte feminino',
+  'Corte masculino',
+  'Escova',
+  'Coloração',
+  'Luzes / Mechas',
+  'Hidratação',
+  'Progressiva',
+  'Manicure',
+  'Pedicure',
+  'Design de sobrancelha',
 ] as const
 
 export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip }) => {
   const organizationId = useOrganizationId()
   // por padrão já vêm pré-marcados os mais comuns; usuário ajusta
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set<string>(['Troca de óleo', 'Revisão geral', 'Freios']),
+    () => new Set<string>(['Corte feminino', 'Escova', 'Manicure']),
   )
 
   const toggle = (nome: string) => {
@@ -67,13 +67,13 @@ export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip }) => {
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/15 flex items-center justify-center">
-          <Wrench className="h-5 w-5 text-primary" />
+          <Scissors className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Serviços da oficina</h2>
+          <h2 className="text-lg font-semibold text-foreground">Serviços do salão</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Selecione os serviços que sua oficina oferece. Eles entram no catálogo e ficam
-            prontos para usar nas ordens de serviço e orçamentos.
+            Selecione os serviços que seu salão oferece. Eles entram no catálogo e ficam
+            prontos para usar nos agendamentos.
           </p>
         </div>
       </div>

@@ -20,7 +20,7 @@ import {
   Shield,
   MessageSquare,
   CalendarCheck,
-  Wrench,
+  Scissors,
   LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -183,13 +183,13 @@ export function Sidebar({
 
       {/* Bottom Actions */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
-        {/* ERP Oficina */}
+        {/* ERP Salão */}
         <Link
-          to="/oficina"
+          to="/salao"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
         >
-          <Wrench size={20} className="text-orange-400" />
-          {!collapsed && <span className="text-sm">ERP Oficina</span>}
+          <Scissors size={20} className="text-pink-400" />
+          {!collapsed && <span className="text-sm">ERP Salão</span>}
         </Link>
         {/* Super Admin Link */}
         {showSuperAdminLink && (

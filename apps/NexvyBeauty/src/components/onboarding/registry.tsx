@@ -32,7 +32,7 @@ export const MODULE_ONBOARDING_STEPS: Record<string, OnboardingStepDef[]> = {
   erp_oficina: [
     {
       id: 'oficina_servicos',
-      label: 'Serviços da oficina',
+      label: 'Serviços do salão',
       Component: OficinaServicesStep,
     },
   ],

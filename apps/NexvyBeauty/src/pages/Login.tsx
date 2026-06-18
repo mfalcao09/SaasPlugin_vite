@@ -434,7 +434,7 @@ export default function Login() {
    ============================================================
    | SaaS          | name           | tagline                          | accent  | backgroundImage (sugestão)                                        |
    |---------------|----------------|----------------------------------|---------|-------------------------------------------------------------------|
-   | Oficinas      | NexvyOficinas  | Gestão completa para sua oficina | #F97316 | Carro esportivo em garagem premium, luz dramática lateral          |
+   | Oficinas      | NexvyBeauty  | Gestão completa para sua oficina | #F97316 | Carro esportivo em garagem premium, luz dramática lateral          |
    | Barbearia     | BarbeiroPro    | Sua barbearia no controle        | #D9A441 | Cadeira de barbeiro vintage em couro, luz quente incandescente     |
    | Salão         | NexvyBeauty    | Beleza com gestão inteligente    | #EC4899 | Bancada de salão com espelhos hollywood iluminados, fundo escuro   |
    | Restaurante   | NexvyFoods     | Do pedido à entrega, sem fricção | #EF4444 | Chef finalizando prato na passe, cozinha profissional em penumbra  |
@@ -442,7 +442,7 @@ export default function Login() {
    ============================================================
 
    Métricas/bgHint por vertical (do catálogo BRANDS do design original):
-   - NexvyOficinas: "+40% conversão · −50% tempo de resposta · 1.200+ oficinas" / carro esportivo em garagem premium, iluminação dramática
+   - NexvyBeauty: "+40% conversão · −50% tempo de resposta · 1.200+ oficinas" / carro esportivo em garagem premium, iluminação dramática
    - BarbeiroPro:   "+35% agendamentos · −60% faltas · 800+ barbearias"          / cadeira de barbeiro vintage em luz quente, fundo escuro
    - NexvyBeauty:   "+45% retenção · agenda 100% online · 950+ salões"           / salão elegante com espelhos iluminados, tons escuros
    - NexvyFoods:    "+38% pedidos · −45% erros de comanda · 1.500+ restaurantes" / chef finalizando prato na passe, cozinha em chiaroscuro

@@ -261,7 +261,7 @@ function WelcomeStep({ onNext, onSkipAll }: { onNext: () => void; onSkipAll: () 
       </div>
       <h2 className="text-2xl font-bold mb-2">Olá, {firstName}!</h2>
       <p className="text-muted-foreground max-w-sm mb-8">
-        Em poucos minutos vamos configurar sua oficina e seus módulos: escolha o que ativar agora e deixe tudo pronto para o dia a dia.
+        Em poucos minutos vamos configurar seu salão e seus módulos: escolha o que ativar agora e deixe tudo pronto para o dia a dia.
       </p>
       <div className="flex gap-3 w-full max-w-xs">
         <Button variant="outline" onClick={onSkipAll} className="flex-1">
@@ -479,7 +479,7 @@ function ModulesStep({
       <StepHeader
         icon={LayoutGrid}
         title="O que você quer ativar agora?"
-        description="Escolha os módulos que sua oficina vai usar. Você configura cada um em seguida — e pode ativar o resto depois."
+        description="Escolha os módulos que seu salão vai usar. Você configura cada um em seguida — e pode ativar o resto depois."
       />
 
       <div className="space-y-3 flex-1">
@@ -1336,7 +1336,7 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
       </div>
       <h2 className="text-2xl font-bold mb-2">Tudo pronto!</h2>
       <p className="text-muted-foreground max-w-sm mb-6">
-        Sua oficina está configurada e os módulos escolhidos já estão prontos para uso.
+        Seu salão está configurado e os módulos escolhidos já estão prontos para uso.
       </p>
 
       <div className="w-full max-w-sm space-y-2 text-left mb-8 bg-muted/40 rounded-lg p-4">

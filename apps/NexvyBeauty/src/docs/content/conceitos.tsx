@@ -11,7 +11,7 @@ function makeConcept(slug: string, title: string, icon: any, eyebrow: string, bo
   return {
     slug,
     title,
-    description: `Conceito do NexvyOficinas: ${title}`,
+    description: `Conceito do NexvyBeauty: ${title}`,
     track: "conceitos",
     section: eyebrow,
     order: 0,
@@ -28,7 +28,7 @@ export const conceitosPages: DocPage[] = [
   makeConcept("lead", "Lead", User, "CRM",
     <>
       <p>
-        <strong>Lead</strong> é a entidade central do NexvyOficinas. Representa qualquer contato (pessoa ou empresa) com
+        <strong>Lead</strong> é a entidade central do NexvyBeauty. Representa qualquer contato (pessoa ou empresa) com
         potencial de virar cliente. Toda conversa nova cria um lead automaticamente, mesmo sem produto vinculado.
       </p>
       <h2>Campos centrais</h2>
@@ -144,7 +144,7 @@ export const conceitosPages: DocPage[] = [
         no lugar do humano em qualquer canal habilitado.
       </p>
       <h2>Hierarquia de seleção</h2>
-      <p>Ao iniciar conversa, o NexvyOficinas escolhe agente assim:</p>
+      <p>Ao iniciar conversa, o NexvyBeauty escolhe agente assim:</p>
       <ol>
         <li>Agente explicitamente atribuído à conversa</li>
         <li>Agente padrão do produto vinculado</li>
@@ -218,7 +218,7 @@ export const conceitosPages: DocPage[] = [
     <>
       <p>
         Framework de qualificação <strong>B</strong>udget / <strong>A</strong>uthority / <strong>N</strong>eed /
-        <strong>T</strong>iming. 17 perguntas no NexvyOficinas, score 0-100, armazenadas como JSON em campos texto do lead.
+        <strong>T</strong>iming. 17 perguntas no NexvyBeauty, score 0-100, armazenadas como JSON em campos texto do lead.
       </p>
     </>
   ),
@@ -259,7 +259,7 @@ export const conceitosPages: DocPage[] = [
     <>
       <p>
         Engine de marca branca: HSL injetadas dinamicamente via <code>usePlatformBranding</code>, sobrescrevem
-        referências fixas. Cada Super Admin tem sua marca; usuários finais nunca veem "NexvyOficinas".
+        referências fixas. Cada Super Admin tem sua marca; usuários finais nunca veem "NexvyBeauty".
       </p>
       <p>Override por organização permite que clientes parceiros tenham subdomínio próprio também.</p>
     </>

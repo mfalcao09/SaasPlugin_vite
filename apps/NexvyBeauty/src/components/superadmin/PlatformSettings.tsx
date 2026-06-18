@@ -214,7 +214,7 @@ export function PlatformSettings() {
                   <Input
                     value={formData.platform_name}
                     onChange={(e) => update({ platform_name: e.target.value })}
-                    placeholder="Ex: NexvyOficinas"
+                    placeholder="Ex: NexvyBeauty"
                   />
                 </div>
                 <div className="space-y-2">
@@ -576,7 +576,7 @@ export function PlatformSettings() {
                 <Input
                   value={formData.powered_by_text}
                   onChange={(e) => update({ powered_by_text: e.target.value })}
-                  placeholder="Powered by NexvyOficinas"
+                  placeholder="Powered by NexvyBeauty"
                 />
                 <p className="text-xs text-muted-foreground">
                   Deixe vazio para ocultar completamente
@@ -623,7 +623,7 @@ export function PlatformSettings() {
                   <Input
                     value={formData.browser_title}
                     onChange={(e) => update({ browser_title: e.target.value })}
-                    placeholder="NexvyOficinas — Gestão para sua oficina"
+                    placeholder="NexvyBeauty — Beleza com gestão inteligente"
                   />
                   <p className="text-xs text-muted-foreground">
                     Se vazio, usa o nome da plataforma

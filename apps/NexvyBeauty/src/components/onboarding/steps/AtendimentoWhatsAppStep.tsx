@@ -36,7 +36,7 @@ export const AtendimentoWhatsAppStep: FC<StepProps> = ({ onNext, onSkip }) => {
         <div>
           <h2 className="text-lg font-semibold text-foreground">Atendimento no WhatsApp</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Centralize as conversas da sua oficina no inbox. Conecte um número de WhatsApp
+            Centralize as conversas do seu salão no inbox. Conecte um número de WhatsApp
             para receber e responder mensagens dos clientes em um só lugar.
           </p>
         </div>

@@ -1,4 +1,4 @@
-// Types for NexvyOficinas Forms - Lead Capture Engine
+// Types for NexvyBeauty Forms - Lead Capture Engine
 
 export type FormStatus = 'draft' | 'active' | 'paused' | 'archived';
 export type DistributionRule = 'manual' | 'round_robin' | 'squad' | 'user';

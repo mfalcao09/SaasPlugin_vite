@@ -37,7 +37,7 @@ export const devPages: DocPage[] = [
     order: 1,
     content: (
       <>
-        <PageHero eyebrow="Trilha do Dev" icon={Code2} title="Autenticação" description="O NexvyOficinas roda sobre Supabase Postgres com RLS. Toda chamada é autenticada." />
+        <PageHero eyebrow="Trilha do Dev" icon={Code2} title="Autenticação" description="O NexvyBeauty roda sobre Supabase Postgres com RLS. Toda chamada é autenticada." />
 
         <h2>Chaves</h2>
         <KeyValue
@@ -125,7 +125,7 @@ export const devPages: DocPage[] = [
   {
     slug: "webhook-saida",
     title: "Webhooks de saída",
-    description: "Eventos do NexvyOficinas que sua aplicação recebe.",
+    description: "Eventos do NexvyBeauty que sua aplicação recebe.",
     track: "desenvolvedor",
     section: "Webhooks",
     order: 4,
@@ -164,7 +164,7 @@ export const devPages: DocPage[] = [
   {
     slug: "edge-functions",
     title: "Edge Functions (81)",
-    description: "Catálogo completo das funções servless do NexvyOficinas.",
+    description: "Catálogo completo das funções servless do NexvyBeauty.",
     track: "desenvolvedor",
     section: "Webhooks",
     order: 5,
@@ -263,7 +263,7 @@ export const devPages: DocPage[] = [
 }`}</CodeBlock>
         <Callout type="warn" title="Templates obrigatórios">
           Fora da janela de 24h, só dá para enviar mensagens com templates aprovados pela Meta. Configure no Meta
-          Business e referencie pelo nome no NexvyOficinas.
+          Business e referencie pelo nome no NexvyBeauty.
         </Callout>
       </>
     ),
@@ -313,7 +313,7 @@ export const devPages: DocPage[] = [
         <h2>Setup</h2>
         <Steps>
           <Step title="Conecte sua Página do Facebook">OAuth via /admin → Integrações."</Step>
-          <Step title="Selecione formulários do Lead Ads">O NexvyOficinas inscreve no webhook automaticamente."</Step>
+          <Step title="Selecione formulários do Lead Ads">O NexvyBeauty inscreve no webhook automaticamente."</Step>
           <Step title="Mapeie campos">Telefone → phone, Nome Completo → name, etc."</Step>
         </Steps>
       </>

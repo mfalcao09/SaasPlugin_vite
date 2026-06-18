@@ -97,7 +97,7 @@ export function TicketDetailDialog({ open, onOpenChange, ticket, scope }: Props)
               <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${mine ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   <div className="text-xs opacity-70 mb-1">
-                    {isSupportSide ? '🛟 Suporte NexvyOficinas' : (m.author?.full_name || m.author?.email || 'Você')}
+                    {isSupportSide ? '🛟 Suporte NexvyBeauty' : (m.author?.full_name || m.author?.email || 'Você')}
                     {' · '}
                     {format(new Date(m.created_at), 'HH:mm', { locale: ptBR })}
                   </div>

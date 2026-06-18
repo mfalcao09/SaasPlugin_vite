@@ -130,7 +130,7 @@ export function ContextLibrary({ orgId }: { orgId: string | null }) {
                   rows={6}
                   value={editing.instructions ?? ''}
                   onChange={(e) => setEditing({ ...editing, instructions: e.target.value })}
-                  placeholder="Este lead participou da aula ao vivo do NexvyOficinas.&#10;Demonstrou interesse em código-fonte liberado.&#10;Ainda não comprou.&#10;Descubra qual foi sua principal objeção.&#10;Não envie proposta imediatamente."
+                  placeholder="Este lead participou da aula ao vivo do NexvyBeauty.&#10;Demonstrou interesse em código-fonte liberado.&#10;Ainda não comprou.&#10;Descubra qual foi sua principal objeção.&#10;Não envie proposta imediatamente."
                 />
               </div>
             </div>

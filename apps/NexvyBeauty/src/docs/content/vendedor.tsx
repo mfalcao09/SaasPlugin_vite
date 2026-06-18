@@ -42,9 +42,9 @@ export const vendedorPages: DocPage[] = [
           eyebrow="Trilha do Vendedor"
           icon={Headphones}
           title="Primeiros passos"
-          description="Tudo o que você precisa para entrar no NexvyOficinas pela primeira vez e começar a atender no mesmo dia."
+          description="Tudo o que você precisa para entrar no NexvyBeauty pela primeira vez e começar a atender no mesmo dia."
         />
-        <Screenshot src="/docs-screenshots/vendedor/login.jpg" alt="Tela de login do NexvyOficinas" caption="Tela de login — use o e-mail e senha do convite." />
+        <Screenshot src="/docs-screenshots/vendedor/login.jpg" alt="Tela de login do NexvyBeauty" caption="Tela de login — use o e-mail e senha do convite." />
 
         <h2>1. Login</h2>
         <p>
@@ -54,7 +54,7 @@ export const vendedorPages: DocPage[] = [
         </p>
 
         <Callout type="tip" title="Salve como app no celular">
-          Pelo Chrome ou Safari mobile, use “Adicionar à tela inicial”. O NexvyOficinas instala como PWA e funciona
+          Pelo Chrome ou Safari mobile, use “Adicionar à tela inicial”. O NexvyBeauty instala como PWA e funciona
           como um aplicativo nativo, com notificações push.
         </Callout>
 
@@ -96,7 +96,7 @@ export const vendedorPages: DocPage[] = [
           items={[
             { to: "/docs/vendedor/inbox", title: "Atendendo na Inbox", description: "Como funcionam fila, abas e setores." },
             { to: "/docs/vendedor/lead", title: "Entendendo o Lead", description: "Visão 360° do contato." },
-            { to: "/docs/vendedor/mobile", title: "NexvyOficinas no celular (PWA)", description: "Instalar e usar offline." },
+            { to: "/docs/vendedor/mobile", title: "NexvyBeauty no celular (PWA)", description: "Instalar e usar offline." },
           ]}
         />
       </>
@@ -155,7 +155,7 @@ export const vendedorPages: DocPage[] = [
         <Steps>
           <Step title="Abra a aba “Em fila”">As conversas aguardando estão lá, mais antigas no topo.</Step>
           <Step title="Selecione o setor (se houver mais de um)">
-            O NexvyOficinas exige um setor para o aceite. Se você só pertence a um, ele é selecionado automaticamente.
+            O NexvyBeauty exige um setor para o aceite. Se você só pertence a um, ele é selecionado automaticamente.
           </Step>
           <Step title="Clique em “Aceitar atendimento”">
             A conversa migra para “Em atendimento”, a IA é desativada e você passa a ser o responsável.
@@ -280,12 +280,12 @@ export const vendedorPages: DocPage[] = [
     content: (
       <>
         <PageHero eyebrow="Atendimento" icon={Phone} title="Particularidades do WhatsApp" description="O canal mais usado tem regras específicas. Entender economiza dor de cabeça." />
-        <Screenshot src="/docs-screenshots/vendedor/whatsapp.jpg" alt="Conversa de WhatsApp dentro do NexvyOficinas" caption="WhatsApp nativo com debounce de 4s, chunking e edição sincronizada." />
+        <Screenshot src="/docs-screenshots/vendedor/whatsapp.jpg" alt="Conversa de WhatsApp dentro do NexvyBeauty" caption="WhatsApp nativo com debounce de 4s, chunking e edição sincronizada." />
 
         <h2>Debounce de 4 segundos</h2>
         <p>
           Quando o cliente envia várias mensagens em sequência (“Oi”, “tudo bem?”, “quero saber sobre o produto”),
-          o NexvyOficinas espera <strong>4 segundos</strong> sem novas mensagens antes da IA responder. Isso evita
+          o NexvyBeauty espera <strong>4 segundos</strong> sem novas mensagens antes da IA responder. Isso evita
           respostas fragmentadas e parece mais natural.
         </p>
 
@@ -542,7 +542,7 @@ export const vendedorPages: DocPage[] = [
         <p>O sistema calcula slots disponíveis considerando:</p>
         <ul>
           <li>Eventos do seu Google Calendar (se conectado)</li>
-          <li>Eventos internos do NexvyOficinas</li>
+          <li>Eventos internos do NexvyBeauty</li>
           <li>Horário comercial da empresa</li>
           <li>Buffer entre reuniões e antecedência mínima</li>
           <li>Seu status atual (Online/Pausa)</li>
@@ -666,7 +666,7 @@ export const vendedorPages: DocPage[] = [
           ]}
         />
 
-        <h2>Como funciona no NexvyOficinas</h2>
+        <h2>Como funciona no NexvyBeauty</h2>
         <p>
           A aba BANT do lead tem 17 perguntas pré-definidas (4-5 por categoria). Você responde durante o atendimento.
           O sistema calcula um <strong>score de 0 a 100</strong> visível no card do Kanban e no resumo do lead.
@@ -720,7 +720,7 @@ export const vendedorPages: DocPage[] = [
     content: (
       <>
         <PageHero eyebrow="Performance" icon={Keyboard} title="Atalhos e dicas" />
-        <Screenshot src="/docs-screenshots/vendedor/atalhos.jpg" alt="Lista de atalhos de teclado" caption="Atalhos para acelerar o atendimento no NexvyOficinas." />
+        <Screenshot src="/docs-screenshots/vendedor/atalhos.jpg" alt="Lista de atalhos de teclado" caption="Atalhos para acelerar o atendimento no NexvyBeauty." />
         <h2>Atalhos globais</h2>
         <KeyValue
           rows={[
@@ -750,15 +750,15 @@ export const vendedorPages: DocPage[] = [
   /* ============================================================ */
   {
     slug: "mobile",
-    title: "NexvyOficinas no celular (PWA)",
+    title: "NexvyBeauty no celular (PWA)",
     description: "Instalar como app, usar offline e receber notificações push.",
     track: "vendedor",
     section: "Performance",
     order: 14,
     content: (
       <>
-        <PageHero eyebrow="Performance" icon={Smartphone} title="NexvyOficinas no celular (PWA)" />
-        <Screenshot src="/docs-screenshots/vendedor/mobile.jpg" alt="NexvyOficinas instalado como PWA no celular" caption="PWA nativo no celular com notificações push e modo offline." />
+        <PageHero eyebrow="Performance" icon={Smartphone} title="NexvyBeauty no celular (PWA)" />
+        <Screenshot src="/docs-screenshots/vendedor/mobile.jpg" alt="NexvyBeauty instalado como PWA no celular" caption="PWA nativo no celular com notificações push e modo offline." />
         <h2>Instalar</h2>
         <KeyValue
           rows={[
@@ -777,7 +777,7 @@ export const vendedorPages: DocPage[] = [
         </ul>
 
         <Callout type="tip" title="Bateria longa">
-          Use o tema escuro nas configurações do dispositivo. O NexvyOficinas segue automaticamente.
+          Use o tema escuro nas configurações do dispositivo. O NexvyBeauty segue automaticamente.
         </Callout>
       </>
     ),

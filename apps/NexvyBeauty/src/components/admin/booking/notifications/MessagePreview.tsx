@@ -17,7 +17,7 @@ const SAMPLE = {
   modalidade: 'online',
   nome_evento: 'Reunião comercial',
   link_reuniao: 'https://meet.google.com/abc-defg-hij',
-  empresa: 'NexvyOficinas',
+  empresa: 'NexvyBeauty',
 };
 
 export function MessagePreview({ template, whatsappNumber }: Props) {

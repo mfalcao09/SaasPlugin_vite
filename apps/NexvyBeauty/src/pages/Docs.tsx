@@ -123,7 +123,7 @@ function DocsHome() {
           <Link to="/docs/conceitos/lead" className="rounded-2xl border border-border bg-card p-5 hover:border-primary/40 transition">
             <BookMarked className="h-5 w-5 text-rose-500 mb-2" />
             <div className="font-semibold text-foreground">Conceitos</div>
-            <p className="mt-1 text-sm text-muted-foreground">Glossário profundo dos conceitos do NexvyOficinas.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Glossário profundo dos conceitos do NexvyBeauty.</p>
           </Link>
           <Link to="/docs/glossario" className="rounded-2xl border border-border bg-card p-5 hover:border-primary/40 transition">
             <SearchIcon className="h-5 w-5 text-sky-500 mb-2" />
@@ -196,9 +196,9 @@ function Glossario() {
       { slug: "sla", title: "SLA — Service Level Agreement", description: "Compromisso de prazo de atendimento ou resposta." },
       { slug: "icp", title: "ICP — Ideal Customer Profile", description: "Perfil ideal de cliente. Configurado por produto." },
       { slug: "utm", title: "UTM", description: "Parâmetros de rastreamento de origem (source, medium, campaign, content, term)." },
-      { slug: "ddi", title: "DDI 55", description: "Discagem Direta Internacional. NexvyOficinas normaliza para 55 (Brasil) em todo número."  },
+      { slug: "ddi", title: "DDI 55", description: "Discagem Direta Internacional. NexvyBeauty normaliza para 55 (Brasil) em todo número."  },
       { slug: "rls", title: "RLS — Row Level Security", description: "Controle de acesso por linha. Base da segurança multi-tenant." },
-      { slug: "edge-function", title: "Edge Function", description: "Função serverless (Deno) executada no edge. NexvyOficinas tem 81 delas." },
+      { slug: "edge-function", title: "Edge Function", description: "Função serverless (Deno) executada no edge. NexvyBeauty tem 81 delas." },
       { slug: "realtime", title: "Realtime", description: "Subscrição a mudanças no banco em tempo real (postgres_changes)." },
     ];
 
@@ -210,8 +210,8 @@ function Glossario() {
   }, []);
 
   return (
-    <DocsLayout tracks={TRACKS} title="Glossário" description="Todos os termos do NexvyOficinas em ordem alfabética." path="/docs/glossario">
-      <PageHero eyebrow="Recursos" icon={BookMarked} title="Glossário A→Z" description="Termos do NexvyOficinas em ordem alfabética. Clique para abrir o conceito completo." />
+    <DocsLayout tracks={TRACKS} title="Glossário" description="Todos os termos do NexvyBeauty em ordem alfabética." path="/docs/glossario">
+      <PageHero eyebrow="Recursos" icon={BookMarked} title="Glossário A→Z" description="Termos do NexvyBeauty em ordem alfabética. Clique para abrir o conceito completo." />
 
       <KeyValue rows={items.map((it) => [
         it.track === "conceitos"
@@ -272,7 +272,7 @@ function Changelog() {
   ];
   return (
     <DocsLayout tracks={TRACKS} title="Changelog" description="Novidades, melhorias e correções por versão." path="/docs/changelog">
-      <PageHero eyebrow="Recursos" icon={Sparkles} title="Changelog" description="O que mudou em cada versão do NexvyOficinas." />
+      <PageHero eyebrow="Recursos" icon={Sparkles} title="Changelog" description="O que mudou em cada versão do NexvyBeauty." />
 
       <div className="not-prose space-y-6">
         {entries.map((e) => (
