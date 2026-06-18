@@ -47,6 +47,14 @@ const OficinaOrdens = lazyWithRetry(() => import("./pages/oficina/Ordens"));
 const OficinaOrcamentos = lazyWithRetry(() => import("./pages/oficina/Orcamentos"));
 const OficinaFinanceiro = lazyWithRetry(() => import("./pages/oficina/Financeiro"));
 
+// ERP Salão (NexvyBeauty: Agenda, Profissionais, Serviços, Clientes, Financeiro)
+const SalaoDashboard = lazyWithRetry(() => import("./pages/salao/Dashboard"));
+const SalaoAgenda = lazyWithRetry(() => import("./pages/salao/Agenda"));
+const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissionais"));
+const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
+const SalaoClientes = lazyWithRetry(() => import("./pages/salao/Clientes"));
+const SalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/Financeiro"));
+
 // Global loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -208,6 +216,14 @@ const App = () => (
               <Route path="/oficina/ordens" element={<ProtectedRoute><OficinaOrdens /></ProtectedRoute>} />
               <Route path="/oficina/orcamentos" element={<ProtectedRoute><OficinaOrcamentos /></ProtectedRoute>} />
               <Route path="/oficina/financeiro" element={<ProtectedRoute><OficinaFinanceiro /></ProtectedRoute>} />
+
+              {/* ERP Salão (NexvyBeauty) */}
+              <Route path="/salao" element={<ProtectedRoute><SalaoDashboard /></ProtectedRoute>} />
+              <Route path="/salao/agenda" element={<ProtectedRoute><SalaoAgenda /></ProtectedRoute>} />
+              <Route path="/salao/profissionais" element={<ProtectedRoute><SalaoProfissionais /></ProtectedRoute>} />
+              <Route path="/salao/servicos" element={<ProtectedRoute><SalaoServicos /></ProtectedRoute>} />
+              <Route path="/salao/clientes" element={<ProtectedRoute><SalaoClientes /></ProtectedRoute>} />
+              <Route path="/salao/financeiro" element={<ProtectedRoute><SalaoFinanceiro /></ProtectedRoute>} />
               <Route
                 path="/perfil"
                 element={

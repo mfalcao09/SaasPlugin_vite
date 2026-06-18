@@ -398,7 +398,7 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
 /* ---------------- SELEÇÃO DE MÓDULOS ---------------- */
 // Módulos de negócio que fazem sentido escolher/configurar no onboarding.
 // Infra (administracao, gestao_plataforma) fica de fora.
-const ONBOARDABLE_MODULE_IDS: ModuleId[] = ['erp_oficina', 'crm_vendas', 'atendimento'];
+const ONBOARDABLE_MODULE_IDS: ModuleId[] = ['erp_salao', 'crm_vendas', 'atendimento'];
 
 function ModulesStep({
   onNext,

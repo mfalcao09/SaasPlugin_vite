@@ -3,6 +3,7 @@
 // direto (sem ICON_MAP de string). Visibilidade resolvida no ModuleHub.
 
 import {
+  Scissors,
   TrendingUp,
   MessageSquare,
   Settings,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 export type ModuleId =
+  | 'erp_salao'
   | 'erp_oficina'
   | 'crm_vendas'
   | 'atendimento'
@@ -32,10 +34,18 @@ export interface ModuleDefinition {
 }
 
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
-  // NOTA: módulo `erp_oficina` ocultado no NexvyBeauty (fundação do
-  // cascateamento). O vertical de salão (`erp_salao`: Profissionais,
-  // Serviços, Agenda, Comandas) é construído no Bloco 2 e substitui esta
-  // entrada. As rotas /oficina seguem registradas (dormentes) até lá.
+  // Vertical de salão (NexvyBeauty). Substitui o erp_oficina (ocultado;
+  // rotas /oficina seguem dormentes). Telas em pages/salao/*.
+  {
+    id: 'erp_salao',
+    label: 'Gestão do Salão',
+    icon: Scissors,
+    color: 'bg-pink-500',
+    description: 'Agenda, profissionais, serviços, clientes e financeiro',
+    route: '/salao',
+    visibility: 'all',
+    onboardingHint: 'Cadastre os serviços e profissionais do seu salão.',
+  },
   {
     id: 'crm_vendas',
     label: 'CRM de Vendas',
