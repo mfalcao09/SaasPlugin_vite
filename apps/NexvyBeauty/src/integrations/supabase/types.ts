@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_agent_messages: {
@@ -133,6 +158,88 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agendamentos: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string | null
+          data: string
+          duracao_minutos: number | null
+          forma_pagamento: string | null
+          hora: string
+          id: string
+          observacoes: string | null
+          organization_id: string
+          profissional_id: string | null
+          profissional_nome: string | null
+          servico_id: string | null
+          servico_nome: string | null
+          status: string | null
+          updated_at: string | null
+          valor: number | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string | null
+          data: string
+          duracao_minutos?: number | null
+          forma_pagamento?: string | null
+          hora: string
+          id?: string
+          observacoes?: string | null
+          organization_id: string
+          profissional_id?: string | null
+          profissional_nome?: string | null
+          servico_id?: string | null
+          servico_nome?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string | null
+          data?: string
+          duracao_minutos?: number | null
+          forma_pagamento?: string | null
+          hora?: string
+          id?: string
+          observacoes?: string | null
+          organization_id?: string
+          profissional_id?: string | null
+          profissional_nome?: string | null
+          servico_id?: string | null
+          servico_nome?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -7029,6 +7136,7 @@ export type Database = {
           cnpj: string | null
           created_at: string
           email: string | null
+          enabled_modules: Json
           features: Json | null
           id: string
           logo_url: string | null
@@ -7067,6 +7175,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           email?: string | null
+          enabled_modules?: Json
           features?: Json | null
           id?: string
           logo_url?: string | null
@@ -7105,6 +7214,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           email?: string | null
+          enabled_modules?: Json
           features?: Json | null
           id?: string
           logo_url?: string | null
@@ -7477,6 +7587,7 @@ export type Database = {
           max_products: number
           max_sectors: number
           max_users: number
+          modules: Json
           name: string
           price_monthly: number
           price_yearly: number
@@ -7525,6 +7636,7 @@ export type Database = {
           max_products?: number
           max_sectors?: number
           max_users?: number
+          modules?: Json
           name: string
           price_monthly?: number
           price_yearly?: number
@@ -7573,6 +7685,7 @@ export type Database = {
           max_products?: number
           max_sectors?: number
           max_users?: number
+          modules?: Json
           name?: string
           price_monthly?: number
           price_yearly?: number
@@ -9060,6 +9173,48 @@ export type Database = {
           },
         ]
       }
+      profissionais: {
+        Row: {
+          ativo: boolean | null
+          comissao_pct: number | null
+          created_at: string | null
+          email: string | null
+          especialidades: string[] | null
+          foto_url: string | null
+          id: string
+          nome: string
+          organization_id: string
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          comissao_pct?: number | null
+          created_at?: string | null
+          email?: string | null
+          especialidades?: string[] | null
+          foto_url?: string | null
+          id?: string
+          nome: string
+          organization_id: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          comissao_pct?: number | null
+          created_at?: string | null
+          email?: string | null
+          especialidades?: string[] | null
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          organization_id?: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       quick_replies: {
         Row: {
           category: string
@@ -9746,6 +9901,50 @@ export type Database = {
           response_text?: string | null
         }
         Relationships: []
+      }
+      servico_catalogo: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          created_at: string
+          descricao: string | null
+          duracao_minutos: number | null
+          id: string
+          nome: string
+          organization_id: string
+          preco_base: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          nome: string
+          organization_id: string
+          preco_base?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          nome?: string
+          organization_id?: string
+          preco_base?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servico_catalogo_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       squad_members: {
         Row: {
@@ -12087,6 +12286,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "manager", "seller", "super_admin"],

@@ -41,6 +41,13 @@ function formatHora(value: string | null | undefined): string {
   return value.slice(0, 5)
 }
 
+// Supabase gera um union enorme de tabelas; tipar os resultados concretos
+// estoura o limite de instanciação do TS (TS2589) e zera os builders (never).
+// O template de oficina contorna isso acessando o client de forma destipada;
+// fazemos o mesmo via um único handle, mantendo as interfaces de domínio na UI.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 export default function Agenda() {
   const organizationId = useOrganizationId()
   const qc = useQueryClient()
@@ -60,7 +67,7 @@ export default function Agenda() {
   const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ['agendamentos', organizationId],
     queryFn: async () => {
-      const { data: rows, error } = await supabase.from('agendamentos').select('*')
+      const { data: rows, error } = await db.from('agendamentos').select('*')
         .eq('organization_id', organizationId!)
         .order('data', { ascending: true }).order('hora', { ascending: true })
       if (error) throw error
@@ -72,7 +79,7 @@ export default function Agenda() {
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes', organizationId],
     queryFn: async () => {
-      const { data: rows, error } = await supabase.from('clientes').select('id, nome')
+      const { data: rows, error } = await db.from('clientes').select('id, nome')
         .eq('organization_id', organizationId!)
       if (error) throw error
       return (rows ?? []) as ClienteOption[]
@@ -83,7 +90,7 @@ export default function Agenda() {
   const { data: profissionais = [] } = useQuery({
     queryKey: ['profissionais', organizationId],
     queryFn: async () => {
-      const { data: rows, error } = await supabase.from('profissionais').select('id, nome')
+      const { data: rows, error } = await db.from('profissionais').select('id, nome')
         .eq('organization_id', organizationId!)
       if (error) throw error
       return (rows ?? []) as ProfissionalOption[]
@@ -94,7 +101,7 @@ export default function Agenda() {
   const { data: servicos = [] } = useQuery({
     queryKey: ['servico_catalogo', organizationId],
     queryFn: async () => {
-      const { data: rows, error } = await supabase.from('servico_catalogo').select('id, nome, valor')
+      const { data: rows, error } = await db.from('servico_catalogo').select('id, nome, valor:preco_base')
         .eq('organization_id', organizationId!)
       if (error) throw error
       return (rows ?? []) as ServicoOption[]
@@ -150,11 +157,11 @@ export default function Agenda() {
         observacoes: observacoes || null,
       }
       if (editId) {
-        const { error } = await supabase.from('agendamentos').update(payload)
+        const { error } = await db.from('agendamentos').update(payload)
           .eq('id', editId).eq('organization_id', organizationId!)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('agendamentos').insert(payload)
+        const { error } = await db.from('agendamentos').insert(payload)
         if (error) throw error
       }
     },

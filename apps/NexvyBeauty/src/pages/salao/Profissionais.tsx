@@ -22,9 +22,8 @@ interface Profissional {
 // (apenas as tabelas de oficina foram geradas). Acessamos via builder destipado
 // até o types.ts ser regenerado com o schema do salão. O retorno do select é
 // reanexado ao tipo Profissional para manter a leitura tipada.
-const db = supabase as unknown as {
-  from: (table: string) => ReturnType<typeof supabase.from>
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (table: string) => any }
 
 export default function Profissionais() {
   const organizationId = useOrganizationId()
@@ -40,7 +39,7 @@ export default function Profissionais() {
   const { data: profissionais = [], isLoading } = useQuery({
     queryKey: ['profissionais', organizationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('profissionais').select('*')
         .eq('organization_id', organizationId!)
         .order('created_at', { ascending: false })
@@ -56,7 +55,7 @@ export default function Profissionais() {
         .split(',')
         .map(e => e.trim())
         .filter(Boolean)
-      const { error } = await supabase.from('profissionais').insert({
+      const { error } = await db.from('profissionais').insert({
         organization_id: organizationId!,
         nome,
         email: email || null,
