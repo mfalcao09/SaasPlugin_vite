@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SuperAdminViewProvider } from "@/hooks/useSuperAdminView";
 import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoiceDialog";
+import { FooterDecoration } from "@/components/layout/FooterDecoration";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -147,6 +148,7 @@ const App = () => (
         <BrowserRouter>
           <SuperAdminViewProvider>
           <SuperAdminViewChoiceDialog />
+          <FooterDecoration />
           <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
