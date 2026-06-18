@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SuperAdminViewProvider } from "@/hooks/useSuperAdminView";
+import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoiceDialog";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -143,6 +145,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <SuperAdminViewProvider>
+          <SuperAdminViewChoiceDialog />
           <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -252,6 +256,7 @@ const App = () => (
               </Routes>
             </Suspense>
           </RouteErrorBoundary>
+          </SuperAdminViewProvider>
         </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

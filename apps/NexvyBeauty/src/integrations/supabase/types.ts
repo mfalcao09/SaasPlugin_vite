@@ -7798,6 +7798,7 @@ export type Database = {
           login_subheadline: string | null
           logo_dark_url: string | null
           logo_url: string | null
+          master_organization_id: string | null
           meta_description: string | null
           og_image_url: string | null
           platform_name: string | null
@@ -7842,6 +7843,7 @@ export type Database = {
           login_subheadline?: string | null
           logo_dark_url?: string | null
           logo_url?: string | null
+          master_organization_id?: string | null
           meta_description?: string | null
           og_image_url?: string | null
           platform_name?: string | null
@@ -7886,6 +7888,7 @@ export type Database = {
           login_subheadline?: string | null
           logo_dark_url?: string | null
           logo_url?: string | null
+          master_organization_id?: string | null
           meta_description?: string | null
           og_image_url?: string | null
           platform_name?: string | null
@@ -12113,6 +12116,10 @@ export type Database = {
           similarity: number
           source: string
         }[]
+      }
+      set_active_organization: {
+        Args: { p_org_id: string }
+        Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

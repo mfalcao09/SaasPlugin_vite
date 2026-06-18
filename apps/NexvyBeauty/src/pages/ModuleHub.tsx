@@ -14,7 +14,7 @@ import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DualRoleDialog } from '@/components/auth/DualRoleDialog';
+import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { MODULE_DEFINITIONS, type ModuleDefinition } from '@/config/modules';
 
@@ -96,12 +96,11 @@ const ModuleHub = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Guard (b): dialog bloqueante de duplo perfil */}
-      <DualRoleDialog orgName={orgName} />
+      {/* A dialog de escolha (Gestão Multi-Empresas / Empresa Master) é
+          global, montada no App.tsx via SuperAdminViewProvider. */}
 
-      {/* Onboarding guiado (admin de organização, 1º acesso) — disjunto do
-          DualRoleDialog (este exige super admin; o onboarding exige NÃO super
-          admin), então nunca se sobrepõem. */}
+      {/* Onboarding guiado (admin de organização, 1º acesso) — exige NÃO
+          super admin, então nunca se sobrepõe à escolha de view. */}
       {showOnboarding && (
         <GuidedOnboarding
           open={showOnboarding}
@@ -128,6 +127,7 @@ const ModuleHub = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin() && <OrganizationSelector />}
             {isSuperAdmin() && (
               <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
                 <Crown className="w-3 h-3 mr-1" /> Super Admin

@@ -36,6 +36,8 @@ interface AuthContextType {
   isSeller: () => boolean;
   isSuperAdmin: () => boolean;
   hasPermission: (key: keyof UserPermissions) => boolean;
+  /** Re-busca profile/roles/perms do usuário atual (ex: após trocar de empresa). */
+  refetchProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -256,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSeller,
       isSuperAdmin,
       hasPermission,
+      refetchProfile: async () => { if (user) await fetchUserData(user.id); },
     }}>
       {children}
     </AuthContext.Provider>

@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { UserStatusIndicator } from '@/components/layout/UserStatusIndicator';
 import { HeaderProductSwitcher } from '@/components/layout/HeaderProductSwitcher';
+import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { WhatsAppDisconnectedBanner } from '@/components/layout/WhatsAppDisconnectedBanner';
 import { Tables } from '@/integrations/supabase/types';
 import { useUnreadReleasesCount } from '@/hooks/useReleases';
@@ -68,6 +69,9 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Impersonação de empresa (super admin) — porte do Intentus */}
+          <OrganizationSelector />
+
           {/* Product Switcher (replaces global search) */}
           {assignedProducts.length > 0 && onSelectProductObject && (
             <HeaderProductSwitcher
