@@ -1,0 +1,124 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Users, Plus, Search, Loader2 } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
+import { toast } from 'sonner'
+import { OficinaLayout, NoOrg, useOrganizationId } from './_shared'
+
+export default function Clientes() {
+  const organizationId = useOrganizationId()
+  const qc = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [nome, setNome] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [email, setEmail] = useState('')
+
+  const { data: clientes = [], isLoading } = useQuery({
+    queryKey: ['clientes', organizationId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes').select('*')
+        .eq('organization_id', organizationId!)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data ?? []
+    },
+    enabled: !!organizationId,
+  })
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('clientes').insert({
+        organization_id: organizationId!, nome, telefone, email, status: 'ativo',
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes', organizationId] })
+      toast.success('Cliente cadastrado!')
+      setShowForm(false); setNome(''); setTelefone(''); setEmail('')
+    },
+    onError: () => toast.error('Erro ao cadastrar cliente.'),
+  })
+
+  const filtered = (clientes as any[]).filter(c =>
+    c.nome?.toLowerCase().includes(search.toLowerCase()) ||
+    c.telefone?.includes(search) ||
+    c.email?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  if (!organizationId) return <OficinaLayout><NoOrg /></OficinaLayout>
+
+  return (
+    <OficinaLayout>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
+          <p className="text-muted-foreground text-sm mt-1">{(clientes as any[]).length} clientes cadastrados</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors">
+          <Plus className="h-4 w-4" />Novo Cliente
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-card border rounded-xl p-5 space-y-3">
+          <h2 className="font-semibold text-foreground">Novo Cliente</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome *" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="Telefone" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => criar.mutate()} disabled={!nome.trim() || criar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-colors">
+              {criar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Salvar
+            </button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm transition-colors">Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome, telefone ou email..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+      </div>
+
+      <div className="bg-card border rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center">
+            <Users className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">{search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b">
+              <tr className="text-left text-muted-foreground">
+                <th className="px-5 py-3 font-medium">Nome</th>
+                <th className="px-5 py-3 font-medium hidden sm:table-cell">Telefone</th>
+                <th className="px-5 py-3 font-medium hidden md:table-cell">Email</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((c: any) => (
+                <tr key={c.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-5 py-3 text-foreground font-medium">{c.nome}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{c.telefone ?? '—'}</td>
+                  <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.email ?? '—'}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ativo' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{c.status ?? 'ativo'}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+    </OficinaLayout>
+  )
+}

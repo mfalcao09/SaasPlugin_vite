@@ -1,0 +1,127 @@
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  TrendingUp,
+  DollarSign,
+  Target,
+  Settings,
+  Bell,
+  LayoutGrid,
+  MessageSquare,
+  MessageCircle,
+  BarChart3,
+  CalendarDays,
+  Zap,
+  Webhook,
+  FileText,
+  Bot,
+  Building2,
+  Plug,
+  Tag,
+  Clock,
+  CreditCard,
+  LifeBuoy,
+  Sparkles,
+  SlidersHorizontal,
+  Briefcase,
+  Banknote,
+  Megaphone,
+  Code2,
+  ListChecks,
+  Filter,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+export interface AdminMenuItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  comingSoon?: boolean;
+}
+
+export interface AdminMenuGroup {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: AdminMenuItem[];
+}
+
+// Itens fixos (sempre visíveis, sem accordion)
+export const fixedItems: AdminMenuItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'inbox', label: 'Atendimentos', icon: MessageSquare },
+  { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
+  { id: 'leads', label: 'Leads', icon: Target },
+  { id: 'calendar', label: 'Agenda', icon: CalendarDays },
+];
+
+// Grupos em accordion
+export const menuGroups: AdminMenuGroup[] = [
+  {
+    id: 'automation',
+    label: 'Automação & IA',
+    icon: Sparkles,
+    items: [
+      { id: 'agents', label: 'Agentes IA', icon: Bot },
+      { id: 'campaigns', label: 'Campanhas Inteligentes', icon: Megaphone },
+      { id: 'cadences', label: 'Cadências Inteligentes', icon: Sparkles },
+      { id: 'webhooks', label: 'Webhooks', icon: Webhook },
+    ],
+  },
+  {
+    id: 'capture-channels',
+    label: 'Captação',
+    icon: Filter,
+    items: [
+      { id: 'capture-quiz', label: 'Quiz', icon: ListChecks },
+      { id: 'capture-forms', label: 'Formulários', icon: FileText },
+      { id: 'capture-chatbot', label: 'ChatBot', icon: MessageCircle },
+      { id: 'capture-widget', label: 'Widget', icon: Code2 },
+      { id: 'capture-whatsapp', label: 'WhatsApp', icon: MessageSquare },
+      { id: 'capture-templates', label: 'Templates', icon: LayoutGrid },
+      { id: 'capture-results', label: 'Resultados', icon: Target },
+      { id: 'capture-analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    id: 'management',
+    label: 'Gestão',
+    icon: Briefcase,
+    items: [
+      { id: 'products', label: 'Produtos', icon: Package },
+      { id: 'sectors', label: 'Setores', icon: SlidersHorizontal },
+      { id: 'team', label: 'Equipes', icon: Users },
+      { id: 'reports', label: 'Relatórios', icon: BarChart3 },
+      { id: 'financial', label: 'Financeiro', icon: DollarSign },
+      { id: 'payments', label: 'Pagamentos', icon: Banknote },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Configurações',
+    icon: Settings,
+    items: [
+      { id: 'connections', label: 'Conexões', icon: Plug },
+      { id: 'integrations', label: 'Integrações', icon: Settings },
+      { id: 'quick-replies', label: 'Respostas Rápidas', icon: MessageSquare },
+      { id: 'custom-fields', label: 'Campos personalizados', icon: FileText },
+      { id: 'tags', label: 'Etiquetas', icon: Tag },
+      { id: 'notifications', label: 'Notificações', icon: Bell },
+      { id: 'schedules', label: 'Horários', icon: Clock },
+      { id: 'company', label: 'Empresa', icon: Building2 },
+      { id: 'plan', label: 'Plano', icon: CreditCard },
+      { id: 'support', label: 'Suporte', icon: LifeBuoy },
+    ],
+  },
+];
+
+export const allMenuItems: AdminMenuItem[] = [
+  ...fixedItems,
+  ...menuGroups.flatMap((g) => g.items),
+];
+
+// Helper: encontra o id do grupo que contém a seção ativa (para abrir o accordion)
+export function findGroupIdForSection(sectionId: string): string | undefined {
+  return menuGroups.find((g) => g.items.some((i) => i.id === sectionId))?.id;
+}
