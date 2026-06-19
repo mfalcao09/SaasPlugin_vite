@@ -6,6 +6,22 @@
 # Tenant e determinado por LOGIN (nao por subdominio) -> sem router wildcard.
 http:
   routers:
+    # APLICACAO (canonico): app.<dominio> -> SaaS (login, hub, super-admin)
+    __CONTAINER__-app:
+      rule: "Host(`app.DOMAIN_BEAUTY`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: __CONTAINER__-svc
+      middlewares: [security-headers@file]
+      priority: 110
+    __CONTAINER__-app-http-redirect:
+      rule: "Host(`app.DOMAIN_BEAUTY`)"
+      entryPoints: [web]
+      service: __CONTAINER__-svc
+      middlewares: [redirect-to-https]
+      priority: 110
+    # APEX + www: marketing/funil (LP /vendas, /termos, /privacidade) — mesmo container
     __CONTAINER__-apex:
       rule: "Host(`DOMAIN_BEAUTY`) || Host(`www.DOMAIN_BEAUTY`)"
       entryPoints: [websecure]
