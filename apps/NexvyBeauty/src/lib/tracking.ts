@@ -37,9 +37,17 @@ function readCookie(): Tracking {
   }
 }
 
+// Domínio do cookie: compartilha entre apex e subdomínios (app./www.) usando o
+// domínio registrável. Em localhost/IP não seta domain (cookie por host).
+function cookieDomain(): string {
+  const host = window.location.hostname;
+  if (host === 'localhost' || /^[0-9.]+$/.test(host)) return '';
+  return `; domain=.${host.replace(/^(app|www)\./, '')}`;
+}
+
 function writeCookie(t: Tracking) {
   try {
-    document.cookie = `${COOKIE}=${encodeURIComponent(JSON.stringify(t))}; path=/; max-age=${MAX_AGE}; SameSite=Lax`;
+    document.cookie = `${COOKIE}=${encodeURIComponent(JSON.stringify(t))}; path=/; max-age=${MAX_AGE}; SameSite=Lax${cookieDomain()}`;
   } catch {
     /* cookies indisponíveis — segue sem persistir */
   }
