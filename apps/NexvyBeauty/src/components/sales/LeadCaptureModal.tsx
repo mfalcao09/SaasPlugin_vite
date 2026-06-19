@@ -37,10 +37,16 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [f, setF] = useState({
-    name: '', email: '', whatsapp: '', instagram: '', main_pain: '', salon_name: '', accept: false,
+    name: '', email: '', whatsapp: '', instagram: '', pains: [] as string[], pain_other: '', salon_name: '', accept: false,
   });
 
   const set = (patch: Partial<typeof f>) => setF((p) => ({ ...p, ...patch }));
+
+  const togglePain = (p: string) =>
+    setF((prev) => ({
+      ...prev,
+      pains: prev.pains.includes(p) ? prev.pains.filter((x) => x !== p) : [...prev.pains, p],
+    }));
 
   const step1Valid =
     f.name.trim().length >= 2 && isEmail(f.email) && onlyDigits(f.whatsapp).length >= 10;
@@ -48,17 +54,20 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
 
   const reset = () => {
     setStep(0); setDone(false); setSubmitting(false);
-    setF({ name: '', email: '', whatsapp: '', instagram: '', main_pain: '', salon_name: '', accept: false });
+    setF({ name: '', email: '', whatsapp: '', instagram: '', pains: [], pain_other: '', salon_name: '', accept: false });
   };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
+      const main_pain = f.pains
+        .map((p) => (p === 'Outro' && f.pain_other.trim() ? `Outro: ${f.pain_other.trim()}` : p))
+        .join('; ');
       const { data, error } = await supabase.functions.invoke('capture-lead', {
         body: {
           name: f.name, email: f.email, whatsapp: f.whatsapp,
-          instagram: f.instagram, main_pain: f.main_pain, salon_name: f.salon_name,
+          instagram: f.instagram, main_pain, salon_name: f.salon_name,
           tracking: getTracking(),
         },
       });
@@ -131,23 +140,42 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
                   <Input value={f.instagram} onChange={(e) => set({ instagram: e.target.value })} maxLength={120} placeholder="@seusalao" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Qual sua maior dor hoje? (opcional)</Label>
+                  <Label>Quais suas maiores dores hoje? (opcional · pode marcar mais de uma)</Label>
                   <div className="grid gap-1.5">
-                    {PAINS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => set({ main_pain: p })}
-                        className={`text-left text-sm rounded-lg border px-3 py-2 transition-colors ${
-                          f.main_pain === p
-                            ? 'border-primary bg-primary/5 text-foreground'
-                            : 'border-border text-muted-foreground hover:bg-accent'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {PAINS.map((p) => {
+                      const active = f.pains.includes(p);
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => togglePain(p)}
+                          aria-pressed={active}
+                          className={`flex items-center gap-2 text-left text-sm rounded-lg border px-3 py-2 transition-colors ${
+                            active
+                              ? 'border-primary bg-primary/5 text-foreground'
+                              : 'border-border text-muted-foreground hover:bg-accent'
+                          }`}
+                        >
+                          <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            active ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'
+                          }`}>
+                            {active && <Check className="h-3 w-3" />}
+                          </span>
+                          {p}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {f.pains.includes('Outro') && (
+                    <Input
+                      autoFocus
+                      value={f.pain_other}
+                      onChange={(e) => set({ pain_other: e.target.value })}
+                      maxLength={200}
+                      placeholder="Descreva sua dor..."
+                      className="mt-1.5"
+                    />
+                  )}
                 </div>
               </div>
             )}
