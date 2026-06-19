@@ -16,7 +16,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
-import { MODULE_DEFINITIONS, type ModuleDefinition } from '@/config/modules';
+import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/config/modules';
+import { usePlanModules } from '@/hooks/usePlanModules';
 
 function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => void }) {
   const Icon = mod.icon;
@@ -65,16 +66,27 @@ const ModuleHub = () => {
     },
   });
 
+  // Módulos efetivamente disponíveis para a org (plano ∩ enabled_modules).
+  const { availableModules } = usePlanModules();
+
+  // Módulos-PRODUTO (do tenant) são ocultados quando a org NÃO os ativou —
+  // exceto p/ super admin (vê tudo p/ suporte/config) e quando ainda não há
+  // info de plano (availableModules vazio → não trava). 'administracao' e
+  // 'gestao_plataforma' seguem só pelo papel (são painéis de controle).
+  const PRODUCT_MODULES: ModuleId[] = ['erp_salao', 'crm_vendas', 'atendimento'];
+  const gated = !isSuperAdmin() && availableModules.length > 0;
+
   const visibleModules = useMemo(
     () =>
       MODULE_DEFINITIONS.filter((mod) => {
         if (mod.visibility === 'super_admin') return isSuperAdmin();
-        if (mod.visibility === 'admin') return isAdmin() || isManager();
+        if (mod.visibility === 'admin' && !(isAdmin() || isManager())) return false;
+        if (gated && PRODUCT_MODULES.includes(mod.id) && !availableModules.includes(mod.id)) return false;
         return true;
       }),
     // isAdmin/isManager/isSuperAdmin são closures derivadas de roles
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roles]
+    [roles, availableModules, gated]
   );
 
   // Hold: evita o hub "piscar" antes do redirect enquanto o status de setup carrega
