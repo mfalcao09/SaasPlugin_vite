@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { 
   BarChart3, MessageSquare, Zap, FileText, Webhook, Bot, 
@@ -17,6 +17,8 @@ import { usePlatformBranding } from '@/hooks/usePlatformBranding';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Logo } from '@/components/ui/Logo';
+import { LeadCaptureModal } from '@/components/sales/LeadCaptureModal';
+import { captureTrackingFromUrl } from '@/lib/tracking';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -68,6 +70,11 @@ export default function SalesPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [buyOpen, setBuyOpen] = useState(false);
+
+  // Captura o tracking (ref do afiliado + UTMs) no 1º carregamento da LP e
+  // persiste no cookie 1st-party — sobrevive ao hop LP→checkout.
+  useEffect(() => { captureTrackingFromUrl(); }, []);
   const [form, setForm] = useState({
     company_name: '',
     contact_name: '',
@@ -114,8 +121,8 @@ export default function SalesPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Logo size="sm" />
-          <Button onClick={scrollToForm} size="sm">
-            Falar com Consultor <ChevronRight className="h-4 w-4" />
+          <Button onClick={() => setBuyOpen(true)} size="sm">
+            Comprar agora <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </nav>
@@ -137,11 +144,11 @@ export default function SalesPage() {
               tudo em uma plataforma integrada para sua equipe vender mais e melhor.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="xl" onClick={scrollToForm}>
-                Falar com Consultor <ArrowRight className="h-5 w-5" />
+              <Button size="xl" onClick={() => setBuyOpen(true)}>
+                Comprar agora <ArrowRight className="h-5 w-5" />
               </Button>
               <Button size="xl" variant="outline" onClick={scrollToForm}>
-                Solicitar Proposta
+                Falar com consultor
               </Button>
             </motion.div>
           </AnimatedSection>
@@ -223,8 +230,8 @@ export default function SalesPage() {
                     Não vendemos planos genéricos. Analisamos sua operação comercial e montamos 
                     a configuração ideal para sua equipe — com os módulos, integrações e suporte que você precisa.
                   </p>
-                  <Button size="lg" onClick={scrollToForm}>
-                    Solicitar Proposta Personalizada <ArrowRight className="h-5 w-5" />
+                  <Button size="lg" onClick={() => setBuyOpen(true)}>
+                    Comprar agora <ArrowRight className="h-5 w-5" />
                   </Button>
                 </CardContent>
               </Card>
@@ -369,6 +376,8 @@ export default function SalesPage() {
           © {new Date().getFullYear()} {platformName}. Todos os direitos reservados.
         </div>
       </footer>
+
+      <LeadCaptureModal open={buyOpen} onOpenChange={setBuyOpen} />
     </div>
   );
 }
