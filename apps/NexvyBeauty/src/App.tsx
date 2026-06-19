@@ -11,6 +11,7 @@ import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoi
 import { FooterDecoration } from "@/components/layout/FooterDecoration";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
+import { AffiliateRoute } from "@/components/auth/AffiliateRoute";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
@@ -23,6 +24,7 @@ const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
+const AffiliatePortal = lazyWithRetry(() => import("./pages/afiliado/AffiliatePortal"));
 const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
@@ -246,13 +248,22 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/super-admin" 
+              {/* Portal self-service do afiliado (papel = vínculo affiliates.user_id) */}
+              <Route
+                path="/afiliado"
+                element={
+                  <AffiliateRoute>
+                    <AffiliatePortal />
+                  </AffiliateRoute>
+                }
+              />
+              <Route
+                path="/super-admin"
                 element={
                   <SuperAdminRoute>
                     <SuperAdmin />
                   </SuperAdminRoute>
-                } 
+                }
               />
               <Route path="*" element={<NotFound />} />
               </Routes>

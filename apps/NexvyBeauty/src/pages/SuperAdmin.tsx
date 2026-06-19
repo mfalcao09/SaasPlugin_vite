@@ -14,6 +14,7 @@ import { SalesLeadsManager } from '@/components/superadmin/SalesLeadsManager';
 import { EvolutionManager } from '@/components/superadmin/EvolutionManager';
 import { PlansManager } from '@/components/superadmin/PlansManager';
 import { CaktoSuperAdminPanel } from '@/components/superadmin/payments/CaktoSuperAdminPanel';
+import { AffiliatesPanel } from '@/components/superadmin/affiliates/AffiliatesPanel';
 import { HelpManager } from '@/components/superadmin/HelpManager';
 import { ReleasesManager } from '@/components/superadmin/ReleasesManager';
 import { SupportTickets } from '@/components/admin/support/SupportTickets';
@@ -55,6 +56,8 @@ export default function SuperAdmin() {
         return <BillingManager />;
       case 'payments':
         return <CaktoSuperAdminPanel />;
+      case 'affiliates':
+        return <AffiliatesPanel />;
       case 'branding':
         return <PlatformSettings />;
       case 'email':
