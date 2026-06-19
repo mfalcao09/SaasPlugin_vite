@@ -19,6 +19,10 @@ interface CaptureBody {
   instagram?: string;
   main_pain?: string;
   salon_name?: string;
+  accept?: boolean;
+  terms_version?: string;
+  privacy_version?: string;
+  consent_text?: string;
   tracking?: Record<string, string>;
 }
 
@@ -97,6 +101,50 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
     if (error) throw error;
+
+    // ── Prova de consentimento LGPD (best-effort; nunca bloqueia a captura) ──
+    if (body.accept === true) {
+      try {
+        const ip = (req.headers.get("x-forwarded-for")?.split(",")[0] ||
+          req.headers.get("x-real-ip") ||
+          req.headers.get("cf-connecting-ip") || "").trim() || null;
+        const ua = req.headers.get("user-agent");
+
+        let country: string | null = null, region: string | null = null, city: string | null = null;
+        if (ip) {
+          try {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 2500);
+            const geo = await fetch(`https://ipapi.co/${ip}/json/`, { signal: ctrl.signal });
+            clearTimeout(to);
+            if (geo.ok) {
+              const g = await geo.json();
+              country = g.country_name ?? g.country ?? null;
+              region = g.region ?? null;
+              city = g.city ?? null;
+            }
+          } catch { /* geo e opcional */ }
+        }
+
+        await admin.from("lgpd_consents").insert({
+          lead_id: inserted.id,
+          email,
+          scope: "lead_capture",
+          accepted: true,
+          terms_version: clean(body.terms_version, 40) || null,
+          privacy_version: clean(body.privacy_version, 40) || null,
+          consent_text: clean(body.consent_text, 1000) || null,
+          ip,
+          user_agent: ua ? ua.slice(0, 500) : null,
+          country, region, city,
+          metadata: {
+            referrer_url: clean(t.referrer_url, 500) || null,
+            landing_page: clean(t.landing_page, 500) || null,
+            ref_code: ref,
+          },
+        });
+      } catch (_) { /* consentimento best-effort: nao derruba a captura do lead */ }
+    }
 
     return new Response(
       JSON.stringify({ ok: true, lead_id: inserted.id, affiliate_resolved: !!affiliateId }),

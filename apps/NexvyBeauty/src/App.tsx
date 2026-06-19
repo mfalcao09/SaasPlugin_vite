@@ -41,6 +41,8 @@ const HelpArticle = lazyWithRetry(() => import("./pages/HelpArticle"));
 const Updates = lazyWithRetry(() => import("./pages/Updates"));
 const Unsubscribe = lazyWithRetry(() => import("./pages/Unsubscribe"));
 const Docs = lazyWithRetry(() => import("./pages/Docs"));
+const Termos = lazyWithRetry(() => import("./pages/Termos"));
+const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 
 // ERP Oficina (Clientes, Veículos, OS, Orçamentos, Financeiro)
 const OficinaDashboard = lazyWithRetry(() => import("./pages/oficina/Dashboard"));
@@ -168,6 +170,10 @@ const App = () => (
               <Route path="/whitelabel" element={<Navigate to="/" replace />} />
               <Route path="/reagendar/:token" element={<BookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
+
+              {/* Jurídico público (sem login) */}
+              <Route path="/termos" element={<Termos />} />
+              <Route path="/privacidade" element={<Privacidade />} />
 
               {/* Documentação pública (sem login) */}
               <Route path="/docs" element={<Docs />} />

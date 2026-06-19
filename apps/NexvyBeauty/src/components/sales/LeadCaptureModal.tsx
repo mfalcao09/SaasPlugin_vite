@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Check, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getTracking } from '@/lib/tracking';
+import { TERMS_VERSION, PRIVACY_VERSION, CONSENT_TEXT } from '@/pages/legal/legalContent';
 import { toast } from 'sonner';
 
 // Captura robusta multi-step (estilo Cakto): nome+e-mail+WhatsApp (obrigatórios)
@@ -68,6 +69,10 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
         body: {
           name: f.name, email: f.email, whatsapp: f.whatsapp,
           instagram: f.instagram, main_pain, salon_name: f.salon_name,
+          accept: f.accept,
+          terms_version: TERMS_VERSION,
+          privacy_version: PRIVACY_VERSION,
+          consent_text: CONSENT_TEXT,
           tracking: getTracking(),
         },
       });
@@ -188,7 +193,13 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
                 </div>
                 <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
                   <Checkbox checked={f.accept} onCheckedChange={(v) => set({ accept: !!v })} className="mt-0.5" />
-                  <span>Li e aceito os termos de uso e a política de privacidade, e autorizo o contato por WhatsApp/e-mail (LGPD).</span>
+                  <span>
+                    Li e concordo com os{' '}
+                    <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Termos de Uso</a>
+                    {' '}e com a{' '}
+                    <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline" onClick={(e) => e.stopPropagation()}>Política de Privacidade</a>
+                    , e autorizo o tratamento dos meus dados para que a NexvyBeauty entre em contato comigo.
+                  </span>
                 </label>
               </div>
             )}
