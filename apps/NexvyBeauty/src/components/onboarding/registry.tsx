@@ -7,6 +7,7 @@
 import type { FC } from 'react'
 import type { ModuleId } from '@/config/modules'
 import { OficinaServicesStep } from './steps/OficinaServicesStep'
+import { SalaoProfissionaisStep } from './steps/SalaoProfissionaisStep'
 import { AtendimentoWhatsAppStep } from './steps/AtendimentoWhatsAppStep'
 
 /** Props padrão recebidas por todo passo de onboarding. */
@@ -29,9 +30,16 @@ export interface OnboardingStepDef {
  * implementados; módulos ausentes simplesmente não têm fluxo dedicado aqui.
  */
 export const MODULE_ONBOARDING_STEPS: Record<string, OnboardingStepDef[]> = {
-  erp_oficina: [
+  // Chave = ModuleId do salão (erp_salao). Antes estava 'erp_oficina' (legado)
+  // e o salão renderizava ZERO passos no onboarding — bug corrigido.
+  erp_salao: [
     {
-      id: 'oficina_servicos',
+      id: 'salao_profissionais',
+      label: 'Profissionais',
+      Component: SalaoProfissionaisStep,
+    },
+    {
+      id: 'salao_servicos',
       label: 'Serviços do salão',
       Component: OficinaServicesStep,
     },
