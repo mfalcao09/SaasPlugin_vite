@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Users, Scissors, Sparkles, CalendarDays, DollarSign, LayoutGrid,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AppTopBar } from '@/components/layout/AppTopBar'
 
 // ---- helpers (mesmo contrato do ERP, reusados pelas telas de salão) ----
 export function formatCurrency(value: number | null | undefined): string {
@@ -36,38 +37,39 @@ const NAV = [
 export function SalaoLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
-        <div className="h-16 flex items-center px-5 border-b">
-          <span className="text-lg font-bold text-foreground">Gestão do Salão</span>
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) => cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-              )}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Topbar canônica do sistema (mesma de todos os módulos pós-login). */}
+      <AppTopBar title="Gestão do Salão" />
+      <div className="flex flex-1 min-h-0">
+        <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
+          <nav className="flex-1 p-3 space-y-1">
+            {NAV.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) => cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="p-3 border-t">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
-              <Icon className="h-4 w-4" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="p-3 border-t">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <LayoutGrid className="h-4 w-4" />
-            Hub de Módulos
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 overflow-y-auto">{children}</main>
+              <LayoutGrid className="h-4 w-4" />
+              Hub de Módulos
+            </button>
+          </div>
+        </aside>
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   )
 }
