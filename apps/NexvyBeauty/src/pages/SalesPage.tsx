@@ -46,22 +46,22 @@ function AnimatedSection({ children, className = '' }: { children: React.ReactNo
 }
 
 const FEATURES = [
-  { icon: BarChart3, title: 'CRM & Pipeline Visual', desc: 'Kanban drag-and-drop com estágios personalizáveis, valores e probabilidade de fechamento.' },
-  { icon: MessageSquare, title: 'Inbox Omnichannel', desc: 'WhatsApp, chat web e mais — tudo numa caixa de entrada unificada com IA.' },
-  { icon: Zap, title: 'Funis de Captação com IA', desc: 'Landing pages e formulários inteligentes que qualificam e distribuem leads automaticamente.' },
-  { icon: FileText, title: 'Formulários Inteligentes', desc: 'Scoring automático, tags condicionais e mapeamento de campos personalizados.' },
-  { icon: Webhook, title: 'Automações & Webhooks', desc: 'Conecte com qualquer ferramenta: envie emails, notifique equipes, acione fluxos.' },
-  { icon: Bot, title: 'Agentes de IA', desc: 'Atendentes virtuais treinados com seus materiais que respondem 24/7 com contexto.' },
-  { icon: Users, title: 'Gestão de Equipes & Squads', desc: 'Distribua leads por equipe, defina permissões granulares e acompanhe performance.' },
-  { icon: PieChart, title: 'Relatórios & Dashboards', desc: 'Métricas em tempo real: conversão por etapa, tempo de resposta, ranking de vendedores.' },
-  { icon: CalendarDays, title: 'Agendamento Online', desc: 'Links de agendamento personalizados com integração ao Google Calendar e Meet.' },
-  { icon: DollarSign, title: 'Sistema de Comissões', desc: 'Regras flexíveis por produto, vendedor ou equipe com aprovação e pagamento.' },
+  { icon: CalendarDays, title: 'Agenda Inteligente', desc: 'Horários online sem conflito. O cliente marca sozinho pelo seu link e a agenda se organiza.' },
+  { icon: Users, title: 'Profissionais & Comissões', desc: 'Cadastre a equipe, controle a agenda de cada um e calcule comissões automaticamente.' },
+  { icon: MessageSquare, title: 'WhatsApp Centralizado', desc: 'Todas as conversas num só lugar, com IA que responde, agenda e confirma horários 24/7.' },
+  { icon: Sparkles, title: 'Lembretes Anti-Falta', desc: 'Confirmações e lembretes automáticos no WhatsApp reduzem faltas e horários vazios.' },
+  { icon: Bot, title: 'Atendente com IA', desc: 'Um agente treinado pro seu salão tira dúvidas, agenda e vende enquanto você atende.' },
+  { icon: DollarSign, title: 'Financeiro & Caixa', desc: 'Entradas, saídas e caixa do dia sob controle. Saiba quanto cada serviço e profissional rende.' },
+  { icon: CheckCircle2, title: 'Clientes & Fidelização', desc: 'Histórico, preferências e campanhas pra fazer cada cliente voltar sempre.' },
+  { icon: Zap, title: 'Pacotes & Vendas', desc: 'Venda pacotes, planos e produtos com pipeline visual pra fechar mais e acompanhar tudo.' },
+  { icon: PieChart, title: 'Relatórios em Tempo Real', desc: 'Faturamento, ocupação da agenda e ranking de profissionais e serviços — num painel só.' },
+  { icon: Rocket, title: 'Tudo Integrado', desc: 'Agenda, atendimento, financeiro e vendas conversando entre si, com IA nativa.' },
 ];
 
 const STEPS = [
-  { number: '01', title: 'Capture', desc: 'Leads entram por formulários, funis, WhatsApp ou integrações — tudo centralizado.', icon: Sparkles },
-  { number: '02', title: 'Qualifique', desc: 'IA e scoring classificam automaticamente. Sua equipe foca no que importa.', icon: Shield },
-  { number: '03', title: 'Converta', desc: 'Pipeline visual, automações e agentes de IA aceleram o fechamento.', icon: Rocket },
+  { number: '01', title: 'Organize', desc: 'Cadastre serviços, profissionais e clientes. Em minutos seu salão está pronto pra usar.', icon: Sparkles },
+  { number: '02', title: 'Atenda', desc: 'Agenda cheia, WhatsApp respondido pela IA e lembretes que acabam com as faltas.', icon: CalendarDays },
+  { number: '03', title: 'Cresça', desc: 'Fidelize clientes, venda pacotes e acompanhe o faturamento crescer.', icon: Rocket },
 ];
 
 export default function SalesPage() {
@@ -133,15 +133,15 @@ export default function SalesPage() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <AnimatedSection>
             <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Sparkles className="h-4 w-4" /> Plataforma completa de vendas
+              <Sparkles className="h-4 w-4" /> Gestão completa pro seu salão
             </motion.div>
             <motion.h1 variants={fadeUp} className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6">
-              Transforme seu processo de vendas com{' '}
-              <span className="text-primary">inteligência artificial</span>
+              Seu salão organizado, lotado e lucrativo —{' '}
+              <span className="text-primary">com inteligência artificial</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              CRM, inbox omnichannel, funis de captação, agentes de IA e automações — 
-              tudo em uma plataforma integrada para sua equipe vender mais e melhor.
+              Agenda, WhatsApp, clientes, financeiro e vendas em uma só plataforma — com IA que
+              atende, confirma horários e cuida das tarefas chatas, pra você focar no cliente na cadeira.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="xl" onClick={() => setBuyOpen(true)}>
@@ -160,10 +160,10 @@ export default function SalesPage() {
         <div className="max-w-7xl mx-auto">
           <AnimatedSection className="text-center mb-16">
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold mb-4">
-              Tudo que sua equipe precisa para vender mais
+              Tudo que seu salão precisa em um só lugar
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Funcionalidades pensadas para cada etapa do processo comercial.
+              Funcionalidades pensadas pra cada parte da rotina do seu salão.
             </motion.p>
           </AnimatedSection>
 
@@ -193,7 +193,7 @@ export default function SalesPage() {
               Como funciona
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground text-lg">
-              Três passos para revolucionar suas vendas.
+              Três passos pra organizar e fazer seu salão crescer.
             </motion.p>
           </AnimatedSection>
 
@@ -224,11 +224,11 @@ export default function SalesPage() {
                     <Sparkles className="h-4 w-4" /> Planos sob medida
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-                    Cada empresa é única. Seu plano também.
+                    Cada salão é único. Seu plano também.
                   </h2>
                   <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-                    Não vendemos planos genéricos. Analisamos sua operação comercial e montamos 
-                    a configuração ideal para sua equipe — com os módulos, integrações e suporte que você precisa.
+                    Não vendemos planos genéricos. Entendemos a rotina do seu salão e montamos
+                    a configuração ideal — com os módulos, integrações e suporte que você precisa.
                   </p>
                   <Button size="lg" onClick={() => setBuyOpen(true)}>
                     Comprar agora <ArrowRight className="h-5 w-5" />
