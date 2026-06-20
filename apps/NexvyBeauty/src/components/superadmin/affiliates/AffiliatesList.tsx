@@ -106,7 +106,7 @@ export function AffiliatesList() {
                           {meta.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">{Math.round((a.commission_pct ?? 0) * 100)}%</TableCell>
+                      <TableCell className="text-right">{a.commission_pct ?? 0}%</TableCell>
                       <TableCell className="text-right">{brl(s?.pending_cents ?? 0)}</TableCell>
                       <TableCell className="text-right">{brl(s?.approved_cents ?? 0)}</TableCell>
                       <TableCell className="text-right">{brl(s?.paid_cents ?? 0)}</TableCell>

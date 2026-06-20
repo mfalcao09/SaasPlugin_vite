@@ -123,7 +123,7 @@ export function CommissionsTable({ affiliateId }: Props) {
                       </TableCell>
                       <TableCell className="font-mono text-xs">{c.order_ref}</TableCell>
                       <TableCell className="text-right">{brl(c.amount_cents)}</TableCell>
-                      <TableCell className="text-right">{Math.round((c.pct_applied ?? 0) * 100)}%</TableCell>
+                      <TableCell className="text-right">{c.pct_applied ?? 0}%</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={meta.className}>
                           {meta.label}

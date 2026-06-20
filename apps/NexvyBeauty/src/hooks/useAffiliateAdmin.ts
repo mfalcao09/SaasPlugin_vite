@@ -20,7 +20,7 @@ export interface Affiliate {
   phone: string | null;
   pix_key: string | null;
   status: AffiliateStatus;
-  commission_pct: number; // fração (0.30 = 30%)
+  commission_pct: number; // percentual inteiro (30 = 30%)
   notes: string | null;
   created_at: string;
   updated_at: string;

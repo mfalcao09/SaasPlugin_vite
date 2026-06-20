@@ -46,8 +46,8 @@ export function AffiliateFormDialog({ open, onOpenChange, affiliate }: Props) {
       setEmail(affiliate?.email ?? '');
       setPhone(affiliate?.phone ?? '');
       setPixKey(affiliate?.pix_key ?? '');
-      // commission_pct vem como fração (0.30); exibe humano (30)
-      setCommissionPct(affiliate ? String(Math.round((affiliate.commission_pct ?? 0) * 100)) : '30');
+      // commission_pct é percentual inteiro (30 = 30%)
+      setCommissionPct(affiliate ? String(affiliate.commission_pct ?? 30) : '30');
       setStatus(affiliate?.status ?? 'active');
       setNotes(affiliate?.notes ?? '');
       setSendWelcome(true);

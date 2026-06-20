@@ -8,8 +8,8 @@
 //   get_auth_user_id_by_email -> (ausente) auth.admin.createUser(email_confirm:true)
 //   -> generateLink({type:'recovery'}) -> send-transactional-email (best-effort).
 //
-// Regra travada: commission_pct no banco é FRAÇÃO (0.30). A UI envia percentual
-// humano (30); esta função grava `Number(commission_pct)/100`.
+// Regra travada: commission_pct no banco é PERCENTUAL INTEIRO (30 = 30%), igual ao
+// que o helper de comissão usa (amountCents = amount * pct). A UI envia 30; grava 30.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -128,8 +128,8 @@ Deno.serve(async (req) => {
         if (!name || !email) return json({ error: 'name e email obrigatórios' }, 400);
 
         const status = VALID_STATUS.has(body.status) ? body.status : 'active';
-        const pctHuman = Number(body.commission_pct);
-        const pctFraction = Number.isFinite(pctHuman) ? pctHuman / 100 : 0;
+        const pctRaw = Number(body.commission_pct);
+        const pctPercent = Number.isFinite(pctRaw) && pctRaw >= 0 ? pctRaw : 0;
         const sendWelcome = body.send_welcome !== false;
 
         // 1) Resolve/cria auth user (espelha ensureAdminUser).
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
             phone: body.phone ?? null,
             pix_key: body.pix_key ?? null,
             status,
-            commission_pct: pctFraction,
+            commission_pct: pctPercent,
             notes: body.notes ?? null,
           })
           .select('*')
@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
         if ('commission_pct' in patch) {
           const h = Number(patch.commission_pct);
           if (!Number.isFinite(h) || h < 0) return json({ error: 'commission_pct inválido' }, 400);
-          update.commission_pct = h / 100; // humano -> fração
+          update.commission_pct = h; // percentual inteiro (30 = 30%)
         }
         // email NÃO é editável (chave do auth user).
 
