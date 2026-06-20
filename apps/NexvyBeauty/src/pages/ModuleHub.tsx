@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/config/modules';
 import { usePlanModules } from '@/hooks/usePlanModules';
@@ -122,33 +123,13 @@ const ModuleHub = () => {
         />
       )}
 
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
-        {/* ─── Header: saudação + org + badges de papel ─────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <LayoutGrid className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground leading-tight">
-                {firstName ? `Olá, ${firstName}` : 'Olá'}
-              </h1>
-              {orgName && (
-                <p className="text-sm text-muted-foreground">{orgName}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isSuperAdmin() && <OrganizationSelector />}
-            {isSuperAdmin() && (
-              <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
-                <Crown className="w-3 h-3 mr-1" /> Super Admin
-              </Badge>
-            )}
-            {isPlainAdmin && <Badge variant="outline">Admin</Badge>}
-          </div>
-        </div>
+      {/* Topbar canônica do sistema (mesma de todos os módulos). */}
+      <AppTopBar
+        title={firstName ? `Olá, ${firstName}` : 'Olá'}
+        subtitle={orgName || undefined}
+      />
 
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* ─── Grid de módulos ──────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-4">
