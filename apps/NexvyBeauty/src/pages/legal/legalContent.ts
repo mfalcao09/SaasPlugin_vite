@@ -13,9 +13,9 @@ export const CONSENT_TEXT =
 
 export const TERMOS_MD = `## Termos de Uso — NexvyBeauty
 
-**Última atualização:** [data de vigência]
+**Última atualização:** 19 de junho de 2026
 
-Estes Termos de Uso ("Termos") regulam o acesso e a utilização da plataforma **NexvyBeauty** ("Plataforma"), software de gestão para salões de beleza e estabelecimentos de estética, disponibilizado sob a modalidade de software como serviço (SaaS), de titularidade de **[Razão social da Nexvy]**, inscrita no CNPJ sob o nº **[CNPJ]**, com sede em **[endereço]** ("Nexvy", "nós").
+Estes Termos de Uso ("Termos") regulam o acesso e a utilização da plataforma **NexvyBeauty** ("Plataforma"), software de gestão para salões de beleza e estabelecimentos de estética, disponibilizado sob a modalidade de software como serviço (SaaS), de titularidade de **NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA - ME**, inscrita no CNPJ sob o nº **64.930.755/0001-78**, com sede em **Avenida Brigadeiro Faria Lima, 1572, Sala 1022, Jardim Paulistano, São Paulo - SP, CEP 01451-917** ("Nexvy", "nós").
 
 Ao se cadastrar, contratar, acessar ou utilizar a Plataforma, o Usuário declara que leu, compreendeu e concorda integralmente com estes Termos e com a **Política de Privacidade**, que constitui parte integrante e indissociável deste instrumento. **Caso não concorde com qualquer disposição, o Usuário não deve utilizar a Plataforma.**
 
@@ -158,16 +158,16 @@ Ao se cadastrar, contratar, acessar ou utilizar a Plataforma, o Usuário declara
 
 13.1. Estes Termos são regidos pela legislação brasileira, incluindo o CDC, o Marco Civil da Internet (Lei nº 12.965/2014) e a LGPD.
 
-13.2. Fica eleito o foro da comarca de **[comarca/cidade da sede da Nexvy]**, ressalvado ao Usuário pessoa física consumidora o direito de demandar no foro de seu domicílio.
+13.2. Fica eleito o foro da comarca de **São Paulo, Estado de São Paulo**, ressalvado ao Usuário pessoa física consumidora o direito de demandar no foro de seu domicílio.
 
-13.3. **Contato:** **[e-mail de contato da Nexvy]** ou pelos canais de atendimento indicados na Plataforma.
+13.3. **Contato:** **dpo@nexvy.tech** ou pelos canais de atendimento indicados na Plataforma.
 `;
 
 export const PRIVACIDADE_MD = `## Política de Privacidade — NexvyBeauty
 
-**Última atualização / Data de vigência:** [data de vigência]
+**Última atualização / Data de vigência:** 19 de junho de 2026
 
-Esta Política descreve como a **[Razão social da Nexvy]**, inscrita no CNPJ sob o nº **[CNPJ]**, com sede em **[endereço]** ("Nexvy", "nós"), coleta, utiliza, compartilha, armazena e protege dados pessoais no âmbito da plataforma **NexvyBeauty** ("Plataforma") e de suas páginas, incluindo a página de vendas.
+Esta Política descreve como a **NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA - ME**, inscrita no CNPJ sob o nº **64.930.755/0001-78**, com sede em **Avenida Brigadeiro Faria Lima, 1572, Sala 1022, Jardim Paulistano, São Paulo - SP, CEP 01451-917** ("Nexvy", "nós"), coleta, utiliza, compartilha, armazena e protege dados pessoais no âmbito da plataforma **NexvyBeauty** ("Plataforma") e de suas páginas, incluindo a página de vendas.
 
 Esta Política observa a **Lei nº 13.709/2018 (LGPD)** e demais normas aplicáveis.
 
@@ -219,7 +219,7 @@ Quando o tratamento se fundamentar em **legítimo interesse**, realizamos a devi
 
 ### 5. Compartilhamento de Dados
 
-5.1. Não vendemos dados pessoais. O compartilhamento ocorre com: **subprocessadores** (provedor de infraestrutura e banco de dados, provedor de pagamento/checkout, e-mail transacional, mensageria WhatsApp/Meta, provedores de IA — **[Lista completa e atualizada de subprocessadores]**); **plataformas de marketing/anúncios** (quando houver consentimento); **Afiliados** (apenas para atribuição da indicação); **autoridades públicas/judiciais** (cumprimento legal); e em **operações societárias** (reorganização, fusão ou aquisição, com continuidade da proteção).
+5.1. Não vendemos dados pessoais. O compartilhamento ocorre com: **subprocessadores** (provedor de infraestrutura e banco de dados, provedor de pagamento/checkout, e-mail transacional, mensageria WhatsApp/Meta, provedores de IA — cuja lista completa e atualizada está disponível mediante solicitação ao Encarregado); **plataformas de marketing/anúncios** (quando houver consentimento); **Afiliados** (apenas para atribuição da indicação); **autoridades públicas/judiciais** (cumprimento legal); e em **operações societárias** (reorganização, fusão ou aquisição, com continuidade da proteção).
 
 5.2. Todo compartilhamento limita-se ao necessário para as finalidades descritas.
 
@@ -227,8 +227,7 @@ Quando o tratamento se fundamentar em **legítimo interesse**, realizamos a devi
 
 6.1. Alguns subprocessadores podem processar dados fora do Brasil. Nesses casos, adotamos salvaguardas compatíveis com a LGPD (art. 33 e seguintes), como cláusulas contratuais adequadas e verificação de garantias.
 
-6.2. A relação de subprocessadores e localidades poderá ser disponibilizada mediante solicitação ao Encarregado. **[Detalhar provedores com transferência internacional, quando aplicável]**
-
+6.2. A relação de subprocessadores e localidades poderá ser disponibilizada mediante solicitação ao Encarregado.
 ### 7. Retenção de Dados
 
 7.1. Os dados são mantidos pelo tempo necessário às finalidades, observados: **lead não convertido** (enquanto houver interesse legítimo ou consentimento, eliminado/anonimizado após revogação ou inatividade razoável); **conta e contratuais** (durante a vigência e pelos prazos prescricionais/regulatórios); **registros de acesso** (prazo legal mínimo do Marco Civil); **dados fiscais/financeiros** (prazos tributários e contábeis); **prova de consentimento** (período necessário à demonstração de conformidade).
@@ -249,7 +248,7 @@ O titular pode, a qualquer momento: obter **confirmação** da existência de tr
 
 ### 10. Como Exercer seus Direitos e Encarregado (DPO)
 
-10.1. Requisições pelo canal do Encarregado pela Proteção de Dados (DPO): **[nome do Encarregado]** — **[e-mail do DPO/encarregado]**.
+10.1. Requisições pelo canal do Encarregado pela Proteção de Dados (DPO): **Equipe de Privacidade da Nexvy** — **dpo@nexvy.tech**.
 
 10.2. Poderemos solicitar informações adicionais para confirmar a identidade do titular, como medida de segurança.
 
@@ -261,5 +260,5 @@ O titular pode, a qualquer momento: obter **confirmação** da existência de tr
 
 11.2. Alterações relevantes serão comunicadas por meios razoáveis (aviso na Plataforma, e-mail ou atualização da data de vigência).
 
-11.3. **Controladora:** [Razão social da Nexvy] — CNPJ [CNPJ] — [endereço]. **Contato do Encarregado:** [e-mail do DPO/encarregado]. **Data de vigência:** [data de vigência].
+11.3. **Controladora:** NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA - ME — CNPJ 64.930.755/0001-78 — Avenida Brigadeiro Faria Lima, 1572, Sala 1022, Jardim Paulistano, São Paulo - SP, CEP 01451-917. **Contato do Encarregado:** dpo@nexvy.tech. **Data de vigência:** 19 de junho de 2026.
 `;
