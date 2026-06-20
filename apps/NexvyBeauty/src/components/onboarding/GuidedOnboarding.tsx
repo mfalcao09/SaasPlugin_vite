@@ -273,6 +273,26 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
   const [logoUrl, setLogoUrl] = useState(company?.logo_url || '');
   const [color, setColor] = useState<string>('#3b82f6');
   const [uploading, setUploading] = useState(false);
+  const [orgName, setOrgName] = useState('');
+
+  // Pré-carrega o nome atual da empresa (veio do provisionamento) p/ o admin
+  // confirmar/ajustar no 1º acesso.
+  useEffect(() => {
+    const orgId = profile?.organization_id;
+    if (!orgId) return;
+    let active = true;
+    supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', orgId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active && data?.name) setOrgName(data.name);
+      });
+    return () => {
+      active = false;
+    };
+  }, [profile?.organization_id]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -301,9 +321,11 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
         .eq('id', profile.organization_id)
         .maybeSingle();
       const newSettings = { ...(org?.settings as any || {}), primary_color: color };
+      const patch: Record<string, any> = { settings: newSettings };
+      if (orgName.trim()) patch.name = orgName.trim();
       await supabase
         .from('organizations')
-        .update({ settings: newSettings })
+        .update(patch)
         .eq('id', profile.organization_id);
       onNext();
     } catch (err: any) {
@@ -316,10 +338,19 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
       <StepHeader
         icon={Palette}
         title="Identidade da empresa"
-        description="Logo e cor para personalizar a plataforma."
+        description="Confirme o nome da sua empresa e personalize logo e cor."
       />
 
       <div className="space-y-5 flex-1">
+        <div>
+          <Label className="mb-2 block">Nome da empresa</Label>
+          <Input
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            placeholder="Nome do seu salão"
+            maxLength={120}
+          />
+        </div>
         <div>
           <Label className="mb-2 block">Logo</Label>
           <div className="flex items-center gap-4">
