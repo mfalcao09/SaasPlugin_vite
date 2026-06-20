@@ -96,6 +96,28 @@ export function useCreateAgent() {
     mutationFn: async (agentRaw: Partial<ProductAgent>) => {
       if (!profile?.organization_id) throw new Error('Organization not found');
 
+      // Quota do plano (UX): espelha o trigger trg_enforce_max_ai_agents no banco.
+      // O gate REAL é o trigger; aqui é só feedback rápido. Fail-open: só bloqueia
+      // se o limite vier como número (RPC já migrada) — evita falso-bloqueio se a
+      // migration ainda não rodou.
+      {
+        const { data: limits } = await supabase.rpc('get_organization_effective_limits', {
+          p_org_id: profile.organization_id,
+        });
+        const maxAgents = (limits as any)?.limits?.max_ai_agents;
+        if (typeof maxAgents === 'number') {
+          const { count: agentCount } = await supabase
+            .from('product_agents')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', profile.organization_id);
+          if ((agentCount ?? 0) >= maxAgents) {
+            throw new Error(
+              `Limite de ${maxAgents} agente(s) de IA do seu plano atingido. Faça upgrade para criar mais.`,
+            );
+          }
+        }
+      }
+
       const agent = stripNonAgentFields(agentRaw);
       const insertData = {
         name: agent.name || '',
@@ -180,7 +202,7 @@ export function useCreateAgent() {
     },
     onError: (error) => {
       console.error('Error creating agent:', error);
-      toast.error('Erro ao criar agente');
+      toast.error(error instanceof Error ? error.message : 'Erro ao criar agente');
     },
   });
 }

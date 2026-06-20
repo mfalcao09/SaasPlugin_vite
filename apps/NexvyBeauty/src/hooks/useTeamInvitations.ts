@@ -124,7 +124,29 @@ export function useCreateInvitation() {
       if (existing) {
         throw new Error('Já existe um convite pendente para este email');
       }
-      
+
+      // Quota do plano (UX): só membros ATIVOS contam; convite pendente NÃO
+      // reserva vaga (decisão Marcelo 2026-06-20). O gate REAL é o trigger
+      // trg_enforce_max_users, que dispara no aceite (profiles.organization_id).
+      // Fail-open: só bloqueia se max_users vier como número.
+      {
+        const { data: limits } = await supabase.rpc('get_organization_effective_limits', {
+          p_org_id: profile.organization_id,
+        });
+        const maxUsers = (limits as any)?.limits?.max_users;
+        if (typeof maxUsers === 'number') {
+          const { count: memberCount } = await supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', profile.organization_id);
+          if ((memberCount ?? 0) >= maxUsers) {
+            throw new Error(
+              `Limite de ${maxUsers} usuário(s) do seu plano atingido. Faça upgrade para adicionar mais membros.`,
+            );
+          }
+        }
+      }
+
       // Get squad name if squadId is provided
       let squadName: string | undefined;
       if (squadId) {

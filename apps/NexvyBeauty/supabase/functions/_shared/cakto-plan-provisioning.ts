@@ -137,6 +137,9 @@ export async function provisionPlatformPlan(
       plan_status: 'active',
       plan_activated_at: new Date().toISOString(),
       cakto_subscription_id: order.cakto_ref_id ?? order.cakto_id ?? null,
+      // Módulos do NexvyBeauty são FIXOS — o provisioning é a fonte de verdade.
+      // Espelha PRODUCT_MODULES de src/config/modules.ts (não importável aqui: Deno).
+      enabled_modules: ['erp_salao', 'crm_vendas', 'atendimento'],
     })
     .eq('id', orgId);
   if (planErr) errors.push(`plan update: ${planErr.message}`);
