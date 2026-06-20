@@ -84,3 +84,10 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     visibility: 'super_admin',
   },
 ];
+
+/**
+ * Módulos de PRODUTO sempre ativos no NexvyBeauty (sem seleção no onboarding).
+ * Os planos diferenciam por QUANTITATIVO (instâncias WhatsApp, usuários,
+ * agentes de IA) + concessão de acessos — não por liga/desliga de módulo.
+ */
+export const PRODUCT_MODULES: ModuleId[] = ['erp_salao', 'crm_vendas', 'atendimento'];

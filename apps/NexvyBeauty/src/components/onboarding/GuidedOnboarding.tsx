@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { MODULE_DEFINITIONS, type ModuleId } from '@/config/modules';
+import { MODULE_DEFINITIONS, PRODUCT_MODULES, type ModuleId } from '@/config/modules';
 import { usePlanModules } from '@/hooks/usePlanModules';
 import {
   MODULE_ONBOARDING_STEPS,
@@ -109,36 +109,25 @@ const CRM_STEP_KINDS: StepNode[] = [
 ];
 
 /**
- * Monta a lista de passos a partir dos módulos escolhidos.
- * Welcome → Identity → Modules → (passos dos módulos) → Team → Done.
- * A ordem dos módulos segue MODULE_DEFINITIONS para previsibilidade.
+ * Sequência do onboarding. NexvyBeauty tem módulos FIXOS (sem etapa de
+ * seleção): o wizard foca em deixar o SALÃO operacional (profissionais +
+ * serviços). WhatsApp, CRM e agentes de IA ficam sempre ativos e são
+ * configurados nos próprios módulos depois (descobríveis pelo hub).
  */
-function buildSteps(selected: ModuleId[]): StepNode[] {
-  const moduleSteps: StepNode[] = [];
-  for (const def of MODULE_DEFINITIONS) {
-    if (!selected.includes(def.id)) continue;
-    if (def.id === 'crm_vendas') {
-      // CRM usa os passos ricos já existentes aqui.
-      moduleSteps.push(...CRM_STEP_KINDS);
-      continue;
-    }
-    // Demais módulos: passos do registry (erp_oficina, atendimento, ...).
-    const regSteps = MODULE_ONBOARDING_STEPS[def.id] ?? [];
-    for (const s of regSteps) {
-      moduleSteps.push({
-        kind: 'module',
-        moduleId: def.id,
-        Component: s.Component,
-        label: s.label,
-      });
-    }
-  }
+function buildSteps(): StepNode[] {
+  const salaoSteps: StepNode[] = (MODULE_ONBOARDING_STEPS['erp_salao'] ?? []).map(
+    (s) => ({
+      kind: 'module' as const,
+      moduleId: 'erp_salao' as ModuleId,
+      Component: s.Component,
+      label: s.label,
+    })
+  );
 
   return [
     { kind: 'welcome' },
     { kind: 'identity' },
-    { kind: 'modules' },
-    ...moduleSteps,
+    ...salaoSteps,
     { kind: 'team' },
     { kind: 'done' },
   ];
@@ -155,16 +144,26 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
     instancePhone: null,
     agentId: null,
     agentName: null,
-    selectedModules: [],
+    selectedModules: PRODUCT_MODULES,
   });
 
   const update = (patch: Partial<OnboardingShared>) =>
     setShared((s) => ({ ...s, ...patch }));
 
-  // A sequência é recomputada quando a seleção de módulos muda. Até o passo
-  // de módulos rodar, selectedModules é [] e a sequência é só
-  // welcome→identity→modules→team→done (mínima válida).
-  const steps = buildSteps(shared.selectedModules);
+  // Módulos do NexvyBeauty são FIXOS — ativa o conjunto de produto na org ao
+  // abrir o wizard (idempotente). O provisioning também seta; isto garante o
+  // estado correto mesmo se o provisioning ainda não rodou.
+  const { profile } = useAuth();
+  useEffect(() => {
+    const orgId = profile?.organization_id;
+    if (!open || !orgId) return;
+    void (supabase.from('organizations') as any)
+      .update({ enabled_modules: PRODUCT_MODULES })
+      .eq('id', orgId);
+  }, [open, profile?.organization_id]);
+
+  // Módulos são FIXOS — sequência estática focada no salão.
+  const steps = buildSteps();
   const safeIdx = Math.min(stepIdx, steps.length - 1);
   const node = steps[safeIdx];
   const progress = (safeIdx / Math.max(steps.length - 1, 1)) * 100;
@@ -199,15 +198,6 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
           )}
           {node.kind === 'identity' && (
             <IdentityStep onNext={goNext} onSkip={goNext} onBack={goPrev} />
-          )}
-          {node.kind === 'modules' && (
-            <ModulesStep
-              onNext={goNext}
-              onSkip={goNext}
-              onBack={goPrev}
-              selected={shared.selectedModules}
-              update={update}
-            />
           )}
           {node.kind === 'crm-product' && (
             <ProductStep
@@ -261,7 +251,7 @@ function WelcomeStep({ onNext, onSkipAll }: { onNext: () => void; onSkipAll: () 
       </div>
       <h2 className="text-2xl font-bold mb-2">Olá, {firstName}!</h2>
       <p className="text-muted-foreground max-w-sm mb-8">
-        Em poucos minutos vamos configurar seu salão e seus módulos: escolha o que ativar agora e deixe tudo pronto para o dia a dia.
+        Em poucos minutos vamos deixar seu salão pronto para o dia a dia: cadastre seus profissionais e serviços e comece a atender.
       </p>
       <div className="flex gap-3 w-full max-w-xs">
         <Button variant="outline" onClick={onSkipAll} className="flex-1">
