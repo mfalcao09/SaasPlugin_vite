@@ -25,6 +25,14 @@ export function isEditorHost(hostname = typeof window !== 'undefined' ? window.l
   );
 }
 
+// Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.* e
+// NÃO é dev/preview. Ex.: nexvybeauty.com.br / www.nexvybeauty.com.br → true;
+// app.nexvybeauty.com.br → false; localhost/preview → false (dev usa o app).
+export function isApexDomain(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
+  if (isEditorHost(hostname)) return false;
+  return !hostname.startsWith('app.');
+}
+
 export function getPublicAppUrl(configuredUrl?: string | null): string {
   const configured = normalizeUrl(configuredUrl) || normalizeUrl((readCachedBrandingSync() as any)?.public_app_url);
 

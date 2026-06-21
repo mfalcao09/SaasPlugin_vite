@@ -15,6 +15,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { isApexDomain } from "@/lib/publicUrl";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
@@ -180,13 +181,19 @@ const App = () => (
               <Route path="/docs/:track" element={<Docs />} />
               <Route path="/docs/:track/:slug" element={<Docs />} />
 
-              {/* Hub de Módulos = home permanente (padrão Intentus) */}
+              {/* Home: no apex (marketing) mostra a LP de vendas; no app.*
+                  mostra o hub autenticado. Visitante anônimo no apex NÃO cai
+                  mais no login. */}
               <Route
                 path="/"
                 element={
-                  <ProtectedRoute>
-                    <ModuleHub />
-                  </ProtectedRoute>
+                  isApexDomain() ? (
+                    <SalesPage />
+                  ) : (
+                    <ProtectedRoute>
+                      <ModuleHub />
+                    </ProtectedRoute>
+                  )
                 }
               />
               {/* CRM de Vendas (app do vendedor — antigo "/") */}
