@@ -30,6 +30,7 @@ import { LeadTransferModal } from './LeadTransferModal';
 import { LeadEditModal } from './LeadEditModal';
 import { Button } from '@/components/ui/button';
 import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
+import { useNavigate } from 'react-router-dom';
 
 interface LeadDetailPageProps {
   leadId: string;
@@ -63,6 +64,7 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
   };
 
   // Converte o lead em cliente do salão (lifecycle: agendou/contratou → cliente).
+  const navigate = useNavigate();
   const convertToCliente = useConvertLeadToCliente();
   const handleConvertToCliente = () => {
     if (!lead) return;
@@ -73,6 +75,20 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
       telefone: lead.phone,
       organizationId: lead.organization_id,
     });
+  };
+  // Converte em cliente e abre a Agenda do salão já com a pessoa selecionada.
+  const handleAgendarLead = () => {
+    if (!lead) return;
+    convertToCliente.mutate(
+      {
+        leadId: lead.id,
+        nome: lead.name,
+        email: lead.email,
+        telefone: lead.phone,
+        organizationId: lead.organization_id,
+      },
+      { onSuccess: (res) => navigate(`/salao/agenda?cliente=${res.clienteId}`) },
+    );
   };
 
   if (isLoading) {
@@ -137,7 +153,7 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
           onWhatsApp={onWhatsApp && formattedLead.phone ? () => onWhatsApp(formattedLead.phone!, lead.id, lead.name) : undefined}
           isAdmin={showAdminControls}
         />
-        <div className="px-4 md:px-6 py-2 border-b bg-card/40 flex items-center justify-end">
+        <div className="px-4 md:px-6 py-2 border-b bg-card/40 flex items-center justify-end gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -148,6 +164,16 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
           >
             {convertToCliente.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
             Converter em cliente
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleAgendarLead}
+            disabled={convertToCliente.isPending}
+            className="gap-2"
+            title="Converte em cliente e abre a Agenda do salão já com a pessoa selecionada"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Agendar
           </Button>
         </div>
       </div>

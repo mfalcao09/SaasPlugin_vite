@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Plus, Search, Loader2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { convertLeadToCliente } from '@/hooks/useLeadToCliente'
 
 interface Agendamento {
   id: string
@@ -50,6 +52,7 @@ const db = supabase as any
 
 export default function Agenda() {
   const organizationId = useOrganizationId()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -109,6 +112,27 @@ export default function Agenda() {
     enabled: !!organizationId,
   })
 
+  // Leads do CRM — agendáveis direto: ao escolher um lead e salvar, ele é
+  // convertido em cliente (ciclo de vida: agendou → virou cliente).
+  const { data: leads = [] } = useQuery({
+    queryKey: ['agenda-leads', organizationId],
+    queryFn: async () => {
+      const { data: rows, error } = await db.from('leads').select('id, name, phone')
+        .eq('organization_id', organizationId!)
+        .order('created_at', { ascending: false }).limit(200)
+      if (error) return []
+      return (rows ?? []) as { id: string; name: string; phone: string | null }[]
+    },
+    enabled: !!organizationId,
+  })
+
+  // Pré-seleção vinda do botão "Agendar" no lead (/salao/agenda?cliente=<id>).
+  useEffect(() => {
+    const cid = searchParams.get('cliente')
+    if (cid) { setClienteId('cli:' + cid); setShowForm(true) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   function resetForm() {
     setShowForm(false); setEditId(null)
     setClienteId(''); setProfissionalId(''); setServicoId('')
@@ -118,7 +142,7 @@ export default function Agenda() {
 
   function openEdit(a: Agendamento) {
     setEditId(a.id)
-    setClienteId(a.cliente_id ?? '')
+    setClienteId(a.cliente_id ? 'cli:' + a.cliente_id : '')
     setProfissionalId(a.profissional_id ?? '')
     setServicoId(a.servico_id ?? '')
     setData(a.data ?? '')
@@ -138,13 +162,31 @@ export default function Agenda() {
 
   const salvar = useMutation({
     mutationFn: async () => {
-      const cliente = clientes.find(c => c.id === clienteId)
+      // Resolve a seleção do "cliente": "cli:<id>" usa o cliente existente;
+      // "lead:<id>" converte o lead em cliente antes (anti-duplicata no hook).
+      let resolvedClienteId: string | null = null
+      let resolvedClienteNome: string | null = null
+      if (clienteId.startsWith('lead:')) {
+        const leadId = clienteId.slice(5)
+        const lead = leads.find(l => l.id === leadId)
+        const res = await convertLeadToCliente({
+          leadId,
+          nome: lead?.name ?? 'Cliente',
+          telefone: lead?.phone ?? null,
+          organizationId: organizationId!,
+        })
+        resolvedClienteId = res.clienteId
+        resolvedClienteNome = lead?.name ?? null
+      } else if (clienteId.startsWith('cli:')) {
+        resolvedClienteId = clienteId.slice(4)
+        resolvedClienteNome = clientes.find(c => c.id === resolvedClienteId)?.nome ?? null
+      }
       const profissional = profissionais.find(p => p.id === profissionalId)
       const servico = servicos.find(s => s.id === servicoId)
       const payload = {
         organization_id: organizationId!,
-        cliente_id: clienteId || null,
-        cliente_nome: cliente?.nome ?? null,
+        cliente_id: resolvedClienteId,
+        cliente_nome: resolvedClienteNome,
         profissional_id: profissionalId || null,
         profissional_nome: profissional?.nome ?? null,
         servico_id: servicoId || null,
@@ -167,6 +209,8 @@ export default function Agenda() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['agendamentos', organizationId] })
+      qc.invalidateQueries({ queryKey: ['clientes', organizationId] })
+      qc.invalidateQueries({ queryKey: ['agenda-leads', organizationId] })
       toast.success(editId ? 'Agendamento atualizado!' : 'Agendamento criado!')
       resetForm()
     },
@@ -199,8 +243,15 @@ export default function Agenda() {
           <h2 className="font-semibold text-foreground">{editId ? 'Editar Agendamento' : 'Novo Agendamento'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select value={clienteId} onChange={e => setClienteId(e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
-              <option value="">Selecionar cliente *</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              <option value="">Selecionar cliente ou lead *</option>
+              <optgroup label="Clientes">
+                {clientes.map(c => <option key={c.id} value={`cli:${c.id}`}>{c.nome}</option>)}
+              </optgroup>
+              {leads.length > 0 && (
+                <optgroup label="Leads (viram cliente ao agendar)">
+                  {leads.map(l => <option key={l.id} value={`lead:${l.id}`}>{l.name}{l.phone ? ` · ${l.phone}` : ''}</option>)}
+                </optgroup>
+              )}
             </select>
             <select value={profissionalId} onChange={e => setProfissionalId(e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
               <option value="">Selecionar profissional *</option>
