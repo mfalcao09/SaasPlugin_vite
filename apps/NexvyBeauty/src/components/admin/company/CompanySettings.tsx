@@ -29,6 +29,8 @@ function formatCEP(v: string) {
   return d.replace(/^(\d{5})(\d)/, '$1-$2');
 }
 
+const PRESET_COLORS = ['#F97316', '#EC4899', '#8B5CF6', '#10B981', '#3B82F6', '#EF4444', '#F59E0B', '#14B8A6'];
+
 export function CompanySettings() {
   const { data: company } = useCompanySettings();
   const { profile } = useAuth();
@@ -41,6 +43,7 @@ export function CompanySettings() {
   const [phone, setPhone] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [address, setAddress] = useState<CompanyAddress>({});
+  const [color, setColor] = useState('');
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -51,6 +54,7 @@ export function CompanySettings() {
       setPhone(company.phone ?? '');
       setLogoUrl(company.logo_url);
       setAddress(company.address ?? {});
+      setColor(company.primary_color ?? '');
     }
   }, [company]);
 
@@ -70,7 +74,7 @@ export function CompanySettings() {
   };
 
   const handleSave = () => {
-    update.mutate({ name, cnpj, email, phone, logo_url: logoUrl, address });
+    update.mutate({ name, cnpj, email, phone, logo_url: logoUrl, address, primary_color: color || null });
   };
 
   return (
@@ -131,6 +135,41 @@ export function CompanySettings() {
               <Label>Telefone</Label>
               <Input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cor da marca</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="color"
+                value={color || '#F97316'}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-14 rounded-md border border-border bg-transparent cursor-pointer p-1"
+                aria-label="Selecionar cor da marca"
+              />
+              <Input
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="#F97316"
+                className="w-32 font-mono uppercase"
+                maxLength={7}
+              />
+              <div className="flex gap-1.5">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className="h-7 w-7 rounded-full border border-border transition hover:scale-110"
+                    style={{ background: c }}
+                    aria-label={`Usar ${c}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cor principal da sua marca, usada nos seus canais e materiais.
+            </p>
           </div>
         </CardContent>
       </Card>
