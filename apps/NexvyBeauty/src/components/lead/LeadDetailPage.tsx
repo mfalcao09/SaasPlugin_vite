@@ -10,7 +10,8 @@ import {
   Wallet, 
   FileText,
   CalendarClock,
-  Loader2
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 import { useLead, usePipelineStages, useUpdateLead } from '@/hooks/useLeads';
 import { useInteractions } from '@/hooks/useInteractions';
@@ -27,6 +28,8 @@ import { LeadNotesTab } from './LeadNotesTab';
 import { LeadCadencesTab } from './LeadCadencesTab';
 import { LeadTransferModal } from './LeadTransferModal';
 import { LeadEditModal } from './LeadEditModal';
+import { Button } from '@/components/ui/button';
+import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
 
 interface LeadDetailPageProps {
   leadId: string;
@@ -57,6 +60,19 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
   const handleUpdateLead = async (updates: Record<string, any>) => {
     await updateLead.mutateAsync({ id: leadId, ...updates });
     refetch();
+  };
+
+  // Converte o lead em cliente do salão (lifecycle: agendou/contratou → cliente).
+  const convertToCliente = useConvertLeadToCliente();
+  const handleConvertToCliente = () => {
+    if (!lead) return;
+    convertToCliente.mutate({
+      leadId: lead.id,
+      nome: lead.name,
+      email: lead.email,
+      telefone: lead.phone,
+      organizationId: lead.organization_id,
+    });
   };
 
   if (isLoading) {
@@ -121,6 +137,19 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
           onWhatsApp={onWhatsApp && formattedLead.phone ? () => onWhatsApp(formattedLead.phone!, lead.id, lead.name) : undefined}
           isAdmin={showAdminControls}
         />
+        <div className="px-4 md:px-6 py-2 border-b bg-card/40 flex items-center justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleConvertToCliente}
+            disabled={convertToCliente.isPending}
+            className="gap-2"
+            title="Cria/vincula um cliente do salão a partir deste lead"
+          >
+            {convertToCliente.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            Converter em cliente
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
