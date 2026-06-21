@@ -9,6 +9,7 @@ import { SectionErrorBoundary } from '@/components/admin/SectionErrorBoundary';
 import { lazyWithRetry, prefetch, onIdle } from '@/lib/lazyWithRetry';
 import { allMenuItems } from '@/config/adminMenu';
 import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 // Factories nomeadas para podermos reutilizá-las no prefetch on-hover.
 const f = {
@@ -293,6 +294,7 @@ export default function Admin() {
         onSectionChange={handleSectionChange}
       />
       <main className="flex-1 overflow-auto">
+        <AppTopBar title="Administração" />
         <OnboardingBanner />
         <div className="p-6">
           {renderContent()}

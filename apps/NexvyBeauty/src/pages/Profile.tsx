@@ -11,6 +11,7 @@ import { ArrowLeft, Camera, Loader2, User, Mail, Phone, Save, Upload } from 'luc
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -77,17 +78,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="flex items-center h-full px-6 gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft size={20} />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Meu Perfil</h1>
-            <p className="text-sm text-muted-foreground">Gerencie suas informações pessoais</p>
-          </div>
-        </div>
-      </header>
+      <AppTopBar title="Meu Perfil" subtitle="Gerencie suas informações pessoais" />
 
       <main className="container max-w-2xl mx-auto py-8 px-4">
         {/* Avatar Section */}

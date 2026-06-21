@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Sparkles, Wrench, Bug, BookOpen, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 const TYPE_META: Record<string, { label: string; icon: any; cls: string }> = {
   feature: { label: 'Nova feature', icon: Sparkles, cls: 'bg-primary/10 text-primary border-primary/20' },
@@ -42,20 +43,7 @@ export default function Updates() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/80 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /></Button>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Novidades</h1>
-          </div>
-          <div className="ml-auto">
-            <Link to="/ajuda">
-              <Button variant="outline" size="sm" className="gap-2"><BookOpen className="h-4 w-4" /> Central de Ajuda</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AppTopBar title="Novidades" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         <div className="flex flex-wrap gap-2">

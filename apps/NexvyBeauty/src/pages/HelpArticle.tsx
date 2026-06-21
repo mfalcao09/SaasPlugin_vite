@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 export default function HelpArticle() {
   const { slug } = useParams<{ slug: string }>();
@@ -50,23 +51,16 @@ export default function HelpArticle() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/80 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/ajuda')}><ArrowLeft className="h-4 w-4" /></Button>
-          <Link to="/ajuda" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <BookOpen className="h-4 w-4" /> Central de Ajuda
-          </Link>
-          <div className="ml-auto">
-            <Button variant="ghost" size="sm" onClick={share} className="gap-2"><Share2 className="h-4 w-4" /> Compartilhar</Button>
-          </div>
-        </div>
-      </header>
+      <AppTopBar title="Central de Ajuda" />
 
       <article className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div className="space-y-3">
-          {article.help_categories && (
-            <Badge variant="secondary">{article.help_categories.name}</Badge>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            {article.help_categories ? (
+              <Badge variant="secondary">{article.help_categories.name}</Badge>
+            ) : <span />}
+            <Button variant="ghost" size="sm" onClick={share} className="gap-2"><Share2 className="h-4 w-4" /> Compartilhar</Button>
+          </div>
           <h1 className="text-3xl font-bold">{article.title}</h1>
           {article.summary && <p className="text-lg text-muted-foreground">{article.summary}</p>}
           {article.published_at && (

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 import { 
   ArrowLeft, 
   Lock, 
@@ -100,17 +101,7 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="flex items-center h-full px-6 gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft size={20} />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Configurações</h1>
-            <p className="text-sm text-muted-foreground">Gerencie sua conta e preferências</p>
-          </div>
-        </div>
-      </header>
+      <AppTopBar title="Configurações" subtitle="Gerencie sua conta e preferências" />
 
       <main className="container max-w-3xl mx-auto py-8 px-4">
         <Tabs defaultValue="account" className="space-y-6">

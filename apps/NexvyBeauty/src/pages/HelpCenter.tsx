@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, ArrowLeft, BookOpen, Sparkles, FileText } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { AppTopBar } from '@/components/layout/AppTopBar';
 
 function CategoryIcon({ name, className }: { name?: string | null; className?: string }) {
   const Cmp = (name && (Icons as any)[name]) || BookOpen;
@@ -40,22 +41,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/80 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4" /></Button>
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-semibold">Central de Ajuda</h1>
-          </div>
-          <div className="ml-auto">
-            <Link to="/novidades">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Sparkles className="h-4 w-4" /> Novidades
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AppTopBar title="Central de Ajuda" />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border p-6 sm:p-8 text-center space-y-3">
