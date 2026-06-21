@@ -294,7 +294,7 @@ export default function Admin() {
         onSectionChange={handleSectionChange}
       />
       <main className="flex-1 overflow-auto">
-        <AppTopBar title="Administração" />
+        <AppTopBar title={allMenuItems.find((i) => i.id === activeSection)?.label ?? 'Administração'} />
         <OnboardingBanner />
         <div className="p-6">
           {renderContent()}
