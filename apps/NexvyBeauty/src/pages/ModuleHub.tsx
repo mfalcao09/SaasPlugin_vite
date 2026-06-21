@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { AppTopBar } from '@/components/layout/AppTopBar';
+import { SalaoActivationChecklist } from '@/pages/salao/ActivationChecklist';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/config/modules';
 import { usePlanModules } from '@/hooks/usePlanModules';
@@ -130,6 +131,12 @@ const ModuleHub = () => {
       />
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
+        {/* Checklist de ativação — mora na home (hub). Some sozinha quando
+            o salão está operacional. */}
+        {organizationId && !isSuperAdmin() && (
+          <SalaoActivationChecklist organizationId={organizationId} />
+        )}
+
         {/* ─── Grid de módulos ──────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-4">

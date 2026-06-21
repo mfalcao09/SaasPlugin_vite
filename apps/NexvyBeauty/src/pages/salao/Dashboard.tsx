@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarDays, Users, DollarSign, Scissors, Clock } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
-import { SalaoActivationChecklist } from './ActivationChecklist'
 
 interface AgendamentoRow {
   id: string
@@ -105,8 +104,6 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Visão geral do seu salão</p>
         </div>
-
-        <SalaoActivationChecklist organizationId={organizationId} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(({ label, value, icon: Icon, color }) => (
