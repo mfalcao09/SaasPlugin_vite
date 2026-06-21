@@ -172,3 +172,96 @@ export function useDeletePlan() {
     },
   });
 }
+
+// ---- Sincronização de ofertas Cakto ----------------------------------------
+// Aciona a Edge Function cakto-sync-offer, que cria/reaproveita as ofertas
+// (mensal + anual) na Cakto e grava as URLs de checkout no plano.
+
+export interface CaktoCycleResult {
+  cycle: 'monthly' | 'yearly';
+  action: 'created' | 'recreated' | 'unchanged' | 'skipped_min_price';
+  slug: string | null;
+  url: string | null;
+}
+
+export interface CaktoSyncResult {
+  ok?: boolean;
+  skipped?: boolean;
+  reason?: string;
+  plan_id?: string;
+  monthly?: CaktoCycleResult;
+  yearly?: CaktoCycleResult;
+}
+
+export function useSyncCaktoOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (planId: string): Promise<CaktoSyncResult> => {
+      const { data, error } = await supabase.functions.invoke('cakto-sync-offer', {
+        body: { plan_id: planId },
+      });
+      if (error) {
+        // FunctionsHttpError esconde a mensagem real no corpo da Response.
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const result = (data ?? {}) as CaktoSyncResult & { error?: string };
+      if (result.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-plans'] });
+      qc.invalidateQueries({ queryKey: ['platform-plans-cakto'] });
+    },
+  });
+}
+
+export interface CaktoPlanSyncResult {
+  plan_id: string;
+  plan_name: string;
+  product_id: string | null;
+  product_name?: string | null;
+  matched_by: 'existing' | 'name' | 'price' | null;
+  status: 'synced' | 'no_product_match' | 'skipped_free' | 'error';
+  monthly?: CaktoCycleResult;
+  yearly?: CaktoCycleResult;
+  error?: string;
+}
+
+// Sincroniza TODOS os planos de uma vez (1 clique): auto-match produto↔plano +
+// geração de ofertas + URLs. Retorna um relatório por plano.
+export function useSyncAllCaktoPlans() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<CaktoPlanSyncResult[]> => {
+      const { data, error } = await supabase.functions.invoke('cakto-sync-offer', {
+        body: { all: true },
+      });
+      if (error) {
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const b = await ctx?.json?.();
+          if (b?.error) msg = b.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const payload = (data ?? {}) as { error?: string; results?: CaktoPlanSyncResult[] };
+      if (payload.error) throw new Error(payload.error);
+      return payload.results ?? [];
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-plans'] });
+      qc.invalidateQueries({ queryKey: ['platform-plans-cakto'] });
+    },
+  });
+}

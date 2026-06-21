@@ -19,6 +19,7 @@ import {
   PlatformPlanInput,
   useCreatePlan,
   useUpdatePlan,
+  useSyncCaktoOffer,
 } from '@/hooks/usePlatformPlans';
 
 interface PlanFormDialogProps {
@@ -135,6 +136,7 @@ export function PlanFormBody({
   const [form, setForm] = useState<PlatformPlanInput>(plan ? { ...(plan as any) } : emptyPlan);
   const createPlan = useCreatePlan();
   const updatePlan = useUpdatePlan();
+  const syncCakto = useSyncCaktoOffer();
 
   useEffect(() => {
     setForm(plan ? { ...(plan as any) } : emptyPlan);
@@ -154,17 +156,34 @@ export function PlanFormBody({
       return;
     }
     try {
+      let saved: PlatformPlan;
       if (plan?.id) {
-        await updatePlan.mutateAsync({ id: plan.id, ...form });
+        saved = await updatePlan.mutateAsync({ id: plan.id, ...form });
         toast.success('Plano atualizado');
       } else {
-        await createPlan.mutateAsync(form);
+        saved = await createPlan.mutateAsync(form);
         toast.success('Plano criado');
       }
-      onSaved?.(form);
+      // Geração automática do checkout Cakto (não bloqueia o salvar do plano).
+      if (saved?.id) {
+        await maybeSyncCakto(saved.id);
+      }
+      onSaved?.(saved ?? form);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Erro ao salvar plano');
+    }
+  };
+
+  // Aciona o cakto-sync-offer e dá feedback sem interromper o fluxo de save.
+  const maybeSyncCakto = async (planId: string) => {
+    try {
+      const res = await syncCakto.mutateAsync(planId);
+      if (res?.skipped) return; // sem cakto_product_id -> paste manual segue valendo
+      const generated = [res?.monthly, res?.yearly].some((c) => c?.url);
+      if (generated) toast.success('Checkout Cakto gerado/atualizado');
+    } catch (e: any) {
+      toast.warning(`Plano salvo, mas a oferta Cakto não foi gerada: ${e?.message ?? e}`);
     }
   };
 
