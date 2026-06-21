@@ -18,6 +18,7 @@ import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 import { SalaoActivationChecklist } from '@/pages/salao/ActivationChecklist';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
+import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
 import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/config/modules';
 import { usePlanModules } from '@/hooks/usePlanModules';
 
@@ -123,6 +124,10 @@ const ModuleHub = () => {
           onSkipAll={markSkipped}
         />
       )}
+
+      {/* Onboarding como entrada na HOME (module-agnostic) — substitui a tarja
+          que antes vivia DENTRO do módulo Admin. Some sozinha ao concluir/pular. */}
+      <OnboardingBanner />
 
       {/* Topbar canônica do sistema (mesma de todos os módulos). */}
       <AppTopBar

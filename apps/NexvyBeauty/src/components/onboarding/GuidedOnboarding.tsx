@@ -109,10 +109,11 @@ const CRM_STEP_KINDS: StepNode[] = [
 ];
 
 /**
- * Sequência do onboarding. NexvyBeauty tem módulos FIXOS (sem etapa de
- * seleção): o wizard foca em deixar o SALÃO operacional (profissionais +
- * serviços). WhatsApp, CRM e agentes de IA ficam sempre ativos e são
- * configurados nos próprios módulos depois (descobríveis pelo hub).
+ * Sequência do onboarding UNIFICADO do NexvyBeauty. Decisão Marcelo 2026-06-21
+ * ("tudo no onboarding único"): todo o setup do 1º acesso mora AQUI, de forma
+ * module-agnostic (disparado pela HOME, não de dentro de um módulo):
+ * Identidade → Salão (profissionais + serviços) → CRM (produto + WhatsApp +
+ * agente de IA — puláveis) → Equipe. Os 3 passos de CRM têm onSkip.
  */
 function buildSteps(): StepNode[] {
   const salaoSteps: StepNode[] = (MODULE_ONBOARDING_STEPS['erp_salao'] ?? []).map(
@@ -128,6 +129,7 @@ function buildSteps(): StepNode[] {
     { kind: 'welcome' },
     { kind: 'identity' },
     ...salaoSteps,
+    ...CRM_STEP_KINDS, // produto + WhatsApp + agente de IA (puláveis)
     { kind: 'team' },
     { kind: 'done' },
   ];

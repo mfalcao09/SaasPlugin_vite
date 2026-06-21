@@ -8,7 +8,6 @@ import { ComingSoonSection } from '@/components/admin/ComingSoonSection';
 import { SectionErrorBoundary } from '@/components/admin/SectionErrorBoundary';
 import { lazyWithRetry, prefetch, onIdle } from '@/lib/lazyWithRetry';
 import { allMenuItems } from '@/config/adminMenu';
-import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 
 // Factories nomeadas para podermos reutilizá-las no prefetch on-hover.
@@ -281,7 +280,6 @@ export default function Admin() {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
       >
-        <OnboardingBanner />
         {renderContent()}
       </MobileAdminLayout>
     );
@@ -295,7 +293,6 @@ export default function Admin() {
       />
       <main className="flex-1 overflow-auto">
         <AppTopBar title={allMenuItems.find((i) => i.id === activeSection)?.label ?? 'Administração'} />
-        <OnboardingBanner />
         <div className="p-6">
           {renderContent()}
         </div>

@@ -288,7 +288,7 @@ const Index = () => {
   // Exceção (NÃO redireciona, deixa o admin usar o app do vendedor):
   // Admin tem produtos atribuídos a ele (atua também como vendedor) —
   //   nesse caso o "Voltar ao App" no painel admin deve funcionar.
-  // O onboarding guiado é renderizado dentro do /admin via OnboardingBanner,
+  // O onboarding guiado é module-agnostic (vive na home/hub, não no /admin),
   // então não precisa mais bloquear o redirect aqui.
   const adminHasAssignedProducts =
     (assignedProducts?.length || 0) > 0;
