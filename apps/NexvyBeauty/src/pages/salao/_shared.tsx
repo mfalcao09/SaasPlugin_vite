@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import {
   LayoutDashboard, Users, Scissors, Sparkles, CalendarDays, DollarSign, LayoutGrid,
@@ -36,6 +36,10 @@ const NAV = [
 
 export function SalaoLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  // Modo demonstração (rotas /demo/salao/*): a sidebar navega entre as telas de
+  // demo (públicas), não as protegidas; e o footer sai pra LP em vez do Hub.
+  const isDemo = useLocation().pathname.startsWith('/demo')
+  const linkTo = (to: string) => (isDemo ? to.replace('/salao', '/demo/salao') : to)
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Topbar canônica do sistema (mesma de todos os módulos pós-login). */}
@@ -46,7 +50,7 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
-                to={to}
+                to={linkTo(to)}
                 end={end}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -60,11 +64,11 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
           </nav>
           <div className="p-3 border-t">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(isDemo ? '/vendas' : '/')}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
               <LayoutGrid className="h-4 w-4" />
-              Hub de Módulos
+              {isDemo ? 'Sair do demo' : 'Hub de Módulos'}
             </button>
           </div>
         </aside>

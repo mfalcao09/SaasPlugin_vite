@@ -25,12 +25,19 @@ export function isEditorHost(hostname = typeof window !== 'undefined' ? window.l
   );
 }
 
-// Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.* e
-// NÃO é dev/preview. Ex.: nexvybeauty.com.br / www.nexvybeauty.com.br → true;
-// app.nexvybeauty.com.br → false; localhost/preview → false (dev usa o app).
+// Superfície de GESTÃO da plataforma (super-admin + CRM), isolada do app do
+// salão. Ex.: gestao.nexvybeauty.com.br → true. NÃO exclui dev (gestao.localhost
+// é testável). É o branch de hostname avaliado ANTES de apex/app.
+export function isGestaoHostname(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
+  return hostname.startsWith('gestao.');
+}
+
+// Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.*,
+// NÃO é gestao.* e NÃO é dev/preview. Ex.: nexvybeauty.com.br /
+// www.nexvybeauty.com.br → true; app.* e gestao.* → false; localhost → false.
 export function isApexDomain(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
   if (isEditorHost(hostname)) return false;
-  return !hostname.startsWith('app.');
+  return !hostname.startsWith('app.') && !hostname.startsWith('gestao.');
 }
 
 export function getPublicAppUrl(configuredUrl?: string | null): string {

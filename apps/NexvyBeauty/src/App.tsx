@@ -15,7 +15,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { isApexDomain } from "@/lib/publicUrl";
+import { isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
@@ -55,6 +55,12 @@ const OficinaFinanceiro = lazyWithRetry(() => import("./pages/oficina/Financeiro
 
 // ERP Salão (NexvyBeauty: Agenda, Profissionais, Serviços, Clientes, Financeiro)
 const SalaoDashboard = lazyWithRetry(() => import("./pages/salao/Dashboard"));
+const DemoSalaoDashboard = lazyWithRetry(() => import("./pages/salao/DemoDashboard"));
+const DemoSalaoClientes = lazyWithRetry(() => import("./pages/salao/DemoClientes"));
+const DemoSalaoServicos = lazyWithRetry(() => import("./pages/salao/DemoServicos"));
+const DemoSalaoProfissionais = lazyWithRetry(() => import("./pages/salao/DemoProfissionais"));
+const DemoSalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/DemoFinanceiro"));
+const DemoSalaoAgenda = lazyWithRetry(() => import("./pages/salao/DemoAgenda"));
 const SalaoAgenda = lazyWithRetry(() => import("./pages/salao/Agenda"));
 const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissionais"));
 const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
@@ -168,6 +174,14 @@ const App = () => (
               <Route path="/agendar/:userSlug/:eventSlug" element={<PublicBooking />} />
               <Route path="/confirmar/:token" element={<BookingConfirmation />} />
               <Route path="/vendas" element={<SalesPage />} />
+              {/* Demo público do salão (sem login) — estilo beauty-flow */}
+              <Route path="/demo" element={<Navigate to="/demo/salao" replace />} />
+              <Route path="/demo/salao" element={<DemoSalaoDashboard />} />
+              <Route path="/demo/salao/clientes" element={<DemoSalaoClientes />} />
+              <Route path="/demo/salao/servicos" element={<DemoSalaoServicos />} />
+              <Route path="/demo/salao/profissionais" element={<DemoSalaoProfissionais />} />
+              <Route path="/demo/salao/financeiro" element={<DemoSalaoFinanceiro />} />
+              <Route path="/demo/salao/agenda" element={<DemoSalaoAgenda />} />
               <Route path="/whitelabel" element={<Navigate to="/" replace />} />
               <Route path="/reagendar/:token" element={<BookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
@@ -187,7 +201,13 @@ const App = () => (
               <Route
                 path="/"
                 element={
-                  isApexDomain() ? (
+                  isGestaoHostname() ? (
+                    // gestao.nexvybeauty.com.br → painel de gestão da plataforma
+                    // (super-admin), isolado do app do salão.
+                    <SuperAdminRoute>
+                      <SuperAdmin />
+                    </SuperAdminRoute>
+                  ) : isApexDomain() ? (
                     <SalesPage />
                   ) : (
                     <ProtectedRoute>

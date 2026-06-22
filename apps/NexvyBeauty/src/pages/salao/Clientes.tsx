@@ -3,11 +3,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Users, Plus, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SalaoLayout, NoOrg, useOrganizationId } from './_shared'
 
-interface Cliente {
+// Re-skin premium (dark via tokens, shadcn) + data-injectable: sem `demo`
+// busca Supabase real; com `demo` usa seed (rota /demo, sem auth, sem gravar).
+// Camada de dados preservada: tabela `clientes` por organization_id.
+
+export interface Cliente {
   id: string
-  organization_id: string
+  organization_id?: string
   nome: string
   telefone: string | null
   email: string | null
@@ -18,35 +31,23 @@ interface Cliente {
 }
 
 interface FormState {
-  nome: string
-  telefone: string
-  email: string
-  cpf_cnpj: string
-  status: string
-  tags: string
-  observacoes: string
+  nome: string; telefone: string; email: string; cpf_cnpj: string; status: string; tags: string; observacoes: string
 }
 
-const EMPTY_FORM: FormState = {
-  nome: '',
-  telefone: '',
-  email: '',
-  cpf_cnpj: '',
-  status: 'ativo',
-  tags: '',
-  observacoes: '',
-}
+const EMPTY_FORM: FormState = { nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '' }
 
-export default function Clientes() {
+export default function Clientes({ demo }: { demo?: Cliente[] } = {}) {
   const organizationId = useOrganizationId()
+  const isDemo = !!demo
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
-  const { data: clientes = [], isLoading } = useQuery({
+  const { data: fetched = [], isLoading } = useQuery({
     queryKey: ['salao-clientes', organizationId],
+    enabled: !isDemo && !!organizationId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes').select('*')
@@ -55,36 +56,19 @@ export default function Clientes() {
       if (error) throw error
       return (data ?? []) as Cliente[]
     },
-    enabled: !!organizationId,
   })
 
-  const setField = (key: keyof FormState, value: string) =>
-    setForm(prev => ({ ...prev, [key]: value }))
+  const clientes = demo ?? fetched
+  const setField = (key: keyof FormState, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
 
-  const resetForm = () => {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setShowForm(false)
-  }
-
-  const openNew = () => {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setShowForm(true)
-  }
-
+  const resetForm = () => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(false) }
+  const openNew = () => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true) }
   const openEdit = (c: Cliente) => {
     setForm({
-      nome: c.nome ?? '',
-      telefone: c.telefone ?? '',
-      email: c.email ?? '',
-      cpf_cnpj: c.cpf_cnpj ?? '',
-      status: c.status ?? 'ativo',
-      tags: (c.tags ?? []).join(', '),
-      observacoes: c.observacoes ?? '',
+      nome: c.nome ?? '', telefone: c.telefone ?? '', email: c.email ?? '', cpf_cnpj: c.cpf_cnpj ?? '',
+      status: c.status ?? 'ativo', tags: (c.tags ?? []).join(', '), observacoes: c.observacoes ?? '',
     })
-    setEditingId(c.id)
-    setShowForm(true)
+    setEditingId(c.id); setShowForm(true)
   }
 
   const buildPayload = () => ({
@@ -93,10 +77,7 @@ export default function Clientes() {
     email: form.email.trim() || null,
     cpf_cnpj: form.cpf_cnpj.trim() || null,
     status: form.status || 'ativo',
-    tags: form.tags
-      .split(',')
-      .map(t => t.trim())
-      .filter(Boolean),
+    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     observacoes: form.observacoes.trim() || null,
   })
 
@@ -104,16 +85,10 @@ export default function Clientes() {
     mutationFn: async () => {
       const payload = buildPayload()
       if (editingId) {
-        const { error } = await supabase
-          .from('clientes')
-          .update(payload)
-          .eq('id', editingId)
-          .eq('organization_id', organizationId!)
+        const { error } = await supabase.from('clientes').update(payload).eq('id', editingId).eq('organization_id', organizationId!)
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('clientes')
-          .insert({ ...payload, organization_id: organizationId! })
+        const { error } = await supabase.from('clientes').insert({ ...payload, organization_id: organizationId! })
         if (error) throw error
       }
     },
@@ -127,11 +102,7 @@ export default function Clientes() {
 
   const excluir = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('clientes')
-        .delete()
-        .eq('id', id)
-        .eq('organization_id', organizationId!)
+      const { error } = await supabase.from('clientes').delete().eq('id', id).eq('organization_id', organizationId!)
       if (error) throw error
     },
     onSuccess: () => {
@@ -141,110 +112,125 @@ export default function Clientes() {
     onError: () => toast.error('Erro ao excluir cliente.'),
   })
 
+  const onSave = () => isDemo ? toast.info('Ação indisponível no modo demonstração') : salvar.mutate()
   const handleDelete = (c: Cliente) => {
-    if (window.confirm(`Excluir o cliente "${c.nome}"? Esta ação não pode ser desfeita.`)) {
-      excluir.mutate(c.id)
-    }
+    if (isDemo) return toast.info('Ação indisponível no modo demonstração')
+    if (window.confirm(`Excluir o cliente "${c.nome}"? Esta ação não pode ser desfeita.`)) excluir.mutate(c.id)
   }
 
-  const filtered = clientes.filter(c =>
+  const filtered = clientes.filter((c) =>
     c.nome?.toLowerCase().includes(search.toLowerCase()) ||
     c.telefone?.includes(search) ||
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
-    c.cpf_cnpj?.includes(search)
+    c.cpf_cnpj?.includes(search),
   )
 
-  if (!organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
+  if (!isDemo && !organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
 
   return (
     <SalaoLayout>
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
-          <p className="text-muted-foreground text-sm mt-1">{clientes.length} clientes cadastrados</p>
-        </div>
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-colors">
-          <Plus className="h-4 w-4" />Novo Cliente
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="bg-card border rounded-xl p-5 space-y-3">
-          <h2 className="font-semibold text-foreground">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input value={form.nome} onChange={e => setField('nome', e.target.value)} placeholder="Nome *" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
-            <input value={form.telefone} onChange={e => setField('telefone', e.target.value)} placeholder="Telefone" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
-            <input value={form.email} onChange={e => setField('email', e.target.value)} placeholder="Email" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
-            <input value={form.cpf_cnpj} onChange={e => setField('cpf_cnpj', e.target.value)} placeholder="CPF / CNPJ" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
-            <select value={form.status} onChange={e => setField('status', e.target.value)} className="px-3 py-2 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:border-primary">
-              <option value="ativo">Ativo</option>
-              <option value="inativo">Inativo</option>
-            </select>
-            <input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="Tags (separadas por vírgula)" className="px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
+      <div className="p-6 space-y-6">
+        {isDemo && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+            Modo demonstração — dados fictícios, nada é salvo.
           </div>
-          <textarea value={form.observacoes} onChange={e => setField('observacoes', e.target.value)} placeholder="Observações" rows={3} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary resize-none" />
-          <div className="flex gap-2">
-            <button onClick={() => salvar.mutate()} disabled={!form.nome.trim() || salvar.isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-colors">
-              {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Salvar
-            </button>
-            <button onClick={resetForm} className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm transition-colors">Cancelar</button>
-          </div>
-        </div>
-      )}
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome, telefone, email ou CPF/CNPJ..." className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card border border-input text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:border-primary" />
-      </div>
-
-      <div className="bg-card border rounded-xl overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <Users className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">{search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="text-left text-muted-foreground">
-                <th className="px-5 py-3 font-medium">Nome</th>
-                <th className="px-5 py-3 font-medium hidden sm:table-cell">Telefone</th>
-                <th className="px-5 py-3 font-medium hidden md:table-cell">Email</th>
-                <th className="px-5 py-3 font-medium hidden lg:table-cell">CPF/CNPJ</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-5 py-3 text-foreground font-medium">{c.nome}</td>
-                  <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{c.telefone ?? '—'}</td>
-                  <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{c.email ?? '—'}</td>
-                  <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">{c.cpf_cnpj ?? '—'}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ativo' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{c.status ?? 'ativo'}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Editar">
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDelete(c)} disabled={excluir.isPending} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors" title="Excluir">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )}
+
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
+            <p className="text-muted-foreground">{clientes.length} {clientes.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}</p>
+          </div>
+          <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>
+        </div>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, telefone, email ou CPF/CNPJ..." className="pl-9" />
+        </div>
+
+        <Card>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="py-16 text-center">
+              <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">{search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="hidden sm:table-cell">Telefone</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">CPF/CNPJ</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium">{c.nome}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{c.telefone ?? '—'}</TableCell>
+                    <TableCell className="hidden text-muted-foreground md:table-cell">{c.email ?? '—'}</TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">{c.cpf_cnpj ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={c.status === 'inativo'
+                        ? 'border-muted-foreground/30 text-muted-foreground'
+                        : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'}>
+                        {c.status ?? 'ativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => handleDelete(c)} title="Excluir" className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
       </div>
-    </div>
+
+      {/* Form modal */}
+      <Dialog open={showForm} onOpenChange={(o) => (o ? setShowForm(true) : resetForm())}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingId ? 'Editar cliente' : 'Novo cliente'}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setField('nome', e.target.value)} placeholder="Nome completo" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setField('telefone', e.target.value)} placeholder="(00) 00000-0000" /></div>
+              <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="email@exemplo.com" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>CPF / CNPJ</Label><Input value={form.cpf_cnpj} onChange={(e) => setField('cpf_cnpj', e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setField('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2"><Label>Tags</Label><Input value={form.tags} onChange={(e) => setField('tags', e.target.value)} placeholder="separadas por vírgula" /></div>
+            <div className="space-y-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={(e) => setField('observacoes', e.target.value)} rows={3} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={resetForm}>Cancelar</Button>
+            <Button onClick={onSave} disabled={!form.nome.trim() || salvar.isPending}>
+              {salvar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SalaoLayout>
   )
 }
