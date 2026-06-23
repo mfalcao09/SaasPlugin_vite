@@ -15,7 +15,6 @@ const f = {
   OperationCenter: () => import('@/components/admin/operation/OperationCenter').then(m => ({ default: m.OperationCenter })),
   TeamManager: () => import('@/components/admin/TeamManager').then(m => ({ default: m.TeamManager })),
   FinancialDashboard: () => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })),
-  CalendarManager: () => import('@/components/admin/CalendarManager').then(m => ({ default: m.CalendarManager })),
   IntegrationsManager: () => import('@/components/admin/integrations/IntegrationsManager').then(m => ({ default: m.IntegrationsManager })),
   NotificationManager: () => import('@/components/admin/NotificationManager').then(m => ({ default: m.NotificationManager })),
   ProductListPage: () => import('@/components/admin/products/ProductListPage').then(m => ({ default: m.ProductListPage })),
@@ -54,7 +53,6 @@ const f = {
 const OperationCenter = lazyWithRetry(f.OperationCenter);
 const TeamManager = lazyWithRetry(f.TeamManager);
 const FinancialDashboard = lazyWithRetry(f.FinancialDashboard);
-const CalendarManager = lazyWithRetry(f.CalendarManager);
 const IntegrationsManager = lazyWithRetry(f.IntegrationsManager);
 const NotificationManager = lazyWithRetry(f.NotificationManager);
 const ProductListPage = lazyWithRetry(f.ProductListPage);
@@ -96,7 +94,6 @@ const sectionFactories: Record<string, () => Promise<unknown>> = {
   dashboard: f.OperationCenter,
   leads: f.LeadsManager,
   pipeline: f.KanbanBoard,
-  calendar: f.CalendarManager,
   inbox: f.InboxManager,
   agents: f.AgentsManager,
   
@@ -207,7 +204,9 @@ export default function Admin() {
       case 'dashboard': return <OperationCenter />;
       case 'leads': return <LeadsManager />;
       case 'pipeline': return <KanbanBoard />;
-      case 'calendar': return <CalendarManager />;
+      // Agenda unificada: a antiga UI Calendly (CalendarManager) saiu.
+      // A agenda do salão vive em /salao/agenda (views Mês/Semana/Dia/Lista).
+      case 'calendar': return <Navigate to="/salao/agenda" replace />;
       case 'inbox': return <InboxManager />;
       case 'agents': return <AgentsManager />;
       
