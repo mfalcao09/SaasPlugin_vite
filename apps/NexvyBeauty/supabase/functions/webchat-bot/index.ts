@@ -2209,7 +2209,50 @@ Exemplo CORRETO: Cliente pergunta "quantos usuários suporta?" e a FAQ diz "300 
           }
         }
       }
-      
+
+      // ============================================================
+      // MODO SALÃO (NexvyBeauty): agendamento de SERVIÇO + PROFISSIONAL
+      // gravando na Agenda real via edge functions já existentes
+      // (salao-availability / salao-public-booking). NÃO usa
+      // booking_event_types / calendar_events / scheduleUserId — esse é
+      // o backend do produto vertical de reuniões. Aqui o "host" é o
+      // salão (organizations.slug) e o catálogo de serviços/profissionais.
+      // ============================================================
+      let salaoSlug: string | null = null;
+      let salaoServicos: Array<{ id: string; nome: string; preco_base: number | null; duracao_minutos: number | null }> = [];
+      let salaoProfissionais: Array<{ id: string; nome: string }> = [];
+      {
+        // organization_id da conversa: reusa convData se já carregado, senão busca.
+        let salaoOrgId: string | null = null;
+        if (body.conversation_id) {
+          const { data: convForSalao } = await supabase
+            .from('webchat_conversations')
+            .select('organization_id')
+            .eq('id', body.conversation_id)
+            .maybeSingle();
+          salaoOrgId = convForSalao?.organization_id || null;
+        }
+
+        if (salaoOrgId) {
+          const [orgRes, servRes, profRes] = await Promise.all([
+            supabase.from('organizations').select('slug').eq('id', salaoOrgId).maybeSingle(),
+            supabase.from('servico_catalogo')
+              .select('id, nome, preco_base, duracao_minutos')
+              .eq('organization_id', salaoOrgId).eq('ativo', true)
+              .order('nome', { ascending: true }),
+            supabase.from('profissionais')
+              .select('id, nome')
+              .eq('organization_id', salaoOrgId).eq('ativo', true)
+              .order('nome', { ascending: true }),
+          ]);
+          salaoSlug = (orgRes.data?.slug || '').trim() || null;
+          salaoServicos = servRes.data || [];
+          salaoProfissionais = profRes.data || [];
+        }
+      }
+      // Salão pode agendar se tem slug + ao menos 1 serviço + 1 profissional ativos.
+      const canScheduleSalao = !!(salaoSlug && salaoServicos.length > 0 && salaoProfissionais.length > 0);
+
       const toolsList: any[] = [];
       
       if (productCTAs.length > 0) {
@@ -2249,11 +2292,126 @@ Exemplo CORRETO: Cliente pergunta "quantos usuários suporta?" e a FAQ diz "300 
       }
       
       // Block scheduling tools entirely when the lead is already a customer.
+      // (Aplica-se SÓ ao modo reunião de vendas — no salão, cliente recorrente
+      //  é justamente quem mais agenda, então canScheduleSalao não é bloqueado.)
       if (leadContext?.is_customer) {
         canSchedule = false;
       }
 
-      if (canSchedule && scheduleUserId) {
+      // salaoMode liga o agendamento de salão e DESLIGA o modo reunião legado
+      // (não faz sentido oferecer as duas tools homônimas na mesma conversa).
+      const salaoMode = canScheduleSalao;
+
+      if (salaoMode) {
+        // --- MODO SALÃO: agenda SERVIÇO + PROFISSIONAL via salao-availability/booking ---
+        // Dados do cliente já conhecidos (salão usa TELEFONE como chave, email é opcional).
+        let leadDataPrompt = '';
+        if (leadContext) {
+          const knownData: string[] = [];
+          if (leadContext.name) knownData.push(`Nome: ${leadContext.name}`);
+          if (leadContext.phone) knownData.push(`Telefone: ${leadContext.phone}`);
+          if (leadContext.email) knownData.push(`Email: ${leadContext.email}`);
+          if (knownData.length > 0) {
+            leadDataPrompt = `\n\nDADOS DO CLIENTE JÁ CONHECIDOS (use no schedule_meeting SEM perguntar de novo):\n- ${knownData.join('\n- ')}`;
+          }
+        }
+
+        const servicosLista = salaoServicos.map((s) => {
+          const preco = (s.preco_base != null) ? ` — R$ ${Number(s.preco_base).toFixed(2)}` : '';
+          const dur = (s.duracao_minutos != null) ? ` (${s.duracao_minutos} min)` : '';
+          return `• ${s.nome}${dur}${preco} [servico_id: ${s.id}]`;
+        }).join('\n');
+
+        const profissionaisLista = salaoProfissionais
+          .map((p) => `• ${p.nome} [profissional_id: ${p.id}]`)
+          .join('\n');
+
+        const umProfissional = salaoProfissionais.length === 1;
+        const profStep = umProfissional
+          ? `O salão tem só um profissional disponível (${salaoProfissionais[0].nome}) — use o profissional_id dele direto, NÃO pergunte.`
+          : `PERGUNTE com qual profissional o cliente prefere ser atendido (liste os nomes). Use o profissional_id correspondente.`;
+
+        systemPrompt += `\n\n💅 AGENDAMENTO DE ATENDIMENTO (SALÃO):
+Você agenda ATENDIMENTOS (não "reuniões"). Vocabulário: serviço, profissional, horário, atendimento.
+
+SERVIÇOS DISPONÍVEIS (ofereça pelo NOME, nunca mostre o servico_id ao cliente):
+${servicosLista}
+
+PROFISSIONAIS DISPONÍVEIS (ofereça pelo NOME, nunca mostre o profissional_id ao cliente):
+${profissionaisLista}
+
+Você possui 2 ferramentas:
+1. check_available_slots: consulta os horários livres de um SERVIÇO + PROFISSIONAL numa DATA.
+   - Use SOMENTE depois de saber qual serviço, qual profissional e qual dia o cliente quer.
+2. schedule_meeting: confirma o agendamento na agenda do salão.
+   - Use IMEDIATAMENTE quando o cliente escolher um horário oferecido E você tiver nome + telefone.
+
+🛑 REGRAS ABSOLUTAS — VIOLAR QUEBRA O SISTEMA:
+
+A) **NUNCA invente horários.** Se ainda NÃO chamou check_available_slots para aquele serviço/profissional/dia, é PROIBIDO citar qualquer horário específico. Diga "deixa eu ver a agenda rapidinho" e CHAME a tool.
+
+B) **NUNCA chame schedule_meeting sem o TELEFONE real do cliente.** Se faltar, pergunte: "Pra confirmar seu atendimento, qual o melhor telefone com WhatsApp?" (email é opcional).
+
+C) **NUNCA escreva "✅ Atendimento agendado", "agendamento confirmado" ANTES de receber o sucesso da tool schedule_meeting.** Esse texto é gerado AUTOMATICAMENTE pelo sistema após a tool executar. Se escrever antes, o sistema BLOQUEIA sua mensagem.
+
+D) Se for tentado a confirmar sem ter chamado a tool, PARE e chame schedule_meeting primeiro. Faltando dado (telefone/horário/serviço/profissional), pergunte em vez de inventar.
+
+E) **Se o histórico tem [CONTEXTO INTERNO] com "Horários já oferecidos"**, você JÁ consultou — não chame check_available_slots de novo. Quando o cliente confirmar ("pode ser às 9h", "o primeiro"), chame schedule_meeting JÁ.
+
+F) Se o cliente pedir outro dia/horário, chame check_available_slots de novo com a nova data. NUNCA diga "não tem vaga" sem checar.
+
+FLUXO OBRIGATÓRIO:
+1. Descobrir qual SERVIÇO o cliente quer (ofereça a lista se ele não souber).
+2. ${profStep}
+3. Perguntar/confirmar o DIA desejado (formato interno YYYY-MM-DD).
+4. chamar check_available_slots (servico_id + profissional_id + data).
+5. Apresentar os horários reais retornados pela tool.
+6. Cliente escolhe → coletar nome + telefone (se faltar) → chamar schedule_meeting.
+7. Sistema responde sucesso → confirmação aparece automaticamente.${leadDataPrompt}
+
+🛑 ANTI-REPETIÇÃO (ABSOLUTO):
+- Se já tem o telefone (o cliente respondeu com números), NÃO peça de novo.
+- Se já ofereceu horários, NUNCA repita "deixa eu ver a agenda". Cliente confirmou um → schedule_meeting AGORA.
+- Não repita frase já dita no histórico recente — reescreva ou pule a etapa.`;
+
+        toolsList.push({
+          type: "function",
+          function: {
+            name: "check_available_slots",
+            description: "Consultar horários livres de um SERVIÇO com um PROFISSIONAL numa DATA. SEMPRE chame antes de oferecer horários. Retorna a lista de horários disponíveis.",
+            parameters: {
+              type: "object",
+              properties: {
+                servico_id: { type: "string", description: `UUID do serviço escolhido. Opções: ${salaoServicos.map((s) => `${s.nome}=${s.id}`).join('; ')}` },
+                profissional_id: { type: "string", description: `UUID do profissional escolhido. Opções: ${salaoProfissionais.map((p) => `${p.nome}=${p.id}`).join('; ')}` },
+                data: { type: "string", description: "Data desejada no formato YYYY-MM-DD (horário local do salão)" }
+              },
+              required: ["servico_id", "profissional_id", "data"]
+            }
+          }
+        });
+
+        toolsList.push({
+          type: "function",
+          function: {
+            name: "schedule_meeting",
+            description: "Confirmar o agendamento do atendimento na agenda do salão APÓS o cliente escolher um horário oferecido.",
+            parameters: {
+              type: "object",
+              properties: {
+                servico_id: { type: "string", description: "UUID do serviço escolhido" },
+                profissional_id: { type: "string", description: "UUID do profissional escolhido" },
+                preferred_date: { type: "string", description: "Data do atendimento YYYY-MM-DD" },
+                preferred_time: { type: "string", description: "Horário do atendimento HH:MM" },
+                cliente_nome: { type: "string", description: "Nome do cliente" },
+                cliente_telefone: { type: "string", description: "Telefone do cliente (com DDD, de preferência WhatsApp)" },
+                cliente_email: { type: "string", description: "Email do cliente (opcional)" }
+              },
+              required: ["servico_id", "profissional_id", "preferred_date", "preferred_time", "cliente_nome", "cliente_telefone"]
+            }
+          }
+        });
+      } else if (canSchedule && scheduleUserId) {
         // Inject lead data into scheduling prompt if available
         let leadDataPrompt = '';
         if (leadContext) {
@@ -3288,7 +3446,7 @@ REGRAS DE USO:
                 console.error('[webchat-bot] send_catalog_item exception:', catErr);
                 responseContent = 'Não consegui enviar agora. Quer que eu tente novamente?';
               }
-            } else if (toolCall.function.name === 'check_available_slots' && scheduleUserId) {
+            } else if (toolCall.function.name === 'check_available_slots' && (salaoMode || scheduleUserId)) {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
                 const daysAhead = Math.min(args.days_ahead || 3, 7);
@@ -3316,9 +3474,11 @@ REGRAS DE USO:
 
                 let skipSlotSearch = false;
                 if (recentSlotMsg && slotMsgAgeMin < 60) {
-                  const offered = recentSlotMsg.metadata.scheduling_context.suggestions || [];
+                  const sctx = recentSlotMsg.metadata.scheduling_context || {};
+                  const offered = sctx.suggestions || [];
                   const guestEmail = leadContext?.email || capturedFromMessage.email || '';
                   const guestName = leadContext?.name || body.visitor_name || 'Cliente';
+                  const guestPhone = leadContext?.phone || capturedFromMessage.phone || '';
 
                   console.log('[webchat-bot] 🛑 BLOCKING redundant check_available_slots — slots already offered', slotMsgAgeMin.toFixed(1), 'min ago');
 
@@ -3339,7 +3499,31 @@ REGRAS DE USO:
                     }
                   }
 
-                  if (matchedSlot && guestEmail) {
+                  if (salaoMode) {
+                    // SALÃO: confirmação determinística precisa de telefone (não email).
+                    // servico_id / profissional_id vêm da metadata salva ao oferecer os slots.
+                    if (matchedSlot && guestPhone) {
+                      toolCall.function.name = 'schedule_meeting';
+                      toolCall.function.arguments = JSON.stringify({
+                        servico_id: sctx.servico_id,
+                        profissional_id: sctx.profissional_id,
+                        preferred_date: matchedSlot.date,
+                        preferred_time: matchedSlot.time,
+                        cliente_nome: guestName,
+                        cliente_telefone: guestPhone,
+                        cliente_email: guestEmail || undefined,
+                      });
+                      console.log('[webchat-bot] 🔁 Deterministic redirect → schedule_meeting (salão)', matchedSlot.date, matchedSlot.time);
+                      skipSlotSearch = true;
+                    } else if (matchedSlot && !guestPhone) {
+                      responseContent = 'Pra confirmar seu atendimento, qual o melhor telefone com WhatsApp?';
+                      skipSlotSearch = true;
+                    } else {
+                      const opts = offered.map((s: any, i: number) => `${i + 1}) ${s.dateLabel || s.date} às ${s.time}`).join(' ou ');
+                      responseContent = `Qual desses horários prefere: ${opts}?`;
+                      skipSlotSearch = true;
+                    }
+                  } else if (matchedSlot && guestEmail) {
                     // Deterministic shortcut: rewrite this toolCall as schedule_meeting
                     // and let the schedule_meeting branch below execute it.
                     toolCall.function.name = 'schedule_meeting';
@@ -3365,7 +3549,105 @@ REGRAS DE USO:
                   }
                 }
 
-                if (!skipSlotSearch) {
+                if (!skipSlotSearch && salaoMode) {
+                  // ============================================================
+                  // SALÃO: disponibilidade via edge function salao-availability.
+                  // Passa data+hora como strings; o TZ (America/Sao_Paulo) é
+                  // tratado dentro da própria edge function — não usamos Date() cru.
+                  // ============================================================
+                  const servicoId = String(args.servico_id || '');
+                  const profissionalId = String(args.profissional_id || '');
+                  const dataReq = String(args.data || '');
+
+                  if (!/^[0-9a-f-]{36}$/i.test(servicoId) || !/^[0-9a-f-]{36}$/i.test(profissionalId) || !/^\d{4}-\d{2}-\d{2}$/.test(dataReq)) {
+                    responseContent = 'Pra ver os horários, me confirma o serviço, o profissional e o dia (ex: amanhã, ou uma data).';
+                  } else {
+                    const servicoInfo = salaoServicos.find((s) => s.id === servicoId) || null;
+                    const profInfo = salaoProfissionais.find((p) => p.id === profissionalId) || null;
+
+                    const { data: availData, error: availErr } = await supabase.functions.invoke('salao-availability', {
+                      body: { slug: salaoSlug, servico_id: servicoId, profissional_id: profissionalId, data: dataReq },
+                    });
+
+                    const slots: string[] = (availData && Array.isArray(availData.slots)) ? availData.slots : [];
+
+                    if (availErr) {
+                      console.error('[webchat-bot] salao-availability error:', availErr);
+                      responseContent = 'Não consegui ver a agenda agora. Posso tentar de novo ou te passar pro atendente?';
+                    } else if (slots.length === 0) {
+                      responseContent = `Não encontrei horários livres para ${servicoInfo?.nome || 'esse serviço'} nesse dia. Quer tentar outro dia?`;
+                    } else {
+                      // Seleção estratégica: 1 da manhã + 1 da tarde quando possível.
+                      const dataLabel = (() => {
+                        try {
+                          const [y, m, d] = dataReq.split('-').map(Number);
+                          return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+                        } catch { return dataReq; }
+                      })();
+                      const manha = slots.filter((t) => Number(t.slice(0, 2)) < 12);
+                      const tarde = slots.filter((t) => Number(t.slice(0, 2)) >= 12);
+                      const escolhidos: string[] = [];
+                      if (manha.length > 0) escolhidos.push(manha[0]);
+                      if (tarde.length > 0) escolhidos.push(tarde[0]);
+                      if (escolhidos.length === 0) escolhidos.push(slots[0]);
+                      if (escolhidos.length === 1 && slots.length > 1) {
+                        const extra = slots.find((t) => t !== escolhidos[0]);
+                        if (extra) escolhidos.push(extra);
+                      }
+
+                      const suggestions = escolhidos.map((t) => ({
+                        date: dataReq,
+                        time: t,
+                        period: Number(t.slice(0, 2)) < 12 ? 'morning' : 'afternoon',
+                        dateLabel: dataLabel,
+                      }));
+
+                      // metadata persiste servico_id/profissional_id pro redirect determinístico
+                      schedulingMetadata = {
+                        scheduling_context: {
+                          action: 'slots_offered',
+                          suggestions,
+                          servico_id: servicoId,
+                          profissional_id: profissionalId,
+                          salao: true,
+                        },
+                      };
+
+                      let slotsInfo = `📅 HORÁRIOS DISPONÍVEIS (${servicoInfo?.nome || 'serviço'} com ${profInfo?.nome || 'profissional'}):\n`;
+                      suggestions.forEach((s, i) => {
+                        slotsInfo += `\nOpção ${i + 1}: ${s.dateLabel} às ${s.time}`;
+                      });
+                      slotsInfo += '\n\nApresente esses horários de forma natural e curta. NÃO mostre datas no formato técnico.';
+
+                      const slimAgentName = activeAgent?.name || 'Assistente';
+                      const slimAgentPersona = activeAgent?.personality || 'consultivo, claro e cordial';
+                      const slimFollowUpSystem = `Você é ${slimAgentName}. Tom: ${slimAgentPersona}.\n\nApresente os horários encontrados de forma natural, curta (no máximo 2 linhas) e pergunte qual o cliente prefere. NUNCA diga "deixa eu ver a agenda" — você acabou de ver. NUNCA invente outros horários além dos fornecidos.`;
+
+                      const followUpResponse = await fetch(aiConfig.endpoint, {
+                        method: 'POST',
+                        headers: aiConfig.headers,
+                        body: JSON.stringify(prepareAIRequestBody({
+                          model: agentModel,
+                          messages: [
+                            { role: 'system', content: slimFollowUpSystem },
+                            { role: 'user', content: body.message },
+                            { role: 'assistant', content: null, tool_calls: [toolCall] },
+                            { role: 'tool', tool_call_id: toolCall.id, content: slotsInfo },
+                          ],
+                          max_tokens: 200,
+                          temperature: 0.6,
+                        }, aiConfig)),
+                      });
+
+                      if (followUpResponse.ok) {
+                        const followUpData = await followUpResponse.json();
+                        responseContent = followUpData.choices?.[0]?.message?.content || slotsInfo;
+                      } else {
+                        responseContent = `Encontrei esses horários:\n\n${suggestions.map((s, i) => `Opção ${i + 1}: ${s.dateLabel} às ${s.time}`).join('\n')}\n\nQual funciona melhor pra você?`;
+                      }
+                    }
+                  }
+                } else if (!skipSlotSearch) {
 
 
 
@@ -3566,17 +3848,108 @@ REGRAS DE USO:
                     }
                   }
                 }
-                } // end if (!skipSlotSearch)
+                } // end else if (!skipSlotSearch) — busca legada (reunião)
                 console.log('[webchat-bot] Available slots check completed');
               } catch (slotsError) {
                 console.error('[webchat-bot] Check slots error:', slotsError);
                 responseContent = 'Não consegui verificar a agenda agora. Posso tentar novamente ou transferir para um atendente?';
               }
-            } else if (toolCall.function.name === 'schedule_meeting' && scheduleUserId) {
+            } else if (toolCall.function.name === 'schedule_meeting' && (salaoMode || scheduleUserId)) {
               try {
                 const args = JSON.parse(toolCall.function.arguments);
                 console.log('[webchat-bot] Schedule meeting requested:', args);
-                
+
+                if (salaoMode) {
+                  // ============================================================
+                  // SALÃO: cria o agendamento na Agenda real via edge function
+                  // salao-public-booking (upsert cliente por telefone,
+                  // anti-double-booking server-side, dispara WhatsApp). Passa
+                  // data+hora como strings — o TZ é tratado lá dentro, sem Date().
+                  // NÃO escreve em calendar_events / booking_requests.
+                  // ============================================================
+                  const servicoId = String((args as any).servico_id || '');
+                  const profissionalId = String((args as any).profissional_id || '');
+                  const dataReq = String((args as any).preferred_date || '');
+                  const horaReq = String((args as any).preferred_time || '');
+                  const clienteNome = String((args as any).cliente_nome || leadContext?.name || body.visitor_name || '').trim();
+                  const clienteTelefone = String((args as any).cliente_telefone || leadContext?.phone || capturedFromMessage.phone || '').trim();
+                  const clienteEmail = String((args as any).cliente_email || leadContext?.email || capturedFromMessage.email || '').trim() || undefined;
+
+                  const servicoInfo = salaoServicos.find((s) => s.id === servicoId) || null;
+                  const profInfo = salaoProfissionais.find((p) => p.id === profissionalId) || null;
+
+                  if (!/^[0-9a-f-]{36}$/i.test(servicoId) || !/^[0-9a-f-]{36}$/i.test(profissionalId)
+                      || !/^\d{4}-\d{2}-\d{2}$/.test(dataReq) || !/^\d{2}:\d{2}$/.test(horaReq)) {
+                    responseContent = 'Faltou confirmar serviço, profissional, dia ou horário. Pode me confirmar?';
+                  } else if (clienteNome.length < 2) {
+                    responseContent = 'Pra fechar o agendamento, qual o seu nome?';
+                  } else if (clienteTelefone.replace(/\D/g, '').length < 8) {
+                    responseContent = 'Pra confirmar seu atendimento, qual o melhor telefone com WhatsApp?';
+                  } else {
+                    const { data: bookData, error: bookErr } = await supabase.functions.invoke('salao-public-booking', {
+                      body: {
+                        slug: salaoSlug,
+                        servico_id: servicoId,
+                        profissional_id: profissionalId,
+                        data: dataReq,
+                        hora: horaReq,
+                        cliente_nome: clienteNome,
+                        cliente_telefone: clienteTelefone,
+                        cliente_email: clienteEmail,
+                      },
+                    });
+
+                    // supabase.functions.invoke devolve {error} em status >= 400; o corpo
+                    // de erro vem em bookData.error quando o status é 4xx do nosso json().
+                    const bookingId = bookData?.id || null;
+                    const bookingError = (bookData && (bookData as any).error) ? String((bookData as any).error) : null;
+
+                    if (bookErr || bookingError || !bookingId) {
+                      console.error('[webchat-bot] salao-public-booking failed:', bookErr || bookingError);
+                      if (bookingError && /indisponível|reservad/i.test(bookingError)) {
+                        responseContent = 'Esse horário acabou de ser preenchido. Quer que eu veja outros horários pra você?';
+                      } else {
+                        responseContent = 'Não consegui concluir o agendamento agora. Posso tentar de novo ou te passar pro atendente?';
+                      }
+                    } else {
+                      // Sucesso real — libera o guard anti-alucinação.
+                      scheduleSucceeded = true;
+
+                      // Persiste contexto do atendimento na conversa pra não re-propor.
+                      try {
+                        await supabase
+                          .from('webchat_conversations')
+                          .update({
+                            meeting_scheduled_at: `${dataReq}T${horaReq}:00-03:00`,
+                            meeting_event_id: bookingId,
+                            meeting_metadata: {
+                              salao: true,
+                              agendamento_id: bookingId,
+                              servico_id: servicoId,
+                              servico_nome: servicoInfo?.nome || null,
+                              profissional_id: profissionalId,
+                              profissional_nome: profInfo?.nome || null,
+                              cliente_nome: clienteNome,
+                              cliente_telefone: clienteTelefone,
+                            },
+                          })
+                          .eq('id', body.conversation_id);
+                      } catch (persistErr) {
+                        console.warn('[webchat-bot] Failed to persist salão meeting context (non-fatal):', persistErr);
+                      }
+
+                      const dataLabel = (() => {
+                        try {
+                          const [y, m, d] = dataReq.split('-').map(Number);
+                          return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+                        } catch { return dataReq; }
+                      })();
+                      const whatsappOk = !!(bookData && (bookData as any).whatsapp_enviado);
+                      responseContent = `✅ Atendimento agendado com sucesso!\n\n💅 ${servicoInfo?.nome || 'Serviço'}${profInfo ? ` com ${profInfo.nome}` : ''}\n📅 ${dataLabel} às ${horaReq}${whatsappOk ? '\n📲 Enviei a confirmação no seu WhatsApp.' : ''}\n\nPosso ajudar em mais alguma coisa?`;
+                      console.log('[webchat-bot] Salão booking OK:', bookingId, 'whatsapp:', whatsappOk);
+                    }
+                  }
+                } else {
                 // Find event type for this user.
                 // Se o cliente passou event_type_id (escolheu entre múltiplos), prioriza esse.
                 // Senão usa allowedEventTypes[0] (vínculo do agente) ou fallback para o mais antigo.
@@ -3822,6 +4195,7 @@ REGRAS DE USO:
                 } else {
                   responseContent = 'Infelizmente não tenho horários disponíveis no momento. Posso verificar alternativas para você?';
                 }
+                } // end else — agendamento legado (reunião)
               } catch (scheduleError) {
                 console.error('[webchat-bot] Schedule error:', scheduleError);
                 responseContent = 'Desculpe, ocorreu um erro ao agendar. Posso transferir para um atendente?';
