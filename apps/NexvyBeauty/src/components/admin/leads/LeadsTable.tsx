@@ -40,6 +40,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Tables } from '@/integrations/supabase/types';
+import { LeadScoreBadge } from '@/components/lead/LeadScoreBadge';
 
 type Lead = Tables<'leads'> & {
   pipeline_stages?: Tables<'pipeline_stages'> | null;
@@ -160,6 +161,9 @@ export function LeadsTable({
             <TableHead className="min-w-[200px]">
               <SortableHeader column="name" label="Lead" currentSort={sort} onSort={onSort} />
             </TableHead>
+            <TableHead className="w-28">
+              <SortableHeader column="score" label="Score" currentSort={sort} onSort={onSort} />
+            </TableHead>
             <TableHead className="min-w-[150px]">Contato</TableHead>
             <TableHead className="min-w-[120px]">
               <SortableHeader column="lead_origin" label="Origem" currentSort={sort} onSort={onSort} />
@@ -217,6 +221,11 @@ export function LeadsTable({
                       )}
                     </div>
                   </div>
+                </TableCell>
+
+                {/* Score (A1 — lead scoring com decay) */}
+                <TableCell>
+                  <LeadScoreBadge score={lead.score} showBar={false} />
                 </TableCell>
 
                 {/* Contact */}

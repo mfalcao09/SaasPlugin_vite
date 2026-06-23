@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_agent_messages: {
@@ -161,6 +136,181 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      affiliate_commissions: {
+        Row: {
+          affiliate_id: string
+          amount_cents: number
+          buyer_document: string | null
+          buyer_ip: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          idempotency_key: string
+          lead_id: string | null
+          metadata: Json | null
+          order_ref: string | null
+          organization_id: string | null
+          payout_item_id: string | null
+          pct_applied: number
+          review_status: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          amount_cents?: number
+          buyer_document?: string | null
+          buyer_ip?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          idempotency_key: string
+          lead_id?: string | null
+          metadata?: Json | null
+          order_ref?: string | null
+          organization_id?: string | null
+          payout_item_id?: string | null
+          pct_applied?: number
+          review_status?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          amount_cents?: number
+          buyer_document?: string | null
+          buyer_ip?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          idempotency_key?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          order_ref?: string | null
+          organization_id?: string | null
+          payout_item_id?: string | null
+          pct_applied?: number
+          review_status?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_commission_summary"
+            referencedColumns: ["affiliate_id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_payout_item_id_fkey"
+            columns: ["payout_item_id"]
+            isOneToOne: false
+            referencedRelation: "payout_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_links: {
+        Row: {
+          affiliate_id: string
+          clicks: number
+          created_at: string | null
+          default_utm_campaign: string | null
+          default_utm_medium: string | null
+          default_utm_source: string | null
+          id: string
+          label: string | null
+          ref_code: string
+        }
+        Insert: {
+          affiliate_id: string
+          clicks?: number
+          created_at?: string | null
+          default_utm_campaign?: string | null
+          default_utm_medium?: string | null
+          default_utm_source?: string | null
+          id?: string
+          label?: string | null
+          ref_code: string
+        }
+        Update: {
+          affiliate_id?: string
+          clicks?: number
+          created_at?: string | null
+          default_utm_campaign?: string | null
+          default_utm_medium?: string | null
+          default_utm_source?: string | null
+          id?: string
+          label?: string | null
+          ref_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_links_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_commission_summary"
+            referencedColumns: ["affiliate_id"]
+          },
+          {
+            foreignKeyName: "affiliate_links_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          commission_pct: number
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          pix_key: string | null
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          commission_pct?: number
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          commission_pct?: number
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       agendamentos: {
         Row: {
@@ -3569,6 +3719,7 @@ export type Database = {
           email: string | null
           endereco: string | null
           id: string
+          lead_id: string | null
           nome: string
           observacoes: string | null
           organization_id: string
@@ -3583,6 +3734,7 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           id?: string
+          lead_id?: string | null
           nome: string
           observacoes?: string | null
           organization_id: string
@@ -3597,6 +3749,7 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           id?: string
+          lead_id?: string | null
           nome?: string
           observacoes?: string | null
           organization_id?: string
@@ -3606,6 +3759,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clientes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clientes_organization_id_fkey"
             columns: ["organization_id"]
@@ -5517,6 +5677,63 @@ export type Database = {
           },
         ]
       }
+      lead_nba_sugestao: {
+        Row: {
+          acao: string
+          canal_sugerido: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          mensagem_sugerida: string | null
+          model: string | null
+          motivo: string | null
+          organization_id: string
+          prioridade: string
+          status: string
+        }
+        Insert: {
+          acao: string
+          canal_sugerido?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          mensagem_sugerida?: string | null
+          model?: string | null
+          motivo?: string | null
+          organization_id: string
+          prioridade?: string
+          status?: string
+        }
+        Update: {
+          acao?: string
+          canal_sugerido?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          mensagem_sugerida?: string | null
+          model?: string | null
+          motivo?: string | null
+          organization_id?: string
+          prioridade?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_nba_sugestao_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_nba_sugestao_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_notes: {
         Row: {
           author_id: string
@@ -5960,6 +6177,8 @@ export type Database = {
           previous_assigned_to: string | null
           product_id: string | null
           referrer_url: string | null
+          score: number
+          score_updated_at: string | null
           sdr_id: string | null
           sector_id: string | null
           source: string | null
@@ -6005,6 +6224,8 @@ export type Database = {
           previous_assigned_to?: string | null
           product_id?: string | null
           referrer_url?: string | null
+          score?: number
+          score_updated_at?: string | null
           sdr_id?: string | null
           sector_id?: string | null
           source?: string | null
@@ -6050,6 +6271,8 @@ export type Database = {
           previous_assigned_to?: string | null
           product_id?: string | null
           referrer_url?: string | null
+          score?: number
+          score_updated_at?: string | null
           sdr_id?: string | null
           sector_id?: string | null
           source?: string | null
@@ -6144,6 +6367,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lgpd_consents: {
+        Row: {
+          accepted: boolean
+          city: string | null
+          consent_text: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          id: string
+          ip: string | null
+          lead_id: string | null
+          metadata: Json | null
+          privacy_version: string | null
+          region: string | null
+          scope: string
+          terms_version: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accepted?: boolean
+          city?: string | null
+          consent_text?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          lead_id?: string | null
+          metadata?: Json | null
+          privacy_version?: string | null
+          region?: string | null
+          scope?: string
+          terms_version?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accepted?: boolean
+          city?: string | null
+          consent_text?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          lead_id?: string | null
+          metadata?: Json | null
+          privacy_version?: string | null
+          region?: string | null
+          scope?: string
+          terms_version?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       mass_email_campaigns: {
         Row: {
@@ -7140,6 +7417,7 @@ export type Database = {
           features: Json | null
           id: string
           logo_url: string | null
+          max_ai_agents: number | null
           max_connections: number | null
           max_products: number | null
           max_users: number | null
@@ -7179,6 +7457,7 @@ export type Database = {
           features?: Json | null
           id?: string
           logo_url?: string | null
+          max_ai_agents?: number | null
           max_connections?: number | null
           max_products?: number | null
           max_users?: number | null
@@ -7218,6 +7497,7 @@ export type Database = {
           features?: Json | null
           id?: string
           logo_url?: string | null
+          max_ai_agents?: number | null
           max_connections?: number | null
           max_products?: number | null
           max_users?: number | null
@@ -7350,6 +7630,109 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_batches: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          items_count: number
+          notes: string | null
+          provider: string
+          status: string
+          total_cents: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          items_count?: number
+          notes?: string | null
+          provider?: string
+          status?: string
+          total_cents?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          items_count?: number
+          notes?: string | null
+          provider?: string
+          status?: string
+          total_cents?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payout_items: {
+        Row: {
+          affiliate_id: string
+          amount_cents: number
+          batch_id: string
+          commission_ids: string[]
+          created_at: string | null
+          error: string | null
+          id: string
+          paid_at: string | null
+          pix_key: string | null
+          provider_ref: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          amount_cents?: number
+          batch_id: string
+          commission_ids?: string[]
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          paid_at?: string | null
+          pix_key?: string | null
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          amount_cents?: number
+          batch_id?: string
+          commission_ids?: string[]
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          paid_at?: string | null
+          pix_key?: string | null
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_items_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_commission_summary"
+            referencedColumns: ["affiliate_id"]
+          },
+          {
+            foreignKeyName: "payout_items_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -7580,6 +7963,7 @@ export type Database = {
           is_active: boolean
           is_default: boolean
           is_public: boolean
+          max_ai_agents: number
           max_ai_tokens_month: number
           max_connections: number
           max_contacts: number
@@ -7629,6 +8013,7 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           is_public?: boolean
+          max_ai_agents?: number
           max_ai_tokens_month?: number
           max_connections?: number
           max_contacts?: number
@@ -7678,6 +8063,7 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           is_public?: boolean
+          max_ai_agents?: number
           max_ai_tokens_month?: number
           max_connections?: number
           max_contacts?: number
@@ -9436,63 +9822,114 @@ export type Database = {
       }
       sales_leads: {
         Row: {
-          company_name: string
+          affiliate_id: string | null
+          company_name: string | null
           company_size: string | null
           contact_name: string
           created_at: string | null
           current_tools: string | null
           email: string
+          fbc: string | null
+          fbp: string | null
           id: string
+          landing_page: string | null
+          lead_channel: string | null
           main_challenge: string | null
           message: string | null
           notes: string | null
           phone: string | null
+          ref_code: string | null
+          referrer_url: string | null
+          sck: string | null
           segment: string | null
+          src: string | null
           status: string | null
           updated_at: string | null
           utm_campaign: string | null
+          utm_content: string | null
           utm_medium: string | null
           utm_source: string | null
+          utm_term: string | null
+          whatsapp: string | null
         }
         Insert: {
-          company_name: string
+          affiliate_id?: string | null
+          company_name?: string | null
           company_size?: string | null
           contact_name: string
           created_at?: string | null
           current_tools?: string | null
           email: string
+          fbc?: string | null
+          fbp?: string | null
           id?: string
+          landing_page?: string | null
+          lead_channel?: string | null
           main_challenge?: string | null
           message?: string | null
           notes?: string | null
           phone?: string | null
+          ref_code?: string | null
+          referrer_url?: string | null
+          sck?: string | null
           segment?: string | null
+          src?: string | null
           status?: string | null
           updated_at?: string | null
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
+          whatsapp?: string | null
         }
         Update: {
-          company_name?: string
+          affiliate_id?: string | null
+          company_name?: string | null
           company_size?: string | null
           contact_name?: string
           created_at?: string | null
           current_tools?: string | null
           email?: string
+          fbc?: string | null
+          fbp?: string | null
           id?: string
+          landing_page?: string | null
+          lead_channel?: string | null
           main_challenge?: string | null
           message?: string | null
           notes?: string | null
           phone?: string | null
+          ref_code?: string | null
+          referrer_url?: string | null
+          sck?: string | null
           segment?: string | null
+          src?: string | null
           status?: string | null
           updated_at?: string | null
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
+          whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_leads_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_commission_summary"
+            referencedColumns: ["affiliate_id"]
+          },
+          {
+            foreignKeyName: "sales_leads_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_squads: {
         Row: {
@@ -11626,6 +12063,18 @@ export type Database = {
       }
     }
     Views: {
+      affiliate_commission_summary: {
+        Row: {
+          affiliate_id: string | null
+          approved_cents: number | null
+          cancelled_cents: number | null
+          commissions_count: number | null
+          paid_cents: number | null
+          pending_cents: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       platform_branding_public: {
         Row: {
           accent_color: string | null
@@ -11819,6 +12268,7 @@ export type Database = {
         }
         Returns: Json
       }
+      current_affiliate_id: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -12045,6 +12495,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recompute_lead_scores: { Args: { p_org?: string }; Returns: number }
       record_variant_impression: {
         Args: { p_variant_id: string }
         Returns: undefined
@@ -12071,6 +12522,7 @@ export type Database = {
         Returns: Json
       }
       reset_monthly_webhook_requests: { Args: never; Returns: undefined }
+      resolve_affiliate_ref: { Args: { p_ref: string }; Returns: string }
       search_catalog_smart: {
         Args: {
           p_attribute_filters?: Json
@@ -12293,9 +12745,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "manager", "seller", "super_admin"],

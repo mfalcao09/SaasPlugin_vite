@@ -131,3 +131,22 @@ e que estou logado pra verificar as telas autenticadas (ou uso o padrão `/demo`
 - ❌ **Não migrar dados** do cloud-beauty-ai (template vazio; nada a trazer).
 - ✅ Usar o cloud-beauty-ai como **referência de arquitetura/UX-alvo** e de **2 features** (scoring-decay
   patterns, NBA), portadas pra nossa infra real.
+
+---
+
+## 7. Progresso — sessão 2026-06-23 (last-mile A1/A2 + Track B paralelo)
+
+**A1 (scoring com decay) — FECHADO:**
+- ✅ Decay cron instalado (`cron.job` `lead-score-decay`, `0 6 * * *` → `select recompute_lead_scores()`). Antes: `decay_cron=0` (score congelado). Agora envelhece sozinho.
+- ✅ Coluna **Score** na lista de leads (`LeadsTable.tsx` + novo `LeadScoreBadge.tsx`, sortable por `score`).
+
+**A2 (NBA generativo) — FECHADO:**
+- ✅ Novo `LeadNbaCard.tsx`: botão **Gerar** (`lead-nba`) + **Aplicar (WhatsApp)** (`evolution-send`) + Copiar/Descartar.
+- ✅ Montado em `RadarLeadDetailSheet.tsx` (painel Radar IA) **e** `LeadDetailPage.tsx` (aba Resumo).
+- ✅ Prova E2E ao vivo: `lead-nba {dry_run}` → `mode:llm`, NBA acionável + msg pronta pra WhatsApp.
+
+**Infra:** `types.ts` regenerado do schema vivo (saúde de tipos 47→20 erros, todos pré-existentes; meus arquivos limpos). `vite build` ✅ verde. (`tsc -b` é vermelho por design no projeto — não é gate; vite é.)
+
+**Track B (coesão):** rodando em worktree isolado `cascade/track-b-coesao` (agente de fundo) — shell unificado + re-skin tenant-facing. Merge + verificação após retorno.
+
+**Resta:** revisar/mergear Track B · build+deploy VPS combinado · prova anti-phantom · screenshots.

@@ -28,6 +28,7 @@ import { LeadNotesTab } from './LeadNotesTab';
 import { LeadCadencesTab } from './LeadCadencesTab';
 import { LeadTransferModal } from './LeadTransferModal';
 import { LeadEditModal } from './LeadEditModal';
+import { LeadNbaCard } from './LeadNbaCard';
 import { Button } from '@/components/ui/button';
 import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
 import { useNavigate } from 'react-router-dom';
@@ -219,8 +220,10 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
-            <TabsContent value="summary" className="mt-0">
-              <LeadSummaryTab 
+            <TabsContent value="summary" className="mt-0 space-y-4">
+              {/* A2 — NBA generativo no topo do Resumo (mais visível pro dono do salão) */}
+              <LeadNbaCard leadId={leadId} phone={lead.phone} />
+              <LeadSummaryTab
                 lead={lead}
                 stagesCount={stages?.length || 7}
                 interactionsCount={interactions?.length || 0}

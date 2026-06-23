@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RadarLeadActions } from './RadarLeadActions';
+import { LeadNbaCard } from '@/components/lead/LeadNbaCard';
 import type { ScanItem } from '@/hooks/useOpportunityScan';
 
 const COLORS = { hot: '#ef4444', warm: '#f97316', cold: '#3b82f6', lost: '#71717a' };
@@ -119,6 +120,14 @@ export function RadarLeadDetailSheet({ item, open, onOpenChange, onOpenConversat
                 </div>
               )}
             </section>
+
+            {item.lead_id && (
+              <>
+                <Separator />
+                {/* A2 — Next-Best-Action generativo (gera + aplica no WhatsApp real) */}
+                <LeadNbaCard leadId={item.lead_id} phone={lead?.phone ?? snap.phone ?? null} />
+              </>
+            )}
 
             <Separator />
 
