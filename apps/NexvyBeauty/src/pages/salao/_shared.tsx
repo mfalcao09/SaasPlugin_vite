@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppTopBar } from '@/components/layout/AppTopBar'
+import { UnifiedShell } from '@/components/layout/UnifiedShell'
 
 // ---- helpers (mesmo contrato do ERP, reusados pelas telas de salão) ----
 export function formatCurrency(value: number | null | undefined): string {
@@ -25,6 +26,9 @@ export function useOrganizationId(): string | null {
   return profile?.organization_id ?? null
 }
 
+// Navegação do salão em MODO DEMO (rotas públicas /demo/salao/*). Fora do
+// demo, o salão herda a casca unificada (UnifiedShell) — uma sidebar agrupada
+// que cobre todas as áreas do tenant, não só o salão.
 const NAV = [
   { to: '/salao', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/salao/agenda', label: 'Agenda', icon: CalendarDays },
@@ -38,8 +42,13 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   // Modo demonstração (rotas /demo/salao/*): a sidebar navega entre as telas de
   // demo (públicas), não as protegidas; e o footer sai pra LP em vez do Hub.
+  // Fora do demo (tenant autenticado) usamos a casca unificada coesa.
   const isDemo = useLocation().pathname.startsWith('/demo')
-  const linkTo = (to: string) => (isDemo ? to.replace('/salao', '/demo/salao') : to)
+
+  if (!isDemo) {
+    return <UnifiedShell title="Gestão do Salão">{children}</UnifiedShell>
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Topbar canônica do sistema (mesma de todos os módulos pós-login). */}
@@ -50,7 +59,7 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
             {NAV.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
-                to={linkTo(to)}
+                to={to.replace('/salao', '/demo/salao')}
                 end={end}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -64,11 +73,11 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
           </nav>
           <div className="p-3 border-t">
             <button
-              onClick={() => navigate(isDemo ? '/vendas' : '/')}
+              onClick={() => navigate('/vendas')}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
               <LayoutGrid className="h-4 w-4" />
-              {isDemo ? 'Sair do demo' : 'Hub de Módulos'}
+              Sair do demo
             </button>
           </div>
         </aside>
