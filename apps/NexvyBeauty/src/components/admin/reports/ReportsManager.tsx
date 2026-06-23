@@ -28,7 +28,10 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const COLORS = ['hsl(173, 80%, 45%)', 'hsl(190, 80%, 50%)', 'hsl(142, 71%, 45%)', 'hsl(38, 92%, 50%)', 'hsl(280, 70%, 50%)'];
+// Paleta da marca (NexvyBeauty) — pink-led, alinhada às telas premium do salão
+// (pages/salao). Substitui a paleta teal/ciano legada (era do vertical oficina).
+const BRAND = 'hsl(330 81% 60%)';
+const COLORS = ['hsl(330 81% 60%)', 'hsl(280 65% 62%)', 'hsl(142 71% 45%)', 'hsl(38 92% 50%)', 'hsl(250 70% 62%)'];
 
 export function ReportsManager() {
   const { data: products, isLoading: productsLoading } = useProducts();
@@ -211,12 +214,12 @@ export function ReportsManager() {
                         }}
                         formatter={(value: number) => [formatCurrency(value), 'Vendas']}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="sales" 
-                        stroke="hsl(173, 80%, 45%)" 
+                      <Line
+                        type="monotone"
+                        dataKey="sales"
+                        stroke={BRAND}
                         strokeWidth={2}
-                        dot={{ fill: 'hsl(173, 80%, 45%)' }}
+                        dot={{ fill: BRAND }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -286,9 +289,9 @@ export function ReportsManager() {
                       }}
                       formatter={(value: number) => [formatCurrency(value), 'Vendas']}
                     />
-                    <Bar 
-                      dataKey="sales" 
-                      fill="hsl(173, 80%, 45%)"
+                    <Bar
+                      dataKey="sales"
+                      fill={BRAND}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -380,9 +383,9 @@ export function ReportsManager() {
                       }}
                       formatter={(value: number) => [formatCurrency(value), 'Vendas']}
                     />
-                    <Bar 
-                      dataKey="totalValue" 
-                      fill="hsl(173, 80%, 45%)"
+                    <Bar
+                      dataKey="totalValue"
+                      fill={BRAND}
                       radius={[0, 4, 4, 0]}
                     />
                   </BarChart>

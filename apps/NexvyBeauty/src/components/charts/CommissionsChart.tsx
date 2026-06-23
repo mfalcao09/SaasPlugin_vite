@@ -133,8 +133,8 @@ export function CommissionsChart({ commissions, isLoading }: CommissionsChartPro
                   <stop offset="95%" stopColor="hsl(142 71% 45%)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorApproved" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(173 80% 45%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(173 80% 45%)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(330 81% 60%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(330 81% 60%)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(38 92% 50%)" stopOpacity={0.3} />
@@ -169,7 +169,7 @@ export function CommissionsChart({ commissions, isLoading }: CommissionsChartPro
                 dataKey="approved"
                 name="Aprovado"
                 stackId="1"
-                stroke="hsl(173 80% 45%)"
+                stroke="hsl(330 81% 60%)"
                 fill="url(#colorApproved)"
                 strokeWidth={2}
               />
@@ -193,7 +193,7 @@ export function CommissionsChart({ commissions, isLoading }: CommissionsChartPro
             <span className="text-xs text-muted-foreground">Pago</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-[hsl(173_80%_45%)]" />
+            <div className="h-3 w-3 rounded-full bg-[hsl(330_81%_60%)]" />
             <span className="text-xs text-muted-foreground">Aprovado</span>
           </div>
           <div className="flex items-center gap-2">
