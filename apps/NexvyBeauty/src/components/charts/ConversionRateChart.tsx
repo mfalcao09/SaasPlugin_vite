@@ -24,7 +24,7 @@ export function ConversionRateChart({ data, isLoading }: ConversionRateChartProp
       pieData: [
         { name: 'Ganhos', value: data.wonLeads, color: 'hsl(142 71% 45%)' },
         { name: 'Perdidos', value: data.lostLeads, color: 'hsl(0 72% 51%)' },
-        { name: 'Em Andamento', value: data.activeLeads, color: 'hsl(173 80% 45%)' },
+        { name: 'Em Andamento', value: data.activeLeads, color: 'hsl(330 81% 60%)' },
       ].filter(d => d.value > 0),
       conversionRate: Math.round(conversionRate),
       totalLeads: data.totalLeads,
@@ -140,8 +140,8 @@ export function ConversionRateChart({ data, isLoading }: ConversionRateChartProp
             <p className="text-lg font-bold text-[hsl(0_72%_51%)]">{chartData.lostLeads}</p>
             <p className="text-xs text-muted-foreground">Perdidos</p>
           </div>
-          <div className="bg-[hsl(173_80%_45%/0.1)] rounded-lg p-2">
-            <p className="text-lg font-bold text-[hsl(173_80%_45%)]">{chartData.activeLeads}</p>
+          <div className="bg-[hsl(330_81%_60%/0.1)] rounded-lg p-2">
+            <p className="text-lg font-bold text-[hsl(330_81%_60%)]">{chartData.activeLeads}</p>
             <p className="text-xs text-muted-foreground">Ativos</p>
           </div>
         </div>
