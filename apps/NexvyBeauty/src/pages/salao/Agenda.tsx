@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { convertLeadToCliente } from '@/hooks/useLeadToCliente'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
@@ -224,13 +225,11 @@ export default function Agenda({ demo }: { demo?: Agendamento[] } = {}) {
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
-            <p className="text-muted-foreground">{agendamentos.length} {agendamentos.length === 1 ? 'agendamento' : 'agendamentos'}</p>
-          </div>
-          <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>
-        </div>
+        <PageHeader
+          title="Agenda"
+          description={`${agendamentos.length} ${agendamentos.length === 1 ? 'agendamento' : 'agendamentos'}`}
+          action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>}
+        />
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

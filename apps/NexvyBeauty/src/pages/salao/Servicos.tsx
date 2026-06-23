@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SalaoLayout, NoOrg, formatCurrency, useOrganizationId } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
 // `servico_catalogo` por organization_id (CRUD completo).
@@ -129,13 +130,11 @@ export default function Servicos({ demo }: { demo?: Servico[] } = {}) {
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Serviços</h1>
-            <p className="text-muted-foreground">{servicos.length} {servicos.length === 1 ? 'serviço cadastrado' : 'serviços cadastrados'}</p>
-          </div>
-          <Button onClick={abrirNovo}><Plus className="mr-2 h-4 w-4" />Novo serviço</Button>
-        </div>
+        <PageHeader
+          title="Serviços"
+          description={`${servicos.length} ${servicos.length === 1 ? 'serviço cadastrado' : 'serviços cadastrados'}`}
+          action={<Button onClick={abrirNovo}><Plus className="mr-2 h-4 w-4" />Novo serviço</Button>}
+        />
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

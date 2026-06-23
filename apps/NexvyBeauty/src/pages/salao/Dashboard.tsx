@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Estrutura visual portada do beauty-flow (KPI grid + gráficos recharts),
 // com a NOSSA camada de dados (agendamentos/profissionais/clientes por
@@ -153,10 +154,7 @@ export default function Dashboard({ demo }: { demo?: DashboardData } = {}) {
             Modo demonstração — dados fictícios, nada é salvo.
           </div>
         )}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do seu salão</p>
-        </div>
+        <PageHeader title="Dashboard" description="Visão geral do seu salão" />
 
         {/* KPI grid */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">

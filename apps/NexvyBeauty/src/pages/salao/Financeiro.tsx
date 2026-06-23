@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
 // `lancamentos` por organization_id (registro de entradas/saídas).
@@ -94,13 +95,11 @@ export default function Financeiro({ demo }: { demo?: Lancamento[] } = {}) {
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
-            <p className="text-muted-foreground">Controle de receitas e despesas</p>
-          </div>
-          <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo lançamento</Button>
-        </div>
+        <PageHeader
+          title="Financeiro"
+          description="Controle de receitas e despesas"
+          action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo lançamento</Button>}
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {kpis.map((k) => (

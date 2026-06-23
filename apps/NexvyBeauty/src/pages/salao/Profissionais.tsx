@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SalaoLayout, NoOrg, useOrganizationId } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
 // `profissionais` por organization_id (cadastro/criação, como no original).
@@ -98,13 +99,11 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Profissionais</h1>
-            <p className="text-muted-foreground">{profissionais.length} {profissionais.length === 1 ? 'profissional cadastrado' : 'profissionais cadastrados'}</p>
-          </div>
-          <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo profissional</Button>
-        </div>
+        <PageHeader
+          title="Profissionais"
+          description={`${profissionais.length} ${profissionais.length === 1 ? 'profissional cadastrado' : 'profissionais cadastrados'}`}
+          action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo profissional</Button>}
+        />
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

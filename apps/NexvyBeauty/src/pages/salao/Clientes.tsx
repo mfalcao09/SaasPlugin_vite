@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SalaoLayout, NoOrg, useOrganizationId } from './_shared'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium (dark via tokens, shadcn) + data-injectable: sem `demo`
 // busca Supabase real; com `demo` usa seed (rota /demo, sem auth, sem gravar).
@@ -136,13 +137,11 @@ export default function Clientes({ demo }: { demo?: Cliente[] } = {}) {
           </div>
         )}
 
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-            <p className="text-muted-foreground">{clientes.length} {clientes.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}</p>
-          </div>
-          <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>
-        </div>
+        <PageHeader
+          title="Clientes"
+          description={`${clientes.length} ${clientes.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`}
+          action={<Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>}
+        />
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
