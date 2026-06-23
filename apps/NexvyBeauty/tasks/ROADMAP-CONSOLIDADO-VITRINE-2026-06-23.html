@@ -1,0 +1,119 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roadmap Consolidado — Vitrine</title><style>:root{--bg:#0d0d12;--card:#16161f;--bd:#2a2a38;--fg:#e7e7ee;--mut:#9a9ab0;--brand:#ec4899;--brand2:#a855f7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px 24px}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:30px;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent;border-bottom:1px solid var(--bd);padding-bottom:14px}
+h2{font-size:22px;margin-top:38px;color:#fff;border-left:3px solid var(--brand);padding-left:12px}
+h3{font-size:17px;margin-top:26px;color:var(--brand)}
+h4{font-size:15px;color:var(--brand2)}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--card);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+th{background:#1d1d2a;font-weight:700;color:#fff}
+code{background:#23232f;padding:2px 6px;border-radius:5px;font-size:13px;color:#f0a8d0}
+strong{color:#fff}li{margin:5px 0}p{margin:9px 0}
+blockquote{border-left:3px solid var(--brand);background:#1a1320;margin:12px 0;padding:10px 16px;border-radius:0 8px 8px 0;color:#ffd9ec}
+hr{border:0;border-top:1px solid var(--bd);margin:28px 0}</style></head><body><div class="wrap"><h1>Roadmap Consolidado — Vitrine que Vende + Port + IA segregada</h1>
+<p><strong>Data:</strong> 2026-06-23 · <strong>Status:</strong> plano aprovado-em-partes, pré-execução
+<strong>Consolida:</strong> PLANO-PORT-CBA (ondas 0–6) + VITRINE-QUE-VENDE + MAPEAMENTO-IA (Cockpit/Admin/Super-admin) + decisões cravadas pelo Marcelo.</p>
+<hr />
+<h2>0. PREMISSA GLOBAL (inegociável, vale para TODA onda)</h2>
+<blockquote>
+<p><strong>NADA QUEBRADO + TUDO OPERANTE.</strong>
+Nenhuma rota órfã, nenhum import morto, nenhuma tela sem-saída, nenhuma feature desconectada. Cada onda só é "feita" com <strong>teste E2E real</strong> provando o fluxo ponta-a-ponta no ambiente (não build verde, não "deveria funcionar"). Toda remoção/fusão é precedida de <strong>inventário de callers</strong> e seguida de <strong>redirect de todas as rotas antigas</strong>. Git guarda rollback; deploy só com prova (curl/screenshot do bundle servido).</p>
+</blockquote>
+<p><strong>Definition of Done por onda (checklist):</strong>
+- [ ] <code>npm run build</code> verde (gate real; <code>tsc -b</code> é vermelho por design).
+- [ ] Nenhuma rota antiga retorna 404/tela-morta — todas resolvem pro novo destino.
+- [ ] Nenhum componente removido ainda referenciado (grep limpo).
+- [ ] E2E: percorri o fluxo logado e provei (screenshot/curl) que opera.
+- [ ] Deploy provado (string nova no bundle servido + rota responde).</p>
+<hr />
+<h2>1. COMO O NOVO PLANO CONVERSA COM AS ONDAS ANTERIORES</h2>
+<p>A virada do Marcelo nesta sessão <strong>muda a prioridade</strong>: o PLANO-PORT antigo era <em>"portar mais capacidade do CBA"</em>; a diretriz nova é <em>"fazer a capacidade que já temos VENDER e ser USÁVEL"</em>. Logo, as ondas não-executadas (4–6) <strong>são rebaixadas</strong> — seus pedaços de valor são <strong>absorvidos</strong> pela vitrine; o resto <strong>estaciona</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Onda antiga</th>
+<th>Destino no plano consolidado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong> Fundação (tokens/config)</td>
+<td>✅ Concluída — base de tudo.</td>
+</tr>
+<tr>
+<td><strong>1</strong> Shell coeso (UnifiedShell/PageHeader)</td>
+<td>✅ Concluída — <strong>vira a casca onde o Cockpit nasce.</strong></td>
+</tr>
+<tr>
+<td><strong>2</strong> Booking público + Pacotes</td>
+<td>✅ Concluída — <strong>o <code>/salao/Agenda</code> + <code>agendamentos</code> daqui é a agenda canônica</strong> (portal + agente).</td>
+</tr>
+<tr>
+<td><strong>3</strong> web-push/PWA/gate</td>
+<td>🟡 <strong>ESTACIONA.</strong> Fundação feita; resto é <em>nicety</em> de plataforma, não alavanca de venda. Pluga no V5 se/quando fizer sentido. Não conflita com a vitrine.</td>
+</tr>
+<tr>
+<td><strong>4</strong> CRM depth: scoring + higiene + <strong>oportunidades</strong></td>
+<td>🔪 <strong>ABSORVIDA PARCIAL.</strong> "Oportunidades" = o Radar (<code>opportunity-scan-run</code>) = <strong>a Home de Valor (V1)</strong>. Scoring/higiene = capacidade pura → <strong>despriorizado</strong> (não vende sozinho).</td>
+</tr>
+<tr>
+<td><strong>5</strong> IA knowledge: KB + copiloto MIA</td>
+<td>♻️ <strong>REENQUADRADA.</strong> Copiloto/IA <strong>já existe</strong>. Não é "construir KB nova" — é <strong>tornar a IA VISÍVEL</strong> no Cockpit › "Minha IA" (V2).</td>
+</tr>
+<tr>
+<td><strong>6</strong> Paridade automação/omni/analytics</td>
+<td>🅿️ <strong>ESTACIONA.</strong> Paridade-por-paridade não vende. Só os bits que melhoram a experiência visível entram, sob demanda.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Resumo honesto:</strong> das 3 ondas grandes que faltavam (4/5/6), <strong>nenhuma é construída como estava planejada.</strong> A 4 vira a Home de Valor, a 5 vira visibilidade da IA, a 6 estaciona. O foco inteiro migra de <em>capacidade</em> → <em>vitrine + usabilidade</em>.</p>
+<hr />
+<h2>2. ROADMAP CONSOLIDADO (V0 → V5)</h2>
+<p>Ordem por: destravar primeiro (higiene/canônicos), depois o AHA, depois visibilidade, depois polimento.</p>
+<h3>V0 — Higiene + Canônicos (fundação da vitrine, NADA pode quebrar)</h3>
+<p><strong>Objetivo:</strong> acabar com a duplicação (2 sistemas de uso paralelos) e o código morto ANTES de montar a nav nova — senão o Cockpit vira "2 portas pra mesma sala".
+- <strong>V0.1 — Deletar CalendarManager → <code>/salao/Agenda</code> herda TUDO</strong> <em>(diretriz do dono)</em>. Passos:
+  1. <strong>Inventário</strong> de CalendarManager (422 linhas): sub-componentes (<code>AgendaCalendarView</code> month/week/day/list, <code>GoogleCalendarConnect</code>, <code>BookingsManager</code>, <code>EventTypesManager</code>, <code>AvailabilityManager</code>), tabelas que lê (NÃO é <code>agendamentos</code> — confirmar quais), e <strong>callers</strong> (<code>Admin.tsx</code> case <code>'calendar'</code>, <code>admin/booking/BookingManager.tsx</code>).
+  2. <strong>Portar pra <code>/salao/Agenda</code></strong> toda feature que falta (Google Calendar connect, tipos de evento, disponibilidade, multi-view, gestão de bookings) — herdar, não reinventar.
+  3. <strong>Unificar disponibilidade</strong>: hoje há <code>salao-availability</code> (meu, portal) + <code>booking-availability</code> (agente/CRM) → <strong>uma fonte só</strong>, pra portal + agente + UI lerem a MESMA agenda.
+  4. <strong>Redirect de TODAS as rotas/tabs</strong> de CalendarManager → <code>/salao/Agenda</code> (Admin tab <code>calendar</code> + <code>BookingManager</code>).
+  5. <strong>Deletar</strong> CalendarManager + sub-componentes órfãos.
+  - <strong>DoD E2E:</strong> toda rota que abria CalendarManager agora abre <code>/salao/Agenda</code> operante; criar evento/disponibilidade/Google-sync funciona; booking público e agente caem na mesma agenda; build verde, grep de <code>CalendarManager</code> vazio.
+- <strong>V0.2 — Canônico Conversas/Pipeline/Leads:</strong> marcar <code>SellerInbox</code> + <code>LeadsKanban</code> (lado-CRM) como deprecated; <code>InboxManager</code> e <code>KanbanBoard+LeadsManager</code> (lado-Admin) são os canônicos. Não duplicar.
+- <strong>V0.3 — Untangle do código morto (verificado):</strong> remover as 6 páginas <code>/oficina/*</code> + rotas + módulo "ERP Oficina" no <code>config/modules.ts</code>/ModuleHub; <strong>MANTER <code>OficinaServicesStep</code></strong> (reusado pelo onboarding do salão — renomear depois); resolver <code>AdminDashboard.tsx</code> (é referenciado por <code>Admin.tsx</code> → verificar se é dup de <code>OperationCenter</code> antes de mexer); mover <code>/demo/*</code> pra marketing.
+  - <strong>DoD E2E:</strong> app sobe sem as rotas mortas; nada que era usado quebrou; build verde.</p>
+<h3>V1 — Cockpit + Home de Valor <em>(o AHA + a nav única — escolha do dono: juntos)</em></h3>
+<p><strong>Objetivo:</strong> a cabeleireira loga e em &lt;30s vê a IA trabalhando por ela, numa nav única que ela entende.
+- <strong>V1.1 — Shell do Cockpit:</strong> nav única de <strong>7 itens em linguagem de salão</strong> (Início "Meu Dia" · Conversas · Meus Clientes · Atrair Clientes · Minha IA · Minha Agenda · Meu Faturamento) substitui o ModuleHub como home. Admin colapsa num item só (Gestão+Configurações). Super-admin isolado (só assinatura).
+- <strong>V1.2 — "Início" = Home de Valor:</strong> abre rodando o Radar (<code>opportunity-scan-run</code>, <strong>ao vivo</strong> — escolha do dono) → card <strong>"R$ X recuperável esta semana"</strong> + top-3 oportunidades com mensagem WhatsApp pronta + <strong>[Disparar reativação]</strong> que envia <strong>de verdade via Evolution</strong>, <strong>com confirmação antes do envio em massa</strong> (escolha do dono).
+  - <strong>DoD E2E:</strong> logo como admin 1º acesso → vejo 7 itens (sem Admin misturado) + dinheiro na frente; disparo uma reativação-teste que <strong>chega num zap real</strong>; build verde + deploy provado.</p>
+<h3>V2 — Conversas + Minha IA visíveis (tirar do Admin)</h3>
+<p><strong>Objetivo:</strong> a IA que já temos sai do porão técnico e fica na cara.
+- <strong>V2.1 — Conversas:</strong> promover <code>InboxManager</code> pra fora do Admin como "Conversas" canônico + <strong>plugar nele tudo que o backend já tem</strong> (o motor bom) que hoje não aparece no front.
+- <strong>V2.2 — Minha IA:</strong> Cockpit › "Minha IA" mostra <strong>agentes ATIVOS operando + supervisão</strong> + campanhas + cadências + copiloto — visível, não enterrado. Editor pesado de agente abre como sub-tela.
+  - <strong>DoD E2E:</strong> Conversas e Minha IA operáveis no Cockpit, fluxo real testado; build verde.</p>
+<h3>V3 — Onboarding fluido (9 passos modais → enxuto in-shell)</h3>
+<p><strong>Objetivo:</strong> primeiro acesso vira AHA, não fricção.
+- Trocar o modal de 9 passos + interstitial por wizard <strong>in-shell</strong> enxuto, absorvendo a fluidez do CBA (stepper com checkmarks, preview de slug <code>/s/{slug}</code> ao vivo, defaults, "Pular" por passo, card-resumo) <strong>preservando os campos ricos do NX</strong> (logo upload, paleta). Fim no AHA (cai na Home de Valor).
+  - <strong>DoD E2E:</strong> 1º acesso → wizard claro in-shell; cria salão + cai na Home de Valor; gating não reaparece.</p>
+<h3>V4 — Estados vazios que vendem + Captação/Agenda/Salão/Meu link polidos</h3>
+<p><strong>Objetivo:</strong> nenhuma tela abre vazia ou sem-saída; tudo "mostra valor" mesmo sem dado.
+- Empty-states com dado-semente rotulado "exemplo" (reusa <code>demo-seed.ts</code>); Captação, Agenda (já canônica), Salão (ERP), "Meu link" (booking público) polidos dentro do Cockpit.
+  - <strong>DoD E2E:</strong> abrir cada item do Cockpit com conta nova → nunca vazio/morto; build verde.</p>
+<h3>V5 — Demo que se vende sozinho (GTM) + parking lot</h3>
+<p><strong>Objetivo:</strong> o demo fecha a venda sozinho.
+- Tour público / demo sellable que mostra a IA achando dinheiro.
+- <strong>Parking lot</strong> (sob demanda, não bloqueia venda): web-push (old Onda 3), paridade fina (old Onda 6), scoring/higiene de CRM (old Onda 4).
+  - <strong>DoD E2E:</strong> prospect abre o demo e vê a IA trabalhando sem login.</p>
+<hr />
+<h2>3. SEQUÊNCIA + DEPENDÊNCIAS</h2>
+<p><code>V0 (higiene/canônicos) → V1 (Cockpit+Home) → V2 (Conversas+IA) → V3 (onboarding) → V4 (empty-states) → V5 (demo)</code>
+<strong>V0 é bloqueante</strong> (sem resolver as duplicatas, o Cockpit nasce torto). V1 entrega o valor visível mais cedo. V2-V4 são polimento de visibilidade/usabilidade. V5 é GTM.</p>
+<p><strong>Esforço relativo:</strong> V0 médio-alto (consolidação cuidadosa), V1 médio (reusa Radar pronto), V2 médio, V3 médio, V4 baixo, V5 médio.</p>
+<hr />
+<h2>4. NÚMEROS (do business case, MC 30k sims)</h2>
+<p>ARR ano-1: R$107k → <strong>R$199k (+86%)</strong> mediano com a vitrine · P(LTV/CAC≥3): <strong>46%→92%</strong> · alavanca dominante = conversão (onde a vitrine atua) + TAM; churn/CAC/margem = ruído no ano-1 · teto honesto: P(ARR≥500k)~3% (a vitrine tira do fio da navalha, não promete foguete).</p>
+<hr />
+<h2>5. PRÓXIMO PASSO</h2>
+<p>Aprovado este roadmap, começo por <strong>V0.1 (deletar CalendarManager com inventário + herança em <code>/salao/Agenda</code>)</strong> — porque é o maior risco de quebra e destrava a agenda única (portal + agente). Só toco código com seu OK neste roadmap.</p></div></body></html>

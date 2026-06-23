@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitrine que Vende — NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0b0e14; --bg2:#121620; --card:#161b27; --card2:#1c2230;
+    --ink:#e6e9f0; --muted:#9aa4b8; --line:#283047;
+    --rose:#ff5c8a; --rose2:#ff86ab; --gold:#ffcf6b; --green:#4ade80; --amber:#fbbf24; --blue:#60a5fa; --red:#f87171;
+    --accent:#ff5c8a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(160deg,#0b0e14,#0d1019 60%,#0b0e14);color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+  header.hero{padding:54px 22px 30px;background:radial-gradient(800px 300px at 20% -10%,rgba(255,92,138,.18),transparent),var(--bg);
+    border-bottom:1px solid var(--line)}
+  header.hero .wrap{padding:0}
+  .kicker{display:inline-block;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--rose2);
+    border:1px solid rgba(255,92,138,.35);border-radius:999px;padding:5px 12px;margin-bottom:16px;background:rgba(255,92,138,.07)}
+  h1{font-size:40px;line-height:1.1;margin:.1em 0 .25em;letter-spacing:-.02em}
+  h1 .sub{display:block;font-size:18px;color:var(--muted);font-weight:400;margin-top:10px;letter-spacing:0}
+  .meta{color:var(--muted);font-size:14px;margin-top:18px;display:flex;gap:18px;flex-wrap:wrap}
+  .meta b{color:var(--ink);font-weight:600}
+  .crit{margin-top:22px;background:linear-gradient(90deg,rgba(74,222,128,.10),transparent);border-left:3px solid var(--green);
+    padding:14px 18px;border-radius:0 10px 10px 0;font-size:15px}
+  h2{font-size:26px;margin:46px 0 14px;letter-spacing:-.01em;padding-top:10px;border-top:1px solid var(--line)}
+  h2.part{font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);border-top:2px solid var(--gold);
+    padding-top:14px;margin-top:54px}
+  h3{font-size:19px;margin:30px 0 10px;color:#f3f5fa}
+  h4{font-size:16px;margin:20px 0 8px;color:var(--rose2)}
+  p{margin:12px 0;color:#d4d9e4}
+  a{color:var(--rose2)}
+  strong{color:#fff}
+  code{background:#0c1018;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;color:var(--gold);
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  pre{background:#090c12;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;font-size:12.5px;line-height:1.5;
+    color:#c5cde0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  blockquote{margin:18px 0;padding:14px 18px;background:var(--card);border-left:3px solid var(--rose);border-radius:0 10px 10px 0;color:#d8dde9}
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px;background:var(--card);border-radius:12px;overflow:hidden}
+  th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--card2);color:#fff;font-weight:600;font-size:12.5px;letter-spacing:.02em}
+  tr:last-child td{border-bottom:none}
+  td strong{color:#fff}
+  .center{text-align:center}
+  .danger{color:var(--red)} .ok{color:var(--green)} .warn{color:var(--amber)}
+  ul,ol{margin:12px 0;padding-left:22px} li{margin:7px 0;color:#d4d9e4}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:20px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .stat .n{font-size:26px;font-weight:700;color:#fff} .stat .n.rose{color:var(--rose2)} .stat .n.green{color:var(--green)}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .mock{background:#0a0d14;border:1px solid var(--line);border-radius:14px;padding:20px;margin:18px 0}
+  .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
+  .pill.hi{color:var(--green);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08)}
+  .pill.med{color:var(--amber);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+  .pill.lo{color:var(--muted)}
+  .tornado{font-family:"SF Mono",ui-monospace,monospace;font-size:13px;background:#090c12;border:1px solid var(--line);
+    border-radius:12px;padding:16px;margin:16px 0}
+  .tornado .row{display:flex;align-items:center;gap:10px;margin:5px 0}
+  .tornado .lbl{width:130px;color:#c5cde0}
+  .tornado .b{height:14px;border-radius:4px;background:linear-gradient(90deg,var(--rose),var(--rose2))}
+  .tornado .b.noise{background:#33405e}
+  .tornado .v{color:var(--muted);font-size:12px}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:24px 0;font-size:14px}
+  .toc a{color:#cdd4e2;text-decoration:none;display:inline-block;margin:3px 14px 3px 0}
+  .toc a:hover{color:var(--rose2)}
+  .foot{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;text-align:center}
+  .emoji{font-style:normal}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Blueprint · Roadmap · Business Case</span>
+    <h1>Vitrine que Vende — NexvyBeauty
+      <span class="sub">A camada de usabilidade + apresentação que faz o motor já construído virar visível, fácil e vendável para a cabeleireira leiga.</span>
+    </h1>
+    <div class="meta">
+      <span><b>Data:</b> 2026-06-23</span>
+      <span><b>Autor:</b> Cofundador C-level de Produto</span>
+      <span><b>Premissa fixada:</b> a infra é melhor — o problema é só usabilidade + venda</span>
+    </div>
+    <div class="crit"><strong>Critério de sucesso global (binário):</strong> a cabeleireira abre e em &lt;30s vê a IA trabalhando por ela; consegue operar cada função sem manual; o demo fecha venda.</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="toc">
+    <strong>Índice rápido:</strong><br>
+    <a href="#verdade">0 · Verdade desconfortável</a>
+    <a href="#premissas">1 · Premissas</a>
+    <a href="#jtbd">2 · JTBD</a>
+    <a href="#blueprint">I · Blueprint</a>
+    <a href="#funcoes">5 · Função por função</a>
+    <a href="#onboarding">6 · Onboarding</a>
+    <a href="#roadmap">II · Roadmap</a>
+    <a href="#onda1">8 · Onda 1</a>
+    <a href="#bizcase">III · Business Case</a>
+    <a href="#decisoes">16 · Decisões pra cravar</a>
+  </div>
+
+  <h2 id="verdade">0 · A verdade desconfortável primeiro</h2>
+  <p>O concorrente (BeautyFlow / cloud-beauty-ai) <strong>não tem produto</strong> — tem uma tela. Todo o CRM/Atendimento/Agentes dele está "EM BREVE". Ele tem UMA coisa que nós não temos: uma <strong>Home que mostra R$ 18.400 recuperável e um botão de 1 clique</strong>, com zero config. Ele vende a <em>promessa do número</em>; nós escondemos o <em>motor que gera o número</em>.</p>
+  <p>E o pior: <strong>nós já temos o motor que gera esse número exato.</strong> O Radar IA (<code>opportunity-scan-run</code>) já roda SEM configuração, já classifica leads em HOT/WARM/COLD e <strong>já calcula <code>potential_revenue</code></strong>. Está enterrado em <code>/admin → Automação &amp; IA → Radar</code>, atrás de filtros e de um botão "Rodar Análise". Estamos sentados em cima da arma do concorrente, com a trava de segurança ligada.</p>
+  <blockquote><strong>Conclusão:</strong> a vitrine não é um projeto de backend. É um projeto de <strong>embrulho</strong>. O risco real não é "será que dá pra construir" — é "será que vamos continuar enterrando o que já funciona". Onde eu <strong>discordo de uma leitura provável:</strong> não copie a tela do BeautyFlow — copie a <em>psicologia</em> dela (dinheiro + 1 clique + zero config) e plugue no NOSSO motor, que entrega o número de verdade em vez de vaporware. A vantagem não é estética; o botão dele não faz nada, o nosso dispara campanha real via WhatsApp Evolution.</blockquote>
+
+  <h2 id="premissas">1 · Premissas explícitas (Karpathy §8.1)</h2>
+  <table>
+    <tr><th>#</th><th>Premissa assumida</th><th>Por quê</th><th>Se errada, muda…</th></tr>
+    <tr><td><b>P1</b></td><td><b>Persona = dona-operadora de salão pequeno</b> (1–5 prof.), faz tudo sozinha, leiga em tech.</td><td>É quem o briefing descreve.</td><td>Toda a copy + profundidade do onboarding.</td></tr>
+    <tr><td><b>P2</b></td><td><b>JTBD nº1 = "encher a agenda / não perder cliente"</b> — não "gerenciar um CRM".</td><td>É o resultado de negócio; CRM é meio.</td><td>O que a Home mostra primeiro.</td></tr>
+    <tr><td><b>P3</b></td><td><b>AHA = dinheiro recuperável + mensagem já escrita pela IA</b>, sem configurar nada.</td><td>É o que o Radar já produz e o concorrente vende.</td><td>A arquitetura inteira da vitrine.</td></tr>
+    <tr><td><b>P4</b></td><td><b>Ela já usa WhatsApp</b> com clientes; Evolution conecta o que ela já faz.</td><td>Inbox Evolution é real e é o moat.</td><td>Passo 1 do onboarding.</td></tr>
+    <tr><td><b>P5</b></td><td><b>Conversão trial→pago é o gargalo</b>, não a aquisição de topo.</td><td>"Não vende" = não converte quem entra.</td><td>Onde investir esforço (ativação, não ads).</td></tr>
+    <tr><td><b>P6</b></td><td><b>A vitrine reusa 100% do motor existente.</b> Nada de backend novo na Onda 1–2.</td><td>Inventário confirma: tudo é real, não mock.</td><td>O roadmap inteiro.</td></tr>
+  </table>
+  <blockquote><strong>As 3 que mais importam:</strong> (P3) o AHA é "dinheiro + mensagem pronta, zero config"; (P5) o gargalo é conversão de trial; (P6) é embrulho, não motor. Se alguma estiver errada, pare antes da Onda 1.</blockquote>
+
+  <h2 id="jtbd">2 · Jobs-to-be-done (a régua de toda tela)</h2>
+  <table>
+    <tr><th>Quando…</th><th>ela quer…</th><th>pra que…</th><th>a vitrine entrega via…</th></tr>
+    <tr><td>Abre o app de manhã</td><td>ver se tem dinheiro escapando</td><td>não perder cliente parado</td><td><b>Home de Valor</b> (Radar na cara)</td></tr>
+    <tr><td>Um cliente sumiu</td><td>reativá-lo sem pensar na mensagem</td><td>trazer de volta sem esforço</td><td>botão <b>[Reativar]</b> 1 clique</td></tr>
+    <tr><td>Chega mensagem no zap</td><td>responder rápido e bem</td><td>não perder a venda por demora</td><td><b>Inbox unificado</b> + IA Copiloto</td></tr>
+    <tr><td>Quer atender mais</td><td>a IA puxando conversa sozinha</td><td>crescer sem contratar</td><td><b>Agentes operando</b> (visível)</td></tr>
+    <tr><td>Vai marcar horário</td><td>agenda sem conflito</td><td>dia organizado</td><td><b>Agenda</b> (ERP Salão)</td></tr>
+    <tr><td>Quer que cliente marque sozinho</td><td>link pra mandar no zap/bio</td><td>menos ligação, mais booking</td><td><b>Booking /s/:slug</b></td></tr>
+  </table>
+  <blockquote>Régra de ouro pra revisar qualquer tela: <strong>"isso ajuda a encher a agenda dela em &lt;3 cliques, ou é só um recurso que estamos exibindo?"</strong></blockquote>
+
+  <h2 class="part" id="blueprint">Parte I — Blueprint (arquitetura da vitrine)</h2>
+
+  <h3>3 · O problema estrutural do as-is (mapeado no código)</h3>
+  <p>O app tem <strong>5 shells com navegações diferentes</strong> (ModuleHub <code>/</code>, CRM <code>/crm</code>, ERP Salão <code>/salao</code>, Admin <code>/admin</code>, Super Admin). A mesma usuária aprende 4 sidebars distintas. As funções de IA que vendem estão <strong>a 3 cliques</strong> dentro do Admin, num acordeão "Automação &amp; IA", num shell que parece painel de TI.</p>
+  <table>
+    <tr><th>Função (o motor que vende)</th><th>Onde está hoje</th><th>Cliques</th><th>Abre vazio?</th><th>Mostra dinheiro?</th></tr>
+    <tr><td><b>Radar IA</b> (calcula receita recuperável)</td><td><code>/admin?tab=…radar</code></td><td class="center">3</td><td class="center">Não</td><td class="center ok">SIM (já!) mas escondido</td></tr>
+    <tr><td>Agentes IA</td><td><code>/admin?tab=agents</code></td><td class="center">3</td><td class="center">Sim</td><td class="center">Não</td></tr>
+    <tr><td>Campanhas Inteligentes</td><td><code>/admin?tab=campaigns</code></td><td class="center">3</td><td class="center">Sim</td><td class="center">Sim (relatório)</td></tr>
+    <tr><td>Cadências</td><td><code>/admin?tab=cadences</code> ou <code>/crm?tab=cadence</code></td><td class="center">2–3</td><td class="center">Sim</td><td class="center">Não</td></tr>
+    <tr><td>IA Copiloto</td><td><code>/crm?tab=ai</code></td><td class="center">2</td><td class="center">Sim</td><td class="center">Não</td></tr>
+    <tr><td>Inbox WhatsApp (Evolution)</td><td><code>/admin?tab=inbox</code> ou <code>/crm?tab=inbox</code></td><td class="center">2</td><td class="center">Não</td><td class="center">Não</td></tr>
+    <tr><td>Agenda / ERP Salão</td><td><code>/salao/agenda</code></td><td class="center">3</td><td class="center">Sim (crua)</td><td class="center">Não</td></tr>
+    <tr><td>Booking público</td><td><code>/s/:slug</code></td><td class="center">link</td><td class="center">—</td><td class="center">—</td></tr>
+  </table>
+  <blockquote><strong>Diagnóstico em uma frase:</strong> a função mais vendável (Radar IA = dinheiro na frente) está a 3 cliques, num shell de TI, atrás de um acordeão. Está <strong>tudo construído e tudo escondido.</strong></blockquote>
+
+  <h3>4.1 · Colapsar 5 shells em 1 "Cockpit"</h3>
+  <p>Substituir o ModuleHub (grid de cards) por um <strong>Cockpit</strong> — shell único com uma sidebar de no máximo 7 itens <strong>em linguagem de salão</strong>. O Admin continua existindo como "Ajustes avançados" (pra você), mas some da rota principal dela.</p>
+  <pre>COCKPIT (shell único — substitui ModuleHub como home logada)
+│
+├─ 🏠 Início       → HOME DE VALOR (Radar na cara + ações 1 clique)   [a estrela]
+├─ 💬 Conversas    → Inbox WhatsApp unificado (Evolution) + IA Copiloto
+├─ 🤖 Minha IA     → Agentes operando + Campanhas + Cadências (renomeadas)
+├─ 📅 Agenda       → ERP Salão (agenda, clientes, serviços, profissionais)
+├─ 💰 Dinheiro     → Financeiro + resultado das campanhas + booking
+├─ 🔗 Meu link     → Booking /s/:slug (compartilhar) + captação
+└─ ⚙️  Ajustes      → o que hoje é Admin/Configurações (escondido, avançado)</pre>
+  <p>Regra: <strong>a cabeleireira nunca vê "módulo", "agente", "instância", "cérebro", "pipeline", "orquestrador".</strong> Vê "minha IA", "meu link", "conversas", "dinheiro".</p>
+
+  <h3>4.2 · A Home de Valor (a tela que decide a venda)</h3>
+  <p>Ao abrir, <strong>antes de qualquer config</strong>, dispara o Radar IA (<code>opportunity-scan-run</code>) com filtros default e renderiza:</p>
+  <div class="mock">
+    <div style="font-size:18px;font-weight:700">Bom dia, Ana <span class="emoji">👋</span> <span style="color:var(--muted);font-weight:400;font-size:14px">— Sua IA trabalhou enquanto você dormia.</span></div>
+    <div style="margin:14px 0;font-size:28px;font-weight:800;color:var(--green)">💰 R$ 4.850 <span style="font-size:15px;color:var(--muted);font-weight:500">podem voltar pro seu caixa esta semana · 7 clientes prontos pra reativar</span></div>
+    <div class="grid" style="margin:8px 0 16px">
+      <div class="stat"><div class="n rose">🔥 3</div><div class="l">Quentes · R$ 2.100</div></div>
+      <div class="stat"><div class="n" style="color:var(--amber)">🟡 4</div><div class="l">Mornos · R$ 1.450</div></div>
+      <div class="stat"><div class="n" style="color:var(--blue)">❄️ 12</div><div class="l">Frios · R$ 1.300</div></div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Top 3 oportunidades · mensagem já escrita pela IA</div>
+    <div style="border-top:1px solid var(--line);padding:10px 0">• <b>Júlia</b> — sumiu há 32 dias · <span style="color:var(--muted)">"Oi Júlia! Faz tempo…"</span> &nbsp; <span class="pill hi">Disparar reativação ➜ 1 clique</span></div>
+    <div style="border-top:1px solid var(--line);padding:10px 0">• <b>Marcos</b> — pediu orçamento e não voltou · <span style="color:var(--muted)">"…"</span> &nbsp; <span class="pill hi">Disparar</span></div>
+    <div style="border-top:1px solid var(--line);padding:10px 0">• <b>Bia</b> — aniversário semana que vem · <span style="color:var(--muted)">"…"</span> &nbsp; <span class="pill hi">Disparar</span></div>
+  </div>
+  <p>Tudo já existe: <code>opportunity_scan_items</code> traz <code>lead_snapshot</code>, <code>suggested_action</code>, <code>followup_message</code> e <code>potential_revenue</code>; o disparo usa <code>campaign-start</code> + <code>evolution-send</code>. <strong>A vitrine é o componente de Home que consome o que o Radar já devolve.</strong></p>
+
+  <h3>4.3 · Estado vazio que JÁ vende</h3>
+  <p>Hoje os empty-states são crus ("Nenhum agendamento cadastrado"). Na vitrine, <strong>todo estado vazio é uma demo com dado-semente rotulado "exemplo" + 1 CTA</strong>. Já existe <code>demo-seed.ts</code> (R$ 18.750/mês, 214 clientes) usado em <code>/demo</code> — <strong>reusar dentro da conta logada</strong> quando não há dados. Tela vazia vira vitrine viva.</p>
+
+  <h3>4.4 · Mapa anti-Frankenstein (origem → destino)</h3>
+  <table>
+    <tr><th>Peça da vitrine</th><th>REUSA (origem no código)</th><th>É novo?</th></tr>
+    <tr><td>Home de Valor (Radar na cara)</td><td><code>useOpportunityScans</code> + <code>opportunity-scan-run</code> + <code>opportunity_scan_items</code></td><td><b>Só o componente de Home</b></td></tr>
+    <tr><td>Botão "Disparar reativação"</td><td><code>campaign-start</code> + <code>evolution-send</code> + <code>followup_message</code></td><td>Não — fio entre existentes</td></tr>
+    <tr><td>Cockpit (nav única)</td><td><code>UnifiedShell</code> + rotas existentes</td><td>Reconfiguração de nav</td></tr>
+    <tr><td>Conversas</td><td><code>SellerInbox</code>/<code>InboxManager</code> + <code>evolution-webhook</code> + <code>inbox-copilot</code></td><td>Unificar 2 inboxes</td></tr>
+    <tr><td>Minha IA</td><td><code>AgentsManager</code> + <code>CampaignsManager</code> + <code>CadencesManager</code></td><td>Re-skin + estado "operando" + copy</td></tr>
+    <tr><td>Agenda</td><td><code>salao/*</code> + <code>demo-seed.ts</code></td><td>Empty-state vendedor</td></tr>
+    <tr><td>Meu link</td><td><code>PublicSalaoBooking</code> <code>/s/:slug</code></td><td>Tela "compartilhe" + QR</td></tr>
+    <tr><td>Demo/seed na conta</td><td><code>demo-seed.ts</code> (já existe)</td><td>Hook que injeta seed quando vazio</td></tr>
+  </table>
+  <blockquote><strong>Risco Frankenstein controlado:</strong> há HOJE dois Inbox (<code>SellerInbox</code> e <code>InboxManager</code>) e duas portas pra Cadência. A vitrine <strong>escolhe uma de cada</strong> e aposenta a duplicata da nav da cabeleireira. Sem isso, "nav única" vira nav-dupla disfarçada.</blockquote>
+
+  <h3 id="funcoes">5 · A vitrine função por função (todas cobertas)</h3>
+  <table>
+    <tr><th>Função</th><th>Momento de valor (AHA)</th><th>Estado vazio que vende</th><th>Microcopy (troca o jargão)</th></tr>
+    <tr><td><b>Home de Valor</b></td><td>"tem R$ X esperando, a IA já escreveu a mensagem"</td><td>Radar com 3 exemplos rotulados + CTA conectar zap</td><td>"Sua IA trabalhou enquanto você dormia"</td></tr>
+    <tr><td><b>Conversas</b></td><td>responde em 1 clique com sugestão da IA</td><td>3 conversas-exemplo + "conecte seu WhatsApp"</td><td>"Atendimento"→<b>"Conversas"</b>; "copiloto"→<b>"a IA te ajuda a responder"</b></td></tr>
+    <tr><td><b>Minha IA</b></td><td>ver o agente "no ar" atendendo sozinho</td><td>card "Ligue sua IA" + preview da 1ª mensagem</td><td>agente→<b>"sua assistente"</b>; cadência→<b>"sequência de mensagens"</b>; campanha→<b>"convidar vários clientes"</b></td></tr>
+    <tr><td><b>Agenda</b></td><td>agenda do dia já populada (seed)</td><td>dia-exemplo cheio + "adicione seu 1º horário"</td><td>"Seu dia organizado, sem conflito de horário"</td></tr>
+    <tr><td><b>Dinheiro</b></td><td>ver quanto a IA trouxe de volta</td><td>gráfico-exemplo + "suas vendas aparecem aqui"</td><td>"Financeiro"→<b>"Dinheiro"</b>; "recuperado pela IA: R$ X"</td></tr>
+    <tr><td><b>Meu link</b></td><td>copiar link e mandar no story/bio</td><td>preview do booking + botão copiar/QR</td><td>"seu link de agendamento — mande no Instagram"</td></tr>
+    <tr><td><b>Onboarding</b></td><td>&lt;3 min: zap conectado + IA ligada + 1 oportunidade real</td><td>—</td><td>foco em resultado, não em "cadastre"</td></tr>
+  </table>
+
+  <h3 id="onboarding">6 · Onboarding enxuto (9 passos modais → 3 que entregam valor)</h3>
+  <ol>
+    <li><b>Conecte seu WhatsApp</b> (QR) — é o moat e a fonte do dado do Radar. <span style="color:var(--muted)">(reusa passo 6 atual)</span></li>
+    <li><b>Ligue sua IA</b> (1 pergunta: "o que você faz?" → preenche o agente via IA do site/texto). <span style="color:var(--muted)">(reusa passos 5+7)</span></li>
+    <li><b>Veja sua 1ª oportunidade</b> — roda o Radar e mostra 1 lead com mensagem pronta → <strong>fecha com um AHA, não com resumo de config.</strong></li>
+  </ol>
+  <p>Profissionais/serviços/equipe viram tarefas opcionais no checklist da Home. <strong>Regra: nenhum passo que não termine em valor visível fica no caminho crítico.</strong></p>
+
+  <h2 class="part" id="roadmap">Parte II — Roadmap (ondas por impacto-de-venda × esforço)</h2>
+  <table>
+    <tr><th>Onda</th><th>Tema</th><th>Impacto de venda</th><th>Esforço</th><th>Por que nessa ordem</th></tr>
+    <tr><td class="center"><b>1</b></td><td><b>Dinheiro na frente</b> (Home de Valor + 1 clique)</td><td><span class="pill hi">Altíssimo</span></td><td><span class="pill med">Médio-baixo</span></td><td>É o AHA, reusa Radar pronto, fecha demo</td></tr>
+    <tr><td class="center"><b>2</b></td><td><b>Nav única (Cockpit)</b> + onboarding 3 passos</td><td><span class="pill hi">Alto</span></td><td><span class="pill med">Médio</span></td><td>Sem isso, a leiga se perde após o AHA</td></tr>
+    <tr><td class="center"><b>3</b></td><td><b>Conversas + Minha IA visível</b> (re-skin + copy)</td><td><span class="pill hi">Alto</span></td><td><span class="pill med">Médio</span></td><td>Tira o motor do Admin, mostra IA operando</td></tr>
+    <tr><td class="center"><b>4</b></td><td><b>Empty-states que vendem</b> + seed na conta</td><td><span class="pill hi">Médio-alto</span></td><td><span class="pill lo">Baixo</span></td><td>Barato, eleva percepção em todas as telas</td></tr>
+    <tr><td class="center"><b>5</b></td><td><b>Agenda/Salão + Meu link</b> polidos</td><td><span class="pill med">Médio</span></td><td><span class="pill med">Médio</span></td><td>Completa a casa; menos crítico p/ 1ª venda</td></tr>
+    <tr><td class="center"><b>6</b></td><td><b>Demo que se vende sozinho</b> (tour público)</td><td><span class="pill hi">Alto (GTM)</span></td><td><span class="pill med">Médio</span></td><td>Vira ativo de vendas/afiliados</td></tr>
+  </table>
+  <blockquote><strong>Dependências:</strong> Onda 1 não depende de nada (Radar já existe). Onda 2 depende de decidir a nav (D2–D4). Onda 3 depende da nav da Onda 2. Ondas 4–6 paralelizáveis após a 2.</blockquote>
+
+  <h3 id="onda1">8 · Onda 1 detalhada — "Dinheiro na frente" (caminho crítico)</h3>
+  <p><strong>Objetivo:</strong> ao abrir, em &lt;30s a cabeleireira vê dinheiro recuperável + dispara reativação em 1 clique. <strong>Sem novo backend.</strong></p>
+  <table>
+    <tr><th>#</th><th>Entrega</th><th>Reusa</th><th>Critério de sucesso (binário)</th></tr>
+    <tr><td>1.1</td><td><b>HomeDeValor</b> que no mount chama <code>opportunity-scan-run</code> (filtros default)</td><td><code>useOpportunityScan</code></td><td>Abrir a Home dispara 1 scan sem clique/config; renderiza em &lt;5s ou skeleton→dado</td></tr>
+    <tr><td>1.2</td><td><b>Card de receita</b> "R$ X recuperável" + 3 cards HOT/WARM/COLD</td><td><code>potential_revenue</code></td><td>Valor exibido == soma de <code>deal_value</code> dos itens (conferir 1 caso)</td></tr>
+    <tr><td>1.3</td><td><b>Top 3 oportunidades</b> com <code>followup_message</code> preenchida</td><td><code>followup_message</code></td><td>Card mostra nome + mensagem real (não placeholder)</td></tr>
+    <tr><td>1.4</td><td><b>Botão [Disparar reativação]</b> 1 clique → <code>campaign-start</code></td><td><code>evolution-send</code></td><td>Clique dispara envio REAL via Evolution + toast "enviada"; logado</td></tr>
+    <tr><td>1.5</td><td><b>Estado trial/sem-zap:</b> 3 oportunidades-exemplo rotuladas + CTA conectar</td><td><code>demo-seed.ts</code></td><td>Conta nova mostra Home cheia (exemplo), nunca vazia</td></tr>
+    <tr><td>1.6</td><td><b>Roteamento:</b> <code>/</code> logado abre HomeDeValor (não o grid)</td><td>rotas App.tsx</td><td>Após login, 1ª tela é a HomeDeValor; screenshot prova</td></tr>
+  </table>
+  <blockquote><strong>Definition of Done (prova):</strong> vídeo/screenshots de login → Home com R$ → clicar [Disparar] → mensagem chega num WhatsApp de teste. Se não chega de verdade, a onda não está pronta (CLAUDE.md §4).</blockquote>
+
+  <h3>9 · Riscos &amp; mitigações</h3>
+  <table>
+    <tr><th>Risco</th><th>Prob.</th><th>Impacto</th><th>Mitigação</th></tr>
+    <tr><td>Radar sem dados em conta nova → Home vazia</td><td class="warn">Alta</td><td class="danger">Alto</td><td>Seed-exemplo (1.5) é parte da Onda 1, não opcional</td></tr>
+    <tr><td><code>opportunity-scan-run</code> lento/custo a cada Home</td><td class="warn">Média</td><td class="warn">Médio</td><td>Cachear último scan (cron diário); só re-roda sob demanda</td></tr>
+    <tr><td>Disparo em massa vira spam / bloqueio</td><td class="warn">Média</td><td class="danger">Alto</td><td>Throttle no <code>campaign-dispatcher</code> + confirmação + opt-out</td></tr>
+    <tr><td>Nav única quebra fluxos do Admin</td><td class="warn">Média</td><td class="warn">Médio</td><td>Admin intacto em <code>/admin</code>; Cockpit é camada nova</td></tr>
+    <tr><td>Dois Inbox divergem (Frankenstein)</td><td class="warn">Média</td><td class="warn">Médio</td><td>Onda 3 escolhe UM inbox; o outro fica só no Admin</td></tr>
+    <tr><td>Copy "leiga" infantiliza PRO</td><td class="ok">Baixa</td><td class="ok">Baixo</td><td>Testar com 3 cabeleireiras reais antes de cravar termos</td></tr>
+  </table>
+
+  <h2 class="part" id="bizcase">Parte III — Business Case (Monte Carlo)</h2>
+  <p>Modelo <code>saas</code>, 30.000 simulações, seed fixa. <code>capture_rate</code> = funil completo (entra em trial × converte em pagante) — <strong>a variável onde a vitrine atua</strong>. Horizonte: ano 1.</p>
+
+  <div class="grid">
+    <div class="stat"><div class="n">R$ 107k → <span class="green">199k</span></div><div class="l">ARR mediano (as-is → vitrine) · +86%</div></div>
+    <div class="stat"><div class="n">48 → <span class="green">90</span></div><div class="l">clientes pagantes (mediana) · +87%</div></div>
+    <div class="stat"><div class="n">46% → <span class="green">92%</span></div><div class="l">P(LTV/CAC ≥ 3) — saúde do negócio</div></div>
+    <div class="stat"><div class="n">2,9 → <span class="green">5,4</span></div><div class="l">LTV/CAC mediano</div></div>
+  </div>
+
+  <h3>11 · AS-IS vs COM VITRINE</h3>
+  <table>
+    <tr><th>Métrica (ano 1)</th><th>AS-IS (P10·P50·P90)</th><th>COM VITRINE (P10·P50·P90)</th><th>Leitura</th></tr>
+    <tr><td><b>Clientes pagantes</b></td><td>24 · 48 · 91</td><td><b>46 · 90 · 163</b></td><td>~+87% na mediana</td></tr>
+    <tr><td><b>ARR</b></td><td>R$ 49k · <b>107k</b> · 212k</td><td>R$ 96k · <b>199k</b> · 386k</td><td>+86% na mediana</td></tr>
+    <tr><td><b>MRR</b></td><td>R$ 4,1k · 8,9k · 17,7k</td><td>R$ 8,0k · <b>16,6k</b> · 32,2k</td><td>quase dobra</td></tr>
+    <tr><td><b>LTV/CAC</b></td><td>1,7 · 2,9 · 4,9</td><td>3,1 · <b>5,4</b> · 9,3</td><td>de "no limite" a "saudável"</td></tr>
+    <tr><td><b>Payback (meses)</b></td><td>1,8 · 3,0 · 4,6</td><td>1,5 · 2,5 · 3,9</td><td>já era ótimo, melhora</td></tr>
+    <tr><td><b>P(LTV/CAC ≥ 3)</b></td><td class="warn">46,2%</td><td class="ok"><b>91,6%</b></td><td>o que torna o negócio defensável</td></tr>
+    <tr><td><b>P(payback ≤ 12m)</b></td><td class="ok">100%</td><td class="ok">100%</td><td>unit economics nunca foi o problema</td></tr>
+  </table>
+
+  <h3>12 · A alavanca dominante (tornado)</h3>
+  <div class="tornado">
+    <div style="color:var(--muted);margin-bottom:10px">output = ARR · correlação com o resultado</div>
+    <div class="row"><span class="lbl">tam</span><span class="b" style="width:62%"></span><span class="v">+0,65</span></div>
+    <div class="row"><span class="lbl">capture_rate</span><span class="b" style="width:60%"></span><span class="v">+0,60 ← alavanca de produto</span></div>
+    <div class="row"><span class="lbl">price_monthly</span><span class="b" style="width:40%"></span><span class="v">+0,40</span></div>
+    <div class="row"><span class="lbl">gross_margin</span><span class="b noise" style="width:3%"></span><span class="v">+0,01 (ruído)</span></div>
+    <div class="row"><span class="lbl">cac</span><span class="b noise" style="width:2%"></span><span class="v">≈0 (ruído)</span></div>
+    <div class="row"><span class="lbl">monthly_churn</span><span class="b noise" style="width:2%"></span><span class="v">≈0 (ruído)</span></div>
+  </div>
+  <p><strong>Tradução de decisão:</strong></p>
+  <ul>
+    <li><strong>Aja na conversão (<code>capture_rate</code>)</strong>, não no preço/CAC/retenção. A vitrine ataca exatamente essa alavanca.</li>
+    <li><strong>Pare de tratar churn/CAC/margem como prioridade</strong> — o tornado diz que quase não movem o ARR no ano 1.</li>
+    <li><code>tam</code> empata como alavanca mas é mais lento (depende de aquisição). <code>capture_rate</code> é o que <b>você controla com produto esta semana</b>.</li>
+  </ul>
+
+  <h3>13 · Veredito</h3>
+  <blockquote><strong>Aposte na vitrine se</strong> você acredita que a conversão trial→pago está baixa por usabilidade/packaging (P5) — e tudo no as-is confirma. A vitrine <strong>quase dobra o ARR mediano e leva P(LTV/CAC≥3) de 46% para 92%</strong>. <strong>O risco mora em:</strong> conta nova sem dados (mitigado por seed) e disparo virar spam (mitigado por throttle). <strong>A alavanca é:</strong> conversão — e a vitrine é, literalmente, a alavanca da conversão.</blockquote>
+  <p><strong>Honestidade do modelo:</strong> P(ARR ≥ R$ 500k) é ~3% mesmo com vitrine — meio-milhão de ARR ano 1 é cenário de cauda com este TAM/preço. A vitrine não promete foguete; promete <strong>transformar um negócio no limite (46% de chance de ser saudável) num robusto (92%)</strong>. Pra passar de R$ 500k, a alavanca seguinte é <code>tam</code> (aquisição) — assunto da Onda 6 e de pricing, não desta vitrine.</p>
+
+  <h3>14 · GTM: como o demo se vende sozinho</h3>
+  <p>A Home de Valor <strong>é</strong> o pitch. Um modo "tour" público (estende <code>/demo</code>) mostra a HomeDeValor com seed-exemplo + 1 clique simulado = a cabeleireira entende o produto em 30s sem login. Vira vídeo de Instagram, página de vendas (<code>/vendas</code> já existe), material de afiliado. <strong>Loop:</strong> booking <code>/s/:slug</code> com marca "feito com NexvyBeauty" → cada cliente que agenda vê o produto → cabeleireira indica cabeleireira. Loops compõem; funis esgotam.</p>
+
+  <h2 id="decisoes">16 · As 8–12 decisões de maior alavancagem (crave estas)</h2>
+  <ol>
+    <li><b>Confirma o AHA (P3)?</b> A Home abre rodando o Radar e mostrando R$ recuperável + mensagem pronta. Sim/ajusta?</li>
+    <li><b>Cockpit substitui o ModuleHub</b> como home da cabeleireira? (Admin continua só pra você.) Ou mantém o grid de cards?</li>
+    <li><b>Os 7 itens da nav única</b> (Início/Conversas/Minha IA/Agenda/Dinheiro/Meu link/Ajustes) — aprova essa taxonomia?</li>
+    <li><b>Inbox: qual fica?</b> <code>SellerInbox</code> (CRM) ou <code>InboxManager</code> (Admin) como base pra cabeleireira?</li>
+    <li><b>Onboarding 3 passos</b> (WhatsApp → Ligue a IA → Veja 1 oportunidade), resto opcional. Aprova cortar de 9 → 3?</li>
+    <li><b>Radar na Home: cacheado (1 scan/dia) ou ao vivo?</b> Recomendo <b>cache diário + botão "atualizar agora"</b> (barato e estável).</li>
+    <li><b>Disparo:</b> 1 clique já envia, ou pede confirmação? Pra "disparar pra todos", recomendo confirmação (anti-spam).</li>
+    <li><b>Vocabulário leigo:</b> aprova agente→"sua assistente", cadência→"sequência de mensagens", campanha→"convidar vários clientes", financeiro→"dinheiro"?</li>
+    <li><b>Seed-exemplo na conta vazia:</b> topa mostrar dados "exemplo" na conta logada (não só em <code>/demo</code>)?</li>
+    <li><b>Trial→pago é mesmo o gargalo (P5)?</b> Tem o % real de trials que viram pagantes hoje? Isso recalibra o Monte Carlo.</li>
+    <li><b>Persona (P1):</b> alvo é só salão pequeno, ou também médios com recepcionista (muda a UX)?</li>
+    <li><b>Escopo Onda 1:</b> topa que a 1ª entrega seja SÓ HomeDeValor + 1 clique (sem mexer na nav ainda), pra ter o AHA no ar rápido?</li>
+  </ol>
+  <blockquote>Responda pelo menos <strong>1, 2, 4, 6, 10</strong> — essas cinco destravam o início da Onda 1 e calibram o business case.</blockquote>
+
+  <div class="foot">
+    NexvyBeauty · Vitrine que Vende · 2026-06-23 · gerado pelo Cofundador C-level de Produto<br>
+    Par <code>.md</code>: <code>VITRINE-QUE-VENDE-NEXVYBEAUTY-2026-06-23.md</code> · Monte Carlo: <code>mc-asis-out.json</code> / <code>mc-tobe-out.json</code>
+  </div>
+
+</div>
+</body>
+</html>

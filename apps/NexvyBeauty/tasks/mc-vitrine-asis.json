@@ -1,0 +1,18 @@
+{
+  "name": "NexvyBeauty AS-IS (sem vitrine) - ano 1",
+  "model": "saas",
+  "primary_output": "arr",
+  "variables": {
+    "tam":           {"dist": "triangular", "min": 800,  "mode": 2000, "max": 5000},
+    "capture_rate":  {"dist": "pert",       "min": 0.006, "mode": 0.018, "max": 0.045},
+    "price_monthly": {"dist": "triangular", "min": 99,   "mode": 169,  "max": 299},
+    "monthly_churn": {"dist": "triangular", "min": 0.07, "mode": 0.11, "max": 0.18},
+    "cac":           {"dist": "triangular", "min": 180,  "mode": 350,  "max": 700},
+    "gross_margin":  {"dist": "triangular", "min": 0.62, "mode": 0.74, "max": 0.84}
+  },
+  "targets": {
+    "ltv_cac":        {"gte": 3.0},
+    "payback_months": {"lte": 12.0},
+    "arr":            {"gte": 500000.0}
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "NexvyBeauty COM VITRINE (dinheiro na frente + nav unica + onboarding enxuto) - ano 1",
+  "model": "saas",
+  "variables": {
+    "tam":           {"dist": "triangular", "min": 800,  "mode": 2000, "max": 5000},
+    "capture_rate":  {"dist": "pert",       "min": 0.012, "mode": 0.035, "max": 0.075},
+    "price_monthly": {"dist": "triangular", "min": 99,   "mode": 169,  "max": 299},
+    "monthly_churn": {"dist": "triangular", "min": 0.04, "mode": 0.07, "max": 0.12},
+    "cac":           {"dist": "triangular", "min": 150,  "mode": 290,  "max": 600},
+    "gross_margin":  {"dist": "triangular", "min": 0.62, "mode": 0.74, "max": 0.84}
+  },
+  "targets": {
+    "ltv_cac":        {"gte": 3.0},
+    "payback_months": {"lte": 12.0},
+    "arr":            {"gte": 500000.0}
+  }
+}

@@ -1,0 +1,384 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapeamento IA — NexvyBeauty</title><style>
+:root{--bg:#0d0d12;--card:#16161f;--bd:#2a2a38;--fg:#e7e7ee;--mut:#9a9ab0;--brand:#ec4899;--brand2:#a855f7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px 24px}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:30px;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent;border-bottom:1px solid var(--bd);padding-bottom:14px}
+h2{font-size:22px;margin-top:38px;color:#fff;border-left:3px solid var(--brand);padding-left:12px}
+h3{font-size:17px;margin-top:26px;color:var(--brand)}
+h4{font-size:15px;color:var(--brand2)}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--card);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+tr:first-child td{background:#1d1d2a;font-weight:700;color:#fff}
+code{background:#23232f;padding:2px 6px;border-radius:5px;font-size:13px;color:#f0a8d0}
+strong{color:#fff}
+li{margin:5px 0}
+p{margin:9px 0}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;margin-left:6px}
+</style></head><body><div class="wrap"><h1 id="mapeamento-segregado-definitivo-nexvybeauty">Mapeamento Segregado Definitivo — NexvyBeauty</h1>
+<blockquote>
+<p>Consolidacao das 3 varreduras (Admin / Uso / Super-admin+Orfaos) sob a premissa de segregacao cravada pelo dono (Marcelo).
+Data: 2026-06-23 · Regra de ouro: "a cabeleireira usa isso pra ATENDER/VENDER/AGENDAR (=USO), pra CONFIGURAR/GERIR o salao (=ADMIN), ou e o operador da plataforma cobrando assinatura (=SUPER-ADMIN)?"</p>
+</blockquote>
+<hr />
+<h2 id="1-resumo-executivo-o-erro-atual">1. Resumo executivo (o erro atual)</h2>
+<p>O erro de IA do produto nao e apenas "uso misturado dentro do Admin" — e mais grave: <strong>existem DOIS sistemas de USO paralelos e quase-duplicados</strong>:</p>
+<ul>
+<li><strong>CRM</strong> (<code>/crm</code>, <code>Index.tsx</code>): SellerInbox, LeadsKanban, SellerBookings, TaskCenter, AIChat, CadenceView, PlaybookView…</li>
+<li><strong>Admin</strong> (<code>Admin.tsx</code>): InboxManager, KanbanBoard, LeadsManager, CalendarManager, AgentsManager, CampaignsManager…</li>
+</ul>
+<p>Por isso as 3 varreduras classificaram os <strong>mesmos conceitos</strong> (inbox, pipeline, leads, captacao) de formas <strong>opostas</strong> conforme qual arquivo cada uma olhou. Ex.: <code>InboxManager</code> foi marcado <code>admin_salao</code> na varredura Uso e <code>uso</code> na varredura Super-admin.</p>
+<p>Alem disso, o <code>Admin.tsx</code> hoje empacota numa <strong>unica nav fixa</strong> tanto USO diario (inbox, pipeline, leads, agenda, agentes, campanhas, cadencias, captura, radar) quanto ADMIN puro (team, products, sectors, company, plan, payments, integrations, webhooks, custom-fields, schedules).</p>
+<p><strong>Solucao:</strong> Cockpit de ~7 itens (USO, linguagem de salao) + um unico item <strong>Admin</strong> (Gestao/Configuracoes) + <strong>Super-admin</strong> isolado. Pre-requisito critico: <strong>escolher 1 implementacao por funcao duplicada</strong> antes de cravar o Cockpit, senao a nav nova entrega 2 portas pra mesma sala.</p>
+<hr />
+<h2 id="2-cockpit-nav-da-cabeleireira-uso-7-itens">2. COCKPIT — nav da cabeleireira (USO, ~7 itens)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item (label leigo)</th>
+<th>Agrupa (funcoes de USO)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Inicio</strong> / "Meu Dia"</td>
+<td>OperationCenter, ModuleHub, /salao/Dashboard, ProductDashboard, Novidades, Ajuda</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Conversas</strong></td>
+<td>InboxManager (WebChatInbox, AttendancePanel) + SellerInbox, Respostas Rapidas, Radar IA</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Clientes &amp; Leads</strong> / "Meus Clientes"</td>
+<td>LeadsManager (KPIs, filtros, criar, importar, bulk, transferir), KanbanBoard/LeadsKanban, /salao/Clientes</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Captacao</strong> / "Atrair Clientes"</td>
+<td>Quiz, Formularios, ChatBot, Widget, WhatsApp, Templates, Resultados, Analytics, + paginas publicas (PublicSalaoBooking /s, PublicBooking /agendar, PublicForm /f, PublicChat /c, PublicQuiz /q, BookingConfirmation, Pacotes)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Minha IA</strong></td>
+<td>AgentsManager (operar/supervisionar), CampaignsManager, CadencesManager/CadenceView, AIChat (copiloto), AIKnowledgeManager</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Agenda</strong> / "Minha Agenda"</td>
+<td>/salao/Agenda, SellerBookings, CalendarManager (parte de operar), TaskCenter, Goals (acompanhar progresso)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Dinheiro</strong> / "Meu Faturamento"</td>
+<td>FinancialPanel (minhas comissoes), ReportsManager (operacional), Playbook, Objections, Materials</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-admin-do-salao-item-unico-sub-agrupado">3. ADMIN DO SALAO — item unico, sub-agrupado</h2>
+<h3 id="31-gestao">3.1 Gestao</h3>
+<table>
+<thead>
+<tr>
+<th>Funcao</th>
+<th>Localizacao</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Equipes</td>
+<td>TeamManager (membros, papeis, permissoes, convites)</td>
+</tr>
+<tr>
+<td>Squads</td>
+<td>SquadManager, SquadDistributionConfig, SquadPerformanceCard</td>
+</tr>
+<tr>
+<td>Setores</td>
+<td>SectorsManager</td>
+</tr>
+<tr>
+<td>Produtos</td>
+<td>ProductListPage / ProductDetailPage</td>
+</tr>
+<tr>
+<td>Servicos</td>
+<td>/salao/Servicos</td>
+</tr>
+<tr>
+<td>Profissionais</td>
+<td>/salao/Profissionais</td>
+</tr>
+<tr>
+<td>Financeiro do salao</td>
+<td>FinancialDashboard, /salao/Financeiro (consolidado/DRE)</td>
+</tr>
+<tr>
+<td>Comissoes</td>
+<td>CommissionManager</td>
+</tr>
+<tr>
+<td>Metas (setup)</td>
+<td>GoalsManager</td>
+</tr>
+<tr>
+<td>Materiais (estoque)</td>
+<td>MaterialManager</td>
+</tr>
+<tr>
+<td>Relatorios gerenciais</td>
+<td>ReportsManager (escopo BI)</td>
+</tr>
+<tr>
+<td>Pagamentos</td>
+<td>CaktoAdminPanel, CaktoRecoveryPanel</td>
+</tr>
+<tr>
+<td>Valor por estagio</td>
+<td>StageValueManager</td>
+</tr>
+<tr>
+<td>Atribuicao de leads</td>
+<td>AssignmentManager</td>
+</tr>
+<tr>
+<td>Estagios do pipeline</td>
+<td>StageManagerDialog</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-configuracoes">3.2 Configuracoes</h3>
+<table>
+<thead>
+<tr>
+<th>Funcao</th>
+<th>Localizacao</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Empresa</td>
+<td>CompanySettings</td>
+</tr>
+<tr>
+<td>Plano (visualizar)</td>
+<td>PlanSelector</td>
+</tr>
+<tr>
+<td>Horarios</td>
+<td>BusinessHoursManager</td>
+</tr>
+<tr>
+<td>Notificacoes</td>
+<td>NotificationManager, AutoNotificationSettings</td>
+</tr>
+<tr>
+<td>Campos personalizados</td>
+<td>CustomFieldsManager</td>
+</tr>
+<tr>
+<td>Etiquetas/Tags (criar)</td>
+<td>TagsManager, TagAutomationsPanel</td>
+</tr>
+<tr>
+<td>Conexoes</td>
+<td>EvolutionInstancesPanel</td>
+</tr>
+<tr>
+<td>Integracoes</td>
+<td>IntegrationsManager (Email, ApiKeys, Hotmart, Sankhya, Doppus, MassEmail, AIRouting)</td>
+</tr>
+<tr>
+<td>Webhooks</td>
+<td>WebhooksManager</td>
+</tr>
+<tr>
+<td>Brain Manager</td>
+<td>guardrails/personalidade dos agentes</td>
+</tr>
+<tr>
+<td>Conta</td>
+<td>/configuracoes (senha, GCal, 2FA)</td>
+</tr>
+<tr>
+<td>Perfil</td>
+<td>/perfil</td>
+</tr>
+<tr>
+<td>Install da org</td>
+<td>Install.tsx (quando admin da org)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-outros">3.3 Outros</h3>
+<p>Suporte (SupportTickets scope=admin), AcceptInvite, Login, ResetPassword, Unsubscribe (compliance email), AdminDashboard.tsx (resolver — possivel duplicata).</p>
+<hr />
+<h2 id="4-super-admin-so-plataformaassinatura">4. SUPER-ADMIN — so plataforma/assinatura</h2>
+<table>
+<thead>
+<tr>
+<th>Funcao</th>
+<th>Localizacao</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dashboard de plataforma</td>
+<td>SuperAdminDashboard (MRR/ARR/orgs)</td>
+</tr>
+<tr>
+<td>Organizacoes</td>
+<td>OrganizationsManager, OrganizationDetailPage</td>
+</tr>
+<tr>
+<td>Usuarios globais</td>
+<td>UsersManager</td>
+</tr>
+<tr>
+<td>Planos comerciais</td>
+<td>PlansManager</td>
+</tr>
+<tr>
+<td>Assinaturas</td>
+<td>SubscriptionsManager</td>
+</tr>
+<tr>
+<td>Faturamento</td>
+<td>BillingManager</td>
+</tr>
+<tr>
+<td>Gateway pagamento</td>
+<td>CaktoSuperAdminPanel</td>
+</tr>
+<tr>
+<td>White-label</td>
+<td>PlatformSettings</td>
+</tr>
+<tr>
+<td>Email SaaS</td>
+<td>EmailSettings</td>
+</tr>
+<tr>
+<td>Saude do sistema</td>
+<td>SystemHealth</td>
+</tr>
+<tr>
+<td>Auditoria</td>
+<td>AuditLogs</td>
+</tr>
+<tr>
+<td>Leads comerciais (da plataforma)</td>
+<td>SalesLeadsManager</td>
+</tr>
+<tr>
+<td>Evolution global</td>
+<td>EvolutionManager</td>
+</tr>
+<tr>
+<td>Central de Ajuda (CRUD)</td>
+<td>HelpManager</td>
+</tr>
+<tr>
+<td>Releases</td>
+<td>ReleasesManager</td>
+</tr>
+<tr>
+<td>Qualidade IA</td>
+<td>AIQualityPanel</td>
+</tr>
+<tr>
+<td>Auditoria de agentes</td>
+<td>AgentToolExecutionsPanel</td>
+</tr>
+<tr>
+<td>Suporte aos saloes</td>
+<td>SupportTickets scope=super_admin</td>
+</tr>
+<tr>
+<td>SalesPage / Install / gestao.nexvybeauty</td>
+<td>landing, bootstrap, contexto super-admin</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-ambiguos-fronteira-com-recomendacao">5. Ambiguos (fronteira) — com recomendacao</h2>
+<table>
+<thead>
+<tr>
+<th>Funcao</th>
+<th>Tensao</th>
+<th>Recomendacao</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Inbox duplicado</strong> (SellerInbox vs InboxManager)</td>
+<td>2 telas pro mesmo fim</td>
+<td>Escolher InboxManager como canonica; aposentar/rebaixar SellerInbox. <strong>Decidir antes de cravar a nav.</strong></td>
+</tr>
+<tr>
+<td><strong>Pipeline/Leads/Agenda duplicados</strong></td>
+<td>2-3 telas por conceito</td>
+<td>1 componente canonico por item; demais deprecated. Agenda=/salao/Agenda (simples) + CalendarManager (gerencial→Admin).</td>
+</tr>
+<tr>
+<td><strong>Agentes IA</strong></td>
+<td>operar=uso / editar=config</td>
+<td>Cockpit mostra ativos+supervisao; editor pesado como sub-tela. Mesma tela, 2 profundidades.</td>
+</tr>
+<tr>
+<td><strong>Relatorios</strong></td>
+<td>operacional=uso / BI=admin</td>
+<td>Filtrar por role; 2 pontos de entrada, mesma tela.</td>
+</tr>
+<tr>
+<td><strong>Financeiro do salao</strong></td>
+<td>meu faturamento=uso / DRE=admin</td>
+<td>Split por escopo: "Meu Faturamento" no Cockpit, "Financeiro do Salao" no Admin.</td>
+</tr>
+<tr>
+<td><strong>Plano</strong></td>
+<td>ver=admin / cobrar=super-admin</td>
+<td>Ver em Admin&gt;Config; cobrar dispara Super-admin. Fora do Cockpit.</td>
+</tr>
+<tr>
+<td><strong>Campanhas/Cadencias</strong></td>
+<td>setup=config / disparo=uso</td>
+<td>Cockpit&gt;Minha IA (dono cravou IA como USO).</td>
+</tr>
+<tr>
+<td><strong>Tags</strong></td>
+<td>criar=config / aplicar=uso</td>
+<td>Criar em Admin&gt;Config; aplicar inline em Conversas/Clientes.</td>
+</tr>
+<tr>
+<td><strong>Widget</strong></td>
+<td>customizar=uso / deploy=tecnico</td>
+<td>Cockpit&gt;Captacao; embed e detalhe interno.</td>
+</tr>
+<tr>
+<td><strong>Termos/Privacidade/NotFound</strong></td>
+<td>legal/erro</td>
+<td>Paginas de sistema, fora da taxonomia de nav.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-orfaos-legado-morto-candidatos-a-remover-ou-esconder">6. Orfaos / legado / morto (candidatos a remover ou esconder)</h2>
+<ul>
+<li><code>/oficina/*</code> — ERP de oficina legado (Dashboard, Clientes, Veiculos, Ordens, Orcamentos, Financeiro). Vertical morta fora do escopo NexvyBeauty.</li>
+<li><code>/demo/salao</code> e <code>/demo/salao/*</code> — demo publico read-only com seed; mover pra marketing ou remover de producao.</li>
+<li><code>/docs</code>, <code>/docs/:track</code>, <code>/docs/:track/:slug</code> — documentacao tecnica publica de status incerto; confirmar ou remover.</li>
+<li><code>AdminDashboard.tsx</code> — sem tab ativo; provavel duplicata do OperationCenter; consolidar com Inicio ou deletar.</li>
+<li>Modulo "ERP Oficina" no ModuleHub — card de nav pra vertical morta; remover do hub.</li>
+<li><code>SalesPage</code> (apex), <code>/termos</code>, <code>/privacidade</code> — paginas publicas de funil/legal; paginas de sistema, nao item de Cockpit/Admin.</li>
+</ul>
+<hr />
+<h2 id="7-nota-do-conselheiro-risco-de-frankenstein">7. Nota do Conselheiro (risco de Frankenstein)</h2>
+<p>O maior risco da segregacao NAO e a taxonomia (essa esta clara). E o <strong>codigo duplicado</strong>: inbox, pipeline, leads e agenda existem em 2-3 implementacoes cada (CRM-side vs Admin-side vs /salao). Se o Cockpit so "renomear o Admin", a cabeleireira tera 2 inboxes, 2 kanbans, 2 agendas — pior UX que hoje. <strong>Pre-requisito inegociavel:</strong> o dono escolhe 1 componente canonico por funcao duplicada ANTES de implementar a nova nav. Sem essa decisao, o Cockpit nasce Frankenstein.</p>
+<p style="margin-top:40px;color:var(--mut);font-size:12px;border-top:1px solid var(--bd);padding-top:16px">Gerado 2026-06-23 · render: python-markdown · companion de VITRINE-QUE-VENDE-NEXVYBEAUTY-2026-06-23</p>
+</div></body></html>
