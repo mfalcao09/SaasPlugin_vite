@@ -6,16 +6,14 @@
 import { useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Crown, Sparkles, LayoutGrid } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { WheelLoader } from '@/components/brand/WheelLoader';
 import { useAuth } from '@/hooks/useAuth';
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess';
 import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
-import { AppTopBar } from '@/components/layout/AppTopBar';
+import { UnifiedShell } from '@/components/layout/UnifiedShell';
 import { SalaoActivationChecklist } from '@/pages/salao/ActivationChecklist';
 import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
@@ -23,13 +21,23 @@ import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/conf
 import { usePlanModules } from '@/hooks/usePlanModules';
 import { isGestaoHostname } from '@/lib/publicUrl';
 
+// Agrupamento premium dos cards do hub (não mais um muro de cards soltos).
+// Cada módulo é mapeado a uma seção; a ordem das seções é a ordem de exibição.
+const MODULE_SECTIONS: { title: string; description: string; modules: ModuleId[] }[] = [
+  { title: 'Operação', description: 'O dia a dia do seu salão', modules: ['erp_salao', 'erp_oficina'] },
+  { title: 'Vendas & Atendimento', description: 'Captação, pipeline e conversas', modules: ['crm_vendas', 'atendimento'] },
+  { title: 'Gestão', description: 'Configuração e controle', modules: ['administracao', 'gestao_plataforma'] },
+];
+
 function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => void }) {
   const Icon = mod.icon;
   return (
     <Card
       onClick={onClick}
-      className="group relative cursor-pointer overflow-hidden p-5 flex flex-col gap-3 min-h-[160px] border-border/60 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/40"
+      className="group relative cursor-pointer overflow-hidden p-5 flex flex-col gap-3 min-h-[170px] border-border/60 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/40"
     >
+      {/* halo decorativo no hover (mesmo vocabulário das telas premium) */}
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="flex items-start justify-between">
         <div
           className={`w-12 h-12 rounded-xl flex items-center justify-center ${mod.color} text-white shadow-lg shadow-black/20 ring-1 ring-white/10 transition-transform group-hover:scale-105`}
@@ -42,6 +50,9 @@ function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => vo
         <h3 className="font-semibold text-base leading-tight text-foreground">{mod.label}</h3>
         <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{mod.description}</p>
       </div>
+      <span className="text-xs font-medium text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        Abrir →
+      </span>
     </Card>
   );
 }
@@ -111,10 +122,26 @@ const ModuleHub = () => {
   }
 
   const firstName = profile?.full_name?.split(' ')[0] || '';
-  const isPlainAdmin = roles.includes('admin') && !isSuperAdmin();
+
+  // Agrupa os módulos visíveis nas seções premium. Módulos que (por papel/plano)
+  // não estão visíveis somem; seções vazias são descartadas. Módulos sem seção
+  // mapeada caem num grupo "Outros" no fim (defensivo — hoje todos têm seção).
+  const sectioned = MODULE_SECTIONS
+    .map((sec) => ({
+      ...sec,
+      mods: sec.modules
+        .map((id) => visibleModules.find((m) => m.id === id))
+        .filter((m): m is ModuleDefinition => !!m),
+    }))
+    .filter((sec) => sec.mods.length > 0);
+  const placed = new Set(MODULE_SECTIONS.flatMap((s) => s.modules));
+  const orphans = visibleModules.filter((m) => !placed.has(m.id));
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <UnifiedShell
+      title={firstName ? `Olá, ${firstName}` : 'Olá'}
+      subtitle={orgName || undefined}
+    >
       {/* A dialog de escolha (Gestão Multi-Empresas / Empresa Master) é
           global, montada no App.tsx via SuperAdminViewProvider. */}
 
@@ -133,38 +160,42 @@ const ModuleHub = () => {
           que antes vivia DENTRO do módulo Admin. Some sozinha ao concluir/pular. */}
       <OnboardingBanner />
 
-      {/* Topbar canônica do sistema (mesma de todos os módulos). */}
-      <AppTopBar
-        title={firstName ? `Olá, ${firstName}` : 'Olá'}
-        subtitle={orgName || undefined}
-      />
-
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-6 max-w-7xl mx-auto space-y-8">
         {/* Checklist de ativação — mora na home (hub). Some sozinha quando
             o salão está operacional. */}
         {organizationId && !isSuperAdmin() && (
           <SalaoActivationChecklist organizationId={organizationId} />
         )}
 
-        {/* ─── Grid de módulos ──────────────────────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              Módulos disponíveis
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              {visibleModules.length} módulos
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {visibleModules.map((mod) => (
-              <ModuleCard key={mod.id} mod={mod} onClick={() => navigate(mod.route)} />
-            ))}
-          </div>
-        </div>
+        {/* ─── Módulos agrupados por seção (dashboard premium, não muro) ── */}
+        {sectioned.map((sec) => (
+          <section key={sec.title}>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground">{sec.title}</h2>
+              <p className="text-sm text-muted-foreground">{sec.description}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {sec.mods.map((mod) => (
+                <ModuleCard key={mod.id} mod={mod} onClick={() => navigate(mod.route)} />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {orphans.length > 0 && (
+          <section>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Outros</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {orphans.map((mod) => (
+                <ModuleCard key={mod.id} mod={mod} onClick={() => navigate(mod.route)} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
-    </div>
+    </UnifiedShell>
   );
 };
 
