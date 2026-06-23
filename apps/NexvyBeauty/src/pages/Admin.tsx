@@ -13,7 +13,6 @@ import { AppTopBar } from '@/components/layout/AppTopBar';
 // Factories nomeadas para podermos reutilizá-las no prefetch on-hover.
 const f = {
   OperationCenter: () => import('@/components/admin/operation/OperationCenter').then(m => ({ default: m.OperationCenter })),
-  AdminDashboard: () => import('@/components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })),
   TeamManager: () => import('@/components/admin/TeamManager').then(m => ({ default: m.TeamManager })),
   FinancialDashboard: () => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })),
   CalendarManager: () => import('@/components/admin/CalendarManager').then(m => ({ default: m.CalendarManager })),

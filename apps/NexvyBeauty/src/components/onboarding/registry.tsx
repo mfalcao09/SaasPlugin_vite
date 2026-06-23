@@ -1,7 +1,7 @@
 // ─── Registry de passos de onboarding por módulo ──────────────────────
 // Mapa config-driven consumido pelo fluxo de onboarding guiado (D3).
 // Cada módulo expõe seus próprios passos; aqui registramos apenas os que
-// implementamos nesta frente (erp_oficina, atendimento). Os passos de CRM
+// implementamos nesta frente (erp_salao, atendimento). Os passos de CRM
 // (crm_vendas) seguem no GuidedOnboarding e NÃO entram aqui.
 
 import type { FC } from 'react'

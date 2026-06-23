@@ -89,7 +89,7 @@ interface OnboardingShared {
 // Cada passo é um "node" que sabe se renderiza um conteúdo fixo (welcome,
 // identity, modules, team, done), um passo de CRM já existente neste arquivo
 // (product/whatsapp/agent — condicional à escolha de 'crm_vendas') ou um
-// passo vindo do registry MODULE_ONBOARDING_STEPS (erp_oficina, atendimento).
+// passo vindo do registry MODULE_ONBOARDING_STEPS (erp_salao, atendimento).
 type StepNode =
   | { kind: 'welcome' }
   | { kind: 'identity' }

@@ -47,14 +47,6 @@ const Docs = lazyWithRetry(() => import("./pages/Docs"));
 const Termos = lazyWithRetry(() => import("./pages/Termos"));
 const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 
-// ERP Oficina (Clientes, Veículos, OS, Orçamentos, Financeiro)
-const OficinaDashboard = lazyWithRetry(() => import("./pages/oficina/Dashboard"));
-const OficinaClientes = lazyWithRetry(() => import("./pages/oficina/Clientes"));
-const OficinaVeiculos = lazyWithRetry(() => import("./pages/oficina/Veiculos"));
-const OficinaOrdens = lazyWithRetry(() => import("./pages/oficina/Ordens"));
-const OficinaOrcamentos = lazyWithRetry(() => import("./pages/oficina/Orcamentos"));
-const OficinaFinanceiro = lazyWithRetry(() => import("./pages/oficina/Financeiro"));
-
 // ERP Salão (NexvyBeauty: Agenda, Profissionais, Serviços, Clientes, Financeiro)
 const SalaoDashboard = lazyWithRetry(() => import("./pages/salao/Dashboard"));
 const DemoSalaoDashboard = lazyWithRetry(() => import("./pages/salao/DemoDashboard"));
@@ -253,14 +245,6 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              {/* ERP Oficina */}
-              <Route path="/oficina" element={<ProtectedRoute><OficinaDashboard /></ProtectedRoute>} />
-              <Route path="/oficina/clientes" element={<ProtectedRoute><OficinaClientes /></ProtectedRoute>} />
-              <Route path="/oficina/veiculos" element={<ProtectedRoute><OficinaVeiculos /></ProtectedRoute>} />
-              <Route path="/oficina/ordens" element={<ProtectedRoute><OficinaOrdens /></ProtectedRoute>} />
-              <Route path="/oficina/orcamentos" element={<ProtectedRoute><OficinaOrcamentos /></ProtectedRoute>} />
-              <Route path="/oficina/financeiro" element={<ProtectedRoute><OficinaFinanceiro /></ProtectedRoute>} />
-
               {/* ERP Salão (NexvyBeauty) */}
               <Route path="/salao" element={<ProtectedRoute><SalaoDashboard /></ProtectedRoute>} />
               <Route path="/salao/agenda" element={<ProtectedRoute><SalaoAgenda /></ProtectedRoute>} />

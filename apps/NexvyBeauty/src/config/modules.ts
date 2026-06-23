@@ -13,7 +13,6 @@ import {
 
 export type ModuleId =
   | 'erp_salao'
-  | 'erp_oficina'
   | 'crm_vendas'
   | 'atendimento'
   | 'administracao'
@@ -34,8 +33,7 @@ export interface ModuleDefinition {
 }
 
 export const MODULE_DEFINITIONS: ModuleDefinition[] = [
-  // Vertical de salão (NexvyBeauty). Substitui o erp_oficina (ocultado;
-  // rotas /oficina seguem dormentes). Telas em pages/salao/*.
+  // Vertical de salão (NexvyBeauty). Telas em pages/salao/*.
   {
     id: 'erp_salao',
     label: 'Gestão do Salão',
