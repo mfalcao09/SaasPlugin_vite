@@ -21,6 +21,7 @@ import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding';
 import { OnboardingBanner } from '@/components/onboarding/OnboardingBanner';
 import { MODULE_DEFINITIONS, type ModuleDefinition, type ModuleId } from '@/config/modules';
 import { usePlanModules } from '@/hooks/usePlanModules';
+import { isGestaoHostname } from '@/lib/publicUrl';
 
 function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => void }) {
   const Icon = mod.icon;
@@ -82,6 +83,9 @@ const ModuleHub = () => {
   const visibleModules = useMemo(
     () =>
       MODULE_DEFINITIONS.filter((mod) => {
+        // Split: a gestão da plataforma vive no gestao.*; no app.*/apex o card
+        // não aparece (o super-admin acessa via gestao.nexvybeauty.com.br).
+        if (mod.id === 'gestao_plataforma' && !isGestaoHostname()) return false;
         if (mod.visibility === 'super_admin') return isSuperAdmin();
         if (mod.visibility === 'admin' && !(isAdmin() || isManager())) return false;
         if (gated && PRODUCT_MODULES.includes(mod.id) && !availableModules.includes(mod.id)) return false;

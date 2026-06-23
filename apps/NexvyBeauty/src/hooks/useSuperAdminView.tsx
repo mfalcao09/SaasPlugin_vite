@@ -8,6 +8,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback,
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { isGestaoHostname } from '@/lib/publicUrl';
 
 type ViewMode = 'gestao' | 'empresa';
 
@@ -137,7 +138,16 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const showChoiceDialog = isSuperAdmin && viewMode === null;
+  // Split por hostname: o gestao.* É o modo gestão; o app.*/apex É o modo
+  // empresa. A URL decide o viewMode, substituindo o dialog de escolha manual
+  // (impersonação segue via OrganizationSelector, independente disto).
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const desired: ViewMode = isGestaoHostname() ? 'gestao' : 'empresa';
+    if (viewMode !== desired) setViewMode(desired);
+  }, [isSuperAdmin, viewMode, setViewMode]);
+
+  const showChoiceDialog = false;
 
   return (
     <SuperAdminViewContext.Provider value={{
