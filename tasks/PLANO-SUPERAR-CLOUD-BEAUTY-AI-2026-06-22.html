@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — NexvyBeauty &gt; cloud-beauty-ai</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#121622;--panel2:#171c2b;--border:#252c3f;--fg:#e6e9f0;--muted:#9aa3b5;--rose:#f43f6e;--rose2:#ff77a0;--green:#34d399;--amber:#fbbf24;--red:#f87171;--blue:#60a5fa;}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0e14,#0d1018);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;background:linear-gradient(90deg,#fff,var(--rose2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:13px}
+  h2{font-size:20px;font-weight:700;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:16px;font-weight:700;margin:20px 0 6px;color:var(--rose2)}
+  p{margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td strong{color:#fff}
+  .nx{color:var(--rose2);font-weight:700}
+  .ins{background:linear-gradient(135deg,rgba(244,63,110,.12),rgba(96,165,250,.08));border:1px solid var(--border);border-left:3px solid var(--rose);border-radius:10px;padding:14px 18px;margin:18px 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:12px 0}
+  .ok{color:var(--green)} .no{color:var(--red)} .mid{color:var(--amber)}
+  ul{margin:6px 0 6px 0;padding-left:20px} li{margin:4px 0}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+  .pA{background:rgba(244,63,110,.15);color:var(--rose2);border-color:rgba(244,63,110,.3)}
+  .pB{background:rgba(96,165,250,.15);color:var(--blue);border-color:rgba(96,165,250,.3)}
+  code{background:#0a0d14;border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#cdd6e6}
+  .crit li::marker{color:var(--green)}
+  .guard .no{font-weight:700}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:14px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>NexvyBeauty &gt; cloud-beauty-ai</h1>
+<p class="sub">Plano de consolidação · 2026-06-22 · Marcelo Silva · ambos os projetos são seus · executar <b>Track A (IA) + Track B (coesão) em paralelo</b></p>
+
+<h2>0. Reframe — a verdade do inventário</h2>
+<p>A premissa "o Lovable está muito melhor, estamos longe de vendável" <b>se inverte nos fatos</b>. O cloud-beauty-ai <i>parece</i> melhor (coeso, polido), mas é <b>template raso</b>; o NexvyBeauty é <b>produto de produção</b> com ~10× mais capacidade.</p>
+<table>
+<tr><th>Eixo</th><th>cloud-beauty-ai</th><th>NexvyBeauty</th></tr>
+<tr><td>CRM</td><td>~18 features reais</td><td><strong>18/20 reais</strong> + LLM-as-Judge + A/B testing de prompt <span class="no">(ele não tem)</span></td></tr>
+<tr><td>WhatsApp</td><td><span class="no">tabela vazia (schema, 0 código)</span></td><td><span class="ok">QR + envio + recepção + webhook</span> reais (Evolution Go)</td></tr>
+<tr><td>Pagamento</td><td><span class="no">enum de plano (0 lógica)</span></td><td><span class="ok">Cakto completo</span>: checkout auto + webhook + provisioning + recovery</td></tr>
+<tr><td>Email</td><td>templates sem SMTP</td><td><span class="ok">Lovable Emails</span>: domínio próprio, fila, supressão, automação cobrança</td></tr>
+<tr><td>Edge functions</td><td><span class="no">0 (pasta vazia)</span></td><td><strong>~100+</strong> em produção</td></tr>
+<tr><td>Super-admin</td><td>rota <code>/master</code> básica</td><td><strong>24 painéis</strong> (planos, billing, audit, health, quotas)</td></tr>
+<tr><td>Em produção</td><td><span class="no">não</span></td><td><span class="ok">SIM</span> — app/apex/gestao.nexvybeauty.com.br, SSL, soberano</td></tr>
+</table>
+<div class="ins">O cloud-beauty-ai <b>não consegue mandar um WhatsApp nem cobrar um cliente</b> — as integrações que monetizam são só schema. Você não está longe de um produto vendável: <b>já tem um, com 10× mais capacidade.</b> O que falta é o que você <i>sente</i>: <b>coesão e polimento.</b></div>
+
+<h2>1. O que ele tem de <em>realmente</em> melhor</h2>
+<ul>
+<li><b>Coesão/polimento de UX</b> — nasceu limpo (salão+CRM unificados, sidebar agrupada). O nosso cascateou de um CRM. <i>(Salão já re-skinado premium; falta CRM/admin + navegação.)</i></li>
+<li><b>3 features de IA limpas</b> (nós só parciais): <b>scoring com decay</b>, <b>NBA generativo</b>, <b>daily-report com chamada LLM</b>.</li>
+</ul>
+
+<h2>2. <span class="pill pA">TRACK A</span> &nbsp;3 features de IA</h2>
+<p class="sub">Reusa: <code>org_ai_routing</code>, <code>generate-insights</code>, <code>daily-report-ai</code>, <code>lead_semantic_memory</code> (RAG), <code>evaluate-conversation</code> (LLM-as-Judge).</p>
+
+<div class="card"><h3>A1 — Lead scoring com decay <span class="mid">~M</span></h3>
+<b>Como:</b> <code>lead_scoring_rules</code> (peso, decay_dias, condição) + cron <code>score-recompute</code> (eventos recentes − decay). <b>Verifica:</b> lead com interação sobe; lead parado decai ao longo dos dias.</div>
+
+<div class="card"><h3>A2 — NBA (Next-Best-Action) generativo <span class="mid">~M</span></h3>
+<b>Como:</b> edge fn <code>lead-nba</code> → contexto (score, etapa, últimas msgs, playbook) → Gemini → <code>lead_nba_sugestao</code>; estende o painel "Radar IA".
+<br><b class="nx">Nosso diferencial:</b> a NBA dele só sugere — a nossa <b>executa</b> (botão dispara no <b>WhatsApp real</b> via Evolution / enfileira cadência).</div>
+
+<div class="card"><h3>A3 — Daily-report com LLM <span class="ok">~P (menor)</span></h3>
+<b>Falta só</b> a chamada ao LLM (o coletor <code>daily-report-ai</code> já existe). Manda KPIs/eventos pro Gemini (<code>json_object</code>) → resumo/destaques/alertas, com fallback gracioso. <b>Verifica:</b> relatório com texto gerado, não só números.</div>
+
+<h2>3. <span class="pill pB">TRACK B</span> &nbsp;Coesão &amp; polimento</h2>
+<div class="card"><h3>B1 — Estender re-skin premium pra fora do salão <span class="mid">~M-G</span></h3>
+Salão (6 telas) ✅. Levar o padrão (Card/Table/Dialog/Badge, dark via tokens, recharts) pras telas <b>tenant-facing</b> do CRM (leads/inbox/relatórios) + ModuleHub premium. <i>Admin profundo (300 arq.) = 2ª onda.</i></div>
+<div class="card"><h3>B2 — Unificar a navegação <span class="mid">~M</span></h3>
+ModuleHub "apps separados" → shell <b>coeso</b> estilo cloud-beauty-ai (1 sidebar agrupada + seletor de salão), reusando a <code>SalaoLayout</code> premium como base.</div>
+
+<h2>4. Sequenciamento (paralelo)</h2>
+<table>
+<tr><th>Sprint</th><th>Track A (IA)</th><th>Track B (coesão)</th></tr>
+<tr><td><b>S1</b></td><td>A3 daily-report-LLM (rápido)</td><td>ModuleHub premium + shell unificado (B2)</td></tr>
+<tr><td><b>S2</b></td><td>A1 scoring com decay</td><td>Re-skin telas tenant-facing do CRM (B1)</td></tr>
+<tr><td><b>S3</b></td><td>A2 NBA + botão que <b>executa</b> (WhatsApp real)</td><td>Acabamento · responsivo/dark</td></tr>
+</table>
+<p class="sub">Edge functions via Supabase MCP. Preciso do <b>project ref</b> do Supabase do NexvyBeauty + sessão logada (ou padrão <code>/demo</code>) pra verificar telas autenticadas.</p>
+
+<h2>5. Critério de sucesso</h2>
+<ul class="crit">
+<li><b>A1</b> scoring sobe com interação e decai com inatividade (2 leads de teste).</li>
+<li><b>A2</b> NBA gera sugestão acionável + botão dispara mensagem <b>real</b> no WhatsApp.</li>
+<li><b>A3</b> daily-report traz texto gerado por LLM.</li>
+<li><b>B1/B2</b> dono de salão navega num produto coeso e premium ponta a ponta.</li>
+<li><b>Resultado:</b> NexvyBeauty supera o cloud-beauty-ai em capacidade + integrações + coesão + IA.</li>
+</ul>
+
+<h2>6. Guard-rails</h2>
+<div class="guard">
+<p><span class="no">❌ Não rebasear</span> pro stack Lovable/TanStack/Cloudflare — perderia WhatsApp/Cakto/email/soberania (o moat) por ganho só arquitetural + lock-in.</p>
+<p><span class="no">❌ Não migrar dados</span> do cloud-beauty-ai (template vazio).</p>
+<p><span class="ok">✅ Usar</span> o cloud-beauty-ai como referência de arquitetura/UX-alvo + 2 features (scoring-decay, NBA) portadas pra nossa infra real.</p>
+</div>
+
+<p class="foot">Gerado por Claude (Opus 4.8) · par do <code>PLANO-SUPERAR-CLOUD-BEAUTY-AI-2026-06-22.md</code> · NexvyBeauty</p>
+</div></body></html>

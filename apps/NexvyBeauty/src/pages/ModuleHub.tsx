@@ -28,19 +28,19 @@ function ModuleCard({ mod, onClick }: { mod: ModuleDefinition; onClick: () => vo
   return (
     <Card
       onClick={onClick}
-      className="group cursor-pointer p-5 hover:shadow-lg transition-all hover:border-primary/40 flex flex-col gap-3 min-h-[160px]"
+      className="group relative cursor-pointer overflow-hidden p-5 flex flex-col gap-3 min-h-[160px] border-border/60 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/40"
     >
       <div className="flex items-start justify-between">
         <div
-          className={`w-11 h-11 rounded-lg flex items-center justify-center ${mod.color} text-white shadow-sm`}
+          className={`w-12 h-12 rounded-xl flex items-center justify-center ${mod.color} text-white shadow-lg shadow-black/20 ring-1 ring-white/10 transition-transform group-hover:scale-105`}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-6 h-6" />
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ChevronRight className="w-4 h-4 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
       </div>
       <div className="flex-1">
         <h3 className="font-semibold text-base leading-tight text-foreground">{mod.label}</h3>
-        <p className="text-xs text-muted-foreground mt-1 leading-snug">{mod.description}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{mod.description}</p>
       </div>
     </Card>
   );
