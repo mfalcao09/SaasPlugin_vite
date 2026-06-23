@@ -2,26 +2,26 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  BookOpen, 
-  MessageSquareWarning, 
-  FolderOpen, 
-  Bot, 
+import {
+  LayoutDashboard,
+  Calendar,
+  BookOpen,
+  MessageSquareWarning,
+  FolderOpen,
+  Bot,
   Settings,
   ChevronLeft,
   ChevronRight,
   Package,
   Users,
   CheckSquare,
-  ArrowLeft,
   DollarSign,
   Shield,
   MessageSquare,
   CalendarCheck,
   Scissors,
-  LayoutGrid
+  LayoutGrid,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/Logo';
@@ -41,27 +41,59 @@ interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-// Menu quando tem produto selecionado
-const productNavItems = [
-  { id: 'product-dashboard', label: 'Visão Geral', icon: LayoutDashboard },
-  { id: 'leads', label: 'Pipeline', icon: Users },
-  { id: 'inbox', label: 'Conversas', icon: MessageSquare },
-  { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
-  { id: 'bookings', label: 'Agendamentos', icon: CalendarCheck },
-  { id: 'financial', label: 'Financeiro', icon: DollarSign },
-  { id: 'cadence', label: 'Cadência', icon: Calendar },
-  { id: 'playbook', label: 'Playbook', icon: BookOpen },
-  { id: 'objections', label: 'Objeções', icon: MessageSquareWarning },
-  { id: 'materials', label: 'Materiais', icon: FolderOpen },
-  { id: 'ai', label: 'IA Copiloto', icon: Bot },
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+// Tabs do CRM AGRUPADOS em seções (coesão com o UnifiedShell). Mantêm o
+// mecanismo de tabs (onTabChange) — re-skin preservando comportamento.
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Pipeline',
+    items: [
+      { id: 'product-dashboard', label: 'Visão Geral', icon: LayoutDashboard },
+      { id: 'leads', label: 'Pipeline', icon: Users },
+      { id: 'inbox', label: 'Conversas', icon: MessageSquare },
+      { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
+      { id: 'bookings', label: 'Agendamentos', icon: CalendarCheck },
+    ],
+  },
+  {
+    title: 'Operação',
+    items: [
+      { id: 'financial', label: 'Financeiro', icon: DollarSign },
+      { id: 'cadence', label: 'Cadência', icon: Calendar },
+    ],
+  },
+  {
+    title: 'Conteúdo',
+    items: [
+      { id: 'playbook', label: 'Playbook', icon: BookOpen },
+      { id: 'objections', label: 'Objeções', icon: MessageSquareWarning },
+      { id: 'materials', label: 'Materiais', icon: FolderOpen },
+    ],
+  },
+  {
+    title: 'IA',
+    items: [{ id: 'ai', label: 'IA Copiloto', icon: Bot }],
+  },
 ];
 
-export function Sidebar({ 
-  activeTab, 
-  onTabChange, 
-  selectedProduct, 
-  hasMultipleProducts,
-  onBackToProducts,
+// Estilo de item idêntico ao UnifiedShell (ativo = primary sólido).
+const itemClass = (active: boolean) =>
+  cn(
+    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+    active
+      ? 'bg-primary text-primary-foreground'
+      : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+  );
+
+export function Sidebar({
+  activeTab,
+  onTabChange,
+  selectedProduct,
   assignedProducts = [],
   onSelectProduct,
   onCollapsedChange,
@@ -70,8 +102,6 @@ export function Sidebar({
   const { isAdmin, isManager, isSuperAdmin } = useAuth();
   const showAdminLink = isAdmin() || isManager();
   const showSuperAdminLink = isSuperAdmin();
-
-  const navItems = selectedProduct ? productNavItems : [];
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -82,14 +112,14 @@ export function Sidebar({
   };
 
   return (
-    <aside 
+    <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen transition-all duration-300 ease-in-out",
-        "bg-sidebar border-r border-sidebar-border flex flex-col",
-        collapsed ? "w-16" : "w-64"
+        'fixed left-0 top-0 z-40 h-screen transition-all duration-300 ease-in-out',
+        'bg-sidebar border-r border-sidebar-border flex flex-col',
+        collapsed ? 'w-16' : 'w-64',
       )}
     >
-      {/* Logo */}
+      {/* Marca + toggle */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && <Logo size="md" />}
         <Button
@@ -102,48 +132,38 @@ export function Sidebar({
         </Button>
       </div>
 
-      {/* Product badge removido — troca de produto agora é feita pelo dropdown no header */}
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      {/* Navegação */}
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
         {/* Hub de Módulos (home) */}
-        <Link
-          to="/"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          <LayoutGrid size={20} className="text-primary" />
-          {!collapsed && <span className="text-sm font-medium">Hub de Módulos</span>}
+        <Link to="/" className={itemClass(false)}>
+          <LayoutGrid className="h-4 w-4 shrink-0 text-primary" />
+          {!collapsed && <span className="truncate">Hub de Módulos</span>}
         </Link>
-        <div className="my-1 border-t border-sidebar-border" />
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              onMouseEnter={() => prefetchIndexTab(item.id)}
-              onTouchStart={() => prefetchIndexTab(item.id)}
-              onFocus={() => prefetchIndexTab(item.id)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                "text-sidebar-foreground hover:bg-sidebar-accent",
-                isActive && "bg-primary/10 text-primary"
-              )}
-            >
-              <Icon size={20} className={cn(isActive && "text-primary")} />
+
+        {selectedProduct &&
+          NAV_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-1">
               {!collapsed && (
-                <span className={cn(
-                  "text-sm font-medium",
-                  isActive && "text-primary"
-                )}>
-                  {item.label}
-                </span>
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {group.title}
+                </p>
               )}
-            </button>
-          );
-        })}
+              {group.items.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => onTabChange(id)}
+                  onMouseEnter={() => prefetchIndexTab(id)}
+                  onTouchStart={() => prefetchIndexTab(id)}
+                  onFocus={() => prefetchIndexTab(id)}
+                  title={collapsed ? label : undefined}
+                  className={itemClass(activeTab === id)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{label}</span>}
+                </button>
+              ))}
+            </div>
+          ))}
 
         {/* Lista de produtos atribuídos quando nenhum está selecionado */}
         {!selectedProduct && !collapsed && (
@@ -151,9 +171,7 @@ export function Sidebar({
             {assignedProducts.length === 0 ? (
               <div className="px-3 py-8 text-center">
                 <Package className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  Nenhum produto atribuído
-                </p>
+                <p className="text-sm text-muted-foreground">Nenhum produto atribuído</p>
               </div>
             ) : (
               <>
@@ -165,13 +183,10 @@ export function Sidebar({
                     <button
                       key={product.id}
                       onClick={() => onSelectProduct?.(product)}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-left",
-                        "text-sidebar-foreground hover:bg-sidebar-accent"
-                      )}
+                      className={itemClass(false)}
                     >
-                      <Package size={16} className="text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate">{product.name}</span>
+                      <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{product.name}</span>
                     </button>
                   ))}
                 </div>
@@ -181,42 +196,27 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* Bottom Actions */}
+      {/* Ações inferiores */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
-        {/* ERP Salão */}
-        <Link
-          to="/salao"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          <Scissors size={20} className="text-pink-400" />
-          {!collapsed && <span className="text-sm">ERP Salão</span>}
+        <Link to="/salao" className={itemClass(false)} title={collapsed ? 'ERP Salão' : undefined}>
+          <Scissors className="h-4 w-4 shrink-0 text-pink-400" />
+          {!collapsed && <span className="truncate">ERP Salão</span>}
         </Link>
-        {/* Super Admin Link */}
         {showSuperAdminLink && (
-          <Link
-            to="/super-admin"
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <Shield size={20} className="text-violet-400" />
-            {!collapsed && <span className="text-sm">Super Admin</span>}
+          <Link to="/super-admin" className={itemClass(false)} title={collapsed ? 'Super Admin' : undefined}>
+            <Shield className="h-4 w-4 shrink-0 text-violet-400" />
+            {!collapsed && <span className="truncate">Super Admin</span>}
           </Link>
         )}
-        {/* Admin Link */}
         {showAdminLink && (
-          <Link
-            to="/admin"
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <Shield size={20} />
-            {!collapsed && <span className="text-sm">Painel Admin</span>}
+          <Link to="/admin" className={itemClass(false)} title={collapsed ? 'Painel Admin' : undefined}>
+            <Shield className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate">Painel Admin</span>}
           </Link>
         )}
-        <Link
-          to="/configuracoes"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          <Settings size={20} />
-          {!collapsed && <span className="text-sm">Configurações</span>}
+        <Link to="/configuracoes" className={itemClass(false)} title={collapsed ? 'Configurações' : undefined}>
+          <Settings className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="truncate">Configurações</span>}
         </Link>
       </div>
     </aside>
