@@ -29,6 +29,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const PublicForm = lazyWithRetry(() => import("./pages/PublicForm"));
 const PublicSalaoBooking = lazyWithRetry(() => import("./pages/PublicSalaoBooking"));
+const PublicSalaoPacotes = lazyWithRetry(() => import("./pages/PublicSalaoPacotes"));
 const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
 const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
 
@@ -185,6 +186,7 @@ const App = () => (
               <Route path="/demo/salao/agenda" element={<DemoSalaoAgenda />} />
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
+              <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
               <Route path="/whitelabel" element={<Navigate to="/" replace />} />
               <Route path="/reagendar/:token" element={<BookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
