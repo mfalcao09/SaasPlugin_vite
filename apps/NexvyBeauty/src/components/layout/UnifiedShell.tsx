@@ -1,27 +1,31 @@
-// ─── UnifiedShell — casca de navegação coesa (Track B / B2) ──────────
-// Generaliza o padrão premium do SalaoLayout (_shared) para TODAS as áreas
-// tenant-facing: uma sidebar agrupada (Principal / Operacional / Atendimento
-// / Gestão) + AppTopBar (que já traz o seletor de empresa + ações globais).
+// ─── UnifiedShell — casca de navegação coesa (Onda 1 / port do CBA) ──────
+// Generaliza o padrão premium do SalaoLayout para TODAS as áreas tenant-facing:
+// sidebar AGRUPADA (Principal / Operacional / Atendimento / Gestão) com RAIL
+// COLAPSÁVEL (primitiva shadcn `Sidebar collapsible="icon"`, padrão portado do
+// AppSidebar do cloud-beauty-ai) + AppTopBar canônica (seletor de empresa +
+// ações globais — moat do NX preservado).
 //
-// Objetivo: remover a sensação de "apps separados". Reusa rotas REAIS já
-// declaradas no App.tsx — não cria rota nova, não muda data flow, não toca
-// nenhuma lógica de negócio. É só a moldura.
+// Reusa rotas REAIS já declaradas no App.tsx — não cria rota nova, não muda
+// data flow, não toca lógica de negócio. É só a moldura.
 //
-// Itens de menu são resolvidos por papel (admin/super-admin) e por hostname
-// (gestão da plataforma só no gestao.*), espelhando a visibilidade que o
-// ModuleHub já aplica.
+// Itens resolvidos por papel (admin/super-admin) e hostname (gestão só no
+// gestao.*), espelhando a visibilidade do ModuleHub.
 
 import { ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutGrid, LayoutDashboard, CalendarDays, Scissors, Sparkles, Users,
-  DollarSign, TrendingUp, MessageSquare, Settings, Crown,
+  DollarSign, TrendingUp, MessageSquare, Settings, Crown, LogOut,
   type LucideIcon,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { AppTopBar } from '@/components/layout/AppTopBar'
 import { isGestaoHostname } from '@/lib/publicUrl'
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton,
+  SidebarMenuItem, SidebarProvider, SidebarRail, SidebarTrigger,
+} from '@/components/ui/sidebar'
 
 export type ShellVisibility = 'all' | 'admin' | 'super_admin'
 
@@ -35,14 +39,13 @@ export interface ShellNavItem {
 }
 
 export interface ShellNavGroup {
-  /** rótulo curto da seção (caps no estilo do beauty-flow) */
+  /** rótulo curto da seção */
   title: string
   items: ShellNavItem[]
 }
 
-// Mapa canônico de navegação do tenant. Agrupado em 4 seções como o alvo de
-// coesão (Principal / Operacional / Atendimento / Gestão). Todas as rotas já
-// existem no App.tsx.
+// Mapa canônico de navegação do tenant. Agrupado em 4 seções (alvo de coesão).
+// Todas as rotas já existem no App.tsx.
 export const TENANT_NAV: ShellNavGroup[] = [
   {
     title: 'Principal',
@@ -87,12 +90,11 @@ interface UnifiedShellProps {
 }
 
 /**
- * Casca de navegação coesa. Mantém a mesma largura (w-60), mesma AppTopBar e
- * o mesmo vocabulário visual do SalaoLayout — só adiciona o agrupamento em
- * seções e a resolução por papel.
+ * Casca de navegação coesa com sidebar colapsável. Preserva a AppTopBar
+ * canônica (seletor de empresa + ações) e adiciona agrupamento + rail de ícones.
  */
 export function UnifiedShell({ title, subtitle, children, nav = TENANT_NAV }: UnifiedShellProps) {
-  const { isAdmin, isManager, isSuperAdmin } = useAuth()
+  const { isAdmin, isManager, isSuperAdmin, user, signOut } = useAuth()
   const { pathname } = useLocation()
 
   const canSee = (vis: ShellVisibility = 'all'): boolean => {
@@ -101,12 +103,18 @@ export function UnifiedShell({ title, subtitle, children, nav = TENANT_NAV }: Un
     return true
   }
 
-  // Filtra itens por papel/hostname e descarta seções que ficaram vazias.
+  // Ativo por caminho (NavLink asChild não expõe isActive ao SidebarMenuButton).
+  const isItemActive = (to: string, end?: boolean): boolean => {
+    const base = to.split('?')[0]
+    if (end || base === '/') return pathname === base
+    return pathname === base || pathname.startsWith(base + '/')
+  }
+
+  // Filtra por papel/hostname e descarta seções vazias.
   const groups = nav
     .map((g) => ({
       ...g,
       items: g.items.filter((it) => {
-        // Gestão da plataforma só aparece no host de gestão (espelha ModuleHub).
         if (it.to === '/super-admin' && !isGestaoHostname()) return false
         return canSee(it.visibility)
       }),
@@ -114,40 +122,62 @@ export function UnifiedShell({ title, subtitle, children, nav = TENANT_NAV }: Un
     .filter((g) => g.items.length > 0)
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <AppTopBar title={title} subtitle={subtitle} />
-      <div className="flex flex-1 min-h-0">
-        <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
-          <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
-            {groups.map((group) => (
-              <div key={group.title} className="space-y-1">
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {group.title}
-                </p>
-                {group.items.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    // `?tab=` em /admin não casa com o matcher do NavLink — força
-                    // o estado ativo comparando o caminho base.
-                    className={({ isActive }) => cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                      (isActive || (to.includes('?') && pathname === to.split('?')[0]))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
-        </aside>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <div className="flex items-center gap-2 px-1 py-1.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <span className="font-semibold truncate group-data-[collapsible=icon]:hidden">NexvyBeauty</span>
+          </div>
+        </SidebarHeader>
+
+        <SidebarContent>
+          {groups.map((group) => (
+            <SidebarGroup key={group.title}>
+              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map(({ to, label, icon: Icon, end }) => (
+                    <SidebarMenuItem key={to}>
+                      <SidebarMenuButton asChild isActive={isItemActive(to, end)} tooltip={label}>
+                        <NavLink to={to} end={end}>
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span>{label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </SidebarContent>
+
+        <SidebarFooter>
+          {user?.email && (
+            <div className="px-2 pb-1 text-xs text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
+              {user.email}
+            </div>
+          )}
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => signOut()} tooltip="Sair">
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Sair</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset className="min-h-0">
+        <AppTopBar title={title} subtitle={subtitle} leading={<SidebarTrigger className="-ml-1" />} />
         <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
