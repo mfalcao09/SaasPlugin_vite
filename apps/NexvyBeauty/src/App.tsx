@@ -1,5 +1,4 @@
 import { Component, Suspense, type ReactNode } from "react";
-import { useParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,7 +35,6 @@ const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
 
 const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
 
-const BookingConfirmation = lazyWithRetry(() => import("./pages/BookingConfirmation"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
 const HelpCenter = lazyWithRetry(() => import("./pages/HelpCenter"));
@@ -92,14 +90,6 @@ const queryClient = new QueryClient({
 function PlatformBrandingLoader() {
   usePlatformBranding();
   return null;
-}
-
-// Redirect legado: a antiga UI Calendly pública (/agendar/:userSlug[/:eventSlug])
-// foi descontinuada. A agenda do salão é o booking público por slug (/s/:slug).
-// Preserva o slug e descarta o eventSlug (URLs antigas nunca foram divulgadas).
-function LegacyBookingRedirect() {
-  const { userSlug } = useParams();
-  return <Navigate to={userSlug ? `/s/${userSlug}` : "/"} replace />;
 }
 
 class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -171,10 +161,7 @@ const App = () => (
               <Route path="/f/:slug" element={<PublicForm />} />
               <Route path="/c/:slug" element={<PublicChat />} />
               <Route path="/q/:slug" element={<PublicQuiz />} />
-              
-              <Route path="/agendar/:userSlug" element={<LegacyBookingRedirect />} />
-              <Route path="/agendar/:userSlug/:eventSlug" element={<LegacyBookingRedirect />} />
-              <Route path="/confirmar/:token" element={<BookingConfirmation />} />
+
               <Route path="/vendas" element={<SalesPage />} />
               {/* Demo público do salão (sem login) — estilo beauty-flow */}
               <Route path="/demo" element={<Navigate to="/demo/salao" replace />} />
@@ -188,7 +175,6 @@ const App = () => (
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
               <Route path="/whitelabel" element={<Navigate to="/" replace />} />
-              <Route path="/reagendar/:token" element={<BookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
 
               {/* Jurídico público (sem login) */}

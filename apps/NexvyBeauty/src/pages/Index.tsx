@@ -30,7 +30,6 @@ const f = {
   TaskCenter: () => import('@/components/seller/TaskCenter').then(m => ({ default: m.TaskCenter })),
   FinancialPanel: () => import('@/components/seller/FinancialPanel').then(m => ({ default: m.FinancialPanel })),
   SellerInbox: () => import('@/components/seller/SellerInbox').then(m => ({ default: m.SellerInbox })),
-  SellerBookings: () => import('@/components/seller/SellerBookings').then(m => ({ default: m.SellerBookings })),
   ProductDashboard: () => import('@/components/product/ProductDashboard').then(m => ({ default: m.ProductDashboard })),
   MobileProductDashboard: () => import('@/components/mobile/MobileProductDashboard').then(m => ({ default: m.MobileProductDashboard })),
   MobileKanban: () => import('@/components/mobile/MobileKanban').then(m => ({ default: m.MobileKanban })),
@@ -47,7 +46,6 @@ const LeadsKanban = lazy(f.LeadsKanban);
 const TaskCenter = lazy(f.TaskCenter);
 const FinancialPanel = lazy(f.FinancialPanel);
 const SellerInbox = lazy(f.SellerInbox);
-const SellerBookings = lazy(f.SellerBookings);
 const ProductDashboard = lazy(f.ProductDashboard);
 const MobileProductDashboard = lazy(f.MobileProductDashboard);
 const MobileKanban = lazy(f.MobileKanban);
@@ -62,7 +60,6 @@ const tabFactories: Record<string, Array<() => Promise<unknown>>> = {
   tasks: [f.TaskCenter, f.MobileTaskList],
   goals: [f.MobileGoalsView],
   financial: [f.FinancialPanel],
-  bookings: [f.SellerBookings],
   cadence: [f.CadenceView],
   playbook: [f.PlaybookView],
   objections: [f.ObjectionsView],
@@ -264,7 +261,6 @@ const Index = () => {
       'tasks': { title: 'Minhas Tarefas', subtitle: selectedProduct.name },
       'goals': { title: 'Metas', subtitle: selectedProduct.name },
       'financial': { title: 'Financeiro', subtitle: selectedProduct.name },
-      'bookings': { title: 'Agendamentos', subtitle: selectedProduct.name },
       'cadence': { title: 'Cadência', subtitle: selectedProduct.name },
       'playbook': { title: 'Playbook', subtitle: selectedProduct.name },
       'objections': { title: 'Objeções', subtitle: selectedProduct.name },
@@ -368,9 +364,6 @@ const Index = () => {
 
       case 'financial':
         return <FinancialPanel productId={selectedProduct.id} productName={selectedProduct.name} />;
-
-      case 'bookings':
-        return <SellerBookings userId={user?.id || ''} productId={selectedProduct.id} />;
 
       case 'cadence':
         if (loadingCadence) return <SectionLoader />;

@@ -18,7 +18,6 @@ import {
   DollarSign,
   Shield,
   MessageSquare,
-  CalendarCheck,
   Scissors,
   LayoutGrid,
   type LucideIcon,
@@ -57,7 +56,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: 'leads', label: 'Pipeline', icon: Users },
       { id: 'inbox', label: 'Conversas', icon: MessageSquare },
       { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
-      { id: 'bookings', label: 'Agendamentos', icon: CalendarCheck },
     ],
   },
   {

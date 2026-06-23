@@ -14,7 +14,6 @@ import {
   Target,
   User,
   ChevronRight,
-  CalendarCheck,
   Settings
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
@@ -42,7 +41,6 @@ const quickActions = [
 ];
 
 const menuItems = [
-  { id: 'bookings', label: 'Agendamentos', icon: CalendarCheck, color: 'text-pink-400' },
   { id: 'tasks', label: 'Tarefas', icon: CheckSquare, color: 'text-blue-400', badge: null },
   { id: 'cadence', label: 'Cadência', icon: Calendar, color: 'text-cyan-400' },
   { id: 'playbook', label: 'Playbook', icon: BookOpen, color: 'text-green-400' },
