@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { MaybeSalaoShell, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
@@ -29,7 +29,7 @@ export interface Lancamento {
 
 const FORMAS = ['PIX', 'Dinheiro', 'Cartão de crédito', 'Cartão de débito', 'Transferência', 'Boleto']
 
-export default function Financeiro({ demo }: { demo?: Lancamento[] } = {}) {
+export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
   const qc = useQueryClient()
@@ -78,7 +78,7 @@ export default function Financeiro({ demo }: { demo?: Lancamento[] } = {}) {
   const despesas = lancamentos.filter((l) => l.tipo === 'saida' && l.status === 'confirmado').reduce((s, l) => s + Number(l.valor ?? 0), 0)
   const saldo = receitas - despesas
 
-  if (!isDemo && !organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
+  if (!isDemo && !organizationId) return <MaybeSalaoShell bare={bare}><NoOrg /></MaybeSalaoShell>
 
   const kpis = [
     { label: 'Receitas', value: formatCurrency(receitas), icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
@@ -87,7 +87,7 @@ export default function Financeiro({ demo }: { demo?: Lancamento[] } = {}) {
   ]
 
   return (
-    <SalaoLayout>
+    <MaybeSalaoShell bare={bare}>
       <div className="p-6 space-y-6">
         {isDemo && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -176,6 +176,6 @@ export default function Financeiro({ demo }: { demo?: Lancamento[] } = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SalaoLayout>
+    </MaybeSalaoShell>
   )
 }

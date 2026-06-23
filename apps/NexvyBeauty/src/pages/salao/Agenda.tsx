@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SalaoLayout, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
+import { MaybeSalaoShell, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { convertLeadToCliente } from '@/hooks/useLeadToCliente'
 import { CalendarMonthView } from '@/components/calendar/CalendarMonthView'
@@ -74,7 +74,7 @@ function formatHora(value: string | null | undefined): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
-export default function Agenda({ demo }: { demo?: Agendamento[] } = {}) {
+export default function Agenda({ demo, bare }: { demo?: Agendamento[]; bare?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
   const [searchParams] = useSearchParams()
@@ -318,10 +318,10 @@ export default function Agenda({ demo }: { demo?: Agendamento[] } = {}) {
     }
   }
 
-  if (!isDemo && !organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
+  if (!isDemo && !organizationId) return <MaybeSalaoShell bare={bare}><NoOrg /></MaybeSalaoShell>
 
   return (
-    <SalaoLayout>
+    <MaybeSalaoShell bare={bare}>
       <div className="p-6 space-y-6">
         {isDemo && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -576,6 +576,6 @@ export default function Agenda({ demo }: { demo?: Agendamento[] } = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SalaoLayout>
+    </MaybeSalaoShell>
   )
 }

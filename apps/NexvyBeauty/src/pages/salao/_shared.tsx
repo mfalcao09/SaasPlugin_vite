@@ -87,6 +87,12 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
   )
 }
 
+// Embute o corpo da tela do salão SEM a casca (quando renderizado dentro de
+// outro shell, ex.: Cockpit). bare=false (default) mantém o SalaoLayout.
+export function MaybeSalaoShell({ bare, children }: { bare?: boolean; children: ReactNode }) {
+  return bare ? <>{children}</> : <SalaoLayout>{children}</SalaoLayout>
+}
+
 export function NoOrg() {
   return (
     <div className="p-12 text-center text-muted-foreground text-sm">

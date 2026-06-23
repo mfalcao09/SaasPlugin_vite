@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SalaoLayout, NoOrg, useOrganizationId } from './_shared'
+import { MaybeSalaoShell, NoOrg, useOrganizationId } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium (dark via tokens, shadcn) + data-injectable: sem `demo`
@@ -37,7 +37,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '' }
 
-export default function Clientes({ demo }: { demo?: Cliente[] } = {}) {
+export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
   const qc = useQueryClient()
@@ -126,10 +126,10 @@ export default function Clientes({ demo }: { demo?: Cliente[] } = {}) {
     c.cpf_cnpj?.includes(search),
   )
 
-  if (!isDemo && !organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
+  if (!isDemo && !organizationId) return <MaybeSalaoShell bare={bare}><NoOrg /></MaybeSalaoShell>
 
   return (
-    <SalaoLayout>
+    <MaybeSalaoShell bare={bare}>
       <div className="p-6 space-y-6">
         {isDemo && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -230,6 +230,6 @@ export default function Clientes({ demo }: { demo?: Cliente[] } = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SalaoLayout>
+    </MaybeSalaoShell>
   )
 }

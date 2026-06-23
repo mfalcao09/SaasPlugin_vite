@@ -19,7 +19,12 @@ import { isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
-const ModuleHub = lazyWithRetry(() => import("./pages/ModuleHub"));
+// Cockpit V1 — casca única da cabeleireira (substitui o ModuleHub no "/").
+const CockpitShell = lazyWithRetry(() => import("./cockpit/CockpitShell"));
+const HomeDeValor = lazyWithRetry(() => import("./cockpit/HomeDeValor"));
+const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
+const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxManager").then(m => ({ default: m.InboxManager })));
+const CockpitMinhaIA = lazyWithRetry(() => import("@/components/admin/agents/AgentsManager").then(m => ({ default: m.AgentsManager })));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -201,12 +206,23 @@ const App = () => (
                   ) : isApexDomain() ? (
                     <SalesPage />
                   ) : (
+                    // app.* → Cockpit (casca única de 7 itens). As rotas-filhas
+                    // abaixo renderizam no <Outlet/> do CockpitShell; no gestao/apex
+                    // o element não tem Outlet, então elas simplesmente não aparecem.
                     <ProtectedRoute>
-                      <ModuleHub />
+                      <CockpitShell />
                     </ProtectedRoute>
                   )
                 }
-              />
+              >
+                <Route index element={<HomeDeValor />} />
+                <Route path="conversas" element={<CockpitConversas />} />
+                <Route path="clientes" element={<SalaoClientes bare />} />
+                <Route path="atrair" element={<CaptacaoHub />} />
+                <Route path="minha-ia" element={<CockpitMinhaIA />} />
+                <Route path="agenda" element={<SalaoAgenda bare />} />
+                <Route path="faturamento" element={<SalaoFinanceiro bare />} />
+              </Route>
               {/* CRM de Vendas (app do vendedor — antigo "/") */}
               <Route
                 path="/crm"

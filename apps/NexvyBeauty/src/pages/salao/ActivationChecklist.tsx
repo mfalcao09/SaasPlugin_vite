@@ -24,8 +24,8 @@ interface Step {
 const STEPS: Step[] = [
   { key: 'profissionais', label: 'Cadastre seus profissionais', hint: 'Quem atende no salão', to: '/salao/profissionais' },
   { key: 'servico_catalogo', label: 'Cadastre seus serviços', hint: 'Corte, escova, manicure…', to: '/salao/servicos' },
-  { key: 'clientes', label: 'Cadastre seus clientes', hint: 'Sua base de clientes', to: '/salao/clientes' },
-  { key: 'agendamentos', label: 'Crie o primeiro agendamento', hint: 'Agende um horário na agenda', to: '/salao/agenda' },
+  { key: 'clientes', label: 'Cadastre seus clientes', hint: 'Sua base de clientes', to: '/clientes' },
+  { key: 'agendamentos', label: 'Crie o primeiro agendamento', hint: 'Agende um horário na agenda', to: '/agenda' },
 ]
 
 async function countRows(table: string, orgId: string): Promise<number> {
