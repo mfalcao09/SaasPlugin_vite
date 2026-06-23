@@ -231,14 +231,15 @@ async function runTool(
           .select("id", { count: "exact", head: true })
           .eq("organization_id", orgId).neq("status", "closed");
 
-        // Agenda hoje
-        let bkQ = supabase.from("calendar_events")
-          .select("title, start_time, product_id", { count: "exact" })
+        // Agenda hoje (agenda canônica do salão: tabela `agendamentos`, por coluna DATE local)
+        const dsLocal = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const bkQ = supabase.from("agendamentos")
+          .select("cliente_nome, servico_nome, hora", { count: "exact" })
           .eq("organization_id", orgId)
-          .gte("start_time", startDay.toISOString())
-          .lte("start_time", endDay.toISOString())
-          .order("start_time").limit(10);
-        if (productFilter) bkQ = bkQ.in("product_id", productFilter);
+          .eq("data", dsLocal(now))
+          .neq("status", "cancelado")
+          .order("hora").limit(10);
         const { data: todayBookings, count: bookingsCount } = await bkQ;
 
         // Tarefas atrasadas / pendentes
@@ -276,7 +277,7 @@ async function runTool(
           deals_open_count: (openDeals ?? []).length,
           inbox_active: activeInbox ?? 0,
           bookings_today_count: bookingsCount ?? 0,
-          bookings_today: (todayBookings ?? []).map((b: any) => ({ title: b.title, start: b.start_time })),
+          bookings_today: (todayBookings ?? []).map((b: any) => ({ title: `${b.cliente_nome ?? "Cliente"} · ${b.servico_nome ?? "Serviço"}`, start: b.hora })),
           tasks_overdue: overdueTasks ?? 0,
           tasks_pending: pendingTasks ?? 0,
           commissions_pending: commissionsPending,
@@ -361,19 +362,21 @@ async function runTool(
         if (range === "today") end.setHours(23, 59, 59, 999);
         else if (range === "week") end.setDate(end.getDate() + 7);
         else end.setDate(end.getDate() + 30);
-        let q = supabase.from("calendar_events")
-          .select("id, title, start_time, status, product_id, attendees, user_id, profiles:user_id(full_name)", { count: "exact" })
+        // Agenda canônica do salão (`agendamentos`): filtra pela coluna DATE local
+        const ds = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const q = supabase.from("agendamentos")
+          .select("id, cliente_nome, servico_nome, profissional_nome, data, hora, status", { count: "exact" })
           .eq("organization_id", orgId)
-          .gte("start_time", start.toISOString())
-          .lte("start_time", end.toISOString())
-          .order("start_time").limit(20);
-        if (productFilter) q = q.in("product_id", productFilter);
+          .gte("data", ds(start))
+          .lte("data", ds(end))
+          .order("data").order("hora").limit(20);
         const { data, count } = await q;
         const events = (data ?? []).map((e: any) => ({
-          title: e.title,
-          start: e.start_time,
+          title: `${e.cliente_nome ?? "Cliente"} · ${e.servico_nome ?? "Serviço"}`,
+          start: `${e.data}T${e.hora}`,
           status: e.status,
-          host: e.profiles?.full_name ?? null,
+          host: e.profissional_nome ?? null,
         }));
         return JSON.stringify({ count: count ?? 0, range, events });
       }

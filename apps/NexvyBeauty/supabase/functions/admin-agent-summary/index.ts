@@ -26,10 +26,12 @@ async function buildDailySummary(orgId: string): Promise<string> {
   const supabase = getServiceSupabase();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
+  // Data local de ontem (YYYY-MM-DD) para filtrar a coluna DATE de `agendamentos`
+  const yesterdayDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
   const startISO = new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
   const endISO = new Date(yesterday.setHours(23, 59, 59, 999)).toISOString();
 
-  const [leadsRes, dealsRes, convsRes, eventsRes, profileRes] = await Promise.all([
+  const [leadsRes, dealsRes, convsRes, agendamentosRes, profileRes] = await Promise.all([
     supabase.from("leads").select("id, lead_score", { count: "exact" })
       .eq("organization_id", orgId).gte("created_at", startISO).lte("created_at", endISO),
     supabase.from("deals").select("deal_value")
@@ -37,8 +39,9 @@ async function buildDailySummary(orgId: string): Promise<string> {
       .gte("closed_at", startISO).lte("closed_at", endISO),
     supabase.from("webchat_conversations").select("id", { count: "exact" })
       .eq("organization_id", orgId).neq("status", "closed"),
-    supabase.from("calendar_events").select("id", { count: "exact" })
-      .eq("organization_id", orgId).gte("start_time", startISO).lte("start_time", endISO),
+    // Agenda canônica do salão (`agendamentos`): atendimentos de ontem, exceto cancelados
+    supabase.from("agendamentos").select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId).eq("data", yesterdayDate).neq("status", "cancelado"),
     supabase.from("auto_notification_settings").select("admin_user_id").eq("organization_id", orgId).maybeSingle(),
   ]);
 
@@ -46,7 +49,7 @@ async function buildDailySummary(orgId: string): Promise<string> {
   const hotLeads = (leadsRes.data ?? []).filter((l: any) => (l.lead_score ?? 0) >= 70).length;
   const closedRevenue = (dealsRes.data ?? []).reduce((s: number, d: any) => s + Number(d.deal_value ?? 0), 0);
   const activeChats = convsRes.count ?? 0;
-  const meetings = eventsRes.count ?? 0;
+  const meetings = agendamentosRes.count ?? 0;
 
   // Pipeline aberto (todos os deals em aberto)
   const { data: openDeals } = await supabase.from("deals").select("deal_value")

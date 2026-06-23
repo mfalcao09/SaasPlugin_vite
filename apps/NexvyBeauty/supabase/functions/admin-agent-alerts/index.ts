@@ -156,22 +156,26 @@ async function checkMeetingChanges(cfg: OrgCfg) {
   if (!cfg.alert_meeting_changes) return;
   const supabase = getServiceSupabase();
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  // Agenda canônica do salão (`agendamentos`): mudanças recentes por updated_at
   const { data } = await supabase
-    .from("calendar_events")
-    .select("id, title, start_time, status, updated_at")
+    .from("agendamentos")
+    .select("id, cliente_nome, servico_nome, data, hora, status, updated_at")
     .eq("organization_id", cfg.organization_id)
     .gte("updated_at", since)
-    .in("status", ["confirmed", "cancelled"])
+    .in("status", ["confirmado", "cancelado"])
     .limit(20);
 
   for (const ev of (data ?? []) as any[]) {
-    const ref = `${ev.id}-${ev.status}`;
     const refUuid = `00000000-0000-0000-0000-${ev.id.replace(/-/g, "").slice(-12)}`;
     if (await alreadySentByKind(cfg.organization_id, `meeting_${ev.status}`, refUuid, 24)) continue;
-    const icon = ev.status === "confirmed" ? "✅" : "❌";
-    const verb = ev.status === "confirmed" ? "confirmada" : "cancelada";
-    const dt = new Date(ev.start_time).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-    const msg = `${icon} *Reunião ${verb}*\n\n📅 ${ev.title}\n🕐 ${dt}`;
+    const icon = ev.status === "confirmado" ? "✅" : "❌";
+    const verb = ev.status === "confirmado" ? "confirmado" : "cancelado";
+    // data (YYYY-MM-DD) + hora (HH:MM:SS) são horário local do salão — formata direto, sem new Date (evita shift de TZ)
+    const [yy, mm, dd] = String(ev.data ?? "").split("-");
+    const hhmm = String(ev.hora ?? "").slice(0, 5);
+    const dt = yy ? `${dd}/${mm}/${yy} ${hhmm}` : hhmm;
+    const titulo = `${ev.cliente_nome ?? "Cliente"} · ${ev.servico_nome ?? "Serviço"}`;
+    const msg = `${icon} *Agendamento ${verb}*\n\n📅 ${titulo}\n🕐 ${dt}`;
     await sendAdminMessage({
       organizationId: cfg.organization_id,
       phone: cfg.admin_whatsapp_number,
