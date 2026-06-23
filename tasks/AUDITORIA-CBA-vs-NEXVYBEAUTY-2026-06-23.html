@@ -1,0 +1,1095 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoria CBA vs NexvyBeauty — 2026-06-23</title>
+<style>
+:root{--bg:#0d0f14;--panel:#151922;--panel2:#1b2130;--bd:#262d3d;--tx:#e7eaf0;--mut:#9aa3b2;--pink:#ec4899;--pink2:#f472b6;--green:#34d399;--amber:#fbbf24;--red:#f87171;}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#1a1030 0%,var(--bg) 55%);color:var(--tx);font:16px/1.7 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+.wrap{max-width:1040px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;background:linear-gradient(90deg,var(--pink2),#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+h2{font-size:22px;margin:48px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bd);color:#fff}
+h3{font-size:17px;margin:30px 0 10px;color:var(--pink2)}
+p{margin:12px 0;color:var(--tx)}
+strong{color:#fff;font-weight:700}
+code{background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffd9ec}
+ul,ol{margin:12px 0;padding-left:22px}
+li{margin:6px 0}
+hr{border:0;border-top:1px solid var(--bd);margin:34px 0}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px;background:var(--panel);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+thead th{background:var(--panel2);text-align:left;padding:10px 12px;color:#fff;font-weight:700;border-bottom:1px solid var(--bd)}
+td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:rgba(236,72,153,.05)}
+.win-cba{color:var(--amber);font-weight:700}
+.win-nx{color:var(--green);font-weight:700}
+.win-tie{color:var(--mut);font-weight:700}
+.badge{display:inline-block;background:var(--panel2);border:1px solid var(--bd);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--mut);margin-right:8px}
+.hero{background:linear-gradient(180deg,var(--panel),transparent);border:1px solid var(--bd);border-radius:14px;padding:22px 24px;margin-bottom:8px}
+.foot{margin-top:64px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--bd);padding-top:16px}
+</style></head><body><div class="wrap">
+<div class="hero">
+<span class="badge">Auditoria adversarial · 11 dimensões</span>
+<span class="badge">CBA commit 922bc7e (2026-06-23)</span>
+<span class="badge">23 agentes · verificação linha-a-linha</span>
+</div>
+<h1>Relatório Estratégico: cloud-beauty-ai (Lovable) vs NexvyBeauty (produção)</h1>
+<p>O cloud-beauty-ai (CBA) evoluiu muito desde a análise anterior: hoje tem SSR real com error-handling de produção, agenda diária com 5 status, pacotes pré-pagos completos, scoring por regra configurável, web-push end-to-end e migrations versionadas — não é mais o protótipo Lovable raso de antes. As 11 dimensões abaixo foram verificadas linha-a-linha contra o código real dos dois repos (CBA no commit de 2026-06-23). O objetivo deste documento NÃO é declarar um vencedor de torcida: é mapear, com honestidade, <strong>o que precisamos crescer no NexvyBeauty (NX)</strong> reusando a infra real que já temos em produção (Evolution/WhatsApp, Cakto, ~119 edge functions, Docker/Traefik soberano), e onde o nosso moat é genuíno e difícil de copiar.</p>
+<p>A leitura desconfortável primeiro: <strong>o NX não é mais um superset estrito do CBA.</strong> Existem capacidades de plataforma-de-app no CBA (SSR, gate de auth no shell, push real, pacotes pré-pagos de salão, scoring configurável, higiene de base) que hoje <strong>não têm equivalente no NX</strong> — algumas são features ausentes (baratas de portar), outras são dívida arquitetural real. A maior delas para o nicho salão é o <strong>booking público de salão</strong>, que o CBA tem ponta-a-ponta e o NX simplesmente não tem.</p>
+<h2>Placar executivo</h2>
+<table>
+<thead>
+<tr>
+<th>Dimensão</th>
+<th>Quem ganha</th>
+<th>Placar (CBA / NX / Tie)</th>
+<th>Confiança</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Arquitetura, stack, deploy &amp; soberania</td>
+<td class="win-tie">Empate (perfis opostos)</td>
+<td>5 / 5 / 1</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>2. CRM núcleo (leads, funis, scoring)</td>
+<td>NX (leve)</td>
+<td>3 / 4 / 3</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>3. IA conversacional &amp; agentes</td>
+<td class="win-nx">NX</td>
+<td>3 / 6 / 1</td>
+<td>Média</td>
+</tr>
+<tr>
+<td>4. IA preditiva &amp; ação (NBA, scoring, higiene)</td>
+<td class="win-tie">Empate (eixos opostos)</td>
+<td>5 / 3 / 0</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>5. Automação (cadências, campanhas, workflows)</td>
+<td>NX (folga)</td>
+<td>1 / 5 / 1</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>6. Omnichannel &amp; inbox</td>
+<td class="win-nx">NX</td>
+<td>3 / 6 / 0</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>7. Captação &amp; páginas públicas</td>
+<td>CBA (leve)</td>
+<td>3 / 5 / 1</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>8. Salão / ERP</td>
+<td class="win-cba">CBA</td>
+<td>5 / 2 / 2</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>9. Analytics, metas, daily-report</td>
+<td>NX (leve)</td>
+<td>3 / 4 / 2</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>10. Multi-tenant, billing, push/email</td>
+<td>NX (decisivo)</td>
+<td>2 / 5 / 3</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>11. UI/UX &amp; coesão</td>
+<td>NX (leve)</td>
+<td>2 / 5 / 2</td>
+<td>Alta</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Placar geral agregado:</strong> NX vence 6 dimensões, CBA vence 2, empate em 3. Em features somadas: <strong>CBA ~35 / NX ~50 / ~16 empates</strong>. O NX domina em <strong>execução operacional, automação, integrações vivas, monetização e governança</strong>; o CBA domina em <strong>maturidade de plataforma-de-app (SSR, push, PWA), ERP de salão profundo (pacotes pré-pagos) e fundamentos de captação/agendamento público</strong>. A vantagem do NX é real, mas <strong>mais estreita do que "superset" sugeriria</strong> — e concentrada onde o CBA tem caminho difícil de alcançar.</p>
+<h2>Onde o cloud-beauty-ai GANHA (o que precisamos crescer)</h2>
+<p>Esta é a seção mais importante. Agrupei por tema, em ordem de prioridade estratégica. Cada item traz o <strong>porquê</strong> e o <strong>caminho concreto no NX</strong> reusando infra existente.</p>
+<h3>A. Booking público de salão — P0 ABSOLUTO (gap mais caro do nicho)</h3>
+<p><strong>O que o CBA tem:</strong> <code>public-booking.functions.ts</code> + <code>agendar.$slug.tsx</code> production-grade — carrega serviço+profissional do salão por slug, gera slots reais por jornada do profissional (<code>hora_inicio</code>/<code>hora_fim</code> + <code>dias_atendimento</code> jsonb) menos a duração do serviço, valida conflito client+server contra a tabela <code>agendamento</code>, faz upsert de cliente por telefone e <strong>escreve na mesma Agenda do salão</strong>. Também vende pacote por link (<code>pacotes.$slug.tsx</code> → <code>comprarPacote</code> grava em <code>pacote_cliente</code> com validade).</p>
+<p><strong>Por que importa:</strong> Para um SaaS de SALÃO de beleza, "cliente final agenda o corte/manicure online" é o coração operacional. O NX hoje só tem o <code>PublicBooking.tsx</code> que é <strong>Calendly de reuniões</strong> (<code>booking_event_types</code>/<code>calendar_events</code>/Google Meet) — não seleciona serviço nem profissional do salão. Esse gap supera, em valor, toda a sofisticação de captação que o NX já vence.</p>
+<p><strong>Caminho no NX (reusar infra real):</strong>
+1. Criar rota pública <code>/agendar/:slug</code> que lê serviço+profissional do módulo Salão (<code>servico_catalogo</code>, <code>profissionais</code> com <code>comissao_pct</code>/especialidades já existentes).
+2. Edge function <code>salao-availability</code> que gera slots a partir de <code>hora_inicio</code>/<code>hora_fim</code> + <code>dias_atendimento</code> do profissional menos <code>duracao_minutos</code>, com conflito contra a Agenda real (<code>src/pages/salao/Agenda.tsx</code> já existe e tem o CRUD).
+3. Escrever o agendamento na Agenda real e <strong>disparar confirmação via Evolution</strong> (<code>evolution-send</code>) — diferencial que o CBA não tem (WhatsApp real).
+4. Capturar UTM no booking (o NX já faz isso em <code>PublicBooking</code>/<code>PublicForm</code> — reaproveitar).</p>
+<p>Modelo exato a copiar: <code>getAvailableSlots</code>/<code>createPublicAgendamento</code>.</p>
+<h3>B. Pacotes pré-pagos de serviços — P0 (paridade de ERP)</h3>
+<p><strong>O que o CBA tem:</strong> catálogo full-CRUD (<code>pacote</code>: total_sessoes/valor/validade_dias/servicos_incluidos) + venda (<code>pacote_cliente</code> com <code>data_validade = addDays(inicio, validade_dias)</code>, rastreio <code>sessoes_usadas</code>/<code>total_sessoes</code>, status).</p>
+<p><strong>Por que importa:</strong> É receita recorrente do salão sobre o cliente final (pacote de 10 sessões, plano de manutenção). Confirmado por grep: <strong>ausente no NX</strong> — as refs a "pacote" no NX são do CRM/produto (<code>TagPackageGenerator</code>/<code>PostSaleTab</code>), não pacote pré-pago de serviços.</p>
+<p><strong>Caminho no NX:</strong>
+1. Tabelas <code>pacote</code> e <code>pacote_cliente</code> no <code>migrations_salao/</code>.
+2. Páginas de catálogo + venda no módulo Salão.
+3. Baixa de sessão ao concluir agendamento (hook na Agenda) + <code>forma_pagamento = 'Pacote'</code>.
+4. Opcional: link de pagamento via <strong>Cakto</strong> (<code>cakto-sync-offer</code>) para venda online do pacote — usar infra de cobrança que já temos.</p>
+<h3>C. Plataforma-de-app: SSR + gate de auth no shell — P1</h3>
+<p><strong>O que o CBA tem:</strong> <code>src/server.ts</code> com SSR real (TanStack Start) que normaliza os 500 que o h3 engole e serve error-page branded; <code>auth-middleware.ts</code> valida <code>supabase.auth.getClaims()</code> server-side <strong>antes</strong> de liberar o render. O NX é SPA puro servido por nginx (<code>try_files</code>), sem SSR e sem gate de auth na borda — a defesa do shell é só RLS.</p>
+<p><strong>Por que importa:</strong> (1) SEO/first-paint nas LPs públicas (apex/www/vendas) — hoje o NX perde isso. (2) Áreas sensíveis renderizam no client antes do gate. (3) Observabilidade: erro de runtime no NX fica no client, sem captura estruturada.</p>
+<p><strong>Caminho no NX (sem reescrever tudo):</strong>
+1. SSR/SSG <strong>apenas das rotas públicas</strong> (LPs de venda/apex) — não precisa migrar o app inteiro de React Router para SSR.
+2. Gate de auth na borda: como o NX já tem Traefik + edge functions, adicionar um middleware/edge que valide o JWT antes de servir áreas sensíveis fecha o gap sem trocar o runtime do SPA.
+3. Logging estruturado de erros de app numa edge fn gateway.</p>
+<h3>D. Web-push real + PWA com cache offline — P1</h3>
+<p><strong>O que o CBA tem:</strong> pipeline push completo E <strong>wired</strong> em <code>criarNotificacao</code> (VAPID em <code>app_config</code> + <code>pushManager.subscribe</code> + <code>crm_push_subscription</code> + <code>sendPushToUser</code> via <code>@block65/webcrypto-web-push</code> + GC de subs mortas 404/410 + <code>sw.js</code> com handlers push/notificationclick). O <code>sw.js</code> do CBA também faz <strong>offline app-shell</strong> (network-first HTML + cache-first de assets hashados). O NX confirmou: tabela <code>push_subscriptions</code> <strong>não existe</strong> no DB e o <code>sw.js</code> é passthrough deliberado.</p>
+<p><strong>Por que importa:</strong> Engajamento do dono de salão (notificar novo lead/agendamento com app fechado) e resiliência offline. É a maior lacuna de "plataforma" do NX.</p>
+<p><strong>Caminho no NX:</strong>
+1. Portar quase 1:1 de <code>cba/src/lib/push/*</code> (<code>push.server.ts</code> + <code>push.functions.ts</code>) + <code>public/sw.js</code> linhas 63-93 (Deno edge-compatible, encaixa nas edge functions).
+2. Tabela <code>push_subscriptions(user_id, endpoint, p256dh, auth, ativo, ultimo_erro)</code>, VAPID em <code>platform_settings</code>.
+3. Promover o <code>sw.js</code> de passthrough para network-first HTML + cache de assets.
+4. <strong>Pré-requisito:</strong> granularizar preferências de notificação por-usuário/por-tipo/por-canal antes de ligar push (hoje o NX tem booleans por-ORG; o CBA tem <code>crm_notificacao_pref</code> por-usuário) — senão vira spam.</p>
+<h3>E. Higiene de base de leads — P1 (suíte inteira ausente)</h3>
+<p><strong>O que o CBA tem:</strong> <code>higiene.functions.ts</code> completo e wired em <code>app.crm.higiene.tsx</code>: <code>detectarDuplicatas</code> (telefone_norm/email_norm), <code>mergeLeads</code> (reparenta conversa/evento/oportunidade/nba/tarefa antes de deletar), <code>normalizarTelefones</code> em massa, <code>enriquecerLeadIA</code> (LLM lê histórico e grava perfil/interesses/resumo). Confirmado por grep: <strong>NX tem zero disso</strong> (os hits de "dedup" no NX são falsos positivos — dedup visual de cards).</p>
+<p><strong>Por que importa:</strong> Base suja mata conversão e estoura limites do WhatsApp. É feature ausente, não limitação de stack — barata e arquitetonicamente trivial de portar.</p>
+<p><strong>Caminho no NX:</strong> edge fn + UI espelhando <code>higiene.functions.ts</code>. O enriquecimento por IA pode reusar o <code>ai-router</code> que já temos.</p>
+<h3>F. Scoring de lead configurável + cron real — P1</h3>
+<p><strong>O que o CBA tem:</strong> <code>crm_score_regra</code> (peso -100..100 + decay_dias por evento, com migration+RLS+seed+CRUD na UI <code>app.crm.scoring.tsx</code>). O NX tem <code>recompute_lead_scores</code> com <strong>fórmula hardcoded</strong> (hot55/warm35/cold12, decay<em>2) e — confirmado por grep — </em><em>nenhum cron chama</em>* a função: só comentário "Chamar via cron". O score do <code>LeadScoreBadge</code> pode estar estagnado.</p>
+<p><strong>Caminho no NX:</strong>
+1. Tabela <code>score_regra</code> (evento, peso, decay_dias, ativo) + UI CRUD.
+2. Agendar de fato via <code>pg_cron</code> (ou edge cron) — corrigir o writer ausente.
+3. Considerar decay por-evento granular (msg recebida, etapa avançada) como o CBA.</p>
+<h3>G. Entidade de oportunidade/deal ABERTO com forecasting — P2</h3>
+<p><strong>O que o CBA tem:</strong> <code>crm_oportunidade</code> de 1ª classe (probabilidade 0-100 por negócio, estágios aberta→ganha, <code>getPipelineKpis</code> com forecasting ponderado <code>valor*prob/100</code>). O NX só materializa <code>deals</code> no fechamento (<code>status won/lost/cancelled</code>) — não tem pipeline de deals abertos com forecasting por negócio individual.</p>
+<p><strong>Caminho no NX:</strong> entidade de oportunidade aberta separada de leads e do deals de fechamento, com forecasting ponderado por negócio. O <code>StageValueManager</code> (forecasting por etapa) já existe — falta o nível por-deal.</p>
+<h3>H. Itens menores de paridade (P2/P3)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>CBA tem</th>
+<th>NX faz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>KB estruturada navegável</strong> (categorias/artigos, <code>visivel_para_ia</code>)</td>
+<td><code>kb.functions.ts</code></td>
+<td>só material de treino bruto concatenado</td>
+</tr>
+<tr>
+<td><strong>Copiloto human-in-the-loop (MIA)</strong></td>
+<td>sugere→aprova→executa (4/10 tipos no executor)</td>
+<td>agente 100% autônomo, sem modo assistido revisável</td>
+</tr>
+<tr>
+<td><strong>Playbook/objeções como entidades editáveis</strong></td>
+<td><code>crm_playbook</code> + <code>crm_objecao</code> com contador de uso</td>
+<td>embutido no prompt</td>
+</tr>
+<tr>
+<td><strong>Templates estáticos de mensagem + Quick Replies</strong></td>
+<td><code>templates.functions.ts</code> CRUD</td>
+<td>só <code>campaign_contexts</code> gerados por IA</td>
+</tr>
+<tr>
+<td><strong>Builder de workflow trigger→action numa UI única</strong></td>
+<td><code>app.crm.workflows</code></td>
+<td>lógica condicional fragmentada em edge functions</td>
+</tr>
+<tr>
+<td><strong>Webhooks de SAÍDA assinados (HMAC)</strong></td>
+<td>subsistema completo (não-wired)</td>
+<td>só webhooks de entrada</td>
+</tr>
+<tr>
+<td><strong>Landing-page builder</strong></td>
+<td><code>createLanding</code> + rota pública</td>
+<td>ausente (NX captura via form/quiz/funil)</td>
+</tr>
+<tr>
+<td><strong>SLA de permanência por etapa</strong> + event-log unificado</td>
+<td><code>sla_horas</code> em etapa + <code>crm_lead_evento</code>/<code>crm_audit</code></td>
+<td>só <code>max_accept_time</code> (aceite) e <code>lead_stage_history</code></td>
+</tr>
+<tr>
+<td><strong>Multi-funil nomeado por org</strong></td>
+<td><code>crm_funil</code></td>
+<td>pipeline-por-produto</td>
+</tr>
+<tr>
+<td><strong>Profissionais: editar/excluir + KPIs mensais</strong></td>
+<td>CRUD + faturamento por profissional</td>
+<td>insert-only, sem KPI</td>
+</tr>
+<tr>
+<td><strong>Financeiro: delete + recorte mensal</strong></td>
+<td><code>gte/lte</code> por mês + delete</td>
+<td>insert-only, sem mês, sem delete</td>
+</tr>
+<tr>
+<td><strong>Histórico de daily-report em tabela</strong></td>
+<td><code>crm_daily_report</code> (UNIQUE+RLS+índice)</td>
+<td>só notification efêmera</td>
+</tr>
+<tr>
+<td><strong>Guard de supply-chain no build</strong></td>
+<td><code>bunfig minimumReleaseAge 24h</code></td>
+<td><code>npm install</code> cru no Dockerfile</td>
+</tr>
+<tr>
+<td><strong>Versionar tabelas de IA em migrations</strong></td>
+<td>migrations presentes</td>
+<td><code>ai_insights</code>/<code>ai_prompt_experiments</code>/<code>lead_semantic_memory</code> só em <code>types.ts</code> (drift)</td>
+</tr>
+</tbody>
+</table>
+<h2>Onde o NexvyBeauty GANHA (nosso moat)</h2>
+<p>Lista com evidência verificada no código. Estas são capacidades em <strong>produção real</strong> com integrações vivas — exatamente as que o CBA não tem caminho curto para construir.</p>
+<ol>
+<li>
+<p><strong>IA que AGE, não só sugere (diferencial decisivo único).</strong> <code>lead-nba</code> gera <code>mensagem_sugerida</code>+<code>canal_sugerido</code> via tool-calling estruturado; <code>LeadNbaCard</code> botão "Aplicar (WhatsApp)" dispara via <code>evolution-send</code> (301 linhas, Evolution API real) e marca <code>aplicada</code>. O CBA nem tem coluna <code>mensagem_sugerida</code> no schema — para na sugestão.</p>
+</li>
+<li>
+<p><strong>Automação ponta-a-ponta em produção.</strong> Campanhas: <code>campaign-start</code> (snapshot+weightedPick anti-flood) → <code>campaign-dispatcher</code> (cron 1/min, lock, pausa, auto-complete, pós-campanha) → <code>manual-outreach</code> → <code>evolution-send</code>. No CBA, <code>crm_campanha_envio</code> tem <strong>1 writer e zero consumers</strong> (grep provado): a fila nunca envia. Cadências com janela horária, <code>stop_rules</code>, condições por passo; <code>cadence-on-response</code> wired no <code>evolution-webhook</code> (linhas 2042/2051) para parar em tempo real — no CBA a flag <code>parar_ao_responder</code> é inerte.</p>
+</li>
+<li>
+<p><strong>WhatsApp em nível de produção.</strong> <code>evolution-send</code> com 13 tipos de mensagem (vs só-texto no CBA); <code>evolution-proxy</code> (1259 linhas) com ciclo de vida completo de instância (QR/connect state-aware/sync/logout/multi-instância/self-service); <code>evolution-webhook</code> (2886 linhas) hardened com lock atômico, dedup por unique-constraint, download de mídia com 5 fallbacks. O CBA é stub no lifecycle de instância.</p>
+</li>
+<li>
+<p><strong>Monetização e governança reais (verificado live no DB).</strong> Gateway <strong>Cakto</strong> real (<code>cakto-webhook</code> valida secret + <code>cakto-plan-provisioning</code> idempotente org+plano+billing_history); enforcement de quota <strong>inbypassável</strong> confirmado aplicado no banco (triggers <code>trg_enforce_max_users</code>/<code>trg_enforce_max_ai_agents</code> + funções existem live); impersonação in-session real (<code>set_active_organization</code> RPC live); email transacional completo (Resend + React Email + fila + suppression + unsubscribe). O CBA: zero gateway (grep), trial cosmético, email no-op que retorna <code>{ok:false}</code>.</p>
+</li>
+<li>
+<p><strong>Loop fechado de IA operacional.</strong> LLM-as-Judge de produção (<code>evaluate-conversation</code>: 6 dimensões via tool-call, single+batch, persiste <code>ai_quality_evaluations</code>); A/B de prompt <strong>wired no bot</strong> (<code>prompt-experiment-pick</code> → <code>prompt_override</code> aplicado na geração real do <code>webchat-bot:2922</code>); handoff multi-agente sobre WhatsApp+webchat. O CBA não tem nada disso (grep 0-hit em judge/experiment).</p>
+</li>
+<li>
+<p><strong>Roteamento de IA multi-provedor/multi-tenant.</strong> <code>ai-router.ts</code> resolve provider+key por <code>organization_id</code>+capability (<code>org_ai_routing</code>/<code>org_ai_credentials</code>, key externa OpenAI OU gateway com fallback). O CBA é provedor único Lovable hardcoded.</p>
+</li>
+<li>
+<p><strong>Soberania de hospedagem real e versionada.</strong> <code>Dockerfile.app</code> + <code>docker-compose.yml</code> + <code>deploy-vps.sh</code> idempotente + Traefik file-provider (routers gestão/app/apex com letsencrypt, security-headers, healthcheck). O CBA depende 100% de Cloudflare+Lovable (caixa-preta, sem Dockerfile no repo). <strong>Ressalva honesta:</strong> soberania do NX é PARCIAL — cobre o frontend, mas o dado segue em Supabase Cloud e a IA default no OpenRouter (US).</p>
+</li>
+<li>
+<p><strong>Captação de marketing superior.</strong> Builders visuais (FormCanvas/FlowCanvas/QuizVisualCanvas com tema/preview); <code>form-submit</code> calcula score+tags+temperature+stage+distribuição; funil conversacional com AI takeover real; IA nos 3 artefatos; UTM/referrer/landing_page completos. O CBA cria por lista, sem canvas.</p>
+</li>
+<li>
+<p><strong>Distribuição de leads e radar de oportunidades.</strong> Fila (<code>lead_queue</code>) + presence-aware + estratégia por performance + auto-reassign + SLA de aceite; <code>opportunity-scan-run</code> (464 linhas, radar IA com ~25 filtros varrendo a base). O CBA é distribuição síncrona sem fila.</p>
+</li>
+<li>
+<p><strong>UI/UX moderna onde pesa.</strong> Tema dark/light real e wired (no CBA o <code>.dark</code> é código morto — <code>&lt;html&gt;</code> sem classe dark, sem next-themes); shell mobile dedicado (MobileBottomNav + framer-motion + haptics); onboarding multi-módulo profundo (1455 linhas + ActivationChecklist com contagem real).</p>
+</li>
+</ol>
+<h2>Detalhe por dimensão</h2>
+<h3>1. Arquitetura, stack, deploy &amp; soberania</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Framework &amp; rendering (SSR vs CSR)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Hosting / deploy topology</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Reverse proxy / TLS / roteamento</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Auth (gate no shell)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Gateway de IA &amp; flexibilidade de provedor</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Residência de dados / soberania (LGPD)</td>
+<td>🟡</td>
+<td>🟡</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>PWA</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>DX &amp; guard-rails de supply-chain</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> Empate de perfis opostos — CBA vence em maturidade de plataforma-de-app (SSR, gate de auth, PWA, supply-chain) ao custo de lock-in total; NX vence em soberania de infra e flexibilidade de IA.</p>
+<h3>2. CRM núcleo (leads, funis, oportunidades, scoring, distribuição, conversão)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modelo de lead (campos ricos / BANT)</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Estágios/funis (kanban)</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Oportunidades/deals abertos + forecasting</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Distribuição de leads (fila/presença/performance)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Conversão lead→cliente (dedup + merge)</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Lead scoring com decay</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Next-Best-Action acionável</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Filtros / bulk / radar de oportunidades</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence por leve margem — mais forte em execução com IA acionável; CBA mais forte em estrutura de pipeline clássico (deals abertos, scoring por regra).</p>
+<h3>3. IA conversacional &amp; agentes</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Configuração de agentes (persona/modelo/handoff)</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Runtime conversacional ao vivo (tool-call/handoff)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Base de conhecimento (KB curada)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>RAG / embeddings</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Copiloto assistido (MIA)</td>
+<td>🟡</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Playbook + objeções</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>LLM-as-Judge</td>
+<td>⬜</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>A/B testing de prompt</td>
+<td>⬜</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Insights de IA</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Roteamento multi-provider</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence (6×3×1) em IA de loop fechado em produção (judge, A/B wired no bot, handoff sobre WhatsApp); CBA mais forte em conhecimento curado e copiloto assistido. Dívida real do NX: migrations de IA vazias (drift).</p>
+<h3>4. IA preditiva &amp; ação (NBA + execução, scoring, higiene)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NBA generativo por lead</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>NBA → EXECUTAR (mensagem + disparo real)</td>
+<td>⬜</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Scoring com decay temporal</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Regras de scoring configuráveis</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Detecção de duplicatas</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Merge de leads</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Normalização de telefones</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Enriquecimento de lead por IA</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> Empate de eixos opostos — no eixo AÇÃO o NX vence sozinho (NBA dispara WhatsApp real); no eixo AMPLITUDE/CONFIGURABILIDADE o CBA domina (suíte de higiene inteira + scoring configurável que o NX não tem).</p>
+<h3>5. Automação (cadências, campanhas, workflows, templates, cron)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cadências multi-step</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Stop-on-response em tempo real</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Campanhas (envio em massa)</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Workflows condicionais trigger→action</td>
+<td>🟡</td>
+<td>🟡</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Templates de mensagem reutilizáveis</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Cron/tick que executa de fato</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Envio real WhatsApp na automação</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence com folga — campanhas E2E reais (o CBA tem fila sem worker, nunca envia), cadências com janela/condições, stop-on-response wired. CBA só vence em templates estáticos e no único cron versionado em migration.</p>
+<h3>6. Omnichannel &amp; inbox</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WhatsApp Evolution (envio)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>WhatsApp inbound (webhook)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Gestão de instância (QR/lifecycle)</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Inbox unificada (fila/aceite/transfer)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Multicanal real (canais com inbound)</td>
+<td>🟡</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Webchat público + auto-bot</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Webhooks de SAÍDA assinados</td>
+<td>🟡</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Integrações auxiliares (calendar/billing/email)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence — mais profundo e em produção no canal que importa (WhatsApp). CBA é mais largo em arquitetura multicanal (esqueleto IG/Meta) e tem webhooks de saída — mas boa parte é blueprint não-wired.</p>
+<h3>7. Captação &amp; páginas públicas</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Booking público de SALÃO</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Venda de pacotes por link público</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Form builder visual + form público</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Quiz builder + quiz público (scoring)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Funil/chatbot público</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Landing page builder</td>
+<td>🟡</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Geração de captação por IA</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Materiais / anexos de apoio</td>
+<td>🟡</td>
+<td>🟡</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Captura de UTM / atribuição</td>
+<td>⬜</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> CBA vence por leve margem — domina o núcleo de agendamento público do salão (booking + pacote + landing) que o NX não tem; o NX domina captação de marketing (builders visuais, pipeline com distribuição, UTM). Para o nicho, o gap do NX é mais caro.</p>
+<h3>8. Salão / ERP</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agenda / Agendamentos</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Catálogo de serviços</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Profissionais (cadastro + KPIs)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Clientes</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Financeiro / Lançamentos</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Dashboard do salão</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Pacotes pré-pagos</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Equipe / gestão de acesso</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Comissão (campo + cálculo)</td>
+<td>🟥</td>
+<td>🟥</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> CBA vence — vantagem real em pacotes pré-pagos (NX ausente) e profundidade operacional (agenda diária, KPIs por profissional, financeiro com mês/delete). NX tem trunfos genuínos: lead→cliente nativo no agendamento + reuso de dado cross-módulo.</p>
+<h3>9. Analytics, metas, relatórios &amp; daily-report</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Daily-report com LLM</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Entrega do daily-report (email)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Cron que dispara o daily-report</td>
+<td>⬜</td>
+<td>🟥</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Histórico persistido de relatórios</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Página Analytics com recharts</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Funil/win-loss/conversão</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Metas de venda (progresso)</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Insights de IA persistidos</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence por leve margem (IA mais robusta: tool-call, dry_run, email+insights). CBA mais coeso: histórico de daily-report em tabela e progresso de meta on-the-fly (no NX <code>achieved_value</code> não tem writer). Ambos sem cron real de daily-report.</p>
+<h3>10. Multi-tenant, super-admin, billing/planos, notificações/push/email</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi-tenancy + RLS</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Impersonação / login-as</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Painel super-admin</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Billing / gateway de cobrança</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Planos / quotas / trial (enforcement)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Notificações in-app</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Push (web-push real)</td>
+<td>✅</td>
+<td>⬜</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>PWA (SW com cache)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Email transacional</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Audit log</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence decisivamente — tem o núcleo de SaaS comercial (Cakto real, quota inbypassável live, email completo, impersonação in-session). CBA só supera em push/PWA, mas aí supera com folga (push wired + offline app-shell).</p>
+<h3>11. UI/UX &amp; coesão</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>CBA</th>
+<th>NX</th>
+<th>Vencedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shell de navegação / sidebar agrupada</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Coesão (produto único vs apps colados)</td>
+<td>✅</td>
+<td>🟡</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Tema dark/light funcional</td>
+<td>🟥</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Polimento premium do salão</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-tie">Tie</td>
+</tr>
+<tr>
+<td>Modo demo</td>
+<td>✅</td>
+<td>✅</td>
+<td class="win-cba">CBA</td>
+</tr>
+<tr>
+<td>Onboarding (wizard)</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Shell mobile dedicado</td>
+<td>⬜</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+<tr>
+<td>Topbar global / ações compartilhadas</td>
+<td>🟡</td>
+<td>✅</td>
+<td class="win-nx">NX</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Veredito:</strong> NX vence por pouco — dark-mode real (o do CBA é código morto), mobile app-like e onboarding profundo pesam em UI/UX 2026. CBA vence em coesão estrutural pura (produto único sob um layout) e demo mais amplo. Caminho do NX: unificar SalaoLayout + Sidebar do CRM num shell único com switcher de módulo sempre visível.</p>
+<h2>Backlog priorizado p/ superar (Top 10)</h2>
+<p>Ordenado por impacto/esforço. Esforço: P=pequeno, M=médio, G=grande.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Dimensão</th>
+<th>Esforço</th>
+<th>Impacto</th>
+<th>Reusa (infra NX)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Booking público de salão</strong> (slot por jornada + escreve na Agenda + confirma via WhatsApp)</td>
+<td>7 / Salão</td>
+<td>G</td>
+<td>Alto</td>
+<td>Agenda salão, <code>evolution-send</code>, UTM de <code>PublicBooking</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Pacotes pré-pagos de serviços</strong> (catálogo + venda + baixa de sessão)</td>
+<td>8</td>
+<td>M</td>
+<td>Alto</td>
+<td><code>migrations_salao</code>, módulo Salão, Cakto p/ pagamento</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Higiene de base de leads</strong> (dedup + merge + normalização + enriquecimento IA)</td>
+<td>4</td>
+<td>M</td>
+<td>Alto</td>
+<td>edge fn + <code>ai-router</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Scoring configurável + cron real</strong> (tabela <code>score_regra</code> + <code>pg_cron</code>)</td>
+<td>2/4</td>
+<td>P</td>
+<td>Alto</td>
+<td>migration + <code>pg_cron</code> (já usado no scoring)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Web-push real + SW com cache offline</strong></td>
+<td>10</td>
+<td>M</td>
+<td>Alto</td>
+<td>edge functions Deno, <code>sw.js</code>, <code>platform_settings</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Versionar tabelas de IA/notificação em migrations</strong> (matar drift)</td>
+<td>3/9</td>
+<td>P</td>
+<td>Alto</td>
+<td><code>supabase/migrations/</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Gate de auth na borda + SSR só das LPs públicas</strong></td>
+<td>1</td>
+<td>G</td>
+<td>Médio</td>
+<td>Traefik, edge fn proxy</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Entidade de oportunidade ABERTA + forecasting por negócio</strong></td>
+<td>2</td>
+<td>M</td>
+<td>Médio</td>
+<td><code>deals</code>, <code>StageValueManager</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Templates estáticos de mensagem + Quick Replies (CRUD na UI)</strong></td>
+<td>5</td>
+<td>P</td>
+<td>Médio</td>
+<td>inbox, <code>campaign_contexts</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Profissionais (editar/excluir + KPIs mensais) + Financeiro (mês/delete)</strong></td>
+<td>8</td>
+<td>P</td>
+<td>Médio</td>
+<td>módulo Salão, dados de <code>agendamentos</code></td>
+</tr>
+</tbody>
+</table>
+<p>Atalhos de alto retorno: itens <strong>3, 4, 6, 9, 10</strong> são P/M e fecham buracos de paridade rapidamente. Itens <strong>1 e 2</strong> são os de maior valor estratégico para o nicho (custam mais, mas são o coração do produto de salão).</p>
+<h2>Veredito final</h2>
+<p><strong>O NX não é mais um superset estrito do CBA — e essa é a verdade desconfortável.</strong> Vence 6 das 11 dimensões e domina onde mais importa comercialmente (automação E2E, WhatsApp profundo, monetização Cakto, IA que age, governança verificada em produção), mas ficou para trás em quatro frentes reais: <strong>booking público de salão</strong> (ausente — o gap mais caro do nicho), <strong>pacotes pré-pagos</strong> (ausente), <strong>maturidade de plataforma-de-app</strong> (SSR/gate de auth no shell/web-push/PWA offline) e <strong>profundidade de ERP</strong> (KPIs por profissional, financeiro com mês, scoring configurável + cron real).</p>
+<p>A boa notícia: <strong>a maioria desses gaps são features ausentes ou dívida arquitetural trivial, não limitações de stack</strong> — e o moat do NX (integrações vivas Evolution/Cakto, soberania de infra, IA de loop fechado) é genuíno e difícil de copiar pelo CBA. Fechando o Top 5 do backlog (booking de salão, pacotes, higiene, scoring+cron, push), o NX volta a ser superset claro com a vantagem decisiva de já estar em produção soberana. A ressalva crítica permanente: a "soberania" do NX é parcial — cobre a hospedagem, mas o dado segue em Supabase Cloud e a IA no OpenRouter (US); para LGPD de verdade, residência de DADOS é o próximo capítulo.</p>
+<div class="foot">Gerado por workflow <code>cba-vs-nexvy-feature-audit</code> (run wf_6a58caeb) · NexvyBeauty <code>fzhlbwhdejumkyqosuvq</code> · 2026-06-23 · Legenda: ✅ full · 🟡 partial · 🟥 stub · ⬜ absent</div>
+</div></body></html>
