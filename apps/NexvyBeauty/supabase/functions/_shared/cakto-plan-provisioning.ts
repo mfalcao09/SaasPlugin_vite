@@ -171,7 +171,7 @@ export async function provisionPlatformPlan(
     }
   }
 
-  return { ok: errors.length === 0, organization_id: orgId, plan_id: plan.id, errors };
+  return { ok: errors.length === 0, organization_id: orgId ?? undefined, plan_id: plan.id, errors };
 }
 
 function randomPassword(): string {
