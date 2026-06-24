@@ -1,8 +1,9 @@
 // ─── Card de oportunidade (TOP-3) ───────────────────────────────────────
 // Mostra a cliente, o porquê (reason) e a mensagem pronta que a IA escreveu,
 // num box em itálico. Botão real de reativação vem do WS3 (ReactivationButton).
-// Em seed-mode (exemplo) o botão vira "Conecte pra disparar" — não envia
-// (telefone é fake). Chamado por HomeDeValor.tsx.
+// Em seed-mode (exemplo) o botão vira "Conecte pra disparar" (link p/ conexões)
+// — ou, no demo público, um CTA de conversão via onSeedCta. Chamado por
+// HomeDeValor.tsx (app logado) e DemoCockpitHome.tsx (demo público).
 
 import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,9 +20,14 @@ interface OpportunityCardProps {
   onSent?: (item: OpportunityCardData) => void
   /** exemplo (conta sem dado real): não dispara envio, mostra CTA conectar */
   seed?: boolean
+  /** demo público: clicar no card chama isto (ex.: abrir captura de lead) em
+   *  vez de linkar p/ a área logada. Só usado quando seed=true. */
+  onSeedCta?: () => void
+  /** rótulo do CTA do card no demo (default: "Quero isso no meu salão"). */
+  seedCtaLabel?: string
 }
 
-export function OpportunityCard({ card, onSent, seed }: OpportunityCardProps) {
+export function OpportunityCard({ card, onSent, seed, onSeedCta, seedCtaLabel }: OpportunityCardProps) {
   return (
     <Card>
       <CardContent className="py-4 space-y-3">
@@ -50,12 +56,19 @@ export function OpportunityCard({ card, onSent, seed }: OpportunityCardProps) {
 
         <div className="flex justify-end">
           {seed ? (
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
-              <Link to="/admin?tab=connections">
+            onSeedCta ? (
+              <Button onClick={onSeedCta} size="sm" className="gap-1.5">
                 <MessageCircle className="h-3.5 w-3.5" />
-                Conecte pra disparar
-              </Link>
-            </Button>
+                {seedCtaLabel ?? 'Quero isso no meu salão'}
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link to="/admin?tab=connections">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Conecte pra disparar
+                </Link>
+              </Button>
+            )
           ) : (
             <ReactivationButton item={card} onSent={onSent} />
           )}

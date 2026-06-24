@@ -60,6 +60,7 @@ const DemoSalaoServicos = lazyWithRetry(() => import("./pages/salao/DemoServicos
 const DemoSalaoProfissionais = lazyWithRetry(() => import("./pages/salao/DemoProfissionais"));
 const DemoSalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/DemoFinanceiro"));
 const DemoSalaoAgenda = lazyWithRetry(() => import("./pages/salao/DemoAgenda"));
+const DemoCockpitHome = lazyWithRetry(() => import("./cockpit/DemoCockpitHome"));
 const SalaoAgenda = lazyWithRetry(() => import("./pages/salao/Agenda"));
 const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissionais"));
 const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
@@ -170,8 +171,10 @@ const App = () => (
               <Route path="/q/:slug" element={<PublicQuiz />} />
 
               <Route path="/vendas" element={<SalesPage />} />
-              {/* Demo público do salão (sem login) — estilo beauty-flow */}
-              <Route path="/demo" element={<Navigate to="/demo/salao" replace />} />
+              {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
+                  o painel do salão fica em /demo/salao. */}
+              <Route path="/demo" element={<Navigate to="/demo/cockpit" replace />} />
+              <Route path="/demo/cockpit" element={<DemoCockpitHome />} />
               <Route path="/demo/salao" element={<DemoSalaoDashboard />} />
               <Route path="/demo/salao/clientes" element={<DemoSalaoClientes />} />
               <Route path="/demo/salao/servicos" element={<DemoSalaoServicos />} />

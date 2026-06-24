@@ -138,7 +138,7 @@ export default function SalesPage() {
             <a href="#modulos" className="hover:text-zinc-900">Módulos</a>
             <a href="#como" className="hover:text-zinc-900">Como funciona</a>
             <a href="#planos" className="hover:text-zinc-900">Planos</a>
-            <Link to="/demo/salao" className="hover:text-zinc-900">Demo</Link>
+            <Link to="/demo/cockpit" className="hover:text-zinc-900">Demo</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login"><Button variant="ghost" size="sm">Entrar</Button></Link>
@@ -165,7 +165,7 @@ export default function SalesPage() {
             <Button size="lg" onClick={openBuy} className={`h-14 px-8 text-base font-semibold ${GRADIENT} text-white shadow-xl shadow-rose-500/30 hover:opacity-90`}>
               Começar grátis <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Link to="/demo/salao">
+            <Link to="/demo/cockpit">
               <Button size="lg" variant="outline" className="h-14 border-zinc-300 px-8 text-base font-semibold">
                 <Play className="mr-2 h-4 w-4" /> Ver demonstração
               </Button>
@@ -385,7 +385,7 @@ export default function SalesPage() {
             <Button size="lg" onClick={openBuy} className="h-14 bg-white px-8 text-base font-bold text-rose-600 hover:bg-zinc-100">
               Começar grátis agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Link to="/demo/salao">
+            <Link to="/demo/cockpit">
               <Button size="lg" variant="outline" className="h-14 border-white/40 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/10 hover:text-white">
                 <Play className="mr-2 h-4 w-4" /> Ver demonstração
               </Button>
