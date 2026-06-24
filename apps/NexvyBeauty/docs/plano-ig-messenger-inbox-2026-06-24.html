@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — Instagram Direct + Messenger na Inbox (NexvyBeauty)</title>
+<style>
+  :root{--bg:#0d0d12;--card:#16161f;--card2:#1d1d29;--bd:#2a2a3a;--tx:#e7e7ef;--mut:#9a9ab0;--pink:#ff4d94;--pink2:#ff85b8;--grn:#34d399;--amb:#fbbf24;--blu:#60a5fa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px;background:linear-gradient(90deg,var(--pink),var(--pink2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--mut);margin:0 0 28px;font-size:14px}
+  h2{font-size:18px;margin:32px 0 12px;border-left:3px solid var(--pink);padding-left:10px}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin:12px 0}
+  ul{margin:8px 0;padding-left:20px}li{margin:5px 0}
+  code{background:var(--card2);border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--pink2)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--bd);padding:9px 10px;text-align:left;vertical-align:top}
+  th{background:var(--card2);color:var(--pink2)}
+  .n{color:var(--pink);font-weight:700}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+  .ext{background:rgba(251,191,36,.15);color:var(--amb);border:1px solid rgba(251,191,36,.3)}
+  .cod{background:rgba(96,165,250,.15);color:var(--blu);border:1px solid rgba(96,165,250,.3)}
+  .ok{color:var(--grn)}
+  .warn{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plano — Instagram Direct + Messenger na Inbox</h1>
+  <p class="sub">NexvyBeauty · para execução em sessão paralela · gerado 2026-06-24 a partir de recon (código + jornada Meta)</p>
+
+  <div class="card"><strong>Objetivo:</strong> trazer DM do Instagram + Messenger pro MESMO Inbox unificado (<code>webchat_conversations</code>/<code>webchat_messages</code>, coluna <code>channel</code>), reusando toda a infra de inbox/handoff/IA que o WhatsApp (Evolution) já usa.</div>
+
+  <h2>1. Ponto de partida (já existe — não refazer)</h2>
+  <div class="card">
+  <ul>
+    <li><strong>Já somos Meta Tech Provider</strong> (app <strong>"NEXVY"</strong>). <span class="ok">Business Verification APROVADA (2026-04-19)</span> → reaproveita. Mas tudo escopado pra <strong>WhatsApp</strong>, não IG/Messenger.</li>
+    <li>WhatsApp do produto roda via <strong>Evolution</strong> (não Meta Cloud API) → IG/Messenger será a 1ª mensageria sobre a Graph API.</li>
+    <li><strong>Building block pronto:</strong> modelo unificado por canal. Evolution grava <code>channel='whatsapp'</code>; adicionar <code>'instagram'</code>/<code>'messenger'</code> reusa inbox, handoff e IA de graça.</li>
+    <li>Única integração Meta hoje: <code>facebook-leads-webhook</code> (captura de LEADS, não mensageria).</li>
+    <li class="ok">Dívida a corrigir: <code>facebook_lead_integrations</code> guarda token em <strong>plaintext</strong> (viola Seção 11) → tabela nova usa <strong>Vault</strong>.</li>
+  </ul>
+  </div>
+
+  <h2>2. Premissas a confirmar ANTES de codar</h2>
+  <div class="card warn">
+  <ol>
+    <li><strong>Reusar o app "NEXVY"</strong> (recomendado — verification já aprovada) vs app novo.</li>
+    <li><strong>Token via Supabase Vault</strong> desde já (recomendado) vs plaintext.</li>
+    <li><strong>Escopo v1:</strong> IG Direct + Messenger juntos, ou Instagram primeiro? (Beleza vive de Instagram.)</li>
+  </ol>
+  </div>
+
+  <h2>3. Os 6 blocos (critério binário)</h2>
+  <table>
+    <tr><th>#</th><th>Bloco</th><th>Quem</th><th>Pronto quando…</th></tr>
+    <tr><td class="n">1</td><td><strong>App Review</strong> — produtos IG+Messenger no app NEXVY + permissões <code>instagram_manage_messages</code>, <code>pages_messaging</code>, <code>pages_manage_metadata</code>, <code>pages_show_list</code>, <code>business_management</code>. Verification reaproveitada. <span class="tag ext">externo/Meta</span></td><td>Marcelo + Meta</td><td>advanced access concedido</td></tr>
+    <tr><td class="n">2</td><td><strong>OAuth por tenant</strong> (FB Login for Business) → Page token longo + IG business account + page_id. <span class="tag cod">código</span></td><td>código</td><td>conectar Página de teste grava token (Vault) + ig_id + page_id</td></tr>
+    <tr><td class="n">3</td><td><strong>Storage seguro</strong> — tabela <code>meta_messaging_integrations</code> + Supabase Vault (nunca plaintext). <span class="tag cod">código</span></td><td>código</td><td>token só via RPC <code>get_vault_secret_by_key</code></td></tr>
+    <tr><td class="n">4</td><td><strong>Webhook inbound</strong> (<code>meta-messaging-webhook</code>) — verify_token + X-Hub-Signature-256 → upsert conversa + msg inbound. Espelhar <code>evolution-webhook:964-1027</code>. <span class="tag cod">código</span></td><td>código</td><td>DM de teste vira conversa na Inbox</td></tr>
+    <tr><td class="n">5</td><td><strong>Outbound</strong> (<code>meta-messaging-send</code>) — POST graph v23.0 <code>/{ID}/messages</code> com token do Vault + <strong>enforcement janela 24h</strong>. Espelhar <code>evolution-send:161-205</code>. <span class="tag cod">código</span></td><td>código</td><td>resposta chega no IG/Messenger; fora de 24h bloqueia/exige tag</td></tr>
+    <tr><td class="n">6</td><td><strong>UI</strong> — card "Instagram Direct + Messenger"; <code>ChannelBadge</code> + messenger; reativar filtros IG/FB no AttendancePanel (escondidos 2026-06-24 até backend existir). <span class="tag cod">código</span></td><td>código</td><td>card + badges + filtros</td></tr>
+  </table>
+
+  <h2>4. Sequência</h2>
+  <div class="card">
+    <p><strong>Paralelismo:</strong> Bloco 1 (App Review) roda em background (dias–semanas) <em>enquanto</em> o código (3→2→4→5) é construído e testado com contas <strong>admin/tester</strong> (Meta permite testar sem review aprovado p/ testers). Review passou → vira público.</p>
+    <p><strong>Ordem de código:</strong> 3 (storage/Vault) → 2 (OAuth) → 4 (inbound) → 5 (outbound) → 6 (UI).</p>
+  </div>
+
+  <h2>5. Código-âncora (espelhar)</h2>
+  <div class="card">
+  <ul>
+    <li>Inbound: <code>supabase/functions/evolution-webhook/index.ts:964-1027</code></li>
+    <li>Outbound: <code>supabase/functions/evolution-send/index.ts:161-205</code></li>
+    <li>OAuth/verify: <code>supabase/functions/facebook-leads-webhook/index.ts:22-49</code> (mas Vault, não plaintext)</li>
+    <li>Modelo: <code>types.ts</code> → webchat_conversations:11434 / webchat_messages:11681 / facebook_lead_integrations:4457</li>
+    <li>UI: <code>integrationsCatalog.ts:294-324</code>, <code>ChannelBadge.tsx:10-13</code>, <code>AttendancePanel.tsx</code> (CHANNELS)</li>
+  </ul>
+  </div>
+
+  <h2>6. Riscos / gates</h2>
+  <div class="card warn">
+  <ul>
+    <li><strong>App Review = gargalo</strong> (externo, dias–semanas). Sem ele, só admins/testers. Código pronto antes do review passar.</li>
+    <li><strong>Janela 24h da Meta</strong> — sem enforcement, msg fora da janela falha silenciosa. Bloco 5 trata.</li>
+    <li><strong>Segurança (Seção 11):</strong> token de Página = segredo → Vault server-side, nunca frontend; webhook valida assinatura.</li>
+  </ul>
+  </div>
+
+  <p class="sub" style="margin-top:28px">Fonte da jornada Meta: <code>project_nexvy_whatsapp_sandbox.md</code> (ecossistema-monorepo, linhas 58-99).</p>
+</div>
+</body>
+</html>
