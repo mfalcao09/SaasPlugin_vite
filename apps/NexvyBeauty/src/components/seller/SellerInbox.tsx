@@ -442,16 +442,15 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
   // AI suggestion handler
   const handleAiSuggest = useCallback(async (): Promise<string> => {
     if (!selectedConversation?.id || !profile?.organization_id) return '';
-    const lastMessages = messages.slice(-5).map(m => `${m.sender_type}: ${m.content}`).join('\n');
-    const { data, error } = await supabase.functions.invoke('sales-copilot', {
+    const { data, error } = await supabase.functions.invoke('suggest-reply', {
       body: {
-        question: `Baseado na conversa abaixo, sugira uma resposta profissional para o visitante. Seja direto e estratégico.\n\nConversa:\n${lastMessages}\n\nSugira a melhor resposta para enviar agora:`,
+        conversationId: selectedConversation.id,
         organizationId: profile.organization_id,
       },
     });
     if (error) throw error;
     return data?.answer || '';
-  }, [selectedConversation, messages, profile?.organization_id]);
+  }, [selectedConversation, profile?.organization_id]);
 
   // Handle send message
   const handleSendMessage = async (

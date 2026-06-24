@@ -117,6 +117,29 @@ Deno.serve(async (req) => {
       whatsapp_enviado = !wErr;
     } catch (_) { /* sem instância Evolution → ignora */ }
 
+    // Notificação in-app para admins/managers do salão (fire-and-forget — nunca derruba o agendamento)
+    try {
+      const { data: profs } = await sb.from('profiles').select('id').eq('organization_id', org.id);
+      const ids = (profs ?? []).map((p: { id: string }) => p.id);
+      if (ids.length) {
+        const { data: roleRows } = await sb.from('user_roles')
+          .select('user_id').in('user_id', ids).in('role', ['admin', 'manager']);
+        const adminIds = [...new Set((roleRows ?? []).map((r: { user_id: string }) => r.user_id))];
+        if (adminIds.length) {
+          const rows = adminIds.map((user_id) => ({
+            user_id,
+            organization_id: org.id,
+            title: `Novo agendamento — ${cliente_nome}`,
+            message: `${serv.nome} · ${formatBR(data)} às ${hora}`,
+            type: 'opportunity',
+            action_url: '/agenda',
+            metadata: { agendamento_id: ag.id, origem: 'publico' },
+          }));
+          await sb.from('notifications').insert(rows);
+        }
+      }
+    } catch (_) { /* fire-and-forget: nunca derruba o agendamento */ }
+
     return json({ id: ag.id, data: ag.data, hora: ag.hora, whatsapp_enviado });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'unknown' }, 500);
