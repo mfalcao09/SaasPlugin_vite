@@ -149,8 +149,6 @@ const ModuleHub = () => {
           super admin, então nunca se sobrepõe à escolha de view. */}
       {showOnboarding && (
         <GuidedOnboarding
-          open={showOnboarding}
-          onClose={markSkipped}
           onComplete={markCompleted}
           onSkipAll={markSkipped}
         />

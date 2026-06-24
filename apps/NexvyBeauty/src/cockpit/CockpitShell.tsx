@@ -7,7 +7,7 @@
 // Admin (/admin) e Super-admin (/super-admin) seguem intactos como rotas.
 
 import { Suspense } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess'
 import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding'
@@ -18,6 +18,7 @@ import { COCKPIT_NAV } from './nav'
 
 export default function CockpitShell() {
   const { profile, isSuperAdmin } = useAuth()
+  const location = useLocation()
   const { shouldForceSetup, isLoading: setupLoading } = useSuperAdminFirstAccess()
   const { isFirstAccess: showOnboarding, markCompleted, markSkipped } = useGuidedOnboarding()
 
@@ -39,20 +40,18 @@ export default function CockpitShell() {
 
   return (
     <UnifiedShell nav={COCKPIT_NAV} title={firstName ? `Olá, ${firstName}` : 'NexvyBeauty'}>
-      {/* Gate (b): onboarding guiado do admin de salão (1º acesso). Modal — só
-          dispara p/ não-super-admin sem onboarding concluído/pulado. */}
-      {showOnboarding && (
-        <GuidedOnboarding
-          open={showOnboarding}
-          onClose={markSkipped}
-          onComplete={markCompleted}
-          onSkipAll={markSkipped}
-        />
+      {/* Gate (b): onboarding guiado do admin de salão (1º acesso). V3 in-shell:
+          o wizard É o conteúdo principal (não modal) — a sidebar segue visível.
+          Concluir/pular revela a Home (HomeDeValor) atrás, que entrega o AHA.
+          Exceção: a rota /configurar É o próprio wizard (acesso direto / retomar
+          após pular) — nesse path renderiza o <Outlet/> pra não duplicar o wizard. */}
+      {showOnboarding && location.pathname !== '/configurar' ? (
+        <GuidedOnboarding onComplete={markCompleted} onSkipAll={markSkipped} />
+      ) : (
+        <Suspense fallback={<div className="py-16 flex justify-center"><WheelLoader size={48} /></div>}>
+          <Outlet />
+        </Suspense>
       )}
-
-      <Suspense fallback={<div className="py-16 flex justify-center"><WheelLoader size={48} /></div>}>
-        <Outlet />
-      </Suspense>
     </UnifiedShell>
   )
 }

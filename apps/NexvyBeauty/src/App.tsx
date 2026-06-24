@@ -24,6 +24,8 @@ const CockpitShell = lazyWithRetry(() => import("./cockpit/CockpitShell"));
 const HomeDeValor = lazyWithRetry(() => import("./cockpit/HomeDeValor"));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
 const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
+// Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
+const ConfigurarOnboarding = lazyWithRetry(() => import("./cockpit/ConfigurarOnboarding"));
 const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxManager").then(m => ({ default: m.InboxManager })));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
@@ -222,6 +224,8 @@ const App = () => (
                 <Route path="minha-ia" element={<MinhaIAHub />} />
                 <Route path="agenda" element={<SalaoAgenda bare />} />
                 <Route path="faturamento" element={<SalaoFinanceiro bare />} />
+                {/* Reentrada no onboarding guiado (quem pulou o 1º acesso). */}
+                <Route path="configurar" element={<ConfigurarOnboarding />} />
               </Route>
               {/* CRM de Vendas (app do vendedor — antigo "/") */}
               <Route

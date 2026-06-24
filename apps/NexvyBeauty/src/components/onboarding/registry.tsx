@@ -8,7 +8,6 @@ import type { FC } from 'react'
 import type { ModuleId } from '@/config/modules'
 import { OficinaServicesStep } from './steps/OficinaServicesStep'
 import { SalaoProfissionaisStep } from './steps/SalaoProfissionaisStep'
-import { AtendimentoWhatsAppStep } from './steps/AtendimentoWhatsAppStep'
 
 /** Props padrão recebidas por todo passo de onboarding. */
 export interface OnboardingStepProps {
@@ -42,13 +41,6 @@ export const MODULE_ONBOARDING_STEPS: Record<string, OnboardingStepDef[]> = {
       id: 'salao_servicos',
       label: 'Serviços do salão',
       Component: OficinaServicesStep,
-    },
-  ],
-  atendimento: [
-    {
-      id: 'atendimento_whatsapp',
-      label: 'WhatsApp',
-      Component: AtendimentoWhatsAppStep,
     },
   ],
 }

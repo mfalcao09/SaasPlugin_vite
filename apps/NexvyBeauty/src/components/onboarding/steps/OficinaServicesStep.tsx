@@ -27,7 +27,7 @@ const SERVICOS_PADRAO = [
   'Design de sobrancelha',
 ] as const
 
-export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip }) => {
+export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip, onBack }) => {
   const organizationId = useOrganizationId()
   // por padrão já vêm pré-marcados os mais comuns; usuário ajusta
   const [selected, setSelected] = useState<Set<string>>(
@@ -112,6 +112,14 @@ export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip }) => {
       </p>
 
       <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={salvar.isPending}
+          className="px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 text-sm transition-colors"
+        >
+          Voltar
+        </button>
         <button
           type="button"
           onClick={() => salvar.mutate()}

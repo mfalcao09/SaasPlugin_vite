@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, type FC } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useState, useEffect, type FC } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { RoadProgress } from '@/components/brand/RoadProgress';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +16,6 @@ import {
   Wand2,
   ArrowRight,
   X,
-  Rocket,
   Smartphone,
   QrCode,
   Bot,
@@ -26,17 +23,16 @@ import {
   Globe,
   PenLine,
   ExternalLink,
-  LayoutGrid,
-  Lock,
+  Link2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { MODULE_DEFINITIONS, PRODUCT_MODULES, type ModuleId } from '@/config/modules';
-import { usePlanModules } from '@/hooks/usePlanModules';
+import { PRODUCT_MODULES, type ModuleId } from '@/config/modules';
 import {
   MODULE_ONBOARDING_STEPS,
   type OnboardingStepProps,
 } from '@/components/onboarding/registry';
+import { getPublicAppUrl } from '@/lib/publicUrl';
 import {
   useCompanySettings,
   useUpdateCompanySettings,
@@ -61,16 +57,16 @@ import { DEFAULT_PIPELINE_STAGES } from '@/hooks/usePipelineMutations';
 import { AgentType, ToneStyle } from '@/types/agents';
 
 interface GuidedOnboardingProps {
-  open: boolean;
-  onClose: () => void;
   onComplete: () => void;
   onSkipAll: () => void;
 }
 
+// Paleta canônica do salão (espelha CompanySettings.tsx). Default = laranja.
 const PRESET_COLORS = [
-  '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#14b8a6',
+  '#F97316', '#EC4899', '#8B5CF6', '#10B981',
+  '#3B82F6', '#EF4444', '#F59E0B', '#14B8A6',
 ];
+const DEFAULT_PRIMARY_COLOR = '#F97316';
 
 // Estado compartilhado entre os passos do onboarding (referências dos recursos criados)
 interface OnboardingShared {
@@ -85,35 +81,27 @@ interface OnboardingShared {
   selectedModules: ModuleId[];
 }
 
-// ─── Sequência dinâmica de passos ─────────────────────────────────────────
-// Cada passo é um "node" que sabe se renderiza um conteúdo fixo (welcome,
-// identity, modules, team, done), um passo de CRM já existente neste arquivo
-// (product/whatsapp/agent — condicional à escolha de 'crm_vendas') ou um
-// passo vindo do registry MODULE_ONBOARDING_STEPS (erp_salao, atendimento).
+// ─── Sequência de passos (V3 functional-first) ────────────────────────────
+// Cada passo é um "node": conteúdo fixo deste arquivo (identity, crm-whatsapp,
+// done) ou um passo vindo do registry MODULE_ONBOARDING_STEPS (erp_salao).
+// Cada node tem um `label` curto pro stepper de topo.
 type StepNode =
-  | { kind: 'welcome' }
-  | { kind: 'identity' }
-  | { kind: 'modules' }
-  | { kind: 'crm-product' }
-  | { kind: 'crm-whatsapp' }
-  | { kind: 'crm-agent' }
+  | { kind: 'identity'; label: string }
+  | { kind: 'crm-whatsapp'; label: string }
   | { kind: 'module'; moduleId: ModuleId; Component: FC<OnboardingStepProps>; label: string }
-  | { kind: 'team' }
-  | { kind: 'done' };
-
-// Passos de CRM (mantidos neste arquivo) expostos na ordem original.
-const CRM_STEP_KINDS: StepNode[] = [
-  { kind: 'crm-product' },
-  { kind: 'crm-whatsapp' },
-  { kind: 'crm-agent' },
-];
+  | { kind: 'done'; label: string };
 
 /**
- * Sequência do onboarding UNIFICADO do NexvyBeauty. Decisão Marcelo 2026-06-21
- * ("tudo no onboarding único"): todo o setup do 1º acesso mora AQUI, de forma
- * module-agnostic (disparado pela HOME, não de dentro de um módulo):
- * Identidade → Salão (profissionais + serviços) → CRM (produto + WhatsApp +
- * agente de IA — puláveis) → Equipe. Os 3 passos de CRM têm onSkip.
+ * Sequência V3 (functional-first). A Home/HomeDeValor já entrega o "AHA" de
+ * oportunidade; o onboarding faz só o SETUP que a Home não consegue fingir e
+ * então cai na Home. Fluxo aprovado pelo dono:
+ *   1. Seu salão (identidade + slug)
+ *   2. Quem atende (salao_profissionais)
+ *   3. O que você faz (salao_servicos)
+ *   4. (opcional) Ligue sua IA no WhatsApp (crm-whatsapp)
+ *   → Pronto (done)
+ * Fora do caminho crítico (acessíveis depois via /admin e Minha IA):
+ * welcome, crm-product, crm-agent, team.
  */
 function buildSteps(): StepNode[] {
   const salaoSteps: StepNode[] = (MODULE_ONBOARDING_STEPS['erp_salao'] ?? []).map(
@@ -126,16 +114,14 @@ function buildSteps(): StepNode[] {
   );
 
   return [
-    { kind: 'welcome' },
-    { kind: 'identity' },
-    ...salaoSteps,
-    ...CRM_STEP_KINDS, // produto + WhatsApp + agente de IA (puláveis)
-    { kind: 'team' },
-    { kind: 'done' },
+    { kind: 'identity', label: 'Seu salão' },
+    ...salaoSteps, // Quem atende (profissionais) + O que você faz (serviços)
+    { kind: 'crm-whatsapp', label: 'IA no WhatsApp' },
+    { kind: 'done', label: 'Pronto' },
   ];
 }
 
-export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: GuidedOnboardingProps) {
+export function GuidedOnboarding({ onComplete, onSkipAll }: GuidedOnboardingProps) {
   const [stepIdx, setStepIdx] = useState(0);
 
   const [shared, setShared] = useState<OnboardingShared>({
@@ -153,32 +139,33 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
     setShared((s) => ({ ...s, ...patch }));
 
   // Módulos do NexvyBeauty são FIXOS — ativa o conjunto de produto na org ao
-  // abrir o wizard (idempotente). O provisioning também seta; isto garante o
+  // montar o wizard (idempotente). O provisioning também seta; isto garante o
   // estado correto mesmo se o provisioning ainda não rodou.
   const { profile } = useAuth();
   useEffect(() => {
     const orgId = profile?.organization_id;
-    if (!open || !orgId) return;
+    if (!orgId) return;
     void (supabase.from('organizations') as any)
       .update({ enabled_modules: PRODUCT_MODULES })
       .eq('id', orgId);
-  }, [open, profile?.organization_id]);
+  }, [profile?.organization_id]);
 
   // Módulos são FIXOS — sequência estática focada no salão.
   const steps = buildSteps();
   const safeIdx = Math.min(stepIdx, steps.length - 1);
   const node = steps[safeIdx];
-  const progress = (safeIdx / Math.max(steps.length - 1, 1)) * 100;
 
   const goNext = () => setStepIdx((i) => Math.min(i + 1, steps.length - 1));
   const goPrev = () => setStepIdx((i) => Math.max(i - 1, 0));
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Top bar */}
+    // In-shell: painel centralizado, NÃO modal. A sidebar do UnifiedShell
+    // continua visível; o wizard é o conteúdo principal focado.
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden flex flex-col">
+        {/* Top: stepper + pular tudo */}
         <div className="px-6 pt-6 pb-4 border-b shrink-0">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
               <span>Configuração guiada · {safeIdx + 1} de {steps.length}</span>
@@ -190,24 +177,13 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               Pular tudo <X className="h-3 w-3" />
             </button>
           </div>
-          <RoadProgress value={progress} />
+          <Stepper steps={steps} currentIdx={safeIdx} />
         </div>
 
         {/* Body */}
-        <div className="px-6 py-8 min-h-[420px] flex flex-col overflow-y-auto">
-          {node.kind === 'welcome' && (
-            <WelcomeStep onNext={goNext} onSkipAll={onSkipAll} />
-          )}
+        <div className="px-6 py-8 min-h-[420px] flex flex-col">
           {node.kind === 'identity' && (
-            <IdentityStep onNext={goNext} onSkip={goNext} onBack={goPrev} />
-          )}
-          {node.kind === 'crm-product' && (
-            <ProductStep
-              onNext={goNext}
-              onSkip={goNext}
-              onBack={goPrev}
-              update={update}
-            />
+            <IdentityStep onNext={goNext} onSkip={goNext} onBack={goPrev} isFirst />
           )}
           {node.kind === 'crm-whatsapp' && (
             <WhatsAppStep
@@ -217,84 +193,131 @@ export function GuidedOnboarding({ open, onClose, onComplete, onSkipAll }: Guide
               update={update}
             />
           )}
-          {node.kind === 'crm-agent' && (
-            <AgentStep
-              onNext={goNext}
-              onSkip={goNext}
-              onBack={goPrev}
-              shared={shared}
-              update={update}
-            />
-          )}
           {node.kind === 'module' && (
             <node.Component onNext={goNext} onSkip={goNext} onBack={goPrev} />
-          )}
-          {node.kind === 'team' && (
-            <TeamStep onNext={goNext} onSkip={goNext} onBack={goPrev} />
           )}
           {node.kind === 'done' && (
             <DoneStep onFinish={onComplete} shared={shared} />
           )}
         </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* ---------------- WELCOME ---------------- */
-function WelcomeStep({ onNext, onSkipAll }: { onNext: () => void; onSkipAll: () => void }) {
-  const { profile } = useAuth();
-  const firstName = profile?.full_name?.split(' ')[0] || 'tudo bem';
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center text-center">
-      <div className="w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center mb-6 shadow-glow">
-        <Rocket className="h-10 w-10 text-primary-foreground" strokeWidth={1.5} />
-      </div>
-      <h2 className="text-2xl font-bold mb-2">Olá, {firstName}!</h2>
-      <p className="text-muted-foreground max-w-sm mb-8">
-        Em poucos minutos vamos deixar seu salão pronto para o dia a dia: cadastre seus profissionais e serviços e comece a atender.
-      </p>
-      <div className="flex gap-3 w-full max-w-xs">
-        <Button variant="outline" onClick={onSkipAll} className="flex-1">
-          Mais tarde
-        </Button>
-        <Button onClick={onNext} className="flex-1 gap-2">
-          Começar <ArrowRight className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );
 }
 
-/* ---------------- IDENTIDADE ---------------- */
-function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: () => void; onBack: () => void }) {
+/* ---------------- STEPPER ---------------- */
+function Stepper({ steps, currentIdx }: { steps: StepNode[]; currentIdx: number }) {
+  return (
+    <ol className="flex items-center gap-2">
+      {steps.map((s, i) => {
+        const done = i < currentIdx;
+        const current = i === currentIdx;
+        return (
+          <li key={`${s.kind}-${i}`} className="flex items-center gap-2 min-w-0">
+            <div
+              className={cn(
+                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors',
+                done && 'bg-primary text-primary-foreground',
+                current && 'bg-primary/15 text-primary ring-2 ring-primary',
+                !done && !current && 'bg-muted text-muted-foreground',
+              )}
+            >
+              {done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+            </div>
+            <span
+              className={cn(
+                'text-xs truncate hidden sm:block',
+                current ? 'text-foreground font-medium' : 'text-muted-foreground',
+              )}
+            >
+              {s.label}
+            </span>
+            {i < steps.length - 1 && (
+              <div className={cn('h-px w-4 sm:w-6 shrink-0', done ? 'bg-primary' : 'bg-border')} />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/* ---------------- SEU SALÃO (IDENTIDADE + SLUG) ---------------- */
+function IdentityStep({
+  onNext,
+  onSkip,
+  onBack,
+  isFirst,
+}: {
+  onNext: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+  isFirst?: boolean;
+}) {
   const { profile } = useAuth();
   const { data: company } = useCompanySettings();
   const updateCompany = useUpdateCompanySettings();
+  const firstName = profile?.full_name?.split(' ')[0] || '';
   const [logoUrl, setLogoUrl] = useState(company?.logo_url || '');
-  const [color, setColor] = useState<string>('#3b82f6');
+  const [color, setColor] = useState<string>(DEFAULT_PRIMARY_COLOR);
   const [uploading, setUploading] = useState(false);
   const [orgName, setOrgName] = useState('');
+  const [slug, setSlug] = useState('');
+  // Slug que o salão JÁ tinha salvo (backfill). Usado como fallback honesto do
+  // preview quando o campo está vazio — o save pula a escrita de slug vazio, ou
+  // seja, a org mantém este slug.
+  const [existingSlug, setExistingSlug] = useState('');
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Pré-carrega o nome atual da empresa (veio do provisionamento) p/ o admin
-  // confirmar/ajustar no 1º acesso.
+  // Base do link público (origin real em prod; fallback configurado em dev).
+  const publicBase = getPublicAppUrl();
+
+  const sanitizeSlug = (v: string) =>
+    v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+  // Pré-carrega nome, cor (settings.primary_color) e slug atuais da org p/ o
+  // admin confirmar/ajustar no 1º acesso. NÃO chuta azul: usa o que existe ou
+  // o laranja canônico.
   useEffect(() => {
     const orgId = profile?.organization_id;
     if (!orgId) return;
     let active = true;
-    supabase
+    (supabase as any)
       .from('organizations')
-      .select('name')
+      .select('name, slug, settings')
       .eq('id', orgId)
       .maybeSingle()
-      .then(({ data }) => {
-        if (active && data?.name) setOrgName(data.name);
+      .then(({ data }: { data: any }) => {
+        if (!active || !data) return;
+        if (data.name) setOrgName(data.name);
+        const existingColor = data.settings?.primary_color;
+        if (existingColor) setColor(existingColor);
+        // Já existe slug salvo → respeita (marca como "tocado" p/ a derivação
+        // por nome NÃO sobrescrever o que o salão já usava) e guarda como
+        // fallback do preview.
+        if (data.slug) {
+          setSlug(data.slug);
+          setExistingSlug(data.slug);
+          setSlugTouched(true);
+        }
       });
     return () => {
       active = false;
     };
   }, [profile?.organization_id]);
+
+  // Enquanto o usuário não editar o slug manualmente, mantém-no derivado do
+  // nome (slug "vivo"). Após editar, respeita a escolha dele. Usa o MESMO
+  // sanitizeSlug do save/preview pra que campo, preview e valor salvo sejam
+  // idênticos (sem divergência com generateBookingSlug).
+  useEffect(() => {
+    if (slugTouched) return;
+    if (orgName.trim()) setSlug(sanitizeSlug(orgName));
+    // sanitizeSlug é puro/estável (closure local), fora das deps de propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgName, slugTouched]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -311,36 +334,96 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
     }
   };
 
+  // Escreve o slug com tratamento de colisão (unique violation = 23505):
+  // tenta o slug pedido; se colidir, anexa sufixo curto e tenta 1x mais.
+  const saveSlug = async (orgId: string, desired: string): Promise<string | null> => {
+    if (!desired) return null;
+    const db = supabase as any;
+    const first = await db.from('organizations').update({ slug: desired }).eq('id', orgId);
+    if (!first.error) return desired;
+    if (first.error.code !== '23505') {
+      // Erro que não é colisão → propaga pro caller tratar.
+      throw first.error;
+    }
+    const retrySlug = `${desired}-${Date.now().toString(36).slice(-4)}`;
+    const second = await db.from('organizations').update({ slug: retrySlug }).eq('id', orgId);
+    if (second.error) {
+      // Espelha a 1ª tentativa: erro que não é colisão → propaga pro caller;
+      // só colisão persistente (23505) retorna null.
+      if (second.error.code !== '23505') throw second.error;
+      return null; // colisão persistente
+    }
+    toast.message('Esse link já estava em uso', {
+      description: `Usamos ${publicBase}/s/${retrySlug}`,
+    });
+    return retrySlug;
+  };
+
   const handleSave = async () => {
     if (!profile?.organization_id) return;
+    setSaving(true);
     try {
+      const orgId = profile.organization_id;
+
+      // Logo (helper inalterado).
       if (logoUrl && logoUrl !== company?.logo_url) {
         await updateCompany.mutateAsync({ logo_url: logoUrl });
       }
-      const { data: org } = await supabase
+
+      // Read-merge das settings (NÃO sobrescreve outras chaves).
+      const { data: org } = await (supabase as any)
         .from('organizations')
         .select('settings')
-        .eq('id', profile.organization_id)
+        .eq('id', orgId)
         .maybeSingle();
-      const newSettings = { ...(org?.settings as any || {}), primary_color: color };
+      const newSettings = { ...(org?.settings || {}), primary_color: color };
       const patch: Record<string, any> = { settings: newSettings };
       if (orgName.trim()) patch.name = orgName.trim();
-      await supabase
-        .from('organizations')
-        .update(patch)
-        .eq('id', profile.organization_id);
+      await (supabase as any).from('organizations').update(patch).eq('id', orgId);
+
+      // Slug (separado pra isolar o tratamento de colisão).
+      const desiredSlug = sanitizeSlug(slug);
+      if (desiredSlug) {
+        try {
+          const written = await saveSlug(orgId, desiredSlug);
+          if (!written) {
+            toast.error('Não foi possível reservar esse link', {
+              description: 'Tente um nome de link diferente.',
+            });
+            setSaving(false);
+            return; // não avança: o link é parte do valor do passo
+          }
+          setSlug(written);
+        } catch (err: any) {
+          toast.error('Erro ao salvar o link do seu salão', { description: err?.message });
+          setSaving(false);
+          return;
+        }
+      }
+
       onNext();
-    } catch (err: any) {
+    } catch {
       toast.error('Erro ao salvar identidade');
+    } finally {
+      setSaving(false);
     }
   };
+
+  // Preview honesto: campo vazio → cai pro slug que a org JÁ tem (o save pula a
+  // escrita de slug vazio, então é isso que continua valendo). Só sem nenhum
+  // slug existente é que mostra o placeholder neutro.
+  const previewSlug = sanitizeSlug(slug) || existingSlug || 'seu-salao';
 
   return (
     <div className="flex-1 flex flex-col">
       <StepHeader
         icon={Palette}
-        title="Identidade da empresa"
-        description="Confirme o nome da sua empresa e personalize logo e cor."
+        title="Seu salão"
+        description={
+          isFirst && firstName
+            ? `Olá, ${firstName}! Vamos deixar seu salão pronto — comece pelo nome, logo, cor e o link de agendamento.`
+            : 'Confirme o nome, personalize logo e cor e escolha o link de agendamento.'
+        }
       />
 
       <div className="space-y-5 flex-1">
@@ -353,6 +436,32 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
             maxLength={120}
           />
         </div>
+
+        <div>
+          <Label className="mb-2 block flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-primary" />
+            Link de agendamento
+          </Label>
+          <div className="flex items-stretch rounded-md border focus-within:ring-1 focus-within:ring-ring overflow-hidden">
+            <span className="hidden sm:flex items-center px-3 bg-muted text-xs text-muted-foreground border-r whitespace-nowrap">
+              {publicBase}/s/
+            </span>
+            <Input
+              value={slug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setSlug(e.target.value);
+              }}
+              onBlur={() => setSlug((s) => sanitizeSlug(s))}
+              placeholder="seu-salao"
+              className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 break-all">
+            Seu link: <span className="font-medium text-foreground">{publicBase}/s/{previewSlug}</span>
+          </p>
+        </div>
+
         <div>
           <Label className="mb-2 block">Logo</Label>
           <div className="flex items-center gap-4">
@@ -391,7 +500,7 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
                 onClick={() => setColor(c)}
                 className={cn(
                   'w-10 h-10 rounded-lg border-2 transition-all',
-                  color === c ? 'border-foreground scale-110' : 'border-transparent'
+                  color.toLowerCase() === c.toLowerCase() ? 'border-foreground scale-110' : 'border-transparent'
                 )}
                 style={{ backgroundColor: c }}
                 aria-label={c}
@@ -412,183 +521,19 @@ function IdentityStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: 
         onSkip={onSkip}
         onPrimary={handleSave}
         primaryLabel="Salvar e continuar"
-        loading={updateCompany.isPending}
-      />
-    </div>
-  );
-}
-
-/* ---------------- SELEÇÃO DE MÓDULOS ---------------- */
-// Módulos de negócio que fazem sentido escolher/configurar no onboarding.
-// Infra (administracao, gestao_plataforma) fica de fora.
-const ONBOARDABLE_MODULE_IDS: ModuleId[] = ['erp_salao', 'crm_vendas', 'atendimento'];
-
-function ModulesStep({
-  onNext,
-  onSkip,
-  onBack,
-  selected,
-  update,
-}: {
-  onNext: () => void;
-  onSkip: () => void;
-  onBack: () => void;
-  selected: ModuleId[];
-  update: (p: Partial<OnboardingShared>) => void;
-}) {
-  const { profile } = useAuth();
-  const { planModules, planId, isLoading } = usePlanModules();
-  const [saving, setSaving] = useState(false);
-  const [picked, setPicked] = useState<Set<ModuleId>>(() => new Set(selected));
-
-  // Cards exibidos: módulos de negócio definidos no catálogo.
-  const cards = MODULE_DEFINITIONS.filter((m) =>
-    ONBOARDABLE_MODULE_IDS.includes(m.id),
-  );
-
-  // Pré-seleção: ao abrir sem escolha prévia, marca os módulos liberados pelo
-  // plano (assim o caminho feliz é só "avançar"). Roda uma vez quando o plano
-  // resolve.
-  const prefilledRef = useRef(false);
-  useEffect(() => {
-    if (isLoading || prefilledRef.current) return;
-    prefilledRef.current = true;
-    if (selected.length === 0 && planModules.length > 0) {
-      setPicked(new Set(planModules.filter((m) => ONBOARDABLE_MODULE_IDS.includes(m))));
-    }
-  }, [isLoading, planModules, selected.length]);
-
-  const isAllowed = (id: ModuleId) =>
-    // Se o plano não declara módulos (org sem plano configurado), não bloqueia:
-    // permite escolher qualquer módulo de negócio.
-    planModules.length === 0 || planModules.includes(id);
-
-  const toggle = (id: ModuleId) => {
-    if (!isAllowed(id)) return;
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSave = async () => {
-    const chosen = cards.map((c) => c.id).filter((id) => picked.has(id));
-    if (chosen.length === 0) {
-      toast.error('Escolha pelo menos um módulo para configurar agora');
-      return;
-    }
-    setSaving(true);
-    try {
-      if (profile?.organization_id) {
-        // Coluna nova (enabled_modules) ainda não está em types.ts → cast.
-        await supabase
-          .from('organizations')
-          .update({ enabled_modules: chosen } as any)
-          .eq('id', profile.organization_id);
-      }
-      update({ selectedModules: chosen });
-      onNext();
-    } catch {
-      toast.error('Erro ao salvar a escolha de módulos');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="flex-1 flex flex-col">
-      <StepHeader
-        icon={LayoutGrid}
-        title="O que você quer ativar agora?"
-        description="Escolha os módulos que seu salão vai usar. Você configura cada um em seguida — e pode ativar o resto depois."
-      />
-
-      <div className="space-y-3 flex-1">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          cards.map((mod) => {
-            const Icon = mod.icon;
-            const allowed = isAllowed(mod.id);
-            const checked = picked.has(mod.id) && allowed;
-            return (
-              <button
-                key={mod.id}
-                type="button"
-                onClick={() => toggle(mod.id)}
-                disabled={!allowed}
-                className={cn(
-                  'w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-all',
-                  !allowed && 'opacity-60 cursor-not-allowed',
-                  checked
-                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                    : allowed
-                      ? 'border-border hover:border-primary/50'
-                      : 'border-border',
-                )}
-              >
-                <div
-                  className={cn(
-                    'w-11 h-11 rounded-lg flex items-center justify-center text-white shrink-0',
-                    mod.color,
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">{mod.label}</span>
-                    {!allowed && (
-                      <Badge variant="outline" className="gap-1 text-[10px] py-0">
-                        <Lock className="h-3 w-3" />
-                        {planId ? 'Fora do seu plano' : 'Indisponível'}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                    {mod.description}
-                  </p>
-                  {mod.onboardingHint && allowed && (
-                    <p className="text-xs text-primary/80 mt-1">{mod.onboardingHint}</p>
-                  )}
-                </div>
-                <div
-                  className={cn(
-                    'w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5',
-                    checked ? 'bg-primary border-primary' : 'border-input',
-                  )}
-                >
-                  {checked && <CheckCircle2 className="h-4 w-4 text-primary-foreground" />}
-                </div>
-              </button>
-            );
-          })
-        )}
-
-        {!isLoading && cards.every((c) => !isAllowed(c.id)) && (
-          <p className="text-xs text-muted-foreground text-center pt-2">
-            Seu plano ainda não libera módulos configuráveis. Fale com o administrador da plataforma.
-          </p>
-        )}
-      </div>
-
-      <StepFooter
-        onBack={onBack}
-        onSkip={onSkip}
-        onPrimary={handleSave}
-        primaryLabel="Salvar e configurar"
-        loading={saving}
-        disabled={picked.size === 0}
+        loading={saving || updateCompany.isPending}
+        hideBack={isFirst}
+        hideSkip
       />
     </div>
   );
 }
 
 /* ---------------- PRODUTO + CÉREBRO ---------------- */
+// NOTA (V3): ProductStep/AgentStep/TeamStep saíram do caminho crítico do
+// onboarding (buildSteps), mas os componentes seguem aqui pois continuam
+// acessíveis depois via /admin e o hub Minha IA. NÃO são renderizados no
+// wizard atual.
 function ProductStep({
   onNext,
   onSkip,
@@ -1344,69 +1289,35 @@ function TeamStep({ onNext, onSkip, onBack }: { onNext: () => void; onSkip: () =
 
 /* ---------------- DONE / TESTE ---------------- */
 function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: OnboardingShared }) {
+  // Confirmação COMPACTA: a Home/HomeDeValor logo atrás já entrega o AHA, então
+  // não repetimos um resumo pesado. Só o link de teste de WhatsApp aparece se
+  // de fato conectaram um número — e o botão de concluir é SEMPRE alcançável.
   const phone = shared.instancePhone?.replace(/\D/g, '');
   const waLink = phone
     ? `https://wa.me/${phone}?text=${encodeURIComponent('Olá! Quero testar o atendimento.')}`
     : null;
-  const moduleLabels = MODULE_DEFINITIONS.filter((m) =>
-    shared.selectedModules.includes(m.id),
-  ).map((m) => m.label);
 
   return (
-    <div className="flex-1 flex flex-col items-center text-center">
-      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-        <CheckCircle2 className="h-12 w-12 text-primary" />
+    <div className="flex-1 flex flex-col items-center justify-center text-center">
+      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+        <CheckCircle2 className="h-10 w-10 text-primary" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">Tudo pronto!</h2>
-      <p className="text-muted-foreground max-w-sm mb-6">
-        Seu salão está configurado e os módulos escolhidos já estão prontos para uso.
+      <h2 className="text-2xl font-bold mb-2">Tudo pronto! 🎉</h2>
+      <p className="text-muted-foreground max-w-sm mb-8">
+        Seu salão está montado. Você pode ajustar tudo depois — agora é só começar.
       </p>
 
-      <div className="w-full max-w-sm space-y-2 text-left mb-8 bg-muted/40 rounded-lg p-4">
-        {/* Módulos ativados — sempre reflete a escolha do passo de módulos. */}
-        {moduleLabels.length > 0 && (
-          <div className="flex items-start gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-            <span>
-              Módulos ativados: <strong>{moduleLabels.join(', ')}</strong>
-            </span>
-          </div>
-        )}
-        {shared.productName && (
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            <span>Produto <strong>{shared.productName}</strong> com cérebro treinado</span>
-          </div>
-        )}
-        {shared.instanceName && (
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            <span>WhatsApp {shared.instancePhone ? `+${shared.instancePhone}` : shared.instanceName}</span>
-          </div>
-        )}
-        {shared.agentName && (
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            <span>Agente <strong>{shared.agentName}</strong> ativo</span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2 w-full max-w-sm">
-        {waLink ? (
-          <Button asChild size="lg" className="gap-2">
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <Button onClick={onFinish} size="lg" className="gap-2">
+          Ir pro meu dia <ArrowRight className="h-4 w-4" />
+        </Button>
+        {waLink && (
+          <Button asChild variant="outline" size="sm" className="gap-2">
             <a href={waLink} target="_blank" rel="noopener noreferrer">
-              Testar agora no WhatsApp <ExternalLink className="h-4 w-4" />
+              Testar no WhatsApp <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
-        ) : (
-          <Button onClick={onFinish} size="lg" className="gap-2">
-            Ir para o painel <ArrowRight className="h-4 w-4" />
-          </Button>
         )}
-        <Button onClick={onFinish} variant="ghost" size="sm">
-          Concluir e ir para a plataforma
-        </Button>
       </div>
     </div>
   );
@@ -1432,6 +1343,8 @@ function StepFooter({
   primaryLabel,
   loading,
   disabled,
+  hideBack,
+  hideSkip,
 }: {
   onBack: () => void;
   onSkip: () => void;
@@ -1439,12 +1352,22 @@ function StepFooter({
   primaryLabel: string;
   loading?: boolean;
   disabled?: boolean;
+  /** Esconde "Voltar" (ex.: 1º passo do wizard). Mantém o alinhamento. */
+  hideBack?: boolean;
+  /** Esconde "Pular esta etapa" (ex.: passos core, não puláveis). */
+  hideSkip?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 pt-6 mt-6 border-t">
-      <Button variant="ghost" onClick={onBack} size="sm">Voltar</Button>
+      {hideBack ? (
+        <span aria-hidden />
+      ) : (
+        <Button variant="ghost" onClick={onBack} size="sm">Voltar</Button>
+      )}
       <div className="flex gap-2">
-        <Button variant="ghost" onClick={onSkip} size="sm">Pular esta etapa</Button>
+        {!hideSkip && (
+          <Button variant="ghost" onClick={onSkip} size="sm">Pular esta etapa</Button>
+        )}
         <Button onClick={onPrimary} disabled={loading || disabled} className="gap-2">
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {primaryLabel}

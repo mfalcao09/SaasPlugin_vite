@@ -62,14 +62,16 @@ export function useUpdateCompanySettings() {
   return useMutation({
     mutationFn: async (input: Partial<CompanySettings>) => {
       if (!profile?.organization_id) throw new Error('Sem organização');
-      const patch: Record<string, any> = {
-        name: input.name,
-        cnpj: input.cnpj,
-        email: input.email,
-        phone: input.phone,
-        logo_url: input.logo_url,
-        address: (input.address ?? null) as any,
-      };
+      // Patch parcial: só inclui a chave quando ela foi de fato passada
+      // (!== undefined). Sem isso, uma chamada de só-logo ({ logo_url })
+      // mandaria address/name/etc como null e APAGARIA dados existentes da org.
+      const patch: Record<string, any> = {};
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.cnpj !== undefined) patch.cnpj = input.cnpj;
+      if (input.email !== undefined) patch.email = input.email;
+      if (input.phone !== undefined) patch.phone = input.phone;
+      if (input.logo_url !== undefined) patch.logo_url = input.logo_url;
+      if (input.address !== undefined) patch.address = (input.address ?? null) as any;
       // A cor da marca mora em organizations.settings (JSON) — mesmo lugar do
       // onboarding. Read-merge pra não sobrescrever outras chaves de settings.
       if (input.primary_color !== undefined) {

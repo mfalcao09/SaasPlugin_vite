@@ -18,7 +18,7 @@ interface StepProps {
 
 const db = supabase as any
 
-export const SalaoProfissionaisStep: FC<StepProps> = ({ onNext, onSkip }) => {
+export const SalaoProfissionaisStep: FC<StepProps> = ({ onNext, onSkip, onBack }) => {
   const organizationId = useOrganizationId()
   const [nomes, setNomes] = useState<string[]>([])
   const [input, setInput] = useState('')
@@ -101,6 +101,14 @@ export const SalaoProfissionaisStep: FC<StepProps> = ({ onNext, onSkip }) => {
       </p>
 
       <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={salvar.isPending}
+          className="px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 text-sm transition-colors"
+        >
+          Voltar
+        </button>
         <button
           type="button"
           onClick={() => salvar.mutate()}
