@@ -27,10 +27,10 @@ export function InboxManager() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Atendimentos</h1>
-        <p className="text-sm text-muted-foreground">Central de conversas do chat do site</p>
+        <p className="text-sm text-muted-foreground">Central de atendimentos — chat do site e WhatsApp</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

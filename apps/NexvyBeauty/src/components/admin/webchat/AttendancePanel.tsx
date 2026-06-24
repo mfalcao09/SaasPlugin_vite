@@ -11,12 +11,12 @@ import { useSectors } from '@/hooks/useSectors';
 import { PanelSection } from './panel/PanelSection';
 import { PanelColumn } from './panel/PanelColumn';
 
+// Só canais com ingestão+envio REAIS hoje (evita prometer o que não existe).
+// Instagram/Facebook voltam quando a integração Meta Graph API for entregue;
+// E-mail/SMS não têm backend e ficam fora até existir.
 const CHANNELS = [
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'webchat', label: 'Site' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'email', label: 'E-mail' },
-  { value: 'sms', label: 'SMS' },
 ];
 
 interface Props {

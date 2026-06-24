@@ -81,6 +81,17 @@ export function StartConversationDialog({
 
       if (error) throw error;
 
+      // Bloqueio: se o envio da 1ª mensagem falhou, o servidor NÃO cria a conversa
+      // (ok:false / created:false). Avisa e mantém o diálogo aberto para retry.
+      if (data?.ok === false || data?.created === false) {
+        toast({
+          title: 'Conversa não criada',
+          description: data?.error || 'A mensagem não pôde ser enviada. Conecte seu WhatsApp e tente novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
         title: data.is_new ? 'Conversa criada' : 'Conversa encontrada',
         description: data.is_new
