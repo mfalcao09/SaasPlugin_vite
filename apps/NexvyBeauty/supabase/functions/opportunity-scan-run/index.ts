@@ -448,7 +448,7 @@ async function applyActions(supabase: any, orgId: string, item: any, actions: Ac
           organization_id: orgId,
           title: `🎯 Lead ${item.classification.toUpperCase()} detectado`,
           message: item.reason,
-          type: 'opportunity_radar',
+          type: 'opportunity',
           metadata: { lead_id: item.lead_id, classification: item.classification },
         });
       }
