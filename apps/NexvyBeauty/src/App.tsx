@@ -23,8 +23,8 @@ const Index = lazyWithRetry(() => import("./pages/Index"));
 const CockpitShell = lazyWithRetry(() => import("./cockpit/CockpitShell"));
 const HomeDeValor = lazyWithRetry(() => import("./cockpit/HomeDeValor"));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
+const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
 const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxManager").then(m => ({ default: m.InboxManager })));
-const CockpitMinhaIA = lazyWithRetry(() => import("@/components/admin/agents/AgentsManager").then(m => ({ default: m.AgentsManager })));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -219,7 +219,7 @@ const App = () => (
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
-                <Route path="minha-ia" element={<CockpitMinhaIA />} />
+                <Route path="minha-ia" element={<MinhaIAHub />} />
                 <Route path="agenda" element={<SalaoAgenda bare />} />
                 <Route path="faturamento" element={<SalaoFinanceiro bare />} />
               </Route>
