@@ -1,10 +1,14 @@
 // ─── Card de oportunidade (TOP-3) ───────────────────────────────────────
 // Mostra a cliente, o porquê (reason) e a mensagem pronta que a IA escreveu,
-// num box em itálico (mesmo padrão visual do RadarDashboard). O botão de
-// reativação vem do WS3 (ReactivationButton). Chamado por HomeDeValor.tsx.
+// num box em itálico. Botão real de reativação vem do WS3 (ReactivationButton).
+// Em seed-mode (exemplo) o botão vira "Conecte pra disparar" — não envia
+// (telefone é fake). Chamado por HomeDeValor.tsx.
 
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ReactivationButton } from '@/cockpit/reactivation/ReactivationButton'
 import type { OpportunityCardData } from '@/cockpit/types'
@@ -12,10 +16,12 @@ import { formatBRL, CLASS_LABEL, CLASS_ACCENT } from './format'
 
 interface OpportunityCardProps {
   card: OpportunityCardData
-  onSent: (item: OpportunityCardData) => void
+  onSent?: (item: OpportunityCardData) => void
+  /** exemplo (conta sem dado real): não dispara envio, mostra CTA conectar */
+  seed?: boolean
 }
 
-export function OpportunityCard({ card, onSent }: OpportunityCardProps) {
+export function OpportunityCard({ card, onSent, seed }: OpportunityCardProps) {
   return (
     <Card>
       <CardContent className="py-4 space-y-3">
@@ -43,7 +49,16 @@ export function OpportunityCard({ card, onSent }: OpportunityCardProps) {
         )}
 
         <div className="flex justify-end">
-          <ReactivationButton item={card} onSent={onSent} />
+          {seed ? (
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link to="/admin?tab=connections">
+                <MessageCircle className="h-3.5 w-3.5" />
+                Conecte pra disparar
+              </Link>
+            </Button>
+          ) : (
+            <ReactivationButton item={card} onSent={onSent} />
+          )}
         </div>
       </CardContent>
     </Card>
