@@ -193,11 +193,11 @@ export function CaptureAnalyticsSection() {
     <div className="max-w-7xl mx-auto py-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <BarChart3 className="h-6 w-6" />
+          <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <BarChart3 className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Analytics de Captação</h1>
+            <h2 className="text-lg font-bold">Analytics de Captação</h2>
             <p className="text-sm text-muted-foreground">
               Performance das suas ferramentas de captação — quizzes, formulários e enquetes — em tempo real.
             </p>
