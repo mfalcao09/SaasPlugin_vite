@@ -21,7 +21,9 @@ import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DollarSign, Plus, TrendingUp, TrendingDown, Loader2, Scale, Percent, ArrowDownCircle, ArrowUpCircle,
+  Sparkles, Target, Lock, Activity,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -75,6 +77,29 @@ const TOOLTIP_STYLE = {
 } as const
 
 const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+// ─── Classificação fixo × variável das despesas (HEURÍSTICA) ──────────────
+// IMPORTANTE: não existe flag no banco distinguindo custo fixo de variável. A
+// classificação abaixo é uma HEURÍSTICA por palavra-chave no campo `categoria`
+// (case/acento-insensível). FIXO = recorrentes do salão (aluguel, folha,
+// contas, software…). VARIÁVEL = atrelados ao volume de atendimentos (insumos,
+// comissões, taxas de cartão, marketing…). Categoria sem match cai como
+// VARIÁVEL no cálculo (conservador — não infla a margem de contribuição), mas
+// é contabilizada à parte como "não classificado" para transparência.
+const FIXO_RE = /aluguel|sal[áa]rio|folha|funcion|[áa]gua|luz|energia|internet|telefone|software|sistema|assinatura|contador|cont[áa]bil|seguro|financiamento|parcela/i
+const VARIAVEL_RE = /produto|insumo|material|mercadoria|comiss|descart|frete|taxa|cart[aã]o|marketing|an[uú]ncio|ads|publicidade/i
+
+type CustoClasse = 'fixo' | 'variavel' | 'nao_classificado'
+
+// Normaliza a categoria e classifica. Sem match em nenhuma regra → "não
+// classificado" (que o cálculo trata como variável, mas o card expõe à parte).
+function classificarCusto(categoria: string | null): CustoClasse {
+  const c = (categoria ?? '').trim()
+  if (!c) return 'nao_classificado'
+  if (FIXO_RE.test(c)) return 'fixo'
+  if (VARIAVEL_RE.test(c)) return 'variavel'
+  return 'nao_classificado'
+}
 
 // ─── Helpers TZ-safe (comparação só pela parte de data, lexicográfica) ───
 // O lançamento entra no período quando sua data (slice 0..10) cai em [from,to],
@@ -143,6 +168,15 @@ interface DashboardData {
   despesas: number
   resultado: number
   margem: number // % do resultado sobre as receitas
+  // ── Controladoria (fixo × variável e derivadas) ──
+  custoFixo: number
+  custoVariavel: number       // já inclui o "não classificado" (conservador)
+  custoNaoClassificado: number // subconjunto de custoVariavel, exposto à parte
+  margemContribuicaoValor: number // receitas − custoVariável (R$)
+  margemContribuicaoPct: number   // (receitas − custoVariável) / receitas (%)
+  margemLucroPct: number          // resultado / receitas (%) — alias semântico de `margem`
+  pontoEquilibrio: number         // custoFixo / (margemContribuicaoPct/100); 0 se indefinido
+  fixoVsVariavel: { name: string; value: number }[]
   fluxo: { label: string; receitas: number; despesas: number; saldo: number }[]
   entradasVsSaidas: { label: string; entradas: number; saidas: number }[]
   despesaPorCategoria: { name: string; value: number }[]
@@ -159,6 +193,37 @@ function aggregateDashboard(rows: Lancamento[], p: FinPeriod): DashboardData {
   const despesas = saidas.reduce((s, l) => s + Number(l.valor ?? 0), 0)
   const resultado = receitas - despesas
   const margem = receitas > 0 ? (resultado / receitas) * 100 : 0
+
+  // ── Controladoria: custo fixo × variável (heurística por categoria) ──
+  // Não classificado entra no variável para o cálculo (conservador: não infla a
+  // margem de contribuição), mas é somado à parte para exibição discreta.
+  let custoFixo = 0
+  let custoVariavelPuro = 0
+  let custoNaoClassificado = 0
+  saidas.forEach((l) => {
+    const v = Number(l.valor ?? 0)
+    switch (classificarCusto(l.categoria)) {
+      case 'fixo': custoFixo += v; break
+      case 'variavel': custoVariavelPuro += v; break
+      default: custoNaoClassificado += v; break
+    }
+  })
+  const custoVariavel = custoVariavelPuro + custoNaoClassificado
+  // Fórmulas (guards: só divide se receitas>0; sem NaN; ?? 0):
+  //   Margem de lucro %        = resultado / receitas
+  //   Margem de contribuição $ = receitas − custoVariável
+  //   Margem de contribuição % = (receitas − custoVariável) / receitas
+  //   Ponto de equilíbrio (R$) = custoFixo / (margemContribuição% / 100)
+  //     → faturamento mínimo para resultado zero. Indefinido (→ 0) quando a
+  //       margem de contribuição não é positiva (não há como cobrir o fixo).
+  const margemLucroPct = receitas > 0 ? (resultado / receitas) * 100 : 0
+  const margemContribuicaoValor = receitas - custoVariavel
+  const margemContribuicaoPct = receitas > 0 ? (margemContribuicaoValor / receitas) * 100 : 0
+  const pontoEquilibrio = margemContribuicaoPct > 0 ? custoFixo / (margemContribuicaoPct / 100) : 0
+  const fixoVsVariavel = [
+    { name: 'Custo fixo', value: custoFixo },
+    { name: 'Custo variável', value: custoVariavel },
+  ].filter((x) => x.value > 0)
 
   // Fluxo de caixa no tempo: dia-a-dia se o período cabe em ~60 dias; senão por
   // mês. Para "Todo o período" / sem range, deriva os limites dos próprios dados.
@@ -209,7 +274,12 @@ function aggregateDashboard(rows: Lancamento[], p: FinPeriod): DashboardData {
     .slice(0, 8)
     .map((l) => ({ nome: l.descricao || l.categoria || '—', valor: Number(l.valor ?? 0) }))
 
-  return { receitas, despesas, resultado, margem, fluxo, entradasVsSaidas, despesaPorCategoria, receitaPorForma, topDespesas }
+  return {
+    receitas, despesas, resultado, margem,
+    custoFixo, custoVariavel, custoNaoClassificado,
+    margemContribuicaoValor, margemContribuicaoPct, margemLucroPct, pontoEquilibrio, fixoVsVariavel,
+    fluxo, entradasVsSaidas, despesaPorCategoria, receitaPorForma, topDespesas,
+  }
 }
 
 // Empty state discreto reusado por todos os cards.
@@ -244,15 +314,139 @@ interface NovoLancamento {
   data: string // YYYY-MM-DD
 }
 
+// ─── Payload de métricas enviado à IA financeira (Edge Function) ─────────
+// Espelha exatamente o `metrics` consumido por `financial-advisor`. Tipado solto
+// (tsconfig strict:false), mas explícito para servir de contrato com o backend.
+interface FinanceiroMetrics {
+  periodo: string
+  receitas: number
+  despesas: number
+  resultado: number
+  margemLucro: number
+  custoFixo: number
+  custoVariavel: number
+  margemContribuicaoPct: number
+  margemContribuicaoValor: number
+  pontoEquilibrio: number
+  topDespesas: { categoria: string; valor: number }[]
+}
+
+// ─── Bloco: Análise da IA financeira ─────────────────────────────────────
+// Card com botão "Gerar análise". NÃO dispara automático (controle de custo) —
+// só no clique. Em modo demo o botão é desabilitado com aviso. Chama a Edge
+// Function `financial-advisor` passando { organization_id, metrics } e renderiza
+// `data.answer` como markdown (mesmo componente ReactMarkdown usado no app).
+function AnaliseIACard({
+  metrics, organizationId, isDemo,
+}: { metrics: FinanceiroMetrics; organizationId: string | null | undefined; isDemo: boolean }) {
+  const [loading, setLoading] = useState(false)
+  const [answer, setAnswer] = useState<string | null>(null)
+
+  const gerar = async () => {
+    if (isDemo || !organizationId) return
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('financial-advisor', {
+        body: { organization_id: organizationId, metrics },
+      })
+      if (error) throw error
+      const texto = (data?.answer ?? '').toString().trim()
+      if (!texto) {
+        toast.error('A IA não retornou análise. Tente novamente.')
+        return
+      }
+      setAnswer(texto)
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar a análise financeira.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Análise da IA financeira
+        </CardTitle>
+        <Button onClick={gerar} disabled={loading || isDemo} size="sm">
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          {answer ? 'Gerar novamente' : 'Gerar análise'}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {isDemo ? (
+          <p className="text-sm text-muted-foreground">
+            Análise por IA indisponível no modo demonstração.
+          </p>
+        ) : loading ? (
+          <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Analisando os números do período…
+          </div>
+        ) : answer ? (
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-strong:text-foreground prose-p:text-muted-foreground prose-li:text-muted-foreground">
+            <ReactMarkdown>{answer}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Clique em <span className="font-medium text-foreground">Gerar análise</span> para receber um
+            diagnóstico de controladoria com base nos números do período selecionado.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ─── Aba: Dashboard ──────────────────────────────────────────────────────
-function DashboardTab({ rows, period }: { rows: Lancamento[]; period: FinPeriod }) {
+function DashboardTab({
+  rows, period, periodoLabel, organizationId, isDemo,
+}: {
+  rows: Lancamento[]
+  period: FinPeriod
+  periodoLabel: string
+  organizationId: string | null | undefined
+  isDemo: boolean
+}) {
   const d = useMemo(() => aggregateDashboard(rows, period), [rows, period])
+
+  // metrics enviado à Edge Function `financial-advisor` (memoizado, deriva do
+  // mesmo `d` que alimenta os cards — sempre coerente com o período ativo).
+  const metrics = useMemo<FinanceiroMetrics>(() => ({
+    periodo: periodoLabel,
+    receitas: d.receitas ?? 0,
+    despesas: d.despesas ?? 0,
+    resultado: d.resultado ?? 0,
+    margemLucro: d.margemLucroPct ?? 0,
+    custoFixo: d.custoFixo ?? 0,
+    custoVariavel: d.custoVariavel ?? 0,
+    margemContribuicaoPct: d.margemContribuicaoPct ?? 0,
+    margemContribuicaoValor: d.margemContribuicaoValor ?? 0,
+    pontoEquilibrio: d.pontoEquilibrio ?? 0,
+    topDespesas: d.despesaPorCategoria.map((c) => ({ categoria: c.name, valor: c.value })),
+  }), [d, periodoLabel])
 
   const kpis = [
     { label: 'Receitas', value: formatCurrency(d.receitas), icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
     { label: 'Despesas', value: formatCurrency(d.despesas), icon: TrendingDown, cls: 'text-red-600 dark:text-red-400' },
     { label: 'Resultado', value: formatCurrency(d.resultado), icon: Scale, cls: d.resultado >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400' },
     { label: 'Margem', value: `${d.margem.toFixed(1)}%`, icon: Percent, cls: d.margem >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400' },
+  ]
+
+  // KPIs de controladoria (respeitam o período via `d`). Ponto de equilíbrio só
+  // aparece quando definido (margem de contribuição positiva).
+  const kpisControladoria = [
+    { label: 'Margem de lucro', value: `${(d.margemLucroPct ?? 0).toFixed(1)}%`, icon: Percent, cls: (d.margemLucroPct ?? 0) >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400' },
+    { label: 'Custo fixo', value: formatCurrency(d.custoFixo ?? 0), icon: Lock, cls: 'text-amber-600 dark:text-amber-400' },
+    { label: 'Custo variável', value: formatCurrency(d.custoVariavel ?? 0), icon: Activity, cls: 'text-sky-600 dark:text-sky-400' },
+    {
+      label: 'Margem de contribuição',
+      value: `${(d.margemContribuicaoPct ?? 0).toFixed(1)}%`,
+      sub: formatCurrency(d.margemContribuicaoValor ?? 0),
+      icon: Scale,
+      cls: (d.margemContribuicaoValor ?? 0) >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400',
+    },
   ]
 
   const fluxoEmpty = d.fluxo.every((x) => x.receitas === 0 && x.despesas === 0)
@@ -271,6 +465,71 @@ function DashboardTab({ rows, period }: { rows: Lancamento[]; period: FinPeriod 
             <CardContent><div className={`text-2xl font-bold ${k.cls}`}>{k.value}</div></CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* KPI grid — controladoria (fixo/variável + margens) */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpisControladoria.map((k) => (
+          <Card key={k.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">{k.label}</CardTitle>
+              <k.icon className={`h-4 w-4 ${k.cls}`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${k.cls}`}>{k.value}</div>
+              {k.sub && <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{k.sub}</p>}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Análise da IA financeira (sob demanda) */}
+      <AnaliseIACard metrics={metrics} organizationId={organizationId} isDemo={isDemo} />
+
+      {/* Estrutura de custo (fixo × variável, pie) + Ponto de equilíbrio (card) */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard title="Custo fixo × variável" isEmpty={d.fixoVsVariavel.length === 0} className="lg:col-span-2"
+          emptyLabel="Sem despesas no período">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie data={d.fixoVsVariavel} dataKey="value" nameKey="name" outerRadius={90} innerRadius={45} paddingAngle={2}>
+                <Cell fill="hsl(45 90% 55%)" />
+                <Cell fill="hsl(200 80% 55%)" />
+              </Pie>
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Target className="h-4 w-4 text-primary" />Ponto de equilíbrio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <div className="text-2xl font-bold tabular-nums">
+                {d.pontoEquilibrio > 0 ? formatCurrency(d.pontoEquilibrio) : '—'}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Faturamento mínimo para não ter prejuízo no período (custo fixo ÷ margem de contribuição).
+              </p>
+            </div>
+            {d.pontoEquilibrio <= 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Indefinido — a margem de contribuição precisa ser positiva para calcular.
+              </p>
+            )}
+            {d.custoNaoClassificado > 0 && (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium">{formatCurrency(d.custoNaoClassificado)}</span> em despesas não
+                classificadas estão contadas como variável (categoria sem correspondência na heurística).
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Fluxo de caixa (line, largo) + Despesas por categoria (pie) */}
@@ -573,7 +832,13 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
             {isLoading ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : (
-              <DashboardTab rows={lancamentos} period={period} />
+              <DashboardTab
+                rows={lancamentos}
+                period={period}
+                periodoLabel={periodLabel(period)}
+                organizationId={organizationId}
+                isDemo={isDemo}
+              />
             )}
           </TabsContent>
 
