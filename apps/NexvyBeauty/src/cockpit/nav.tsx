@@ -32,7 +32,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/painel', label: 'Painel', icon: LayoutDashboard }, // dashboard comercial (1º)
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
       { to: '/radar', label: 'Radar IA', icon: Radar }, // lente micro (conversas)
-      { to: '/relatorios-atendimento', label: 'Relatórios', icon: LineChart },
+      { to: '/relatorios-comerciais', label: 'Relatórios', icon: LineChart },
       { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
     ],
   },

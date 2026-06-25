@@ -188,25 +188,6 @@ export function WebChatReportsTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Coming Soon */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Mais Relatórios (Em Breve)</CardTitle>
-          <CardDescription>
-            Estatísticas avançadas serão adicionadas nas próximas versões
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="text-sm text-muted-foreground space-y-2">
-            <li>• Conversas por hora/dia da semana</li>
-            <li>• Performance por atendente</li>
-            <li>• Leads gerados via chat</li>
-            <li>• Taxa de conversão chat → venda</li>
-            <li>• Análise de sentimento das conversas</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
 }

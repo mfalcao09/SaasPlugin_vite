@@ -238,7 +238,7 @@ const App = () => (
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="radar" element={<CockpitRadar />} />
-                <Route path="relatorios-atendimento" element={<RelatoriosAtendimento />} />
+                <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
                 <Route path="minha-ia" element={<MinhaIAHub />} />
