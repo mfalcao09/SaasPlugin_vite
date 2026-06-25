@@ -135,8 +135,8 @@ export function UnifiedShell({ title, subtitle, children, nav = TENANT_NAV }: Un
 
         <SidebarContent>
           {groups.map((group) => (
-            <SidebarGroup key={group.title}>
-              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+            <SidebarGroup key={group.title || 'top'}>
+              {group.title && <SidebarGroupLabel>{group.title}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
                   {group.items.map(({ to, label, icon: Icon, end }) => (

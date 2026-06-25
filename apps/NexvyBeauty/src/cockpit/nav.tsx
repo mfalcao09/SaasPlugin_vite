@@ -1,32 +1,44 @@
-// ─── Cockpit V1 — navegação única da cabeleireira (7 itens, linguagem de salão) ──
-// Substitui o ModuleHub como home logada. Admin colapsa em 1 item ("Gestão &
-// Ajustes" → /admin, intacto). Super-admin fica fora (isolado em gestao.*).
-// Reusa o shape de nav do UnifiedShell (ShellNavGroup) — só a moldura muda.
+// ─── Cockpit — navegação da cabeleireira (linguagem de salão) ──────────────
+// Início standalone no topo (sem cabeçalho de seção). Seções: Meu salão,
+// Comercial, Gestão. Admin (~33 telas) colapsa em "Gestão & Ajustes" (/admin).
+// Reusa o shape de nav do UnifiedShell (ShellNavGroup) — grupo com title:'' = topo solto.
 
 import {
-  Home, MessageSquare, Users, Megaphone, Bot, CalendarDays, DollarSign, Settings,
+  Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
+  BarChart3, Sparkles, Bot,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
 export const COCKPIT_NAV: ShellNavGroup[] = [
   {
-    title: 'Meu salão',
+    // title vazio = item solto no topo (UnifiedShell suprime o SidebarGroupLabel)
+    title: '',
     items: [
       { to: '/', label: 'Início', icon: Home, end: true },
-      { to: '/conversas', label: 'Conversas', icon: MessageSquare },
+    ],
+  },
+  {
+    title: 'Meu salão',
+    items: [
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
-      { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
-      { to: '/minha-ia', label: 'Minha IA', icon: Bot },
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
-      { to: '/faturamento', label: 'Meu Faturamento', icon: DollarSign },
+      { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
+      { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
+    ],
+  },
+  {
+    title: 'Comercial',
+    items: [
+      { to: '/conversas', label: 'Conversas', icon: MessageSquare },
+      { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
+      { to: '/ai-growth', label: 'AI Growth', icon: Sparkles },
     ],
   },
   {
     title: 'Gestão',
     items: [
-      // Todo o Admin (~33 seções) colapsa neste único item — fica fora da
-      // navegação diária da cabeleireira, acessível só pra quem gerencia.
       { to: '/admin', label: 'Gestão & Ajustes', icon: Settings, visibility: 'admin' },
+      { to: '/minha-ia', label: 'Minha IA', icon: Bot },
     ],
   },
 ]

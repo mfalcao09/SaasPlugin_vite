@@ -21,7 +21,11 @@ import { isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
 const Index = lazyWithRetry(() => import("./pages/Index"));
 // Cockpit V1 — casca única da cabeleireira (substitui o ModuleHub no "/").
 const CockpitShell = lazyWithRetry(() => import("./cockpit/CockpitShell"));
-const HomeDeValor = lazyWithRetry(() => import("./cockpit/HomeDeValor"));
+const HomeDeValor = lazyWithRetry(() => import("./cockpit/HomeDeValor")); // agora em /ai-growth
+const CockpitInicio = lazyWithRetry(() => import("./cockpit/Inicio")); // novo Início (em branco, reconstruir)
+const Relatorios = lazyWithRetry(() => import("./cockpit/Relatorios")); // Relatórios & Gestão
+// Demo público da página Relatórios (dados de exemplo — orgs ainda sem dados reais).
+const DemoRelatorios = lazyWithRetry(() => import("./cockpit/Relatorios").then(m => ({ default: () => <m.default demo={m.DEMO_RELATORIOS} /> })));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
 const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
 // Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
@@ -181,6 +185,7 @@ const App = () => (
               <Route path="/demo/salao/profissionais" element={<DemoSalaoProfissionais />} />
               <Route path="/demo/salao/financeiro" element={<DemoSalaoFinanceiro />} />
               <Route path="/demo/salao/agenda" element={<DemoSalaoAgenda />} />
+              <Route path="/demo/relatorios" element={<DemoRelatorios />} />
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
@@ -220,12 +225,14 @@ const App = () => (
                   )
                 }
               >
-                <Route index element={<HomeDeValor />} />
+                <Route index element={<CockpitInicio />} />
+                <Route path="ai-growth" element={<HomeDeValor />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
                 <Route path="minha-ia" element={<MinhaIAHub />} />
                 <Route path="agenda" element={<SalaoAgenda bare />} />
+                <Route path="relatorios" element={<Relatorios />} />
                 <Route path="faturamento" element={<SalaoFinanceiro bare />} />
                 {/* Reentrada no onboarding guiado (quem pulou o 1º acesso). */}
                 <Route path="configurar" element={<ConfigurarOnboarding />} />
