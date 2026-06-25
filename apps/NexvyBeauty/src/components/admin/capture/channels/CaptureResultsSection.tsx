@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,18 +15,23 @@ import {
 import { Target, Loader2, Search, Flame, Snowflake, ThermometerSun, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useFunnels } from '@/hooks/useFunnels';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface QuizLead {
+// Resultados UNIFICADOS de captação: todos os leads que entraram por QUALQUER
+// ferramenta (quiz, formulário, WhatsApp, chat, etc.), não só quizzes. A origem é
+// derivada de metadata.funnel_channel (funis: quiz/form/poll) ou de lead_origin/
+// lead_channel (whatsapp/webchat/instagram/...).
+interface CaptureLead {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
   temperature: string;
   created_at: string;
+  lead_origin: string | null;
+  lead_channel: string | null;
   metadata: any;
 }
 
@@ -36,46 +41,82 @@ const tempIcon = (t: string) => {
   return <Snowflake className="h-3 w-3 text-sky-500" />;
 };
 
+const ORIGIN_LABELS: Record<string, string> = {
+  quiz: 'Quiz',
+  form: 'Formulário', forms: 'Formulário', formulario: 'Formulário',
+  poll: 'Enquete', enquete: 'Enquete',
+  whatsapp: 'WhatsApp',
+  webchat: 'Site (Chat)', web_chat: 'Site (Chat)', site: 'Site (Chat)', chat: 'Site (Chat)',
+  instagram: 'Instagram', facebook: 'Facebook', messenger: 'Messenger',
+  funnel: 'Funil',
+};
+
+function originKey(l: CaptureLead): string {
+  const m = (l.metadata || {}) as any;
+  return String(m.funnel_channel || l.lead_channel || l.lead_origin || 'outro').toLowerCase();
+}
+function originLabel(l: CaptureLead): string {
+  const k = originKey(l);
+  if (ORIGIN_LABELS[k]) return ORIGIN_LABELS[k];
+  const m = (l.metadata || {}) as any;
+  if (m.funnel_name) return 'Funil';
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+// Considera "captação" o lead que veio de um funil (tem funnel_id) OU de um canal
+// de entrada reconhecido — exclui cadastro manual puro.
+const CAPTURE_ORIGINS = new Set([
+  'funnel', 'quiz', 'form', 'forms', 'poll', 'whatsapp', 'webchat', 'web_chat',
+  'site', 'chat', 'instagram', 'facebook', 'messenger',
+]);
+function isCaptureLead(l: CaptureLead): boolean {
+  const m = (l.metadata || {}) as any;
+  if (m.funnel_id) return true;
+  return CAPTURE_ORIGINS.has(String(l.lead_origin || '').toLowerCase())
+    || CAPTURE_ORIGINS.has(String(l.lead_channel || '').toLowerCase());
+}
+
 export function CaptureResultsSection() {
   const { profile } = useAuth();
-  const { data: funnels } = useFunnels({ channelType: 'quiz' } as any);
-  const [funnelId, setFunnelId] = useState<string>('all');
+  const [origin, setOrigin] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<QuizLead | null>(null);
+  const [selected, setSelected] = useState<CaptureLead | null>(null);
 
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['quiz-results', profile?.organization_id, funnelId],
+    queryKey: ['capture-results', profile?.organization_id],
     enabled: !!profile?.organization_id,
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from('leads')
-        .select('id, name, email, phone, temperature, created_at, metadata')
+        .select('id, name, email, phone, temperature, created_at, lead_origin, lead_channel, metadata')
         .eq('organization_id', profile!.organization_id)
-        .eq('lead_origin', 'funnel')
         .order('created_at', { ascending: false })
         .limit(500);
-      const { data, error } = await q;
       if (error) throw error;
-      const rows = (data as QuizLead[]) || [];
-      if (funnelId !== 'all') {
-        return rows.filter(l => (l.metadata as any)?.funnel_id === funnelId);
-      }
-      // Apenas quizzes (filtrar pelos funnel_ids dos quizzes da org)
-      const quizFunnelIds = new Set((funnels || []).map((f: any) => f.id));
-      return rows.filter(l => quizFunnelIds.has((l.metadata as any)?.funnel_id));
+      return ((data as CaptureLead[]) || []).filter(isCaptureLead);
     },
   });
 
+  // Origens distintas presentes → monta o filtro dinamicamente.
+  const origins = useMemo(() => {
+    const map = new Map<string, string>();
+    (leads || []).forEach((l) => map.set(originKey(l), originLabel(l)));
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [leads]);
+
   const filtered = useMemo(() => {
-    if (!leads) return [];
-    if (!search.trim()) return leads;
-    const s = search.toLowerCase();
-    return leads.filter(l =>
-      l.name?.toLowerCase().includes(s) ||
-      l.email?.toLowerCase().includes(s) ||
-      l.phone?.includes(s)
-    );
-  }, [leads, search]);
+    let rows = leads || [];
+    if (origin !== 'all') rows = rows.filter((l) => originKey(l) === origin);
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      rows = rows.filter((l) =>
+        l.name?.toLowerCase().includes(s) ||
+        l.email?.toLowerCase().includes(s) ||
+        l.phone?.includes(s),
+      );
+    }
+    return rows;
+  }, [leads, origin, search]);
 
   return (
     <div className="max-w-7xl mx-auto py-6 space-y-6">
@@ -84,9 +125,9 @@ export function CaptureResultsSection() {
           <Target className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold">Resultados de Quiz</h1>
+          <h1 className="text-2xl font-semibold">Resultados</h1>
           <p className="text-sm text-muted-foreground">
-            Todas as respostas, score e tags dos leads que concluíram seus quizzes.
+            Todas as respostas e leads das suas ferramentas de captação — quiz, formulários, WhatsApp, chat e mais.
           </p>
         </div>
       </div>
@@ -94,12 +135,12 @@ export function CaptureResultsSection() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <Select value={funnelId} onValueChange={setFunnelId}>
-              <SelectTrigger className="sm:w-64"><SelectValue /></SelectTrigger>
+            <Select value={origin} onValueChange={setOrigin}>
+              <SelectTrigger className="sm:w-64"><SelectValue placeholder="Origem" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os quizzes</SelectItem>
-                {(funnels || []).map((f: any) => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                <SelectItem value="all">Todas as origens</SelectItem>
+                {origins.map(([k, label]) => (
+                  <SelectItem key={k} value={k}>{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -120,14 +161,14 @@ export function CaptureResultsSection() {
             <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              Nenhum resultado ainda. Compartilhe seu quiz para começar a coletar respostas.
+              Nenhum resultado ainda. Compartilhe seus quizzes, formulários e link de WhatsApp para começar a coletar respostas.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Lead</TableHead>
-                  <TableHead>Quiz</TableHead>
+                  <TableHead>Origem</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Temperatura</TableHead>
                   <TableHead>Tags</TableHead>
@@ -144,7 +185,12 @@ export function CaptureResultsSection() {
                         <div className="font-medium text-sm">{l.name}</div>
                         <div className="text-xs text-muted-foreground">{l.email || l.phone}</div>
                       </TableCell>
-                      <TableCell className="text-xs">{m.funnel_name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">{originLabel(l)}</Badge>
+                        {m.funnel_name && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{m.funnel_name}</div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-mono">{m.score ?? 0}</Badge>
                       </TableCell>
@@ -188,7 +234,7 @@ export function CaptureResultsSection() {
               <DialogHeader>
                 <DialogTitle>{selected.name}</DialogTitle>
                 <DialogDescription>
-                  {selected.email || '—'} · {selected.phone || '—'} ·{' '}
+                  {selected.email || '—'} · {selected.phone || '—'} · {originLabel(selected)} ·{' '}
                   {format(new Date(selected.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </DialogDescription>
               </DialogHeader>
@@ -206,23 +252,25 @@ export function CaptureResultsSection() {
                     </div>
                   </div>
                   <div className="rounded-lg border p-3">
-                    <div className="text-xs text-muted-foreground">Canal</div>
-                    <div className="text-lg font-semibold capitalize">
-                      {(selected.metadata as any)?.funnel_channel || '-'}
-                    </div>
+                    <div className="text-xs text-muted-foreground">Origem</div>
+                    <div className="text-lg font-semibold">{originLabel(selected)}</div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Respostas</h4>
-                  <div className="space-y-2">
-                    {Object.entries(((selected.metadata as any)?.responses || {})).map(([k, v]) => (
-                      <div key={k} className="rounded border p-2 text-sm">
-                        <div className="text-xs text-muted-foreground">{k}</div>
-                        <div>{String(v)}</div>
-                      </div>
-                    ))}
-                  </div>
+                  {Object.keys(((selected.metadata as any)?.responses || {})).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem respostas estruturadas para esta origem.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(((selected.metadata as any)?.responses || {})).map(([k, v]) => (
+                        <div key={k} className="rounded border p-2 text-sm">
+                          <div className="text-xs text-muted-foreground">{k}</div>
+                          <div>{String(v)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {((selected.metadata as any)?.tags || []).length > 0 && (
