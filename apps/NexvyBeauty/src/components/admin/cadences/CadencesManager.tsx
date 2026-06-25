@@ -5,7 +5,6 @@ import { CadenceWizard } from './CadenceWizard';
 import { CadenceDetail } from './CadenceDetail';
 import { ContextLibrary } from '../campaigns/contexts/ContextLibrary';
 import { CadenceReports } from './CadenceReports';
-import { CadenceApiKeys } from './CadenceApiKeys';
 import { useCadences } from '@/hooks/useCadences';
 
 type View =
@@ -53,7 +52,6 @@ export function CadencesManager() {
           <TabsTrigger value="cadences">Cadências</TabsTrigger>
           <TabsTrigger value="library">Biblioteca de Contextos</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cadences" className="mt-4">
@@ -72,10 +70,6 @@ export function CadencesManager() {
 
         <TabsContent value="reports" className="mt-4">
           <CadenceReports cadences={cadences} stats={stats} orgId={orgId} />
-        </TabsContent>
-
-        <TabsContent value="api" className="mt-4">
-          <CadenceApiKeys orgId={orgId} />
         </TabsContent>
       </Tabs>
     </div>

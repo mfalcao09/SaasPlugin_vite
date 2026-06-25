@@ -124,8 +124,8 @@ export function RadarPanel({ onOpenConversation }: { onOpenConversation?: (id: s
         <TabsContent value="run" className="space-y-4">
           <div className="grid lg:grid-cols-[380px_1fr] gap-4">
             {/* Coluna de filtros: box ALTA com scroll só nos filtros + botão FIXO embaixo */}
-            <div className="flex flex-col gap-3 lg:h-[calc(100vh-200px)]">
-              <ScrollArea className="flex-1 min-h-0 rounded-lg border bg-card">
+            <div className="flex flex-col gap-3 lg:h-[calc(100vh-160px)]">
+              <ScrollArea className="flex-1 min-h-[440px] rounded-lg border bg-card">
                 <div className="space-y-4 p-3">
                   <RadarFilters value={filters} onChange={setFilters} />
                   <RadarActionsConfig value={actions} onChange={setActions} />

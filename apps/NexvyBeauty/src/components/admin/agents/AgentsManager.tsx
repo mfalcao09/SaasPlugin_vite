@@ -41,6 +41,10 @@ import { AgentSupervisorPanel } from '@/components/admin/agents/AgentSupervisorP
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { GitBranch } from 'lucide-react';
 import { AGENT_TYPE_LABELS, type AgentType, type ProductAgent } from '@/types/agents';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Badge } from '@/components/ui/badge';
 
 export function AgentsManager() {
   const { data: products, isLoading: productsLoading } = useProducts();
@@ -59,6 +63,18 @@ export function AgentsManager() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: notifSettings } = useAutoNotificationSettings();
+
+  // Contador de uso vs limite de agentes do plano (espelha o trigger trg_enforce_max_ai_agents).
+  const { profile } = useAuth();
+  const { data: maxAiAgents } = useQuery({
+    queryKey: ['org-max-ai-agents', profile?.organization_id],
+    enabled: !!profile?.organization_id,
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_organization_effective_limits', { p_org_id: profile!.organization_id });
+      const v = (data as any)?.limits?.max_ai_agents;
+      return typeof v === 'number' ? v : null;
+    },
+  });
 
   // Identifies the executive agent (admin global with admin_agent_enabled=true)
   const executiveAgentId = useMemo(() => {
@@ -215,6 +231,14 @@ export function AgentsManager() {
             <p className="text-muted-foreground text-sm">
               Gerencie todos os agentes da sua organização — globais e por produto
             </p>
+            {typeof maxAiAgents === 'number' && (
+              <Badge
+                variant={(agents?.length ?? 0) >= maxAiAgents ? 'destructive' : 'secondary'}
+                className="mt-1"
+              >
+                {agents?.length ?? 0} / {maxAiAgents} agentes do seu plano
+              </Badge>
+            )}
           </div>
         </div>
 
