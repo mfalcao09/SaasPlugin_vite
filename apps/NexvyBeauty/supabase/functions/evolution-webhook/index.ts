@@ -282,8 +282,14 @@ function normalizePayload(payload: any): Normalized | null {
     return undefined;
   }
 
-  // ---- v2 events ----
-  if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
+  // ---- v2 events (Evolution API v2.3.7) ----
+  // MESSAGES_UPSERT = inbound; SEND_MESSAGE = outbound echo (device/API).
+  // Both carry the same { key, message, pushName } Baileys shape; fromMe
+  // distinguishes direction downstream.
+  if (
+    event === "messages.upsert" || event === "MESSAGES_UPSERT" ||
+    event === "send.message" || event === "SEND_MESSAGE"
+  ) {
     const messages = Array.isArray(data.messages) ? data.messages : [data];
     const msg = messages[0];
     if (!msg) return null;
