@@ -2050,14 +2050,14 @@ Deno.serve(async (req) => {
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKeyEnv}` },
               body: JSON.stringify({
                 conversation_id: conversationId,
-                organization_id: organizationId,
+                organization_id: instance.organization_id,
               }),
             }).catch((e) => console.error("[evolution-webhook] campaign-on-response non-fatal:", e));
             // Cadence response hook (fire-and-forget)
             fetch(`${supabaseUrlEnv}/functions/v1/cadence-on-response`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKeyEnv}` },
-              body: JSON.stringify({ conversation_id: conversationId, organization_id: organizationId }),
+              body: JSON.stringify({ conversation_id: conversationId, organization_id: instance.organization_id }),
             }).catch((e) => console.error("[evolution-webhook] cadence-on-response non-fatal:", e));
           }
         } catch (e) {
