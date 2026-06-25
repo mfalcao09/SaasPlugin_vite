@@ -26,8 +26,25 @@ export interface Profissional {
   comissao_pct: number | null
   foto_url?: string | null
   ativo: boolean | null
+  hora_inicio?: string | null
+  hora_fim?: string | null
+  dias_atendimento?: number[] | null
   created_at?: string
 }
+
+// Dias da semana: 0=domingo .. 6=sábado
+const DIAS_SEMANA = [
+  { value: 0, label: 'Dom' },
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
+]
+const DIAS_DEFAULT = [1, 2, 3, 4, 5, 6]
+const HORA_INICIO_DEFAULT = '09:00'
+const HORA_FIM_DEFAULT = '18:00'
 
 // `profissionais` ainda não está no types.ts gerado — builder destipado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,11 +56,15 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [telefone, setTelefone] = useState('')
   const [especialidades, setEspecialidades] = useState('')
   const [comissaoPct, setComissaoPct] = useState('')
+  const [horaInicio, setHoraInicio] = useState(HORA_INICIO_DEFAULT)
+  const [horaFim, setHoraFim] = useState(HORA_FIM_DEFAULT)
+  const [diasAtendimento, setDiasAtendimento] = useState<number[]>(DIAS_DEFAULT)
 
   const { data: fetched = [], isLoading } = useQuery({
     queryKey: ['profissionais', organizationId],
@@ -59,7 +80,34 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
   })
 
   const profissionais = demo ?? fetched
-  const reset = () => { setShowForm(false); setNome(''); setEmail(''); setTelefone(''); setEspecialidades(''); setComissaoPct('') }
+  const reset = () => {
+    setShowForm(false); setEditingId(null)
+    setNome(''); setEmail(''); setTelefone(''); setEspecialidades(''); setComissaoPct('')
+    setHoraInicio(HORA_INICIO_DEFAULT); setHoraFim(HORA_FIM_DEFAULT); setDiasAtendimento(DIAS_DEFAULT)
+  }
+
+  const toggleDia = (dia: number) =>
+    setDiasAtendimento((prev) => prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia].sort((a, b) => a - b))
+
+  const openNovo = () => {
+    setEditingId(null)
+    setNome(''); setEmail(''); setTelefone(''); setEspecialidades(''); setComissaoPct('')
+    setHoraInicio(HORA_INICIO_DEFAULT); setHoraFim(HORA_FIM_DEFAULT); setDiasAtendimento(DIAS_DEFAULT)
+    setShowForm(true)
+  }
+
+  const openEditar = (p: Profissional) => {
+    setEditingId(p.id)
+    setNome(p.nome ?? '')
+    setEmail(p.email ?? '')
+    setTelefone(p.telefone ?? '')
+    setEspecialidades((p.especialidades ?? []).join(', '))
+    setComissaoPct(p.comissao_pct != null ? String(p.comissao_pct) : '')
+    setHoraInicio((p.hora_inicio ?? HORA_INICIO_DEFAULT).slice(0, 5))
+    setHoraFim((p.hora_fim ?? HORA_FIM_DEFAULT).slice(0, 5))
+    setDiasAtendimento(Array.isArray(p.dias_atendimento) ? p.dias_atendimento : DIAS_DEFAULT)
+    setShowForm(true)
+  }
 
   const criar = useMutation({
     mutationFn: async () => {
@@ -68,6 +116,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
         organization_id: organizationId!,
         nome, email: email || null, telefone: telefone || null,
         especialidades: especialidadesArr, comissao_pct: comissaoPct ? Number(comissaoPct) : 0, ativo: true,
+        hora_inicio: horaInicio, hora_fim: horaFim, dias_atendimento: diasAtendimento,
       })
       if (error) throw error
     },
@@ -79,7 +128,31 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
     onError: () => toast.error('Erro ao cadastrar profissional.'),
   })
 
-  const onSave = () => isDemo ? toast.info('Ação indisponível no modo demonstração') : criar.mutate()
+  const atualizar = useMutation({
+    mutationFn: async () => {
+      const especialidadesArr = especialidades.split(',').map((e) => e.trim()).filter(Boolean)
+      const { error } = await db.from('profissionais').update({
+        nome, email: email || null, telefone: telefone || null,
+        especialidades: especialidadesArr, comissao_pct: comissaoPct ? Number(comissaoPct) : 0,
+        hora_inicio: horaInicio, hora_fim: horaFim, dias_atendimento: diasAtendimento,
+      }).eq('id', editingId!)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profissionais', organizationId] })
+      toast.success('Profissional atualizado!')
+      reset()
+    },
+    onError: () => toast.error('Erro ao atualizar profissional.'),
+  })
+
+  const onSave = () => {
+    if (isDemo) { toast.info('Ação indisponível no modo demonstração'); return }
+    if (horaInicio >= horaFim) { toast.error('A hora de início deve ser anterior à hora de fim.'); return }
+    if (editingId) atualizar.mutate(); else criar.mutate()
+  }
+
+  const saving = criar.isPending || atualizar.isPending
 
   const filtered = profissionais.filter((p) =>
     p.nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -102,7 +175,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
         <PageHeader
           title="Profissionais"
           description={`${profissionais.length} ${profissionais.length === 1 ? 'profissional cadastrado' : 'profissionais cadastrados'}`}
-          action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo profissional</Button>}
+          action={<Button onClick={openNovo}><Plus className="mr-2 h-4 w-4" />Novo profissional</Button>}
         />
 
         <div className="relative max-w-md">
@@ -131,7 +204,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
               </TableHeader>
               <TableBody>
                 {filtered.map((p) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className="cursor-pointer" onClick={() => !isDemo && openEditar(p)}>
                     <TableCell className="font-medium">{p.nome}</TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {(p.especialidades ?? []).length > 0 ? (
@@ -159,7 +232,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
 
       <Dialog open={showForm} onOpenChange={(o) => (o ? setShowForm(true) : reset())}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Novo profissional</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Editar profissional' : 'Novo profissional'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Nome *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -168,11 +241,35 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
             </div>
             <div className="space-y-2"><Label>Especialidades</Label><Input value={especialidades} onChange={(e) => setEspecialidades(e.target.value)} placeholder="separadas por vírgula (ex: Corte, Coloração)" /></div>
             <div className="space-y-2"><Label>Comissão (%)</Label><Input type="number" min="0" max="100" step="0.01" value={comissaoPct} onChange={(e) => setComissaoPct(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Hora de início</Label><Input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Hora de fim</Label><Input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} /></div>
+            </div>
+            <div className="space-y-2">
+              <Label>Dias de atendimento</Label>
+              <div className="flex flex-wrap gap-2">
+                {DIAS_SEMANA.map((dia) => {
+                  const ativo = diasAtendimento.includes(dia.value)
+                  return (
+                    <Button
+                      key={dia.value}
+                      type="button"
+                      size="sm"
+                      variant={ativo ? 'default' : 'outline'}
+                      onClick={() => toggleDia(dia.value)}
+                      className="min-w-[3rem]"
+                    >
+                      {dia.label}
+                    </Button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={reset}>Cancelar</Button>
-            <Button onClick={onSave} disabled={!nome.trim() || criar.isPending}>
-              {criar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar
+            <Button onClick={onSave} disabled={!nome.trim() || saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

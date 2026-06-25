@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano — Início (Cockpit de Ação) · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0e0b12; --panel:#171221; --panel2:#1f1830; --ink:#f4eefb; --muted:#b8a9cf;
+    --pink:#ec4899; --pink2:#f472b6; --line:#2c2340; --ok:#34d399; --warn:#fbbf24; --sky:#38bdf8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0e0b12,#140f1d 60%,#0e0b12);color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:30px;margin:0 0 4px;background:linear-gradient(90deg,var(--pink2),var(--sky));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);margin:0 0 24px;font-size:14px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+  .b{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+  .b.ok{color:var(--ok);border-color:#1f5a44}
+  h2{font-size:19px;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:20px 0 6px;color:var(--pink2)}
+  p{margin:8px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .q{display:flex;gap:10px;margin:6px 0}
+  .q .n{flex:0 0 26px;height:26px;border-radius:8px;background:var(--panel2);display:grid;place-items:center;color:var(--pink2);font-weight:700}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;background:var(--panel)}
+  code{background:var(--panel2);padding:1px 6px;border-radius:6px;font-size:12.5px;color:#ffd6ec}
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:4px 0}
+  .rule{background:linear-gradient(90deg,rgba(236,72,153,.12),transparent);border-left:3px solid var(--pink);
+    padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  .layout{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:14px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:12.5px;white-space:pre;overflow:auto}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .dec{display:grid;gap:10px}
+  .opt{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .opt.reco{border-color:#5a3a4d;background:linear-gradient(90deg,rgba(236,72,153,.10),var(--panel2))}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plano — Início (Cockpit de Ação)</h1>
+  <p class="sub">NexvyBeauty · 2026-06-25 · spec de construção</p>
+  <div class="badges">
+    <span class="b ok">✓ Conceito: Cockpit de ação</span>
+    <span class="b ok">✓ Blocos v1: A · B · C · D</span>
+    <span class="b">Não implementar até o "go"</span>
+  </div>
+
+  <h2>1. Princípio — o que a Início É e o que NÃO é</h2>
+  <div class="card">
+    <p>A Início <strong>não é outra página de análise</strong>. Relatórios &amp; Gestão, Financeiro, AI Growth, Radar e Painel já têm os gráficos profundos. Copiar o dashboard da CBA (faturamento/dia + top serviços + top profissionais) <strong>duplicaria</strong> Relatórios &amp; Gestão.</p>
+    <p>É o <strong>cockpit de ação diário</strong>: responde 3 perguntas em &lt;10s e <strong>aponta</strong> (deep-link) pra página-dona de cada tema.</p>
+    <div class="q"><span class="n">1</span><span><strong>Tô ganhando dinheiro?</strong> (melhor ou pior que antes?)</span></div>
+    <div class="q"><span class="n">2</span><span><strong>Como tá meu dia?</strong> (quem vem, cheia ou vazia?)</span></div>
+    <div class="q"><span class="n">3</span><span><strong>Onde tem dinheiro fácil + o que preciso fazer agora?</strong></span></div>
+    <div class="rule">🔒 <strong>Regra de ouro (anti-Frankenstein):</strong> cada bloco mostra <strong>número + 1 CTA</strong>, nunca o gráfico inteiro. O gráfico vive na página-dona.</div>
+  </div>
+
+  <h2>2. Os 4 blocos da v1</h2>
+  <table>
+    <tr><th>Bloco</th><th>Responde</th><th>Conteúdo (headline)</th><th>Fonte</th><th>Deep-link</th></tr>
+    <tr><td><strong>A.</strong> Como vai o salão</td><td>Tô ganhando?</td><td>Faturamento do mês <strong>+ ↑/↓ vs mês anterior</strong>, Ticket médio, Atendimentos</td><td>lançamentos / agendamentos</td><td>Financeiro</td></tr>
+    <tr><td><strong>B.</strong> Seu dia</td><td>Como tá meu dia?</td><td>Próximos atendimentos de hoje + contador do dia</td><td>agendamentos (hoje)</td><td>Agenda</td></tr>
+    <tr><td><strong>C.</strong> Onde tem dinheiro</td><td>Dinheiro fácil?</td><td><strong>R$ recuperável</strong> + alavanca top numa linha</td><td>AI Growth (alavancas)</td><td>AI Growth</td></tr>
+    <tr><td><strong>D.</strong> Precisa de você</td><td>O que faço agora?</td><td>Leads aguardando + IA travada + <strong>tarefas de hoje</strong></td><td>conversas + tasks</td><td>Radar / Tarefas</td></tr>
+  </table>
+
+  <h3>Cálculos-chave</h3>
+  <div class="card">
+    <ul>
+      <li><strong>Faturamento do mês</strong> → soma de <code>lancamentos</code> (entrada, mês corrente). Comparação = mesmo cálculo no mês anterior → <code>((atual−anterior)/anterior)×100</code> (guard anterior&gt;0).</li>
+      <li><strong>Ticket médio</strong> = faturamento ÷ nº de <code>agendamentos</code> concluídos no mês.</li>
+      <li><strong>Atendimentos</strong> = COUNT <code>agendamentos</code> status='concluido' no mês.</li>
+      <li><strong>R$ recuperável</strong> = soma das alavancas do AI Growth (reusa <code>buildLevers</code>).</li>
+      <li><strong>Precisa de você</strong> = conversas waiting_human/IA travada + <code>tasks</code> com prazo hoje.</li>
+    </ul>
+  </div>
+
+  <h2>3. Layout — dinheiro e ação primeiro</h2>
+  <div class="layout">Olá, {nome} — saudação curta + data
+┌──────────────────────────────────────────────┐
+│ A — 3 KPIs com ↑/↓ (faturamento · ticket · atend.)│
+├──────────────────────────────────────────────┤
+│ C — "Onde tem dinheiro" (R$ recuperável + CTA)    │  ← destaque (money-first)
+├───────────────────────┬──────────────────────┤
+│ B — Seu dia           │ D — Precisa de você      │  ← 2 colunas
+└───────────────────────┴──────────────────────┘</div>
+  <p class="sub">Responsivo: 2 colunas viram 1 no mobile. Tema dark/pink, padrão do Cockpit.</p>
+
+  <h2>4. O que fica de FORA da v1</h2>
+  <div class="card">
+    <ul>
+      <li><span class="pill">cortado</span> <strong>Bloco E (Destaques)</strong> — top serviço/profissional, pacotes a renovar. Já está em Relatórios &amp; Gestão; pode voltar em v2 como 1-liners.</li>
+      <li><span class="pill">cortado</span> <strong>Gráficos</strong> (faturamento/dia, distribuições) — vivem nas páginas-dona.</li>
+      <li><span class="pill">v2</span> <strong>Ocupação %</strong> — precisa de modelo de capacidade (profissionais × horários).</li>
+    </ul>
+  </div>
+
+  <h2>5. Construção — reuso &gt; reescrita</h2>
+  <div class="card">
+    <ul>
+      <li><strong>Novo:</strong> <code>src/cockpit/Inicio.tsx</code> (substitui o placeholder da rota).</li>
+      <li><strong>Extrair p/ reuso:</strong> <code>buildLevers</code> → <code>src/cockpit/aiGrowthLevers.ts</code>; lógica do "Precisa de você" → hook reusável.</li>
+      <li><strong>Reusar:</strong> <code>useOrganizationId</code>/<code>formatCurrency</code>, <code>useTasks</code>, queries de agendamentos/lançamentos, tokens shadcn.</li>
+      <li><strong>Sem novo backend</strong> — tudo client-side sobre tabelas existentes.</li>
+    </ul>
+  </div>
+
+  <h2>6. Decisão aberta — fonte do "Faturamento do mês"</h2>
+  <div class="dec">
+    <div class="opt reco"><strong>(a) lançamentos (caixa)</strong> — <span class="pill">recomendado</span> consistente com Financeiro, já populado pelo seed. "Faturamento" = dinheiro que entrou.</div>
+    <div class="opt"><strong>(b) agendamentos concluídos (serviços)</strong> — consistente com Relatórios &amp; Gestão, mas hoje ~vazio → home apareceria zerada até haver agenda real.</div>
+  </div>
+  <p>Recomendação: <strong>(a)</strong> pro faturamento; ticket médio e atendimentos vêm de agendamentos. Pra demo 100% populada, semear alguns agendamentos concluídos também.</p>
+
+  <h2>7. Critérios de sucesso (verificáveis)</h2>
+  <div class="card">
+    <ul>
+      <li>4 blocos renderizam com dado real + empty states discretos (sem NaN).</li>
+      <li>Comparação % correta (mês vs mês anterior; guard anterior&gt;0).</li>
+      <li>Cada bloco com deep-link funcional.</li>
+      <li><code>npm run build</code> verde + deploy anti-phantom (string no bundle servido + HTTP 200).</li>
+      <li>Prova visual: home populada com o seed.</li>
+    </ul>
+  </div>
+
+  <div class="foot">Confirmar a decisão §6 (fonte do faturamento) + dar o "go" → construo <code>Inicio.tsx</code> + extrações, build, deploy, prova. · NexvyBeauty / SaasPlugin_vite</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano — Início (Cockpit de Ação) v2 · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0e0b12; --panel:#171221; --panel2:#1f1830; --ink:#f4eefb; --muted:#b8a9cf;
+    --pink:#ec4899; --pink2:#f472b6; --line:#2c2340; --ok:#34d399; --warn:#fbbf24; --sky:#38bdf8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0e0b12,#140f1d 60%,#0e0b12);color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:30px;margin:0 0 4px;background:linear-gradient(90deg,var(--pink2),var(--sky));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+  .b{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+  .b.ok{color:var(--ok);border-color:#1f5a44}
+  .b.new{color:var(--pink2);border-color:#5a3a4d}
+  h2{font-size:19px;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:18px 0 6px;color:var(--pink2)}
+  p{margin:8px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+  .card.new{border-color:#5a3a4d}
+  code{background:var(--panel2);padding:1px 6px;border-radius:6px;font-size:12.5px;color:#ffd6ec}
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:4px 0}
+  .rule{background:linear-gradient(90deg,rgba(236,72,153,.12),transparent);border-left:3px solid var(--pink);
+    padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  .find{background:linear-gradient(90deg,rgba(56,189,248,.12),transparent);border-left:3px solid var(--sky);
+    padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  .layout{background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:14px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre;overflow:auto}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .tag-new{display:inline-block;font-size:10px;padding:1px 7px;border-radius:999px;background:var(--pink);color:#fff;margin-left:6px;vertical-align:middle}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+  .phase{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0}
+  .phase.p1{border-color:#1f5a44}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plano — Início (Cockpit de Ação) · v2</h1>
+  <p class="sub">NexvyBeauty · 2026-06-25 · grounded no schema real · supersede a v1</p>
+  <div class="badges">
+    <span class="b ok">✓ Cockpit de ação</span>
+    <span class="b ok">✓ Faturamento = lançamentos</span>
+    <span class="b new">+ Bloco E · F · G</span>
+    <span class="b new">+ Perda de agenda</span>
+  </div>
+
+  <h2>1. Princípio (aprovado)</h2>
+  <div class="rule">🔒 <strong>Regra de ouro (anti-Frankenstein):</strong> cada bloco mostra <strong>número + 1 CTA</strong>, nunca o gráfico inteiro. O gráfico vive na página-dona. <em>(Marcelo: "isso é importante estar presente.")</em></div>
+
+  <h2>2. Os 7 blocos</h2>
+
+  <div class="card"><h3>A — Como vai o salão (KPIs + comparação + perda de agenda)</h3>
+    <ul>
+      <li><strong>Faturamento do mês</strong> (<code>lancamentos</code> entrada) + ↑/↓ vs mês anterior</li>
+      <li><strong>Ticket médio</strong> (faturamento ÷ atendimentos concluídos) + ↑/↓</li>
+      <li><strong>Atendimentos concluídos</strong> + ↑/↓</li>
+      <li><strong>Perda de agenda</strong> <span class="tag-new">NOVO</span> — R$ desmarcado/no-show + % desmarcação (ver §3)</li>
+    </ul>
+  </div>
+
+  <div class="card"><h3>B — Seu dia</h3>
+    <p>Próximos atendimentos de hoje (<code>agendamentos</code> hoje) + <strong>ocupação de hoje</strong> (motor do Bloco G) → Minha Agenda.</p>
+  </div>
+
+  <div class="card"><h3>C — Onde tem dinheiro (AI Growth)</h3>
+    <p><strong>R$ recuperável</strong> = soma das 5 alavancas + alavanca top + CTA. Reuso: extrair <code>buildLevers</code> (hoje privado) p/ <code>src/cockpit/levers.ts</code>.</p>
+  </div>
+
+  <div class="card"><h3>D — Precisa de você</h3>
+    <p>Conversas aguardando/IA travada (reusa <code>PrecisaDeVoce.tsx</code>) + tarefas de hoje (<code>useTodaysTasks</code>) → Radar / Tarefas.</p>
+  </div>
+
+  <div class="card new"><h3>E — Destaques do mês (1-liners) <span class="tag-new">NOVO</span></h3>
+    <ul>
+      <li>🏆 <strong>Serviço campeão:</strong> {nome} ({R$})</li>
+      <li>💇 <strong>Profissional destaque:</strong> {nome} ({R$} faturado)</li>
+      <li>📦 <strong>Pacotes a renovar:</strong> {N} vencem em ≤30 dias ({R$}) → CTA</li>
+    </ul>
+  </div>
+
+  <div class="card new"><h3>F — Insights de Crescimento (gestão PME) <span class="tag-new">NOVO</span></h3>
+    <p>Na home: <strong>2–3 insights-1-liner</strong> de maior impacto + CTA; suíte completa numa view "Insights" (deep-link).</p>
+    <ul>
+      <li>📉 <strong>Churn do mês:</strong> {X}% das clientes pararam de vir <em>(churn rate)</em></li>
+      <li>🎯 <strong>Concentração (Pareto/ABC):</strong> top 20% de clientes = {Z}% da receita</li>
+      <li>🔁 <strong>Frequência de retorno:</strong> cada cliente volta a cada {N} dias <em>(RFM)</em></li>
+    </ul>
+    <p class="sub">Roadmap (8 técnicas computáveis já): Churn · RFM · Curva ABC · LTV · Frequência · Ticket/profissional · Mix de serviços · Sazonalidade.</p>
+  </div>
+
+  <div class="card new"><h3>G — Ocupação % <span class="tag-new">NOVO</span> (capacidade = profissionais × horários × dias)</h3>
+    <div class="find">⚡ <strong>Achado:</strong> a infra <strong>já existe</strong> no banco — <code>profissionais.hora_inicio/hora_fim/dias_atendimento</code> (default 09–18, seg–sáb) + <code>servico_catalogo.duracao_minutos</code> + <code>agendamentos.duracao_minutos</code>. A Edge <code>salao-availability</code> já calcula slots livres. Sua ideia já está no schema — só falta expor no cadastro.</div>
+    <p><strong>Home:</strong> "Ocupação da semana: {X}%" = min. agendados ÷ min. de capacidade + barra + CTA.</p>
+    <p><strong>Falta (~3h):</strong> (1) expor os 3 campos no cadastro de Profissionais; (2) popular <code>agendamentos.duracao_minutos</code> no INSERT; (3) regen <code>types.ts</code>; (4) cálculo. <strong>Faseável:</strong> liga já com os defaults; cadastro deixa preciso.</p>
+  </div>
+
+  <h2>3. Métrica "agendado × faturado" (perda de agenda) <span class="tag-new">NOVO</span></h2>
+  <div class="card">
+    <p><strong>Definição honesta</strong> (auto-contida em <code>agendamentos</code>):</p>
+    <ul>
+      <li><strong>Taxa de desmarcação</strong> = (cancelado + no_show) ÷ total</li>
+      <li><strong>R$ perdido</strong> = SUM(<code>agendamentos.valor</code>) status IN (cancelado, no_show)</li>
+    </ul>
+    <p>⚠️ <strong>Leitura adicional (direcional):</strong> total agendado (R$ em <code>agendamentos</code>) × faturado em caixa (<code>lancamentos</code>). São tabelas diferentes — é indicador <strong>direcional, não reconciliação contábil</strong>. Será rotulado como tal.</p>
+  </div>
+
+  <h2>4. Layout</h2>
+  <div class="layout">Olá, {nome} — saudação + data
+┌──────────────────────────────────────────────┐
+│ A — KPIs ↑/↓ (faturamento·ticket·atend.·perda de agenda)│
+├───────────────────────┬──────────────────────┤
+│ C — Onde tem dinheiro │ G — Ocupação da semana   │
+├───────────────────────┼──────────────────────┤
+│ B — Seu dia           │ D — Precisa de você      │
+├───────────────────────┴──────────────────────┤
+│ E — Destaques (3 1-liners) · F — Insights (2-3)     │
+└──────────────────────────────────────────────┘</div>
+
+  <h2>5. Faseamento (decisão de escopo)</h2>
+  <div class="phase p1"><strong>Fase 1 — Início v1 (1 push):</strong> A (com perda de agenda) + B + C + D + E + F (2-3 1-liners). Tudo computável já, <strong>zero migration</strong>. Extrai buildLevers.</div>
+  <div class="phase"><strong>Fase 2 — Bloco G (Ocupação %):</strong> cadastro de profissionais (3 campos) + fix duracao_minutos + regen types + cálculo + cards. ~3h. Junto no v1 (push maior) OU logo após.</div>
+  <div class="phase"><strong>Roadmap — view de Insights (F completo, 8 técnicas):</strong> depois.</div>
+
+  <div class="foot">Confirmar o faseamento (§5) — G junto no v1 ou fase 2 — e dar o "go". · NexvyBeauty / SaasPlugin_vite</div>
+</div>
+</body>
+</html>

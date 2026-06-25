@@ -54,7 +54,7 @@ export interface Agendamento {
 
 interface ClienteOption { id: string; nome: string }
 interface ProfissionalOption { id: string; nome: string }
-interface ServicoOption { id: string; nome: string; valor: number | null }
+interface ServicoOption { id: string; nome: string; valor: number | null; duracao_minutos?: number | null }
 
 type ViewMode = 'table' | 'month' | 'week' | 'day' | 'list'
 
@@ -132,7 +132,7 @@ export default function Agenda({ demo, bare }: { demo?: Agendamento[]; bare?: bo
   const { data: servicos = [] } = useQuery({
     queryKey: ['servico_catalogo-opt', organizationId], enabled,
     queryFn: async () => {
-      const { data: rows, error } = await db.from('servico_catalogo').select('id, nome, valor:preco_base').eq('organization_id', organizationId!)
+      const { data: rows, error } = await db.from('servico_catalogo').select('id, nome, valor:preco_base, duracao_minutos').eq('organization_id', organizationId!)
       if (error) throw error
       return (rows ?? []) as ServicoOption[]
     },
@@ -206,6 +206,7 @@ export default function Agenda({ demo, bare }: { demo?: Agendamento[]; bare?: bo
         profissional_id: profissionalId || null, profissional_nome: profissional?.nome ?? null,
         servico_id: servicoId || null, servico_nome: servico?.nome ?? null,
         data, hora, valor: valor ? Number(valor) : 0,
+        duracao_minutos: (servico as any)?.duracao_minutos ?? 30,
         forma_pagamento: formaPagamento || null, status: status || 'agendado', observacoes: observacoes || null,
       }
       if (editId) {
