@@ -118,12 +118,28 @@ function extractQr(obj: any): string | null {
   return null;
 }
 
+// Events that the evolution-webhook function actually handles (v2.3.7 names).
+// Keep in sync with evolution-webhook/index.ts normalizePayload().
+const WEBHOOK_EVENTS = [
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "SEND_MESSAGE",
+];
+
+// Evolution API v2.3.7: webhook is configured per-instance via
+//   POST /webhook/set/{instanceName}  body { webhook: { enabled, url, events } }
+// Instances are addressed by instanceName (the `name` column), NOT the uuid.
 async function configureWebhook(
   config: EvolutionConfig,
-  instanceUuid: string,
+  instanceName: string,
   instanceToken: string | null | undefined,
   webhookUrl: string,
 ): Promise<{ ok: boolean; error?: string; status?: number; response?: any }> {
+  if (!instanceName) {
+    return { ok: false, error: "Nome da instância ausente." };
+  }
   if (!instanceToken) {
     return {
       ok: false,
@@ -133,60 +149,39 @@ async function configureWebhook(
   }
 
   console.log(
-    `[configureWebhook] uuid=${instanceUuid} apikey=${maskKey(instanceToken)} (instance token)`,
+    `[configureWebhook] name=${instanceName} apikey=${maskKey(instanceToken)} (instance token)`,
   );
 
-  const primary = await evoFetch(
+  const res = await evoFetch(
     config,
-    `/instance/connect`,
+    `/webhook/set/${encodeURIComponent(instanceName)}`,
     {
       method: "POST",
-      headers: { instanceId: instanceUuid },
       body: JSON.stringify({
-        webhookUrl,
-        subscribe: ["ALL"],
-        immediate: false,
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          events: WEBHOOK_EVENTS,
+        },
       }),
     },
     instanceToken,
   );
 
   console.log(
-    `[configureWebhook] uuid=${instanceUuid} status=${primary.status} ok=${primary.ok}`,
-    typeof primary.body === "string" ? primary.body.slice(0, 200) : primary.body,
+    `[configureWebhook] name=${instanceName} status=${res.status} ok=${res.ok}`,
+    typeof res.body === "string" ? res.body.slice(0, 200) : res.body,
   );
 
-  if (primary.ok) {
-    return { ok: true, status: primary.status, response: primary.body };
-  }
-
-  const fallback = await evoFetch(
-    config,
-    `/instance/connect`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        instanceId: instanceUuid,
-        webhookUrl,
-        subscribe: ["ALL"],
-        immediate: false,
-      }),
-    },
-    instanceToken,
-  );
-
-  if (fallback.ok) {
-    return { ok: true, status: fallback.status, response: fallback.body };
+  if (res.ok) {
+    return { ok: true, status: res.status, response: res.body };
   }
 
   return {
     ok: false,
-    status: primary.status,
-    error:
-      primary.message ||
-      fallback.message ||
-      `Falha ao configurar webhook (status ${primary.status}).`,
-    response: primary.body ?? fallback.body,
+    status: res.status,
+    error: res.message || `Falha ao configurar webhook (status ${res.status}).`,
+    response: res.body,
   };
 }
 
@@ -194,7 +189,7 @@ function parseInstanceFromList(item: any) {
   const name: string = item?.name || item?.instanceName || item?.instance?.instanceName;
   const uuid: string | null = item?.id ?? item?.instanceId ?? item?.instance?.id ?? null;
   const token = item?.token ?? item?.apikey ?? item?.hash?.apikey ?? null;
-  const jid: string | null = item?.jid ?? item?.owner ?? null;
+  const jid: string | null = item?.ownerJid ?? item?.jid ?? item?.owner ?? null;
   const phoneRaw = jid
     ? String(jid).split("@")[0].split(":")[0]
     : (item?.number ?? item?.phoneNumber ?? null);
@@ -280,7 +275,7 @@ Deno.serve(async (req) => {
         });
       }
       const cfg = { url, globalApiKey };
-      const res = await evoFetch(cfg, "/instance/all", { method: "GET" });
+      const res = await evoFetch(cfg, "/instance/fetchInstances", { method: "GET" });
 
       if (res.ok) {
         return new Response(
@@ -324,14 +319,18 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Evolution Go requires both `name` and `token` (instance API key) in the body.
-      // We generate a UUID v4 and use it as the instance token so we always have it
-      // even if the server response doesn't echo it back.
+      // Evolution API v2.3.7 requires { instanceName, integration, token }.
+      // We generate a token as a fallback; the server returns the real instance
+      // apikey in `body.hash` (top-level string).
       const generatedToken = crypto.randomUUID();
-      console.log(`[create_instance] -> POST /instance/create name="${name}" org=${targetOrgId} token=${maskKey(generatedToken)}`);
+      console.log(`[create_instance] -> POST /instance/create instanceName="${name}" org=${targetOrgId} token=${maskKey(generatedToken)}`);
       const createRes = await evoFetch(config, "/instance/create", {
         method: "POST",
-        body: JSON.stringify({ name, token: generatedToken }),
+        body: JSON.stringify({
+          instanceName: name,
+          integration: "WHATSAPP-BAILEYS",
+          token: generatedToken,
+        }),
       });
       console.log(
         `[create_instance] <- status=${createRes.status} ok=${createRes.ok}`,
@@ -344,17 +343,20 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Evolution Go responde: { data: { id, name, token, ... }, message: "success" }
-      const created = createRes.body?.data ?? createRes.body?.instance ?? createRes.body ?? {};
-      const uuid = created?.id ?? created?.instanceId ?? created?.uuid ?? null;
-      const instanceToken = created?.token ?? created?.hash?.apikey ?? created?.apikey ?? generatedToken;
+      // Evolution API v2.3.7 responds: { instance: { instanceId, status, ... }, hash: "<apikey>" }
+      const created = createRes.body?.instance ?? createRes.body?.data ?? createRes.body ?? {};
+      const uuid = created?.instanceId ?? created?.id ?? created?.uuid ?? null;
+      const instanceToken =
+        (typeof createRes.body?.hash === "string" ? createRes.body.hash : null) ??
+        createRes.body?.hash?.apikey ??
+        created?.token ?? created?.apikey ?? generatedToken;
       console.log(`[create_instance] parsed uuid=${uuid} token=${maskKey(instanceToken)}`);
 
       if (!uuid) {
         return new Response(
           JSON.stringify({
             ok: false,
-            error: "Servidor criou a instância mas não retornou UUID. Verifique a versão do Evolution Go.",
+            error: "Servidor criou a instância mas não retornou UUID. Verifique a versão do Evolution API.",
             response: createRes.body,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -389,10 +391,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Best-effort: configure webhook now
-      if (uuid && instanceToken) {
+      // Best-effort: configure webhook now (v2.3.7 addresses by instanceName)
+      if (instanceToken) {
         const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
-        const wh = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+        const wh = await configureWebhook(config, name, instanceToken, webhookUrl);
         await supabase
           .from("evolution_instances")
           .update({
@@ -498,10 +500,14 @@ Deno.serve(async (req) => {
       }
 
       const generatedToken = crypto.randomUUID();
-      console.log(`[create_instance_self] -> POST /instance/create name="${finalName}" org=${orgId} token=${maskKey(generatedToken)}`);
+      console.log(`[create_instance_self] -> POST /instance/create instanceName="${finalName}" org=${orgId} token=${maskKey(generatedToken)}`);
       const createRes = await evoFetch(config, "/instance/create", {
         method: "POST",
-        body: JSON.stringify({ name: finalName, token: generatedToken }),
+        body: JSON.stringify({
+          instanceName: finalName,
+          integration: "WHATSAPP-BAILEYS",
+          token: generatedToken,
+        }),
       });
       console.log(
         `[create_instance_self] <- status=${createRes.status} ok=${createRes.ok}`,
@@ -516,9 +522,13 @@ Deno.serve(async (req) => {
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const created = createRes.body?.data ?? createRes.body?.instance ?? createRes.body ?? {};
-      const uuid = created?.id ?? created?.instanceId ?? created?.uuid ?? null;
-      const instanceToken = created?.token ?? created?.hash?.apikey ?? created?.apikey ?? generatedToken;
+      // v2.3.7: { instance: { instanceId, status }, hash: "<apikey>" }
+      const created = createRes.body?.instance ?? createRes.body?.data ?? createRes.body ?? {};
+      const uuid = created?.instanceId ?? created?.id ?? created?.uuid ?? null;
+      const instanceToken =
+        (typeof createRes.body?.hash === "string" ? createRes.body.hash : null) ??
+        createRes.body?.hash?.apikey ??
+        created?.token ?? created?.apikey ?? generatedToken;
 
       if (!uuid) {
         return new Response(JSON.stringify({
@@ -555,9 +565,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Configura webhook (best-effort)
+      // Configura webhook (best-effort) — v2.3.7 endereça por instanceName
       const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
-      const wh = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+      const wh = await configureWebhook(config, finalName, instanceToken, webhookUrl);
       await supabase
         .from("evolution_instances")
         .update({
@@ -641,7 +651,7 @@ Deno.serve(async (req) => {
       const id = String(body.id || "");
       const { data: inst } = await supabase
         .from("evolution_instances")
-        .select("organization_id, name, metadata")
+        .select("organization_id, name, instance_token, metadata")
         .eq("id", id)
         .maybeSingle();
       if (!inst) {
@@ -655,11 +665,16 @@ Deno.serve(async (req) => {
         });
       }
 
-      const uuid = (inst.metadata as any)?.instance_uuid;
-      if (uuid) {
-        await evoFetch(config, `/instance/delete/${uuid}`, { method: "DELETE" }).catch(() => null);
-      } else if (inst.name) {
-        await evoFetch(config, `/instance/delete/${inst.name}`, { method: "DELETE" }).catch(() => null);
+      // v2.3.7: DELETE /instance/delete/{instanceName}
+      const instanceName = inst.name || (inst.metadata as any)?.instance_name;
+      const instTokenDel = (inst as any).instance_token || (inst.metadata as any)?.instance_token || null;
+      if (instanceName) {
+        await evoFetch(
+          config,
+          `/instance/delete/${encodeURIComponent(instanceName)}`,
+          { method: "DELETE" },
+          instTokenDel || undefined,
+        ).catch(() => null);
       }
 
       const { error } = await supabase.from("evolution_instances").delete().eq("id", id);
@@ -703,34 +718,38 @@ Deno.serve(async (req) => {
       }
 
       const meta: any = inst.metadata || {};
-      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      // v2.3.7 addresses instances by instanceName (the `name` column), NOT the uuid.
+      const instanceName: string | null = inst.name || meta.instance_name || null;
       const instanceToken = inst.instance_token || meta.instance_token || null;
 
-      if (!uuid || !instanceToken) {
-        return new Response(JSON.stringify({ error: "Instância sem UUID ou token. Solicite ao Super Admin para sincronizar do servidor." }), {
+      if (!instanceName || !instanceToken) {
+        return new Response(JSON.stringify({ error: "Instância sem nome ou token. Solicite ao Super Admin para sincronizar do servidor." }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       // Strategy:
-      // 1) Check current connection state on the server.
-      //    - connected/open => already connected, just sync DB and return.
-      //    - qr present     => store the SERVER QR exactly as returned now.
-      //    - otherwise      => POST /instance/connect to trigger a fresh QR.
-      // Never force logout here: it invalidates the active QR/session cycle on
-      // Evolution Go and makes the panel show a QR that WhatsApp no longer accepts.
+      // 1) Check current connection state via GET /instance/connectionState/{name}.
+      //    - state "open" => already connected, just sync DB and return.
+      // 2) Otherwise GET /instance/connect/{name} to fetch the QR (base64 + code).
+      // Never force logout here: it invalidates the active QR/session cycle and
+      // makes the panel show a QR that WhatsApp no longer accepts.
 
       // (1) Check current state
       try {
         const info = await evoFetch(
           config,
-          `/instance/${uuid}`,
+          `/instance/connectionState/${encodeURIComponent(instanceName)}`,
           { method: "GET" },
           instanceToken,
         );
-        const state = info?.body?.connectionStatus ?? info?.body?.connection ?? info?.body?.status ?? null;
-        if (info.ok && (state === "open" || info?.body?.connected === true)) {
+        const state =
+          info?.body?.instance?.state ??
+          info?.body?.state ??
+          info?.body?.connectionStatus ??
+          null;
+        if (info.ok && state === "open") {
           await supabase
             .from("evolution_instances")
             .update({
@@ -745,27 +764,11 @@ Deno.serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
-        const existingQr = extractQr(info?.body);
-        if (info.ok && existingQr) {
-          await supabase
-            .from("evolution_instances")
-            .update({
-              status: "qr_pending",
-              qr_code: existingQr,
-              qr_code_updated_at: new Date().toISOString(),
-              webhook_subscribed: true,
-            })
-            .eq("id", inst.id);
-          return new Response(
-            JSON.stringify({ ok: true, qr_code: existingQr, reused_server_qr: true }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
       } catch (e) {
-        console.warn(`[connect_instance] info check failed (continuing): ${e}`);
+        console.warn(`[connect_instance] state check failed (continuing): ${e}`);
       }
 
-      // Clear stale QR locally before asking Evolution Go for a new one.
+      // Clear stale QR locally before asking the server for a new one.
       await supabase
         .from("evolution_instances")
         .update({
@@ -775,16 +778,13 @@ Deno.serve(async (req) => {
         })
         .eq("id", inst.id);
 
-      // Connect — this triggers QRCode/QRCODE_UPDATED webhook and may also return QR inline.
-      const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
+      // Connect — v2.3.7: GET /instance/connect/{name} returns
+      //   { pairingCode, code: "2@...", base64: "data:image/png;base64,..." }
+      // We prefer base64 (image) and fall back to the raw pairing `code` string.
       const res = await evoFetch(
         config,
-        `/instance/connect`,
-        {
-          method: "POST",
-          headers: { instanceId: uuid },
-          body: JSON.stringify({ webhookUrl, subscribe: ["ALL"], immediate: true }),
-        },
+        `/instance/connect/${encodeURIComponent(instanceName)}`,
+        { method: "GET" },
         instanceToken,
       );
 
@@ -797,20 +797,25 @@ Deno.serve(async (req) => {
 
       let qrString = extractQr(res.body);
 
-      // (5) If QR not inline, poll the instance state up to ~6s — Evolution Go often
-      //     returns the QR inside GET /instance/{uuid} a second after connect.
+      // If QR not inline, poll connect again up to ~6s — the server may need a
+      // moment to generate the pairing payload after the first call.
       if (!qrString) {
         for (let i = 0; i < 4; i++) {
           await new Promise((r) => setTimeout(r, 1500));
           try {
-            const info = await evoFetch(config, `/instance/${uuid}`, { method: "GET" }, instanceToken);
+            const info = await evoFetch(
+              config,
+              `/instance/connect/${encodeURIComponent(instanceName)}`,
+              { method: "GET" },
+              instanceToken,
+            );
             const found = extractQr(info?.body);
             if (found) {
               qrString = found;
               break;
             }
           } catch (e) {
-            console.warn(`[connect_instance] poll info error: ${e}`);
+            console.warn(`[connect_instance] poll connect error: ${e}`);
           }
         }
       }
@@ -844,7 +849,7 @@ Deno.serve(async (req) => {
       if (denied) return denied;
       const targetOrgId = String(body.organization_id || "").trim() || null;
 
-      const res = await evoFetch(config, "/instance/all", { method: "GET" });
+      const res = await evoFetch(config, "/instance/fetchInstances", { method: "GET" });
       if (!res.ok) {
         return new Response(
           JSON.stringify({ error: res.message || `Erro ${res.status} ao listar instâncias` }),
@@ -867,12 +872,11 @@ Deno.serve(async (req) => {
         if (!parsed.name) continue;
 
         let webhookRes: { ok: boolean; error?: string; status?: number; response?: any };
-        if (!parsed.uuid) {
-          webhookRes = { ok: false, error: "Servidor não retornou UUID." };
-        } else if (!parsed.token) {
+        if (!parsed.token) {
           webhookRes = { ok: false, error: "Servidor não retornou token da instância." };
         } else {
-          webhookRes = await configureWebhook(config, parsed.uuid, parsed.token, webhookUrl);
+          // v2.3.7 addresses by instanceName (parsed.name).
+          webhookRes = await configureWebhook(config, parsed.name, parsed.token, webhookUrl);
         }
         if (webhookRes.ok) webhooksOk++; else webhooksFailed++;
 
@@ -1012,16 +1016,17 @@ Deno.serve(async (req) => {
 
       const webhookUrl = `${supabaseUrl}/functions/v1/evolution-webhook`;
       const meta: any = inst.metadata || {};
-      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      // v2.3.7 addresses by instanceName (the `name` column).
+      const instanceName: string | null = inst.name || meta.instance_name || null;
       const instanceToken = inst.instance_token || meta.instance_token || null;
 
-      if (!uuid || !instanceToken) {
-        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+      if (!instanceName || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem nome/token. Solicite sincronização." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const webhookRes = await configureWebhook(config, uuid, instanceToken, webhookUrl);
+      const webhookRes = await configureWebhook(config, instanceName, instanceToken, webhookUrl);
       await supabase
         .from("evolution_instances")
         .update({
@@ -1051,17 +1056,22 @@ Deno.serve(async (req) => {
       if (denied) return denied;
       const id = String(body.id || "");
 
-      // Try to delete on Evolution Go too (best-effort)
+      // Try to delete on the Evolution server too (best-effort).
+      // v2.3.7: DELETE /instance/delete/{instanceName}
       const { data: inst } = await supabase
         .from("evolution_instances")
-        .select("name, metadata")
+        .select("name, instance_token, metadata")
         .eq("id", id)
         .maybeSingle();
-      const uuid = (inst?.metadata as any)?.instance_uuid;
-      if (uuid) {
-        await evoFetch(config, `/instance/delete/${uuid}`, { method: "DELETE" }).catch(() => null);
-      } else if (inst?.name) {
-        await evoFetch(config, `/instance/delete/${inst.name}`, { method: "DELETE" }).catch(() => null);
+      const instanceName = inst?.name || (inst?.metadata as any)?.instance_name;
+      const instTokenDel = (inst as any)?.instance_token || (inst?.metadata as any)?.instance_token || null;
+      if (instanceName) {
+        await evoFetch(
+          config,
+          `/instance/delete/${encodeURIComponent(instanceName)}`,
+          { method: "DELETE" },
+          instTokenDel || undefined,
+        ).catch(() => null);
       }
 
       const { error } = await supabase.from("evolution_instances").delete().eq("id", id);
@@ -1114,9 +1124,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---- DISCONNECT INSTANCE (pause session, KEEP pairing) — admin/manager OR super admin ----
-    // Calls POST /instance/disconnect — closes the WebSocket session but keeps the device paired.
-    // Reconnect later returns to the same number WITHOUT a new QR.
+    // ---- DISCONNECT INSTANCE (pause session) — admin/manager OR super admin ----
+    // Evolution API v2.3.7 has no "disconnect that keeps pairing" endpoint; the
+    // only server-side unlink is DELETE /instance/logout/{instanceName}. We call
+    // it and reflect "disconnected" locally. (Reconnect will require a new QR.)
     if (action === "disconnect_instance") {
       const id = String(body.id || "");
       if (!id) {
@@ -1141,21 +1152,21 @@ Deno.serve(async (req) => {
       }
 
       const meta: any = inst.metadata || {};
-      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceName: string | null = inst.name || meta.instance_name || null;
       const instanceToken = inst.instance_token || meta.instance_token || null;
-      if (!uuid || !instanceToken) {
-        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+      if (!instanceName || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem nome/token. Solicite sincronização." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const res = await evoFetch(
         config,
-        `/instance/disconnect`,
-        { method: "POST", headers: { instanceId: uuid } },
+        `/instance/logout/${encodeURIComponent(instanceName)}`,
+        { method: "DELETE" },
         instanceToken,
       );
-      console.log(`[disconnect_instance] uuid=${uuid} status=${res.status} ok=${res.ok}`);
+      console.log(`[disconnect_instance] name=${instanceName} status=${res.status} ok=${res.ok}`);
 
       // Even if Evolution returns non-2xx (e.g. already disconnected), reflect locally
       await supabase
@@ -1206,21 +1217,22 @@ Deno.serve(async (req) => {
       }
 
       const meta: any = inst.metadata || {};
-      const uuid: string | null = meta.instance_uuid || inst.instance_id || null;
+      const instanceName: string | null = inst.name || meta.instance_name || null;
       const instanceToken = inst.instance_token || meta.instance_token || null;
-      if (!uuid || !instanceToken) {
-        return new Response(JSON.stringify({ ok: false, error: "Instância sem UUID/token. Solicite sincronização." }), {
+      if (!instanceName || !instanceToken) {
+        return new Response(JSON.stringify({ ok: false, error: "Instância sem nome/token. Solicite sincronização." }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      // v2.3.7: DELETE /instance/logout/{instanceName}
       const res = await evoFetch(
         config,
-        `/instance/logout`,
-        { method: "DELETE", headers: { instanceId: uuid } },
+        `/instance/logout/${encodeURIComponent(instanceName)}`,
+        { method: "DELETE" },
         instanceToken,
       );
-      console.log(`[logout_instance] uuid=${uuid} status=${res.status} ok=${res.ok}`);
+      console.log(`[logout_instance] name=${instanceName} status=${res.status} ok=${res.ok}`);
 
       // Always clear local pairing data — even if Evolution complained, the user wants it unlinked
       await supabase

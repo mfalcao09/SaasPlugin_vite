@@ -139,80 +139,81 @@ Deno.serve(async (req) => {
       globalKey = globalKey || String((platformCfg as any)?.evolution_go_global_api_key || "");
     }
 
-    // Evolution Go: instance is identified by the instance_token in the apikey header
+    // Evolution API v2.3.7: auth via apikey header (instance token or global key).
     const apikey = instance.instance_token || globalKey;
+    // v2.3.7 addresses instances by instanceName (the `name` column), NOT the uuid.
+    const instanceName = String(instance.name || "").trim();
     if (!url || !apikey) {
-      console.error("[evolution-send] Evolution Go not configured", {
+      console.error("[evolution-send] Evolution API not configured", {
         org_has_url: !!settings.evolution_go_url,
         platform_has_url: !!url,
         instance_has_token: !!instance.instance_token,
       });
-      return new Response(JSON.stringify({ error: "Evolution Go not configured" }), {
+      return new Response(JSON.stringify({ error: "Evolution API not configured" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (!instanceName) {
+      return new Response(JSON.stringify({ error: "Instância sem nome (instanceName). Sincronize do servidor." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const inst = encodeURIComponent(instanceName);
 
     const phone = to.replace(/\D/g, "");
 
     let res;
     switch (type) {
       case "text":
-        res = await evoFetch(url, apikey, `/send/text`, {
+        // Evolution API v2.3.7: POST /message/sendText/{instanceName} { number, text }
+        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, {
           number: phone,
           text: payload.text,
         });
         break;
       case "media": {
-        // Evolution Go contract (verified against live server):
-        //   POST /send/media
-        //   { number, type: "image"|"video"|"document"|"audio", url, caption, fileName }
-        // The server REQUIRES the field `type` (not `mediatype`) and `url`
-        // (not `media`). Sending the wrong names returns 400
-        // "media type is required" / "URL is required".
+        // Evolution API v2.3.7: POST /message/sendMedia/{instanceName}
+        //   { number, mediatype: "image"|"video"|"document", media: <url|base64>, caption?, fileName? }
         const rawMedia = payload.url ?? payload.media;
-        const mediaType = payload.type || payload.mediatype || "image";
+        const mediaType = payload.mediatype || payload.type || "image";
         const isDataUrl = typeof rawMedia === "string" && rawMedia.startsWith("data:");
         const mediaPayload: Record<string, any> = {
           number: phone,
-          type: mediaType,
+          mediatype: mediaType,
+          media: rawMedia,
           caption: payload.caption,
           fileName: payload.fileName,
         };
-        if (isDataUrl) {
-          mediaPayload.media = rawMedia;
-        } else {
-          mediaPayload.url = rawMedia;
-        }
         if (payload.mimetype) mediaPayload.mimetype = payload.mimetype;
-        console.log(`[evolution-send] media transport=${isDataUrl ? "base64" : "url"} mimetype=${payload.mimetype || "unknown"}`);
-        res = await evoFetch(url, apikey, `/send/media`, mediaPayload);
+        console.log(`[evolution-send] media transport=${isDataUrl ? "base64" : "url"} mediatype=${mediaType} mimetype=${payload.mimetype || "unknown"}`);
+        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, mediaPayload);
         break;
       }
       case "audio": {
-        // Servidor Evolution Go não tem rota /send/audio — usamos /send/media com type=audio.
-        const audioUrl = payload.audio || payload.url;
+        // v2.3.7: audio goes through sendMedia with mediatype=audio.
+        const audioUrl = payload.audio || payload.url || payload.media;
         const isDataUrl = typeof audioUrl === "string" && audioUrl.startsWith("data:");
         const audioPayload: Record<string, any> = {
           number: phone,
-          type: "audio",
+          mediatype: "audio",
+          media: audioUrl,
           mimetype: payload.mimetype || "audio/ogg",
           fileName: payload.fileName || `audio-${Date.now()}.ogg`,
         };
-        if (isDataUrl) audioPayload.media = audioUrl;
-        else audioPayload.url = audioUrl;
-        console.log(`[evolution-send] audio routed to /send/media transport=${isDataUrl ? "base64" : "url"}`);
-        res = await evoFetch(url, apikey, `/send/media`, audioPayload);
+        console.log(`[evolution-send] audio routed to /message/sendMedia transport=${isDataUrl ? "base64" : "url"}`);
+        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, audioPayload);
         break;
       }
       case "sticker":
-        res = await evoFetch(url, apikey, `/send/sticker`, {
+        res = await evoFetch(url, apikey, `/message/sendSticker/${inst}`, {
           number: phone,
           sticker: payload.sticker,
         });
         break;
       case "location":
-        res = await evoFetch(url, apikey, `/send/location`, {
+        res = await evoFetch(url, apikey, `/message/sendLocation/${inst}`, {
           number: phone,
           latitude: payload.latitude,
           longitude: payload.longitude,
@@ -221,20 +222,21 @@ Deno.serve(async (req) => {
         });
         break;
       case "contact":
-        res = await evoFetch(url, apikey, `/send/contact`, {
+        res = await evoFetch(url, apikey, `/message/sendContact/${inst}`, {
           number: phone,
           contact: payload.contacts || payload.contact,
         });
         break;
       case "link":
-        res = await evoFetch(url, apikey, `/send/link`, {
+        // v2.3.7 has no dedicated link endpoint — a link is just text with a URL.
+        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, {
           number: phone,
-          link: payload.link,
-          text: payload.text,
+          text: payload.text ? `${payload.text}\n${payload.link}` : payload.link,
+          linkPreview: true,
         });
         break;
       case "poll":
-        res = await evoFetch(url, apikey, `/send/poll`, {
+        res = await evoFetch(url, apikey, `/message/sendPoll/${inst}`, {
           number: phone,
           name: payload.name,
           selectableCount: payload.selectableCount || 1,
@@ -242,20 +244,20 @@ Deno.serve(async (req) => {
         });
         break;
       case "reaction":
-        res = await evoFetch(url, apikey, `/send/reaction`, {
+        res = await evoFetch(url, apikey, `/message/sendReaction/${inst}`, {
           key: payload.key,
           reaction: payload.reaction,
         });
         break;
       case "edit":
-        res = await evoFetch(url, apikey, `/chat/updateMessage`, {
+        res = await evoFetch(url, apikey, `/chat/updateMessage/${inst}`, {
           number: phone,
           key: payload.key,
           text: payload.text,
         });
         break;
       case "delete":
-        res = await evoFetch(url, apikey, `/chat/deleteMessageForEveryone`, {
+        res = await evoFetch(url, apikey, `/chat/deleteMessageForEveryone/${inst}`, {
           id: payload.id,
           remoteJid: payload.remoteJid,
           fromMe: payload.fromMe ?? true,
@@ -263,19 +265,17 @@ Deno.serve(async (req) => {
         });
         break;
       case "markRead":
-        res = await evoFetch(url, apikey, `/chat/markMessageAsRead`, {
+        res = await evoFetch(url, apikey, `/chat/markMessageAsRead/${inst}`, {
           readMessages: payload.readMessages,
         });
         break;
       case "presence": {
-        // Evolution Go contract: POST /message/presence { number, state, isAudio? }
-        // States Baileys: composing | recording | paused | available | unavailable
+        // v2.3.7: POST /chat/sendPresence/{instanceName} { number, presence, delay? }
+        // Baileys presence states: composing | recording | paused | available | unavailable
         const state = String(payload.state || payload.presence || "composing");
-        const isAudio = payload.isAudio === true || state === "recording";
-        res = await evoFetch(url, apikey, `/message/presence`, {
+        res = await evoFetch(url, apikey, `/chat/sendPresence/${inst}`, {
           number: phone,
-          state,
-          isAudio,
+          presence: state,
         });
         break;
       }
