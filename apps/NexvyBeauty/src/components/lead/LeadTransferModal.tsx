@@ -109,7 +109,7 @@ export function LeadTransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Transferir Lead: {lead.name}</DialogTitle>
         </DialogHeader>

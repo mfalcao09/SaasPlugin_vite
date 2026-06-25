@@ -91,7 +91,7 @@ export function WhatsAppManager() {
             WhatsApp
           </h1>
           <p className="text-muted-foreground mt-1">
-            Fluxos disparados quando o lead envia a primeira mensagem para sua instância Evolution.
+            Fluxos disparados quando o lead envia a primeira mensagem para seu número.
           </p>
         </div>
         <Button onClick={() => {

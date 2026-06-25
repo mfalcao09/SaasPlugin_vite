@@ -22,7 +22,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, TrendingUp, UserMinus, PackageCheck, CalendarClock, ArrowUpRight, Crown,
-  type LucideIcon,
+  RefreshCw, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -342,11 +342,21 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
   )
 }
 
+// "Atualizado em dd/mm/aa, às hh:mm:ss" — instante local de dataUpdatedAt (ms epoch).
+function formatUpdatedAt(ms: number): string {
+  const d = new Date(ms)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${p(d.getFullYear() % 100)}, às ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
 
-  const { data: agendamentos = [] } = useQuery({
+  const {
+    data: agendamentos = [], refetch: refetchAgendamentos,
+    dataUpdatedAt, isFetching: fetchingAg,
+  } = useQuery({
     queryKey: ['aigrowth-agendamentos', organizationId],
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
@@ -359,7 +369,7 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
     },
   })
 
-  const { data: pacotes = [] } = useQuery({
+  const { data: pacotes = [], refetch: refetchPacotes, isFetching: fetchingPac } = useQuery({
     queryKey: ['aigrowth-pacotes', organizationId],
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
@@ -392,6 +402,26 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
         title="AI Growth"
         description="Onde está a receita parada no seu negócio — sua IA leu o histórico e mapeou as alavancas."
       />
+
+      {/* Atualizar a análise sob demanda + carimbo da última atualização */}
+      {!isDemo && (
+        <div className="flex flex-col items-start gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { refetchAgendamentos(); refetchPacotes(); }}
+            disabled={fetchingAg || fetchingPac}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${fetchingAg || fetchingPac ? 'animate-spin' : ''}`} />
+            Atualizar agora
+          </Button>
+          {dataUpdatedAt > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Atualizado em {formatUpdatedAt(dataUpdatedAt)}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Headline: receita potencial recuperável (soma das alavancas) */}
       <MoneyHeadlineMacro total={totalPotencial} count={totalItens} />

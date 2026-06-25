@@ -91,7 +91,7 @@ export function CreateRadarTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Criar tarefa</DialogTitle>
           <DialogDescription>Atribua um follow-up para a equipe sobre {lead.name}.</DialogDescription>
