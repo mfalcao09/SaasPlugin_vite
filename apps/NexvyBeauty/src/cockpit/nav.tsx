@@ -1,17 +1,16 @@
 // ─── Cockpit — navegação da cabeleireira (linguagem de salão) ──────────────
-// Início standalone no topo (sem cabeçalho de seção). Seções: Meu salão,
-// Comercial, Gestão. Admin (~33 telas) colapsa em "Gestão & Ajustes" (/admin).
-// Reusa o shape de nav do UnifiedShell (ShellNavGroup) — grupo com title:'' = topo solto.
+// Início standalone no topo (sem cabeçalho de seção). Seções: Meu salão (negócio),
+// Comercial (atendimento/vendas), Gestão. Admin (~33 telas) colapsa em "Gestão &
+// Ajustes" (/admin). Grupo com title:'' = topo solto (UnifiedShell suprime o label).
 
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
-  BarChart3, Sparkles, Bot,
+  BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
 export const COCKPIT_NAV: ShellNavGroup[] = [
   {
-    // title vazio = item solto no topo (UnifiedShell suprime o SidebarGroupLabel)
     title: '',
     items: [
       { to: '/', label: 'Início', icon: Home, end: true },
@@ -22,6 +21,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     items: [
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
+      { to: '/ai-growth', label: 'AI Growth', icon: Sparkles }, // lente macro (negócio)
       { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
     ],
@@ -29,9 +29,11 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
   {
     title: 'Comercial',
     items: [
+      { to: '/painel', label: 'Painel', icon: LayoutDashboard }, // dashboard comercial (1º)
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
+      { to: '/radar', label: 'Radar IA', icon: Radar }, // lente micro (conversas)
+      { to: '/relatorios-atendimento', label: 'Relatórios', icon: LineChart },
       { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
-      { to: '/ai-growth', label: 'AI Growth', icon: Sparkles },
     ],
   },
   {

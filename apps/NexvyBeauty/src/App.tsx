@@ -26,6 +26,10 @@ const CockpitInicio = lazyWithRetry(() => import("./cockpit/Inicio")); // novo I
 const Relatorios = lazyWithRetry(() => import("./cockpit/Relatorios")); // Relatórios & Gestão
 // Demo público da página Relatórios (dados de exemplo — orgs ainda sem dados reais).
 const DemoRelatorios = lazyWithRetry(() => import("./cockpit/Relatorios").then(m => ({ default: () => <m.default demo={m.DEMO_RELATORIOS} /> })));
+// Comercial — páginas extraídas das abas do Conversas (Painel/Radar IA/Relatórios).
+const CockpitPainel = lazyWithRetry(() => import("./cockpit/Painel"));
+const CockpitRadar = lazyWithRetry(() => import("./cockpit/RadarIA"));
+const RelatoriosAtendimento = lazyWithRetry(() => import("./cockpit/RelatoriosComercial"));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
 const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
 // Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
@@ -227,7 +231,10 @@ const App = () => (
               >
                 <Route index element={<CockpitInicio />} />
                 <Route path="ai-growth" element={<HomeDeValor />} />
+                <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
+                <Route path="radar" element={<CockpitRadar />} />
+                <Route path="relatorios-atendimento" element={<RelatoriosAtendimento />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
                 <Route path="minha-ia" element={<MinhaIAHub />} />
