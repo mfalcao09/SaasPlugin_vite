@@ -33,6 +33,7 @@ const DemoAiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth").then(m => 
 const CockpitPainel = lazyWithRetry(() => import("./cockpit/Painel"));
 const CockpitRadar = lazyWithRetry(() => import("./cockpit/RadarIA"));
 const RelatoriosAtendimento = lazyWithRetry(() => import("./cockpit/RelatoriosComercial"));
+const CockpitTarefas = lazyWithRetry(() => import("./cockpit/Tarefas"));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
 const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
 // Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
@@ -238,6 +239,7 @@ const App = () => (
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="radar" element={<CockpitRadar />} />
+                <Route path="tarefas" element={<CockpitTarefas />} />
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />

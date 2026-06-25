@@ -5,7 +5,7 @@
 
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
-  BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart,
+  BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
@@ -32,6 +32,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/painel', label: 'Painel', icon: LayoutDashboard }, // dashboard comercial (1º)
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
       { to: '/radar', label: 'Radar IA', icon: Radar }, // lente micro (conversas)
+      { to: '/tarefas', label: 'Tarefas', icon: ListTodo },
       { to: '/relatorios-comerciais', label: 'Relatórios', icon: LineChart },
       { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
     ],

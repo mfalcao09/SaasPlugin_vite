@@ -22,7 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Users, Radio, BarChart3, Clock, CalendarDays, Smile, MessageSquare, TrendingUp,
-  DollarSign, Filter, UserCheck,
+  DollarSign, Filter, UserCheck, type LucideIcon,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -44,6 +44,7 @@ const CaptureAnalyticsSection = lazy(() =>
 const PERIODS = [
   { value: '7', label: 'Últimos 7 dias' },
   { value: '30', label: 'Últimos 30 dias' },
+  { value: '60', label: 'Últimos 60 dias' },
   { value: '90', label: 'Últimos 90 dias' },
   { value: 'all', label: 'Todo o período' },
 ] as const
@@ -80,30 +81,45 @@ function periodRange(period: string): { from: string | null; to: string } {
 
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const
 
+// Cabeçalho de aba no estilo "Captação" (ícone + título + subtítulo) com o popup
+// de período próprio — escopado aos dados daquela aba.
+function SectionHeader({ icon: Icon, title, subtitle, period, onPeriodChange }: {
+  icon: LucideIcon; title: string; subtitle: string; period: string; onPeriodChange: (v: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <div className="w-full sm:w-56">
+        <Select value={period} onValueChange={onPeriodChange}>
+          <SelectTrigger><SelectValue placeholder="Período" /></SelectTrigger>
+          <SelectContent>
+            {PERIODS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  )
+}
+
 export default function RelatoriosComercial() {
-  const [period, setPeriod] = useState<string>('30')
+  const [periodAtendimento, setPeriodAtendimento] = useState<string>('30')
+  const [periodVendas, setPeriodVendas] = useState<string>('30')
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">
-            Analytics Comerciais
-          </p>
-        </div>
-        <div className="w-full sm:w-56">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger>
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              {PERIODS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Relatórios</h1>
+        <p className="text-sm text-muted-foreground">Analytics Comerciais</p>
       </div>
 
       <Tabs defaultValue="atendimento">
@@ -115,10 +131,17 @@ export default function RelatoriosComercial() {
 
         {/* ── Atendimento ─────────────────────────────────────────── */}
         <TabsContent value="atendimento" className="mt-4 space-y-6">
+          <SectionHeader
+            icon={MessageSquare}
+            title="Analytics de Atendimento"
+            subtitle="Performance de atendimento"
+            period={periodAtendimento}
+            onPeriodChange={setPeriodAtendimento}
+          />
           {/* KPIs + distribuição por status (componente original, intacto) */}
           <WebChatReportsTab />
-          {/* Estratificações extras (por atendente, por canal) */}
-          <AtendimentoStratification period={period} />
+          {/* Estratificações extras (por atendente, canal, hora/dia, performance, sentimento) */}
+          <AtendimentoStratification period={periodAtendimento} />
         </TabsContent>
 
         {/* ── Captação / Quizzes ──────────────────────────────────── */}
@@ -136,7 +159,14 @@ export default function RelatoriosComercial() {
 
         {/* ── Vendas ──────────────────────────────────────────────── */}
         <TabsContent value="vendas" className="mt-4 space-y-6">
-          <VendasReports period={period} />
+          <SectionHeader
+            icon={DollarSign}
+            title="Analytics de Venda"
+            subtitle="Performance de Venda"
+            period={periodVendas}
+            onPeriodChange={setPeriodVendas}
+          />
+          <VendasReports period={periodVendas} />
         </TabsContent>
       </Tabs>
     </div>

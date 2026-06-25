@@ -45,6 +45,14 @@ const DEFAULT_ACTIONS: ActionsConfig = {
   lost: {},
 };
 
+// "dd/mm/aa, às hh:mm:ss" do último scan concluído (timestamp ISO = instante absoluto).
+function formatRadarUpdatedAt(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${p(d.getFullYear() % 100)}, às ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 export function RadarPanel({ onOpenConversation }: { onOpenConversation?: (id: string) => void } = {}) {
   const [filters, setFilters] = useState<ScanFilters>(DEFAULT_FILTERS);
   const [actions, setActions] = useState<ActionsConfig>(DEFAULT_ACTIONS);
@@ -55,6 +63,7 @@ export function RadarPanel({ onOpenConversation }: { onOpenConversation?: (id: s
   const { data: scans } = useOpportunityScans();
 
   const lastRunning = useMemo(() => scans?.find((s) => s.status === 'running' || s.status === 'pending'), [scans]);
+  const lastCompleted = useMemo(() => scans?.find((s) => s.status === 'completed'), [scans]);
   const latestId = lastRunning?.id || scans?.[0]?.id || null;
   const displayScanId = activeScanId || latestId;
   const isHistorical = !!activeScanId && activeScanId !== latestId;
@@ -84,10 +93,17 @@ export function RadarPanel({ onOpenConversation }: { onOpenConversation?: (id: s
                 Analisa conversas em aberto e identifica oportunidades quentes que precisam de atenção
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="gap-1">
-              <Sparkles className="h-3 w-3" />
-              Powered by AI
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="secondary" className="gap-1">
+                <Sparkles className="h-3 w-3" />
+                Powered by AI
+              </Badge>
+              {lastCompleted && (
+                <span className="text-xs text-muted-foreground">
+                  Atualizado em {formatRadarUpdatedAt((lastCompleted as any).started_at ?? (lastCompleted as any).created_at)}
+                </span>
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -107,34 +123,34 @@ export function RadarPanel({ onOpenConversation }: { onOpenConversation?: (id: s
 
         <TabsContent value="run" className="space-y-4">
           <div className="grid lg:grid-cols-[380px_1fr] gap-4">
-            <ScrollArea className="lg:h-[calc(100vh-280px)]">
-              <div className="space-y-4 pr-2">
-                <RadarFilters value={filters} onChange={setFilters} />
-                <RadarActionsConfig value={actions} onChange={setActions} />
-
-                <Card>
-                  <CardContent className="pt-6 space-y-3">
-                    <Button
-                      onClick={handleRun}
-                      className="w-full gap-2"
-                      disabled={runScan.isPending || !!lastRunning}
-                    >
-                      {runScan.isPending || lastRunning ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          {lastRunning ? 'Análise em andamento...' : 'Iniciando...'}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4" />
-                          Rodar Radar agora
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </ScrollArea>
+            {/* Coluna de filtros: box ALTA com scroll só nos filtros + botão FIXO embaixo */}
+            <div className="flex flex-col gap-3 lg:h-[calc(100vh-200px)]">
+              <ScrollArea className="flex-1 min-h-0 rounded-lg border bg-card">
+                <div className="space-y-4 p-3">
+                  <RadarFilters value={filters} onChange={setFilters} />
+                  <RadarActionsConfig value={actions} onChange={setActions} />
+                </div>
+              </ScrollArea>
+              {/* Botão fora da box, sempre visível mesmo com os filtros rolando */}
+              <Button
+                onClick={handleRun}
+                size="lg"
+                className="w-full gap-2 shrink-0"
+                disabled={runScan.isPending || !!lastRunning}
+              >
+                {runScan.isPending || lastRunning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {lastRunning ? 'Análise em andamento...' : 'Iniciando...'}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Rodar Radar agora
+                  </>
+                )}
+              </Button>
+            </div>
 
             <div>
               {displayScanId ? (
