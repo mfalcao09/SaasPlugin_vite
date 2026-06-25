@@ -22,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Users, Radio, BarChart3, Clock, CalendarDays, Smile, MessageSquare, TrendingUp,
+  DollarSign, Filter, UserCheck,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -30,7 +31,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { WebChatReportsTab } from '@/components/admin/webchat/WebChatReportsTab'
 import { useWebChatConversations, type WebChatConversation } from '@/hooks/useWebChat'
 import { useOpportunityScans, useScanItems } from '@/hooks/useOpportunityScan'
-import { useOrganizationId } from '@/pages/salao/_shared'
+import { useOrganizationId, formatCurrency } from '@/pages/salao/_shared'
 
 // Analytics de captação (mesmo componente do Admin > Captação > Analytics).
 // Carregado sob demanda — só baixa o chunk quando a aba é aberta.
@@ -580,16 +581,30 @@ function EmptyRow({ text }: { text: string }) {
 }
 
 // ───────────────────────────────────────────────────────────────────
-// Aba Vendas — relatórios reais derivados da tabela `leads`:
-//  • Leads gerados via chat: KPI + série por mês (lead_channel/lead_origin
-//    em canais de chat, no período).
-//  • Taxa de conversão chat → venda: % dos leads de chat com deal_value > 0.
+// Aba Vendas — relatórios reais derivados da tabela `leads`, no ângulo
+// COMERCIAL / atribuição (deal_value + lead_channel + assigned_to). NÃO
+// duplica "Relatórios & Gestão" (Meu salão), que mede faturamento/serviço/
+// profissional/ticket a partir de `agendamentos`.
+//
+//  Já existentes (não duplicar):
+//   • Leads gerados via chat (KPI + série mensal)
+//   • Taxa de conversão chat → venda (% deal_value>0)
+//   • Negócios a partir de chat (KPI)
+//  Adicionados aqui:
+//   • Funil chat → venda (estágios + % de queda)
+//   • Receita gerada via chat por mês (SUM deal_value)
+//   • Vendas por canal de origem (nº negócios + receita por lead_channel)
+//   • Ticket médio de venda via chat (KPI)
+//   • Vendas por atendente (assigned_to → profiles.full_name)
+//
 // Query por organization_id (igual ao resto), react-query, enabled !demo + org.
 // ───────────────────────────────────────────────────────────────────
 interface ChatLeadRow {
   id: string
   created_at: string
   deal_value: number | null
+  lead_channel: string | null
+  assigned_to: string | null
 }
 
 function VendasReports({ period }: { period: string }) {
@@ -603,7 +618,7 @@ function VendasReports({ period }: { period: string }) {
       const chatList = CHAT_CHANNELS.join(',')
       let q = supabase
         .from('leads')
-        .select('id, created_at, deal_value')
+        .select('id, created_at, deal_value, lead_channel, assigned_to')
         .eq('organization_id', organizationId!)
         // lead_channel OU lead_origin em um dos canais de chat
         .or(`lead_channel.in.(${chatList}),lead_origin.in.(${chatList})`)
@@ -620,6 +635,30 @@ function VendasReports({ period }: { period: string }) {
   const rows = useMemo(() => data || [], [data])
   // Série por mês (YYYY-MM) — fatia a string ISO, sem `new Date(iso)` cru.
   const byMonth = useMemo(() => monthlySeries(rows), [rows])
+  const revenueByMonth = useMemo(() => revenueMonthlySeries(rows), [rows])
+  const byChannel = useMemo(() => salesByChannel(rows), [rows])
+  const byAgent = useMemo(() => salesByAgent(rows), [rows])
+
+  // Resolve nomes dos atendentes (assigned_to → profiles.full_name), mesma
+  // resolução usada no AtendimentoStratification (join profiles). Só dispara
+  // quando há atendentes com vendas no período.
+  const agentIds = useMemo(() => byAgent.map((a) => a.key), [byAgent])
+  const { data: agentNames } = useQuery({
+    queryKey: ['vendas-agent-names', organizationId, agentIds],
+    enabled: !!organizationId && agentIds.length > 0,
+    queryFn: async () => {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', agentIds)
+      if (error) throw error
+      const map: Record<string, string> = {}
+      for (const p of profiles || []) {
+        if (p?.id) map[p.id] = (p.full_name ?? '').trim() || 'Atendente sem nome'
+      }
+      return map
+    },
+  })
 
   if (isLoading) {
     return (
@@ -631,9 +670,23 @@ function VendasReports({ period }: { period: string }) {
   }
 
   const totalChatLeads = rows.length
-  const wonLeads = rows.filter((r) => (r.deal_value ?? 0) > 0).length
+  const wonRows = rows.filter((r) => (r.deal_value ?? 0) > 0)
+  const wonLeads = wonRows.length
   const conversionRate = totalChatLeads > 0 ? (wonLeads / totalChatLeads) * 100 : 0
   const hasMonthly = byMonth.some((m) => m.count > 0)
+
+  // Ticket médio de venda via chat: média do deal_value dos leads ganhos.
+  const wonRevenue = wonRows.reduce((s, r) => s + (r.deal_value ?? 0), 0)
+  const avgTicket = wonLeads > 0 ? wonRevenue / wonLeads : 0
+
+  // Funil chat → venda (2 estágios — "com conversa" não é derivável de forma
+  // confiável a partir de `leads`, então ficamos nos 2 estágios pedidos).
+  const funnel = [
+    { key: 'leads', label: 'Leads via chat', count: totalChatLeads },
+    { key: 'won', label: 'Viraram negócio', count: wonLeads },
+  ]
+
+  const hasRevenueMonthly = revenueByMonth.some((m) => m.count > 0)
 
   return (
     <>
@@ -679,6 +732,21 @@ function VendasReports({ period }: { period: string }) {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ticket médio de venda via chat</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {wonLeads > 0 ? formatCurrency(avgTicket) : '--'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Média do valor dos negócios fechados via chat
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Série mensal de leads de chat */}
@@ -707,6 +775,144 @@ function VendasReports({ period }: { period: string }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Funil chat → venda + Receita gerada via chat por mês */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Funil chat → venda (estágios + % de queda) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Funil chat → venda
+            </CardTitle>
+            <CardDescription>
+              Do lead de chat ao negócio fechado, com a queda entre estágios
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {totalChatLeads === 0 ? (
+              <EmptyRow text="Sem dados ainda." />
+            ) : (
+              <FunnelBars stages={funnel} />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Receita gerada via chat por mês */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Receita gerada via chat por mês
+            </CardTitle>
+            <CardDescription>
+              Soma do valor (deal_value) dos negócios fechados via chat por mês
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!hasRevenueMonthly ? (
+              <EmptyRow text="Sem dados ainda." />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={revenueByMonth}>
+                  <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={11}
+                    tickFormatter={(v: number) => formatCurrency(v)}
+                    width={80}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))' }}
+                    formatter={(v: number) => formatCurrency(v)}
+                  />
+                  <Bar dataKey="count" name="Receita" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Vendas por canal de origem */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Radio className="h-5 w-5" />
+            Vendas por canal de origem
+          </CardTitle>
+          <CardDescription>
+            Negócios fechados (deal_value &gt; 0) e receita por canal de chat no período
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {byChannel.length === 0 ? (
+            <EmptyRow text="Sem dados ainda." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Canal</th>
+                    <th className="py-2 px-4 font-medium text-right">Negócios</th>
+                    <th className="py-2 pl-4 font-medium text-right">Receita</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byChannel.map((c) => (
+                    <tr key={c.key} className="border-b last:border-0">
+                      <td className="py-2 pr-4 truncate max-w-[16rem]">{c.label}</td>
+                      <td className="py-2 px-4 text-right tabular-nums">{c.deals}</td>
+                      <td className="py-2 pl-4 text-right tabular-nums">{formatCurrency(c.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Vendas por atendente (assigned_to → profiles.full_name) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5" />
+            Vendas por atendente
+          </CardTitle>
+          <CardDescription>
+            Negócios fechados via chat e receita por atendente responsável (assigned_to)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {byAgent.length === 0 ? (
+            <EmptyRow text="Nenhuma venda via chat atribuída a atendentes no período." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Atendente</th>
+                    <th className="py-2 px-4 font-medium text-right">Negócios</th>
+                    <th className="py-2 pl-4 font-medium text-right">Receita</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byAgent.map((a) => (
+                    <tr key={a.key} className="border-b last:border-0">
+                      <td className="py-2 pr-4 truncate max-w-[16rem]">
+                        {agentNames?.[a.key] ?? 'Atendente sem nome'}
+                      </td>
+                      <td className="py-2 px-4 text-right tabular-nums">{a.deals}</td>
+                      <td className="py-2 pl-4 text-right tabular-nums">{formatCurrency(a.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </>
   )
 }
@@ -724,4 +930,105 @@ function monthlySeries(rows: ChatLeadRow[]): ChartRow[] {
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([ym, count]) => ({ label: ym, count: count ?? 0 }))
+}
+
+// Receita gerada via chat por mês (YYYY-MM) — SUM de deal_value dos leads
+// ganhos. Mesma fatia de string ISO (TZ-safe). `count` reaproveita o eixo do
+// BarChart (aqui carrega R$, não contagem). Função pura.
+function revenueMonthlySeries(rows: ChatLeadRow[]): ChartRow[] {
+  const map = new Map<string, number>()
+  for (const r of rows) {
+    const v = r.deal_value ?? 0
+    if (v <= 0 || !r.created_at) continue
+    const ym = String(r.created_at).slice(0, 7)
+    if (ym.length !== 7) continue
+    map.set(ym, (map.get(ym) ?? 0) + v)
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([ym, total]) => ({ label: ym, count: total ?? 0 }))
+}
+
+interface ChannelSalesRow {
+  key: string
+  label: string
+  deals: number
+  revenue: number
+}
+
+// Vendas por canal de origem: agrupa os leads de chat GANHOS (deal_value>0)
+// por `lead_channel`, contando negócios e somando receita. Rótulos amigáveis
+// via channelLabel. Ordena por receita desc. Função pura.
+function salesByChannel(rows: ChatLeadRow[]): ChannelSalesRow[] {
+  const map = new Map<string, ChannelSalesRow>()
+  for (const r of rows) {
+    const v = r.deal_value ?? 0
+    if (v <= 0) continue
+    const key = r.lead_channel || '__none__'
+    const cur = map.get(key)
+    if (cur) { cur.deals += 1; cur.revenue += v }
+    else map.set(key, { key, label: channelLabel(r.lead_channel), deals: 1, revenue: v })
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue)
+}
+
+interface AgentSalesRow {
+  key: string // assigned_to (UUID) — nome resolvido fora, via profiles
+  deals: number
+  revenue: number
+}
+
+// Vendas por atendente: leads de chat GANHOS (deal_value>0) agrupados por
+// `assigned_to`. Quem não tem atendente atribuído não entra. Ordena por
+// receita desc. Os nomes são resolvidos depois via profiles.full_name.
+function salesByAgent(rows: ChatLeadRow[]): AgentSalesRow[] {
+  const map = new Map<string, AgentSalesRow>()
+  for (const r of rows) {
+    const v = r.deal_value ?? 0
+    if (v <= 0 || !r.assigned_to) continue
+    const cur = map.get(r.assigned_to)
+    if (cur) { cur.deals += 1; cur.revenue += v }
+    else map.set(r.assigned_to, { key: r.assigned_to, deals: 1, revenue: v })
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue)
+}
+
+// Funil em barras horizontais: cada estágio mostra contagem, % do topo e a
+// queda (% perdido) em relação ao estágio anterior. Largura da barra ∝ ao topo.
+function FunnelBars({ stages }: { stages: Array<{ key: string; label: string; count: number }> }) {
+  const top = stages[0]?.count ?? 0
+  return (
+    <div className="space-y-4">
+      {stages.map((stage, i) => {
+        const widthPct = top > 0 ? (stage.count / top) * 100 : 0
+        const prev = i > 0 ? (stages[i - 1]?.count ?? 0) : null
+        const dropPct = prev && prev > 0 ? ((prev - stage.count) / prev) * 100 : null
+        const ofTopPct = top > 0 ? (stage.count / top) * 100 : 0
+        return (
+          <div key={stage.key} className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="truncate pr-2">{stage.label}</span>
+              <span className="font-medium tabular-nums">
+                {stage.count}
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({ofTopPct.toFixed(0)}% do topo)
+                </span>
+              </span>
+            </div>
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all"
+                style={{ width: `${widthPct}%` }}
+              />
+            </div>
+            {dropPct !== null && (
+              <p className="text-xs text-muted-foreground">
+                Queda de {dropPct.toFixed(0)}% em relação ao estágio anterior
+              </p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
