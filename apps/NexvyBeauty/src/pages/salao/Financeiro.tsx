@@ -336,11 +336,19 @@ interface FinanceiroMetrics {
 // só no clique. Em modo demo o botão é desabilitado com aviso. Chama a Edge
 // Function `financial-advisor` passando { organization_id, metrics } e renderiza
 // `data.answer` como markdown (mesmo componente ReactMarkdown usado no app).
+// "Gerado em dd/mm/aa, às hh:mm:ss" — instante local da última geração (ms epoch).
+function formatGeradoEm(ms: number): string {
+  const d = new Date(ms)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${p(d.getFullYear() % 100)}, às ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 function AnaliseIACard({
   metrics, organizationId, isDemo,
 }: { metrics: FinanceiroMetrics; organizationId: string | null | undefined; isDemo: boolean }) {
   const [loading, setLoading] = useState(false)
   const [answer, setAnswer] = useState<string | null>(null)
+  const [geradoEm, setGeradoEm] = useState<number | null>(null)
 
   const gerar = async () => {
     if (isDemo || !organizationId) return
@@ -356,6 +364,7 @@ function AnaliseIACard({
         return
       }
       setAnswer(texto)
+      setGeradoEm(Date.now())
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao gerar a análise financeira.')
     } finally {
@@ -370,10 +379,15 @@ function AnaliseIACard({
           <Sparkles className="h-4 w-4 text-primary" />
           Análise da IA financeira
         </CardTitle>
-        <Button onClick={gerar} disabled={loading || isDemo} size="sm">
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {answer ? 'Gerar novamente' : 'Gerar análise'}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button onClick={gerar} disabled={loading || isDemo} size="sm">
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {answer ? 'Gerar novamente' : 'Gerar análise'}
+          </Button>
+          {geradoEm != null && (
+            <span className="text-xs text-muted-foreground">Gerado em {formatGeradoEm(geradoEm)}</span>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {isDemo ? (
