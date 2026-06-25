@@ -12,6 +12,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useFunnels } from '@/hooks/useFunnels';
+import { useForms } from '@/hooks/useForms';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie,
@@ -23,45 +24,119 @@ const PERIODS = [
   { value: '90', label: 'Últimos 90 dias' },
 ];
 
+// Ferramentas de captação cobertas pelo analytics.
+// 'all' agrega todas; cada tool fatia por canal/origem do lead.
+const TOOLS = [
+  { value: 'all', label: 'Todas as ferramentas' },
+  { value: 'quiz', label: 'Quizzes' },
+  { value: 'form', label: 'Formulários' },
+  { value: 'poll', label: 'Enquetes' },
+];
+
 const TIER_COLORS: Record<string, string> = {
   hot: '#ef4444', warm: '#f97316', cold: '#0ea5e9',
 };
 
+// Deriva a ferramenta de captação a partir do lead.
+// - Funis (lead_origin='funnel') carregam metadata.funnel_channel ∈ {quiz, poll, ...}
+// - Formulários standalone (lead_origin='form') carregam metadata.form_id
+function leadTool(l: any): string {
+  const m = l.metadata || {};
+  if (m.form_id && !m.funnel_id) return 'form';
+  const ch = String(m.funnel_channel || l.lead_channel || '').toLowerCase();
+  if (ch === 'poll' || ch === 'enquete') return 'poll';
+  if (ch === 'form' || ch === 'forms' || ch === 'formulario') return 'form';
+  return 'quiz';
+}
+
+// Score do lead: funil grava metadata.score; formulário grava metadata.form_score.
+function leadScore(l: any): number | null {
+  const m = l.metadata || {};
+  if (typeof m.score === 'number') return m.score;
+  if (typeof m.form_score === 'number') return m.form_score;
+  return null;
+}
+
 export function CaptureAnalyticsSection() {
   const { profile } = useAuth();
-  const { data: funnels } = useFunnels({ channelType: 'quiz' } as any);
+  // Todos os funis de captação (quiz/poll/widget/chatbot/whatsapp) — sem restrição de canal.
+  const { data: funnels } = useFunnels();
+  // Formulários standalone vivem em outra entidade (tabela `forms`).
+  const { data: forms } = useForms();
   const [days, setDays] = useState('30');
+  const [tool, setTool] = useState('all');
   const [funnelId, setFunnelId] = useState('all');
 
+  // Opções do seletor de funil/formulário específico, conforme a ferramenta escolhida.
+  const sourceOptions = useMemo(() => {
+    const fs = (funnels || []).map((f: any) => ({ id: f.id, name: f.name, kind: 'funnel' as const }));
+    const frms = (forms || []).map((f: any) => ({ id: f.id, name: f.name, kind: 'form' as const }));
+    if (tool === 'form') return frms;
+    if (tool === 'quiz' || tool === 'poll') return fs;
+    return [...fs, ...frms];
+  }, [funnels, forms, tool]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['quiz-analytics', profile?.organization_id, days, funnelId],
+    queryKey: ['capture-analytics', profile?.organization_id, days, tool, funnelId],
     enabled: !!profile?.organization_id,
     queryFn: async () => {
       const since = new Date();
       since.setDate(since.getDate() - Number(days));
+      // Pega leads de captação de QUALQUER ferramenta (funil: quiz/enquete, e formulário).
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, temperature, created_at, metadata')
+        .select('id, temperature, created_at, lead_origin, lead_channel, metadata')
         .eq('organization_id', profile!.organization_id)
-        .eq('lead_origin', 'funnel')
+        .in('lead_origin', ['funnel', 'form'])
         .gte('created_at', since.toISOString())
         .limit(2000);
       if (error) throw error;
 
-      const quizFunnelIds = new Set((funnels || []).map((f: any) => f.id));
-      let rows = (leads || []).filter(l => quizFunnelIds.has((l.metadata as any)?.funnel_id));
+      const funnelIds = new Set((funnels || []).map((f: any) => f.id));
+      const formIds = new Set((forms || []).map((f: any) => f.id));
+
+      let rows = (leads || []).filter((l: any) => {
+        const m = l.metadata || {};
+        // Mantém apenas leads ligados a um funil/formulário da organização.
+        return funnelIds.has(m.funnel_id) || formIds.has(m.form_id);
+      });
+
+      // Filtro por ferramenta (quiz / formulário / enquete).
+      if (tool !== 'all') {
+        rows = rows.filter((l: any) => leadTool(l) === tool);
+      }
+
+      // Filtro por funil/formulário específico.
       if (funnelId !== 'all') {
-        rows = rows.filter(l => (l.metadata as any)?.funnel_id === funnelId);
+        rows = rows.filter((l: any) => {
+          const m = l.metadata || {};
+          return m.funnel_id === funnelId || m.form_id === funnelId;
+        });
       }
       return rows;
     },
   });
 
   const totalViews = useMemo(() => {
-    const fs = funnels || [];
-    const list = funnelId === 'all' ? fs : fs.filter((f: any) => f.id === funnelId);
-    return list.reduce((s: number, f: any) => s + (f.total_views || 0), 0);
-  }, [funnels, funnelId]);
+    const fs = (funnels || []) as any[];
+    const frms = (forms || []) as any[];
+
+    // Quais fontes contribuem para "Visualizações" dado o filtro de ferramenta.
+    const includeFunnels = tool === 'all' || tool === 'quiz' || tool === 'poll';
+    const includeForms = tool === 'all' || tool === 'form';
+
+    let funnelList = includeFunnels ? fs : [];
+    let formList = includeForms ? frms : [];
+
+    if (funnelId !== 'all') {
+      funnelList = funnelList.filter((f: any) => f.id === funnelId);
+      formList = formList.filter((f: any) => f.id === funnelId);
+    }
+
+    const funnelViews = funnelList.reduce((s: number, f: any) => s + (f.total_views || 0), 0);
+    const formViews = formList.reduce((s: number, f: any) => s + (f.views_count || 0), 0);
+    return funnelViews + formViews;
+  }, [funnels, forms, tool, funnelId]);
 
   const stats = useMemo(() => {
     const rows = data || [];
@@ -74,7 +149,8 @@ export function CaptureAnalyticsSection() {
     rows.forEach((l: any) => {
       const m = l.metadata || {};
       if (l.temperature in tempCount) tempCount[l.temperature as keyof typeof tempCount]++;
-      if (typeof m.score === 'number') scores.push(m.score);
+      const sc = leadScore(l);
+      if (sc !== null) scores.push(sc);
       ((m.tags as string[]) || []).forEach((t) => {
         tagCount[t] = (tagCount[t] || 0) + 1;
       });
@@ -123,18 +199,27 @@ export function CaptureAnalyticsSection() {
           <div>
             <h1 className="text-2xl font-semibold">Analytics de Captação</h1>
             <p className="text-sm text-muted-foreground">
-              Performance dos seus quizzes em tempo real.
+              Performance das suas ferramentas de captação — quizzes, formulários e enquetes — em tempo real.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Select
+            value={tool}
+            onValueChange={(v) => { setTool(v); setFunnelId('all'); }}
+          >
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TOOLS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={funnelId} onValueChange={setFunnelId}>
             <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os quizzes</SelectItem>
-              {(funnels || []).map((f: any) => (
-                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+              <SelectItem value="all">Todas as origens</SelectItem>
+              {sourceOptions.map((s) => (
+                <SelectItem key={`${s.kind}-${s.id}`} value={s.id}>{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -241,7 +326,7 @@ export function CaptureAnalyticsSection() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <TagIcon className="h-4 w-4 text-primary" /> Top tags dinâmicas
                 </CardTitle>
-                <CardDescription>Tags mais aplicadas pelas respostas do quiz.</CardDescription>
+                <CardDescription>Tags mais aplicadas pelas respostas das ferramentas de captação.</CardDescription>
               </CardHeader>
               <CardContent>
                 {stats.topTags.length === 0 ? (

@@ -23,6 +23,10 @@ import { ptBR } from 'date-fns/locale';
 // ferramenta (quiz, formulário, WhatsApp, chat, etc.), não só quizzes. A origem é
 // derivada de metadata.funnel_channel (funis: quiz/form/poll) ou de lead_origin/
 // lead_channel (whatsapp/webchat/instagram/...).
+//
+// Além dos LEADS, incluímos também as respostas de `form_submissions` que NÃO
+// geraram lead (auto_create_lead=false ou lead removido) — assim nenhuma resposta
+// de formulário se perde. Ambos os tipos são normalizados para `CaptureRow`.
 interface CaptureLead {
   id: string;
   name: string;
@@ -35,7 +39,62 @@ interface CaptureLead {
   metadata: any;
 }
 
-const tempIcon = (t: string) => {
+// Shape unificada usada pela tabela/drilldown. Leads e submissions são mapeados
+// para este formato. `kind` distingue a origem dos dados (não a "origem" de marketing).
+interface CaptureRow {
+  kind: 'lead' | 'form_submission';
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  temperature: string | null;
+  created_at: string;
+  lead_origin: string | null;
+  lead_channel: string | null;
+  metadata: any; // { funnel_channel?, funnel_name?, score?, tags?, responses? }
+}
+
+// Linha JSONB bruta de form_submissions + join com forms (nome do formulário).
+interface FormSubmissionRow {
+  id: string;
+  lead_id: string | null;
+  total_score: number | null;
+  tags: string[] | null;
+  created_at: string;
+  responses: Record<string, unknown> | null;
+  forms: { name: string | null } | null;
+}
+
+// Só dígitos — telefones podem estar formatados como "(48) 99652-0589".
+function phoneDigits(p?: string | null): string {
+  return (p || '').replace(/\D/g, '');
+}
+function phoneKey(p?: string | null): string {
+  const d = phoneDigits(p);
+  return d.length >= 9 ? d.slice(-9) : d; // sufixo basta p/ casar formatos distintos
+}
+function emailKey(e?: string | null): string {
+  return (e || '').trim().toLowerCase();
+}
+
+// Extrai name/email/phone das `responses` (objeto { [labelDoBloco]: valor }) quando
+// a submission não tem lead. Procura por labels que contenham palavras-chave.
+function pickFromResponses(
+  responses: Record<string, unknown> | null,
+  keywords: string[],
+): string | null {
+  if (!responses) return null;
+  for (const [label, value] of Object.entries(responses)) {
+    const l = label.toLowerCase();
+    if (keywords.some((k) => l.includes(k))) {
+      if (value == null || value === '') continue;
+      return Array.isArray(value) ? value.map(String).join(', ') : String(value);
+    }
+  }
+  return null;
+}
+
+const tempIcon = (t: string | null) => {
   if (t === 'hot') return <Flame className="h-3 w-3 text-red-500" />;
   if (t === 'warm') return <ThermometerSun className="h-3 w-3 text-orange-500" />;
   return <Snowflake className="h-3 w-3 text-sky-500" />;
@@ -51,11 +110,11 @@ const ORIGIN_LABELS: Record<string, string> = {
   funnel: 'Funil',
 };
 
-function originKey(l: CaptureLead): string {
+function originKey(l: CaptureRow): string {
   const m = (l.metadata || {}) as any;
   return String(m.funnel_channel || l.lead_channel || l.lead_origin || 'outro').toLowerCase();
 }
-function originLabel(l: CaptureLead): string {
+function originLabel(l: CaptureRow): string {
   const k = originKey(l);
   if (ORIGIN_LABELS[k]) return ORIGIN_LABELS[k];
   const m = (l.metadata || {}) as any;
@@ -80,9 +139,10 @@ export function CaptureResultsSection() {
   const { profile } = useAuth();
   const [origin, setOrigin] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<CaptureLead | null>(null);
+  const [selected, setSelected] = useState<CaptureRow | null>(null);
 
-  const { data: leads, isLoading } = useQuery({
+  // 1) LEADS de captação (todas as origens) — fonte rica (score, temperatura, tags).
+  const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ['capture-results', profile?.organization_id],
     enabled: !!profile?.organization_id,
     queryFn: async () => {
@@ -97,15 +157,109 @@ export function CaptureResultsSection() {
     },
   });
 
-  // Origens distintas presentes → monta o filtro dinamicamente.
+  // 2) RESPOSTAS de formulário — inclui as que NÃO viraram lead. Filtra por org via
+  // join `forms.organization_id` (form_submissions não tem organization_id direto).
+  const { data: submissions, isLoading: subsLoading } = useQuery({
+    queryKey: ['capture-form-submissions', profile?.organization_id],
+    enabled: !!profile?.organization_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('form_submissions')
+        .select('id, lead_id, total_score, tags, created_at, responses, forms!inner(name, organization_id)')
+        .eq('forms.organization_id', profile!.organization_id)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data || []) as unknown as FormSubmissionRow[];
+    },
+  });
+
+  const isLoading = leadsLoading || subsLoading;
+
+  // 3) Normaliza leads para a shape unificada.
+  const leadRows = useMemo<CaptureRow[]>(
+    () =>
+      (leads || []).map((l) => ({
+        kind: 'lead' as const,
+        id: l.id,
+        name: l.name,
+        email: l.email,
+        phone: l.phone,
+        temperature: l.temperature,
+        created_at: l.created_at,
+        lead_origin: l.lead_origin,
+        lead_channel: l.lead_channel,
+        metadata: l.metadata,
+      })),
+    [leads],
+  );
+
+  // 4) Normaliza form_submissions → mesma shape. Dedup: descarta submissions cujo
+  // telefone/e-mail já casa com um lead listado (preferimos o lead, mais completo).
+  const submissionRows = useMemo<CaptureRow[]>(() => {
+    const leadPhoneKeys = new Set<string>();
+    const leadEmailKeys = new Set<string>();
+    leadRows.forEach((l) => {
+      const pk = phoneKey(l.phone);
+      if (pk) leadPhoneKeys.add(pk);
+      const ek = emailKey(l.email);
+      if (ek) leadEmailKeys.add(ek);
+    });
+
+    return (submissions || [])
+      .map((s): CaptureRow => {
+        const responses = s.responses || {};
+        const name =
+          pickFromResponses(responses, ['nome', 'name']) || 'Resposta de formulário';
+        const email = pickFromResponses(responses, ['e-mail', 'email']);
+        const phone = pickFromResponses(responses, ['telefone', 'phone', 'whatsapp', 'celular']);
+        return {
+          kind: 'form_submission',
+          id: `fs_${s.id}`,
+          name,
+          email,
+          phone,
+          temperature: null,
+          created_at: s.created_at,
+          lead_origin: 'form',
+          lead_channel: 'form',
+          metadata: {
+            funnel_channel: 'form',
+            funnel_name: s.forms?.name || 'Formulário',
+            score: s.total_score ?? 0,
+            tags: s.tags || [],
+            responses, // alimenta o drilldown
+          },
+        };
+      })
+      .filter((row) => {
+        // Só dedup quando a submission NÃO tem lead_id próprio listado.
+        const pk = phoneKey(row.phone);
+        const ek = emailKey(row.email);
+        const dupByPhone = !!pk && leadPhoneKeys.has(pk);
+        const dupByEmail = !!ek && leadEmailKeys.has(ek);
+        return !(dupByPhone || dupByEmail);
+      });
+  }, [submissions, leadRows]);
+
+  // 5) MERGE leads + submissions, ordenado por created_at desc.
+  const allRows = useMemo<CaptureRow[]>(
+    () =>
+      [...leadRows, ...submissionRows].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [leadRows, submissionRows],
+  );
+
+  // Origens distintas presentes → monta o filtro dinamicamente (inclui 'Formulário').
   const origins = useMemo(() => {
     const map = new Map<string, string>();
-    (leads || []).forEach((l) => map.set(originKey(l), originLabel(l)));
+    allRows.forEach((l) => map.set(originKey(l), originLabel(l)));
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [leads]);
+  }, [allRows]);
 
   const filtered = useMemo(() => {
-    let rows = leads || [];
+    let rows = allRows;
     if (origin !== 'all') rows = rows.filter((l) => originKey(l) === origin);
     if (search.trim()) {
       const s = search.toLowerCase();
@@ -116,7 +270,7 @@ export function CaptureResultsSection() {
       );
     }
     return rows;
-  }, [leads, origin, search]);
+  }, [allRows, origin, search]);
 
   return (
     <div className="max-w-7xl mx-auto py-6 space-y-6">
@@ -195,9 +349,13 @@ export function CaptureResultsSection() {
                         <Badge variant="outline" className="font-mono">{m.score ?? 0}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="gap-1 capitalize">
-                          {tempIcon(l.temperature)} {l.temperature}
-                        </Badge>
+                        {l.temperature ? (
+                          <Badge variant="secondary" className="gap-1 capitalize">
+                            {tempIcon(l.temperature)} {l.temperature}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -248,7 +406,11 @@ export function CaptureResultsSection() {
                   <div className="rounded-lg border p-3">
                     <div className="text-xs text-muted-foreground">Temperatura</div>
                     <div className="text-lg font-semibold capitalize flex items-center gap-1">
-                      {tempIcon(selected.temperature)} {selected.temperature}
+                      {selected.temperature ? (
+                        <>{tempIcon(selected.temperature)} {selected.temperature}</>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </div>
                   </div>
                   <div className="rounded-lg border p-3">
