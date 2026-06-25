@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users, Plus, Search, Loader2, Pencil, Trash2, Flame, Merge } from 'lucide-react'
+import { Users, Plus, Search, Loader2, Pencil, Trash2, Flame, Merge, Eye } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { scoreTier } from '@/components/lead/LeadScoreBadge'
 import { normalizeBrPhone } from '@/cockpit/types'
 import { MaybeSalaoShell, NoOrg, useOrganizationId } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
+import ClienteDetail from './ClienteDetail'
 
 // Re-skin premium (dark via tokens, shadcn) + data-injectable: sem `demo`
 // busca Supabase real; com `demo` usa seed (rota /demo, sem auth, sem gravar).
@@ -120,6 +121,8 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [sortMode, setSortMode] = useState<SortMode>('default')
   const [mergeTarget, setMergeTarget] = useState<DupGroup | null>(null)
+  // Perfil 360: cliente selecionado abre o Sheet de detalhe.
+  const [selected, setSelected] = useState<Cliente | null>(null)
 
   const { data: fetched = [], isLoading } = useQuery({
     queryKey: ['salao-clientes', organizationId],
@@ -351,7 +354,12 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                 {visible.map((c) => {
                   const score = scoreOf(c)
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow
+                      key={c.id}
+                      className="cursor-pointer"
+                      onClick={() => setSelected(c)}
+                      title="Ver perfil 360"
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <span>{c.nome}</span>
@@ -370,8 +378,9 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar"><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDelete(c)} title="Excluir" className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelected(c) }} title="Ver perfil 360"><Eye className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(c) }} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(c) }} title="Excluir" className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -440,6 +449,15 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Perfil 360 do cliente (Sheet shadcn). No demo mostra só o cabeçalho +
+          aviso; fora do demo dispara as queries por organization_id+cliente_id. */}
+      <ClienteDetail
+        cliente={selected}
+        open={!!selected}
+        onOpenChange={(o) => { if (!o) setSelected(null) }}
+        demo={isDemo}
+      />
     </MaybeSalaoShell>
   )
 }

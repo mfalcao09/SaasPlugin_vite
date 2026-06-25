@@ -26,6 +26,9 @@ const CockpitInicio = lazyWithRetry(() => import("./cockpit/Inicio")); // novo I
 const Relatorios = lazyWithRetry(() => import("./cockpit/Relatorios")); // Relatórios & Gestão
 // Demo público da página Relatórios (dados de exemplo — orgs ainda sem dados reais).
 const DemoRelatorios = lazyWithRetry(() => import("./cockpit/Relatorios").then(m => ({ default: () => <m.default demo={m.DEMO_RELATORIOS} /> })));
+// AI Growth — motor MACRO (oportunidades de receita do histórico do negócio).
+const AiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth"));
+const DemoAiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth").then(m => ({ default: () => <m.default demo={m.DEMO_AIGROWTH} /> })));
 // Comercial — páginas extraídas das abas do Conversas (Painel/Radar IA/Relatórios).
 const CockpitPainel = lazyWithRetry(() => import("./cockpit/Painel"));
 const CockpitRadar = lazyWithRetry(() => import("./cockpit/RadarIA"));
@@ -190,6 +193,7 @@ const App = () => (
               <Route path="/demo/salao/financeiro" element={<DemoSalaoFinanceiro />} />
               <Route path="/demo/salao/agenda" element={<DemoSalaoAgenda />} />
               <Route path="/demo/relatorios" element={<DemoRelatorios />} />
+              <Route path="/demo/ai-growth" element={<DemoAiGrowth />} />
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
@@ -230,7 +234,7 @@ const App = () => (
                 }
               >
                 <Route index element={<CockpitInicio />} />
-                <Route path="ai-growth" element={<HomeDeValor />} />
+                <Route path="ai-growth" element={<AiGrowth />} />
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="radar" element={<CockpitRadar />} />
