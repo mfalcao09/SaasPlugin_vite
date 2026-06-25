@@ -146,7 +146,7 @@ function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]
   const inativos = clientes.filter((c) => c.ultima && daysBetween(hoje, c.ultima) > INATIVO_DIAS)
   const lever1: GrowthLever = {
     id: 'inativos',
-    title: 'Clientes sumidas pra reativar',
+    title: 'Clientes sumidas para reativar',
     description:
       inativos.length > 0
         ? `${inativos.length} cliente${inativos.length === 1 ? '' : 's'} sem voltar há mais de ${INATIVO_DIAS} dias. Uma mensagem traz de volta.`
@@ -171,7 +171,7 @@ function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]
   })
   const lever2: GrowthLever = {
     id: 'pacotes',
-    title: 'Pacotes pra renovar',
+    title: 'Pacotes para renovar',
     description:
       quaseEsgotados.length > 0
         ? `${quaseEsgotados.length} pacote${quaseEsgotados.length === 1 ? '' : 's'} quase no fim ou vencendo. Ofereça a renovação antes que esfrie.`
@@ -206,7 +206,7 @@ function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]
     const gap = Math.max(0, Math.round(media - pior.count))
     lever3 = {
       id: 'ocupacao',
-      title: 'Horário vazio pra encher',
+      title: 'Horário vazio para encher',
       description: `${DOW_PT[pior.dow]} de ${pior.faixa} é seu horário mais fraco. Uma promo enche essa janela.`,
       estimated: (ticketMedio || 0) * gap,
       count: gap,
@@ -217,8 +217,8 @@ function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]
   } else {
     lever3 = {
       id: 'ocupacao',
-      title: 'Horário vazio pra encher',
-      description: 'Ainda não há histórico suficiente pra achar seus horários fracos.',
+      title: 'Horário vazio para encher',
+      description: 'Ainda não há histórico suficiente para achar seus horários fracos.',
       estimated: 0,
       count: 0,
       ctaLabel: 'Abrir agenda',
@@ -269,7 +269,7 @@ function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]
     lever4 = {
       id: 'upsell',
       title: 'Upsell do serviço âncora',
-      description: 'Ainda não há serviços concluídos pra identificar seu carro-chefe.',
+      description: 'Ainda não há serviços concluídos para identificar seu carro-chefe.',
       estimated: 0,
       count: 0,
       ctaLabel: 'Ver serviços',
@@ -428,7 +428,7 @@ function MoneyHeadlineMacro({ total, count }: { total: number; count: number }) 
                   oportunidade{count === 1 ? '' : 's'} espalhadas pelo seu histórico.
                 </>
               ) : (
-                'Sua IA ainda não tem histórico suficiente pra mapear alavancas — conforme você atende, elas aparecem aqui.'
+                'Sua IA ainda não tem histórico suficiente para mapear alavancas — conforme você atende, elas aparecem aqui.'
               )}
             </p>
           </div>
@@ -447,7 +447,7 @@ export const DEMO_AIGROWTH: AiGrowthData = {
   levers: [
     {
       id: 'inativos',
-      title: 'Clientes sumidas pra reativar',
+      title: 'Clientes sumidas para reativar',
       description: '23 clientes sem voltar há mais de 45 dias. Uma mensagem traz de volta.',
       estimated: 3266,
       count: 23,
@@ -457,7 +457,7 @@ export const DEMO_AIGROWTH: AiGrowthData = {
     },
     {
       id: 'pacotes',
-      title: 'Pacotes pra renovar',
+      title: 'Pacotes para renovar',
       description: '7 pacotes quase no fim ou vencendo. Ofereça a renovação antes que esfrie.',
       estimated: 3640,
       count: 7,
@@ -467,7 +467,7 @@ export const DEMO_AIGROWTH: AiGrowthData = {
     },
     {
       id: 'ocupacao',
-      title: 'Horário vazio pra encher',
+      title: 'Horário vazio para encher',
       description: 'terça de manhã (até 12h) é seu horário mais fraco. Uma promo enche essa janela.',
       estimated: 1278,
       count: 9,

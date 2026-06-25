@@ -44,7 +44,7 @@ const captureEmail = () => block('input', { label: 'Qual seu e-mail?', placehold
 // ───────────── CAPTAÇÃO ─────────────
 function tplCapturaSimples() {
   return chain(
-    block('text', { content: '👋 Em 30 segundos vamos te conectar com a melhor solução pra você.' }),
+    block('text', { content: '👋 Em 30 segundos vamos te conectar com a melhor solução para você.' }),
     captureName(),
     captureWhatsapp(),
     block('buttons', {
@@ -456,7 +456,7 @@ function tplClinicas() {
 
 function tplInfoprodutos() {
   return chain(
-    block('text', { content: '🎓 Vamos descobrir o melhor caminho de aprendizado pra você.' }),
+    block('text', { content: '🎓 Vamos descobrir o melhor caminho de aprendizado para você.' }),
     block('buttons', { label: 'Seu nível atual?', variable_name: 'nivel',
       options: [
         { id: '1', letter: 'A', label: 'Iniciante', score: 10, tag: 'iniciante' },

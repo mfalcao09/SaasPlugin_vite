@@ -44,8 +44,8 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-copilo
 
 const initialSuggestions = [
   "O lead disse que está caro. Me dá 3 respostas",
-  "Qual a melhor pergunta pra qualificar agora?",
-  "Ele pediu preço cedo, como voltar pro valor?",
+  "Qual a melhor pergunta para qualificar agora?",
+  "Ele pediu preço cedo, como voltar para o valor?",
   "Gera um script de follow-up",
   "Simula uma negociação comigo"
 ];
@@ -234,7 +234,7 @@ export function AIChat({ productName, productId }: AIChatProps) {
                 content: fullContent,
                 suggestions: [
                   "Me dá mais opções",
-                  "Adapta pra WhatsApp",
+                  "Adapta para WhatsApp",
                   "Qual material devo enviar?",
                   "E se ele disser que vai pensar?"
                 ]

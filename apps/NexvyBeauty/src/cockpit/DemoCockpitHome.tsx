@@ -56,10 +56,10 @@ export default function DemoCockpitHome() {
             <Sparkles className="h-3.5 w-3.5" /> Demonstração · dados de exemplo
           </span>
           <h1 className="text-2xl font-bold tracking-tight text-foreground pt-2">
-            É assim que a sua IA acha dinheiro pra você
+            É assim que a sua IA acha dinheiro para você
           </h1>
           <p className="text-sm text-muted-foreground">
-            Toda manhã ela varre suas conversas e te entrega quem dá pra reconquistar — com a mensagem já pronta.
+            Toda manhã ela varre suas conversas e te entrega quem dá para reconquistar — com a mensagem já pronta.
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export default function DemoCockpitHome() {
 
         {/* CTA final */}
         <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-card to-card p-6 text-center space-y-3">
-          <h3 className="text-lg font-semibold text-foreground">Pronto pra ver os SEUS números?</h3>
+          <h3 className="text-lg font-semibold text-foreground">Pronto para ver os SEUS números?</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Conecte seu WhatsApp e a sua IA mostra quanto VOCÊ pode recuperar essa semana — de verdade.
           </p>

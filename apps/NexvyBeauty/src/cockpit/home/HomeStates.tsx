@@ -52,8 +52,8 @@ export function HomeEmpty({
             Sua IA ainda não rodou a primeira análise
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Ela vai ler suas conversas e mostrar quais clientes dá pra reconquistar —
-            com a mensagem já pronta pra enviar.
+            Ela vai ler suas conversas e mostrar quais clientes dá para reconquistar —
+            com a mensagem já pronta para enviar.
           </p>
         </div>
         <Button onClick={onAnalyze} disabled={isAnalyzing} className="gap-2">

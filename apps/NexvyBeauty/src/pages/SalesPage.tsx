@@ -70,7 +70,7 @@ const steps = [
   { n: '01', t: 'Configure seu salão', d: 'Nome, logo, cor da marca, slug público. Sistema com a cara do seu negócio em minutos.' },
   { n: '02', t: 'Cadastre serviços e equipe', d: 'Serviços com duração e valor, profissionais com especialidades e horários por dia.' },
   { n: '03', t: 'Receba agendamentos', d: 'Link público para o cliente agendar sozinho 24/7, ou lançamento manual pela recepção.' },
-  { n: '04', t: 'Cresça com IA', d: 'Sistema analisa histórico, sugere ações concretas pra aumentar receita e reativar clientes.' },
+  { n: '04', t: 'Cresça com IA', d: 'Sistema analisa histórico, sugere ações concretas para aumentar receita e reativar clientes.' },
 ];
 
 const aiBenefits = [
@@ -300,7 +300,7 @@ export default function SalesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center">
             <Badge variant="outline" className="mb-3">Sem pegadinha</Badge>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">Feito pra rodar <span className={GRADIENT_TEXT}>sem dor de cabeça</span></h2>
+            <h2 className="text-4xl font-black tracking-tight md:text-5xl">Feito para rodar <span className={GRADIENT_TEXT}>sem dor de cabeça</span></h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {garantias.map((g) => (

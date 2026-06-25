@@ -111,7 +111,7 @@ export function AgentSupervisorPanel() {
           {spLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
           {!spLoading && specialists.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              Nenhum especialista cadastrado. Vincule seus agentes a um papel pra ativar o roteamento.
+              Nenhum especialista cadastrado. Vincule seus agentes a um papel para ativar o roteamento.
             </p>
           )}
           {specialists.map((sp) => {
@@ -243,7 +243,7 @@ export function AgentSupervisorPanel() {
               {editingSpecialist?.id ? 'Editar especialista' : 'Novo especialista'}
             </DialogTitle>
             <DialogDescription>
-              Vincule um agente já existente a um papel pra que o supervisor possa rotear conversas pra ele.
+              Vincule um agente já existente a um papel para que o supervisor possa rotear conversas para ele.
             </DialogDescription>
           </DialogHeader>
           {editingSpecialist && (
@@ -301,7 +301,7 @@ export function AgentSupervisorPanel() {
                   onChange={(e) =>
                     setEditingSpecialist({ ...editingSpecialist, description: e.target.value })
                   }
-                  placeholder="Ex: especialista em qualificação BANT pra leads novos"
+                  placeholder="Ex: especialista em qualificação BANT para leads novos"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -356,7 +356,7 @@ export function AgentSupervisorPanel() {
               {editingRule?.id ? 'Editar regra' : 'Nova regra de roteamento'}
             </DialogTitle>
             <DialogDescription>
-              Quando todas as condições preenchidas baterem, a conversa vai pro especialista escolhido.
+              Quando todas as condições preenchidas baterem, a conversa vai para o especialista escolhido.
             </DialogDescription>
           </DialogHeader>
           {editingRule && (
@@ -366,7 +366,7 @@ export function AgentSupervisorPanel() {
                 <Input
                   value={editingRule.name ?? ''}
                   onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
-                  placeholder="Ex: Pix abandonado vai pra recuperação"
+                  placeholder="Ex: Pix abandonado vai para recuperação"
                 />
               </div>
 

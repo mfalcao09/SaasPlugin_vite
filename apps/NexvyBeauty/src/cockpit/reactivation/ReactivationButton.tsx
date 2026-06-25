@@ -24,10 +24,10 @@ export function ReactivationButton({ item, onSent, className }: ReactivationButt
           onSent?.(item)
           break
         case 'no_phone':
-          toast.error('Cliente sem telefone — não dá pra enviar')
+          toast.error('Cliente sem telefone — não dá para enviar')
           break
         case 'no_instance':
-          toast.error('Conecte seu WhatsApp primeiro pra disparar')
+          toast.error('Conecte seu WhatsApp primeiro para disparar')
           break
         case 'error':
         default:

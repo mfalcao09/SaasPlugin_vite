@@ -218,7 +218,7 @@ export function AgentSchedulingTab({ formData, onChange }: Props) {
                 <div className="flex items-start gap-2 p-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 text-sm">
                   <Sparkles className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="space-y-1">
-                    <div className="font-medium">Pronto pra agendar automaticamente</div>
+                    <div className="font-medium">Pronto para agendar automaticamente</div>
                     <p className="text-xs text-muted-foreground">
                       Sem tipo de evento configurado, o sistema cria automaticamente{' '}
                       <span className="font-medium text-foreground">"Apresentação {linkedProduct.name}"</span>{' '}

@@ -78,10 +78,10 @@ export function BulkReactivationDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => sending && e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Disparar reativação pra {total} cliente{total === 1 ? '' : 's'}?</DialogTitle>
+          <DialogTitle>Disparar reativação para {total} cliente{total === 1 ? '' : 's'}?</DialogTitle>
           <DialogDescription>
             Vou enviar a mensagem pronta de cada um pelo seu WhatsApp, com um intervalo de segurança
-            entre os envios (pra não cair em spam). Você pode acompanhar abaixo.
+            entre os envios (para não cair em spam). Você pode acompanhar abaixo.
           </DialogDescription>
         </DialogHeader>
 

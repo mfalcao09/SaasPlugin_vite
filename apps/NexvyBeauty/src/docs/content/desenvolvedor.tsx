@@ -419,7 +419,7 @@ export const devPages: DocPage[] = [
           ]}
         />
         <Callout type="info" title="Captura automática">
-          O widget captura UTMs do <code>window.location</code> do site host e referrer. Tudo vai pro lead criado.
+          O widget captura UTMs do <code>window.location</code> do site host e referrer. Tudo vai para o lead criado.
         </Callout>
       </>
     ),

@@ -125,7 +125,7 @@ export function LeadNbaCard({ leadId, phone, className }: LeadNbaCardProps) {
 
       {!isLoading && !active && (
         <p className="text-xs text-muted-foreground">
-          Sem sugestão ainda. Clique em <strong>Gerar</strong> — a IA lê o contexto do lead e recomenda a próxima ação + uma mensagem pronta pra disparar.
+          Sem sugestão ainda. Clique em <strong>Gerar</strong> — a IA lê o contexto do lead e recomenda a próxima ação + uma mensagem pronta para disparar.
         </p>
       )}
 

@@ -365,7 +365,7 @@ function ScenarioDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Instrução pro agente</Label>
+            <Label>Instrução para o agente</Label>
             <Textarea
               rows={5}
               value={draft.instruction ?? ''}

@@ -107,7 +107,7 @@ export function SalesLeadsManager() {
   const STAT_CARDS = [
     { key: 'total', label: 'Total de leads', value: stats.total, sub: `${stats.taxa}% convertidos`, icon: Users, color: 'text-primary' },
     { key: 'novos', label: 'Novos', value: stats.novos, sub: 'aguardando contato', icon: Sparkles, color: 'text-blue-500' },
-    { key: 'qualificados', label: 'Qualificados', value: stats.qualificados, sub: 'prontos pra fechar', icon: Target, color: 'text-amber-500' },
+    { key: 'qualificados', label: 'Qualificados', value: stats.qualificados, sub: 'prontos para fechar', icon: Target, color: 'text-amber-500' },
     { key: 'convertidos', label: 'Convertidos', value: stats.convertidos, sub: 'viraram clientes', icon: Megaphone, color: 'text-emerald-500' },
     { key: 'canal', label: 'Por canal', value: `${stats.afiliado}/${stats.organico}`, sub: 'afiliado / orgânico', icon: Link2, color: 'text-pink-500' },
   ];

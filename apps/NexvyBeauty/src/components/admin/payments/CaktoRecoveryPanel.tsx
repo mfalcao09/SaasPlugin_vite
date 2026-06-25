@@ -144,7 +144,7 @@ export function CaktoRecoveryPanel() {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Não envia o mesmo tipo de mensagem pro mesmo cliente nesse intervalo.
+                Não envia o mesmo tipo de mensagem para o mesmo cliente nesse intervalo.
               </p>
             </div>
             <div className="space-y-2">

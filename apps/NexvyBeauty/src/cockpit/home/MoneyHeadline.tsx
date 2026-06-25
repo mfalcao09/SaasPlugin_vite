@@ -37,10 +37,10 @@ export function MoneyHeadline({ total, count, subtitle, action }: MoneyHeadlineP
                   <span className="font-semibold text-foreground">
                     {count} {count === 1 ? 'cliente' : 'clientes'}
                   </span>{' '}
-                  que dá pra reconquistar com uma mensagem.
+                  que dá para reconquistar com uma mensagem.
                 </>
               ) : (
-                'Sua IA não encontrou clientes pra reconquistar agora — bom sinal, sua base está em dia.'
+                'Sua IA não encontrou clientes para reconquistar agora — bom sinal, sua base está em dia.'
               )}
             </p>
             {subtitle && <p className="text-xs text-muted-foreground/80 pt-1">{subtitle}</p>}

@@ -696,7 +696,7 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
 
       <div className="flex flex-col gap-2 w-full max-w-xs">
         <Button onClick={onFinish} size="lg" className="gap-2">
-          Ir pro meu dia <ArrowRight className="h-4 w-4" />
+          Ir para o meu dia <ArrowRight className="h-4 w-4" />
         </Button>
         {waLink && (
           <Button asChild variant="outline" size="sm" className="gap-2">

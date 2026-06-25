@@ -186,7 +186,7 @@ export default function HomeDeValor() {
           ) : (
             <Button onClick={() => setBulkOpen(true)} className="gap-1.5">
               <Sparkles className="h-4 w-4" />
-              Disparar reativação pra todas ({displayTop.length})
+              Disparar reativação para todas ({displayTop.length})
             </Button>
           )}
         </div>
@@ -243,7 +243,7 @@ function SeedBanner({
           <p className="text-sm text-muted-foreground max-w-prose">
             {running
               ? 'Sua IA está analisando suas conversas… em instantes os números reais aparecem aqui.'
-              : 'Conecte seu WhatsApp pra sua IA varrer suas conversas e mostrar quanto VOCÊ pode recuperar de verdade.'}
+              : 'Conecte seu WhatsApp para sua IA varrer suas conversas e mostrar quanto VOCÊ pode recuperar de verdade.'}
           </p>
         </div>
         {running ? (

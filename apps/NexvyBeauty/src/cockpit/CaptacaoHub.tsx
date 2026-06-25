@@ -30,7 +30,7 @@ export default function CaptacaoHub() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Atrair Clientes</h1>
         <p className="text-sm text-muted-foreground">
-          Ferramentas pra trazer mais gente pro seu salão — quiz, formulários, link de WhatsApp e mais.
+          Ferramentas para trazer mais gente para o seu salão — quiz, formulários, link de WhatsApp e mais.
         </p>
       </div>
       <Tabs defaultValue="quiz">

@@ -14,7 +14,7 @@ export function formatBRL(value: number): string {
 
 // Vocabulário lay: nada de "hot/warm/cold" cru pra dona do salão.
 export const CLASS_LABEL: Record<OpportunityClass, string> = {
-  hot: 'Prontas pra fechar',
+  hot: 'Prontas para fechar',
   warm: 'Vale um lembrete',
   cold: 'Esfriaram',
   lost: 'Perdidas',
