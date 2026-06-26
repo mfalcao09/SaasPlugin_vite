@@ -375,119 +375,200 @@ function tplMaturidadeDigital() {
   );
 }
 
-// ───────────── NICHOS ─────────────
-function tplImobiliario() {
+// ───────────── NICHOS (Beleza) — o SaaS atende UM nicho: beleza ─────────────
+function tplCabelo() {
   return chain(
-    block('text', { content: '🏠 Vamos encontrar seu imóvel ideal!' }),
-    block('buttons', { label: 'Qual tipo de imóvel procura?', variable_name: 'tipo',
+    block('text', { content: '💇‍♀️ Vamos achar o serviço de cabelo ideal pra você!' }),
+    block('buttons', { label: 'Qual serviço você quer?', variable_name: 'servico',
       options: [
-        { id: '1', letter: 'A', label: 'Apartamento', score: 15, tag: 'apto' },
-        { id: '2', letter: 'B', label: 'Casa', score: 15, tag: 'casa' },
-        { id: '3', letter: 'C', label: 'Comercial', score: 20, tag: 'comercial' },
+        { id: '1', letter: 'A', label: 'Corte', score: 15, tag: 'corte' },
+        { id: '2', letter: 'B', label: 'Coloração / mechas', score: 25, tag: 'cor' },
+        { id: '3', letter: 'C', label: 'Tratamento / progressiva', score: 25, tag: 'tratamento' },
       ] }),
-    block('buttons', { label: 'Faixa de investimento?', variable_name: 'budget',
+    block('buttons', { label: 'Com que frequência você cuida do cabelo?', variable_name: 'frequencia',
       options: [
-        { id: '1', letter: 'A', label: 'Até R$ 300k', score: 10 },
-        { id: '2', letter: 'B', label: 'R$ 300k a R$ 1M', score: 25 },
-        { id: '3', letter: 'C', label: 'Acima de R$ 1M', score: 35, tag: 'alto-padrao' },
+        { id: '1', letter: 'A', label: 'Toda semana', score: 30, tag: 'frequente' },
+        { id: '2', letter: 'B', label: 'Todo mês', score: 20 },
+        { id: '3', letter: 'C', label: 'De vez em quando', score: 10 },
       ] }),
-    block('buttons', { label: 'Comprar para?', variable_name: 'finalidade',
+    block('buttons', { label: 'É pra alguma ocasião?', variable_name: 'ocasiao',
       options: [
-        { id: '1', letter: 'A', label: 'Morar', score: 15, tag: 'morar' },
-        { id: '2', letter: 'B', label: 'Investir', score: 20, tag: 'investidor' },
-        { id: '3', letter: 'C', label: 'Especulação', score: 15 },
-      ] }),
-    block('buttons', { label: 'Quando pretende comprar?', variable_name: 'quando',
-      options: [
-        { id: '1', letter: 'A', label: 'Imediato', score: 35, tag: 'urgente' },
-        { id: '2', letter: 'B', label: '6 meses', score: 20 },
-        { id: '3', letter: 'C', label: 'Sem pressa', score: 5 },
+        { id: '1', letter: 'A', label: 'Tenho um evento próximo', score: 30, tag: 'urgente' },
+        { id: '2', letter: 'B', label: 'Quero renovar o visual', score: 20 },
+        { id: '3', letter: 'C', label: 'Só manutenção', score: 10 },
       ] }),
     captureName(), captureWhatsapp(),
     block('end', {
-      content: '🏠 Vamos encontrar seu imóvel!',
+      content: '💇‍♀️ Perfeito! Já já a gente te chama pra agendar seu horário.',
       result_tiers: STD_TIERS_3(
-        ['Primeiro Imóvel', 'Investidor', 'Alto Potencial de Compra'],
-        ['#94a3b8', '#3b82f6', '#10b981'],
-        ['Vamos te guiar passo a passo.', 'Oportunidades selecionadas para você.', 'Atendimento VIP imediato.'],
+        ['Curiosa', 'Quer agendar', 'Pronta pra marcar'],
+        ['#94a3b8', '#3b82f6', '#ec4899'],
+        ['Vamos te mandar dicas e novidades.', 'Vamos te ajudar a escolher o melhor horário.', 'Te chamamos hoje pra garantir seu horário!'],
       ),
     }),
   );
 }
 
-function tplClinicas() {
+function tplUnhas() {
   return chain(
-    block('text', { content: '🏥 Vamos entender sua necessidade para te encaminhar.' }),
-    block('buttons', { label: 'Qual serviço procura?', variable_name: 'servico',
+    block('text', { content: '💅 Bora deixar suas unhas impecáveis? Responde rapidinho!' }),
+    block('buttons', { label: 'O que você procura?', variable_name: 'servico',
       options: [
-        { id: '1', letter: 'A', label: 'Estética', score: 15, tag: 'estetica' },
-        { id: '2', letter: 'B', label: 'Saúde', score: 20, tag: 'saude' },
-        { id: '3', letter: 'C', label: 'Avaliação', score: 10, tag: 'avaliacao' },
+        { id: '1', letter: 'A', label: 'Manicure / pedicure', score: 15, tag: 'manicure' },
+        { id: '2', letter: 'B', label: 'Alongamento (gel/fibra)', score: 30, tag: 'alongamento' },
+        { id: '3', letter: 'C', label: 'Esmaltação em gel', score: 20, tag: 'gel' },
       ] }),
-    block('buttons', { label: 'Há quanto tempo tem essa necessidade?', variable_name: 'tempo',
+    block('buttons', { label: 'Faz as unhas com que frequência?', variable_name: 'frequencia',
       options: [
-        { id: '1', letter: 'A', label: 'Recente', score: 10 },
-        { id: '2', letter: 'B', label: 'Meses', score: 20 },
-        { id: '3', letter: 'C', label: 'Anos', score: 30, tag: 'cronico' },
+        { id: '1', letter: 'A', label: 'A cada 15 dias', score: 30, tag: 'frequente' },
+        { id: '2', letter: 'B', label: 'Uma vez por mês', score: 20 },
+        { id: '3', letter: 'C', label: 'Raramente', score: 10 },
       ] }),
-    block('buttons', { label: 'Já fez tratamento antes?', variable_name: 'tratamento',
+    block('buttons', { label: 'Curte nail art / decoração?', variable_name: 'estilo',
       options: [
-        { id: '1', letter: 'A', label: 'Não', score: 10 },
-        { id: '2', letter: 'B', label: 'Sim, sem sucesso', score: 25 },
-        { id: '3', letter: 'C', label: 'Sim, parcial', score: 15 },
-      ] }),
-    block('buttons', { label: 'Atendimento preferido?', variable_name: 'modalidade',
-      options: [
-        { id: '1', letter: 'A', label: 'Presencial', score: 20 },
-        { id: '2', letter: 'B', label: 'Online', score: 15 },
-        { id: '3', letter: 'C', label: 'Tanto faz', score: 10 },
+        { id: '1', letter: 'A', label: 'Amo, capricha!', score: 25, tag: 'nail-art' },
+        { id: '2', letter: 'B', label: 'Algo discreto', score: 15 },
+        { id: '3', letter: 'C', label: 'Só uma cor', score: 10 },
       ] }),
     captureName(), captureWhatsapp(),
     block('end', {
-      content: '🏥 Recebemos seus dados. Nossa equipe vai te orientar.',
+      content: '💅 Maravilha! Já já te chamamos pra marcar.',
       result_tiers: STD_TIERS_3(
-        ['Baixa Urgência', 'Média Urgência', 'Alta Urgência'],
-        ['#94a3b8', '#3b82f6', '#ef4444'],
-        ['Vamos te informar com calma.', 'Vamos agendar avaliação.', 'Atendimento prioritário hoje.'],
+        ['Curiosa', 'Quer agendar', 'Cliente fiel'],
+        ['#94a3b8', '#3b82f6', '#d946ef'],
+        ['Vamos te mandar novidades.', 'Vamos achar seu melhor horário.', 'Te chamamos hoje pra agendar!'],
       ),
     }),
   );
 }
 
-function tplInfoprodutos() {
+function tplCilios() {
   return chain(
-    block('text', { content: '🎓 Vamos descobrir o melhor caminho de aprendizado para você.' }),
-    block('buttons', { label: 'Seu nível atual?', variable_name: 'nivel',
+    block('text', { content: '👁️ Cílios dos sonhos? Responde rapidinho que eu te indico o ideal.' }),
+    block('buttons', { label: 'Que estilo você quer?', variable_name: 'estilo',
       options: [
-        { id: '1', letter: 'A', label: 'Iniciante', score: 10, tag: 'iniciante' },
-        { id: '2', letter: 'B', label: 'Intermediário', score: 20, tag: 'intermediario' },
-        { id: '3', letter: 'C', label: 'Avançado', score: 30, tag: 'avancado' },
+        { id: '1', letter: 'A', label: 'Fio a fio (natural)', score: 15, tag: 'fio-a-fio' },
+        { id: '2', letter: 'B', label: 'Volume (mais cheio)', score: 25, tag: 'volume' },
+        { id: '3', letter: 'C', label: 'Híbrido', score: 20, tag: 'hibrido' },
       ] }),
-    block('buttons', { label: 'Qual sua maior dificuldade?', variable_name: 'dificuldade',
+    block('buttons', { label: 'Você já fez extensão de cílios antes?', variable_name: 'experiencia',
       options: [
-        { id: '1', letter: 'A', label: 'Não sei por onde começar', score: 15 },
-        { id: '2', letter: 'B', label: 'Falta consistência', score: 20 },
-        { id: '3', letter: 'C', label: 'Quero técnicas avançadas', score: 25 },
+        { id: '1', letter: 'A', label: 'Sim, faço sempre', score: 30, tag: 'cliente-fiel' },
+        { id: '2', letter: 'B', label: 'Já fiz uma vez', score: 20 },
+        { id: '3', letter: 'C', label: 'Nunca fiz', score: 10, tag: 'primeira-vez' },
       ] }),
-    block('buttons', { label: 'Já comprou treinamento antes?', variable_name: 'treinamento',
+    block('buttons', { label: 'É pra alguma data especial?', variable_name: 'ocasiao',
       options: [
-        { id: '1', letter: 'A', label: 'Nunca', score: 5 },
-        { id: '2', letter: 'B', label: 'Sim, sem resultado', score: 25, tag: 'frustrado' },
-        { id: '3', letter: 'C', label: 'Sim, e funcionou', score: 20 },
+        { id: '1', letter: 'A', label: 'Sim, evento próximo', score: 30, tag: 'urgente' },
+        { id: '2', letter: 'B', label: 'Quero pro dia a dia', score: 20 },
+        { id: '3', letter: 'C', label: 'Só pesquisando', score: 10 },
       ] }),
-    block('buttons', { label: 'Tempo de dedicação semanal?', variable_name: 'tempo',
-      options: [
-        { id: '1', letter: 'A', label: 'Até 2h', score: 10 },
-        { id: '2', letter: 'B', label: '3 a 5h', score: 20 },
-        { id: '3', letter: 'C', label: '6h+', score: 30, tag: 'comprometido' },
-      ] }),
-    captureName(), captureEmail(),
+    captureName(), captureWhatsapp(),
     block('end', {
-      content: '🎓 Sua trilha de aprendizado está pronta!',
+      content: '👁️ Que delícia! Já já te chamamos pra agendar a aplicação.',
       result_tiers: STD_TIERS_3(
-        ['Iniciante', 'Intermediário', 'Avançado'],
-        ['#f97316', '#3b82f6', '#10b981'],
-        ['Comece pelos fundamentos.', 'Hora de aprofundar.', 'Pronto para estratégias avançadas.'],
+        ['Curiosa', 'Quer marcar', 'Pronta pra aplicar'],
+        ['#94a3b8', '#3b82f6', '#8b5cf6'],
+        ['Vamos te mandar dicas de cuidado.', 'Vamos achar seu horário.', 'Te chamamos hoje pra garantir a data!'],
+      ),
+    }),
+  );
+}
+
+function tplSobrancelha() {
+  return chain(
+    block('text', { content: '✨ Vamos desenhar a sobrancelha perfeita pro seu rosto!' }),
+    block('buttons', { label: 'Qual serviço te interessa?', variable_name: 'servico',
+      options: [
+        { id: '1', letter: 'A', label: 'Design / limpeza', score: 15, tag: 'design' },
+        { id: '2', letter: 'B', label: 'Design com henna', score: 25, tag: 'henna' },
+        { id: '3', letter: 'C', label: 'Micropigmentação', score: 30, tag: 'micro' },
+      ] }),
+    block('buttons', { label: 'Como estão suas sobrancelhas hoje?', variable_name: 'estado',
+      options: [
+        { id: '1', letter: 'A', label: 'Bem falhadas', score: 25, tag: 'falhas' },
+        { id: '2', letter: 'B', label: 'Sem formato definido', score: 20 },
+        { id: '3', letter: 'C', label: 'Só precisam de manutenção', score: 10 },
+      ] }),
+    block('buttons', { label: 'Com que frequência você faz?', variable_name: 'frequencia',
+      options: [
+        { id: '1', letter: 'A', label: 'Todo mês', score: 25, tag: 'frequente' },
+        { id: '2', letter: 'B', label: 'De vez em quando', score: 15 },
+        { id: '3', letter: 'C', label: 'É a primeira vez', score: 10, tag: 'primeira-vez' },
+      ] }),
+    captureName(), captureWhatsapp(),
+    block('end', {
+      content: '✨ Perfeito! Já já te chamamos pra marcar seu design.',
+      result_tiers: STD_TIERS_3(
+        ['Curiosa', 'Quer agendar', 'Pronta pra marcar'],
+        ['#94a3b8', '#3b82f6', '#f59e0b'],
+        ['Vamos te mandar dicas.', 'Vamos achar seu horário.', 'Te chamamos hoje!'],
+      ),
+    }),
+  );
+}
+
+function tplMaquiagem() {
+  return chain(
+    block('text', { content: '💄 Make dos sonhos? Me conta a ocasião que eu te ajudo!' }),
+    block('buttons', { label: 'Pra qual ocasião é a maquiagem?', variable_name: 'ocasiao',
+      options: [
+        { id: '1', letter: 'A', label: 'Noiva / madrinha', score: 35, tag: 'noiva' },
+        { id: '2', letter: 'B', label: 'Festa / formatura', score: 25, tag: 'festa' },
+        { id: '3', letter: 'C', label: 'Social / dia a dia', score: 15, tag: 'social' },
+      ] }),
+    block('buttons', { label: 'Quando é o evento?', variable_name: 'quando',
+      options: [
+        { id: '1', letter: 'A', label: 'Nas próximas 2 semanas', score: 35, tag: 'urgente' },
+        { id: '2', letter: 'B', label: 'Neste mês', score: 20 },
+        { id: '3', letter: 'C', label: 'Ainda sem data', score: 10 },
+      ] }),
+    block('buttons', { label: 'Quer um teste de maquiagem antes?', variable_name: 'teste',
+      options: [
+        { id: '1', letter: 'A', label: 'Sim, quero garantir', score: 25, tag: 'quer-teste' },
+        { id: '2', letter: 'B', label: 'Talvez', score: 15 },
+        { id: '3', letter: 'C', label: 'Não precisa', score: 10 },
+      ] }),
+    captureName(), captureWhatsapp(),
+    block('end', {
+      content: '💄 Amei! Já já te chamamos pra alinhar tudo e agendar.',
+      result_tiers: STD_TIERS_3(
+        ['Pesquisando', 'Quer agendar', 'Data marcada!'],
+        ['#94a3b8', '#3b82f6', '#f43f5e'],
+        ['Vamos te mandar referências.', 'Vamos reservar sua data.', 'Atendimento prioritário pra sua data!'],
+      ),
+    }),
+  );
+}
+
+function tplEstetica() {
+  return chain(
+    block('text', { content: '🧖‍♀️ Hora de se cuidar! Responde rapidinho que eu te indico o ideal.' }),
+    block('buttons', { label: 'Qual serviço você procura?', variable_name: 'servico',
+      options: [
+        { id: '1', letter: 'A', label: 'Limpeza de pele', score: 20, tag: 'limpeza' },
+        { id: '2', letter: 'B', label: 'Depilação', score: 15, tag: 'depilacao' },
+        { id: '3', letter: 'C', label: 'Massagem / relax', score: 20, tag: 'massagem' },
+      ] }),
+    block('buttons', { label: 'É a primeira vez ou faz com frequência?', variable_name: 'frequencia',
+      options: [
+        { id: '1', letter: 'A', label: 'Faço sempre', score: 30, tag: 'frequente' },
+        { id: '2', letter: 'B', label: 'Já fiz algumas vezes', score: 20 },
+        { id: '3', letter: 'C', label: 'É a primeira vez', score: 10, tag: 'primeira-vez' },
+      ] }),
+    block('buttons', { label: 'Qual sua prioridade agora?', variable_name: 'objetivo',
+      options: [
+        { id: '1', letter: 'A', label: 'Resolver algo específico', score: 30, tag: 'urgente' },
+        { id: '2', letter: 'B', label: 'Autocuidado / relaxar', score: 20 },
+        { id: '3', letter: 'C', label: 'Só conhecer', score: 10 },
+      ] }),
+    captureName(), captureWhatsapp(),
+    block('end', {
+      content: '🧖‍♀️ Maravilha! Já já te chamamos pra agendar seu cuidado.',
+      result_tiers: STD_TIERS_3(
+        ['Curiosa', 'Quer agendar', 'Pronta pra marcar'],
+        ['#94a3b8', '#3b82f6', '#14b8a6'],
+        ['Vamos te mandar dicas.', 'Vamos achar seu horário.', 'Te chamamos hoje pra agendar!'],
       ),
     }),
   );
@@ -537,19 +618,31 @@ export const QUIZ_TEMPLATES: QuizTemplate[] = [
     estimated_time: '60s', question_count: 4, flow_blocks: tplMaturidadeDigital(),
     badges: ['recomendado'] },
 
-  // Nichos
-  { id: 'imobiliario', name: 'Quiz Imobiliário', description: 'Identifica imóvel ideal: tipo, faixa, finalidade e prazo.',
-    category: 'nichos', objective: 'Imobiliário', icon: '🏠', cover_gradient: 'from-emerald-600 to-green-700',
-    estimated_time: '60s', question_count: 4, flow_blocks: tplImobiliario(),
-    badges: ['nicho'] },
-  { id: 'clinicas', name: 'Quiz para Clínicas', description: 'Qualifica pacientes/interessados por urgência e tipo de serviço.',
-    category: 'nichos', objective: 'Saúde e estética', icon: '🏥', cover_gradient: 'from-teal-500 to-emerald-600',
-    estimated_time: '60s', question_count: 4, flow_blocks: tplClinicas(),
-    badges: ['nicho'] },
-  { id: 'infoprodutos', name: 'Quiz para Infoprodutos', description: 'Qualifica alunos por nível, dificuldade, histórico e dedicação.',
-    category: 'nichos', objective: 'Educação online', icon: '🎓', cover_gradient: 'from-purple-500 to-fuchsia-600',
-    estimated_time: '60s', question_count: 4, flow_blocks: tplInfoprodutos(),
+  // Nichos (Beleza) — o SaaS atende um nicho: beleza.
+  { id: 'beleza-cabelo', name: 'Quiz Salão de Cabelo', description: 'Descobre o serviço ideal — corte, cor ou tratamento — e a urgência da cliente.',
+    category: 'nichos', objective: 'Cabeleireira', icon: '💇‍♀️', cover_gradient: 'from-pink-500 to-rose-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplCabelo(),
     badges: ['nicho', 'alta-conversao'] },
+  { id: 'beleza-unhas', name: 'Quiz Manicure & Nail', description: 'Qualifica por serviço (manicure, alongamento, gel) e frequência.',
+    category: 'nichos', objective: 'Unhas / Nail Designer', icon: '💅', cover_gradient: 'from-fuchsia-500 to-pink-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplUnhas(),
+    badges: ['nicho'] },
+  { id: 'beleza-cilios', name: 'Quiz Lash Designer', description: 'Identifica o estilo de cílios (volume, fio a fio, híbrido) e a ocasião.',
+    category: 'nichos', objective: 'Cílios / Extensão', icon: '👁️', cover_gradient: 'from-violet-500 to-purple-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplCilios(),
+    badges: ['nicho'] },
+  { id: 'beleza-sobrancelha', name: 'Quiz Design de Sobrancelhas', description: 'Qualifica por serviço (design, henna, micro) e estado das sobrancelhas.',
+    category: 'nichos', objective: 'Sobrancelhas', icon: '✨', cover_gradient: 'from-amber-500 to-orange-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplSobrancelha(),
+    badges: ['nicho'] },
+  { id: 'beleza-maquiagem', name: 'Quiz Maquiagem & Make', description: 'Descobre a ocasião (noiva, festa, social) e a data — qualifica por urgência.',
+    category: 'nichos', objective: 'Maquiagem', icon: '💄', cover_gradient: 'from-rose-500 to-red-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplMaquiagem(),
+    badges: ['nicho', 'evento'] },
+  { id: 'beleza-estetica', name: 'Quiz Estética & Depilação', description: 'Qualifica por serviço (limpeza, depilação, massagem) e frequência.',
+    category: 'nichos', objective: 'Estética', icon: '🧖‍♀️', cover_gradient: 'from-teal-500 to-emerald-600',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplEstetica(),
+    badges: ['nicho'] },
 ];
 
 export const CATEGORY_LABELS: Record<QuizCategory, string> = {
