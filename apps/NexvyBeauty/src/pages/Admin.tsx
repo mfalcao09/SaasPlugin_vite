@@ -243,7 +243,7 @@ export default function Admin() {
       case 'capture-reports':
         return <CaptureReportsSection />;
       case 'capture-templates':
-        return <CaptureTemplatesSection />;
+        return <Navigate to="/atrair" replace />;
       case 'capture-results':
         return <CaptureResultsSection />;
       default: return <CompanySettings />;

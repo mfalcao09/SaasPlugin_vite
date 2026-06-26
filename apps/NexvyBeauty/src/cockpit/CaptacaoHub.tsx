@@ -8,7 +8,8 @@ import { lazy, Suspense } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WheelLoader } from '@/components/brand/WheelLoader'
 
-const QuizSection = lazy(() => import('@/components/admin/capture/channels/QuizSection').then(m => ({ default: m.QuizSection })))
+// Quiz agora é um hub de 2 sub-abas (Novo Quiz + Templates Quizzes).
+const QuizHub = lazy(() => import('./QuizHub').then(m => ({ default: m.QuizHub })))
 const FormsSection = lazy(() => import('@/components/admin/capture/channels/FormsSection').then(m => ({ default: m.FormsSection })))
 const WhatsAppSection = lazy(() => import('@/components/admin/capture/channels/WhatsAppSection').then(m => ({ default: m.WhatsAppSection })))
 const WidgetSection = lazy(() => import('@/components/admin/capture/channels/WidgetSection').then(m => ({ default: m.WidgetSection })))
@@ -16,7 +17,7 @@ const ChatBotSection = lazy(() => import('@/components/admin/capture/channels/Ch
 const CaptureResultsSection = lazy(() => import('@/components/admin/capture/channels/CaptureResultsSection').then(m => ({ default: m.CaptureResultsSection })))
 
 const TABS = [
-  { id: 'quiz', label: 'Quiz', C: QuizSection },
+  { id: 'quiz', label: 'Quiz', C: QuizHub },
   { id: 'forms', label: 'Formulários', C: FormsSection },
   { id: 'whatsapp', label: 'WhatsApp', C: WhatsAppSection },
   { id: 'site', label: 'No meu site', C: WidgetSection },

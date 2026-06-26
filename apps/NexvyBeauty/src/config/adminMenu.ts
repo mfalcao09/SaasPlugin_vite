@@ -66,7 +66,7 @@ export const menuGroups: AdminMenuGroup[] = [
       { id: 'capture-chatbot', label: 'ChatBot', icon: MessageCircle },
       { id: 'capture-widget', label: 'Widget', icon: Code2 },
       { id: 'capture-whatsapp', label: 'WhatsApp', icon: MessageSquare },
-      { id: 'capture-templates', label: 'Templates', icon: LayoutGrid },
+      // Templates migraram p/ o cockpit (Atrair Clientes > Quiz > Templates Quizzes).
       { id: 'capture-results', label: 'Resultados', icon: Target },
       { id: 'capture-analytics', label: 'Analytics', icon: BarChart3 },
     ],
