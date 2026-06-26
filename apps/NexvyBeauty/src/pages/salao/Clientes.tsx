@@ -38,16 +38,39 @@ export interface Cliente {
   observacoes: string | null
   /** vínculo opcional com um lead do CRM (origem do score/temperatura) */
   lead_id?: string | null
-  /** data de nascimento (YYYY-MM-DD) — alimenta a alavanca de aniversariantes */
+  /** data de nascimento (YYYY-MM-DD) — alimenta a alavanca de aniversariantes + faixa etária */
   data_nascimento?: string | null
+  /** endereço estruturado (CEP preenche logradouro/bairro/cidade/uf; número e complemento manuais) — pra segmentar por região */
+  cep?: string | null
+  logradouro?: string | null
+  numero?: string | null
+  complemento?: string | null
+  bairro?: string | null
+  cidade?: string | null
+  uf?: string | null
   created_at?: string | null
 }
 
 interface FormState {
   nome: string; telefone: string; email: string; cpf_cnpj: string; status: string; tags: string; observacoes: string; data_nascimento: string
+  cep: string; logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; uf: string
 }
 
-const EMPTY_FORM: FormState = { nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '', data_nascimento: '' }
+const EMPTY_FORM: FormState = {
+  nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '', data_nascimento: '',
+  cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '',
+}
+
+// Idade a partir de YYYY-MM-DD (sem new Date(iso) — evita shift de fuso). null se inválida.
+function idadeDe(iso: string): number | null {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return null
+  const hoje = new Date()
+  let age = hoje.getFullYear() - y
+  const mm = hoje.getMonth() + 1
+  if (mm < m || (mm === m && hoje.getDate() < d)) age--
+  return age >= 0 && age < 130 ? age : null
+}
 
 type SortMode = 'default' | 'hottest'
 
@@ -121,6 +144,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [cepLoading, setCepLoading] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('default')
   const [mergeTarget, setMergeTarget] = useState<DupGroup | null>(null)
   // Perfil 360: cliente selecionado abre o Sheet de detalhe.
@@ -177,6 +201,30 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
 
   const setField = (key: keyof FormState, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
 
+  // ── Busca de endereço por CEP (ViaCEP, público + CORS-ok). Preenche logradouro/
+  //    bairro/cidade/uf; número e complemento ficam manuais. ──
+  const buscarCep = async (cepRaw: string) => {
+    const cep = cepRaw.replace(/\D/g, '')
+    if (cep.length !== 8) return
+    setCepLoading(true)
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      const d = await r.json()
+      if (d.erro) { toast.error('CEP não encontrado'); return }
+      setForm((prev) => ({
+        ...prev,
+        logradouro: d.logradouro || prev.logradouro,
+        bairro: d.bairro || prev.bairro,
+        cidade: d.localidade || prev.cidade,
+        uf: d.uf || prev.uf,
+      }))
+    } catch {
+      toast.error('Não deu pra buscar o CEP agora')
+    } finally {
+      setCepLoading(false)
+    }
+  }
+
   const resetForm = () => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(false) }
   const openNew = () => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true) }
   const openEdit = (c: Cliente) => {
@@ -184,20 +232,42 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
       nome: c.nome ?? '', telefone: c.telefone ?? '', email: c.email ?? '', cpf_cnpj: c.cpf_cnpj ?? '',
       status: c.status ?? 'ativo', tags: (c.tags ?? []).join(', '), observacoes: c.observacoes ?? '',
       data_nascimento: c.data_nascimento ?? '',
+      cep: c.cep ?? '', logradouro: c.logradouro ?? '', numero: c.numero ?? '', complemento: c.complemento ?? '',
+      bairro: c.bairro ?? '', cidade: c.cidade ?? '', uf: c.uf ?? '',
     })
     setEditingId(c.id); setShowForm(true)
   }
 
-  const buildPayload = () => ({
-    nome: form.nome.trim(),
-    telefone: form.telefone.trim() || null,
-    email: form.email.trim() || null,
-    cpf_cnpj: form.cpf_cnpj.trim() || null,
-    status: form.status || 'ativo',
-    tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
-    observacoes: form.observacoes.trim() || null,
-    data_nascimento: form.data_nascimento.trim() || null,
-  })
+  const buildPayload = () => {
+    const g = (s: string) => s.trim()
+    // Recompõe o `endereco` legado (texto livre) a partir dos campos estruturados,
+    // pra não quebrar quem ainda lê essa coluna.
+    const enderecoComposto = [
+      g(form.logradouro),
+      g(form.numero) && `nº ${g(form.numero)}`,
+      g(form.complemento),
+      g(form.bairro),
+      [g(form.cidade), g(form.uf)].filter(Boolean).join('/'),
+    ].filter(Boolean).join(', ') || null
+    return {
+      nome: g(form.nome),
+      telefone: g(form.telefone) || null,
+      email: g(form.email) || null,
+      cpf_cnpj: g(form.cpf_cnpj) || null,
+      status: form.status || 'ativo',
+      tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      observacoes: g(form.observacoes) || null,
+      data_nascimento: g(form.data_nascimento) || null,
+      cep: g(form.cep) || null,
+      logradouro: g(form.logradouro) || null,
+      numero: g(form.numero) || null,
+      complemento: g(form.complemento) || null,
+      bairro: g(form.bairro) || null,
+      cidade: g(form.cidade) || null,
+      uf: g(form.uf) || null,
+      endereco: enderecoComposto,
+    }
+  }
 
   const salvar = useMutation({
     mutationFn: async () => {
@@ -419,7 +489,37 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                 </Select>
               </div>
             </div>
-            <div className="space-y-2"><Label>Data de nascimento</Label><Input type="date" value={form.data_nascimento} onChange={(e) => setField('data_nascimento', e.target.value)} /></div>
+            <div className="space-y-2">
+              <Label>
+                Data de nascimento
+                {form.data_nascimento && idadeDe(form.data_nascimento) != null && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">({idadeDe(form.data_nascimento)} anos)</span>
+                )}
+              </Label>
+              <Input type="date" value={form.data_nascimento} onChange={(e) => setField('data_nascimento', e.target.value)} />
+            </div>
+
+            {/* ── Endereço: CEP preenche logradouro/bairro/cidade/uf; número e complemento manuais ── */}
+            <div className="space-y-2">
+              <Label>CEP</Label>
+              <div className="flex items-center gap-2">
+                <Input value={form.cep} onChange={(e) => setField('cep', e.target.value)} onBlur={() => buscarCep(form.cep)} placeholder="00000-000" className="w-40" inputMode="numeric" />
+                {cepLoading && <span className="text-xs text-muted-foreground">buscando endereço…</span>}
+              </div>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div className="space-y-2"><Label>Logradouro</Label><Input value={form.logradouro} onChange={(e) => setField('logradouro', e.target.value)} placeholder="Rua, avenida…" /></div>
+              <div className="space-y-2"><Label>Número</Label><Input value={form.numero} onChange={(e) => setField('numero', e.target.value)} className="w-24" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Complemento</Label><Input value={form.complemento} onChange={(e) => setField('complemento', e.target.value)} placeholder="apto, bloco…" /></div>
+              <div className="space-y-2"><Label>Bairro</Label><Input value={form.bairro} onChange={(e) => setField('bairro', e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div className="space-y-2"><Label>Cidade</Label><Input value={form.cidade} onChange={(e) => setField('cidade', e.target.value)} /></div>
+              <div className="space-y-2"><Label>UF</Label><Input value={form.uf} onChange={(e) => setField('uf', e.target.value.toUpperCase())} maxLength={2} className="w-16" /></div>
+            </div>
+
             <div className="space-y-2"><Label>Tags</Label><Input value={form.tags} onChange={(e) => setField('tags', e.target.value)} placeholder="separadas por vírgula" /></div>
             <div className="space-y-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={(e) => setField('observacoes', e.target.value)} rows={3} /></div>
           </div>

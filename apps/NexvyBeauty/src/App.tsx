@@ -193,7 +193,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Err
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <AuthProvider>
         <TooltipProvider>
         <PlatformBrandingLoader />
