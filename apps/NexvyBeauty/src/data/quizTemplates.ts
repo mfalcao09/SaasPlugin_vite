@@ -1,6 +1,6 @@
 import { FunnelBlock, generateBlockId } from '@/types/funnel';
 
-export type QuizCategory = 'captacao' | 'diagnostico' | 'negocios' | 'nichos' | 'qualificacao' | 'recomendacao' | 'educacional';
+export type QuizCategory = 'captacao' | 'diagnostico' | 'negocios' | 'nichos';
 export type QuizBadge = 'mais-usado' | 'recomendado' | 'alta-conversao' | 'diagnostico' | 'evento' | 'nicho' | 'ia';
 
 export interface QuizTemplate {
@@ -574,6 +574,40 @@ function tplEstetica() {
   );
 }
 
+// Podologia = cuidado clínico do pé (≠ pedicure estético). Triagem por QUEIXA + dor.
+function tplPodologia() {
+  return chain(
+    block('text', { content: '🦶 Vamos cuidar dos seus pés! Responde rapidinho que a gente te orienta.' }),
+    block('buttons', { label: 'Qual é a sua principal queixa?', variable_name: 'queixa',
+      options: [
+        { id: '1', letter: 'A', label: 'Unha encravada', score: 30, tag: 'encravada' },
+        { id: '2', letter: 'B', label: 'Calos / rachaduras', score: 20, tag: 'calos' },
+        { id: '3', letter: 'C', label: 'Micose / unha grossa', score: 25, tag: 'micose' },
+      ] }),
+    block('buttons', { label: 'Há quanto tempo está assim?', variable_name: 'tempo',
+      options: [
+        { id: '1', letter: 'A', label: 'Começou agora', score: 15 },
+        { id: '2', letter: 'B', label: 'Algumas semanas', score: 25 },
+        { id: '3', letter: 'C', label: 'Meses ou mais', score: 35, tag: 'cronico' },
+      ] }),
+    block('buttons', { label: 'Sente dor ou incômodo agora?', variable_name: 'dor',
+      options: [
+        { id: '1', letter: 'A', label: 'Sim, bastante', score: 35, tag: 'urgente' },
+        { id: '2', letter: 'B', label: 'Um pouco', score: 20 },
+        { id: '3', letter: 'C', label: 'Não, é mais estético', score: 10 },
+      ] }),
+    captureName(), captureWhatsapp(),
+    block('end', {
+      content: '🦶 Recebemos! Já já a gente te chama pra cuidar disso com você.',
+      result_tiers: STD_TIERS_3(
+        ['Pode esperar', 'Vale avaliar', 'Atenção: cuide logo'],
+        ['#94a3b8', '#3b82f6', '#ef4444'],
+        ['Vamos te orientar e marcar quando quiser.', 'Vamos agendar uma avaliação.', 'Te chamamos hoje — quanto antes, melhor pra evitar piora.'],
+      ),
+    }),
+  );
+}
+
 // ───────────── CATÁLOGO ─────────────
 export const QUIZ_TEMPLATES: QuizTemplate[] = [
   // Captação
@@ -643,6 +677,10 @@ export const QUIZ_TEMPLATES: QuizTemplate[] = [
     category: 'nichos', objective: 'Estética', icon: '🧖‍♀️', cover_gradient: 'from-teal-500 to-emerald-600',
     estimated_time: '50s', question_count: 3, flow_blocks: tplEstetica(),
     badges: ['nicho'] },
+  { id: 'beleza-podologia', name: 'Quiz Podologia', description: 'Triagem clínica do pé: queixa, tempo e dor — prioriza por urgência.',
+    category: 'nichos', objective: 'Podologia', icon: '🦶', cover_gradient: 'from-cyan-600 to-blue-700',
+    estimated_time: '50s', question_count: 3, flow_blocks: tplPodologia(),
+    badges: ['nicho'] },
 ];
 
 export const CATEGORY_LABELS: Record<QuizCategory, string> = {
@@ -650,9 +688,6 @@ export const CATEGORY_LABELS: Record<QuizCategory, string> = {
   diagnostico: 'Diagnóstico',
   negocios: 'Negócios',
   nichos: 'Nichos',
-  qualificacao: 'Qualificação',
-  recomendacao: 'Recomendação',
-  educacional: 'Educacional',
 };
 
 export const BADGE_LABELS: Record<QuizBadge, string> = {
