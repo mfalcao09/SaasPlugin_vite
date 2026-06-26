@@ -51,6 +51,11 @@ interface Evento { tipo: Tipo; cliente_id: string | null; cliente_nome: string; 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE)
+  // Insere no log sem derrubar o loop: insert duplicado (corrida de cron ou retry)
+  // bate no unique index e é benigno — engole o erro.
+  const logSafe = async (row: Record<string, unknown>) => {
+    try { await admin.from('salon_automation_log').insert(row) } catch (_e) { /* idempotência */ }
+  }
 
   const auth = req.headers.get('authorization') ?? ''
   const isCron = auth === `Bearer ${SERVICE_ROLE}` // SÓ o cron (service role) pode ENVIAR
@@ -117,7 +122,7 @@ Deno.serve(async (req) => {
         .select('id, cliente_nome, status, data_validade').eq('organization_id', orgId)
         .eq('status', 'ativo').gte('data_validade', hoje).lte('data_validade', ate)
       for (const p of pacs ?? []) {
-        candidatos.push({ tipo: 'pacote_vencendo', cliente_id: idDoNome(p.cliente_nome), cliente_nome: p.cliente_nome ?? 'Cliente', telefone: normPhone(telDoNome(p.cliente_nome)), mensagem: compose(r.template, 'pacote_vencendo', p.cliente_nome), ref: `pacote_vencendo:${p.id}` })
+        candidatos.push({ tipo: 'pacote_vencendo', cliente_id: idDoNome(p.cliente_nome), cliente_nome: p.cliente_nome ?? 'Cliente', telefone: normPhone(telDoNome(p.cliente_nome)), mensagem: compose(r.template, 'pacote_vencendo', p.cliente_nome), ref: `pacote_vencendo:${p.id}:${p.data_validade}` })
       }
     }
     // ── agendamento amanhã (confirmação 24h) ──
@@ -138,18 +143,16 @@ Deno.serve(async (req) => {
       const alvo = addDays(hoje, -Math.max(1, r.antecedencia_dias ?? 45))
       const { data: ags } = await admin.from('agendamentos')
         .select('cliente_id, cliente_nome, data, status').eq('organization_id', orgId).eq('status', 'concluido')
-      const ultima = new Map<string, { data: string; nome: string; cid: string | null }>()
+      // SÓ por cliente_id (ref estável → idempotência confiável; nome muda com typo/rename).
+      const ultima = new Map<string, { data: string; nome: string }>()
       for (const a of ags ?? []) {
-        if (!a.data) continue
-        const key = a.cliente_id ?? (a.cliente_nome ? `nome:${normNome(a.cliente_nome)}` : null)
-        if (!key) continue
-        const cur = ultima.get(key)
-        if (!cur || a.data > cur.data) ultima.set(key, { data: a.data.slice(0, 10), nome: a.cliente_nome ?? 'Cliente', cid: a.cliente_id ?? null })
+        if (!a.cliente_id || !a.data) continue
+        const cur = ultima.get(a.cliente_id)
+        if (!cur || a.data > cur.data) ultima.set(a.cliente_id, { data: a.data.slice(0, 10), nome: a.cliente_nome ?? 'Cliente' })
       }
-      for (const [key, u] of ultima) {
+      for (const [cid, u] of ultima) {
         if (u.data !== alvo) continue
-        const tel = u.cid ? telById.get(u.cid) ?? null : telDoNome(u.nome)
-        candidatos.push({ tipo: 'retorno_inativo', cliente_id: u.cid ?? idDoNome(u.nome), cliente_nome: u.nome, telefone: normPhone(tel), mensagem: compose(r.template, 'retorno_inativo', u.nome), ref: `retorno_inativo:${key}:${hoje}` })
+        candidatos.push({ tipo: 'retorno_inativo', cliente_id: cid, cliente_nome: u.nome, telefone: normPhone(telById.get(cid) ?? null), mensagem: compose(r.template, 'retorno_inativo', u.nome), ref: `retorno_inativo:${cid}:${hoje}` })
       }
     }
 
@@ -169,7 +172,7 @@ Deno.serve(async (req) => {
       for (const ev of pendentes) {
         if (!ev.telefone) { // sem telefone (ou ambíguo) → registra skip, não envia
           falhas += 1
-          await admin.from('salon_automation_log').insert({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: null, mensagem: ev.mensagem, ref: ev.ref, status: 'skipped' })
+          await logSafe({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: null, mensagem: ev.mensagem, ref: ev.ref, status: 'skipped' })
           continue
         }
         try {
@@ -179,12 +182,12 @@ Deno.serve(async (req) => {
             body: JSON.stringify({ organization_id: orgId, type: 'text', to: ev.telefone, payload: { text: ev.mensagem } }),
           })
           const ok = resp.ok
-          await admin.from('salon_automation_log').insert({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: ev.telefone, mensagem: ev.mensagem, ref: ev.ref, status: ok ? 'sent' : 'failed' })
+          await logSafe({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: ev.telefone, mensagem: ev.mensagem, ref: ev.ref, status: ok ? 'sent' : 'failed' })
           ok ? enviados++ : falhas++
           await new Promise((r) => setTimeout(r, 1500)) // throttle anti-spam
         } catch (_e) {
           falhas += 1
-          await admin.from('salon_automation_log').insert({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: ev.telefone, mensagem: ev.mensagem, ref: ev.ref, status: 'failed' })
+          await logSafe({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: ev.telefone, mensagem: ev.mensagem, ref: ev.ref, status: 'failed' })
         }
       }
     }
