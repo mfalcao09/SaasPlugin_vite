@@ -762,13 +762,126 @@ function NovoLancamentoDialog({
   )
 }
 
+// ─── Aba: Comissões (de SERVIÇO, por profissional) ───────────────────────
+// Comissão de serviço ≠ comissão de venda/afiliado. Por profissional: soma o valor
+// dos atendimentos CONCLUÍDOS no período × comissao_pct. Fonte: profissionais.comissao_pct
+// + agendamentos (status='concluido'). Sem profissional vinculado → 0% (mostra "—").
+interface ComissaoRow { id: string; nome: string; pct: number; atendimentos: number; faturado: number; comissao: number }
+
+function ComissoesTab({ period, organizationId, isDemo }: {
+  period: FinPeriod; organizationId: string | null | undefined; isDemo: boolean
+}) {
+  const { data: profissionais } = useQuery({
+    queryKey: ['comissoes-profissionais', organizationId],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profissionais')
+        .select('id, nome, comissao_pct').eq('organization_id', organizationId!)
+      if (error) throw error
+      return (data ?? []) as { id: string; nome: string; comissao_pct: number | null }[]
+    },
+  })
+
+  const { data: agendamentos, isLoading } = useQuery({
+    queryKey: ['comissoes-agendamentos', organizationId],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('agendamentos')
+        .select('profissional_id, profissional_nome, valor, status, data')
+        .eq('organization_id', organizationId!).eq('status', 'concluido').limit(5000)
+      if (error) throw error
+      return (data ?? []) as { profissional_id: string | null; profissional_nome: string | null; valor: number | null; status: string | null; data: string | null }[]
+    },
+  })
+
+  const rows = useMemo<ComissaoRow[]>(() => {
+    const pctById = new Map((profissionais ?? []).map((p) => [p.id, Number(p.comissao_pct ?? 0)]))
+    const nomeById = new Map((profissionais ?? []).map((p) => [p.id, p.nome]))
+    const agg = new Map<string, { nome: string; pct: number; atendimentos: number; faturado: number }>()
+    for (const a of agendamentos ?? []) {
+      if (!inPeriod(a.data, period)) continue
+      const key = a.profissional_id ?? (a.profissional_nome ? `n:${a.profissional_nome}` : 'sem')
+      const nome = (a.profissional_id ? nomeById.get(a.profissional_id) : null) ?? a.profissional_nome ?? 'Sem profissional'
+      const pct = a.profissional_id ? (pctById.get(a.profissional_id) ?? 0) : 0
+      const cur = agg.get(key) ?? { nome, pct, atendimentos: 0, faturado: 0 }
+      cur.atendimentos += 1
+      cur.faturado += Number(a.valor ?? 0)
+      agg.set(key, cur)
+    }
+    return [...agg.entries()]
+      .map(([id, v]) => ({ id, nome: v.nome, pct: v.pct, atendimentos: v.atendimentos, faturado: v.faturado, comissao: v.faturado * (v.pct / 100) }))
+      .sort((a, b) => b.comissao - a.comissao)
+  }, [profissionais, agendamentos, period])
+
+  const totalFaturado = rows.reduce((s, r) => s + r.faturado, 0)
+  const totalComissao = rows.reduce((s, r) => s + r.comissao, 0)
+  const totalAtend = rows.reduce((s, r) => s + r.atendimentos, 0)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Percent className="h-4 w-4 text-primary" /> Comissões por profissional
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Comissão de serviço = atendimentos concluídos × % de comissão do profissional, no período.
+          Ajuste o % no cadastro do profissional.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isDemo ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Indisponível no modo demonstração.</p>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhum atendimento concluído no período.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-4 font-medium">Profissional</th>
+                  <th className="py-2 px-4 font-medium text-right">Atendimentos</th>
+                  <th className="py-2 px-4 font-medium text-right">Faturado</th>
+                  <th className="py-2 px-4 font-medium text-right">Comissão %</th>
+                  <th className="py-2 pl-4 font-medium text-right">Comissão</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b last:border-0">
+                    <td className="py-2 pr-4 truncate max-w-[16rem]">{r.nome}</td>
+                    <td className="py-2 px-4 text-right tabular-nums">{r.atendimentos}</td>
+                    <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(r.faturado)}</td>
+                    <td className="py-2 px-4 text-right tabular-nums">{r.pct > 0 ? `${r.pct.toFixed(0)}%` : '—'}</td>
+                    <td className="py-2 pl-4 text-right tabular-nums font-medium">{formatCurrency(r.comissao)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t font-medium">
+                  <td className="py-2 pr-4">Total</td>
+                  <td className="py-2 px-4 text-right tabular-nums">{totalAtend}</td>
+                  <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(totalFaturado)}</td>
+                  <td className="py-2 px-4" />
+                  <td className="py-2 pl-4 text-right tabular-nums text-primary">{formatCurrency(totalComissao)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ─── Componente raiz ─────────────────────────────────────────────────────
 export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<'dashboard' | 'entradas' | 'saidas'>('dashboard')
+  const [tab, setTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'comissoes'>('dashboard')
   const [periodState, setPeriodState] = useState<FinPeriodState>(DEFAULT_PERIOD_STATE)
   const period = resolvePeriod(periodState)
 
@@ -838,6 +951,7 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
               <TabsTrigger value="dashboard" className="gap-2"><DollarSign className="h-4 w-4" />Dashboard</TabsTrigger>
               <TabsTrigger value="entradas" className="gap-2"><ArrowUpCircle className="h-4 w-4" />Entradas</TabsTrigger>
               <TabsTrigger value="saidas" className="gap-2"><ArrowDownCircle className="h-4 w-4" />Saídas</TabsTrigger>
+              <TabsTrigger value="comissoes" className="gap-2"><Percent className="h-4 w-4" />Comissões</TabsTrigger>
             </TabsList>
             <span className="text-sm text-muted-foreground">{periodLabel(period)}</span>
           </div>
@@ -862,6 +976,10 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
 
           <TabsContent value="saidas" className="mt-0">
             <LancamentosTab rows={lancamentos} period={period} tipo="saida" isLoading={isLoading} onNew={() => setNovoTipo('saida')} />
+          </TabsContent>
+
+          <TabsContent value="comissoes" className="mt-0">
+            <ComissoesTab period={period} organizationId={organizationId} isDemo={isDemo} />
           </TabsContent>
         </Tabs>
       </div>
