@@ -289,7 +289,7 @@ export function EvolutionInstancesPanel() {
   const limit = effectivePlan?.limits?.max_connections ?? 1;
   const limitReached = used >= limit;
 
-  const handleUpgrade = () => navigate('/admin?tab=plan');
+  const handleUpgrade = () => navigate('/plano');
 
   return (
     <div className="space-y-4">

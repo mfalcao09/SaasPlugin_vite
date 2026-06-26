@@ -37,8 +37,8 @@ import { OpportunityCard } from '@/cockpit/home/OpportunityCard'
 import { HomeLoading } from '@/cockpit/home/HomeStates'
 import { SEED_OPPORTUNITIES } from '@/cockpit/home/seedOpportunities'
 
-// Conexão do WhatsApp vive no Admin > Configurações > Conexões (EvolutionInstancesPanel).
-const WHATSAPP_CONNECT_TO = '/admin?tab=connections'
+// Conexão do WhatsApp agora é página própria no cockpit (Gestão > Conexões).
+const WHATSAPP_CONNECT_TO = '/conexoes'
 
 export default function HomeDeValor() {
   const { profile, isSuperAdmin } = useAuth()

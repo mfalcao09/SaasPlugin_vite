@@ -197,19 +197,21 @@ export default function Admin() {
       case 'products': return <Navigate to="/produtos" replace />;
       case 'reports': return <Navigate to="/relatorios" replace />;
       case 'financial': return <Navigate to="/faturamento" replace />;
-      case 'notifications': return <NotificationManager />;
-      case 'webhooks': return <WebhooksManager />;
-      case 'custom-fields': return <CustomFieldsManager />;
+      // Configurações migraram para o cockpit (Gestão) como páginas individuais.
+      // Bookmarks/links ?tab=<config> antigos redirecionam pras novas rotas.
+      case 'notifications': return <Navigate to="/notificacoes" replace />;
+      case 'webhooks': return <Navigate to="/webhooks" replace />;
+      case 'custom-fields': return <Navigate to="/campos-personalizados" replace />;
       case 'integrations': return <IntegrationsManager />;
       case 'sectors': return <Navigate to="/setores" replace />;
-      case 'plan': return <PlanSelector />;
+      case 'plan': return <Navigate to="/plano" replace />;
       case 'payments': return <Navigate to="/faturamento" replace />;
-      case 'connections': return <EvolutionInstancesPanel />;
-      case 'tags': return <TagsManager />;
-      case 'schedules': return <BusinessHoursManager />;
-      case 'company': return <CompanySettings />;
-      case 'support': return <SupportTickets scope="admin" />;
-      case 'quick-replies': return <QuickRepliesManager />;
+      case 'connections': return <Navigate to="/conexoes" replace />;
+      case 'tags': return <Navigate to="/etiquetas" replace />;
+      case 'schedules': return <Navigate to="/horarios" replace />;
+      case 'company': return <Navigate to="/empresa" replace />;
+      case 'support': return <Navigate to="/suporte" replace />;
+      case 'quick-replies': return <Navigate to="/respostas-rapidas" replace />;
       // Migrados para o cockpit (Minha IA) — redireciona bookmarks ?tab= antigos.
       case 'campaigns': return <Navigate to="/minha-ia" replace />;
       case 'cadences': return <Navigate to="/minha-ia" replace />;
@@ -230,7 +232,9 @@ export default function Admin() {
       // capture-reports: id legado (fora do menu), alcançável só por URL manual.
       case 'capture-reports':
         return <CaptureReportsSection />;
-      default: return <CompanySettings />;
+      // /admin foi dissolvido — Configurações viraram páginas no cockpit (Gestão).
+      // Qualquer tab desconhecido cai em Empresa (a antiga seção default).
+      default: return <Navigate to="/empresa" replace />;
     }
   };
 

@@ -4,9 +4,10 @@
 // Ajustes" (/admin). Grupo com title:'' = topo solto (UnifiedShell suprime o label).
 
 import {
-  Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
+  Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
   LayoutGrid, Target, Package, Network,
+  Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
@@ -47,7 +48,18 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/setores', label: 'Setores', icon: Network, visibility: 'admin' }, // migrado do admin (admin-only)
       { to: '/equipes', label: 'Equipes', icon: Users, visibility: 'admin' }, // migrado do admin (admin-only)
       { to: '/minha-ia', label: 'Minha IA', icon: Bot },
-      { to: '/admin', label: 'Gestão & Ajustes', icon: Settings, visibility: 'admin' },
+      // Configurações migradas do Admin → páginas individuais (admin-only).
+      // O shell /admin foi dissolvido; ?tab=<config> antigos redirecionam (Admin.tsx).
+      { to: '/conexoes', label: 'Conexões', icon: Plug, visibility: 'admin' },
+      { to: '/webhooks', label: 'Webhooks', icon: Webhook, visibility: 'admin' },
+      { to: '/respostas-rapidas', label: 'Respostas Rápidas', icon: MessageSquare, visibility: 'admin' },
+      { to: '/campos-personalizados', label: 'Campos Personalizados', icon: FileText, visibility: 'admin' },
+      { to: '/etiquetas', label: 'Etiquetas', icon: Tag, visibility: 'admin' },
+      { to: '/notificacoes', label: 'Notificações', icon: Bell, visibility: 'admin' },
+      { to: '/horarios', label: 'Horários', icon: Clock, visibility: 'admin' },
+      { to: '/empresa', label: 'Empresa', icon: Building2, visibility: 'admin' },
+      { to: '/plano', label: 'Plano', icon: CreditCard, visibility: 'admin' },
+      { to: '/suporte', label: 'Suporte', icon: LifeBuoy, visibility: 'admin' },
     ],
   },
 ]

@@ -46,6 +46,18 @@ const CockpitLeads = lazyWithRetry(() => import("@/components/admin/leads/LeadsM
 const CockpitProdutos = lazyWithRetry(() => import("./cockpit/Produtos"));
 const CockpitSetores = lazyWithRetry(() => import("./cockpit/Setores"));
 const CockpitEquipes = lazyWithRetry(() => import("./cockpit/Equipes"));
+// Configurações migradas do admin → cockpit (Gestão), como páginas individuais.
+// Reusam os mesmos managers do admin (cada um já renderiza seu header).
+const CockpitConexoes = lazyWithRetry(() => import("@/components/admin/integrations/EvolutionInstancesPanel").then(m => ({ default: m.EvolutionInstancesPanel })));
+const CockpitWebhooks = lazyWithRetry(() => import("@/components/admin/webhooks/WebhooksManager").then(m => ({ default: m.WebhooksManager })));
+const CockpitRespostas = lazyWithRetry(() => import("@/components/admin/QuickRepliesManager").then(m => ({ default: m.QuickRepliesManager })));
+const CockpitCampos = lazyWithRetry(() => import("@/components/admin/CustomFieldsManager").then(m => ({ default: m.CustomFieldsManager })));
+const CockpitEtiquetas = lazyWithRetry(() => import("@/components/admin/tags/TagsManager").then(m => ({ default: m.TagsManager })));
+const CockpitNotificacoes = lazyWithRetry(() => import("@/components/admin/NotificationManager").then(m => ({ default: m.NotificationManager })));
+const CockpitHorarios = lazyWithRetry(() => import("@/components/admin/schedules/BusinessHoursManager").then(m => ({ default: m.BusinessHoursManager })));
+const CockpitEmpresa = lazyWithRetry(() => import("@/components/admin/company/CompanySettings").then(m => ({ default: m.CompanySettings })));
+const CockpitPlano = lazyWithRetry(() => import("@/components/admin/plan/PlanSelector").then(m => ({ default: m.PlanSelector })));
+const CockpitSuporte = lazyWithRetry(() => import("@/components/admin/support/SupportTickets").then(m => ({ default: m.SupportTickets })));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -250,6 +262,17 @@ const App = () => (
                 <Route path="produtos" element={<CockpitProdutos />} />
                 <Route path="setores" element={<CockpitSetores />} />
                 <Route path="equipes" element={<CockpitEquipes />} />
+                {/* Configurações (migradas do admin → páginas individuais no Gestão). */}
+                <Route path="conexoes" element={<div className="p-6"><CockpitConexoes /></div>} />
+                <Route path="webhooks" element={<div className="p-6"><CockpitWebhooks /></div>} />
+                <Route path="respostas-rapidas" element={<div className="p-6"><CockpitRespostas /></div>} />
+                <Route path="campos-personalizados" element={<div className="p-6"><CockpitCampos /></div>} />
+                <Route path="etiquetas" element={<div className="p-6"><CockpitEtiquetas /></div>} />
+                <Route path="notificacoes" element={<div className="p-6"><CockpitNotificacoes /></div>} />
+                <Route path="horarios" element={<div className="p-6"><CockpitHorarios /></div>} />
+                <Route path="empresa" element={<div className="p-6"><CockpitEmpresa /></div>} />
+                <Route path="plano" element={<div className="p-6"><CockpitPlano /></div>} />
+                <Route path="suporte" element={<div className="p-6"><CockpitSuporte scope="admin" /></div>} />
                 <Route path="radar" element={<CockpitRadar />} />
                 <Route path="tarefas" element={<CockpitTarefas />} />
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />

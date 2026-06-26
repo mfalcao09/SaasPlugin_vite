@@ -54,34 +54,12 @@ export interface AdminMenuGroup {
 // Agenda também migrou (redireciona p/ /salao/agenda). Admin = só config/gestão.
 export const fixedItems: AdminMenuItem[] = [];
 
-// Grupos em accordion
-export const menuGroups: AdminMenuGroup[] = [
-  // Grupo 'Captação' migrou 100% para o cockpit. Atrair Clientes (/atrair) cobre
-  // Quiz/Formulários/WhatsApp/Widget(site)/ChatBot(chat)/Resultados; o Analytics de
-  // captação vive em Relatórios (/relatorios-comerciais > aba "Captação / Quizzes").
-  // Bookmarks ?tab=capture-* redirecionam via Admin.tsx.
-  // Grupo 'Gestão' migrou para o cockpit (seção Gestão): Produtos/Setores/Equipes.
-  // Relatórios/Financeiro (deal/afiliado) → SuperAdmin > Afiliados (removidos do tenant).
-  // Pagamentos → Meu Salão > Financeiro (aba). Tudo redireciona via Admin.tsx.
-  {
-    id: 'settings',
-    label: 'Configurações',
-    icon: Settings,
-    items: [
-      { id: 'connections', label: 'Conexões', icon: Plug },
-      { id: 'webhooks', label: 'Webhooks', icon: Webhook },
-      // Integrações migrou para o SuperAdmin (config central da plataforma).
-      { id: 'quick-replies', label: 'Respostas Rápidas', icon: MessageSquare },
-      { id: 'custom-fields', label: 'Campos personalizados', icon: FileText },
-      { id: 'tags', label: 'Etiquetas', icon: Tag },
-      { id: 'notifications', label: 'Notificações', icon: Bell },
-      { id: 'schedules', label: 'Horários', icon: Clock },
-      { id: 'company', label: 'Empresa', icon: Building2 },
-      { id: 'plan', label: 'Plano', icon: CreditCard },
-      { id: 'support', label: 'Suporte', icon: LifeBuoy },
-    ],
-  },
-];
+// Admin DISSOLVIDO. Captação migrou para o cockpit (Atrair Clientes / Relatórios)
+// e Configurações migraram para o cockpit (Gestão) como páginas individuais
+// (/conexoes, /webhooks, /empresa, /plano, …). O menu do Admin fica vazio; a rota
+// /admin redireciona (Admin.tsx: ?tab=<config> → rota nova, default → /empresa) e o
+// item "Gestão & Ajustes" saiu do nav.tsx do cockpit.
+export const menuGroups: AdminMenuGroup[] = [];
 
 export const allMenuItems: AdminMenuItem[] = [
   ...fixedItems,

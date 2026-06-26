@@ -63,7 +63,7 @@ export function OpportunityCard({ card, onSent, seed, onSeedCta, seedCtaLabel }:
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="gap-1.5">
-                <Link to="/admin?tab=connections">
+                <Link to="/conexoes">
                   <MessageCircle className="h-3.5 w-3.5" />
                   Conecte para disparar
                 </Link>
