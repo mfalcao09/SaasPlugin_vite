@@ -99,7 +99,7 @@ export const menuGroups: AdminMenuGroup[] = [
     icon: Settings,
     items: [
       { id: 'connections', label: 'Conexões', icon: Plug },
-      { id: 'integrations', label: 'Integrações', icon: Settings },
+      // Integrações migrou para o SuperAdmin (config central da plataforma).
       { id: 'quick-replies', label: 'Respostas Rápidas', icon: MessageSquare },
       { id: 'custom-fields', label: 'Campos personalizados', icon: FileText },
       { id: 'tags', label: 'Etiquetas', icon: Tag },

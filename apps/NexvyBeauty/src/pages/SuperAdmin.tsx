@@ -20,6 +20,7 @@ import { SupportTickets } from '@/components/admin/support/SupportTickets';
 import { AgentToolExecutionsPanel } from '@/components/superadmin/AgentToolExecutionsPanel';
 import { AIQualityPanel } from '@/components/superadmin/AIQualityPanel';
 import { AffiliatesPanel } from '@/components/superadmin/AffiliatesPanel';
+import { IntegrationsManager } from '@/components/admin/integrations/IntegrationsManager';
 import { FirstAccessSuperAdminModal } from '@/components/superadmin/FirstAccessSuperAdminModal';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 
@@ -59,6 +60,8 @@ export default function SuperAdmin() {
         return <CaktoSuperAdminPanel />;
       case 'branding':
         return <PlatformSettings />;
+      case 'integrations':
+        return <IntegrationsManager />;
       case 'email':
         return <EmailSettings />;
       case 'audit':

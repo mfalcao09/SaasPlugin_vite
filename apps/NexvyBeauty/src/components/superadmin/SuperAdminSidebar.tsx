@@ -25,6 +25,7 @@ import {
   Wrench,
   BarChart3,
   Handshake,
+  Plug,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ const menuItems = [
 ];
 
 const settingsItems = [
+  { id: 'integrations', label: 'Integrações', icon: Plug },
   { id: 'branding', label: 'Identidade Visual', icon: Palette },
   { id: 'email', label: 'E-mail', icon: Mail },
   { id: 'audit', label: 'Logs de Auditoria', icon: ScrollText },
