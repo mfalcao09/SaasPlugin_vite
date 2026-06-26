@@ -34,6 +34,9 @@ export interface GrowthLever {
   /** rota interna do CTA */
   ctaTo: string
   icon: LucideIcon
+  /** clientes nomeados que alimentam a alavanca (a cabeleireira vê QUEM, não só
+   * o número). Opcional → backward-compatible com quem só lê o agregado. */
+  clienteList?: Array<{ nome: string; key: string }>
 }
 
 export interface AiGrowthData {
@@ -142,6 +145,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver clientes inativas',
     ctaTo: TO_CLIENTES,
     icon: UserMinus,
+    clienteList: inativos.map((c) => ({ nome: c.nome, key: c.key })),
   }
 
   // ── Alavanca 2: Pacotes a renovar (quase esgotados / vencendo) ───────────
@@ -167,6 +171,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver pacotes',
     ctaTo: TO_PACOTES,
     icon: PackageCheck,
+    clienteList: quaseEsgotados.map((p) => ({ nome: p.cliente_nome ?? 'Cliente', key: p.id })),
   }
 
   // ── Alavanca 3: Horários/dias de baixa ocupação → promo pra preencher ────
@@ -250,6 +255,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
       ctaLabel: 'Ver serviços',
       ctaTo: TO_SERVICOS,
       icon: ArrowUpRight,
+      clienteList: naoFizeram.map((c) => ({ nome: c.nome, key: c.key })),
     }
   } else {
     lever4 = {
@@ -281,6 +287,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver clientes',
     ctaTo: TO_CLIENTES,
     icon: Crown,
+    clienteList: vips.map((c) => ({ nome: c.nome, key: c.key })),
   }
 
   return [lever1, lever2, lever3, lever4, lever5]

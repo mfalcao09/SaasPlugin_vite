@@ -71,6 +71,26 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
 
         <p className="text-sm text-muted-foreground">{lever.description}</p>
 
+        {/* Lista nomeada: a cabeleireira vê QUEM alimenta a alavanca (até ~6 +
+            "N mais"), não só o número agregado. Só aparece quando há nomes. */}
+        {lever.clienteList && lever.clienteList.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {lever.clienteList.slice(0, 6).map((c) => (
+              <span
+                key={c.key}
+                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+              >
+                {c.nome}
+              </span>
+            ))}
+            {lever.clienteList.length > 6 && (
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                +{lever.clienteList.length - 6} mais
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end pt-1">
           <Button asChild variant={isEmpty ? 'ghost' : 'outline'} size="sm" className="gap-1.5">
             <Link to={lever.ctaTo}>
@@ -225,6 +245,15 @@ export const DEMO_AIGROWTH: AiGrowthData = {
       ctaLabel: 'Ver clientes inativas',
       ctaTo: TO_CLIENTES,
       icon: UserMinus,
+      clienteList: [
+        { nome: 'Maria Souza', key: 'd1' },
+        { nome: 'Joana Lima', key: 'd2' },
+        { nome: 'Lúcia Alves', key: 'd3' },
+        { nome: 'Carla Dias', key: 'd4' },
+        { nome: 'Patrícia Reis', key: 'd5' },
+        { nome: 'Renata Melo', key: 'd6' },
+        { nome: 'Bianca Rocha', key: 'd7' },
+      ],
     },
     {
       id: 'pacotes',
@@ -235,6 +264,11 @@ export const DEMO_AIGROWTH: AiGrowthData = {
       ctaLabel: 'Ver pacotes',
       ctaTo: TO_PACOTES,
       icon: PackageCheck,
+      clienteList: [
+        { nome: 'Débora Pinto', key: 'p1' },
+        { nome: 'Camila Freitas', key: 'p2' },
+        { nome: 'Vanessa Luz', key: 'p3' },
+      ],
     },
     {
       id: 'ocupacao',
@@ -265,6 +299,12 @@ export const DEMO_AIGROWTH: AiGrowthData = {
       ctaLabel: 'Ver clientes',
       ctaTo: TO_CLIENTES,
       icon: Crown,
+      clienteList: [
+        { nome: 'Fernanda Costa', key: 'v1' },
+        { nome: 'Aline Prado', key: 'v2' },
+        { nome: 'Tatiane Gomes', key: 'v3' },
+        { nome: 'Sílvia Nunes', key: 'v4' },
+      ],
     },
   ],
 }

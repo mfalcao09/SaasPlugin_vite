@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano de Compatibilização — CBA → NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0d0b10; --panel:#15121b; --panel2:#1c1824; --ink:#ece8f1; --muted:#9b93a8;
+    --pink:#ec4899; --rose:#f472b6; --line:#2a2433; --code:#120f17;
+    --green:#34d399; --yellow:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0d0b10,#120e17);color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:48px 24px 80px}
+  h1{font-size:30px;margin:0 0 6px;background:linear-gradient(90deg,var(--pink),var(--rose));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--muted);border-left:3px solid var(--pink);padding:6px 0 6px 14px;margin:14px 0 32px}
+  .lead b{color:var(--rose)}
+  h2{font-size:20px;margin:36px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#f3c8e0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--rose)}
+  tr:nth-child(even) td{background:var(--panel)}
+  ul,ol{padding-left:20px} li{margin:4px 0}
+  .star{border:1px solid var(--pink);background:rgba(236,72,153,.07);border-radius:12px;padding:14px 18px;margin:18px 0}
+  .pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;background:rgba(251,191,36,.14);color:var(--yellow)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  .next{background:linear-gradient(90deg,rgba(236,72,153,.12),transparent);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Plano de Compatibilização — CBA → NexvyBeauty</h1>
+<div class="lead">Trazer <b>tudo</b> do CBA, mas <b>traduzido pro salão</b> (não como CRM de equipe). Fonte: fan-out de 10 designers garimpando o código do NX. · 2026-06-26 · <b>plano, sem código.</b></div>
+
+<h2>1. A virada: o NX já tem quase tudo — dormente</h2>
+<p class="lead" style="border-color:var(--green)">Meu mapeamento anterior só olhou <code>src/</code> e <b>perdeu as migrations</b>. A maioria dos "gaps" tem infra pronta (herdada do CRM-mãe), só não surfaçada pro salão.</p>
+<table>
+<tr><th>Módulo CBA</th><th>Infra que JÁ existe no NX</th></tr>
+<tr><td>Metas & Quotas</td><td><code>sales_goals</code> · <code>useSalesGoals</code> · <code>useSquadPerformance</code> · <code>GoalProgress</code></td></tr>
+<tr><td>NBA IA</td><td><code>lead_nba_sugestao</code> · edge <code>lead-nba</code> (LLM+tool_call) · <code>LeadNbaCard</code> (gera+dispara WhatsApp)</td></tr>
+<tr><td>Scoring</td><td><code>lead_scoring_with_decay</code> (<code>recompute_lead_scores</code>) · <code>LeadScoreBadge</code></td></tr>
+<tr><td>Workflows</td><td><code>tag_automations</code> (event→ação) · <code>TagAutomationsPanel</code> · <code>AutomationDialog</code></td></tr>
+<tr><td>Playbook</td><td><code>PlaybookView</code></td></tr>
+<tr><td>Higiene</td><td><code>detectDuplicates</code> + <code>normalizeBrPhone</code> (já em <code>Clientes.tsx</code>)</td></tr>
+<tr><td>Materiais</td><td>abas por-oferta (<code>MaterialsTab</code>/<code>PlaybookTab</code>)</td></tr>
+<tr><td>AI Growth (E1)</td><td><code>levers.ts</code> · <code>sendReactivation</code> · <code>BulkReactivationDialog</code></td></tr>
+</table>
+<div class="star"><b>Conclusão:</b> o trabalho é <b>surfacing + reframe</b>, não build-from-scratch. Esforço dominante = <span class="pill">M</span> reuso 80–90%.</div>
+
+<h2>2. A decisão: 10 módulos → 4 features de salão</h2>
+<p>Construir 10 telas = <b>re-inchar</b> o produto que acabamos de enxugar. Os 10 designers convergiram nas mesmas 4 primitivas — os módulos do CBA colapsam nelas:</p>
+<table>
+<tr><th>Feature de salão</th><th>Absorve (CBA)</th><th>O que é</th><th>Reusa do NX</th><th>Esf.</th></tr>
+<tr><td><b>A) Ações com Clientes</b></td><td>NBA · Scoring · (Squad) · (E1)</td><td>Fila "o que fazer com cada cliente AGORA" (reativar/pacote/aniversário/upsell) + selo VIP/em-risco/nova + botão WhatsApp pronto</td><td><code>lead_nba_sugestao</code>, edge <code>lead-nba</code>, <code>lead_scoring</code>, <code>LeadNbaCard</code>, <code>sendReactivation</code></td><td><span class="pill">M</span></td></tr>
+<tr><td><b>B) Receitas de Automação</b></td><td>Workflows · Playbook · Materiais · Landings</td><td>Receitas prontas de salão (aniversário/retorno-Nd/pacote-acabando/lembrete-24h) — <i>não builder vazio</i> + templates WhatsApp por serviço</td><td><code>tag_automations</code>, <code>TagAutomationsPanel</code>, <code>PlaybookView</code>, <code>useTaskAutomation</code></td><td><span class="pill">M</span></td></tr>
+<tr><td><b>C) Meta do Mês</b></td><td>Metas&Quotas · (Squad)</td><td>Meta de faturamento + ocupação (% agenda cheia) + receita por profissional</td><td><code>sales_goals</code>, <code>GoalProgress</code>, <code>useSquadPerformance</code></td><td><span class="pill">M</span></td></tr>
+<tr><td><b>D) Limpeza de Base</b></td><td>Higiene</td><td>Duplicatas + normalização + inativos 60d + enriquecimento</td><td><code>detectDuplicates</code>, <code>normalizeBrPhone</code>, <code>tag_automations</code></td><td><span class="pill">M</span></td></tr>
+<tr><td><b>E1) AI Growth turbinado</b></td><td>(enhancement)</td><td>Cards com lista nomeada + ação por tipo + "Gerar com IA"/"Executar todas" → alimenta a feature A</td><td><code>levers.ts</code>, <code>OpportunityCardData</code>, <code>sendReactivation</code></td><td><span class="pill">M</span></td></tr>
+</table>
+
+<h2>3. Princípio de design (consenso dos 10)</h2>
+<ul>
+<li><b>Receita, não builder.</b> Resposta pronta, não canvas "if A then B" — 6 receitas pré-configuradas.</li>
+<li><b>Cliente, não lead.</b> Eixo = cliente real (agendamento/pacote/aniversário), não lead de pipeline.</li>
+<li><b>Ação = 1 clique → WhatsApp</b> (disparo real via Evolution, já existe).</li>
+<li><b>Meta do salão, não quota de SDR.</b> Sem leaderboard; meta é do salão/profissional.</li>
+<li><b>Linguagem de salão.</b> "Clientes sumidas", "Onde está o dinheiro parado?".</li>
+</ul>
+
+<h2>4. Ordem recomendada (valor × reuso)</h2>
+<ol>
+<li><b>E1 + A</b> (fazem par — A consome os cards do E1). Coração da retenção, maior valor/reuso. <b>Começa aqui.</b></li>
+<li><b>D (Limpeza de Base)</b> — rápido; base limpa destrava WhatsApp/automação.</li>
+<li><b>B (Receitas de Automação)</b> — escala o A de manual → automático.</li>
+<li><b>C (Meta do Mês)</b> — fecha o loop gerencial.</li>
+</ol>
+
+<h2>5. Riscos & decisões</h2>
+<ul>
+<li><b>Não duplicar tabelas.</b> NBA/Scoring já têm <code>lead_nba_sugestao</code>/<code>lead_scoring</code> (pensados pra lead). Estender com contexto de cliente (<code>servico_catalogo.categoria</code>+<code>agendamentos</code>) em vez de criar tabela espelhada.</li>
+<li><b><code>tag_automations</code> tem eventos de pagamento.</b> Estender o enum com eventos de salão (<code>aniversario_cliente</code>, <code>pacote_expirando</code>, <code>retorno_Nd</code>, <code>agendamento_confirmado_24h</code>) — não criar tabela nova.</li>
+<li><b>Higiene: merge nunca automático.</b> Diff + confirmação (alguns "duplicados" são parentes com mesmo telefone).</li>
+<li><b>Automação opt-in.</b> Preview + contagem antes de disparar. Nunca dispara sozinho sem o 1º opt-in.</li>
+</ul>
+
+<hr>
+<div class="next"><b>Próximo passo:</b> aprovar → implementar na ordem acima, uma feature por vez (mais surfacing que build). Cada uma: migration leve (estender enums) → UI reframada → build → deploy → click-test. Começo pelo par <b>E1 + A</b> no seu GO.</div>
+
+</div>
+</body>
+</html>
