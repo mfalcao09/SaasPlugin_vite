@@ -24,6 +24,7 @@ import {
   LifeBuoy,
   Wrench,
   BarChart3,
+  Handshake,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ const menuItems = [
   { id: 'payments', label: 'Pagamentos (Cakto)', icon: Banknote },
   { id: 'whatsapp', label: 'WhatsApp / Evolution', icon: Smartphone },
   { id: 'sales-leads', label: 'Leads Comerciais', icon: Megaphone },
+  { id: 'affiliates', label: 'Afiliados', icon: Handshake },
   { id: 'help', label: 'Central de Ajuda', icon: HelpCircle },
   { id: 'support', label: 'Suporte', icon: LifeBuoy },
   { id: 'agent-tools', label: 'Ações dos Agentes', icon: Wrench },

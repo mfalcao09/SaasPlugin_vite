@@ -19,6 +19,7 @@ import { ReleasesManager } from '@/components/superadmin/ReleasesManager';
 import { SupportTickets } from '@/components/admin/support/SupportTickets';
 import { AgentToolExecutionsPanel } from '@/components/superadmin/AgentToolExecutionsPanel';
 import { AIQualityPanel } from '@/components/superadmin/AIQualityPanel';
+import { AffiliatesPanel } from '@/components/superadmin/AffiliatesPanel';
 import { FirstAccessSuperAdminModal } from '@/components/superadmin/FirstAccessSuperAdminModal';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 
@@ -66,6 +67,8 @@ export default function SuperAdmin() {
         return <SystemHealth />;
       case 'sales-leads':
         return <SalesLeadsManager />;
+      case 'affiliates':
+        return <AffiliatesPanel />;
       case 'whatsapp':
         return <EvolutionManager />;
       case 'help':
