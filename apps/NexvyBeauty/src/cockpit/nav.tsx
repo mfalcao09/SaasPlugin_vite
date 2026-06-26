@@ -24,6 +24,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
       { to: '/servicos', label: 'Serviços', icon: Scissors },
+      { to: '/pacotes', label: 'Pacotes', icon: Package },
       { to: '/ai-growth', label: 'AI Growth', icon: Sparkles }, // lente macro (negócio)
       { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },

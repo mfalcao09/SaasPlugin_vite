@@ -36,6 +36,7 @@ const RelatoriosAtendimento = lazyWithRetry(() => import("./cockpit/RelatoriosCo
 const CockpitTarefas = lazyWithRetry(() => import("./cockpit/Tarefas"));
 const CaptacaoHub = lazyWithRetry(() => import("./cockpit/CaptacaoHub"));
 const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
+const CockpitPacotes = lazyWithRetry(() => import("./cockpit/Pacotes")); // catálogo + vender/baixa presencial
 // Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
 const ConfigurarOnboarding = lazyWithRetry(() => import("./cockpit/ConfigurarOnboarding"));
 const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxManager").then(m => ({ default: m.InboxManager })));
@@ -278,6 +279,7 @@ const App = () => (
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
                 <Route path="servicos" element={<SalaoServicos bare />} />
+                <Route path="pacotes" element={<CockpitPacotes />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
                 <Route path="minha-ia" element={<MinhaIAHub />} />
                 <Route path="agenda" element={<SalaoAgenda bare />} />
