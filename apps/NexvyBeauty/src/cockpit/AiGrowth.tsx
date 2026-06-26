@@ -56,17 +56,19 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
   // não dá pra falar). Cada um vira um OpportunityCardData com a mensagem por tipo;
   // o BulkReactivationDialog (mesmo motor do botão único) faz o envio espaçado.
   const dispatchItems: OpportunityCardData[] = (lever.clienteList ?? [])
-    .filter((c) => c.telefone)
     .map((c) => ({
       id: c.key,
       leadId: c.cliente_id ?? null,
       name: c.nome,
       phone: normalizeBrPhone(c.telefone),
-      classification: 'hot',
+      classification: 'hot' as const,
       dealValue: 0,
       followupMessage: leverMessage(lever.id, c.nome),
       reason: null,
     }))
+    // Filtra DEPOIS do normalize: telefone só com lixo ('()', '---') vira null e
+    // não pode ser disparado — fora da lista (senão o botão dispararia em vão).
+    .filter((item) => item.phone)
 
   return (
     <Card>

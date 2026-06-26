@@ -104,8 +104,15 @@ export function todayMidnight(): Date {
 }
 export function parseDateLocal(raw: string | null | undefined): Date | null {
   if (!raw) return null
-  const d = new Date(`${raw.slice(0, 10)}T00:00:00`)
-  return Number.isNaN(d.getTime()) ? null : d
+  const iso = raw.slice(0, 10)
+  const d = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  // Rejeita datas impossíveis que o JS "corrige" silenciosamente (2026-02-30 →
+  // 2026-03-02): confere se ano-mês-dia batem com o que entrou (senão o mês de
+  // aniversário sairia errado).
+  const [y, m, dd] = iso.split('-').map(Number)
+  if (d.getFullYear() !== y || d.getMonth() + 1 !== m || d.getDate() !== dd) return null
+  return d
 }
 export function daysBetween(a: Date, b: Date): number {
   return Math.round((a.getTime() - b.getTime()) / 86_400_000)
@@ -144,7 +151,9 @@ export function buildLevers(
 
   // Telefone NÃO vem de agendamentos/pacotes — resolve da tabela clientes por
   // cliente_id (preferencial) ou nome (fallback), pra permitir o disparo WhatsApp.
-  const normNome = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
+  // Normaliza p/ casar nomes com acento diferente (José ↔ Jose) na resolução de telefone.
+  const normNome = (s: string | null | undefined) =>
+    (s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const telById = new Map<string, string>()
   const telByNome = new Map<string, string>()
   for (const c of clientesRows) {
@@ -221,10 +230,14 @@ export function buildLevers(
     ctaLabel: 'Ver pacotes',
     ctaTo: TO_PACOTES,
     icon: PackageCheck,
-    clienteList: quaseEsgotados.map((p) => {
-      const nome = p.cliente_nome ?? 'Cliente'
-      return { nome, key: p.id, ...resolveCli('nome:' + nome, nome) }
-    }),
+    // Só pacotes com cliente_nome viram chip/disparo — pacote órfão não pode
+    // resolver telefone (cairia num genérico 'Cliente' e mandaria pra pessoa errada).
+    clienteList: quaseEsgotados
+      .filter((p) => p.cliente_nome)
+      .map((p) => {
+        const nome = p.cliente_nome as string
+        return { nome, key: p.id, ...resolveCli('nome:' + nome, nome) }
+      }),
   }
 
   // ── Alavanca 3: Horários/dias de baixa ocupação → promo pra preencher ────
