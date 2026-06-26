@@ -209,7 +209,7 @@ export default function Admin() {
       // A agenda do salão vive em /salao/agenda (views Mês/Semana/Dia/Lista).
       case 'calendar': return <Navigate to="/salao/agenda" replace />;
       case 'inbox': return <Navigate to="/conversas" replace />;
-      case 'agents': return <AgentsManager />;
+      case 'agents': return <Navigate to="/minha-ia" replace />;
       
       case 'team': return <TeamManager />;
       case 'products': return <ProductListPage onProductSelect={handleProductSelect} />;
@@ -228,8 +228,9 @@ export default function Admin() {
       case 'company': return <CompanySettings />;
       case 'support': return <SupportTickets scope="admin" />;
       case 'quick-replies': return <QuickRepliesManager />;
-      case 'campaigns': return <CampaignsManager />;
-      case 'cadences': return <CadencesManager />;
+      // Migrados para o cockpit (Minha IA) — redireciona bookmarks ?tab= antigos.
+      case 'campaigns': return <Navigate to="/minha-ia" replace />;
+      case 'cadences': return <Navigate to="/minha-ia" replace />;
       case 'capture-chatbot': return <ChatBotSection />;
       case 'capture-whatsapp': return <WhatsAppSection />;
       case 'capture-forms': return <FormsSection />;

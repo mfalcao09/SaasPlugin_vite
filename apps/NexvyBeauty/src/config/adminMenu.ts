@@ -51,9 +51,8 @@ export interface AdminMenuGroup {
 // Dashboard/Atendimentos/Pipeline/Leads migraram para o cockpit (Comercial):
 // Painel (absorveu a Central de Operação), Conversas, Pipeline, Leads.
 // O admin agora é só configuração/gestão; ?tab= antigos redirecionam (Admin.tsx).
-export const fixedItems: AdminMenuItem[] = [
-  { id: 'calendar', label: 'Agenda', icon: CalendarDays },
-];
+// Agenda também migrou (redireciona p/ /salao/agenda). Admin = só config/gestão.
+export const fixedItems: AdminMenuItem[] = [];
 
 // Grupos em accordion
 export const menuGroups: AdminMenuGroup[] = [
@@ -62,9 +61,7 @@ export const menuGroups: AdminMenuGroup[] = [
     label: 'Automação & IA',
     icon: Sparkles,
     items: [
-      { id: 'agents', label: 'Agentes IA', icon: Bot },
-      { id: 'campaigns', label: 'Campanhas Inteligentes', icon: Megaphone },
-      { id: 'cadences', label: 'Cadências Inteligentes', icon: Sparkles },
+      // Agentes/Campanhas/Cadências migraram para o cockpit (Gestão → Minha IA).
       { id: 'webhooks', label: 'Webhooks', icon: Webhook },
     ],
   },
