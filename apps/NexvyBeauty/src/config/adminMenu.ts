@@ -56,21 +56,10 @@ export const fixedItems: AdminMenuItem[] = [];
 
 // Grupos em accordion
 export const menuGroups: AdminMenuGroup[] = [
-  {
-    id: 'capture-channels',
-    label: 'Captação',
-    icon: Filter,
-    items: [
-      { id: 'capture-quiz', label: 'Quiz', icon: ListChecks },
-      { id: 'capture-forms', label: 'Formulários', icon: FileText },
-      { id: 'capture-chatbot', label: 'ChatBot', icon: MessageCircle },
-      { id: 'capture-widget', label: 'Widget', icon: Code2 },
-      { id: 'capture-whatsapp', label: 'WhatsApp', icon: MessageSquare },
-      // Templates migraram p/ o cockpit (Atrair Clientes > Quiz > Templates Quizzes).
-      { id: 'capture-results', label: 'Resultados', icon: Target },
-      { id: 'capture-analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
+  // Grupo 'Captação' migrou 100% para o cockpit. Atrair Clientes (/atrair) cobre
+  // Quiz/Formulários/WhatsApp/Widget(site)/ChatBot(chat)/Resultados; o Analytics de
+  // captação vive em Relatórios (/relatorios-comerciais > aba "Captação / Quizzes").
+  // Bookmarks ?tab=capture-* redirecionam via Admin.tsx.
   // Grupo 'Gestão' migrou para o cockpit (seção Gestão): Produtos/Setores/Equipes.
   // Relatórios/Financeiro (deal/afiliado) → SuperAdmin > Afiliados (removidos do tenant).
   // Pagamentos → Meu Salão > Financeiro (aba). Tudo redireciona via Admin.tsx.

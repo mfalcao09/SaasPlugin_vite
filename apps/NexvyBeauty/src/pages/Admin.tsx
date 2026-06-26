@@ -38,15 +38,9 @@ const f = {
   QuickRepliesManager: () => import('@/components/admin/QuickRepliesManager').then(m => ({ default: m.QuickRepliesManager })),
   CampaignsManager: () => import('@/components/admin/campaigns/CampaignsManager').then(m => ({ default: m.CampaignsManager })),
   CadencesManager: () => import('@/components/admin/cadences/CadencesManager').then(m => ({ default: m.CadencesManager })),
-  ChatBotSection: () => import('@/components/admin/capture/channels/ChatBotSection').then(m => ({ default: m.ChatBotSection })),
-  WhatsAppSection: () => import('@/components/admin/capture/channels/WhatsAppSection').then(m => ({ default: m.WhatsAppSection })),
-  FormsSection: () => import('@/components/admin/capture/channels/FormsSection').then(m => ({ default: m.FormsSection })),
-  WidgetSection: () => import('@/components/admin/capture/channels/WidgetSection').then(m => ({ default: m.WidgetSection })),
-  QuizSection: () => import('@/components/admin/capture/channels/QuizSection').then(m => ({ default: m.QuizSection })),
+  // capture-reports: id legado fora do menu (renderiza direto). Captação migrou
+  // para o cockpit (Atrair Clientes / Relatórios) — demais seções redirecionam.
   CaptureReportsSection: () => import('@/components/admin/capture/channels/CaptureReportsSection').then(m => ({ default: m.CaptureReportsSection })),
-  CaptureTemplatesSection: () => import('@/components/admin/capture/channels/CaptureTemplatesSection').then(m => ({ default: m.CaptureTemplatesSection })),
-  CaptureResultsSection: () => import('@/components/admin/capture/channels/CaptureResultsSection').then(m => ({ default: m.CaptureResultsSection })),
-  CaptureAnalyticsSection: () => import('@/components/admin/capture/channels/CaptureAnalyticsSection').then(m => ({ default: m.CaptureAnalyticsSection })),
 };
 
 // Lazy components (com retry + cache compartilhado para prefetch).
@@ -76,15 +70,7 @@ const SupportTickets = lazyWithRetry(f.SupportTickets);
 const QuickRepliesManager = lazyWithRetry(f.QuickRepliesManager);
 const CampaignsManager = lazyWithRetry(f.CampaignsManager);
 const CadencesManager = lazyWithRetry(f.CadencesManager);
-const ChatBotSection = lazyWithRetry(f.ChatBotSection);
-const WhatsAppSection = lazyWithRetry(f.WhatsAppSection);
-const FormsSection = lazyWithRetry(f.FormsSection);
-const WidgetSection = lazyWithRetry(f.WidgetSection);
-const QuizSection = lazyWithRetry(f.QuizSection);
 const CaptureReportsSection = lazyWithRetry(f.CaptureReportsSection);
-const CaptureTemplatesSection = lazyWithRetry(f.CaptureTemplatesSection);
-const CaptureResultsSection = lazyWithRetry(f.CaptureResultsSection);
-const CaptureAnalyticsSection = lazyWithRetry(f.CaptureAnalyticsSection);
 
 /**
  * Mapa: id da seção → factory de import. Usado pelo prefetch on-hover
@@ -116,13 +102,7 @@ const sectionFactories: Record<string, () => Promise<unknown>> = {
   'quick-replies': f.QuickRepliesManager,
   campaigns: f.CampaignsManager,
   cadences: f.CadencesManager,
-  'capture-chatbot': f.ChatBotSection,
-  'capture-whatsapp': f.WhatsAppSection,
-  'capture-forms': f.FormsSection,
-  'capture-widget': f.WidgetSection,
-  'capture-quiz': f.QuizSection,
   'capture-reports': f.CaptureReportsSection,
-  'capture-analytics': f.CaptureReportsSection,
 };
 
 export function prefetchAdminSection(id: string) {
@@ -233,19 +213,23 @@ export default function Admin() {
       // Migrados para o cockpit (Minha IA) — redireciona bookmarks ?tab= antigos.
       case 'campaigns': return <Navigate to="/minha-ia" replace />;
       case 'cadences': return <Navigate to="/minha-ia" replace />;
-      case 'capture-chatbot': return <ChatBotSection />;
-      case 'capture-whatsapp': return <WhatsAppSection />;
-      case 'capture-forms': return <FormsSection />;
-      case 'capture-widget': return <WidgetSection />;
-      case 'capture-quiz': return <QuizSection />;
-      case 'capture-analytics':
-        return <CaptureAnalyticsSection />;
-      case 'capture-reports':
-        return <CaptureReportsSection />;
+      // Captação migrou 100% para o cockpit (Atrair Clientes). Quiz/Forms/WhatsApp/
+      // Widget(site)/ChatBot(chat)/Resultados vivem em /atrair; o Analytics de
+      // captação vive em /relatorios-comerciais (aba "Captação / Quizzes").
+      // Bookmarks/links ?tab=capture-* antigos redirecionam.
+      case 'capture-chatbot':
+      case 'capture-whatsapp':
+      case 'capture-forms':
+      case 'capture-widget':
+      case 'capture-quiz':
+      case 'capture-results':
       case 'capture-templates':
         return <Navigate to="/atrair" replace />;
-      case 'capture-results':
-        return <CaptureResultsSection />;
+      case 'capture-analytics':
+        return <Navigate to="/relatorios-comerciais" replace />;
+      // capture-reports: id legado (fora do menu), alcançável só por URL manual.
+      case 'capture-reports':
+        return <CaptureReportsSection />;
       default: return <CompanySettings />;
     }
   };
