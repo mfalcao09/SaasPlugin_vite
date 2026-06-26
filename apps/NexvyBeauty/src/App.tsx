@@ -38,6 +38,9 @@ const DemoSaudeBase = lazyWithRetry(() => import("./cockpit/SaudeBase").then(m =
 // Automações — receitas de automação de salão (Feature B inc.2).
 const Automacoes = lazyWithRetry(() => import("./cockpit/Automacoes"));
 const DemoAutomacoes = lazyWithRetry(() => import("./cockpit/Automacoes").then(m => ({ default: () => <m.default demo /> })));
+// Meta do Mês — faturamento + ritmo + receita por profissional (Feature C).
+const MetaMes = lazyWithRetry(() => import("./cockpit/MetaMes"));
+const DemoMetaMes = lazyWithRetry(() => import("./cockpit/MetaMes").then(m => ({ default: () => <m.default demo={m.DEMO_META} /> })));
 // Comercial — páginas extraídas das abas do Conversas (Painel/Radar IA/Relatórios).
 const CockpitPainel = lazyWithRetry(() => import("./cockpit/Painel"));
 const CockpitRadar = lazyWithRetry(() => import("./cockpit/RadarIA"));
@@ -228,6 +231,7 @@ const App = () => (
               <Route path="/demo/acoes" element={<DemoAcoesClientes />} />
               <Route path="/demo/saude" element={<DemoSaudeBase />} />
               <Route path="/demo/automacoes" element={<DemoAutomacoes />} />
+              <Route path="/demo/meta" element={<DemoMetaMes />} />
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
@@ -272,6 +276,7 @@ const App = () => (
                 <Route path="acoes" element={<AcoesClientes />} />
                 <Route path="saude" element={<SaudeBase />} />
                 <Route path="automacoes" element={<Automacoes />} />
+                <Route path="meta" element={<MetaMes />} />
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="pipeline" element={<CockpitPipeline />} />

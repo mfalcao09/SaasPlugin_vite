@@ -30,6 +30,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/acoes', label: 'Ações com Clientes', icon: ListChecks }, // fila por cliente (consome o AI Growth)
       { to: '/saude', label: 'Saúde da Base', icon: Activity }, // diagnóstico de higiene do cadastro
       { to: '/automacoes', label: 'Automações', icon: Zap }, // receitas de automação de salão (envio sozinho)
+      { to: '/meta', label: 'Meta do Mês', icon: Target }, // faturamento + ritmo + receita por profissional
       { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
     ],
