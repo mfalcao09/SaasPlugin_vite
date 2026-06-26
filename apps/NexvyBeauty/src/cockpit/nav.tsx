@@ -6,7 +6,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  LayoutGrid, Target, Package, Network,
+  LayoutGrid, Target, Package, Network, Scissors,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
@@ -23,6 +23,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     items: [
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
+      { to: '/servicos', label: 'Serviços', icon: Scissors },
       { to: '/ai-growth', label: 'AI Growth', icon: Sparkles }, // lente macro (negócio)
       { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },

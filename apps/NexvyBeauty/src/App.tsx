@@ -277,6 +277,7 @@ const App = () => (
                 <Route path="tarefas" element={<CockpitTarefas />} />
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />
                 <Route path="clientes" element={<SalaoClientes bare />} />
+                <Route path="servicos" element={<SalaoServicos bare />} />
                 <Route path="atrair" element={<CaptacaoHub />} />
                 <Route path="minha-ia" element={<MinhaIAHub />} />
                 <Route path="agenda" element={<SalaoAgenda bare />} />

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desenho — Catálogo Unificado (NexvyBeauty)</title>
+<style>
+  :root{
+    --bg:#0d0b10; --panel:#15121b; --panel2:#1c1824; --ink:#ece8f1; --muted:#9b93a8;
+    --pink:#ec4899; --rose:#f472b6; --line:#2a2433; --code:#120f17;
+    --green:#34d399; --yellow:#fbbf24; --orange:#fb923c; --red:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0d0b10,#120e17);color:var(--ink);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 80px}
+  h1{font-size:30px;margin:0 0 6px;background:linear-gradient(90deg,var(--pink),var(--rose));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--muted);border-left:3px solid var(--pink);padding:6px 0 6px 14px;margin:14px 0 32px}
+  .lead b{color:var(--rose)}
+  h2{font-size:20px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;color:var(--rose);margin:22px 0 8px}
+  p,li{color:var(--ink)}
+  code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#f3c8e0}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+    overflow:auto;margin:12px 0}
+  pre code{background:none;border:0;padding:0;color:#cfc6da}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--rose)}
+  tr:nth-child(even) td{background:var(--panel)}
+  ul{padding-left:20px}
+  .pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
+  .g{background:rgba(52,211,153,.14);color:var(--green)}
+  .y{background:rgba(251,191,36,.14);color:var(--yellow)}
+  .o{background:rgba(251,146,60,.14);color:var(--orange)}
+  .r{background:rgba(248,113,113,.14);color:var(--red)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0}
+  .star{border:1px solid var(--pink);background:rgba(236,72,153,.07);border-radius:12px;padding:14px 18px;margin:18px 0}
+  .muted{color:var(--muted)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  .next{background:linear-gradient(90deg,rgba(236,72,153,.12),transparent);border:1px solid var(--line);
+    border-radius:12px;padding:16px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Desenho — Catálogo Unificado</h1>
+<div class="lead"><b>Serviços · Pacotes · Produtos</b> sobre <code>products</code> + <code>tipo</code> — <b>opção (B) aprovada</b> · 2026-06-26<br>
+<b>Pacotes pagos no salão (sem Cakto por ora).</b> Rascunho para aprovação — <b>nenhum código escrito ainda.</b></div>
+
+<h2>1. Decisão</h2>
+<ul>
+<li>O usuário vê <b>3 telas</b>: <b>Serviços</b>, <b>Pacotes</b>, <b>Produtos</b> <span class="muted">(Produtos = revenda física, net-new)</span>.</li>
+<li>Backing único: <b><code>products</code> + coluna <code>tipo</code></b> (<code>servico | pacote | produto | oferta</code>). <b>(B): pacote TAMBÉM em <code>products</code></b>.</li>
+<li><b>Pagamento de pacote = no salão (presencial).</b> Atendente <b>vende</b> e <b>dá baixa em sessão</b> na mão. Compra via <b>Cakto/link de pagamento adiada</b> (dormente).</li>
+<li>O cérebro de IA (pitch/objeções/cadência) <b>não é tela</b> — é aba avançada dentro de cada item. <code>oferta</code> = fallback no banco, <b>sem tela</b>.</li>
+<li><b>Régua:</b> a cabeleireira pensa em <i>serviço, pacote, cliente, agenda, dinheiro</i>. Se precisa aprender "Oferta", está errado.</li>
+</ul>
+
+<h2>2. Estado atual (medido no banco)</h2>
+<table>
+<tr><th>Tabela</th><th>Papel</th><th>Linhas</th><th>Acoplamento</th></tr>
+<tr><td><code>products</code></td><td>oferta de CRM (espinha)</td><td>1</td><td><b>46 tabelas</b> com FK <code>product_id</code></td></tr>
+<tr><td><code>servico_catalogo</code></td><td>serviços (catálogo)</td><td>4</td><td>agenda — <code>agendamentos.servico_id</code> (FK)</td></tr>
+<tr><td><code>pacotes</code></td><td>catálogo de pacotes</td><td>2</td><td><b>só</b> <code>pacote_clientes.pacote_id</code> (1 FK) + colunas Cakto (dormentes)</td></tr>
+<tr><td><code>pacote_clientes</code></td><td>pacotes vendidos</td><td>2</td><td>venda/resgate</td></tr>
+<tr><td><code>lancamentos</code></td><td>faturamento</td><td>—</td><td>solto (<code>tipo</code>+<code>categoria</code>, sem FK)</td></tr>
+</table>
+<div class="star"><b>O trunfo:</b> as <b>46 FK tables</b> (CRM/IA/vendas) continuam apontando pra <code>product_id</code> — <b>intocadas</b>.</div>
+
+<h2>3. Modelo final — <code>products</code> + <code>tipo</code></h2>
+<table>
+<tr><th>Campo lógico</th><th>servico</th><th>pacote</th><th>produto</th></tr>
+<tr><td><code>name</code></td><td>nome</td><td>nome</td><td>nome</td></tr>
+<tr><td><code>category</code></td><td><b>nicho</b> (cabelo/unha/cílios/sobrancelha/maquiagem/podologia/estética)</td><td>—</td><td>categoria</td></tr>
+<tr><td><code>description</code></td><td>descrição</td><td>descrição</td><td>descrição</td></tr>
+<tr><td><code>pricing</code> (jsonb)</td><td>preço</td><td>valor</td><td>preço</td></tr>
+<tr><td><code>status</code></td><td>ativo→published/draft</td><td>ativo</td><td>ativo</td></tr>
+<tr><td><code>settings.duracao_minutos</code></td><td>✅</td><td>—</td><td>—</td></tr>
+<tr><td><code>settings.total_sessoes / validade_dias / servicos_incluidos</code></td><td>—</td><td>✅</td><td>—</td></tr>
+<tr><td><code>settings.cakto_offer_slug / cakto_checkout_url</code></td><td>—</td><td><b>dormente</b> (futuro link de pagamento)</td><td>—</td></tr>
+<tr><td><code>settings.estoque / sku</code></td><td>—</td><td>—</td><td>✅ (futuro)</td></tr>
+<tr><td>campos CRM (<code>pitch_*</code>,<code>icp</code>,<code>objections</code>…)</td><td>null (aba IA)</td><td>null</td><td>null</td></tr>
+</table>
+
+<h2>4. Telas</h2>
+<ul>
+<li><b>Serviços</b> = <code>products WHERE tipo='servico'</code> → nome/nicho/duração/preço → alimenta <b>agenda + faturamento</b>.</li>
+<li><b>Pacotes</b> = <code>products WHERE tipo='pacote'</code> → nome/sessões/validade/serviços incluídos/valor.
+  <ul><li><b>Vender pacote (presencial):</b> atendente escolhe cliente + pacote → cria <code>pacote_clientes</code> (sem checkout).</li>
+  <li><b>Dar baixa em sessão:</b> 1 clique decrementa as sessões quando a cliente vem.</li></ul></li>
+<li><b>Produtos</b> = <code>products WHERE tipo='produto'</code> → revenda física + estoque (<b>net-new</b>).</li>
+<li>Em cada item: aba avançada <b>"🤖 IA / Como vender"</b> (recolhida) na <b>mesma linha</b>.</li>
+<li>Captura: seletor "qual produto?" vira <b>"pra qual serviço/pacote?"</b> (filtra por <code>tipo</code>) e grava <code>product_id</code>. <b>Motor inalterado.</b></li>
+</ul>
+
+<h2>5. Migração — passo a passo (risco por passo)</h2>
+
+<h3>5.0 Schema <span class="pill g">baixo</span></h3>
+<pre><code>alter table products add column tipo text not null default 'oferta'
+  check (tipo in ('servico','pacote','produto','oferta'));</code></pre>
+
+<h3>5.1 Serviços → products <span class="pill y">médio — re-aponta FK da agenda</span></h3>
+<pre><code>insert into products (id, organization_id, name, category, description, tipo, status, settings, pricing)
+  select id, organization_id, nome, categoria, descricao, 'servico',
+         case when ativo then 'published' else 'draft' end,
+         jsonb_build_object('duracao_minutos', duracao_minutos),
+         jsonb_build_object('preco_base', preco_base)
+  from servico_catalogo;
+
+alter table agendamentos drop constraint agendamentos_servico_id_fkey;
+alter table agendamentos add constraint agendamentos_servico_id_fkey
+  foreign key (servico_id) references products(id);
+-- servico_catalogo → VIEW de compat</code></pre>
+
+<h3>5.2 Pacotes → products <span class="pill y">médio — sem pagamento agora</span></h3>
+<pre><code>insert into products (id, organization_id, name, description, tipo, status, pricing, settings)
+  select id, organization_id, nome, descricao, 'pacote',
+         case when ativo then 'published' else 'draft' end,
+         jsonb_build_object('valor', valor),
+         jsonb_build_object('total_sessoes',total_sessoes,'validade_dias',validade_dias,
+           'servicos_incluidos',servicos_incluidos,'cakto_offer_slug',cakto_offer_slug,
+           'cakto_checkout_url',cakto_checkout_url)  -- cakto_* dormentes
+  from pacotes;
+
+alter table pacote_clientes drop constraint pacote_clientes_pacote_id_fkey;
+alter table pacote_clientes add constraint pacote_clientes_pacote_id_fkey
+  foreign key (pacote_id) references products(id);
+-- pacotes → VIEW de compat</code></pre>
+<div class="card"><b>Código a ajustar</b> (<code>from('pacotes')</code> → <code>products WHERE tipo='pacote'</code>; campos no <code>settings</code>):
+<ul>
+<li><code>cockpit/levers.ts</code>, <code>cockpit/AiGrowth.tsx</code>, <code>cockpit/Relatorios.tsx</code>, <code>salao/ClienteDetail.tsx</code>, <code>salao-public-bootstrap</code> (catálogo).</li>
+<li><b>Construir</b> (era gap): tela <b>"Vender pacote" + "dar baixa em sessão"</b> (insert/decrement em <code>pacote_clientes</code>).</li>
+<li><b>Desligar</b> a compra pública: <code>PublicSalaoPacotes.tsx</code> (tirar "Comprar"/rota) — vitrine sem checkout, ou some.</li>
+<li><b>NÃO tocar</b> (dormentes): <code>salao-buy-pacote</code>, <code>cakto-sync-offer</code>, <code>cakto-webhook</code>.</li>
+<li>❌ <b>NÃO</b> confundir com <code>useTagPackage</code> / <code>TagPackageGeneratorDialog</code> (pacote de <b>tags</b>).</li>
+</ul></div>
+
+<h3>5.3 Produtos (revenda) <span class="pill g">net-new, sem migração</span></h3>
+<h3>5.4 UI <span class="pill g">views filtradas por tipo</span></h3>
+
+<h2>6. Blast radius &amp; risco</h2>
+<ul>
+<li>✅ <b>46 FK tables (CRM/IA/vendas) intocadas</b> — permanecem em <code>product_id</code>. <i>É o motivo de (B) ser seguro.</i></li>
+<li><span class="pill y">agenda</span> 1 FK re-apontada (ids preservados → agendamentos existentes resolvem).</li>
+<li><span class="pill y">pacote</span> 1 FK + ~5 sites de leitura. <b>Sem edge function de pagamento</b> (Cakto adiado) → risco caiu de 🟠 pra 🟡.</li>
+<li><b>Dados minúsculos:</b> 1 product · 4 serviços · 2 pacotes · 2 vendas → quase greenfield.</li>
+</ul>
+
+<h2>7. Verificação (anti-phantom)</h2>
+<ul>
+<li>Build → deploy (<code>--no-cache</code>) → grep da string servida.</li>
+<li><b>Click-test logado</b> (agora <b>sem pagamento real</b> — tudo in-app):
+  <ol>
+  <li>criar <b>Serviço</b> → aparece na <b>agenda</b> + faturamento;</li>
+  <li>criar <b>Pacote</b> → <b>vender presencial</b> (cria a venda) → <b>dar baixa em 1 sessão</b>;</li>
+  <li>criar <b>Quiz</b> apontando pra um serviço.</li>
+  </ol></li>
+<li><code>servico_catalogo</code> e <code>pacotes</code> viram <b>views de compat</b> → rollback = re-apontar as 2 FKs.</li>
+</ul>
+
+<h2>8. Fora de escopo (decidido)</h2>
+<ul>
+<li><b>Compra via Cakto / link de pagamento</b> → adiada (dormente). Onda futura: religar <code>cakto-sync-offer</code>/<code>cakto-webhook</code>/<code>salao-buy-pacote</code> lendo <code>products tipo=pacote</code>.</li>
+<li><b>Não</b> tocar nos 46 FK tables — <code>product_id</code> permanece a espinha.</li>
+<li><b>Não</b> mexer em tag-packages (conceito diferente).</li>
+<li><b>Rejeitado:</b> segregar a captura em <code>servico_id</code>/<code>pacote_id</code> (46 tabelas polimórficas — alto risco).</li>
+</ul>
+
+<hr>
+<div class="next"><b>Próximo passo:</b> aprovar → ondas: <b>(1) <code>tipo</code> + Serviços</b> → <b>(2) Produtos revenda</b> → <b>(3) Pacotes: catálogo + vender/baixa presencial</b> (Cakto fica pra depois). Cada onda: build → deploy → click-test → prova.</div>
+
+</div>
+</body>
+</html>

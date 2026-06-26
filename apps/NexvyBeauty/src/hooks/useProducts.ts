@@ -11,6 +11,9 @@ export function useProducts() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        // Catálogo unificado: serviços/pacotes vivem na MESMA tabela (tipo=servico|pacote).
+        // As telas de Oferta/CRM e o seletor de captação só enxergam ofertas.
+        .eq('tipo', 'oferta')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

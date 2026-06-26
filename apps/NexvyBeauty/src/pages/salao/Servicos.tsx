@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { SalaoLayout, NoOrg, formatCurrency, useOrganizationId } from './_shared'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MaybeSalaoShell, NoOrg, formatCurrency, useOrganizationId } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 // Re-skin premium data-injectable. Camada de dados preservada: tabela
@@ -35,7 +36,10 @@ interface ServicoForm {
 
 const EMPTY_FORM: ServicoForm = { nome: '', categoria: '', descricao: '', duracao_minutos: '30', preco_base: '', ativo: true }
 
-export default function Servicos({ demo }: { demo?: Servico[] } = {}) {
+// Nichos multi-uso (cabeleireira/manicure/lash/podóloga/...). Categoria = nicho do serviço.
+const NICHOS = ['Cabelo', 'Unhas', 'Cílios', 'Sobrancelha', 'Maquiagem', 'Podologia', 'Estética', 'Depilação', 'Massagem', 'Outros']
+
+export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
   const qc = useQueryClient()
@@ -119,10 +123,10 @@ export default function Servicos({ demo }: { demo?: Servico[] } = {}) {
     s.nome?.toLowerCase().includes(search.toLowerCase()) || s.categoria?.toLowerCase().includes(search.toLowerCase()),
   )
 
-  if (!isDemo && !organizationId) return <SalaoLayout><NoOrg /></SalaoLayout>
+  if (!isDemo && !organizationId) return <MaybeSalaoShell bare={bare}><NoOrg /></MaybeSalaoShell>
 
   return (
-    <SalaoLayout>
+    <MaybeSalaoShell bare={bare}>
       <div className="p-6 space-y-6">
         {isDemo && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -198,7 +202,14 @@ export default function Servicos({ demo }: { demo?: Servico[] } = {}) {
           <div className="space-y-4">
             <div className="space-y-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Corte feminino" /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2"><Label>Categoria</Label><Input value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} /></div>
+              <div className="space-y-2"><Label>Nicho</Label>
+                <Select value={form.categoria || undefined} onValueChange={(v) => setForm((f) => ({ ...f, categoria: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {NICHOS.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2"><Label>Duração (min)</Label><Input type="number" min="0" step="5" value={form.duracao_minutos} onChange={(e) => setForm((f) => ({ ...f, duracao_minutos: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Preço (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_base} onChange={(e) => setForm((f) => ({ ...f, preco_base: e.target.value }))} /></div>
             </div>
@@ -216,6 +227,6 @@ export default function Servicos({ demo }: { demo?: Servico[] } = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SalaoLayout>
+    </MaybeSalaoShell>
   )
 }
