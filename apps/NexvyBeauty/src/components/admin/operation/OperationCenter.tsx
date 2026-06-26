@@ -11,7 +11,10 @@ import { TodayAgendaCard } from './TodayAgendaCard';
 import { RecentLeadsTable } from './RecentLeadsTable';
 import { AiInsightsCard } from './AiInsightsCard';
 
-export function OperationCenter() {
+// `onNavigate` opcional: quando fornecido (ex.: reuso no cockpit/Painel), a navegação
+// é delegada ao chamador (mapeia seção → rota do cockpit). Sem ele, mantém o
+// comportamento original do admin (troca a ?tab= na URL).
+export function OperationCenter({ onNavigate }: { onNavigate?: (section: string) => void } = {}) {
   const [, setSearchParams] = useSearchParams();
   const { data: kpis } = useOperationKpis();
   const { data: priorities } = useOperationPriorities();
@@ -19,6 +22,7 @@ export function OperationCenter() {
   const { data: recentLeads } = useRecentLeads();
 
   const handleNavigate = (section: string) => {
+    if (onNavigate) { onNavigate(section); return; }
     setSearchParams({ tab: section }, { replace: true });
   };
 

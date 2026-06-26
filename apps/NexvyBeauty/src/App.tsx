@@ -39,6 +39,9 @@ const MinhaIAHub = lazyWithRetry(() => import("./cockpit/MinhaIAHub"));
 // Reentrada no onboarding guiado (V3) para quem pulou o 1º acesso.
 const ConfigurarOnboarding = lazyWithRetry(() => import("./cockpit/ConfigurarOnboarding"));
 const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxManager").then(m => ({ default: m.InboxManager })));
+// CRM migrado do painel admin → Comercial (kanban de pipeline + central de leads).
+const CockpitPipeline = lazyWithRetry(() => import("@/components/admin/kanban/KanbanBoard").then(m => ({ default: m.KanbanBoard })));
+const CockpitLeads = lazyWithRetry(() => import("@/components/admin/leads/LeadsManager").then(m => ({ default: m.LeadsManager })));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -238,6 +241,8 @@ const App = () => (
                 <Route path="ai-growth" element={<AiGrowth />} />
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
+                <Route path="pipeline" element={<CockpitPipeline />} />
+                <Route path="leads" element={<CockpitLeads />} />
                 <Route path="radar" element={<CockpitRadar />} />
                 <Route path="tarefas" element={<CockpitTarefas />} />
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />

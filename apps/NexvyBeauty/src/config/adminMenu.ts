@@ -47,12 +47,11 @@ export interface AdminMenuGroup {
   items: AdminMenuItem[];
 }
 
-// Itens fixos (sempre visíveis, sem accordion)
+// Itens fixos (sempre visíveis, sem accordion).
+// Dashboard/Atendimentos/Pipeline/Leads migraram para o cockpit (Comercial):
+// Painel (absorveu a Central de Operação), Conversas, Pipeline, Leads.
+// O admin agora é só configuração/gestão; ?tab= antigos redirecionam (Admin.tsx).
 export const fixedItems: AdminMenuItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'inbox', label: 'Atendimentos', icon: MessageSquare },
-  { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
-  { id: 'leads', label: 'Leads', icon: Target },
   { id: 'calendar', label: 'Agenda', icon: CalendarDays },
 ];
 

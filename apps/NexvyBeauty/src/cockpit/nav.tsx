@@ -6,6 +6,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
+  LayoutGrid, Target,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
@@ -31,6 +32,8 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     items: [
       { to: '/painel', label: 'Painel', icon: LayoutDashboard }, // dashboard comercial (1º)
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
+      { to: '/pipeline', label: 'Pipeline', icon: LayoutGrid }, // kanban de CRM (migrado do admin)
+      { to: '/leads', label: 'Leads', icon: Target }, // central de leads (migrado do admin)
       { to: '/radar', label: 'Radar IA', icon: Radar }, // lente micro (conversas)
       { to: '/tarefas', label: 'Tarefas', icon: ListTodo },
       { to: '/relatorios-comerciais', label: 'Relatórios', icon: LineChart },

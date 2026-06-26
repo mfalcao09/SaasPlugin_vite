@@ -134,7 +134,7 @@ export default function Admin() {
   const { isAdmin, isManager } = useAuth();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'dashboard';
+  const initialTab = searchParams.get('tab') || 'company';
   const [activeSection, setActiveSection] = useState(initialTab);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -201,13 +201,14 @@ export default function Admin() {
     }
 
     switch (sectionId) {
-      case 'dashboard': return <OperationCenter />;
-      case 'leads': return <LeadsManager />;
-      case 'pipeline': return <KanbanBoard />;
+      // Migrados para o cockpit (Comercial) — redireciona links/bookmarks ?tab= antigos.
+      case 'dashboard': return <Navigate to="/painel" replace />;
+      case 'leads': return <Navigate to="/leads" replace />;
+      case 'pipeline': return <Navigate to="/pipeline" replace />;
       // Agenda unificada: a antiga UI Calendly (CalendarManager) saiu.
       // A agenda do salão vive em /salao/agenda (views Mês/Semana/Dia/Lista).
       case 'calendar': return <Navigate to="/salao/agenda" replace />;
-      case 'inbox': return <InboxManager />;
+      case 'inbox': return <Navigate to="/conversas" replace />;
       case 'agents': return <AgentsManager />;
       
       case 'team': return <TeamManager />;
@@ -242,7 +243,7 @@ export default function Admin() {
         return <CaptureTemplatesSection />;
       case 'capture-results':
         return <CaptureResultsSection />;
-      default: return <OperationCenter />;
+      default: return <CompanySettings />;
     }
   };
 
