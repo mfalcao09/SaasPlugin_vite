@@ -184,8 +184,8 @@ export default function SaudeBase({ demo }: { demo?: HealthMetrics } = {}) {
 // ─── Seed do modo demonstração ──────────────────────────────────────────────
 export const DEMO_SAUDE: HealthMetrics = {
   total: 84,
-  pct: { telefone: 92, email: 41, nascimento: 23, cpf: 18, media: 49 },
-  scoreMedia: 2.9,
+  pct: { telefone: 92, email: 41, nascimento: 23, cpf: 18, media: 48 },
+  scoreMedia: 2.9, // 2.9/6 → 48% (mantém o seed coerente com buildHealthMetrics)
   dupGrupos: 3,
   dupClientes: 7,
   inativos: 19,
