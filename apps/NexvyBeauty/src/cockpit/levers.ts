@@ -13,7 +13,7 @@
 // e chave de mês via `.slice(0, 7)` (evita shift de TZ — feedback_iso_date_format_br).
 
 import {
-  UserMinus, PackageCheck, CalendarClock, ArrowUpRight, Crown,
+  UserMinus, PackageCheck, CalendarClock, ArrowUpRight, Crown, Cake,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,7 +36,16 @@ export interface GrowthLever {
   icon: LucideIcon
   /** clientes nomeados que alimentam a alavanca (a cabeleireira vê QUEM, não só
    * o número). Opcional → backward-compatible com quem só lê o agregado. */
-  clienteList?: Array<{ nome: string; key: string }>
+  clienteList?: AiGrowthClienteData[]
+}
+
+// Cliente nomeado de uma alavanca: nome p/ exibir + chave estável + (quando
+// resolvível) cliente_id e telefone, pra disparar WhatsApp direto do card.
+export interface AiGrowthClienteData {
+  nome: string
+  key: string
+  cliente_id?: string
+  telefone?: string
 }
 
 export interface AiGrowthData {
@@ -80,6 +89,13 @@ export interface PacoteClienteRow {
   data_validade: string | null
   status: string | null
 }
+// Subset da tabela clientes — telefone (p/ disparo WhatsApp) + nascimento (aniversário).
+export interface ClienteRow {
+  id: string
+  nome: string | null
+  telefone: string | null
+  data_nascimento: string | null
+}
 
 // ─── Helpers de data (T00:00:00 ancora local; sem shift de TZ) ──────────────
 export function todayMidnight(): Date {
@@ -103,10 +119,44 @@ export function faixaHorario(hora: string | null | undefined): string {
 }
 export const DOW_PT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
 
+// Mensagem-modelo de WhatsApp por tipo de alavanca (linguagem de salão; usa o 1º
+// nome). A cabeleireira confere e dispara — carinho em escala, não "disparo em massa".
+export function leverMessage(leverId: string, nome: string): string {
+  const primeiro = (nome || 'cliente').trim().split(/\s+/)[0]
+  const M: Record<string, string> = {
+    inativos: `Oi ${primeiro}! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana? Tenho um mimo te esperando 🎁`,
+    vips: `Oi ${primeiro}! Você faz falta no salão 👑 Quero reservar um horário especial só pra você — quando fica bom?`,
+    pacotes: `Oi ${primeiro}! Seu pacote está quase no fim — bora renovar e manter seu cuidado em dia? Posso já deixar separado 😉`,
+    upsell: `Oi ${primeiro}! Tenho uma novidade que combina super com você 💁‍♀️ Quer que eu te conte e já reserve um horário?`,
+    aniversario: `Oi ${primeiro}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no salão. Vem buscar? 🎂`,
+  }
+  return M[leverId] ?? `Oi ${primeiro}! Que tal marcar um horário no salão essa semana? 💕`
+}
+
 // ─── Agregação dos dados reais → alavancas ──────────────────────────────────
-export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClienteRow[]): GrowthLever[] {
+export function buildLevers(
+  agendamentos: AgendamentoRow[],
+  pacotes: PacoteClienteRow[],
+  clientesRows: ClienteRow[] = [],
+): GrowthLever[] {
   const hoje = todayMidnight()
   const concluidos = agendamentos.filter((a) => a.status === 'concluido')
+
+  // Telefone NÃO vem de agendamentos/pacotes — resolve da tabela clientes por
+  // cliente_id (preferencial) ou nome (fallback), pra permitir o disparo WhatsApp.
+  const normNome = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
+  const telById = new Map<string, string>()
+  const telByNome = new Map<string, string>()
+  for (const c of clientesRows) {
+    if (!c.telefone) continue
+    if (c.id) telById.set(c.id, c.telefone)
+    if (c.nome) telByNome.set(normNome(c.nome), c.telefone)
+  }
+  const resolveCli = (key: string, nome: string): { cliente_id?: string; telefone?: string } => {
+    const cid = key.startsWith('nome:') ? undefined : key
+    const telefone = (cid ? telById.get(cid) : undefined) ?? telByNome.get(normNome(nome)) ?? undefined
+    return { cliente_id: cid, telefone }
+  }
 
   // Ticket médio = média do valor dos concluídos (base p/ várias alavancas).
   const totalConcluidos = concluidos.reduce((s, a) => s + Number(a.valor ?? 0), 0)
@@ -145,7 +195,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver clientes inativas',
     ctaTo: TO_CLIENTES,
     icon: UserMinus,
-    clienteList: inativos.map((c) => ({ nome: c.nome, key: c.key })),
+    clienteList: inativos.map((c) => ({ nome: c.nome, key: c.key, ...resolveCli(c.key, c.nome) })),
   }
 
   // ── Alavanca 2: Pacotes a renovar (quase esgotados / vencendo) ───────────
@@ -171,7 +221,10 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver pacotes',
     ctaTo: TO_PACOTES,
     icon: PackageCheck,
-    clienteList: quaseEsgotados.map((p) => ({ nome: p.cliente_nome ?? 'Cliente', key: p.id })),
+    clienteList: quaseEsgotados.map((p) => {
+      const nome = p.cliente_nome ?? 'Cliente'
+      return { nome, key: p.id, ...resolveCli('nome:' + nome, nome) }
+    }),
   }
 
   // ── Alavanca 3: Horários/dias de baixa ocupação → promo pra preencher ────
@@ -255,7 +308,7 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
       ctaLabel: 'Ver serviços',
       ctaTo: TO_SERVICOS,
       icon: ArrowUpRight,
-      clienteList: naoFizeram.map((c) => ({ nome: c.nome, key: c.key })),
+      clienteList: naoFizeram.map((c) => ({ nome: c.nome, key: c.key, ...resolveCli(c.key, c.nome) })),
     }
   } else {
     lever4 = {
@@ -287,10 +340,36 @@ export function buildLevers(agendamentos: AgendamentoRow[], pacotes: PacoteClien
     ctaLabel: 'Ver clientes',
     ctaTo: TO_CLIENTES,
     icon: Crown,
-    clienteList: vips.map((c) => ({ nome: c.nome, key: c.key })),
+    clienteList: vips.map((c) => ({ nome: c.nome, key: c.key, ...resolveCli(c.key, c.nome) })),
   }
 
-  return [lever1, lever2, lever3, lever4, lever5]
+  // ── Alavanca 6: Aniversariantes do mês → carinho + mimo ──────────────────
+  const mesAtual = hoje.getMonth()
+  const aniversariantes = clientesRows.filter((c) => {
+    const d = parseDateLocal(c.data_nascimento)
+    return !!d && d.getMonth() === mesAtual
+  })
+  const lever6: GrowthLever = {
+    id: 'aniversario',
+    title: 'Aniversariantes do mês',
+    description:
+      aniversariantes.length > 0
+        ? `${aniversariantes.length} cliente${aniversariantes.length === 1 ? '' : 's'} fazem aniversário este mês. Um carinho + mimo traz de volta.`
+        : 'Ninguém aniversariando este mês — cadastre a data de nascimento das clientes pra ativar.',
+    estimated: (ticketMedio || 0) * aniversariantes.length,
+    count: aniversariantes.length,
+    ctaLabel: 'Ver clientes',
+    ctaTo: TO_CLIENTES,
+    icon: Cake,
+    clienteList: aniversariantes.map((c) => ({
+      nome: c.nome ?? 'Cliente',
+      key: c.id,
+      cliente_id: c.id,
+      telefone: c.telefone ?? undefined,
+    })),
+  }
+
+  return [lever1, lever2, lever3, lever4, lever5, lever6]
 }
 
 // ─── Agregação de total (R$ recuperável + nº de itens) ──────────────────────

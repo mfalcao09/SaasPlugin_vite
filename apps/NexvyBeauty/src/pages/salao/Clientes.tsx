@@ -38,14 +38,16 @@ export interface Cliente {
   observacoes: string | null
   /** vínculo opcional com um lead do CRM (origem do score/temperatura) */
   lead_id?: string | null
+  /** data de nascimento (YYYY-MM-DD) — alimenta a alavanca de aniversariantes */
+  data_nascimento?: string | null
   created_at?: string | null
 }
 
 interface FormState {
-  nome: string; telefone: string; email: string; cpf_cnpj: string; status: string; tags: string; observacoes: string
+  nome: string; telefone: string; email: string; cpf_cnpj: string; status: string; tags: string; observacoes: string; data_nascimento: string
 }
 
-const EMPTY_FORM: FormState = { nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '' }
+const EMPTY_FORM: FormState = { nome: '', telefone: '', email: '', cpf_cnpj: '', status: 'ativo', tags: '', observacoes: '', data_nascimento: '' }
 
 type SortMode = 'default' | 'hottest'
 
@@ -181,6 +183,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
     setForm({
       nome: c.nome ?? '', telefone: c.telefone ?? '', email: c.email ?? '', cpf_cnpj: c.cpf_cnpj ?? '',
       status: c.status ?? 'ativo', tags: (c.tags ?? []).join(', '), observacoes: c.observacoes ?? '',
+      data_nascimento: c.data_nascimento ?? '',
     })
     setEditingId(c.id); setShowForm(true)
   }
@@ -193,6 +196,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
     status: form.status || 'ativo',
     tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
     observacoes: form.observacoes.trim() || null,
+    data_nascimento: form.data_nascimento.trim() || null,
   })
 
   const salvar = useMutation({
@@ -415,6 +419,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                 </Select>
               </div>
             </div>
+            <div className="space-y-2"><Label>Data de nascimento</Label><Input type="date" value={form.data_nascimento} onChange={(e) => setField('data_nascimento', e.target.value)} /></div>
             <div className="space-y-2"><Label>Tags</Label><Input value={form.tags} onChange={(e) => setField('tags', e.target.value)} placeholder="separadas por vírgula" /></div>
             <div className="space-y-2"><Label>Observações</Label><Textarea value={form.observacoes} onChange={(e) => setField('observacoes', e.target.value)} rows={3} /></div>
           </div>

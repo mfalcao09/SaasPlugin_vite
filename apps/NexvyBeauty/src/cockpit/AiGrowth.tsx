@@ -18,11 +18,12 @@
 // — feedback_iso_date_format_br). Modo `demo` injeta DEMO_AIGROWTH (seed realista)
 // que popula TODAS as alavancas sem tocar o banco.
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, TrendingUp, UserMinus, PackageCheck, CalendarClock, ArrowUpRight, Crown,
-  RefreshCw,
+  RefreshCw, MessageCircle, Cake,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -30,10 +31,13 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useOrganizationId, NoOrg } from '@/pages/salao/_shared'
 import { formatBRL } from '@/cockpit/home/format'
+import { BulkReactivationDialog } from '@/cockpit/reactivation/BulkReactivationDialog'
+import { normalizeBrPhone, type OpportunityCardData } from '@/cockpit/types'
 import {
-  buildLevers, aggregateLevers,
+  buildLevers, aggregateLevers, leverMessage,
   TO_CLIENTES, TO_PACOTES, TO_AGENDA, TO_SERVICOS,
   type GrowthLever, type AiGrowthData, type AgendamentoRow, type PacoteClienteRow,
+  type ClienteRow,
 } from '@/cockpit/levers'
 
 // A lógica das alavancas (tipos GrowthLever/AiGrowthData, shapes das linhas,
@@ -46,6 +50,24 @@ export type { GrowthLever, AiGrowthData }
 function LeverCard({ lever }: { lever: GrowthLever }) {
   const isEmpty = lever.count === 0
   const Icon = lever.icon
+  const [dispatchOpen, setDispatchOpen] = useState(false)
+
+  // Clientes da alavanca COM telefone → alvos do disparo WhatsApp (sem telefone
+  // não dá pra falar). Cada um vira um OpportunityCardData com a mensagem por tipo;
+  // o BulkReactivationDialog (mesmo motor do botão único) faz o envio espaçado.
+  const dispatchItems: OpportunityCardData[] = (lever.clienteList ?? [])
+    .filter((c) => c.telefone)
+    .map((c) => ({
+      id: c.key,
+      leadId: c.cliente_id ?? null,
+      name: c.nome,
+      phone: normalizeBrPhone(c.telefone),
+      classification: 'hot',
+      dealValue: 0,
+      followupMessage: leverMessage(lever.id, c.nome),
+      reason: null,
+    }))
+
   return (
     <Card>
       <CardContent className="py-5 space-y-3">
@@ -91,7 +113,13 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
           </div>
         )}
 
-        <div className="flex justify-end pt-1">
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          {dispatchItems.length > 0 && (
+            <Button size="sm" className="gap-1.5" onClick={() => setDispatchOpen(true)}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              Falar com {dispatchItems.length === 1 ? 'essa cliente' : `essas ${dispatchItems.length}`}
+            </Button>
+          )}
           <Button asChild variant={isEmpty ? 'ghost' : 'outline'} size="sm" className="gap-1.5">
             <Link to={lever.ctaTo}>
               {lever.ctaLabel}
@@ -100,6 +128,16 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
           </Button>
         </div>
       </CardContent>
+
+      {/* Disparo em lote reusando o motor de reativação (sendReactivation +
+          evolution-send): mensagem por tipo de alavanca, envio espaçado. */}
+      {dispatchItems.length > 0 && (
+        <BulkReactivationDialog
+          items={dispatchItems}
+          open={dispatchOpen}
+          onOpenChange={setDispatchOpen}
+        />
+      )}
     </Card>
   )
 }
@@ -144,11 +182,25 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
     },
   })
 
+  // Clientes: telefone (p/ disparo WhatsApp) + data_nascimento (alavanca aniversário).
+  const { data: clientesRows = [], refetch: refetchClientes, isFetching: fetchingCli } = useQuery({
+    queryKey: ['aigrowth-clientes', organizationId],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome, telefone, data_nascimento')
+        .eq('organization_id', organizationId!)
+      if (error) throw error
+      return (data ?? []) as ClienteRow[]
+    },
+  })
+
   if (!isDemo && !organizationId) {
     return <div className="p-6"><NoOrg /></div>
   }
 
-  const d = demo ?? { levers: buildLevers(agendamentos, pacotes) }
+  const d = demo ?? { levers: buildLevers(agendamentos, pacotes, clientesRows) }
   const { total: totalPotencial, count: totalItens } = aggregateLevers(d.levers)
 
   return (
@@ -170,10 +222,10 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => { refetchAgendamentos(); refetchPacotes(); }}
-            disabled={fetchingAg || fetchingPac}
+            onClick={() => { refetchAgendamentos(); refetchPacotes(); refetchClientes(); }}
+            disabled={fetchingAg || fetchingPac || fetchingCli}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${fetchingAg || fetchingPac ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`mr-2 h-4 w-4 ${fetchingAg || fetchingPac || fetchingCli ? 'animate-spin' : ''}`} />
             Atualizar agora
           </Button>
           {dataUpdatedAt > 0 && (
@@ -246,13 +298,13 @@ export const DEMO_AIGROWTH: AiGrowthData = {
       ctaTo: TO_CLIENTES,
       icon: UserMinus,
       clienteList: [
-        { nome: 'Maria Souza', key: 'd1' },
-        { nome: 'Joana Lima', key: 'd2' },
-        { nome: 'Lúcia Alves', key: 'd3' },
-        { nome: 'Carla Dias', key: 'd4' },
-        { nome: 'Patrícia Reis', key: 'd5' },
-        { nome: 'Renata Melo', key: 'd6' },
-        { nome: 'Bianca Rocha', key: 'd7' },
+        { nome: 'Maria Souza', key: 'd1', telefone: '11988880001' },
+        { nome: 'Joana Lima', key: 'd2', telefone: '11988880002' },
+        { nome: 'Lúcia Alves', key: 'd3', telefone: '11988880003' },
+        { nome: 'Carla Dias', key: 'd4', telefone: '11988880004' },
+        { nome: 'Patrícia Reis', key: 'd5', telefone: '11988880005' },
+        { nome: 'Renata Melo', key: 'd6', telefone: '11988880006' },
+        { nome: 'Bianca Rocha', key: 'd7', telefone: '11988880007' },
       ],
     },
     {
@@ -300,10 +352,25 @@ export const DEMO_AIGROWTH: AiGrowthData = {
       ctaTo: TO_CLIENTES,
       icon: Crown,
       clienteList: [
-        { nome: 'Fernanda Costa', key: 'v1' },
-        { nome: 'Aline Prado', key: 'v2' },
-        { nome: 'Tatiane Gomes', key: 'v3' },
+        { nome: 'Fernanda Costa', key: 'v1', telefone: '11988880008' },
+        { nome: 'Aline Prado', key: 'v2', telefone: '11988880009' },
+        { nome: 'Tatiane Gomes', key: 'v3', telefone: '11988880010' },
         { nome: 'Sílvia Nunes', key: 'v4' },
+      ],
+    },
+    {
+      id: 'aniversario',
+      title: 'Aniversariantes do mês',
+      description: '3 clientes fazem aniversário este mês. Um carinho + mimo traz de volta.',
+      estimated: 426,
+      count: 3,
+      ctaLabel: 'Ver clientes',
+      ctaTo: TO_CLIENTES,
+      icon: Cake,
+      clienteList: [
+        { nome: 'Helena Castro', key: 'a1', telefone: '11988880011' },
+        { nome: 'Marina Souza', key: 'a2', telefone: '11988880012' },
+        { nome: 'Yara Lopes', key: 'a3', telefone: '11988880013' },
       ],
     },
   ],
