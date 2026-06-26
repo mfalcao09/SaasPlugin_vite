@@ -15,7 +15,7 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -63,7 +63,14 @@ Deno.serve(async (req) => {
   }
 
   const auth = req.headers.get('authorization') ?? ''
-  const isCron = auth === `Bearer ${SERVICE_ROLE}` // SÓ o cron (service role) pode ENVIAR
+  let isCron = auth === `Bearer ${SERVICE_ROLE}` // SÓ o cron pode ENVIAR
+  // Cron diário se autentica por um segredo próprio (x-cron-secret), verificado via
+  // RPC SECURITY DEFINER — assim só o cron aciona o MODO-ENVIO (não a anon key pública).
+  const cronSecret = req.headers.get('x-cron-secret')
+  if (!isCron && cronSecret) {
+    const { data: ok } = await admin.rpc('verify_salon_cron', { p_secret: cronSecret })
+    isCron = ok === true
+  }
   const body = await req.json().catch(() => ({}))
   const onlyOrg: string | null = body.organization_id ?? null
   let dryRun: boolean = body.dry_run !== false // default TRUE (seguro)
