@@ -63,6 +63,7 @@ export function GlobalSearch({ onSelectLead, onSelectProduct }: GlobalSearchProp
         supabase
           .from('products')
           .select('id, name, description')
+          .eq('tipo', 'oferta')
           .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
           .limit(5),
         supabase

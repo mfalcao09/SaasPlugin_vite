@@ -175,14 +175,14 @@ export function ProductListPage({ onProductSelect }: ProductListPageProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Produtos</h1>
+          <h1 className="text-2xl font-bold text-foreground">Ofertas</h1>
           <p className="text-muted-foreground">
-            Gerencie seus produtos e acesse todas as configurações
+            Ofertas comerciais que a IA capta e vende (cérebro, objeções, cadência)
           </p>
         </div>
         <Button onClick={() => setShowOnboarding(true)} size="lg">
           <Plus className="mr-2 h-4 w-4" />
-          Novo Produto
+          Nova Oferta
         </Button>
       </div>
 
@@ -190,7 +190,7 @@ export function ProductListPage({ onProductSelect }: ProductListPageProps) {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar produto..."
+          placeholder="Buscar oferta..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -313,17 +313,17 @@ export function ProductListPage({ onProductSelect }: ProductListPageProps) {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Package className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-1">
-                {searchTerm ? 'Nenhum produto encontrado' : 'Nenhum produto'}
+                {searchTerm ? 'Nenhuma oferta encontrada' : 'Nenhuma oferta'}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Tente buscar com outros termos' 
-                  : 'Crie seu primeiro produto para começar'}
+                  : 'Crie sua primeira oferta para começar'}
               </p>
               {!searchTerm && (
                 <Button onClick={() => setShowOnboarding(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Criar Produto
+                  Criar Oferta
                 </Button>
               )}
             </CardContent>
@@ -335,7 +335,7 @@ export function ProductListPage({ onProductSelect }: ProductListPageProps) {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Produto</DialogTitle>
+            <DialogTitle>Editar Oferta</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -384,7 +384,7 @@ export function ProductListPage({ onProductSelect }: ProductListPageProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Oferta</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir "{selectedProduct?.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>

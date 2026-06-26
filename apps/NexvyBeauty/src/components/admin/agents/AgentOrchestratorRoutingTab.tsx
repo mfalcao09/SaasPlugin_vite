@@ -45,6 +45,7 @@ export function AgentOrchestratorRoutingTab({ currentAgentId, formData, onChange
           .from('products')
           .select('id, name, status')
           .eq('organization_id', orgId)
+          .eq('tipo', 'oferta')
           .order('name'),
         sb
           .from('product_agents')

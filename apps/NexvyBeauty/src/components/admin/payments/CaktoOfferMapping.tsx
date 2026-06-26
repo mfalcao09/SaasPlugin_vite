@@ -55,7 +55,7 @@ export function CaktoOfferMapping() {
         .eq('organization_id', orgId!)
         .order('product_id', { nullsFirst: true })
         .order('position', { ascending: true }),
-      supabase.from('products').select('id, name').eq('organization_id', orgId!).order('name'),
+      supabase.from('products').select('id, name').eq('organization_id', orgId!).eq('tipo', 'oferta').order('name'),
     ]);
     if (offersRes.error) toast({ title: 'Erro', description: offersRes.error.message, variant: 'destructive' });
     setOffers((offersRes.data as Offer[]) || []);

@@ -137,7 +137,7 @@ export function CampaignWizard({
       const sb = supabase as any;
       const [a, p, i] = await Promise.all([
         sb.from('product_agents').select('id, name, product_id, is_active').eq('organization_id', orgId).eq('is_active', true),
-        sb.from('products').select('id, name, status').eq('organization_id', orgId).order('name'),
+        sb.from('products').select('id, name, status').eq('organization_id', orgId).eq('tipo', 'oferta').order('name'),
         sb.from('evolution_instances').select('id, name, phone_number, status').eq('organization_id', orgId),
       ]);
       setAgents(a.data ?? []);
