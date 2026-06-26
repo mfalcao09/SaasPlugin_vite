@@ -12,6 +12,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type' }
 
 type Tipo = 'aniversario' | 'pacote_vencendo' | 'agendamento_24h' | 'retorno_inativo'
@@ -60,21 +61,18 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('authorization') ?? ''
   const isCron = auth === `Bearer ${SERVICE_ROLE}` // SÓ o cron (service role) pode ENVIAR
   const body = await req.json().catch(() => ({}))
-  let onlyOrg: string | null = body.organization_id ?? null
+  const onlyOrg: string | null = body.organization_id ?? null
   let dryRun: boolean = body.dry_run !== false // default TRUE (seguro)
-  if (!isCron) {
-    // Chamada não-cron (ex.: prévia da UI): NUNCA envia + obriga escopo de 1 org.
-    dryRun = true
-    if (!onlyOrg) {
-      return new Response(JSON.stringify({ error: 'organization_id obrigatório fora do cron' }), { status: 400, headers: { ...CORS, 'content-type': 'application/json' } })
-    }
-  }
+  // Chamada não-cron (ex.: prévia da UI): NUNCA envia. Os READS rodam com o JWT do
+  // usuário (db) → a RLS garante que SÓ a própria org aparece (não vaza outra org).
+  if (!isCron) dryRun = true
+  const db = isCron ? admin : createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } })
   const hoje: string = body.hoje ?? brToday()
   const amanha = addDays(hoje, 1)
   const hojeMes = hoje.slice(0, 7)
 
   // Regras LIGADAS (a flag é por-regra; nada roda sem enabled=true).
-  let rq = admin.from('salon_automation_rules').select('organization_id, tipo, template, antecedencia_dias').eq('enabled', true)
+  let rq = db.from('salon_automation_rules').select('organization_id, tipo, template, antecedencia_dias').eq('enabled', true)
   if (onlyOrg) rq = rq.eq('organization_id', onlyOrg)
   const { data: rules, error: rulesErr } = await rq
   if (rulesErr) return new Response(JSON.stringify({ error: rulesErr.message }), { status: 500, headers: { ...CORS, 'content-type': 'application/json' } })
@@ -86,7 +84,7 @@ Deno.serve(async (req) => {
 
   for (const [orgId, orgRules] of porOrg) {
     // Base de clientes da org → telefone/nascimento + GUARDA de ambiguidade por nome.
-    const { data: clientes } = await admin.from('clientes')
+    const { data: clientes } = await db.from('clientes')
       .select('id, nome, telefone, data_nascimento, status').eq('organization_id', orgId)
     const telById = new Map<string, string | null>()
     const telByNome = new Map<string, string | null>() // null = ambíguo
@@ -118,7 +116,7 @@ Deno.serve(async (req) => {
     if (tipos.has('pacote_vencendo')) {
       const r = ruleOf('pacote_vencendo')
       const ate = addDays(hoje, Math.max(0, r.antecedencia_dias ?? 3))
-      const { data: pacs } = await admin.from('pacote_clientes')
+      const { data: pacs } = await db.from('pacote_clientes')
         .select('id, cliente_nome, status, data_validade').eq('organization_id', orgId)
         .eq('status', 'ativo').gte('data_validade', hoje).lte('data_validade', ate)
       for (const p of pacs ?? []) {
@@ -128,7 +126,7 @@ Deno.serve(async (req) => {
     // ── agendamento amanhã (confirmação 24h) ──
     if (tipos.has('agendamento_24h')) {
       const r = ruleOf('agendamento_24h')
-      const { data: ags } = await admin.from('agendamentos')
+      const { data: ags } = await db.from('agendamentos')
         .select('id, cliente_id, cliente_nome, data, status').eq('organization_id', orgId)
         .eq('data', amanha).neq('status', 'cancelado')
       for (const a of ags ?? []) {
@@ -141,7 +139,7 @@ Deno.serve(async (req) => {
     if (tipos.has('retorno_inativo')) {
       const r = ruleOf('retorno_inativo')
       const alvo = addDays(hoje, -Math.max(1, r.antecedencia_dias ?? 45))
-      const { data: ags } = await admin.from('agendamentos')
+      const { data: ags } = await db.from('agendamentos')
         .select('cliente_id, cliente_nome, data, status').eq('organization_id', orgId).eq('status', 'concluido')
       // SÓ por cliente_id (ref estável → idempotência confiável; nome muda com typo/rename).
       const ultima = new Map<string, { data: string; nome: string }>()
@@ -160,7 +158,7 @@ Deno.serve(async (req) => {
     const refs = candidatos.map((c) => c.ref)
     const jaEnviados = new Set<string>()
     if (refs.length) {
-      const { data: logs } = await admin.from('salon_automation_log')
+      const { data: logs } = await db.from('salon_automation_log')
         .select('ref').eq('organization_id', orgId).eq('status', 'sent').in('ref', refs)
       for (const l of logs ?? []) jaEnviados.add(l.ref)
     }

@@ -35,6 +35,9 @@ const DemoAcoesClientes = lazyWithRetry(() => import("./cockpit/AcoesClientes").
 // Saúde da Base — diagnóstico de higiene do cadastro (Feature D).
 const SaudeBase = lazyWithRetry(() => import("./cockpit/SaudeBase"));
 const DemoSaudeBase = lazyWithRetry(() => import("./cockpit/SaudeBase").then(m => ({ default: () => <m.default demo={m.DEMO_SAUDE} /> })));
+// Automações — receitas de automação de salão (Feature B inc.2).
+const Automacoes = lazyWithRetry(() => import("./cockpit/Automacoes"));
+const DemoAutomacoes = lazyWithRetry(() => import("./cockpit/Automacoes").then(m => ({ default: () => <m.default demo /> })));
 // Comercial — páginas extraídas das abas do Conversas (Painel/Radar IA/Relatórios).
 const CockpitPainel = lazyWithRetry(() => import("./cockpit/Painel"));
 const CockpitRadar = lazyWithRetry(() => import("./cockpit/RadarIA"));
@@ -224,6 +227,7 @@ const App = () => (
               <Route path="/demo/ai-growth" element={<DemoAiGrowth />} />
               <Route path="/demo/acoes" element={<DemoAcoesClientes />} />
               <Route path="/demo/saude" element={<DemoSaudeBase />} />
+              <Route path="/demo/automacoes" element={<DemoAutomacoes />} />
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
@@ -267,6 +271,7 @@ const App = () => (
                 <Route path="ai-growth" element={<AiGrowth />} />
                 <Route path="acoes" element={<AcoesClientes />} />
                 <Route path="saude" element={<SaudeBase />} />
+                <Route path="automacoes" element={<Automacoes />} />
                 <Route path="painel" element={<CockpitPainel />} />
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="pipeline" element={<CockpitPipeline />} />
