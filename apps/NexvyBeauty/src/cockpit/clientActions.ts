@@ -46,6 +46,11 @@ export function buildClientActions(
   const hoje = todayMidnight()
   const concluidos = agendamentos.filter((a) => a.status === 'concluido')
 
+  // Normaliza nome (case + acento) — usado como CHAVE de agregação E nos lookups,
+  // pra "Maria" / "maria" / "Mariá" caírem no mesmo cliente (sem duplicar a fila).
+  const normNome = (s: string | null | undefined) =>
+    (s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+
   const totalConcluidos = concluidos.reduce((s, a) => s + Number(a.valor ?? 0), 0)
   const ticketMedio = concluidos.length ? totalConcluidos / concluidos.length : 0
 
@@ -53,7 +58,7 @@ export function buildClientActions(
   interface CliAgg { key: string; nome: string; ultima: Date | null; gasto: number; visitas: number }
   const porCliente = new Map<string, CliAgg>()
   for (const a of concluidos) {
-    const key = a.cliente_id ?? (a.cliente_nome ? `nome:${a.cliente_nome}` : null)
+    const key = a.cliente_id ?? (a.cliente_nome ? `nome:${normNome(a.cliente_nome)}` : null)
     if (!key) continue
     const d = parseDateLocal(a.data)
     const cur = porCliente.get(key) ?? { key, nome: a.cliente_nome ?? 'Cliente', ultima: null, gasto: 0, visitas: 0 }
@@ -64,27 +69,36 @@ export function buildClientActions(
     porCliente.set(key, cur)
   }
 
-  // ── Lookups da tabela clientes: telefone + nascimento (por id e por nome) ───
-  const normNome = (s: string | null | undefined) =>
-    (s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  // ── Lookups da tabela clientes: por id (sempre confiável) e por nome (só
+  // quando o nome é ÚNICO na org). Homônimos (≥2 valores distintos pro mesmo
+  // nome) viram AMBÍGUOS → não resolvem por nome — pra nunca mandar WhatsApp pro
+  // cliente errado nem trocar o aniversário. ──────────────────────────────────
   const telById = new Map<string, string>()
-  const telByNome = new Map<string, string>()
   const nascById = new Map<string, string>()
-  const nascByNome = new Map<string, string>()
+  const telByNome = new Map<string, string | null>() // null = ambíguo
+  const nascByNome = new Map<string, string | null>()
+  const addByNome = (m: Map<string, string | null>, nome: string | null, val: string) => {
+    if (!nome) return
+    const k = normNome(nome)
+    if (!m.has(k)) m.set(k, val)
+    else if (m.get(k) !== val) m.set(k, null) // 2 valores distintos → ambíguo
+  }
   for (const c of clientesRows) {
     if (c.telefone) {
       if (c.id) telById.set(c.id, c.telefone)
-      if (c.nome) telByNome.set(normNome(c.nome), c.telefone)
+      addByNome(telByNome, c.nome, c.telefone)
     }
     if (c.data_nascimento) {
       if (c.id) nascById.set(c.id, c.data_nascimento)
-      if (c.nome) nascByNome.set(normNome(c.nome), c.data_nascimento)
+      addByNome(nascByNome, c.nome, c.data_nascimento)
     }
   }
+  // get → undefined (ausente) ou null (ambíguo); `?? undefined` colapsa ambos.
+  const byNome = (m: Map<string, string | null>, nome: string) => m.get(normNome(nome)) ?? undefined
   const resolve = (key: string, nome: string) => {
     const cid = key.startsWith('nome:') ? undefined : key
-    const telefone = (cid ? telById.get(cid) : undefined) ?? telByNome.get(normNome(nome)) ?? undefined
-    const nasc = (cid ? nascById.get(cid) : undefined) ?? nascByNome.get(normNome(nome)) ?? undefined
+    const telefone = (cid ? telById.get(cid) : undefined) ?? byNome(telByNome, nome)
+    const nasc = (cid ? nascById.get(cid) : undefined) ?? byNome(nascByNome, nome)
     return { cliente_id: cid, telefone, nasc }
   }
 
@@ -111,7 +125,7 @@ export function buildClientActions(
   if (ancora) {
     for (const a of concluidos) {
       if (a.servico_nome !== ancora) continue
-      const key = a.cliente_id ?? (a.cliente_nome ? `nome:${a.cliente_nome}` : null)
+      const key = a.cliente_id ?? (a.cliente_nome ? `nome:${normNome(a.cliente_nome)}` : null)
       if (key) fezAncora.add(key)
     }
   }

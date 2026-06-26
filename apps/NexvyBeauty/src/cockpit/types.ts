@@ -51,6 +51,9 @@ export function normalizeBrPhone(raw: string | null | undefined): string | null 
   if (!d) return null
   // 10 (fixo) ou 11 (celular) dígitos sem DDI → assume Brasil
   if (!d.startsWith('55') && (d.length === 10 || d.length === 11)) d = '55' + d
+  // Só telefone BR plausível: 55 + 10/11 dígitos. Lixo curto ('abc'→'') ou
+  // comprimento inválido vira null (não renderiza botão / não dispara em vão).
+  if (!/^55\d{10,11}$/.test(d)) return null
   return d
 }
 

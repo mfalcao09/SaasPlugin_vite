@@ -89,7 +89,7 @@ function ClientCard({ c }: { c: ClientAction }) {
         </div>
 
         <ul className="space-y-2">
-          {c.acoes.map((a) => {
+          {c.acoes.map((a, i) => {
             const I = ACAO_ICON[a.tipo]
             const item: OpportunityCardData = {
               id: `${c.key}:${a.tipo}`,
@@ -102,7 +102,7 @@ function ClientCard({ c }: { c: ClientAction }) {
               reason: a.motivo,
             }
             return (
-              <li key={a.tipo} className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
+              <li key={`${a.tipo}-${i}`} className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <I className="h-4 w-4 shrink-0 text-primary" />
                   <span className="truncate text-sm text-foreground">{a.motivo}</span>
