@@ -43,9 +43,9 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/produtos', label: 'Produtos', icon: Package }, // produtos/serviços (migrado do admin)
-      { to: '/setores', label: 'Setores', icon: Network }, // setores de atendimento (migrado do admin)
-      { to: '/equipes', label: 'Equipes', icon: Users }, // usuários/permissões (migrado do admin)
+      { to: '/produtos', label: 'Produtos', icon: Package, visibility: 'admin' }, // migrado do admin (admin-only)
+      { to: '/setores', label: 'Setores', icon: Network, visibility: 'admin' }, // migrado do admin (admin-only)
+      { to: '/equipes', label: 'Equipes', icon: Users, visibility: 'admin' }, // migrado do admin (admin-only)
       { to: '/minha-ia', label: 'Minha IA', icon: Bot },
       { to: '/admin', label: 'Gestão & Ajustes', icon: Settings, visibility: 'admin' },
     ],
