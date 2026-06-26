@@ -81,7 +81,19 @@ function ReceitaCard({ receita, rule, orgId, demo }: { receita: Receita; rule?: 
           </div>
           <Switch
             checked={enabled}
-            onCheckedChange={(v) => { setEnabled(v); save.mutate({ enabled: v }) }}
+            disabled={save.isPending}
+            onCheckedChange={(v) => {
+              setEnabled(v)
+              // Atualiza o cache na hora → contador "ligadas" não pisca; a mutation persiste.
+              if (orgId && !demo) {
+                qc.setQueryData(['salon-rules', orgId], (old: Rule[] = []) =>
+                  old.some((r) => r.tipo === receita.tipo)
+                    ? old.map((r) => (r.tipo === receita.tipo ? { ...r, enabled: v } : r))
+                    : [...old, { tipo: receita.tipo, enabled: v, template: template.trim() || null, antecedencia_dias: dias }],
+                )
+              }
+              save.mutate({ enabled: v })
+            }}
           />
         </div>
 
@@ -201,7 +213,7 @@ export default function Automacoes({ demo }: { demo?: boolean } = {}) {
             ) : (
               <ul className="space-y-1.5">
                 {preview.map((e, i) => (
-                  <li key={i} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <li key={`${e.tipo}-${e.cliente_nome}-${i}`} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
                     <Send className="h-3.5 w-3.5 shrink-0 text-primary" />
                     <span className="font-medium text-foreground">{e.cliente_nome}</span>
                     <Badge variant="outline" className="text-[10px]">{e.tipo}</Badge>
