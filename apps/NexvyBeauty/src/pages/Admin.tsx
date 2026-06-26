@@ -211,17 +211,19 @@ export default function Admin() {
       case 'inbox': return <Navigate to="/conversas" replace />;
       case 'agents': return <Navigate to="/minha-ia" replace />;
       
-      case 'team': return <TeamManager />;
-      case 'products': return <ProductListPage onProductSelect={handleProductSelect} />;
-      case 'reports': return <ReportsManager />;
-      case 'financial': return <FinancialDashboard />;
+      // Gestão (Produtos/Setores/Equipes) → cockpit. Relatórios/Financeiro (deal/afiliado)
+      // → removidos do tenant (vivem no SuperAdmin > Afiliados). Bookmarks redirecionam.
+      case 'team': return <Navigate to="/equipes" replace />;
+      case 'products': return <Navigate to="/produtos" replace />;
+      case 'reports': return <Navigate to="/relatorios" replace />;
+      case 'financial': return <Navigate to="/faturamento" replace />;
       case 'notifications': return <NotificationManager />;
       case 'webhooks': return <WebhooksManager />;
       case 'custom-fields': return <CustomFieldsManager />;
       case 'integrations': return <IntegrationsManager />;
-      case 'sectors': return <SectorsManager />;
+      case 'sectors': return <Navigate to="/setores" replace />;
       case 'plan': return <PlanSelector />;
-      case 'payments': return <CaktoAdminPanel />;
+      case 'payments': return <Navigate to="/faturamento" replace />;
       case 'connections': return <EvolutionInstancesPanel />;
       case 'tags': return <TagsManager />;
       case 'schedules': return <BusinessHoursManager />;

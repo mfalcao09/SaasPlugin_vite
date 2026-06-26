@@ -57,15 +57,6 @@ export const fixedItems: AdminMenuItem[] = [];
 // Grupos em accordion
 export const menuGroups: AdminMenuGroup[] = [
   {
-    id: 'automation',
-    label: 'Automação & IA',
-    icon: Sparkles,
-    items: [
-      // Agentes/Campanhas/Cadências migraram para o cockpit (Gestão → Minha IA).
-      { id: 'webhooks', label: 'Webhooks', icon: Webhook },
-    ],
-  },
-  {
     id: 'capture-channels',
     label: 'Captação',
     icon: Filter,
@@ -80,25 +71,16 @@ export const menuGroups: AdminMenuGroup[] = [
       { id: 'capture-analytics', label: 'Analytics', icon: BarChart3 },
     ],
   },
-  {
-    id: 'management',
-    label: 'Gestão',
-    icon: Briefcase,
-    items: [
-      { id: 'products', label: 'Produtos', icon: Package },
-      { id: 'sectors', label: 'Setores', icon: SlidersHorizontal },
-      { id: 'team', label: 'Equipes', icon: Users },
-      { id: 'reports', label: 'Relatórios', icon: BarChart3 },
-      { id: 'financial', label: 'Financeiro', icon: DollarSign },
-      { id: 'payments', label: 'Pagamentos', icon: Banknote },
-    ],
-  },
+  // Grupo 'Gestão' migrou para o cockpit (seção Gestão): Produtos/Setores/Equipes.
+  // Relatórios/Financeiro (deal/afiliado) → SuperAdmin > Afiliados (removidos do tenant).
+  // Pagamentos → Meu Salão > Financeiro (aba). Tudo redireciona via Admin.tsx.
   {
     id: 'settings',
     label: 'Configurações',
     icon: Settings,
     items: [
       { id: 'connections', label: 'Conexões', icon: Plug },
+      { id: 'webhooks', label: 'Webhooks', icon: Webhook },
       // Integrações migrou para o SuperAdmin (config central da plataforma).
       { id: 'quick-replies', label: 'Respostas Rápidas', icon: MessageSquare },
       { id: 'custom-fields', label: 'Campos personalizados', icon: FileText },

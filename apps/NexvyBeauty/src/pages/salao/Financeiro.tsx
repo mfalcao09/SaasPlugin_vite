@@ -17,11 +17,11 @@
 // receber o payload (tipo/valor/data/categoria/forma/descricao) sem quebrar o
 // create existente.
 
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   DollarSign, Plus, TrendingUp, TrendingDown, Loader2, Scale, Percent, ArrowDownCircle, ArrowUpCircle,
-  Sparkles, Target, Lock, Activity,
+  Sparkles, Target, Lock, Activity, CreditCard,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import {
@@ -762,6 +762,11 @@ function NovoLancamentoDialog({
   )
 }
 
+// Pagamentos (Cakto/Doppus) — movido do admin. Por ora vive aqui como aba (reusa o
+// CaktoAdminPanel); a compatibilização do dado com o caixa (lancamentos) é próximo passo.
+const CaktoPagamentos = lazy(() =>
+  import('@/components/admin/payments/CaktoAdminPanel').then((m) => ({ default: m.CaktoAdminPanel })))
+
 // ─── Aba: Comissões (de SERVIÇO, por profissional) ───────────────────────
 // Comissão de serviço ≠ comissão de venda/afiliado. Por profissional: soma o valor
 // dos atendimentos CONCLUÍDOS no período × comissao_pct. Fonte: profissionais.comissao_pct
@@ -881,7 +886,7 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
   const isDemo = !!demo
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'comissoes'>('dashboard')
+  const [tab, setTab] = useState<'dashboard' | 'entradas' | 'saidas' | 'comissoes' | 'pagamentos'>('dashboard')
   const [periodState, setPeriodState] = useState<FinPeriodState>(DEFAULT_PERIOD_STATE)
   const period = resolvePeriod(periodState)
 
@@ -952,6 +957,7 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
               <TabsTrigger value="entradas" className="gap-2"><ArrowUpCircle className="h-4 w-4" />Entradas</TabsTrigger>
               <TabsTrigger value="saidas" className="gap-2"><ArrowDownCircle className="h-4 w-4" />Saídas</TabsTrigger>
               <TabsTrigger value="comissoes" className="gap-2"><Percent className="h-4 w-4" />Comissões</TabsTrigger>
+              <TabsTrigger value="pagamentos" className="gap-2"><CreditCard className="h-4 w-4" />Pagamentos</TabsTrigger>
             </TabsList>
             <span className="text-sm text-muted-foreground">{periodLabel(period)}</span>
           </div>
@@ -980,6 +986,12 @@ export default function Financeiro({ demo, bare }: { demo?: Lancamento[]; bare?:
 
           <TabsContent value="comissoes" className="mt-0">
             <ComissoesTab period={period} organizationId={organizationId} isDemo={isDemo} />
+          </TabsContent>
+
+          <TabsContent value="pagamentos" className="mt-0">
+            <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+              <CaktoPagamentos />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>

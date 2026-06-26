@@ -6,7 +6,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign, Settings,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  LayoutGrid, Target,
+  LayoutGrid, Target, Package, Network,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
@@ -43,8 +43,11 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/admin', label: 'Gestão & Ajustes', icon: Settings, visibility: 'admin' },
+      { to: '/produtos', label: 'Produtos', icon: Package }, // produtos/serviços (migrado do admin)
+      { to: '/setores', label: 'Setores', icon: Network }, // setores de atendimento (migrado do admin)
+      { to: '/equipes', label: 'Equipes', icon: Users }, // usuários/permissões (migrado do admin)
       { to: '/minha-ia', label: 'Minha IA', icon: Bot },
+      { to: '/admin', label: 'Gestão & Ajustes', icon: Settings, visibility: 'admin' },
     ],
   },
 ]

@@ -42,6 +42,10 @@ const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxMan
 // CRM migrado do painel admin → Comercial (kanban de pipeline + central de leads).
 const CockpitPipeline = lazyWithRetry(() => import("@/components/admin/kanban/KanbanBoard").then(m => ({ default: m.KanbanBoard })));
 const CockpitLeads = lazyWithRetry(() => import("@/components/admin/leads/LeadsManager").then(m => ({ default: m.LeadsManager })));
+// Gestão migrada do admin → cockpit (Produtos/Setores/Equipes).
+const CockpitProdutos = lazyWithRetry(() => import("./cockpit/Produtos"));
+const CockpitSetores = lazyWithRetry(() => import("./cockpit/Setores"));
+const CockpitEquipes = lazyWithRetry(() => import("./cockpit/Equipes"));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
@@ -243,6 +247,9 @@ const App = () => (
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="pipeline" element={<CockpitPipeline />} />
                 <Route path="leads" element={<CockpitLeads />} />
+                <Route path="produtos" element={<CockpitProdutos />} />
+                <Route path="setores" element={<CockpitSetores />} />
+                <Route path="equipes" element={<CockpitEquipes />} />
                 <Route path="radar" element={<CockpitRadar />} />
                 <Route path="tarefas" element={<CockpitTarefas />} />
                 <Route path="relatorios-comerciais" element={<RelatoriosAtendimento />} />
