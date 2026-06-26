@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Sparkles, UserPlus, ListTodo } from 'lucide-react';
 import { CallWithAIDialog } from '@/components/lead/CallWithAIDialog';
@@ -17,6 +18,7 @@ interface Props {
 
 export function RadarLeadActions({ item, compact, onOpenConversation }: Props) {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [callOpen, setCallOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferLead, setTransferLead] = useState<any>(null);
@@ -39,7 +41,8 @@ export function RadarLeadActions({ item, compact, onOpenConversation }: Props) {
       return;
     }
     if (item.lead_id) {
-      window.location.href = `/admin?tab=leads&lead=${item.lead_id}`;
+      // Leads migrou pro cockpit (Comercial → Leads). Navegação in-app, sem reload.
+      navigate(`/leads?lead=${item.lead_id}`);
     } else {
       toast.error('Conversa não disponível');
     }

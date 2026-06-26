@@ -68,7 +68,7 @@ export const TENANT_NAV: ShellNavGroup[] = [
   {
     title: 'Atendimento',
     items: [
-      { to: '/admin?tab=inbox', label: 'Inbox', icon: MessageSquare, visibility: 'admin' },
+      { to: '/conversas', label: 'Inbox', icon: MessageSquare, visibility: 'admin' },
     ],
   },
   {
