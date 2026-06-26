@@ -6,7 +6,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  LayoutGrid, Target, Package, Network, Scissors,
+  LayoutGrid, Target, Package, Network, Scissors, ShoppingBag,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
@@ -25,6 +25,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
       { to: '/servicos', label: 'Serviços', icon: Scissors },
       { to: '/pacotes', label: 'Pacotes', icon: Package },
+      { to: '/loja', label: 'Produtos', icon: ShoppingBag },
       { to: '/ai-growth', label: 'AI Growth', icon: Sparkles }, // lente macro (negócio)
       { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
@@ -46,7 +47,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/produtos', label: 'Produtos', icon: Package, visibility: 'admin' }, // migrado do admin (admin-only)
+      { to: '/produtos', label: 'Ofertas', icon: Package, visibility: 'admin' }, // ex-"Produtos" = oferta de CRM (cérebro IA); revenda física vive em Meu salão > Produtos
       { to: '/setores', label: 'Setores', icon: Network, visibility: 'admin' }, // migrado do admin (admin-only)
       { to: '/equipes', label: 'Equipes', icon: Users, visibility: 'admin' }, // migrado do admin (admin-only)
       { to: '/minha-ia', label: 'Minha IA', icon: Bot },
