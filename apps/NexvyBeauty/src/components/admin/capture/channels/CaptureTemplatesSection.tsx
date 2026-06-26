@@ -60,16 +60,14 @@ export function CaptureTemplatesSection() {
 
   return (
     <div className="max-w-6xl mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-          <LayoutGrid className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold">Templates de Quiz</h1>
-          <p className="text-sm text-muted-foreground">
-            Comece em 1 clique. Quizzes prontos com perguntas, scoring, ramificação e resultado já configurados.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <LayoutGrid className="h-6 w-6 text-primary" />
+          Templates de Quiz
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Comece em 1 clique. Quizzes prontos com perguntas, scoring, ramificação e resultado já configurados.
+        </p>
       </div>
 
       {/* Filtros */}
