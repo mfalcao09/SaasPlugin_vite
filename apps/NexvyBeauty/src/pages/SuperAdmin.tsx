@@ -21,6 +21,7 @@ import { AgentToolExecutionsPanel } from '@/components/superadmin/AgentToolExecu
 import { AIQualityPanel } from '@/components/superadmin/AIQualityPanel';
 import { AffiliatesPanel } from '@/components/superadmin/AffiliatesPanel';
 import { IntegrationsManager } from '@/components/admin/integrations/IntegrationsManager';
+import { CaktoAdminPanel } from '@/components/admin/payments/CaktoAdminPanel';
 import { FirstAccessSuperAdminModal } from '@/components/superadmin/FirstAccessSuperAdminModal';
 import { AppTopBar } from '@/components/layout/AppTopBar';
 
@@ -72,6 +73,8 @@ export default function SuperAdmin() {
         return <SalesLeadsManager />;
       case 'affiliates':
         return <AffiliatesPanel />;
+      case 'sales-payments':
+        return <CaktoAdminPanel />;
       case 'whatsapp':
         return <EvolutionManager />;
       case 'help':

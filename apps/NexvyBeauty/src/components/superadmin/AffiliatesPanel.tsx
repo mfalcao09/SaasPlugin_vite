@@ -15,15 +15,13 @@ const ReportsManager = lazy(() =>
   import('@/components/admin/reports/ReportsManager').then((m) => ({ default: m.ReportsManager })))
 const FinancialDashboard = lazy(() =>
   import('@/components/admin/FinancialDashboard').then((m) => ({ default: m.FinancialDashboard })))
-const CaktoAdminPanel = lazy(() =>
-  import('@/components/admin/payments/CaktoAdminPanel').then((m) => ({ default: m.CaktoAdminPanel })))
 const TeamManager = lazy(() =>
   import('@/components/admin/TeamManager').then((m) => ({ default: m.TeamManager })))
 
+// Pagamentos saiu daqui — virou página própria no SuperAdmin (item "Pagamentos (Vendas)").
 const TABS = [
   { id: 'relatorios', label: 'Relatórios', C: ReportsManager },
   { id: 'financeiro', label: 'Financeiro', C: FinancialDashboard },
-  { id: 'pagamentos', label: 'Pagamentos', C: CaktoAdminPanel },
   { id: 'equipes', label: 'Equipes', C: TeamManager },
 ] as const
 

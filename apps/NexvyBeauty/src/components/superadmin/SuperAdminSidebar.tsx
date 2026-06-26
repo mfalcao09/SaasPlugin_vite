@@ -51,6 +51,7 @@ const menuItems = [
   { id: 'whatsapp', label: 'WhatsApp / Evolution', icon: Smartphone },
   { id: 'sales-leads', label: 'Leads Comerciais', icon: Megaphone },
   { id: 'affiliates', label: 'Afiliados', icon: Handshake },
+  { id: 'sales-payments', label: 'Pagamentos (Vendas)', icon: Banknote },
   { id: 'help', label: 'Central de Ajuda', icon: HelpCircle },
   { id: 'support', label: 'Suporte', icon: LifeBuoy },
   { id: 'agent-tools', label: 'Ações dos Agentes', icon: Wrench },
