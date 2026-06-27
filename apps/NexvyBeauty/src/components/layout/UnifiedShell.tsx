@@ -231,7 +231,7 @@ export function UnifiedShell({ title, subtitle, children, nav = TENANT_NAV }: Un
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-0">
+      <SidebarInset className="min-h-0 min-w-0">
         <AppTopBar title={title} subtitle={subtitle} leading={<SidebarTrigger className="-ml-1" />} />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </SidebarInset>

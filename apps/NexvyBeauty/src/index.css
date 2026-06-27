@@ -168,6 +168,10 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    /* Zoom-out global: base 90% (14.4px) deixa toda a UI baseada em rem mais
+       compacta — pedido do Marcelo p/ caber mais nas telas. Inputs seguem 16px
+       (regra !important abaixo, anti-zoom iOS). Ajustável (ex.: 85% = mais denso). */
+    font-size: 90%;
   }
 
   body {
