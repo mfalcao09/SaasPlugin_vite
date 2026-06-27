@@ -234,7 +234,7 @@ function formatUpdatedAt(ms: number): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${p(d.getFullYear() % 100)}, às ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-export default function AiGrowth({ demo }: { demo?: AiGrowthDemoData } = {}) {
+export default function AiGrowth({ demo, embedded }: { demo?: AiGrowthDemoData; embedded?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
 
@@ -298,17 +298,19 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthDemoData } = {}) {
   const coverage = isDemo ? null : segmentCoverage(clientesRows)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? 'space-y-6' : 'p-6 space-y-6'}>
       {isDemo && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
           Modo demonstração — dados fictícios, nada é salvo.
         </div>
       )}
 
-      <PageHeader
-        title="AI Growth"
-        description="Onde está a receita parada no seu negócio — sua IA leu o histórico e mapeou as alavancas."
-      />
+      {!embedded && (
+        <PageHeader
+          title="AI Growth"
+          description="Onde está a receita parada no seu negócio — sua IA leu o histórico e mapeou as alavancas."
+        />
+      )}
 
       {/* Atualizar a análise sob demanda + carimbo da última atualização */}
       {!isDemo && (

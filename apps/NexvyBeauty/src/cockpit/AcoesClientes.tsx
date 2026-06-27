@@ -121,7 +121,7 @@ function ClientCard({ c }: { c: ClientAction }) {
   )
 }
 
-export default function AcoesClientes({ demo }: { demo?: ClientAction[] } = {}) {
+export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[]; embedded?: boolean } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
 
@@ -171,17 +171,19 @@ export default function AcoesClientes({ demo }: { demo?: ClientAction[] } = {}) 
   const fila = demo ?? buildClientActions(agendamentos, pacotes, clientesRows)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? 'space-y-6' : 'p-6 space-y-6'}>
       {isDemo && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
           Modo demonstração — dados fictícios, nada é salvo.
         </div>
       )}
 
-      <PageHeader
-        title="Ações com Clientes"
-        description="Quem precisa de um toque seu agora — com a mensagem pronta pra mandar no WhatsApp."
-      />
+      {!embedded && (
+        <PageHeader
+          title="Ações com Clientes"
+          description="Quem precisa de um toque seu agora — com a mensagem pronta pra mandar no WhatsApp."
+        />
+      )}
 
       {!isDemo && (
         <Button

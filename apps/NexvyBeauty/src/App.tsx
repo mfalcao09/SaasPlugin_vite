@@ -28,6 +28,7 @@ const Relatorios = lazyWithRetry(() => import("./cockpit/Relatorios")); // Relat
 const DemoRelatorios = lazyWithRetry(() => import("./cockpit/Relatorios").then(m => ({ default: () => <m.default demo={m.DEMO_RELATORIOS} /> })));
 // AI Growth — motor MACRO (oportunidades de receita do histórico do negócio).
 const AiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth"));
+const Oportunidades = lazyWithRetry(() => import("./cockpit/Oportunidades"));
 const DemoAiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth").then(m => ({ default: () => <m.default demo={m.DEMO_AIGROWTH} /> })));
 // Ações com Clientes — fila "o que fazer com cada cliente agora" (transpõe o AI Growth por cliente).
 const AcoesClientes = lazyWithRetry(() => import("./cockpit/AcoesClientes"));
@@ -272,8 +273,9 @@ const App = () => (
                 }
               >
                 <Route index element={<CockpitInicio />} />
-                <Route path="ai-growth" element={<AiGrowth />} />
-                <Route path="acoes" element={<AcoesClientes />} />
+                <Route path="ai-growth" element={<Oportunidades />} />
+                {/* Fase 2: /acoes fundido em Oportunidades (aba "quem chamar") */}
+                <Route path="acoes" element={<Navigate to="/ai-growth?tab=cliente" replace />} />
                 <Route path="saude" element={<SaudeBase />} />
                 <Route path="automacoes" element={<Automacoes />} />
                 <Route path="meta" element={<MetaMes />} />
@@ -281,7 +283,8 @@ const App = () => (
                 <Route path="conversas" element={<CockpitConversas />} />
                 <Route path="pipeline" element={<CockpitPipeline />} />
                 <Route path="leads" element={<CockpitLeads />} />
-                <Route path="produtos" element={<CockpitProdutos />} />
+                {/* Fase 2: Ofertas viraram aba dentro de Minha IA */}
+                <Route path="produtos" element={<Navigate to="/minha-ia?tab=ofertas" replace />} />
                 <Route path="setores" element={<CockpitSetores />} />
                 <Route path="equipes" element={<CockpitEquipes />} />
                 {/* Configurações (migradas do admin → páginas individuais no Gestão). */}

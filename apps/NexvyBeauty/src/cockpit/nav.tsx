@@ -10,7 +10,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  Target, Package, Boxes, Network, Scissors, ShoppingBag, ListChecks, Activity, Zap,
+  Target, Boxes, Network, Scissors, ShoppingBag, Activity, Zap,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
   Filter, UserPlus,
 } from 'lucide-react'
@@ -32,13 +32,11 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     title: 'Crescer',
     collapsible: true,
     items: [
-      { to: '/ai-growth', label: 'Oportunidades', icon: Sparkles },
-      { to: '/acoes', label: 'Quem chamar hoje', icon: ListChecks },
+      { to: '/ai-growth', label: 'Oportunidades', icon: Sparkles }, // funde AI Growth + Ações (abas)
       { to: '/radar', label: 'Oportunidades nas conversas', icon: Radar },
       { to: '/automacoes', label: 'Mensagens automáticas', icon: Zap },
       { to: '/meta', label: 'Meta do Mês', icon: Target },
-      { to: '/minha-ia', label: 'Minha IA', icon: Bot },
-      { to: '/produtos', label: 'Ofertas da IA', icon: Package, visibility: 'admin' },
+      { to: '/minha-ia', label: 'Minha IA', icon: Bot }, // inclui aba "Ofertas da IA"
       { to: '/saude', label: 'Qualidade do cadastro', icon: Activity },
     ],
   },
