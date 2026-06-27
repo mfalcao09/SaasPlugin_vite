@@ -200,7 +200,7 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingId ? 'Editar serviço' : 'Novo serviço'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Corte feminino" /></div>
+            <div className="space-y-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Alongamento de cílios" /></div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2"><Label>Nicho</Label>
                 <Select value={form.categoria || undefined} onValueChange={(v) => setForm((f) => ({ ...f, categoria: v }))}>

@@ -1,6 +1,6 @@
 import { useState, type FC } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Scissors, Loader2, Plus, X } from 'lucide-react'
+import { Users, Loader2, Plus, X } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useOrganizationId } from '@/pages/salao/_shared'
@@ -50,10 +50,10 @@ export const SalaoProfissionaisStep: FC<StepProps> = ({ onNext, onSkip, onBack }
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/15 flex items-center justify-center">
-          <Scissors className="h-5 w-5 text-primary" />
+          <Users className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Quem atende no seu salão?</h2>
+          <h2 className="text-lg font-semibold text-foreground">Quem atende no seu negócio?</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Adicione os profissionais (cabeleireiro, manicure, esteticista…). Cada um terá a própria agenda.
           </p>

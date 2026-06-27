@@ -67,7 +67,7 @@ const dores = [
 ];
 
 const steps = [
-  { n: '01', t: 'Configure seu salão', d: 'Nome, logo, cor da marca, slug público. Sistema com a cara do seu negócio em minutos.' },
+  { n: '01', t: 'Configure seu negócio', d: 'Nome, logo, cor da marca, slug público. Sistema com a cara do seu negócio em minutos.' },
   { n: '02', t: 'Cadastre serviços e equipe', d: 'Serviços com duração e valor, profissionais com especialidades e horários por dia.' },
   { n: '03', t: 'Receba agendamentos', d: 'Link público para o cliente agendar sozinho 24/7, ou lançamento manual pela recepção.' },
   { n: '04', t: 'Cresça com IA', d: 'Sistema analisa histórico, sugere ações concretas para aumentar receita e reativar clientes.' },
@@ -95,18 +95,18 @@ const garantias = [
 ];
 
 const planos = [
-  { nome: 'Starter', preco: 'R$ 197', desc: 'Para salões começando a se organizar.', features: ['Até 2 profissionais', 'Agenda completa', 'CRM de clientes', 'Link público de agendamento', 'Relatórios básicos'] },
-  { nome: 'Pro', preco: 'R$ 397', desc: 'O plano mais escolhido por salões em crescimento.', features: ['Até 8 profissionais', 'Tudo do Starter', 'AI Growth Engine', 'Pacotes e sessões', 'WhatsApp ilimitado', 'Suporte prioritário'], destaque: true },
+  { nome: 'Starter', preco: 'R$ 197', desc: 'Para negócios começando a se organizar.', features: ['Até 2 profissionais', 'Agenda completa', 'CRM de clientes', 'Link público de agendamento', 'Relatórios básicos'] },
+  { nome: 'Pro', preco: 'R$ 397', desc: 'O plano mais escolhido por negócios em crescimento.', features: ['Até 8 profissionais', 'Tudo do Starter', 'AI Growth Engine', 'Pacotes e sessões', 'WhatsApp ilimitado', 'Suporte prioritário'], destaque: true },
   { nome: 'Premium', preco: 'R$ 697', desc: 'Para redes e operações high-end.', features: ['Profissionais ilimitados', 'White-label', 'Multi-unidade', 'API e integrações', 'Onboarding dedicado', 'Gerente de sucesso'] },
 ];
 
 const faqs = [
   { q: 'Preciso instalar alguma coisa?', a: 'Não. Roda 100% no navegador, no celular e no computador. Basta criar a conta e começar a usar.' },
   { q: 'E se eu já tiver dados em outro sistema?', a: 'Importamos sua base de clientes e serviços por planilha. Nosso time faz a migração com você nos planos Pro e Premium.' },
-  { q: 'A IA realmente funciona?', a: 'Sim. A IA analisa o histórico real do seu salão e gera sugestões concretas — quem reativar, qual horário promover, qual pacote oferecer.' },
+  { q: 'A IA realmente funciona?', a: 'Sim. A IA analisa o histórico real do seu negócio e gera sugestões concretas — quem reativar, qual horário promover, qual pacote oferecer.' },
   { q: 'Posso cancelar quando quiser?', a: 'Sim, sem multa e sem fidelidade.' },
   { q: 'Funciona para barbearia e estética?', a: 'Funciona para qualquer salão de beleza, estética, barbearia, nail bar ou clínica de bem-estar.' },
-  { q: 'Como funciona o link de agendamento público?', a: 'Cada salão recebe um link único. Você compartilha no Instagram e no WhatsApp e o cliente reserva sozinho.' },
+  { q: 'Como funciona o link de agendamento público?', a: 'Cada negócio recebe um link único. Você compartilha no Instagram e no WhatsApp e o cliente reserva sozinho.' },
 ];
 
 export default function SalesPage() {
@@ -120,7 +120,7 @@ export default function SalesPage() {
   useEffect(() => { captureTrackingFromUrl(); }, []);
 
   useEffect(() => {
-    if (platformName) document.title = `${platformName} — Sistema premium para salões de beleza`;
+    if (platformName) document.title = `${platformName} — Sistema premium para negócios de beleza e bem-estar`;
   }, [platformName]);
 
   return (
@@ -152,10 +152,10 @@ export default function SalesPage() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(244,63,94,0.12),transparent_60%)]" />
         <div className="mx-auto max-w-5xl">
           <Badge className={`mb-6 ${GRADIENT} px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white shadow-lg shadow-rose-500/30 hover:opacity-90`}>
-            <Sparkles className="mr-1.5 h-3 w-3" /> Inteligência artificial para salões premium
+            <Sparkles className="mr-1.5 h-3 w-3" /> Inteligência artificial para negócios premium
           </Badge>
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">
-            Seu salão rodando em <br className="hidden md:block" />
+            Seu negócio rodando em <br className="hidden md:block" />
             <span className={GRADIENT_TEXT}>piloto automático</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-xl text-zinc-600">
@@ -262,7 +262,7 @@ export default function SalesPage() {
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
           <div>
             <Badge className={`${GRADIENT} mb-4 text-white`}><Brain className="mr-1.5 h-3 w-3" /> AI Growth Engine</Badge>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">IA que cresce o seu salão <span className={GRADIENT_TEXT}>no automático</span></h2>
+            <h2 className="text-4xl font-black tracking-tight md:text-5xl">IA que cresce o seu negócio <span className={GRADIENT_TEXT}>no automático</span></h2>
             <p className="mt-4 text-lg text-zinc-400">Não é só um chatbot. É um motor que analisa seu histórico, identifica oportunidades reais e entrega ações prontas.</p>
             <ul className="mt-8 space-y-3">
               {aiBenefits.map((b) => (
@@ -323,7 +323,7 @@ export default function SalesPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-14 text-center">
             <Badge variant="outline" className="mb-3">Planos</Badge>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">Para cada <span className={GRADIENT_TEXT}>tamanho de salão</span></h2>
+            <h2 className="text-4xl font-black tracking-tight md:text-5xl">Para cada <span className={GRADIENT_TEXT}>tamanho de negócio</span></h2>
             <p className="mt-4 text-lg text-zinc-600">14 dias grátis em qualquer plano. Sem cartão.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
@@ -380,7 +380,7 @@ export default function SalesPage() {
         <div className="mx-auto max-w-3xl">
           <TrendingUp className="mx-auto mb-5 h-12 w-12" />
           <h2 className="text-4xl font-black tracking-tight md:text-5xl">Pronto para crescer no automático?</h2>
-          <p className="mt-4 text-lg text-white/90">Transforme a gestão do seu salão com inteligência artificial.</p>
+          <p className="mt-4 text-lg text-white/90">Transforme a gestão do seu negócio com inteligência artificial.</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" onClick={openBuy} className="h-14 bg-white px-8 text-base font-bold text-rose-600 hover:bg-zinc-100">
               Começar grátis agora <ArrowRight className="ml-2 h-4 w-4" />
@@ -401,7 +401,7 @@ export default function SalesPage() {
             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${GRADIENT}`}><Sparkles className="h-4 w-4 text-white" /></div>
             <span className="font-bold text-white">{platformName || 'Nexvy Beauty'}</span>
           </div>
-          <p className="text-sm">© {new Date().getFullYear()} {platformName || 'Nexvy Beauty'} — Sistema premium para salões de beleza</p>
+          <p className="text-sm">© {new Date().getFullYear()} {platformName || 'Nexvy Beauty'} — Sistema premium para negócios de beleza e bem-estar</p>
         </div>
       </footer>
 

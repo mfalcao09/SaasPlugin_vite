@@ -30,13 +30,13 @@ interface Receita {
   defaultMsg: string; diasLabel?: string; defaultDias: number
 }
 const RECEITAS: Receita[] = [
-  { tipo: 'aniversario', titulo: 'Aniversário', desc: 'No dia do aniversário da cliente, manda um carinho com convite.', icon: Cake, defaultDias: 0,
-    defaultMsg: 'Oi {nome}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no salão. Vem buscar? 🎂' },
-  { tipo: 'agendamento_24h', titulo: 'Lembrete 24h antes', desc: 'Um dia antes do horário, confirma o agendamento da cliente.', icon: CalendarClock, defaultDias: 0,
+  { tipo: 'aniversario', titulo: 'Aniversário', desc: 'No dia do aniversário do cliente, manda um carinho com convite.', icon: Cake, defaultDias: 0,
+    defaultMsg: 'Oi {nome}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui. Vem buscar? 🎂' },
+  { tipo: 'agendamento_24h', titulo: 'Lembrete 24h antes', desc: 'Um dia antes do horário, confirma o agendamento do cliente.', icon: CalendarClock, defaultDias: 0,
     defaultMsg: 'Oi {nome}! Passando pra confirmar seu horário de amanhã 💕 Posso te esperar? Qualquer coisa, me avisa.' },
   { tipo: 'pacote_vencendo', titulo: 'Pacote acabando', desc: 'Quando o pacote está perto de vencer, oferece a renovação.', icon: PackageCheck, defaultDias: 3, diasLabel: 'Avisar quantos dias antes de vencer',
     defaultMsg: 'Oi {nome}! Seu pacote está quase no fim — bora renovar e manter seu cuidado em dia? Posso já deixar separado 😉' },
-  { tipo: 'retorno_inativo', titulo: 'Cliente sumida', desc: 'Quando a cliente cruza X dias sem voltar, chama de volta.', icon: UserMinus, defaultDias: 45, diasLabel: 'Dias sem voltar pra disparar',
+  { tipo: 'retorno_inativo', titulo: 'Cliente sumido', desc: 'Quando o cliente cruza X dias sem voltar, chama de volta.', icon: UserMinus, defaultDias: 45, diasLabel: 'Dias sem voltar pra disparar',
     defaultMsg: 'Oi {nome}! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana? Tenho um mimo te esperando 🎁' },
 ]
 
@@ -206,7 +206,7 @@ export default function Automacoes({ demo }: { demo?: boolean } = {}) {
         <Card>
           <CardContent className="py-4 space-y-2">
             <h3 className="text-sm font-semibold text-foreground">
-              Prévia de hoje — {preview.length} {preview.length === 1 ? 'cliente seria contatada' : 'clientes seriam contatadas'} (nada foi enviado)
+              Prévia de hoje — {preview.length} {preview.length === 1 ? 'cliente seria contatado' : 'clientes seriam contatados'} (nada foi enviado)
             </h3>
             {preview.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum evento pra disparar hoje com as receitas ligadas.</p>
@@ -233,8 +233,8 @@ export default function Automacoes({ demo }: { demo?: boolean } = {}) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        O envio automático roda uma vez por dia, pelo sistema. A mesma cliente nunca recebe a mesma
-        mensagem 2× pelo mesmo motivo. Clientes sem WhatsApp cadastrado são puladas.
+        O envio automático roda uma vez por dia, pelo sistema. O mesmo cliente nunca recebe a mesma
+        mensagem 2× pelo mesmo motivo. Clientes sem WhatsApp cadastrado são pulados.
       </p>
     </div>
   )

@@ -59,7 +59,7 @@ export function OpportunityCard({ card, onSent, seed, onSeedCta, seedCtaLabel }:
             onSeedCta ? (
               <Button onClick={onSeedCta} size="sm" className="gap-1.5">
                 <MessageCircle className="h-3.5 w-3.5" />
-                {seedCtaLabel ?? 'Quero isso no meu salão'}
+                {seedCtaLabel ?? 'Quero isso no meu negócio'}
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm" className="gap-1.5">

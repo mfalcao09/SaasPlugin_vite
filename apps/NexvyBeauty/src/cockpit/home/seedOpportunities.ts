@@ -16,7 +16,7 @@ export const SEED_OPPORTUNITIES: OpportunityCardData[] = [
     dealValue: 180,
     reason: 'Sumiu há 32 dias — costumava vir todo mês',
     followupMessage:
-      'Oi Júlia! Senti sua falta aqui no salão 💕 Faz um tempinho... que tal agendar aquele seu horário de sempre essa semana? Tenho um mimo reservado pra você 🎁',
+      'Oi Júlia! Senti sua falta por aqui 💕 Faz um tempinho... que tal agendar aquele seu horário de sempre essa semana? Tenho um mimo reservado pra você 🎁',
   },
   {
     id: 'exemplo-2',
@@ -38,6 +38,6 @@ export const SEED_OPPORTUNITIES: OpportunityCardData[] = [
     dealValue: 120,
     reason: 'Aniversário semana que vem 🎂',
     followupMessage:
-      'Oi Bia! Seu aniversário tá chegando 🎂 Que tal comemorar com aquela escova caprichada? Preparei um desconto especial de niver pra você!',
+      'Oi Bia! Seu aniversário tá chegando 🎂 Que tal comemorar com um design de sobrancelha caprichado? Preparei um desconto especial de niver pra você!',
   },
 ]

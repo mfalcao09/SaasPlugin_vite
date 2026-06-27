@@ -265,7 +265,7 @@ export default function Pacotes() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Valor pago (R$)</Label><Input type="number" min="0" step="0.01" value={vendaValor} onChange={(e) => setVendaValor(e.target.value)} /></div>
-            {vendaPac && <p className="text-xs text-muted-foreground">{vendaPac.total_sessoes} sessões · validade {vendaPac.validade_dias} dias (até {localDate(vendaPac.validade_dias)}). Pagamento registrado como pago no salão.</p>}
+            {vendaPac && <p className="text-xs text-muted-foreground">{vendaPac.total_sessoes} sessões · validade {vendaPac.validade_dias} dias (até {localDate(vendaPac.validade_dias)}). Pagamento registrado como pago presencialmente.</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowVenda(false)}>Cancelar</Button>

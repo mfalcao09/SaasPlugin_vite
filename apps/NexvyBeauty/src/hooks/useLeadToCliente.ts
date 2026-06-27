@@ -87,7 +87,7 @@ export function useConvertLeadToCliente() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['clientes'] });
       toast.success(
-        res.created ? 'Lead convertido em cliente!' : 'Lead já vinculado a um cliente do salão.',
+        res.created ? 'Lead convertido em cliente!' : 'Lead já vinculado a um cliente do negócio.',
       );
     },
     onError: () => toast.error('Erro ao converter o lead em cliente.'),

@@ -45,8 +45,8 @@ export const BRAND_CONFIG = {
   name: 'NexvyBeauty',
   tagline: 'Beleza com gestão inteligente',
   sector: {
-    noun: 'salão',
-    verb: 'gerir seu salão',
+    noun: 'negócio',
+    verb: 'gerir seu negócio',
     clientNoun: 'cliente',
   },
   primaryColor: '#EC4899',

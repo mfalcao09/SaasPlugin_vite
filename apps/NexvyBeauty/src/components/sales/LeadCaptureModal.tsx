@@ -109,7 +109,7 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
               </DialogTitle>
               <DialogDescription>
                 {step === 0 && 'Seus dados de contato (passo 1 de 3).'}
-                {step === 1 && 'Conte um pouco do seu salão (passo 2 de 3).'}
+                {step === 1 && 'Conte um pouco do seu negócio (passo 2 de 3).'}
                 {step === 2 && 'Confirme e finalize (passo 3 de 3).'}
               </DialogDescription>
             </DialogHeader>
@@ -141,8 +141,8 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
             {step === 1 && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>Instagram do salão (opcional)</Label>
-                  <Input value={f.instagram} onChange={(e) => set({ instagram: e.target.value })} maxLength={120} placeholder="@seusalao" />
+                  <Label>Instagram do negócio (opcional)</Label>
+                  <Input value={f.instagram} onChange={(e) => set({ instagram: e.target.value })} maxLength={120} placeholder="@seunegocio" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Quais suas maiores dores hoje? (opcional · pode marcar mais de uma)</Label>
@@ -188,8 +188,8 @@ export function LeadCaptureModal({ open, onOpenChange }: Props) {
             {step === 2 && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>Nome do salão (opcional)</Label>
-                  <Input value={f.salon_name} onChange={(e) => set({ salon_name: e.target.value })} maxLength={120} placeholder="Salão da Bella" />
+                  <Label>Nome do negócio (opcional)</Label>
+                  <Input value={f.salon_name} onChange={(e) => set({ salon_name: e.target.value })} maxLength={120} placeholder="Estúdio da Bella" />
                 </div>
                 <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
                   <Checkbox checked={f.accept} onCheckedChange={(v) => set({ accept: !!v })} className="mt-0.5" />

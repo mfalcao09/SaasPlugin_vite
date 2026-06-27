@@ -18,7 +18,7 @@ import {
   DollarSign,
   Shield,
   MessageSquare,
-  Scissors,
+  Sparkles,
   LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
@@ -196,9 +196,9 @@ export function Sidebar({
 
       {/* Ações inferiores */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
-        <Link to="/salao" className={itemClass(false)} title={collapsed ? 'ERP Salão' : undefined}>
-          <Scissors className="h-4 w-4 shrink-0 text-pink-400" />
-          {!collapsed && <span className="truncate">ERP Salão</span>}
+        <Link to="/salao" className={itemClass(false)} title={collapsed ? 'ERP do Negócio' : undefined}>
+          <Sparkles className="h-4 w-4 shrink-0 text-pink-400" />
+          {!collapsed && <span className="truncate">ERP do Negócio</span>}
         </Link>
         {showSuperAdminLink && (
           <Link to="/super-admin" className={itemClass(false)} title={collapsed ? 'Super Admin' : undefined}>

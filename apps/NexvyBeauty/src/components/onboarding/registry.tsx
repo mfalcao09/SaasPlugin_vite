@@ -39,7 +39,7 @@ export const MODULE_ONBOARDING_STEPS: Record<string, OnboardingStepDef[]> = {
     },
     {
       id: 'salao_servicos',
-      label: 'Serviços do salão',
+      label: 'Serviços do negócio',
       Component: OficinaServicesStep,
     },
   ],

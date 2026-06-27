@@ -15,17 +15,17 @@ export const TERMOS_MD = `## Termos de Uso — NexvyBeauty
 
 **Última atualização:** 19 de junho de 2026
 
-Estes Termos de Uso ("Termos") regulam o acesso e a utilização da plataforma **NexvyBeauty** ("Plataforma"), software de gestão para salões de beleza e estabelecimentos de estética, disponibilizado sob a modalidade de software como serviço (SaaS), de titularidade de **NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA - ME**, inscrita no CNPJ sob o nº **64.930.755/0001-78**, com sede em **Avenida Brigadeiro Faria Lima, 1572, Sala 1022, Jardim Paulistano, São Paulo - SP, CEP 01451-917** ("Nexvy", "nós").
+Estes Termos de Uso ("Termos") regulam o acesso e a utilização da plataforma **NexvyBeauty** ("Plataforma"), software de gestão para estabelecimentos de beleza, estética e bem-estar, disponibilizado sob a modalidade de software como serviço (SaaS), de titularidade de **NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA - ME**, inscrita no CNPJ sob o nº **64.930.755/0001-78**, com sede em **Avenida Brigadeiro Faria Lima, 1572, Sala 1022, Jardim Paulistano, São Paulo - SP, CEP 01451-917** ("Nexvy", "nós").
 
 Ao se cadastrar, contratar, acessar ou utilizar a Plataforma, o Usuário declara que leu, compreendeu e concorda integralmente com estes Termos e com a **Política de Privacidade**, que constitui parte integrante e indissociável deste instrumento. **Caso não concorde com qualquer disposição, o Usuário não deve utilizar a Plataforma.**
 
 ### 1. Definições
 
-- **Plataforma / NexvyBeauty:** o sistema de gestão para salões de beleza e estética, incluindo módulos de agenda e agendamentos, cadastro de profissionais e serviços, gestão de clientes, financeiro, CRM de vendas, inbox de WhatsApp, automações e recursos de inteligência artificial.
+- **Plataforma / NexvyBeauty:** o sistema de gestão para estabelecimentos de beleza, estética e bem-estar, incluindo módulos de agenda e agendamentos, cadastro de profissionais e serviços, gestão de clientes, financeiro, CRM de vendas, inbox de WhatsApp, automações e recursos de inteligência artificial.
 - **Nexvy:** a pessoa jurídica titular e operadora da Plataforma, identificada no preâmbulo.
-- **Usuário / Cliente / Assinante:** a pessoa física ou jurídica que se cadastra e contrata a Plataforma mediante assinatura, em regra o salão de beleza ou estabelecimento de estética.
+- **Usuário / Cliente / Assinante:** a pessoa física ou jurídica que se cadastra e contrata a Plataforma mediante assinatura, em regra o estabelecimento de beleza, estética ou bem-estar (o "Estabelecimento").
 - **Conta:** o ambiente de acesso individualizado do Usuário na Plataforma.
-- **Cliente Final:** a pessoa física que é cliente do salão e cujos dados são inseridos e tratados pelo Usuário dentro da Plataforma.
+- **Cliente Final:** a pessoa física que é cliente do Estabelecimento e cujos dados são inseridos e tratados pelo Usuário dentro da Plataforma.
 - **Lead:** potencial cliente que fornece dados de contato e informações comerciais por meio da página de vendas.
 - **Programa de Afiliados:** o programa de indicação remunerada descrito na Cláusula 7.
 - **Conteúdo do Usuário:** todos os dados, textos, imagens, cadastros e informações inseridos pelo Usuário na Plataforma.
@@ -175,13 +175,13 @@ Esta Política observa a **Lei nº 13.709/2018 (LGPD)** e demais normas aplicáv
 
 1.1. **Nexvy como Controladora.** Em relação aos dados de **leads, visitantes, assinantes e usuários** da Plataforma, a Nexvy é a **Controladora**, definindo finalidades e meios do tratamento.
 
-1.2. **Nexvy como Operadora.** Em relação aos dados que o **salão-cliente** insere sobre os **seus próprios clientes finais**, o **salão é o Controlador** e a **Nexvy atua como Operadora**, tratando-os conforme as instruções do salão e para a execução dos serviços.
+1.2. **Nexvy como Operadora.** Em relação aos dados que o **estabelecimento-cliente** insere sobre os **seus próprios clientes finais**, o **estabelecimento é o Controlador** e a **Nexvy atua como Operadora**, tratando-os conforme as instruções do estabelecimento e para a execução dos serviços.
 
-1.3. Nesse segundo caso, o salão é responsável pela base legal, transparência e atendimento às requisições dos seus clientes finais. Esta Política trata primordialmente das atividades em que a Nexvy é Controladora.
+1.3. Nesse segundo caso, o estabelecimento é responsável pela base legal, transparência e atendimento às requisições dos seus clientes finais. Esta Política trata primordialmente das atividades em que a Nexvy é Controladora.
 
 ### 2. Dados que Coletamos
 
-**2.1. Dados de Lead (página de vendas):** nome completo; e-mail; WhatsApp; Instagram; nome do salão; "principais dores" e desafios do negócio.
+**2.1. Dados de Lead (página de vendas):** nome completo; e-mail; WhatsApp; Instagram; nome do negócio; "principais dores" e desafios do negócio.
 
 **2.2. Dados de Conta e Cadastro:** identificação e contato do assinante e sub-usuários; dados do estabelecimento; dados de cobrança (processados por subprocessador; não armazenamos dados completos de cartão).
 
@@ -244,7 +244,7 @@ Quando o tratamento se fundamentar em **legítimo interesse**, realizamos a devi
 
 O titular pode, a qualquer momento: obter **confirmação** da existência de tratamento; **acesso** aos dados; **correção** de dados; **anonimização, bloqueio ou eliminação** de dados desnecessários ou em desconformidade; **portabilidade**; **eliminação** dos dados tratados com base no consentimento (ressalvada guarda legal); **informação** sobre compartilhamento e sobre a possibilidade de não consentir; **revogação do consentimento** a qualquer momento; e **oposição** a tratamento por legítimo interesse em caso de descumprimento da LGPD.
 
-> Quando o tratamento for operado pela Nexvy em nome do salão (dados de clientes finais), as requisições devem ser direcionadas ao salão (Controlador). A Nexvy auxiliará nos limites técnicos.
+> Quando o tratamento for operado pela Nexvy em nome do estabelecimento (dados de clientes finais), as requisições devem ser direcionadas ao estabelecimento (Controlador). A Nexvy auxiliará nos limites técnicos.
 
 ### 10. Como Exercer seus Direitos e Encarregado (DPO)
 

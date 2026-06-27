@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varredura de linguagem inclusiva — NexvyBeauty</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#2a3240;--text:#e6edf3;--muted:#9aa6b2;--pink:#ec4899;--pink-soft:#f9a8d4;--green:#34d399;--amber:#fbbf24;--red:#f87171;--code:#0b0f16;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px;}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
+  header{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(96,165,250,.08));border-bottom:1px solid var(--border);padding:40px 0 28px;margin-bottom:8px;}
+  header .wrap{padding-top:0;padding-bottom:0;}
+  h1{margin:0 0 8px;font-size:27px;letter-spacing:-.5px;} .sub{color:var(--muted);font-size:14px;}
+  .badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--pink-soft);border:1px solid rgba(236,72,153,.4);border-radius:999px;padding:2px 12px;font-size:12px;font-weight:600;margin-bottom:14px;}
+  h2{margin:36px 0 14px;font-size:20px;border-left:3px solid var(--pink);padding-left:12px;}
+  h3{margin:22px 0 8px;font-size:15px;color:var(--pink-soft);}
+  code{background:var(--code);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--pink-soft);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:8px 10px;border:1px solid var(--border);vertical-align:top;}
+  td:first-child{white-space:nowrap;}
+  .callout{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:14px 16px;margin:16px 0;}
+  .callout.rec{border-left-color:var(--green);}
+  ul li,ol li{margin:5px 0;} hr{border:none;border-top:1px solid var(--border);margin:30px 0;}
+  .foot{color:var(--muted);font-size:14px;font-style:italic;}
+  .keep{color:var(--green);font-weight:600;} .warn{color:var(--amber);}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="badge">PROPOSTA · nada trocado ainda</div>
+  <h1>Varredura de linguagem inclusiva — NexvyBeauty</h1>
+  <div class="sub">UI multi-nicho (salão · lash · nail · sobrancelha · podologia) · 2026-06-27 · 6 agentes, ~40 arquivos lidos.<br>A UI não pode falar só com "cabeleireira" nem só com "salão".</div>
+</div></header>
+<div class="wrap">
+
+  <h2>0 · TL;DR</h2>
+  <ul>
+    <li><strong>~40 "salão"</strong> user-facing <strong>no app</strong> (código <code>/salao</code>/<code>erp_salao</code>/<code>salon_name</code> NÃO muda) → <strong>"negócio"</strong>.</li>
+    <li><strong>~11 na landing /vendas</strong> — decisão à parte (marketing).</li>
+    <li><strong>~12 de gênero feminino fixo</strong> ("das clientes", "sumidas", "você linda") → neutro.</li>
+    <li><strong>~15 exemplos 100% cabelo</strong> (seeds/placeholders) → <strong>diversificar</strong>, não remover.</li>
+    <li>Ícone tesoura + emoji 💁‍♀️ → neutralizar.</li>
+    <li><span class="keep">NÃO mexer:</span> Termos de Uso (jurídico), tagline "Beleza", template de quiz de nicho, falso-positivo "cheia".</li>
+  </ul>
+
+  <h2>1 · Mapa canônico (de → para)</h2>
+  <table>
+    <tr><th>De</th><th>Para</th><th>Quando</th></tr>
+    <tr><td>salão (o negócio)</td><td><strong>negócio</strong></td><td>"Seu salão hoje"→"Seu negócio hoje"; "Painel/Gestão do Salão"→"do Negócio"</td></tr>
+    <tr><td>salão (msg ao cliente)</td><td>aqui / com a gente</td><td>"aqui no salão"→"aqui"; "no salão"→remover</td></tr>
+    <tr><td>cabeleireira / dona do salão</td><td>profissional / você</td><td>hoje só em comentários; regra p/ copy futura</td></tr>
+    <tr><td>as/suas clientes · essa cliente · sumidas/inativas</td><td>os/seus clientes · esse cliente · sumidos/inativos (ou "contato")</td><td>masculino é o genérico PT-BR; base não é 100% feminina</td></tr>
+    <tr><td>escova/corte/coloração (exemplos)</td><td>mix de nichos (+unha/lash/sobrancelha/podologia)</td><td>exemplos não somem, só param de ser 100% cabelo</td></tr>
+    <tr><td>ícone Scissors (tesoura)</td><td>Users / Sparkles / Award</td><td>itens multi-nicho (Serviços, Profissionais)</td></tr>
+    <tr><td>💁‍♀️ (emoji mulher) · "deixa você linda"</td><td>💁 / ✨ · "cuida de você"</td><td>não presumir profissional/cliente mulher</td></tr>
+  </table>
+
+  <h2>2 · "salão" → "negócio" no APP (~40)</h2>
+  <div class="callout">Em todas: a <strong>rota/id</strong> (<code>/salao</code>, <code>erp_salao</code>, <code>salon_name</code>) é código → <strong>NÃO muda</strong>. Só o texto visível.</div>
+  <table>
+    <tr><th>Arquivo</th><th>Atual → Sugerido</th></tr>
+    <tr><td><code>Inicio.tsx:171,180</code></td><td>"vinculada a um salão" / "Seu salão hoje" → negócio</td></tr>
+    <tr><td><code>CaptacaoHub.tsx:36</code></td><td>"para o seu salão" → seu negócio</td></tr>
+    <tr><td><code>home/OpportunityCard.tsx:62</code> · <code>DemoCockpitHome.tsx:73,105</code></td><td>"no meu salão" / "painel do salão" → negócio</td></tr>
+    <tr><td><code>nav.tsx:57</code></td><td>"Relatórios do salão" → do negócio</td></tr>
+    <tr><td><code>UnifiedShell.tsx:65</code> · <code>Sidebar.tsx:199</code></td><td>"Painel do Salão" / "ERP Salão" → do Negócio</td></tr>
+    <tr><td><code>config/modules.ts:42,45</code> · <code>salao/_shared.tsx:49,55,99</code></td><td>"Gestão do Salão" → do Negócio (sincronizados)</td></tr>
+    <tr><td><code>salao/Dashboard.tsx:157</code> · <code>ActivationChecklist.tsx:67,25</code> · <code>ModuleHub.tsx:27</code></td><td>"seu salão" → seu negócio</td></tr>
+    <tr><td><code>GuidedOnboarding.tsx</code> 95,399,401,414,375,692,434,392</td><td>"Seu salão" / slug "seu-salao" → negócio / seu-negocio (8)</td></tr>
+    <tr><td><code>registry.tsx:43</code> · <code>SalaoProfissionaisStep:56</code> · <code>OficinaServicesStep:73,75</code></td><td>"Serviços do salão" / "no seu salão?" → negócio</td></tr>
+    <tr><td><code>LeadCaptureModal.tsx:112,144,191</code> · <code>LeadDetailPage.tsx:164,174</code> · <code>useLeadToCliente.ts:90</code></td><td>"do salão" / "Agenda do salão" → do negócio</td></tr>
+  </table>
+  <h3>Mensagens WhatsApp ao cliente final (decisão §9)</h3>
+  <p><code>levers.ts:135,138,140</code> · <code>Automacoes.tsx:34</code> · <code>AcoesClientes.tsx:228,229</code> — "aqui no salão"→"aqui"/"por aqui".</p>
+
+  <h2>3 · Landing /vendas (SalesPage) — ~11 <span class="warn">(decisão à parte)</span></h2>
+  <p>Hero, "Como funciona", FAQ, pricing, <code>document.title</code>, rodapé — "salão/salões"→"negócio(s)". A LP de marketing entra no escopo? (O FAQ <code>:108</code> já diversifica nichos — defensável manter.)</p>
+
+  <h2>4 · Gênero feminino fixo → neutro (~12)</h2>
+  <table>
+    <tr><th>Arquivo</th><th>Atual → Sugerido</th></tr>
+    <tr><td><code>Inicio.tsx:382,426</code></td><td>"das/suas clientes" → dos/seus clientes</td></tr>
+    <tr><td><code>AiGrowth.tsx:129,211,360</code></td><td>"essa cliente/essas N" / "as clientes certas" → esse cliente / os clientes certos</td></tr>
+    <tr><td><code>levers.ts:209,213,216,362,383</code></td><td>"sumidas/inativas/parada/sumida/das clientes" → masculino genérico</td></tr>
+    <tr><td><code>useProductOnboarding.ts:30,52</code></td><td>"sua cliente" / "deixa você linda" → seu cliente / cuida de você</td></tr>
+  </table>
+
+  <h2>5 · Exemplos 100% cabelo → diversificar (~15) <span class="keep">NÃO remover</span></h2>
+  <p>Seeds/placeholders hoje quase só hair: <code>seedOpportunities</code>, DEMO de <code>AiGrowth/AcoesClientes/MetaMes/Relatorios</code>, <strong><code>OficinaServicesStep</code> (catálogo-semente 8/10 cabelo + pré-marcados — alta visibilidade no onboarding)</strong>, placeholders do <code>useProductOnboarding</code>, <code>Servicos.tsx</code>, <code>Financeiro.tsx</code>, <code>LeadCaptureModal</code>.</p>
+  <p><strong>Nichos a incluir:</strong> cílios/lash · esmaltação em gel · design/micropigmentação de sobrancelha · podologia/spa dos pés · limpeza de pele.</p>
+
+  <h2>6 · Ícones + emojis (visual)</h2>
+  <ul>
+    <li><strong>Scissors</strong> em itens multi-nicho: <code>nav.tsx:47</code>, <code>UnifiedShell.tsx:67</code>, <code>Sidebar.tsx:200</code>, <code>Inicio.tsx:613</code> → Users / Sparkles / Award.</li>
+    <li><strong>💁‍♀️</strong>: <code>levers.ts</code>, <code>segments.ts:283</code>, <code>AcoesClientes.tsx:251</code> → 💁 / ✨.</li>
+  </ul>
+
+  <h2>7 · NÃO mexer (avaliado)</h2>
+  <ul>
+    <li><span class="keep">Manter</span> tagline "Beleza com gestão inteligente" — inclusivo.</li>
+    <li><span class="warn">Jurídico:</span> <code>legalContent.ts</code> "salões de beleza" define o objeto do contrato — revisão jurídica antes de generalizar.</li>
+    <li><span class="keep">Manter</span> <code>quizTemplates</code> "Quiz Salão de Cabelo" — template de nicho intencional.</li>
+    <li>Falso-positivo: <code>Inicio.tsx:530</code> "mais cheia" concorda com "a agenda".</li>
+    <li>"cabeleireira" em comentários de código / campos não-renderizados — não user-facing.</li>
+  </ul>
+
+  <h2>8 · Ponto de cascata — <code>config/brand.ts</code></h2>
+  <div class="callout rec"><code>BRAND_CONFIG.sector = { noun:'salão', verb:'gerir seu salão' }</code> é uma <strong>fonte única</strong> desenhada pra copy de setor — mas os consumidores <strong>ainda não leem dela</strong> (strings hardcoded). Recomendo corrigir <code>sector.noun</code>→"negócio" agora e, num passo futuro, ligar as telas a esse config (trocar 1 linha muda tudo).</div>
+
+  <h2>9 · Decisões em aberto (antes de aplicar)</h2>
+  <ol>
+    <li><strong>Termo canônico:</strong> "negócio" (institucional), "espaço" (mais quente), ou híbrido?</li>
+    <li><strong>Escopo:</strong> só app logado, ou inclui landing /vendas (§3) e mensagens WhatsApp ao cliente?</li>
+    <li><strong>Além de "salão":</strong> gênero (§4)? ícones (§6)? diversificar exemplos (§5)? emojis (§6)?</li>
+    <li><strong>Termos de Uso (§7):</strong> confirmo manter (revisão jurídica)?</li>
+  </ol>
+
+  <hr>
+  <p class="foot">Fechadas as 4 decisões, aplico em lote (build + deploy + prova no Chrome real), sem tocar em rota/id/código.</p>
+</div>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, Users, DollarSign, Scissors, Clock, TrendingUp, Repeat } from 'lucide-react'
+import { Calendar, Users, DollarSign, Clock, TrendingUp, Repeat } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -143,7 +143,7 @@ export default function Dashboard({ demo }: { demo?: DashboardData } = {}) {
     { label: 'Faturamento do mês', value: formatCurrency(d.faturamentoMes), icon: DollarSign },
     { label: 'Ticket médio', value: formatCurrency(d.ticketMedio), icon: Repeat },
     { label: 'Clientes', value: String(d.clientes), icon: Users },
-    { label: 'Profissionais ativos', value: String(d.profissionaisAtivos), icon: Scissors },
+    { label: 'Profissionais ativos', value: String(d.profissionaisAtivos), icon: Users },
   ]
 
   return (
@@ -154,7 +154,7 @@ export default function Dashboard({ demo }: { demo?: DashboardData } = {}) {
             Modo demonstração — dados fictícios, nada é salvo.
           </div>
         )}
-        <PageHeader title="Dashboard" description="Visão geral do seu salão" />
+        <PageHeader title="Dashboard" description="Visão geral do seu negócio" />
 
         {/* KPI grid */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">

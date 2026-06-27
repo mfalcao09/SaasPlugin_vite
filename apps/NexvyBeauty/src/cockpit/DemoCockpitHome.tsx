@@ -69,7 +69,7 @@ export default function DemoCockpitHome() {
           subtitle="Exemplo do que aparece no seu Início assim que você conecta o WhatsApp"
           action={
             <Button onClick={openBuy} className="gap-1.5">
-              Quero isso no meu salão <ArrowRight className="h-4 w-4" />
+              Quero isso no meu negócio <ArrowRight className="h-4 w-4" />
             </Button>
           }
         />
@@ -85,7 +85,7 @@ export default function DemoCockpitHome() {
                 card={card}
                 seed
                 onSeedCta={openBuy}
-                seedCtaLabel="Disparar no meu salão"
+                seedCtaLabel="Disparar no meu negócio"
               />
             ))}
           </div>
@@ -102,7 +102,7 @@ export default function DemoCockpitHome() {
               Começar grátis <ArrowRight className="h-4 w-4" />
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link to="/demo/salao">Ver o painel do salão</Link>
+              <Link to="/demo/salao">Ver o painel do negócio</Link>
             </Button>
           </div>
         </div>

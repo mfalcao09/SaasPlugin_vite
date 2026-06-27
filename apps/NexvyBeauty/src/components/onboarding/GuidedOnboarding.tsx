@@ -92,7 +92,7 @@ function buildSteps(): StepNode[] {
   );
 
   return [
-    { kind: 'identity', label: 'Seu salão' },
+    { kind: 'identity', label: 'Seu negócio' },
     ...salaoSteps, // Quem atende (profissionais) + O que você faz (serviços)
     { kind: 'crm-whatsapp', label: 'IA no WhatsApp' },
     { kind: 'done', label: 'Pronto' },
@@ -372,7 +372,7 @@ function IdentityStep({
           }
           setSlug(written);
         } catch (err: any) {
-          toast.error('Erro ao salvar o link do seu salão', { description: err?.message });
+          toast.error('Erro ao salvar o link do seu negócio', { description: err?.message });
           setSaving(false);
           return;
         }
@@ -389,16 +389,16 @@ function IdentityStep({
   // Preview honesto: campo vazio → cai pro slug que a org JÁ tem (o save pula a
   // escrita de slug vazio, então é isso que continua valendo). Só sem nenhum
   // slug existente é que mostra o placeholder neutro.
-  const previewSlug = sanitizeSlug(slug) || existingSlug || 'seu-salao';
+  const previewSlug = sanitizeSlug(slug) || existingSlug || 'seu-negocio';
 
   return (
     <div className="flex-1 flex flex-col">
       <StepHeader
         icon={Palette}
-        title="Seu salão"
+        title="Seu negócio"
         description={
           isFirst && firstName
-            ? `Olá, ${firstName}! Vamos deixar seu salão pronto — comece pelo nome, logo, cor e o link de agendamento.`
+            ? `Olá, ${firstName}! Vamos deixar seu negócio pronto — comece pelo nome, logo, cor e o link de agendamento.`
             : 'Confirme o nome, personalize logo e cor e escolha o link de agendamento.'
         }
       />
@@ -409,7 +409,7 @@ function IdentityStep({
           <Input
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
-            placeholder="Nome do seu salão"
+            placeholder="Nome do seu negócio"
             maxLength={120}
           />
         </div>
@@ -430,7 +430,7 @@ function IdentityStep({
                 setSlug(e.target.value);
               }}
               onBlur={() => setSlug((s) => sanitizeSlug(s))}
-              placeholder="seu-salao"
+              placeholder="seu-negocio"
               className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
@@ -691,7 +691,7 @@ function DoneStep({ onFinish, shared }: { onFinish: () => void; shared: Onboardi
       </div>
       <h2 className="text-2xl font-bold mb-2">Tudo pronto! 🎉</h2>
       <p className="text-muted-foreground max-w-sm mb-8">
-        Seu salão está montado. Você pode ajustar tudo depois — agora é só começar.
+        Seu negócio está montado. Você pode ajustar tudo depois — agora é só começar.
       </p>
 
       <div className="flex flex-col gap-2 w-full max-w-xs">

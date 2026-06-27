@@ -27,10 +27,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'name',
     title: 'O que você vende?',
-    subtitle: 'O nome que sua cliente vai ver.',
+    subtitle: 'O nome que seu cliente vai ver.',
     field: 'name',
     type: 'text',
-    placeholder: 'Ex: Pacote 4 escovas, Dia da Noiva, Combo unha + pé...',
+    placeholder: 'Ex: Pacote 4 escovas, Combo unha + pé, 10 sessões de cílios, Design de sobrancelha...',
     required: true,
   },
   {
@@ -39,7 +39,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     subtitle: 'A sua IA usa isso pra explicar pra cliente.',
     field: 'description',
     type: 'textarea',
-    placeholder: 'Ex: 4 escovas progressivas com 15% de desconto, pra manter o cabelo liso o mês todo.',
+    placeholder: 'Ex: pacote de 4 sessões com 15% de desconto, pra manter o visual em dia o mês todo.',
     aiOptimizable: true,
     required: true,
   },
@@ -49,7 +49,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     subtitle: 'Uma frase de venda amigável — a IA expande na conversa. Pode pular.',
     field: 'pitch_15s',
     type: 'textarea',
-    placeholder: 'Ex: Tá precisando dar um up no cabelo? Esse pacote deixa você linda o mês inteiro 💕',
+    placeholder: 'Ex: Tá precisando dar um up no visual? Esse pacote cuida de você o mês inteiro 💕',
     aiOptimizable: true,
   },
 ];

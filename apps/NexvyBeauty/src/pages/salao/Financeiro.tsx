@@ -731,7 +731,7 @@ function NovoLancamentoDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{isEntrada ? 'Descrição / Cliente *' : 'Descrição *'}</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder={isEntrada ? 'Ex: Serviço — coloração (Maria)' : 'Ex: Compra de produtos'} />
+            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder={isEntrada ? 'Ex: Serviço — esmaltação em gel (Ana)' : 'Ex: Compra de produtos'} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2"><Label>Valor (R$) *</Label><Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" inputMode="decimal" /></div>

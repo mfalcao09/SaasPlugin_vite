@@ -13,7 +13,7 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  LayoutGrid, LayoutDashboard, CalendarDays, Scissors, Sparkles, Users,
+  LayoutGrid, LayoutDashboard, CalendarDays, Sparkles, Users,
   DollarSign, TrendingUp, MessageSquare, Settings, Crown, LogOut, ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
@@ -62,9 +62,9 @@ export const TENANT_NAV: ShellNavGroup[] = [
   {
     title: 'Operacional',
     items: [
-      { to: '/salao', label: 'Painel do Salão', icon: LayoutDashboard, end: true },
+      { to: '/salao', label: 'Painel do Negócio', icon: LayoutDashboard, end: true },
       { to: '/salao/agenda', label: 'Agenda', icon: CalendarDays },
-      { to: '/salao/profissionais', label: 'Profissionais', icon: Scissors },
+      { to: '/salao/profissionais', label: 'Profissionais', icon: Users },
       { to: '/salao/servicos', label: 'Serviços', icon: Sparkles },
       { to: '/salao/clientes', label: 'Clientes', icon: Users },
       { to: '/salao/financeiro', label: 'Financeiro', icon: DollarSign },

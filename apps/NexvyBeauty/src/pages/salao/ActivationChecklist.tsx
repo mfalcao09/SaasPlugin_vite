@@ -22,8 +22,8 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { key: 'profissionais', label: 'Cadastre seus profissionais', hint: 'Quem atende no salão', to: '/salao/profissionais' },
-  { key: 'servico_catalogo', label: 'Cadastre seus serviços', hint: 'Corte, escova, manicure…', to: '/salao/servicos' },
+  { key: 'profissionais', label: 'Cadastre seus profissionais', hint: 'Quem atende no seu negócio', to: '/salao/profissionais' },
+  { key: 'servico_catalogo', label: 'Cadastre seus serviços', hint: 'Cílios, unhas, sobrancelha, corte…', to: '/salao/servicos' },
   { key: 'clientes', label: 'Cadastre seus clientes', hint: 'Sua base de clientes', to: '/clientes' },
   { key: 'agendamentos', label: 'Crie o primeiro agendamento', hint: 'Agende um horário na agenda', to: '/agenda' },
 ]
@@ -64,7 +64,7 @@ export function SalaoActivationChecklist({ organizationId }: { organizationId: s
       <div className="px-5 py-4 border-b">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="font-semibold text-foreground">Ative seu salão</h2>
+          <h2 className="font-semibold text-foreground">Ative seu negócio</h2>
           <span className="ml-auto text-xs text-muted-foreground">{doneCount}/{STEPS.length} concluído</span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">

@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   TrendingUp, TrendingDown, DollarSign, Repeat, CalendarCheck, CalendarX,
-  Sparkles, Gauge, Trophy, Scissors, PackageCheck, ListTodo, ArrowRight,
+  Sparkles, Gauge, Trophy, Award, PackageCheck, ListTodo, ArrowRight,
   Clock, Lightbulb, Users, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
@@ -168,7 +168,7 @@ export default function Inicio() {
     return (
       <div className="p-6">
         <p className="text-sm text-muted-foreground">
-          Sua conta ainda não está vinculada a um salão. Conclua o onboarding para ver seu painel.
+          Sua conta ainda não está vinculada a um negócio. Conclua o onboarding para ver seu painel.
         </p>
       </div>
     )
@@ -177,7 +177,7 @@ export default function Inicio() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Seu salão hoje</h1>
+        <h1 className="text-2xl font-bold">Seu negócio hoje</h1>
         <p className="text-sm text-muted-foreground">Um raio-x rápido + o que pedir atenção agora.</p>
       </div>
 
@@ -379,7 +379,7 @@ function buildInsights(concluidos: AgRow[], mesAtual: string, mesAnterior: strin
     const pct = (sumiram / prevSet.size) * 100
     out.push({
       icon: TrendingDown,
-      texto: `${pct.toFixed(0)}% das clientes do mês passado ainda não voltaram (${sumiram} de ${prevSet.size}).`,
+      texto: `${pct.toFixed(0)}% dos clientes do mês passado ainda não voltaram (${sumiram} de ${prevSet.size}).`,
       tecnica: 'Taxa de churn',
     })
   }
@@ -423,7 +423,7 @@ function buildInsights(concluidos: AgRow[], mesAtual: string, mesAnterior: strin
     const media = gaps.reduce((s, g) => s + g, 0) / gaps.length
     out.push({
       icon: Repeat,
-      texto: `Em média suas clientes voltam a cada ${Math.round(media)} dias. Um lembrete na hora certa antecipa a próxima visita.`,
+      texto: `Em média seus clientes voltam a cada ${Math.round(media)} dias. Um lembrete na hora certa antecipa a próxima visita.`,
       tecnica: 'Frequência (RFM)',
     })
   }
@@ -609,7 +609,7 @@ function Destaques({
         <DestaqueRow icon={Sparkles} label="Serviço campeão"
           value={topServico ? `${topServico.nome} · ${formatCurrency(topServico.valor)}` : 'Sem dados ainda'}
           onClick={onServicos} />
-        <DestaqueRow icon={Scissors} label="Profissional destaque"
+        <DestaqueRow icon={Award} label="Profissional destaque"
           value={topProfissional ? `${topProfissional.nome.split(' ')[0]} · ${formatCurrency(topProfissional.valor)}` : 'Sem dados ainda'}
           onClick={onServicos} />
         <DestaqueRow icon={PackageCheck} label="Pacotes a renovar"

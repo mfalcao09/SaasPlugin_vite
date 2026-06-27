@@ -132,12 +132,12 @@ export function leverMessage(leverId: string, nome: string): string {
   const primeiro = (nome || 'cliente').trim().split(/\s+/)[0]
   const M: Record<string, string> = {
     inativos: `Oi ${primeiro}! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana? Tenho um mimo te esperando 🎁`,
-    vips: `Oi ${primeiro}! Você faz falta no salão 👑 Quero reservar um horário especial só pra você — quando fica bom?`,
+    vips: `Oi ${primeiro}! Você faz falta por aqui 👑 Quero reservar um horário especial só pra você — quando fica bom?`,
     pacotes: `Oi ${primeiro}! Seu pacote está quase no fim — bora renovar e manter seu cuidado em dia? Posso já deixar separado 😉`,
-    upsell: `Oi ${primeiro}! Tenho uma novidade que combina super com você 💁‍♀️ Quer que eu te conte e já reserve um horário?`,
-    aniversario: `Oi ${primeiro}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no salão. Vem buscar? 🎂`,
+    upsell: `Oi ${primeiro}! Tenho uma novidade que combina super com você 💁 Quer que eu te conte e já reserve um horário?`,
+    aniversario: `Oi ${primeiro}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui 🎂`,
   }
-  return M[leverId] ?? `Oi ${primeiro}! Que tal marcar um horário no salão essa semana? 💕`
+  return M[leverId] ?? `Oi ${primeiro}! Que tal marcar um horário essa semana? 💕`
 }
 
 // ─── Agregação dos dados reais → alavancas ──────────────────────────────────
@@ -206,14 +206,14 @@ export function buildLevers(
   const inativos = clientes.filter((c) => c.ultima && daysBetween(hoje, c.ultima) > INATIVO_DIAS)
   const lever1: GrowthLever = {
     id: 'inativos',
-    title: 'Clientes sumidas para reativar',
+    title: 'Clientes sumidos para reativar',
     description:
       inativos.length > 0
         ? `${inativos.length} cliente${inativos.length === 1 ? '' : 's'} sem voltar há mais de ${INATIVO_DIAS} dias. Uma mensagem traz de volta.`
-        : `Nenhuma cliente parada há mais de ${INATIVO_DIAS} dias — sua base está em dia.`,
+        : `Nenhum cliente parado há mais de ${INATIVO_DIAS} dias — sua base está em dia.`,
     estimated: (ticketMedio || 0) * inativos.length,
     count: inativos.length,
-    ctaLabel: 'Ver clientes inativas',
+    ctaLabel: 'Ver clientes inativos',
     ctaTo: TO_CLIENTES,
     icon: UserMinus,
     clienteList: inativos.map((c) => ({ nome: c.nome, key: c.key, ...resolveCli(c.key, c.nome) })),
@@ -359,7 +359,7 @@ export function buildLevers(
     description:
       vips.length > 0
         ? `${vips.length} cliente${vips.length === 1 ? '' : 's'} de ticket alto pararam de vir. Vale uma atenção pessoal.`
-        : 'Nenhuma cliente de ticket alto sumida no momento.',
+        : 'Nenhum cliente de ticket alto sumido no momento.',
     estimated: vips.reduce((s, c) => s + (c.visitas > 0 ? c.gasto / c.visitas : 0), 0),
     count: vips.length,
     ctaLabel: 'Ver clientes',
@@ -380,7 +380,7 @@ export function buildLevers(
     description:
       aniversariantes.length > 0
         ? `${aniversariantes.length} cliente${aniversariantes.length === 1 ? '' : 's'} fazem aniversário este mês. Um carinho + mimo traz de volta.`
-        : 'Ninguém aniversariando este mês — cadastre a data de nascimento das clientes pra ativar.',
+        : 'Ninguém aniversariando este mês — cadastre a data de nascimento dos clientes pra ativar.',
     estimated: (ticketMedio || 0) * aniversariantes.length,
     count: aniversariantes.length,
     ctaLabel: 'Ver clientes',

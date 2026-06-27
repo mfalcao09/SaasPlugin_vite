@@ -10,7 +10,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  Target, Boxes, Network, Scissors, ShoppingBag, Zap,
+  Target, Boxes, Network, ShoppingBag, Zap,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
   Filter, UserPlus,
 } from 'lucide-react'
@@ -44,7 +44,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     title: 'Meu Catálogo',
     collapsible: true,
     items: [
-      { to: '/servicos', label: 'Serviços', icon: Scissors },
+      { to: '/servicos', label: 'Serviços', icon: Sparkles },
       { to: '/pacotes', label: 'Pacotes', icon: Boxes },
       { to: '/loja', label: 'Produtos de revenda', icon: ShoppingBag },
     ],
@@ -54,7 +54,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     title: 'Meus Números',
     collapsible: true,
     items: [
-      { to: '/relatorios', label: 'Relatórios do salão', icon: BarChart3 },
+      { to: '/relatorios', label: 'Relatórios do negócio', icon: BarChart3 },
       { to: '/relatorios-comerciais', label: 'Relatórios de atendimento', icon: LineChart },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
     ],

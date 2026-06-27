@@ -225,8 +225,8 @@ export const DEMO_ACOES: ClientAction[] = [
     key: 'a1', cliente_id: 'a1', nome: 'Fernanda Costa', telefone: '11988880008',
     selos: ['vip', 'em-risco'], diasSemVoltar: 72,
     acoes: [
-      { tipo: 'reativar', motivo: 'Sem voltar há 72 dias', mensagem: 'Oi Fernanda! Você faz falta no salão 👑 Quero reservar um horário especial só pra você — quando fica bom?' },
-      { tipo: 'aniversario', motivo: 'Faz aniversário este mês', mensagem: 'Oi Fernanda! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no salão. Vem buscar? 🎂' },
+      { tipo: 'reativar', motivo: 'Sem voltar há 72 dias', mensagem: 'Oi Fernanda! Você faz falta por aqui 👑 Quero reservar um horário especial só pra você — quando fica bom?' },
+      { tipo: 'aniversario', motivo: 'Faz aniversário este mês', mensagem: 'Oi Fernanda! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui. Vem buscar? 🎂' },
     ],
   },
   {
@@ -248,7 +248,7 @@ export const DEMO_ACOES: ClientAction[] = [
     key: 'a3', cliente_id: 'a3', nome: 'Marina Souza', telefone: '11988880012',
     selos: ['nova'], diasSemVoltar: 12,
     acoes: [
-      { tipo: 'upsell', motivo: 'Nunca fez Coloração', mensagem: 'Oi Marina! Tenho uma novidade que combina super com você 💁‍♀️ Quer que eu te conte e já reserve um horário?' },
+      { tipo: 'upsell', motivo: 'Nunca fez Design de sobrancelha', mensagem: 'Oi Marina! Tenho uma novidade que combina super com você 💁 Quer que eu te conte e já reserve um horário?' },
     ],
   },
 ]

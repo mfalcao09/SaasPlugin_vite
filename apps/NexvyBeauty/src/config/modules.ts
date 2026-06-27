@@ -3,7 +3,7 @@
 // direto (sem ICON_MAP de string). Visibilidade resolvida no ModuleHub.
 
 import {
-  Scissors,
+  Sparkles,
   TrendingUp,
   MessageSquare,
   Settings,
@@ -36,13 +36,13 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
   // Vertical de salão (NexvyBeauty). Telas em pages/salao/*.
   {
     id: 'erp_salao',
-    label: 'Gestão do Salão',
-    icon: Scissors,
+    label: 'Gestão do Negócio',
+    icon: Sparkles,
     color: 'bg-pink-500',
     description: 'Agenda, profissionais, serviços, clientes e financeiro',
     route: '/salao',
     visibility: 'all',
-    onboardingHint: 'Cadastre os serviços e profissionais do seu salão.',
+    onboardingHint: 'Cadastre os serviços e profissionais do seu negócio.',
   },
   {
     id: 'crm_vendas',

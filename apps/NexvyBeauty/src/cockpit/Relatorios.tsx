@@ -671,18 +671,18 @@ export const DEMO_RELATORIOS: RelatoriosData = {
     { mes: 'Abr/26', valor: 16740 }, { mes: 'Mai/26', valor: 18180 }, { mes: 'Jun/26', valor: 20000 },
   ],
   servicosMaisAgendados: [
-    { name: 'Corte feminino', value: 142 }, { name: 'Coloração', value: 118 }, { name: 'Manicure', value: 96 },
-    { name: 'Hidratação', value: 74 }, { name: 'Escova', value: 61 }, { name: 'Pedicure', value: 48 },
-    { name: 'Sobrancelha', value: 39 }, { name: 'Progressiva', value: 27 },
+    { name: 'Corte', value: 142 }, { name: 'Esmaltação em gel', value: 118 }, { name: 'Manicure', value: 96 },
+    { name: 'Alongamento de cílios', value: 74 }, { name: 'Coloração', value: 61 }, { name: 'Spa dos pés', value: 48 },
+    { name: 'Design de sobrancelha', value: 39 }, { name: 'Limpeza de pele', value: 27 },
   ],
   receitaPorProfissional: [
     { nome: 'Ana', valor: 28400 }, { nome: 'Bruna', valor: 22150 }, { nome: 'Carla', valor: 18900 },
     { nome: 'Diego', valor: 14600 }, { nome: 'Elaine', valor: 12370 },
   ],
   faturamentoPorServico: [
-    { name: 'Coloração', valor: 26800 }, { name: 'Corte feminino', valor: 19420 }, { name: 'Progressiva', valor: 16200 },
-    { name: 'Hidratação', valor: 11800 }, { name: 'Manicure', valor: 9600 }, { name: 'Escova', valor: 7300 },
-    { name: 'Sobrancelha', valor: 3120 }, { name: 'Pedicure', valor: 2180 },
+    { name: 'Alongamento de cílios', valor: 26800 }, { name: 'Coloração', valor: 19420 }, { name: 'Esmaltação em gel', valor: 16200 },
+    { name: 'Corte', valor: 11800 }, { name: 'Manicure', valor: 9600 }, { name: 'Limpeza de pele', valor: 7300 },
+    { name: 'Design de sobrancelha', valor: 3120 }, { name: 'Spa dos pés', valor: 2180 },
   ],
   agendamentosPorStatus: [
     { name: 'concluido', value: 678 }, { name: 'confirmado', value: 84 }, { name: 'agendado', value: 52 }, { name: 'cancelado', value: 41 },
@@ -714,9 +714,9 @@ export const DEMO_RELATORIOS: RelatoriosData = {
     { name: 'Marketing', value: 4200 }, { name: 'Energia', value: 2800 }, { name: 'Outros', value: 2550 },
   ],
   pacotesVendidos: [
-    { nome: 'Pacote Coloração 4x', quantidade: 18, valor: 9720 },
-    { nome: 'Pacote Hidratação 5x', quantidade: 14, valor: 5600 },
-    { nome: 'Pacote Manicure 8x', quantidade: 11, valor: 3520 },
-    { nome: 'Pacote Escova 10x', quantidade: 7, valor: 2450 },
+    { nome: 'Pacote Cílios 4x', quantidade: 18, valor: 9720 },
+    { nome: 'Pacote Coloração 5x', quantidade: 14, valor: 5600 },
+    { nome: 'Pacote Unha + pé 8x', quantidade: 11, valor: 3520 },
+    { nome: 'Pacote Limpeza de pele 10x', quantidade: 7, valor: 2450 },
   ],
 }

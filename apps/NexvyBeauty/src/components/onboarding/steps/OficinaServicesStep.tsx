@@ -1,6 +1,6 @@
 import { useState, type FC } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Scissors, Loader2, Check } from 'lucide-react'
+import { Sparkles, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useOrganizationId } from '@/pages/salao/_shared'
@@ -12,26 +12,27 @@ interface StepProps {
   onBack: () => void
 }
 
-// Serviços-padrão de salão sugeridos no onboarding. Marcados são
-// inseridos em servico_catalogo (sem criar agendamento de exemplo).
+// Serviços-padrão sugeridos no onboarding. Marcados são inseridos em
+// servico_catalogo (sem criar agendamento de exemplo). Balanceados entre
+// nichos (cabelo, unhas, cílios, sobrancelha, podologia, estética).
 const SERVICOS_PADRAO = [
-  'Corte feminino',
-  'Corte masculino',
+  'Corte',
   'Escova',
   'Coloração',
-  'Luzes / Mechas',
-  'Hidratação',
-  'Progressiva',
   'Manicure',
-  'Pedicure',
+  'Esmaltação em gel',
+  'Alongamento de cílios',
   'Design de sobrancelha',
+  'Podologia / Spa dos pés',
+  'Limpeza de pele',
+  'Depilação',
 ] as const
 
 export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip, onBack }) => {
   const organizationId = useOrganizationId()
   // por padrão já vêm pré-marcados os mais comuns; usuário ajusta
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set<string>(['Corte feminino', 'Escova', 'Manicure']),
+    () => new Set<string>(['Corte', 'Manicure', 'Alongamento de cílios']),
   )
 
   const toggle = (nome: string) => {
@@ -67,12 +68,12 @@ export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip, onBack }) =
     <div className="space-y-5">
       <div className="flex items-start gap-3">
         <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/15 flex items-center justify-center">
-          <Scissors className="h-5 w-5 text-primary" />
+          <Sparkles className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Serviços do salão</h2>
+          <h2 className="text-lg font-semibold text-foreground">Serviços do negócio</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Selecione os serviços que seu salão oferece. Eles entram no catálogo e ficam
+            Selecione os serviços que seu negócio oferece. Eles entram no catálogo e ficam
             prontos para usar nos agendamentos.
           </p>
         </div>

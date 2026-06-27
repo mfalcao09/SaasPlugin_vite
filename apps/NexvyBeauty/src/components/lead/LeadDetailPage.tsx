@@ -161,7 +161,7 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
             onClick={handleConvertToCliente}
             disabled={convertToCliente.isPending}
             className="gap-2"
-            title="Cria/vincula um cliente do salão a partir deste lead"
+            title="Cria/vincula um cliente do negócio a partir deste lead"
           >
             {convertToCliente.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
             Converter em cliente
@@ -171,7 +171,7 @@ export function LeadDetailPage({ leadId, onBack, isAdminView = false, onWhatsApp
             onClick={handleAgendarLead}
             disabled={convertToCliente.isPending}
             className="gap-2"
-            title="Converte em cliente e abre a Agenda do salão já com a pessoa selecionada"
+            title="Converte em cliente e abre a Agenda do negócio já com a pessoa selecionada"
           >
             <CalendarClock className="h-4 w-4" />
             Agendar

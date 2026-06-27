@@ -280,7 +280,7 @@ export function buildSegmentOpportunities(
 // Mensagem-modelo de WhatsApp pra oferta de cross-sell de segmento (1º nome).
 export function segmentMessage(servico: string, nome: string): string {
   const primeiro = (nome || 'cliente').trim().split(/\s+/)[0]
-  return `Oi ${primeiro}! 💕 Separei uma condição especial de ${servico} essa semana, que combina super com você. Quer que eu reserve um horário? 💁‍♀️`
+  return `Oi ${primeiro}! 💕 Separei uma condição especial de ${servico} essa semana, que combina super com você. Quer que eu reserve um horário? 💁`
 }
 
 export function aggregateSegments(opps: SegmentOpportunity[]): { total: number; count: number } {

@@ -126,7 +126,7 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
           {dispatchItems.length > 0 && (
             <Button size="sm" className="gap-1.5" onClick={() => setDispatchOpen(true)}>
               <MessageCircle className="h-3.5 w-3.5" />
-              Falar com {dispatchItems.length === 1 ? 'essa cliente' : `essas ${dispatchItems.length}`}
+              Falar com {dispatchItems.length === 1 ? 'esse cliente' : `esses ${dispatchItems.length}`}
             </Button>
           )}
           <Button asChild variant={isEmpty ? 'ghost' : 'outline'} size="sm" className="gap-1.5">
@@ -208,7 +208,7 @@ function SegmentCard({ opp }: { opp: SegmentOpportunity }) {
           {dispatchItems.length > 0 && (
             <Button size="sm" className="gap-1.5" onClick={() => setDispatchOpen(true)}>
               <MessageCircle className="h-3.5 w-3.5" />
-              Oferecer a {dispatchItems.length === 1 ? 'essa cliente' : `essas ${dispatchItems.length}`}
+              Oferecer a {dispatchItems.length === 1 ? 'esse cliente' : `esses ${dispatchItems.length}`}
             </Button>
           )}
           <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -357,7 +357,7 @@ export default function AiGrowth({ demo, embedded }: { demo?: AiGrowthDemoData; 
         </div>
         <p className="text-sm text-muted-foreground">
           A IA cruzou <strong className="font-medium text-foreground">faixa etária × serviço × região</strong> pra achar
-          ofertas certeiras — cada uma já com as clientes certas e o WhatsApp pronto.
+          ofertas certeiras — cada uma já com os clientes certos e o WhatsApp pronto.
         </p>
 
         {segments.length > 0 ? (
@@ -435,11 +435,11 @@ export const DEMO_AIGROWTH: AiGrowthDemoData = {
   levers: [
     {
       id: 'inativos',
-      title: 'Clientes sumidas para reativar',
+      title: 'Clientes sumidos para reativar',
       description: '23 clientes sem voltar há mais de 45 dias. Uma mensagem traz de volta.',
       estimated: 3266,
       count: 23,
-      ctaLabel: 'Ver clientes inativas',
+      ctaLabel: 'Ver clientes inativos',
       ctaTo: TO_CLIENTES,
       icon: UserMinus,
       clienteList: [
@@ -479,8 +479,8 @@ export const DEMO_AIGROWTH: AiGrowthDemoData = {
     },
     {
       id: 'upsell',
-      title: 'Upsell de "Coloração"',
-      description: 'Coloração é seu carro-chefe. 31 clientes ainda não experimentaram — ofereça.',
+      title: 'Upsell de "Esmaltação em gel"',
+      description: 'Esmaltação em gel é seu carro-chefe. 31 clientes ainda não experimentaram — ofereça.',
       estimated: 5642,
       count: 31,
       ctaLabel: 'Ver serviços',
@@ -523,12 +523,12 @@ export const DEMO_AIGROWTH: AiGrowthDemoData = {
   // count = nº de clientes da lista (igual ao motor real: alvos == clienteList).
   segments: [
     {
-      id: 'faixa:25–34 anos:Progressiva',
+      id: 'faixa:25–34 anos:Alongamento de cílios',
       dimensao: 'faixa',
       segmento: '25–34 anos',
-      servico: 'Progressiva',
-      titulo: 'Cross-sell de Progressiva — 25–34 anos',
-      insight: '6 clientes de 25–34 anos ainda não fizeram Progressiva — serviço que 72% do resto da base já faz. Cruzamento por faixa etária: oferta certeira.',
+      servico: 'Alongamento de cílios',
+      titulo: 'Cross-sell de Alongamento de cílios — 25–34 anos',
+      insight: '6 clientes de 25–34 anos ainda não fizeram Alongamento de cílios — serviço que 72% do resto da base já faz. Cruzamento por faixa etária: oferta certeira.',
       estimated: 1080,
       count: 6,
       icon: Users,
@@ -542,12 +542,12 @@ export const DEMO_AIGROWTH: AiGrowthDemoData = {
       ],
     },
     {
-      id: 'regiao:São Paulo/SP:Coloração',
+      id: 'regiao:São Paulo/SP:Esmaltação em gel',
       dimensao: 'regiao',
       segmento: 'São Paulo/SP',
-      servico: 'Coloração',
-      titulo: 'Cross-sell de Coloração — São Paulo/SP',
-      insight: '5 clientes de São Paulo/SP ainda não fizeram Coloração — serviço que 68% do resto da base já faz. Cruzamento por região: oferta certeira.',
+      servico: 'Esmaltação em gel',
+      titulo: 'Cross-sell de Esmaltação em gel — São Paulo/SP',
+      insight: '5 clientes de São Paulo/SP ainda não fizeram Esmaltação em gel — serviço que 68% do resto da base já faz. Cruzamento por região: oferta certeira.',
       estimated: 900,
       count: 5,
       icon: MapPin,

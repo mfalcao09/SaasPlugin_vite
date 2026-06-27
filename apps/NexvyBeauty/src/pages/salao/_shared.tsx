@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  LayoutDashboard, Users, Scissors, Sparkles, CalendarDays, DollarSign, LayoutGrid,
+  LayoutDashboard, Users, Sparkles, CalendarDays, DollarSign, LayoutGrid,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AppTopBar } from '@/components/layout/AppTopBar'
@@ -32,7 +32,7 @@ export function useOrganizationId(): string | null {
 const NAV = [
   { to: '/salao', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/salao/agenda', label: 'Agenda', icon: CalendarDays },
-  { to: '/salao/profissionais', label: 'Profissionais', icon: Scissors },
+  { to: '/salao/profissionais', label: 'Profissionais', icon: Users },
   { to: '/salao/servicos', label: 'Serviços', icon: Sparkles },
   { to: '/salao/clientes', label: 'Clientes', icon: Users },
   { to: '/salao/financeiro', label: 'Financeiro', icon: DollarSign },
@@ -46,13 +46,13 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
   const isDemo = useLocation().pathname.startsWith('/demo')
 
   if (!isDemo) {
-    return <UnifiedShell title="Gestão do Salão">{children}</UnifiedShell>
+    return <UnifiedShell title="Gestão do Negócio">{children}</UnifiedShell>
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Topbar canônica do sistema (mesma de todos os módulos pós-login). */}
-      <AppTopBar title="Gestão do Salão" />
+      <AppTopBar title="Gestão do Negócio" />
       <div className="flex flex-1 min-h-0">
         <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
           <nav className="flex-1 p-3 space-y-1">
@@ -96,7 +96,7 @@ export function MaybeSalaoShell({ bare, children }: { bare?: boolean; children: 
 export function NoOrg() {
   return (
     <div className="p-12 text-center text-muted-foreground text-sm">
-      Sua conta ainda não está vinculada a uma organização. Conclua o onboarding para usar a gestão do salão.
+      Sua conta ainda não está vinculada a uma organização. Conclua o onboarding para usar a gestão do negócio.
     </div>
   )
 }

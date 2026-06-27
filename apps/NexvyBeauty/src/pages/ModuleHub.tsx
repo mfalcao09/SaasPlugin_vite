@@ -24,7 +24,7 @@ import { isGestaoHostname } from '@/lib/publicUrl';
 // Agrupamento premium dos cards do hub (não mais um muro de cards soltos).
 // Cada módulo é mapeado a uma seção; a ordem das seções é a ordem de exibição.
 const MODULE_SECTIONS: { title: string; description: string; modules: ModuleId[] }[] = [
-  { title: 'Operação', description: 'O dia a dia do seu salão', modules: ['erp_salao'] },
+  { title: 'Operação', description: 'O dia a dia do seu negócio', modules: ['erp_salao'] },
   { title: 'Vendas & Atendimento', description: 'Captação, pipeline e conversas', modules: ['crm_vendas', 'atendimento'] },
   { title: 'Gestão', description: 'Configuração e controle', modules: ['administracao', 'gestao_plataforma'] },
 ];
