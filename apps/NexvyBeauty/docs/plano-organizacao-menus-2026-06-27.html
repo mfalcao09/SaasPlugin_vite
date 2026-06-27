@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano de Organização dos Menus — NexvyBeauty</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2230; --border: #2a3240;
+    --text: #e6edf3; --muted: #9aa6b2; --pink: #ec4899; --pink-soft: #f9a8d4;
+    --green: #34d399; --amber: #fbbf24; --red: #f87171; --blue: #60a5fa;
+    --code-bg: #0b0f16;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 0 0 80px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  header {
+    background: linear-gradient(135deg, rgba(236,72,153,.18), rgba(96,165,250,.08));
+    border-bottom: 1px solid var(--border); padding: 40px 0 28px; margin-bottom: 8px;
+  }
+  header .wrap { padding-top: 0; padding-bottom: 0; }
+  h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -.5px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .badge { display: inline-block; background: rgba(236,72,153,.15); color: var(--pink-soft);
+    border: 1px solid rgba(236,72,153,.4); border-radius: 999px; padding: 2px 12px; font-size: 12px; font-weight: 600; margin-bottom: 14px; }
+  h2 { margin: 38px 0 14px; font-size: 21px; border-left: 3px solid var(--pink); padding-left: 12px; }
+  h3 { margin: 24px 0 8px; font-size: 16px; color: var(--pink-soft); }
+  p, li { color: var(--text); }
+  .muted { color: var(--muted); }
+  .callout { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--amber);
+    border-radius: 10px; padding: 16px 18px; margin: 18px 0; }
+  .callout.rec { border-left-color: var(--green); }
+  .callout.rec strong { color: var(--green); }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel2); color: var(--pink-soft); font-weight: 600; }
+  td:first-child { white-space: nowrap; font-weight: 600; }
+  code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 13px; color: var(--pink-soft); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.7; color: var(--text); }
+  pre .g { color: var(--green); font-weight: 600; }
+  pre .m { color: var(--muted); }
+  pre .p { color: var(--pink-soft); }
+  .sev-alta { color: var(--red); font-weight: 700; }
+  .sev-media { color: var(--amber); font-weight: 700; }
+  .sev-baixa { color: var(--muted); font-weight: 700; }
+  ol li, ul li { margin: 6px 0; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 16px 0; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .card.rec { border-color: rgba(52,211,153,.5); background: linear-gradient(180deg, rgba(52,211,153,.08), transparent); }
+  .card h3 { margin-top: 0; }
+  .pro { color: var(--green); }
+  .con { color: var(--red); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 34px 0; }
+  .foot { color: var(--muted); font-size: 14px; font-style: italic; }
+  .legend { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="badge">PROPOSTA · validar antes de codar</div>
+    <h1>Plano de Organização dos Menus — NexvyBeauty</h1>
+    <div class="sub">Sidebar do cockpit · 2026-06-27 · escopo: <code>nav.tsx</code> (35 itens) + <code>UnifiedShell.tsx</code> + hubs de aba.<br>
+    Princípio-guia: o menu espelha a <strong>rotina da cabeleireira leiga</strong>, não a arquitetura do software.</div>
+  </div>
+</header>
+<div class="wrap">
+
+  <h2>0 · TL;DR (a resposta desconfortável primeiro)</h2>
+  <p>O problema <strong>não é "faltam seções"</strong> — é que a sidebar tem <strong>35 itens em 4 grupos</strong>, mistura o que ela usa todo dia com features raras, repete a mesma ideia em itens diferentes, e fala <strong>jargão de CRM</strong> (<code>Pipeline</code>, <code>Leads</code>, <code>Radar IA</code>, <code>Webhooks</code>, <code>Setores</code>, <code>AI Growth</code>) que a dona de salão não entende. Reorganizar caixas sem <strong>mesclar redundâncias e traduzir nomes</strong> só rearruma a bagunça.</p>
+  <div class="callout rec">
+    <strong>Recomendo o Esquema B+ (híbrido):</strong> sidebar de <strong>4–5 itens de uso diário no topo</strong> + <strong>3 grupos colapsáveis</strong> por domínio, com os clusters de IA, Configurações e Relatórios virando <strong>hubs de aba endereçados por rota</strong>. Custo de shell: <strong>pequeno</strong> (estender <code>ShellNavItem</code> com <code>children</code> + wrapper <code>Collapsible</code>/<code>SidebarMenuSub</code> da própria shadcn + persistência em <code>localStorage</code>).
+  </div>
+
+  <h2>1 · Diagnóstico — o que está mal hoje</h2>
+  <table>
+    <tr><th>Grupo</th><th>Itens</th><th>Problema</th></tr>
+    <tr><td>(topo solto)</td><td>Início</td><td>ok</td></tr>
+    <tr><td>Meu salão</td><td><strong>12 itens</strong> (Clientes, Agenda, Serviços, Pacotes, Produtos, AI Growth, Ações com Clientes, Saúde da Base, Automações, Meta do Mês, Relatórios &amp; Gestão, Financeiro)</td><td><strong>Bloat</strong> (7±2 estourado). Mistura uso diário com features de IA raras.</td></tr>
+    <tr><td>Comercial</td><td>8 itens (Painel, Conversas, Pipeline, Leads, Radar IA, Tarefas, Relatórios, Atrair Clientes)</td><td>Jargão de CRM B2B; 2º "Relatórios"; 3 portas pro atendimento.</td></tr>
+    <tr><td>Gestão</td><td><strong>14 itens</strong> (quase todos admin)</td><td>Configurações técnicas (Webhooks, Campos, Etiquetas) no mesmo nível de Plano/Suporte. Maior seção, menos usada.</td></tr>
+  </table>
+
+  <h3>Problemas confirmados (auditoria de UX no código)</h3>
+  <ol>
+    <li><span class="sev-alta">[alta]</span> <strong>AI Growth e Ações com Clientes = a MESMA ideia.</strong> Mesmos sinais, mesma saída (WhatsApp). Um agregado, o outro por-cliente. Dois itens para uma decisão só.</li>
+    <li><span class="sev-alta">[alta]</span> <strong>Produtos vs Ofertas — rótulos quase iguais, rotas cruzadas.</strong> "Produtos" → <code>/loja</code> (revenda); "Ofertas" → <code>/produtos</code> (cérebro de IA). Confusão + armadilha de manutenção.</li>
+    <li><span class="sev-alta">[alta]</span> <strong>Dois "Relatórios"</strong> em seções diferentes. Pra ela é tudo "meus números".</li>
+    <li><span class="sev-media">[média]</span> <strong>Dois dashboards de abertura</strong> (Início vs Painel) + <code>HomeDeValor.tsx</code> órfão. Ela quer <em>uma</em> tela inicial.</li>
+    <li><span class="sev-media">[média]</span> <strong>IA espalhada em 4 lugares</strong> (Minha IA, AI Growth, Automações, Radar IA).</li>
+    <li><span class="sev-alta">[alta]</span> <strong>Jargão de CRM</strong>: Pipeline, Leads, Radar, Setores, Webhooks, Campos, AI Growth.</li>
+    <li><span class="sev-media">[média]</span> <strong>Saúde da Base</strong> = diagnóstico raro de cadastro → cabe como aviso dentro de Clientes, não item permanente.</li>
+  </ol>
+
+  <h2>2 · O mecanismo — o que o código já permite (e o gap)</h2>
+  <h3>2.1 · Sidebar colapsável — estado e gap</h3>
+  <p><code>UnifiedShell.tsx</code> usa a primitiva <strong>shadcn <code>Sidebar collapsible="icon"</code></strong>: grupos <strong>flat</strong> sempre abertos. Hoje:</p>
+  <ul>
+    <li class="pro">✅ O rail inteiro colapsa pra ícones.</li>
+    <li class="con">❌ Sem accordion por seção (abrir/fechar grupo).</li>
+    <li class="con">❌ Sem subitens aninhados (<code>ShellNavItem</code> é flat).</li>
+  </ul>
+  <p><strong>Gap (pequeno):</strong> a shadcn já exporta <code>Collapsible</code>, <code>SidebarMenuSub</code>, <code>SidebarMenuSubItem</code>. Falta: (1) estender <code>ShellNavItem</code> com <code>children?</code>; (2) render condicional com <code>Collapsible</code>; (3) persistir aberto/fechado em <code>localStorage</code>; (4) auto-abrir o grupo da rota ativa. Extensão <strong>aditiva</strong>, sem tocar rota nem lógica.</p>
+  <h3>2.2 · Tab por rota — dois padrões já existem</h3>
+  <ul>
+    <li><strong>(A) <code>?tab=</code> na mesma rota (Admin legado).</strong> Esqueleto intacto em <code>Admin.tsx</code> (searchParams ↔ state + switch + keep-alive). Bom p/ abas com <strong>estado vivo</strong> simultâneo.</li>
+    <li><strong>(B) Rotas-filhas + abas internas (vigente).</strong> <code>/atrair</code>, <code>/minha-ia</code>, <code>/relatorios-comerciais</code> <strong>já agrupam</strong> seções em abas. Deep-link limpo, code-split.</li>
+  </ul>
+  <div class="callout"><strong>Veredito:</strong> pra agrupar clusters reaproveitamos <strong>(B)</strong> — o cockpit já faz. O <code>?tab=</code> de (A) só entra se precisarmos de estado vivo entre abas (não é o caso).</div>
+
+  <h2>3 · Três esquemas (todas as sugestões) + trade-offs</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Esquema A — "Mínima fricção"</h3>
+      <p>Sidebar flat (sem colapsável). Só traduz nomes, funde os 2 Relatórios, funde AI Growth+Ações, corrige Produtos/Ofertas, move Saúde da Base pra Clientes.</p>
+      <p class="pro">✅ Mais barato; zero mudança de shell; ~70% do ganho de clareza.</p>
+      <p class="con">✗ Ainda ~18–20 itens; não resolve o bloat; não atende o pedido de colapsável.</p>
+    </div>
+    <div class="card">
+      <h3>Esquema B — "Sidebar colapsável por domínio" (o que você descreveu)</h3>
+      <p>4–5 itens diários no topo + 3 grupos colapsáveis (Crescer / Catálogo / Configurações). Estende o shell.</p>
+      <p class="pro">✅ Atende o pedido literal; dia-a-dia à mão; resto recolhido; estado persistido.</p>
+      <p class="con">✗ Exige a extensão (pequena) + decidir diário vs recolhido.</p>
+    </div>
+    <div class="card">
+      <h3>Esquema C — "Hubs + sidebar enxuta" (agressivo)</h3>
+      <p>Sidebar ~6 itens; cada cluster vira hub de abas (padrão B do §2.2). Profundidade migra pra dentro das páginas.</p>
+      <p class="pro">✅ Sidebar mais limpa; reaproveita o padrão de hub; ótimo no mobile.</p>
+      <p class="con">✗ Esconde funções em abas (menos descobrível); mais hubs novos.</p>
+    </div>
+    <div class="card rec">
+      <h3>⭐ Recomendado — B+ (híbrido)</h3>
+      <p>Sidebar colapsável (B) <strong>+</strong> os 3 clusters problemáticos (IA, Relatórios, Configurações) viram hubs de aba (C). Estrutura clara na sidebar, profundidade organizada nos hubs que já existem ou são triviais.</p>
+    </div>
+  </div>
+
+  <h2>4 · Arquitetura de informação recomendada</h2>
+  <div class="legend">▸ = grupo colapsável · · item · <em>(abas)</em> = página-hub com abas internas por rota</div>
+  <pre>
+🏠 <span class="p">Início</span>                     <span class="m">(UMA tela inicial — funde Painel + Home de Valor)</span>
+📅 <span class="p">Minha Agenda</span>
+👥 <span class="p">Meus Clientes</span>              <span class="m">(Saúde da Base vira AVISO aqui dentro)</span>
+💬 <span class="p">Conversas</span>                  <span class="m">(Radar IA vira aba "Precisa de você" aqui)</span>
+
+▸ 💰 <span class="g">Crescer (a IA trabalha pra você)</span>
+   · Oportunidades            <span class="m">(FUNDE AI Growth + Ações com Clientes)</span>
+   · Meta do Mês
+   · Automações               <span class="m">(receitas que enviam sozinhas)</span>
+   · Minha IA                 <span class="m">(agentes — hoje /minha-ia)</span>
+
+▸ 🗂️ <span class="g">Meu Catálogo</span>
+   · Serviços
+   · Pacotes
+   · Produtos (revenda)       <span class="m">(corrige cruzamento /loja↔/produtos)</span>
+
+▸ 📊 <span class="g">Meus Números</span> <span class="m">(abas)</span>     <span class="m">(FUNDE os 2 Relatórios: Salão / Atendimento / Captação)</span>
+   · Financeiro
+
+▸ 📣 <span class="g">Atrair Clientes</span> <span class="m">(abas)</span>  <span class="m">(já é hub /atrair: quiz, formulários, WhatsApp)</span>
+
+▸ ⚙️ <span class="g">Configurações</span> <span class="m">(abas, admin)</span>
+   · Empresa · Plano · Horários · Conexões (WhatsApp) · Minha equipe
+   · Avançado: Webhooks · Campos · Etiquetas · Respostas · Notificações · Setores
+   · Suporte</pre>
+
+  <h3>Fusões / traduções na base disso</h3>
+  <ul>
+    <li><code>AI Growth</code> + <code>Ações com Clientes</code> → <strong>"Oportunidades"</strong> (1 tela: visão geral + fila por cliente).</li>
+    <li><code>Relatórios &amp; Gestão</code> + <code>Relatórios comerciais</code> → <strong>"Meus Números"</strong> (1 hub, abas).</li>
+    <li><code>Painel</code> + <code>Home de Valor</code> (órfã) → dobram no <strong>"Início"</strong>.</li>
+    <li><code>Radar IA</code> → aba "Precisa de você" <strong>dentro de Conversas</strong>.</li>
+    <li><code>Saúde da Base</code> → <strong>banner dentro de Clientes</strong>.</li>
+    <li><code>Setores</code>/<code>Equipes</code>/<code>Profissionais</code> → <strong>"Minha equipe"</strong>.</li>
+    <li><code>Ofertas</code> (cérebro de CRM) → sai da sidebar; vira config avançada de "Minha IA".</li>
+  </ul>
+
+  <h2>5 · Decisões em aberto (preciso de você antes de codar)</h2>
+  <ol>
+    <li><strong>Jargão de vendas (Pipeline/Leads):</strong> esconder do salão? renomear ("Funil"/"Contatos")? ou grupo colapsável "Vendas (avançado)"?</li>
+    <li><strong>Profundidade do colapsável:</strong> 1 grupo aberto por vez (accordion) ou vários abertos (independentes, estado salvo)?</li>
+    <li><strong>Esquema:</strong> A (rápido/flat), <strong>B+ (recomendado)</strong>, ou C (hubs agressivo)?</li>
+    <li><strong>Fusões fortes</strong> (AI Growth+Ações; 2 Relatórios; Painel→Início): aprova ou prefere só reagrupar mantendo telas separadas?</li>
+  </ol>
+
+  <h2>6 · Plano de execução (quando aprovado) — verificável</h2>
+  <ol>
+    <li><strong>Shell colapsável</strong> — <code>children?</code> + <code>Collapsible</code>/<code>SidebarMenuSub</code> + persistência. <span class="muted">Verifica: grupo abre/fecha, sobrevive a reload, grupo da rota ativa auto-abre.</span></li>
+    <li><strong>Reescrever <code>nav.tsx</code></strong> pra IA do §4. <span class="muted">Verifica: ≤5 itens diários + grupos recolhidos; zero jargão banido.</span></li>
+    <li><strong>Hub "Meus Números"</strong> funde os 2 relatórios em abas. <span class="muted">Verifica: deep-link das abas funciona.</span></li>
+    <li><strong>"Oportunidades"</strong> funde AI Growth+Ações. <span class="muted">Verifica: 1 rota, visão geral + fila; demos seguem.</span></li>
+    <li><strong>Saúde→aviso em Clientes; Radar→aba em Conversas.</strong> <span class="muted">Verifica: somem da sidebar, função preservada.</span></li>
+    <li><strong>Hub "Configurações"</strong> recolhe ~10 telas técnicas. <span class="muted">Verifica: admin acessa tudo por abas; não-admin não vê.</span></li>
+    <li><strong>Build + deploy anti-phantom + teste no Chrome real.</strong> <span class="muted">Verifica: string única no bundle servido + screenshot.</span></li>
+  </ol>
+
+  <hr>
+  <p class="foot">Próximo passo: você responde as 4 decisões do §5 (ou só "aprovo B+") e eu sigo pro código.</p>
+</div>
+</body>
+</html>

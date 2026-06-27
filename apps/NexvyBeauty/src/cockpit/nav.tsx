@@ -1,72 +1,103 @@
 // ─── Cockpit — navegação da cabeleireira (linguagem de salão) ──────────────
-// Início standalone no topo (sem cabeçalho de seção). Seções: Meu salão (negócio),
-// Comercial (atendimento/vendas), Gestão. Admin (~33 telas) colapsa em "Gestão &
-// Ajustes" (/admin). Grupo com title:'' = topo solto (UnifiedShell suprime o label).
+// Reorg 2026-06-27 (plano docs/plano-organizacao-menus): 4 itens de uso DIÁRIO
+// soltos no topo + grupos COLAPSÁVEIS por domínio (accordion do UnifiedShell,
+// estado salvo em localStorage). Jargão de CRM traduzido pra linguagem de salão
+// (Pipeline→Funil, Leads→Contatos, Setores→Departamentos…). As FUSÕES aprovadas
+// (Oportunidades = AI Growth+Ações; Radar→Conversas; Ofertas→Minha IA; Saúde→
+// Clientes) entram na Fase 2 — por ora cada rota segue acessível e renomeada.
+// Grupo com collapsible:false (topo) = sempre visível. Rotas já existem no App.tsx.
 
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  LayoutGrid, Target, Package, Network, Scissors, ShoppingBag, ListChecks, Activity, Zap,
+  Target, Package, Boxes, Network, Scissors, ShoppingBag, ListChecks, Activity, Zap,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
+  Filter, UserPlus,
 } from 'lucide-react'
 import type { ShellNavGroup } from '@/components/layout/UnifiedShell'
 
 export const COCKPIT_NAV: ShellNavGroup[] = [
+  // ── Uso diário: solto no topo, sempre à mão ──
   {
     title: '',
     items: [
       { to: '/', label: 'Início', icon: Home, end: true },
+      { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
+      { to: '/clientes', label: 'Meus Clientes', icon: Users },
+      { to: '/conversas', label: 'Conversas', icon: MessageSquare },
     ],
   },
+  // ── 💰 Crescer: a IA te ajuda a vender (Fase 2 funde Oportunidades) ──
   {
-    title: 'Meu salão',
+    title: 'Crescer',
+    collapsible: true,
     items: [
-      { to: '/clientes', label: 'Meus Clientes', icon: Users },
-      { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
+      { to: '/ai-growth', label: 'Oportunidades', icon: Sparkles },
+      { to: '/acoes', label: 'Quem chamar hoje', icon: ListChecks },
+      { to: '/radar', label: 'Oportunidades nas conversas', icon: Radar },
+      { to: '/automacoes', label: 'Mensagens automáticas', icon: Zap },
+      { to: '/meta', label: 'Meta do Mês', icon: Target },
+      { to: '/minha-ia', label: 'Minha IA', icon: Bot },
+      { to: '/produtos', label: 'Ofertas da IA', icon: Package, visibility: 'admin' },
+      { to: '/saude', label: 'Qualidade do cadastro', icon: Activity },
+    ],
+  },
+  // ── 🗂️ Meu Catálogo: o que eu vendo ──
+  {
+    title: 'Meu Catálogo',
+    collapsible: true,
+    items: [
       { to: '/servicos', label: 'Serviços', icon: Scissors },
-      { to: '/pacotes', label: 'Pacotes', icon: Package },
-      { to: '/loja', label: 'Produtos', icon: ShoppingBag },
-      { to: '/ai-growth', label: 'AI Growth', icon: Sparkles }, // lente macro (negócio)
-      { to: '/acoes', label: 'Ações com Clientes', icon: ListChecks }, // fila por cliente (consome o AI Growth)
-      { to: '/saude', label: 'Saúde da Base', icon: Activity }, // diagnóstico de higiene do cadastro
-      { to: '/automacoes', label: 'Automações', icon: Zap }, // receitas de automação de salão (envio sozinho)
-      { to: '/meta', label: 'Meta do Mês', icon: Target }, // faturamento + ritmo + receita por profissional
-      { to: '/relatorios', label: 'Relatórios & Gestão', icon: BarChart3 },
+      { to: '/pacotes', label: 'Pacotes', icon: Boxes },
+      { to: '/loja', label: 'Produtos de revenda', icon: ShoppingBag },
+    ],
+  },
+  // ── 📊 Meus Números ──
+  {
+    title: 'Meus Números',
+    collapsible: true,
+    items: [
+      { to: '/relatorios', label: 'Relatórios do salão', icon: BarChart3 },
+      { to: '/relatorios-comerciais', label: 'Relatórios de atendimento', icon: LineChart },
       { to: '/faturamento', label: 'Financeiro', icon: DollarSign },
     ],
   },
+  // ── 💼 Vendas (linguagem de salão: Funil/Contatos) ──
   {
-    title: 'Comercial',
+    title: 'Vendas',
+    collapsible: true,
     items: [
-      { to: '/painel', label: 'Painel', icon: LayoutDashboard }, // dashboard comercial (1º)
-      { to: '/conversas', label: 'Conversas', icon: MessageSquare },
-      { to: '/pipeline', label: 'Pipeline', icon: LayoutGrid }, // kanban de CRM (migrado do admin)
-      { to: '/leads', label: 'Leads', icon: Target }, // central de leads (migrado do admin)
-      { to: '/radar', label: 'Radar IA', icon: Radar }, // lente micro (conversas)
-      { to: '/tarefas', label: 'Tarefas', icon: ListTodo },
-      { to: '/relatorios-comerciais', label: 'Relatórios', icon: LineChart },
+      { to: '/painel', label: 'Painel de vendas', icon: LayoutDashboard },
       { to: '/atrair', label: 'Atrair Clientes', icon: Megaphone },
+      { to: '/pipeline', label: 'Funil', icon: Filter },
+      { to: '/leads', label: 'Contatos', icon: UserPlus },
+      { to: '/tarefas', label: 'Tarefas', icon: ListTodo },
     ],
   },
+  // ── ⚙️ Configurações (admin) ──
   {
-    title: 'Gestão',
+    title: 'Configurações',
+    collapsible: true,
     items: [
-      { to: '/produtos', label: 'Ofertas', icon: Package, visibility: 'admin' }, // ex-"Produtos" = oferta de CRM (cérebro IA); revenda física vive em Meu salão > Produtos
-      { to: '/setores', label: 'Setores', icon: Network, visibility: 'admin' }, // migrado do admin (admin-only)
-      { to: '/equipes', label: 'Equipes', icon: Users, visibility: 'admin' }, // migrado do admin (admin-only)
-      { to: '/minha-ia', label: 'Minha IA', icon: Bot },
-      // Configurações migradas do Admin → páginas individuais (admin-only).
-      // O shell /admin foi dissolvido; ?tab=<config> antigos redirecionam (Admin.tsx).
-      { to: '/conexoes', label: 'Conexões', icon: Plug, visibility: 'admin' },
-      { to: '/webhooks', label: 'Webhooks', icon: Webhook, visibility: 'admin' },
-      { to: '/respostas-rapidas', label: 'Respostas Rápidas', icon: MessageSquare, visibility: 'admin' },
-      { to: '/campos-personalizados', label: 'Campos Personalizados', icon: FileText, visibility: 'admin' },
-      { to: '/etiquetas', label: 'Etiquetas', icon: Tag, visibility: 'admin' },
-      { to: '/notificacoes', label: 'Notificações', icon: Bell, visibility: 'admin' },
-      { to: '/horarios', label: 'Horários', icon: Clock, visibility: 'admin' },
       { to: '/empresa', label: 'Empresa', icon: Building2, visibility: 'admin' },
       { to: '/plano', label: 'Plano', icon: CreditCard, visibility: 'admin' },
+      { to: '/horarios', label: 'Horários', icon: Clock, visibility: 'admin' },
+      { to: '/conexoes', label: 'Conexões (WhatsApp)', icon: Plug, visibility: 'admin' },
+      { to: '/equipes', label: 'Minha equipe', icon: Users, visibility: 'admin' },
+      { to: '/setores', label: 'Departamentos', icon: Network, visibility: 'admin' },
       { to: '/suporte', label: 'Suporte', icon: LifeBuoy, visibility: 'admin' },
+    ],
+  },
+  // ── ⚙️ Configurações avançadas (admin, raras) ──
+  {
+    title: 'Config. avançada',
+    collapsible: true,
+    items: [
+      { to: '/webhooks', label: 'Webhooks', icon: Webhook, visibility: 'admin' },
+      { to: '/campos-personalizados', label: 'Campos personalizados', icon: FileText, visibility: 'admin' },
+      { to: '/etiquetas', label: 'Etiquetas', icon: Tag, visibility: 'admin' },
+      { to: '/respostas-rapidas', label: 'Respostas rápidas', icon: MessageSquare, visibility: 'admin' },
+      { to: '/notificacoes', label: 'Notificações', icon: Bell, visibility: 'admin' },
     ],
   },
 ]
