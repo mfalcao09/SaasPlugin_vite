@@ -10,7 +10,7 @@
 import {
   Home, MessageSquare, Users, Megaphone, CalendarDays, DollarSign,
   BarChart3, Sparkles, Bot, LayoutDashboard, Radar, LineChart, ListTodo,
-  Target, Boxes, Network, Scissors, ShoppingBag, Activity, Zap,
+  Target, Boxes, Network, Scissors, ShoppingBag, Zap,
   Plug, Webhook, FileText, Tag, Bell, Clock, Building2, CreditCard, LifeBuoy,
   Filter, UserPlus,
 } from 'lucide-react'
@@ -25,6 +25,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
+      { to: '/radar', label: 'Oportunidades nas conversas', icon: Radar }, // junto do atendimento (inbox intocado)
     ],
   },
   // ── 💰 Crescer: a IA te ajuda a vender (Fase 2 funde Oportunidades) ──
@@ -33,11 +34,9 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     collapsible: true,
     items: [
       { to: '/ai-growth', label: 'Oportunidades', icon: Sparkles }, // funde AI Growth + Ações (abas)
-      { to: '/radar', label: 'Oportunidades nas conversas', icon: Radar },
       { to: '/automacoes', label: 'Mensagens automáticas', icon: Zap },
       { to: '/meta', label: 'Meta do Mês', icon: Target },
       { to: '/minha-ia', label: 'Minha IA', icon: Bot }, // inclui aba "Ofertas da IA"
-      { to: '/saude', label: 'Qualidade do cadastro', icon: Activity },
     ],
   },
   // ── 🗂️ Meu Catálogo: o que eu vendo ──

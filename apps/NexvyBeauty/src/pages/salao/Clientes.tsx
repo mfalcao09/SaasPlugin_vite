@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users, Plus, Search, Loader2, Pencil, Trash2, Flame, Merge, Eye } from 'lucide-react'
+import { Users, Plus, Search, Loader2, Pencil, Trash2, Flame, Merge, Eye, Activity, ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -387,6 +388,17 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
               ))}
             </div>
           </Card>
+        )}
+
+        {/* 2d: Saúde da Base virou aviso aqui (saiu do menu) — link pro diagnóstico */}
+        {!isDemo && (
+          <Link to="/saude" className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm transition-colors hover:bg-muted/60">
+            <span className="flex items-center gap-2 text-foreground">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Quer saber se sua base está saudável? Veja a <span className="font-medium">qualidade do cadastro</span>.
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Link>
         )}
 
         <div className="flex flex-wrap items-center gap-3">
