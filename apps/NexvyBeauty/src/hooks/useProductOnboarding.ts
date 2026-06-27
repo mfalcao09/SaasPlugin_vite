@@ -17,80 +17,40 @@ export interface OnboardingStep {
   required?: boolean;
 }
 
+// Wizard SIMPLIFICADO pra salão (Fase 3 do plano de menus). Era um onboarding de
+// produto B2B (8 passos: ICP, 3 pitches, diferenciais, status). A cabeleireira não
+// tem ICP nem faz pitch de elevador — ela vende serviço/pacote. Cortado pra 3 passos
+// (2 obrigatórios + 1 opcional) em linguagem de salão. Os campos B2B (icp/pitch_30s/
+// pitch_2min/differentials) continuam nullable no banco e o `completeOnboarding` os
+// manda como undefined→null — nada quebra pra quem já tem oferta cadastrada.
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'name',
-    title: 'Como se chama seu produto?',
-    subtitle: 'Esse será o nome que seus vendedores verão.',
+    title: 'O que você vende?',
+    subtitle: 'O nome que sua cliente vai ver.',
     field: 'name',
     type: 'text',
-    placeholder: 'Ex: Produto Pro, CRM Enterprise...',
+    placeholder: 'Ex: Pacote 4 escovas, Dia da Noiva, Combo unha + pé...',
     required: true,
   },
   {
     id: 'description',
-    title: 'Descreva seu produto em uma frase',
-    subtitle: 'Uma descrição clara e objetiva ajuda os vendedores a entenderem rapidamente.',
+    title: 'O que é, em uma frase?',
+    subtitle: 'A sua IA usa isso pra explicar pra cliente.',
     field: 'description',
     type: 'textarea',
-    placeholder: 'Ex: Plataforma de automação de vendas com IA integrada...',
-    aiOptimizable: true,
-    required: true,
-  },
-  {
-    id: 'icp',
-    title: 'Quem é seu cliente ideal (ICP)?',
-    subtitle: 'Defina o perfil ideal de cliente para este produto.',
-    field: 'icp',
-    type: 'textarea',
-    placeholder: 'Ex: Empresas B2B de tecnologia com 50-500 funcionários...',
+    placeholder: 'Ex: 4 escovas progressivas com 15% de desconto, pra manter o cabelo liso o mês todo.',
     aiOptimizable: true,
     required: true,
   },
   {
     id: 'pitch15s',
-    title: 'Pitch de 15 segundos',
-    subtitle: 'O pitch de elevador. Direto ao ponto.',
+    title: 'Como apresentar pra cliente? (opcional)',
+    subtitle: 'Uma frase de venda amigável — a IA expande na conversa. Pode pular.',
     field: 'pitch_15s',
     type: 'textarea',
-    placeholder: 'Em 15 segundos, como você apresentaria este produto?',
+    placeholder: 'Ex: Tá precisando dar um up no cabelo? Esse pacote deixa você linda o mês inteiro 💕',
     aiOptimizable: true,
-    required: true,
-  },
-  {
-    id: 'pitch30s',
-    title: 'Pitch de 30 segundos',
-    subtitle: 'Um pouco mais de contexto e valor.',
-    field: 'pitch_30s',
-    type: 'textarea',
-    placeholder: 'Expanda o pitch com mais detalhes sobre o valor entregue...',
-    aiOptimizable: true,
-  },
-  {
-    id: 'pitch2min',
-    title: 'Pitch de 2 minutos',
-    subtitle: 'A apresentação completa com problema, solução e diferencial.',
-    field: 'pitch_2min',
-    type: 'textarea',
-    placeholder: 'Conte a história completa: problema → solução → resultados...',
-    aiOptimizable: true,
-  },
-  {
-    id: 'differentials',
-    title: 'Quais são os principais diferenciais?',
-    subtitle: 'Liste os pontos que destacam seu produto da concorrência.',
-    field: 'differentials',
-    type: 'list',
-    placeholder: 'Ex: Integração nativa com WhatsApp',
-  },
-  {
-    id: 'status',
-    title: 'Qual o status inicial do produto?',
-    subtitle: 'Defina se já está pronto para ser usado pelos vendedores.',
-    field: 'status',
-    type: 'text',
-    placeholder: 'draft',
-    required: true,
   },
 ];
 
