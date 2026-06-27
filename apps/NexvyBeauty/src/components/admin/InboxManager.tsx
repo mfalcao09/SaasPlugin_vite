@@ -26,9 +26,12 @@ export function InboxManager() {
         <p className="text-sm text-muted-foreground">Central de Atendimento Unificada</p>
       </div>
 
+      {/* offset MAIOR que o default (8rem): aqui há cabeçalho próprio acima do
+          inbox (AppTopBar + título), senão o input vaza pra fora da janela. */}
       <WebChatInbox
         pendingConversationId={pendingConversationId}
         onConversationSelected={() => setPendingConversationId(null)}
+        heightClass="h-[calc(100dvh-12rem)]"
       />
     </div>
   );

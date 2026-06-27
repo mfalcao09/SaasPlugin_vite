@@ -42,9 +42,13 @@ interface SellerInboxProps {
   onConversationSelected?: () => void;
   /** "admin" exibe TODAS as conversas da org e libera filtros por usuário/encerrar em massa */
   mode?: 'seller' | 'admin';
+  /** classe de altura do container. Default calibrado pro app vendedor (/crm). O
+   *  cockpit (/conversas) passa um offset MAIOR via InboxManager porque tem um
+   *  cabeçalho próprio acima do inbox — senão o input vaza pra fora da janela. */
+  heightClass?: string;
 }
 
-export function SellerInbox({ productId, pendingConversationId, onConversationSelected, mode = 'seller' }: SellerInboxProps) {
+export function SellerInbox({ productId, pendingConversationId, onConversationSelected, mode = 'seller', heightClass = 'h-[calc(100dvh-8rem)]' }: SellerInboxProps) {
   const isAdminMode = mode === 'admin';
   const { user, profile, roles } = useAuth();
   const isAdminRole = roles?.includes('admin') || roles?.includes('super_admin');
@@ -835,14 +839,14 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
 
   if (loadingConversations) {
     return (
-      <div className="h-[calc(100dvh-8rem)] flex items-center justify-center">
+      <div className={`${heightClass} flex items-center justify-center`}>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100dvh-8rem)] flex flex-col rounded-lg border border-border overflow-hidden bg-background">
+    <div className={`${heightClass} flex flex-col rounded-lg border border-border overflow-hidden bg-background`}>
 
       <div className="flex-1 flex min-w-0 overflow-hidden">
         {/* Conversation List with new look */}
