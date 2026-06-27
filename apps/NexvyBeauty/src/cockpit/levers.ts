@@ -155,15 +155,27 @@ export function buildLevers(
   const normNome = (s: string | null | undefined) =>
     (s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const telById = new Map<string, string>()
-  const telByNome = new Map<string, string>()
+  // Telefones por nome normalizado → Set. Nome com >1 telefone DISTINTO = homônimo:
+  // NÃO resolve por nome (cairia no telefone errado e dispararia pro cliente errado
+  // — ver feedback_name_match_homonimo_wrong_recipient). Resolução por cliente_id
+  // (telById) é sempre segura; o fallback por nome só vale quando é inequívoco.
+  const phonesByNome = new Map<string, Set<string>>()
   for (const c of clientesRows) {
     if (!c.telefone) continue
     if (c.id) telById.set(c.id, c.telefone)
-    if (c.nome) telByNome.set(normNome(c.nome), c.telefone)
+    if (c.nome) {
+      const k = normNome(c.nome)
+      if (!phonesByNome.has(k)) phonesByNome.set(k, new Set())
+      phonesByNome.get(k)!.add(c.telefone)
+    }
+  }
+  const telByNomeUnico = (nome: string): string | undefined => {
+    const set = phonesByNome.get(normNome(nome))
+    return set && set.size === 1 ? [...set][0] : undefined // ambíguo → undefined (seguro)
   }
   const resolveCli = (key: string, nome: string): { cliente_id?: string; telefone?: string } => {
     const cid = key.startsWith('nome:') ? undefined : key
-    const telefone = (cid ? telById.get(cid) : undefined) ?? telByNome.get(normNome(nome)) ?? undefined
+    const telefone = (cid ? telById.get(cid) : undefined) ?? telByNomeUnico(nome) ?? undefined
     return { cliente_id: cid, telefone }
   }
 

@@ -187,6 +187,7 @@ export function buildSegmentOpportunities(
   // Serviços "populares" candidatos a cross-sell (≥ MIN_SERVICO_USOS usos).
   const servicosPopulares = [...srvUsos.entries()]
     .filter(([, n]) => n >= MIN_SERVICO_USOS)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])) // determinístico (desempata por nome)
     .map(([s]) => s)
 
   // 3) Monta os coortes (segmentos) das 3 dimensões.
@@ -212,13 +213,18 @@ export function buildSegmentOpportunities(
   const opps: SegmentOpportunity[] = []
   for (const C of cohorts) {
     const cohortIds = new Set(C.members.map((m) => m.id))
+    // Base de comparação = clientes FORA do segmento. Se o segmento ~= base toda
+    // (fora pequeno demais), a penetração comparada é instável → pula. Sem isso, um
+    // segmento = 100% da base nunca geraria (penFora=0), e um "fora" de 1 pessoa daria
+    // falso-positivo (penFora = 0% ou 100% por acaso).
+    const fora = profiles.filter((p) => !cohortIds.has(p.id))
+    if (fora.length < MIN_COHORT) continue
     let best: SegmentOpportunity | null = null
     for (const S of servicosPopulares) {
       const fezNaCoorte = C.members.filter((m) => m.servicos.has(S)).length
       const penC = C.members.length > 0 ? fezNaCoorte / C.members.length : 0
-      const fora = profiles.filter((p) => !cohortIds.has(p.id))
       const fezFora = fora.filter((p) => p.servicos.has(S)).length
-      const penFora = fora.length > 0 ? fezFora / fora.length : 0
+      const penFora = fezFora / fora.length // fora.length >= MIN_COHORT garantido acima
       if (penFora - penC < GAP_PENETRACAO) continue // serviço não é mais popular fora → não é lacuna
 
       // Alvos = membros do segmento que ainda não fizeram S E têm telefone válido.
@@ -252,8 +258,23 @@ export function buildSegmentOpportunities(
     if (best) opps.push(best)
   }
 
-  // 5) Ranqueia por potencial e tira os top N (já é 1 por coorte → variedade).
-  return opps.sort((a, b) => b.estimated - a.estimated).slice(0, TOP_N)
+  // 5) Dedup cross-dimensional: as 3 dimensões (faixa/região/faixa+região) se
+  // sobrepõem, então a MESMA cliente poderia receber a MESMA oferta (serviço) em 2-3
+  // cards. Ranqueia por potencial e, do mais forte pro mais fraco, "reivindica" cada
+  // par (cliente × serviço): card de menor potencial perde a cliente já reivindicada.
+  // Se sobrar < MIN_TARGETS, o card cai. Ofertas de serviços DIFERENTES pra mesma
+  // cliente continuam OK (são propostas distintas, não spam da mesma coisa).
+  const ranked = opps.sort((a, b) => b.estimated - a.estimated || a.id.localeCompare(b.id))
+  const reivindicado = new Set<string>()
+  const deduped: SegmentOpportunity[] = []
+  for (const o of ranked) {
+    const unit = o.count > 0 ? o.estimated / o.count : 0
+    const lista = o.clienteList.filter((c) => !reivindicado.has(`${c.cliente_id ?? c.key}|${o.servico}`))
+    if (lista.length < MIN_TARGETS) continue
+    for (const c of lista) reivindicado.add(`${c.cliente_id ?? c.key}|${o.servico}`)
+    deduped.push({ ...o, clienteList: lista, count: lista.length, estimated: Math.round(unit * lista.length) })
+  }
+  return deduped.slice(0, TOP_N)
 }
 
 // Mensagem-modelo de WhatsApp pra oferta de cross-sell de segmento (1º nome).
