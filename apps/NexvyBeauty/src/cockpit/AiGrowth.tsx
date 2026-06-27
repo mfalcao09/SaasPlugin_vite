@@ -23,7 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, TrendingUp, UserMinus, PackageCheck, CalendarClock, ArrowUpRight, Crown,
-  RefreshCw, MessageCircle, Cake,
+  RefreshCw, MessageCircle, Cake, Layers, Users, MapPin,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -37,8 +37,15 @@ import {
   buildLevers, aggregateLevers, leverMessage,
   TO_CLIENTES, TO_PACOTES, TO_AGENDA, TO_SERVICOS,
   type GrowthLever, type AiGrowthData, type AgendamentoRow, type PacoteClienteRow,
-  type ClienteRow,
 } from '@/cockpit/levers'
+import {
+  buildSegmentOpportunities, segmentMessage, segmentCoverage, aggregateSegments,
+  type SegmentOpportunity, type SegmentClienteRow,
+} from '@/cockpit/segments'
+
+// O modo demo injeta levers + (opcional) segments. AiGrowthData (levers) vive em
+// @/cockpit/levers; segments é separado pra evitar import circular levers↔segments.
+type AiGrowthDemoData = AiGrowthData & { segments?: SegmentOpportunity[] }
 
 // A lógica das alavancas (tipos GrowthLever/AiGrowthData, shapes das linhas,
 // helpers de data, buildLevers e aggregateLevers) vive em @/cockpit/levers (TS
@@ -144,6 +151,82 @@ function LeverCard({ lever }: { lever: GrowthLever }) {
   )
 }
 
+// ─── Card de uma oportunidade de SEGMENTO (cross-sell cross-dimensional) ────
+// Mesma estrutura do LeverCard, mas a mensagem é a oferta do serviço sub-consumido
+// (segmentMessage) e o chip de dimensão deixa claro o cruzamento (faixa/região).
+function SegmentCard({ opp }: { opp: SegmentOpportunity }) {
+  const Icon = opp.icon
+  const [dispatchOpen, setDispatchOpen] = useState(false)
+  const dimChip =
+    opp.dimensao === 'faixa' ? 'faixa etária' : opp.dimensao === 'regiao' ? 'região' : 'faixa + região'
+
+  const dispatchItems: OpportunityCardData[] = (opp.clienteList ?? [])
+    .map((c) => ({
+      id: c.key,
+      leadId: c.cliente_id ?? null,
+      name: c.nome,
+      phone: normalizeBrPhone(c.telefone),
+      classification: 'hot' as const,
+      dealValue: 0,
+      followupMessage: segmentMessage(opp.servico, c.nome),
+      reason: null,
+    }))
+    .filter((item) => item.phone)
+
+  return (
+    <Card>
+      <CardContent className="py-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Icon className="h-4 w-4" />
+            </span>
+            <h3 className="text-sm font-semibold text-foreground truncate">{opp.titulo}</h3>
+          </div>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{dimChip}</span>
+        </div>
+
+        <div className="text-2xl font-bold tracking-tight text-foreground">{formatBRL(opp.estimated)}</div>
+        <p className="text-sm text-muted-foreground">{opp.insight}</p>
+
+        {opp.clienteList.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {opp.clienteList.slice(0, 6).map((c) => (
+              <span key={c.key} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                {c.nome}
+              </span>
+            ))}
+            {opp.clienteList.length > 6 && (
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                +{opp.clienteList.length - 6} mais
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          {dispatchItems.length > 0 && (
+            <Button size="sm" className="gap-1.5" onClick={() => setDispatchOpen(true)}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              Oferecer a {dispatchItems.length === 1 ? 'essa cliente' : `essas ${dispatchItems.length}`}
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link to={TO_CLIENTES}>
+              Ver clientes
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+
+      {dispatchItems.length > 0 && (
+        <BulkReactivationDialog items={dispatchItems} open={dispatchOpen} onOpenChange={setDispatchOpen} />
+      )}
+    </Card>
+  )
+}
+
 // "Atualizado em dd/mm/aa, às hh:mm:ss" — instante local de dataUpdatedAt (ms epoch).
 function formatUpdatedAt(ms: number): string {
   const d = new Date(ms)
@@ -151,7 +234,7 @@ function formatUpdatedAt(ms: number): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${p(d.getFullYear() % 100)}, às ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
+export default function AiGrowth({ demo }: { demo?: AiGrowthDemoData } = {}) {
   const organizationId = useOrganizationId()
   const isDemo = !!demo
 
@@ -184,17 +267,18 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
     },
   })
 
-  // Clientes: telefone (p/ disparo WhatsApp) + data_nascimento (alavanca aniversário).
+  // Clientes: telefone (disparo WhatsApp) + data_nascimento (faixa etária / aniversário)
+  // + cidade/uf (região) — alimentam tanto as alavancas quanto os segmentos.
   const { data: clientesRows = [], refetch: refetchClientes, isFetching: fetchingCli } = useQuery({
     queryKey: ['aigrowth-clientes', organizationId],
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, telefone, data_nascimento')
+        .select('id, nome, telefone, data_nascimento, cidade, uf')
         .eq('organization_id', organizationId!)
       if (error) throw error
-      return (data ?? []) as ClienteRow[]
+      return (data ?? []) as SegmentClienteRow[]
     },
   })
 
@@ -204,6 +288,14 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
 
   const d = demo ?? { levers: buildLevers(agendamentos, pacotes, clientesRows) }
   const { total: totalPotencial, count: totalItens } = aggregateLevers(d.levers)
+
+  // 3ª dimensão: oportunidades de SEGMENTO (faixa × serviço × região). Cruza o
+  // cadastro (faixa/região) com o consumo (serviços) → cross-sell certeiro.
+  const segments: SegmentOpportunity[] = isDemo
+    ? (demo?.segments ?? [])
+    : buildSegmentOpportunities(agendamentos, clientesRows)
+  const segTotals = aggregateSegments(segments)
+  const coverage = isDemo ? null : segmentCoverage(clientesRows)
 
   return (
     <div className="p-6 space-y-6">
@@ -241,11 +333,60 @@ export default function AiGrowth({ demo }: { demo?: AiGrowthData } = {}) {
       {/* Headline: receita potencial recuperável (soma das alavancas) */}
       <MoneyHeadlineMacro total={totalPotencial} count={totalItens} />
 
-      {/* Grid de alavancas */}
+      {/* Grid de alavancas (por evento/tempo) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {d.levers.map((l) => (
           <LeverCard key={l.id} lever={l} />
         ))}
+      </div>
+
+      {/* ── 3ª dimensão: oportunidades por SEGMENTO (faixa × serviço × região) ── */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Layers className="h-4 w-4" />
+          </span>
+          <h2 className="text-base font-semibold text-foreground">Oportunidades por segmento</h2>
+          {segTotals.count > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {formatBRL(segTotals.total)} em cross-sell · {segTotals.count} alvo{segTotals.count === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          A IA cruzou <strong className="font-medium text-foreground">faixa etária × serviço × região</strong> pra achar
+          ofertas certeiras — cada uma já com as clientes certas e o WhatsApp pronto.
+        </p>
+
+        {segments.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {segments.map((o) => (
+              <SegmentCard key={o.id} opp={o} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-5 text-sm text-muted-foreground">
+              {coverage && coverage.total > 0 ? (
+                <>
+                  Ainda não dá pra cruzar: faltam <strong className="font-medium text-foreground">faixa etária</strong>{' '}
+                  (data de nascimento) e <strong className="font-medium text-foreground">região</strong> (CEP) preenchidas.
+                  Hoje {coverage.comFaixa}/{coverage.total} têm faixa e {coverage.comRegiao}/{coverage.total} têm região.
+                  Preencha pra destravar — comece pela <Link to="/saude" className="underline">Saúde da Base</Link>.
+                </>
+              ) : (
+                'Conforme você atende e enriquece o cadastro (idade + CEP), os segmentos aparecem aqui.'
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {coverage && segments.length > 0 && (coverage.comRegiao < coverage.total || coverage.comFaixa < coverage.total) && (
+          <p className="text-xs text-muted-foreground">
+            Dá pra achar mais: {coverage.total - coverage.comRegiao} sem região e {coverage.total - coverage.comFaixa} sem
+            data de nascimento. <Link to="/saude" className="underline">Enriquecer base</Link>.
+          </p>
+        )}
       </div>
     </div>
   )
@@ -288,7 +429,7 @@ function MoneyHeadlineMacro({ total, count }: { total: number; count: number }) 
 // Dados FICTÍCIOS que populam TODAS as alavancas (nada toca o Supabase). Usado
 // pra prova visual e pelas rotas /demo do cockpit. Soma das estimativas alimenta
 // o headline "Receita potencial recuperável".
-export const DEMO_AIGROWTH: AiGrowthData = {
+export const DEMO_AIGROWTH: AiGrowthDemoData = {
   levers: [
     {
       id: 'inativos',
@@ -373,6 +514,63 @@ export const DEMO_AIGROWTH: AiGrowthData = {
         { nome: 'Helena Castro', key: 'a1', telefone: '11988880011' },
         { nome: 'Marina Souza', key: 'a2', telefone: '11988880012' },
         { nome: 'Yara Lopes', key: 'a3', telefone: '11988880013' },
+      ],
+    },
+  ],
+  // 3ª dimensão — oportunidades de SEGMENTO (cruzamento faixa × serviço × região).
+  // count = nº de clientes da lista (igual ao motor real: alvos == clienteList).
+  segments: [
+    {
+      id: 'faixa:25–34 anos:Progressiva',
+      dimensao: 'faixa',
+      segmento: '25–34 anos',
+      servico: 'Progressiva',
+      titulo: 'Cross-sell de Progressiva — 25–34 anos',
+      insight: '6 clientes de 25–34 anos ainda não fizeram Progressiva — serviço que 72% do resto da base já faz. Cruzamento por faixa etária: oferta certeira.',
+      estimated: 1080,
+      count: 6,
+      icon: Users,
+      clienteList: [
+        { nome: 'Marina Souza', key: 'sg1', telefone: '11988881101' },
+        { nome: 'Bruna Teixeira', key: 'sg2', telefone: '11988881102' },
+        { nome: 'Carolina Dias', key: 'sg3', telefone: '11988881103' },
+        { nome: 'Letícia Moraes', key: 'sg4', telefone: '11988881104' },
+        { nome: 'Priscila Amaral', key: 'sg5', telefone: '11988881105' },
+        { nome: 'Natália Brito', key: 'sg6', telefone: '11988881106' },
+      ],
+    },
+    {
+      id: 'regiao:São Paulo/SP:Coloração',
+      dimensao: 'regiao',
+      segmento: 'São Paulo/SP',
+      servico: 'Coloração',
+      titulo: 'Cross-sell de Coloração — São Paulo/SP',
+      insight: '5 clientes de São Paulo/SP ainda não fizeram Coloração — serviço que 68% do resto da base já faz. Cruzamento por região: oferta certeira.',
+      estimated: 900,
+      count: 5,
+      icon: MapPin,
+      clienteList: [
+        { nome: 'Patrícia Reis', key: 'sg7', telefone: '11988881107' },
+        { nome: 'Aline Prado', key: 'sg8', telefone: '11988881108' },
+        { nome: 'Vanessa Luz', key: 'sg9', telefone: '11988881109' },
+        { nome: 'Débora Pinto', key: 'sg10', telefone: '11988881110' },
+        { nome: 'Camila Freitas', key: 'sg11', telefone: '11988881111' },
+      ],
+    },
+    {
+      id: 'faixa+regiao:45–59 anos · São Paulo/SP:Hidratação',
+      dimensao: 'faixa+regiao',
+      segmento: '45–59 anos · São Paulo/SP',
+      servico: 'Hidratação',
+      titulo: 'Cross-sell de Hidratação — 45–59 anos · São Paulo/SP',
+      insight: '3 clientes de 45–59 anos · São Paulo/SP ainda não fizeram Hidratação — serviço que 80% do resto da base já faz. Cruzamento por faixa + região: oferta certeira.',
+      estimated: 360,
+      count: 3,
+      icon: Layers,
+      clienteList: [
+        { nome: 'Sílvia Nunes', key: 'sg12', telefone: '11988881112' },
+        { nome: 'Rosana Maia', key: 'sg13', telefone: '11988881113' },
+        { nome: 'Teresa Campos', key: 'sg14', telefone: '11988881114' },
       ],
     },
   ],
