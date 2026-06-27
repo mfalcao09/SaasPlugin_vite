@@ -198,7 +198,27 @@
   </ol>
 
   <hr>
-  <p class="foot">Próximo passo: você responde as 4 decisões do §5 (ou só "aprovo B+") e eu sigo pro código.</p>
+
+  <h2>7 · Review — o que foi efetivamente ENVIADO (2026-06-27)</h2>
+  <div class="callout rec">
+    <strong>Decisão final:</strong> Esquema <strong>B</strong> (sidebar colapsável) + <strong>renomear o jargão</strong>, <strong>SEM</strong> as fusões grandes de página — EXCETO as três fusões aprovadas do grupo "Crescer".
+  </div>
+  <table>
+    <tr><th>Fase</th><th>Entregue (provado no Chrome real logado)</th><th>Commit</th></tr>
+    <tr><td>1</td><td>Shell colapsável (accordion shadcn + estado em <code>localStorage</code> + auto-abre o grupo da rota ativa) + nav reorganizado + jargão traduzido</td><td><code>d8d069b</code></td></tr>
+    <tr><td>2a</td><td><strong>Oportunidades</strong> = AI Growth + Ações com Clientes em abas (<code>?tab=geral|cliente</code>)</td><td><code>5d8a096</code></td></tr>
+    <tr><td>2b</td><td><strong>Ofertas da IA</strong> → aba dentro de Minha IA; <code>/produtos</code> redireciona</td><td><code>5d8a096</code></td></tr>
+    <tr><td>2c</td><td><strong>Radar</strong> reposicionado sob Conversas — <strong>inbox NÃO tocado</strong></td><td><code>c2336ae</code></td></tr>
+    <tr><td>2d</td><td><strong>Saúde da Base</strong> → aviso-link dentro de Meus Clientes</td><td><code>c2336ae</code></td></tr>
+    <tr><td>3</td><td>Wizard de oferta <strong>8 → 3 passos</strong>, linguagem de salão</td><td><code>e57b5e8</code></td></tr>
+    <tr><td>limpeza</td><td>dead code do <code>App.tsx</code> removido + demos repontados pra Oportunidades fundida</td><td>(commit da limpeza)</td></tr>
+  </table>
+  <h3>Desvios conscientes do plano original (por honestidade)</h3>
+  <ul>
+    <li><strong>NÃO</strong> fundi os dois "Relatórios" nem Início/Painel — Marcelo ficou desconfortável com fusões de página; mantidos separados, só renomeados.</li>
+    <li><strong>Radar</strong> virou item <strong>reposicionado</strong> (sob Conversas), <strong>não</strong> aba dentro do inbox. Motivo: o <code>InboxManager</code> documenta que o time já EXTRAIU o Radar das abas de Conversas, e o <code>SellerInbox</code> usa altura fixa de viewport (<code>h-[calc(100dvh-8rem)]</code>) — envolver em abas era risco desnecessário na tela mais sensível. Objetivo de UX cumprido com risco zero.</li>
+  </ul>
+  <p><strong>IA final da sidebar:</strong> 5 itens diários no topo (Início · Minha Agenda · Meus Clientes · Conversas · Oportunidades nas conversas) + 6 grupos colapsáveis (<strong>Crescer</strong>=4 · <strong>Meu Catálogo</strong>=3 · <strong>Meus Números</strong>=3 · <strong>Vendas</strong>=5 · <strong>Configurações</strong>=7 · <strong>Config. avançada</strong>=5). Saiu de 35 itens / 4 grupos pra isso, sem quebrar o atendimento.</p>
 </div>
 </body>
 </html>

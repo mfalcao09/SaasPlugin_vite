@@ -149,4 +149,24 @@ Sidebar colapsável (B) **+** os 3 clusters problemáticos (IA, Relatórios, Con
 
 ---
 
-_Próximo passo: você responde as 4 decisões do §5 (ou só "aprovo B+") e eu sigo pro código._
+---
+
+## 7. Review — o que foi efetivamente ENVIADO (2026-06-27)
+
+**Decisão final tomada com Marcelo:** Esquema **B** (sidebar colapsável) + **renomear o jargão**, **SEM** as fusões grandes de página — EXCETO as três fusões aprovadas do grupo "Crescer".
+
+| Fase | Entregue (provado no Chrome real logado) | Commit |
+|---|---|---|
+| 1 | Shell colapsável (accordion shadcn + estado em `localStorage` + auto-abre o grupo da rota ativa) + nav reorganizado + jargão traduzido | `d8d069b` |
+| 2a | **Oportunidades** = AI Growth + Ações com Clientes em abas (`?tab=geral\|cliente`) | `5d8a096` |
+| 2b | **Ofertas da IA** → aba dentro de Minha IA; `/produtos` redireciona | `5d8a096` |
+| 2c | **Radar** reposicionado sob Conversas — **inbox NÃO tocado** | `c2336ae` |
+| 2d | **Saúde da Base** → aviso-link dentro de Meus Clientes | `c2336ae` |
+| 3 | Wizard de oferta **8 → 3 passos**, linguagem de salão | `e57b5e8` |
+| limpeza | dead code do `App.tsx` removido + demos repontados pra Oportunidades fundida | (commit da limpeza) |
+
+**Desvios conscientes do plano original (registrados por honestidade):**
+- **NÃO** fundi os dois "Relatórios" nem Início/Painel — Marcelo ficou desconfortável com fusões de página; mantidos separados, só renomeados.
+- **Radar** virou item **reposicionado** (sob Conversas), **não** aba dentro do inbox. Motivo: o `InboxManager` documenta que o time já EXTRAIU o Radar das abas de Conversas de propósito, e o `SellerInbox` usa altura fixa de viewport (`h-[calc(100dvh-8rem)]`) — envolver em abas era risco desnecessário na tela mais sensível. Objetivo de UX cumprido com risco zero.
+
+**IA final da sidebar:** 5 itens diários no topo (Início · Minha Agenda · Meus Clientes · Conversas · Oportunidades nas conversas) + 6 grupos colapsáveis (**Crescer**=4 · **Meu Catálogo**=3 · **Meus Números**=3 · **Vendas**=5 · **Configurações**=7 · **Config. avançada**=5). Saiu de 35 itens / 4 grupos pra isso, sem quebrar o atendimento.

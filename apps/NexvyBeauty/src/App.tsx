@@ -26,13 +26,9 @@ const CockpitInicio = lazyWithRetry(() => import("./cockpit/Inicio")); // novo I
 const Relatorios = lazyWithRetry(() => import("./cockpit/Relatorios")); // Relatórios & Gestão
 // Demo público da página Relatórios (dados de exemplo — orgs ainda sem dados reais).
 const DemoRelatorios = lazyWithRetry(() => import("./cockpit/Relatorios").then(m => ({ default: () => <m.default demo={m.DEMO_RELATORIOS} /> })));
-// AI Growth — motor MACRO (oportunidades de receita do histórico do negócio).
-const AiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth"));
+// Oportunidades — fusão AI Growth (panorama) + Ações (fila por cliente), em abas.
 const Oportunidades = lazyWithRetry(() => import("./cockpit/Oportunidades"));
-const DemoAiGrowth = lazyWithRetry(() => import("./cockpit/AiGrowth").then(m => ({ default: () => <m.default demo={m.DEMO_AIGROWTH} /> })));
-// Ações com Clientes — fila "o que fazer com cada cliente agora" (transpõe o AI Growth por cliente).
-const AcoesClientes = lazyWithRetry(() => import("./cockpit/AcoesClientes"));
-const DemoAcoesClientes = lazyWithRetry(() => import("./cockpit/AcoesClientes").then(m => ({ default: () => <m.default demo={m.DEMO_ACOES} /> })));
+const DemoOportunidades = lazyWithRetry(() => import("./cockpit/Oportunidades").then(m => ({ default: () => <m.default demo /> })));
 // Saúde da Base — diagnóstico de higiene do cadastro (Feature D).
 const SaudeBase = lazyWithRetry(() => import("./cockpit/SaudeBase"));
 const DemoSaudeBase = lazyWithRetry(() => import("./cockpit/SaudeBase").then(m => ({ default: () => <m.default demo={m.DEMO_SAUDE} /> })));
@@ -57,8 +53,7 @@ const CockpitConversas = lazyWithRetry(() => import("@/components/admin/InboxMan
 // CRM migrado do painel admin → Comercial (kanban de pipeline + central de leads).
 const CockpitPipeline = lazyWithRetry(() => import("@/components/admin/kanban/KanbanBoard").then(m => ({ default: m.KanbanBoard })));
 const CockpitLeads = lazyWithRetry(() => import("@/components/admin/leads/LeadsManager").then(m => ({ default: m.LeadsManager })));
-// Gestão migrada do admin → cockpit (Produtos/Setores/Equipes).
-const CockpitProdutos = lazyWithRetry(() => import("./cockpit/Produtos"));
+// Gestão migrada do admin → cockpit (Setores/Equipes; Produtos virou aba em Minha IA).
 const CockpitSetores = lazyWithRetry(() => import("./cockpit/Setores"));
 const CockpitEquipes = lazyWithRetry(() => import("./cockpit/Equipes"));
 // Configurações migradas do admin → cockpit (Gestão), como páginas individuais.
@@ -228,8 +223,9 @@ const App = () => (
               <Route path="/demo/salao/financeiro" element={<DemoSalaoFinanceiro />} />
               <Route path="/demo/salao/agenda" element={<DemoSalaoAgenda />} />
               <Route path="/demo/relatorios" element={<DemoRelatorios />} />
-              <Route path="/demo/ai-growth" element={<DemoAiGrowth />} />
-              <Route path="/demo/acoes" element={<DemoAcoesClientes />} />
+              <Route path="/demo/ai-growth" element={<DemoOportunidades />} />
+              {/* /demo/acoes vira a aba "quem chamar" da demo de Oportunidades */}
+              <Route path="/demo/acoes" element={<Navigate to="/demo/ai-growth?tab=cliente" replace />} />
               <Route path="/demo/saude" element={<DemoSaudeBase />} />
               <Route path="/demo/automacoes" element={<DemoAutomacoes />} />
               <Route path="/demo/meta" element={<DemoMetaMes />} />

@@ -8,10 +8,11 @@
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/layout/PageHeader'
-import AiGrowth from '@/cockpit/AiGrowth'
-import AcoesClientes from '@/cockpit/AcoesClientes'
+import AiGrowth, { DEMO_AIGROWTH } from '@/cockpit/AiGrowth'
+import AcoesClientes, { DEMO_ACOES } from '@/cockpit/AcoesClientes'
 
-export default function Oportunidades() {
+// `demo` propaga os seeds DEMO_* pros filhos embedded (rota /demo/ai-growth).
+export default function Oportunidades({ demo }: { demo?: boolean } = {}) {
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') === 'cliente' ? 'cliente' : 'geral'
   const setTab = (v: string) => setParams({ tab: v }, { replace: true })
@@ -28,10 +29,10 @@ export default function Oportunidades() {
           <TabsTrigger value="cliente">Quem chamar hoje</TabsTrigger>
         </TabsList>
         <TabsContent value="geral" className="mt-4">
-          <AiGrowth embedded />
+          <AiGrowth embedded demo={demo ? DEMO_AIGROWTH : undefined} />
         </TabsContent>
         <TabsContent value="cliente" className="mt-4">
-          <AcoesClientes embedded />
+          <AcoesClientes embedded demo={demo ? DEMO_ACOES : undefined} />
         </TabsContent>
       </Tabs>
     </div>
