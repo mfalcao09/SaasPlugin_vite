@@ -227,6 +227,8 @@ export function MessageBubble({
       <div
         className={cn(
           "max-w-[min(75%,42rem)] min-w-0 px-3.5 py-2 transition-all relative overflow-hidden",
+          // Apagada no aparelho original: cinza translúcido + borda tracejada = sinal de "modificado"
+          isDeleted && "!bg-muted/40 !text-muted-foreground !border !border-dashed !border-muted-foreground/30",
           isVisitor
             ? cn(
                 "bg-card text-foreground border border-border/60",
@@ -295,10 +297,21 @@ export function MessageBubble({
 
         {/* Message text or deleted state */}
         {isDeleted ? (
-          <p className="text-sm italic opacity-60 flex items-center gap-1.5">
-            <Ban className="h-3.5 w-3.5" />
-            Mensagem apagada
-          </p>
+          <div className="space-y-0.5">
+            {content && content.trim() ? (
+              // Preserva o texto original, tachado, pra recepção ver o que foi apagado
+              <p className="text-sm italic line-through opacity-70">{content}</p>
+            ) : (
+              <p className="text-sm italic opacity-60 flex items-center gap-1.5">
+                <Ban className="h-3.5 w-3.5" />
+                Mensagem apagada
+              </p>
+            )}
+            <p className="flex items-center gap-1 text-[10px] font-medium text-red-500">
+              <Ban className="h-2.5 w-2.5" />
+              mensagem original apagada
+            </p>
+          </div>
         ) : isEditing ? (
           <div className="space-y-2">
             <Textarea

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
 import { useWebChatConversations, useWebChatConversationCounts, useWebChatConversation, useSendAgentMessage, useCloseConversation, useReopenConversation, useReturnToQueue, useResumeConversation, useActivateBot, useEditMessage, useDeleteMessage, useStarMessage, useForwardMessage, useAssignConversation, type InboxBackendFilters } from '@/hooks/useWebChat';
 import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
 import { useAssignedProducts, useProducts } from '@/hooks/useProducts';
@@ -51,6 +53,8 @@ interface SellerInboxProps {
 export function SellerInbox({ productId, pendingConversationId, onConversationSelected, mode = 'seller', heightClass = 'h-[calc(100dvh-8rem)]' }: SellerInboxProps) {
   const isAdminMode = mode === 'admin';
   const { user, profile, roles } = useAuth();
+  const navigate = useNavigate();
+  const convertToCliente = useConvertLeadToCliente();
   const isAdminRole = roles?.includes('admin') || roles?.includes('super_admin');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -362,6 +366,27 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
     },
     enabled: !!selectedConversation?.lead_id,
   });
+
+  // Fase 3: "Agendar atendimento" do inbox abre a AGENDA REAL do salão (não o
+  // EventModal de vendas). Converte o lead vinculado em cliente (idempotente) e
+  // navega pra /salao/agenda?cliente=<id> com o form pré-selecionado. Sem lead,
+  // abre a Agenda em branco (a recepção escolhe/cria a cliente).
+  const handleAgendarAtendimento = () => {
+    if (linkedLead?.id && profile?.organization_id) {
+      convertToCliente.mutate(
+        {
+          leadId: linkedLead.id,
+          nome: (linkedLead as any).name,
+          email: (linkedLead as any).email,
+          telefone: (linkedLead as any).phone,
+          organizationId: profile.organization_id,
+        },
+        { onSuccess: (res) => navigate(`/salao/agenda?cliente=${res.clienteId}`) },
+      );
+    } else {
+      navigate('/salao/agenda');
+    }
+  };
 
   // Fetch pipeline stages for the lead's product
   const { data: pipelineStages } = useQuery({
@@ -970,9 +995,9 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               onSendCadence={() => setShowSendCadence(true)}
               onAnalyze={() => setShowAnalysis(true)}
               onScheduleMessage={() => setShowScheduleMessage(true)}
-              onCreateEvent={() => setShowCreateEvent(true)}
+              onCreateEvent={handleAgendarAtendimento}
               onCreateDeal={linkedLead?.id ? () => setShowCreateDeal(true) : undefined}
-              onViewLead={linkedLead?.id ? () => setShowPanel(true) : undefined}
+              onViewLead={linkedLead?.id ? () => setShowPanel((prev) => !prev) : undefined}
               onMoveStageQuick={linkedLead?.id ? handleMoveStage : undefined}
               pipelineStages={pipelineStages || []}
               currentStageId={linkedLead?.current_stage_id || null}
@@ -1010,7 +1035,7 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               onMoveStage={handleMoveStage}
               onEdit={() => setShowEditContact(true)}
               onCreateTask={() => setShowScheduleFollowup(true)}
-              onCreateEvent={() => setShowCreateEvent(true)}
+              onCreateEvent={handleAgendarAtendimento}
               onClose={() => setShowPanel(false)}
             />
           </aside>
@@ -1047,7 +1072,7 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               onMoveStage={handleMoveStage}
               onEdit={() => setShowEditContact(true)}
               onCreateTask={() => setShowScheduleFollowup(true)}
-              onCreateEvent={() => setShowCreateEvent(true)}
+              onCreateEvent={handleAgendarAtendimento}
               onClose={() => setShowPanel(false)}
             />
           </SheetContent>

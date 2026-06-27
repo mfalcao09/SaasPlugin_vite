@@ -134,10 +134,10 @@ export function QuickActionBar({
               onClick={onCreateEvent}
             >
               <CalendarPlus className="h-3.5 w-3.5" />
-              Novo Evento
+              Agendar
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Criar evento na agenda já vinculado a este lead</TooltipContent>
+          <TooltipContent>Agendar um atendimento na agenda do salão</TooltipContent>
         </Tooltip>
       )}
 
@@ -226,7 +226,7 @@ export function QuickActionBar({
               Ver Lead
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Abrir os dados completos do lead</TooltipContent>
+          <TooltipContent>Abrir/ocultar os dados do lead (no painel à direita)</TooltipContent>
         </Tooltip>
       )}
 
