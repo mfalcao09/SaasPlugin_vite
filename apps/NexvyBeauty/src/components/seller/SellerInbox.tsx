@@ -687,6 +687,17 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
           return { ...old, messages: [...msgs, incoming] };
         });
       })
+      .on('broadcast', { event: 'message_deleted' }, (payload) => {
+        // Apagada (no aparelho ou pelo atendente): marca is_deleted no cache em
+        // tempo real → a bolha passa a mostrar o original tachado, sem reload.
+        const deletedId = payload.payload?.id;
+        if (!deletedId) return;
+        queryClient.setQueryData(['webchat-conversation', conversationId], (old: any) => {
+          if (!old) return old;
+          const msgs = old.messages || [];
+          return { ...old, messages: msgs.map((m: any) => m.id === deletedId ? { ...m, is_deleted: true } : m) };
+        });
+      })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload?.sender_type === 'visitor') {
           setIsTyping(true);

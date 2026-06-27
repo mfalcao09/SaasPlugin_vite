@@ -1693,6 +1693,17 @@ serve(async (req) => {
         .update({ is_deleted: true })
         .eq('id', body.message_id);
 
+      // Propaga o delete em tempo real pros inboxes abertos (mesmo canal do new_message).
+      try {
+        await supabase.channel(`conversation:${origMsg.conversation_id}`).send({
+          type: 'broadcast',
+          event: 'message_deleted',
+          payload: { id: body.message_id, conversation_id: origMsg.conversation_id },
+        });
+      } catch (e) {
+        console.error('[delete-message] broadcast failed (non-fatal):', e);
+      }
+
       // Sync delete to WhatsApp - send notification
       const { data: delConv } = await supabase
         .from('webchat_conversations')

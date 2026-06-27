@@ -140,6 +140,7 @@ type Normalized =
     }
   | { kind: "connection"; instance: string; state: "open" | "connecting" | "close"; phone?: string }
   | { kind: "qrcode"; instance: string; qr: string }
+  | { kind: "revoke"; instance: string; messageIds: string[] }
   | { kind: "unknown"; instance: string; event: string };
 
 function extractInstance(payload: any): string {
@@ -328,6 +329,46 @@ function normalizePayload(payload: any): Normalized | null {
 
   if (event === "qrcode.updated" || event === "QRCODE_UPDATED") {
     return { kind: "qrcode", instance, qr: normalizeQrString(data.qrcode?.base64 || data.qrcode?.code || data.base64 || data.code) || "" };
+  }
+
+  // ---- Revoke / "apagar para todos" (Baileys v2) ----
+  // A mensagem apagada no aparelho chega como messages.delete carregando a(s)
+  // key(s) revogada(s). Marcamos is_deleted preservando o texto (o inbox mostra
+  // o original tachado). Payload varia: array | {keys:[...]} | {key} | {id}.
+  if (event === "messages.delete" || event === "MESSAGES_DELETE") {
+    const raw = Array.isArray(data) ? data
+      : Array.isArray(data?.keys) ? data.keys
+      : data?.key ? [data.key]
+      : data?.id ? [data]
+      : [];
+    const messageIds = raw
+      .map((k: any) => (typeof k === "string" ? k : k?.id))
+      .filter((id: any): id is string => typeof id === "string" && id.length > 0);
+    if (messageIds.length === 0) return null;
+    return { kind: "revoke", instance, messageIds };
+  }
+
+  // ---- Revoke vindo como MESSAGES_UPDATE (Baileys) ----
+  // Algumas versões mandam "apagar para todos" como messages.update com
+  // protocolMessage REVOKE (type 0) ou messageStubType de revoke. Como
+  // MESSAGES_UPDATE já é assinado, isso captura o revoke mesmo sem MESSAGES_DELETE.
+  if (event === "messages.update" || event === "MESSAGES_UPDATE") {
+    const arr = Array.isArray(data?.messages) ? data.messages
+      : Array.isArray(data) ? data
+      : [data];
+    const ids: string[] = [];
+    for (const it of arr) {
+      if (!it) continue;
+      const upd = it.update || it;
+      const proto = upd?.message?.protocolMessage || it?.message?.protocolMessage;
+      const isRevoke =
+        (proto && (proto.type === 0 || proto.type === "REVOKE")) ||
+        upd?.messageStubType === "REVOKE" || upd?.messageStubType === 1;
+      const id = proto?.key?.id || it?.key?.id;
+      if (isRevoke && typeof id === "string" && id) ids.push(id);
+    }
+    if (ids.length) return { kind: "revoke", instance, messageIds: ids };
+    return null; // update sem revoke → ignorado (comportamento atual)
   }
 
   // ---- Evolution Go events ----
@@ -854,6 +895,42 @@ Deno.serve(async (req) => {
     if (!instance) {
       console.warn("[evolution-webhook] unknown instance:", norm.instance);
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- REVOKE (mensagem apagada no aparelho) ----
+    if (norm.kind === "revoke") {
+      // Casa pelo id WhatsApp guardado em metadata (inbound=evolution_message_id,
+      // outbound-echo=external_id) e marca is_deleted SEM apagar o content.
+      let marked = 0;
+      for (const extId of norm.messageIds) {
+        const { data: rows, error } = await supabase
+          .from("webchat_messages")
+          .update({ is_deleted: true })
+          .or(`metadata->>evolution_message_id.eq.${extId},metadata->>external_id.eq.${extId}`)
+          .eq("is_deleted", false)
+          .select("id, conversation_id");
+        if (error) {
+          console.warn("[evolution-webhook] revoke: update error", extId, error.message);
+        } else if (rows) {
+          marked += rows.length;
+          // Propaga em tempo real pros inboxes abertos (mesmo canal do new_message).
+          for (const r of rows as any[]) {
+            try {
+              await supabase.channel(`conversation:${r.conversation_id}`).send({
+                type: "broadcast",
+                event: "message_deleted",
+                payload: { id: r.id, conversation_id: r.conversation_id },
+              });
+            } catch (e) {
+              console.warn("[evolution-webhook] revoke: broadcast failed (non-fatal)", (e as any)?.message);
+            }
+          }
+        }
+      }
+      console.log("[evolution-webhook] revoke: marked", marked, "of", norm.messageIds.length);
+      return new Response(JSON.stringify({ ok: true, revoked: marked }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

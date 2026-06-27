@@ -123,6 +123,7 @@ function extractQr(obj: any): string | null {
 const WEBHOOK_EVENTS = [
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
+  "MESSAGES_DELETE",
   "CONNECTION_UPDATE",
   "QRCODE_UPDATED",
   "SEND_MESSAGE",
