@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Scissors, Loader2, Package, CalendarDays, Sparkles, CalendarPlus } from 'lucide-react';
+import { Store, Loader2, Package, CalendarDays, Sparkles, CalendarPlus } from 'lucide-react';
 
 type Pacote = { id: string; nome: string; descricao: string | null; total_sessoes: number; valor: number; validade_dias: number };
 type Bootstrap = {
@@ -34,7 +34,7 @@ export default function PublicSalaoPacotes() {
     return <Centered><Loader2 className="h-8 w-8 animate-spin text-primary" /></Centered>;
   }
   if (boot.isError || !boot.data) {
-    return <Centered><Scissors className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Salão não encontrado</p></Centered>;
+    return <Centered><Store className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Negócio não encontrado</p></Centered>;
   }
   const { org, pacotes } = boot.data;
 

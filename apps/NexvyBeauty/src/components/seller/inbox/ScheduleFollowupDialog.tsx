@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Calendar } from 'lucide-react';
+import { Loader2, CalendarClock } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 interface ScheduleFollowupDialogProps {
@@ -45,24 +45,24 @@ export function ScheduleFollowupDialog({
     setIsSaving(true);
     try {
       const { error } = await supabase.from('tasks').insert({
-        title: `Follow-up: ${visitorName || 'Conversa'}`,
-        description: note.trim() || `Follow-up da conversa ${conversationId}`,
+        title: `Retorno: ${visitorName || 'Cliente'}`,
+        description: note.trim() || `Retorno da conversa ${conversationId}`,
         due_date: new Date(dueDate).toISOString(),
         user_id: user.id,
         created_by: user.id,
         lead_id: leadId || null,
-        type: 'followup',
+        type: 'retorno',
         priority: 'medium',
         status: 'pending',
       });
 
       if (error) throw error;
 
-      toast({ title: 'Follow-up agendado!', description: `Para ${format(new Date(dueDate), "dd/MM 'às' HH:mm")}` });
+      toast({ title: 'Retorno agendado!', description: `Para ${format(new Date(dueDate), "dd/MM 'às' HH:mm")}` });
       setNote('');
       onOpenChange(false);
     } catch {
-      toast({ title: 'Erro ao agendar follow-up', variant: 'destructive' });
+      toast({ title: 'Erro ao agendar retorno', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -73,8 +73,8 @@ export function ScheduleFollowupDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Agendar Follow-up
+            <CalendarClock className="h-5 w-5" />
+            Agendar retorno
           </DialogTitle>
         </DialogHeader>
 
@@ -95,7 +95,7 @@ export function ScheduleFollowupDialog({
               id="followup-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ex: Enviar proposta comercial..."
+              placeholder="Ex: Lembrar de remarcar · renovar pacote · oferecer retorno do serviço"
               rows={3}
             />
           </div>

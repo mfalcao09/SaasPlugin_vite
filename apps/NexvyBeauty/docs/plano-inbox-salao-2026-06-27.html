@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — adaptar o inbox ao salão</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#2a3240;--text:#e6edf3;--muted:#9aa6b2;--pink:#ec4899;--pink-soft:#f9a8d4;--green:#34d399;--amber:#fbbf24;--red:#f87171;--code:#0b0f16;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px;}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px;}
+  header{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(96,165,250,.08));border-bottom:1px solid var(--border);padding:40px 0 28px;margin-bottom:8px;}
+  header .wrap{padding-top:0;padding-bottom:0;}
+  h1{margin:0 0 8px;font-size:26px;letter-spacing:-.5px;} .sub{color:var(--muted);font-size:14px;}
+  .badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--pink-soft);border:1px solid rgba(236,72,153,.4);border-radius:999px;padding:2px 12px;font-size:12px;font-weight:600;margin-bottom:14px;}
+  h2{margin:34px 0 12px;font-size:19px;border-left:3px solid var(--pink);padding-left:12px;}
+  code{background:var(--code);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--pink-soft);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:8px 10px;border:1px solid var(--border);vertical-align:top;}
+  th{background:var(--panel2);color:var(--pink-soft);font-weight:600;}
+  .callout{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:14px 16px;margin:14px 0;}
+  .callout.rec{border-left-color:var(--green);}
+  ul li,ol li{margin:5px 0;} hr{border:none;border-top:1px solid var(--border);margin:28px 0;}
+  .eff{font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;}
+  .baixo{background:rgba(52,211,153,.15);color:var(--green);} .medio{background:rgba(251,191,36,.15);color:var(--amber);}
+  .foot{color:var(--muted);font-size:14px;font-style:italic;}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="badge">PROPOSTA · sem código ainda</div>
+  <h1>Adaptar o inbox ao salão / espaço de beleza</h1>
+  <div class="sub">2026-06-27 · investigação de 3 agentes nos componentes do inbox + modelos de salão.<br>4 features herdadas do CRM B2B apontando pro lugar errado.</div>
+</div></header>
+<div class="wrap">
+
+  <h2>0 · A raiz comum</h2>
+  <p>O inbox veio do <strong>CRM B2B</strong> e está plugado nas tabelas de <strong>venda de SaaS</strong> — não no que um salão faz. Mas os modelos de salão <strong>já existem</strong>, escopados por <code>organization_id</code>: quase tudo é "reapontar a leitura".</p>
+  <table>
+    <tr><th>Tela do inbox</th><th>Hoje (B2B)</th><th>Deveria usar (salão, já existe)</th></tr>
+    <tr><td><strong>Catálogo</strong></td><td><code>product_catalog_items</code> (Firecrawl) → vazio</td><td><code>servico_catalogo</code> + <code>pacotes</code> + <code>products</code>(revenda)</td></tr>
+    <tr><td><strong>Novo Evento</strong></td><td><code>calendar_events</code> (reunião/demo/Meet)</td><td><code>agendamentos</code> (cliente+serviço+profissional+data/hora)</td></tr>
+    <tr><td><strong>Follow-up</strong></td><td><code>tasks</code> "proposta comercial"</td><td>retorno/recompra (<code>clientActions.ts</code>)</td></tr>
+    <tr><td><strong>Cobrar</strong></td><td><code>payment_links</code></td><td>— desabilitar nesta versão</td></tr>
+  </table>
+
+  <h2>1 · Catálogo → o que o salão vende <span class="eff medio">médio</span></h2>
+  <p><strong>Hoje:</strong> o picker consulta <code>product_catalog_items</code> (ofertas de CRM) filtrando por <code>product_id</code> → vazio no salão.</p>
+  <p><strong>Proposta:</strong> hook agregador novo (<code>useSalaoCatalogo</code>) lendo <strong>Serviços</strong> (<code>servico_catalogo</code>), <strong>Pacotes</strong> (view <code>pacotes</code>) e <strong>Produtos de revenda</strong> (<code>products</code> tipo=produto), normalizados em <code>{kind,title,price,description}</code>, em 3 abas. Remove o filtro por <code>product_id</code>. O envio no chat fica igual (título+preço+descrição). Sem imagem por ora (não quebra). Não toca nas telas de catálogo nem nos Edge Functions de CRM.</p>
+
+  <h2>2 · Novo Evento → agendar atendimento <span class="eff medio">médio</span></h2>
+  <p><strong>Hoje:</strong> <code>EventModal</code> grava em <code>calendar_events</code> (Reunião/Demo/Meet/Lead/Produto SaaS) — nunca aparece na <code>/salao/agenda</code>.</p>
+  <p><strong>O salão já tem:</strong> tabela <code>agendamentos</code> + form em <code>Agenda.tsx</code> + caminho pronto (<code>LeadDetailPage</code> converte lead→cliente e navega pra <code>/salao/agenda?cliente=&lt;id&gt;</code>, abrindo o form pré-selecionado).</p>
+  <div class="callout">
+    <strong>Opção A</strong> (menor esforço): "Agendar atendimento" → converte lead→cliente e navega pra <code>/salao/agenda?cliente=</code> (reusa a tela; +1 clique; sem lead resolve por telefone).<br>
+    <strong>Opção B</strong> (mais esforço): extrair um <code>AgendamentoModal</code> compartilhado e abrir inline no chat, gravando em <code>agendamentos</code> (não sai do chat).
+  </div>
+  <p>Em ambas somem os campos de venda (Demo/Follow-up, Produto, Meet). Mesma correção no botão "Agendar Evento" do painel do lead.</p>
+
+  <h2>3 · Follow-up → "Agendar retorno" <span class="eff baixo">baixo (copy)</span></h2>
+  <p><strong>Hoje:</strong> grava em <code>tasks</code> "Follow-up: X" / "Enviar proposta comercial" — língua de SDR.</p>
+  <p><strong>Proposta (só copy, sem migração — <code>type:'followup'</code> não é lido como filtro):</strong> label "Follow-up"→<strong>"Retorno"</strong>, ícone <code>CalendarClock</code>, título "Agendar retorno", placeholder "Ex: Lembrar de remarcar · renovar pacote · oferecer retorno", <code>type</code>→<code>'retorno'</code>. <em>Evolução (depois):</em> pré-popular com a mensagem-pronta do <code>clientActions.ts</code>.</p>
+
+  <h2>4 · Cobrar → desabilitar nesta versão <span class="eff baixo">baixo (1 linha)</span></h2>
+  <p>O botão só renderiza se a prop <code>onSendPaymentLink</code> existir. <strong>Proposta:</strong> não passar a prop no <code>SellerInbox</code> (1 linha) → o botão some pelo gating que já existe; o dialog dorme. Sem feature-flag (over-engineering). Volta fácil no futuro.</p>
+
+  <h2>5 · Junto no lote (3 aprovados antes)</h2>
+  <ul>
+    <li><strong>Ícones tesoura</strong> em 4 telas (<code>PublicSalaoBooking</code>, <code>PublicSalaoPacotes</code> — públicas, a cliente vê — <code>salao/Profissionais</code>, <code>AgentHumanizationTab</code>) → neutros.</li>
+    <li><strong>Botão "Ver no AI Growth"</strong> (Início) → "Ver oportunidades".</li>
+  </ul>
+
+  <h2>6 · Decisões que preciso de você</h2>
+  <ol>
+    <li><strong>Catálogo:</strong> abas ou lista única? só ativos? <em>(recomendo abas + ativos)</em></li>
+    <li><strong>Novo Evento:</strong> Opção A (navega pra Agenda) ou B (modal inline)? <em>(recomendo A agora)</em></li>
+    <li><strong>Agenda de vendas</strong> (calendar_events): some de vez ou só desconecta do inbox? <em>(recomendo desconectar agora)</em></li>
+    <li><strong>Follow-up:</strong> só copy, ou já com a mensagem-pronta do <code>clientActions.ts</code>? <em>(recomendo só copy)</em></li>
+    <li><strong>Cobrar:</strong> esconder via prop — confirma? <em>(recomendo sim)</em></li>
+  </ol>
+
+  <h2>7 · Ordem sugerida</h2>
+  <ol>
+    <li>Cobrar (1 linha) + Follow-up (copy) + Scissors/AI Growth — rápidos. <em>(1 deploy)</em></li>
+    <li>Catálogo (hook + abas). <em>(1 deploy + teste)</em></li>
+    <li>Novo Evento (A ou B) — o maior, por último, com cuidado. <em>(1 deploy + teste)</em></li>
+  </ol>
+
+  <hr>
+  <p class="foot">Responda as 5 decisões do §6 (ou "aprovo as recomendações") que eu sigo pro código nessa ordem.</p>
+</div>
+</body>
+</html>

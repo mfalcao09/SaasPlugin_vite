@@ -977,7 +977,6 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               pipelineStages={pipelineStages || []}
               currentStageId={linkedLead?.current_stage_id || null}
               onPickCatalog={() => setShowCatalog(true)}
-              onSendPaymentLink={() => setShowPaymentLink(true)}
             />
           </div>
         )}

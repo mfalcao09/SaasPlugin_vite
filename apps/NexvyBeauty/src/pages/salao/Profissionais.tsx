@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Scissors, Plus, Search, Loader2 } from 'lucide-react'
+import { Users, Plus, Search, Loader2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -188,7 +188,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
             <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : filtered.length === 0 ? (
             <div className="py-16 text-center">
-              <Scissors className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+              <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">{search ? 'Nenhum profissional encontrado.' : 'Nenhum profissional cadastrado ainda.'}</p>
             </div>
           ) : (

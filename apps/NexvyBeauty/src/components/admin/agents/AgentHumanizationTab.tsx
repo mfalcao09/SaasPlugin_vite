@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Timer, Scissors, Type, Play, User, MessageCircle, Plus, X, Zap, Trash2 } from 'lucide-react';
+import { Sparkles, Timer, Split, Type, Play, User, MessageCircle, Plus, X, Zap, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Mirrors supabase/functions/_shared/humanizer.ts
@@ -335,7 +335,7 @@ export function AgentHumanizationTab({ value, onChange }: Props) {
         <Card className="mt-4">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Scissors className="h-4 w-4 text-primary" /> Quebra de Mensagens
+              <Split className="h-4 w-4 text-primary" /> Quebra de Mensagens
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">

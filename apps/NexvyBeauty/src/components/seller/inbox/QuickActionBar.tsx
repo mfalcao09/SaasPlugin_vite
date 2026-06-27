@@ -1,5 +1,5 @@
 import {
-  Calendar,
+  CalendarClock,
   Flame,
   LinkIcon,
   Sparkles,
@@ -145,11 +145,11 @@ export function QuickActionBar({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 shrink-0" onClick={onScheduleFollowup}>
-              <Calendar className="h-3.5 w-3.5" />
-              Follow-up
+              <CalendarClock className="h-3.5 w-3.5" />
+              Retorno
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Agendar tarefa de follow-up</TooltipContent>
+          <TooltipContent>Agendar lembrete de retorno da cliente</TooltipContent>
         </Tooltip>
       )}
 

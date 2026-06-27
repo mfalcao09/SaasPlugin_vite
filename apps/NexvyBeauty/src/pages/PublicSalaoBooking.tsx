@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Scissors, Clock, ChevronLeft, ChevronRight, Check, Loader2,
+  Store, Clock, ChevronLeft, ChevronRight, Check, Loader2,
   User, Phone, Mail, Sparkles, Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -95,7 +95,7 @@ export default function PublicSalaoBooking() {
     return <Centered><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="mt-3 text-muted-foreground">Carregando…</p></Centered>;
   }
   if (boot.isError || !boot.data) {
-    return <Centered><Scissors className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Salão não encontrado</p></Centered>;
+    return <Centered><Store className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Negócio não encontrado</p></Centered>;
   }
   const { org, servicos, profissionais } = boot.data;
 

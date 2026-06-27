@@ -477,7 +477,7 @@ function OndeTemDinheiro({
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-4 w-4 text-primary" /> Onde tem dinheiro
         </CardTitle>
-        <Button size="sm" onClick={onCTA}>Ver no AI Growth <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
+        <Button size="sm" onClick={onCTA}>Ver oportunidades <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
       </CardHeader>
       <CardContent className="space-y-2">
         <div>
