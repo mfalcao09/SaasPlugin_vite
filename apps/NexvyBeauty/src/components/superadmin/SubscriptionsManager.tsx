@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { 
-  CreditCard, 
+import {
+  CreditCard,
   Search,
   AlertTriangle,
   Mail,
   Ban,
   CheckCircle,
-  Clock
+  Clock,
+  Gift
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAllSubscriptions, useUpdateSubscription, useSuperAdminStats } from '@/hooks/useSuperAdmin';
+import { useAllSubscriptions, useUpdateSubscription } from '@/hooks/useSuperAdmin';
+import { useActivePlans } from '@/hooks/usePlatformPlans';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,7 +41,7 @@ export function SubscriptionsManager() {
   const [planFilter, setPlanFilter] = useState<string>('all');
 
   const { data: subscriptions, isLoading } = useAllSubscriptions();
-  const { data: stats } = useSuperAdminStats();
+  const { data: activePlans } = useActivePlans();
   const updateSubscription = useUpdateSubscription();
 
   const formatCurrency = (value: number) => {
@@ -48,6 +50,12 @@ export function SubscriptionsManager() {
       currency: 'BRL',
     }).format(value);
   };
+
+  // Contagem de assinaturas por slug de plano (plan_type unificado para os
+  // slugs do catálogo). Computada das subscriptions já carregadas, sem
+  // depender de números hardcoded.
+  const countByPlan = (slug: string) =>
+    subscriptions?.filter((sub: any) => sub.plan_type === slug).length || 0;
 
   const filteredSubs = subscriptions?.filter((sub: any) => {
     const matchesSearch = sub.organizations?.name?.toLowerCase().includes(search.toLowerCase());
@@ -79,18 +87,39 @@ export function SubscriptionsManager() {
     }
   };
 
+  // Cor do indicador (dot) por slug do tier — espelha o esquema visual antigo.
+  const getPlanDotColor = (slug: string) => {
+    switch (slug) {
+      case 'trial':
+        return 'bg-gray-400';
+      case 'starter':
+        return 'bg-blue-500';
+      case 'pro':
+        return 'bg-primary';
+      case 'premium':
+        return 'bg-violet-500';
+      default:
+        return 'bg-muted-foreground';
+    }
+  };
+
   const getPlanBadge = (planType: string) => {
+    // Nome de exibição vem do catálogo quando disponível; cai no slug cru
+    // se o plano não estiver mais listado em platform_plans.
+    const planName =
+      activePlans?.find((p) => p.slug === planType)?.name || planType;
+
     switch (planType) {
       case 'trial':
-        return <Badge variant="outline">Trial</Badge>;
+        return <Badge variant="outline">{planName}</Badge>;
       case 'starter':
-        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Starter</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">{planName}</Badge>;
       case 'pro':
-        return <Badge className="bg-primary/10 text-primary border-primary/20">Pro</Badge>;
-      case 'enterprise':
-        return <Badge className="bg-violet-500/10 text-violet-500 border-violet-500/20">Enterprise</Badge>;
+        return <Badge className="bg-primary/10 text-primary border-primary/20">{planName}</Badge>;
+      case 'premium':
+        return <Badge className="bg-violet-500/10 text-violet-500 border-violet-500/20">{planName}</Badge>;
       default:
-        return <Badge variant="secondary">{planType}</Badge>;
+        return <Badge variant="secondary">{planName}</Badge>;
     }
   };
 
@@ -124,6 +153,23 @@ export function SubscriptionsManager() {
     }
   };
 
+  // Bonificar / Isentar: alterna is_complimentary. Quando bonificada, a
+  // assinatura continua ativa mas conta como R$0 de receita (excluída do MRR).
+  const handleToggleComplimentary = async (sub: any) => {
+    const next = !sub.is_complimentary;
+    try {
+      await updateSubscription.mutateAsync({
+        id: sub.id,
+        is_complimentary: next,
+        complimentary_reason: next ? 'Cortesia concedida pelo super admin' : null,
+        complimentary_since: next ? new Date().toISOString() : null,
+      });
+      toast.success(next ? 'Assinatura bonificada (cortesia)' : 'Bonificação removida');
+    } catch (error) {
+      toast.error('Erro ao atualizar bonificação');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -132,47 +178,24 @@ export function SubscriptionsManager() {
         <p className="text-muted-foreground">Gerencie planos e assinaturas das empresas</p>
       </div>
 
-      {/* Plan Summary */}
+      {/* Plan Summary — gerado do catálogo (platform_plans), sem preço hardcoded */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-gray-400" />
-              <span className="font-medium">Trial</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats?.planCounts?.trial || 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="font-medium">Starter</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats?.planCounts?.starter || 0}</p>
-            <p className="text-xs text-muted-foreground">R$ 97/mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="font-medium">Pro</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats?.planCounts?.pro || 0}</p>
-            <p className="text-xs text-muted-foreground">R$ 497/mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-violet-500" />
-              <span className="font-medium">Enterprise</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats?.planCounts?.enterprise || 0}</p>
-            <p className="text-xs text-muted-foreground">Personalizado</p>
-          </CardContent>
-        </Card>
+        {(activePlans || []).map((plan) => (
+          <Card key={plan.id}>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${getPlanDotColor(plan.slug)}`} />
+                <span className="font-medium">{plan.name}</span>
+              </div>
+              <p className="text-2xl font-bold mt-2">{countByPlan(plan.slug)}</p>
+              <p className="text-xs text-muted-foreground">
+                {Number(plan.price_monthly) > 0
+                  ? `${formatCurrency(Number(plan.price_monthly))}/mês`
+                  : 'Gratuito'}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Overdue Subscriptions Alert */}
@@ -259,10 +282,11 @@ export function SubscriptionsManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="trial">Trial</SelectItem>
-                <SelectItem value="starter">Starter</SelectItem>
-                <SelectItem value="pro">Pro</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
+                {(activePlans || []).map((plan) => (
+                  <SelectItem key={plan.id} value={plan.slug}>
+                    {plan.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -302,15 +326,34 @@ export function SubscriptionsManager() {
                       {sub.organizations?.name || 'N/A'}
                     </TableCell>
                     <TableCell>{getPlanBadge(sub.plan_type)}</TableCell>
-                    <TableCell>{formatCurrency(sub.price_monthly || 0)}</TableCell>
+                    <TableCell>
+                      {sub.is_complimentary ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                          <Gift className="h-3 w-3 mr-1" />
+                          Cortesia
+                        </Badge>
+                      ) : (
+                        formatCurrency(sub.price_monthly || 0)
+                      )}
+                    </TableCell>
                     <TableCell>{getStatusBadge(sub.status)}</TableCell>
                     <TableCell>
-                      {sub.current_period_end 
+                      {sub.current_period_end
                         ? format(new Date(sub.current_period_end), "dd/MM/yyyy", { locale: ptBR })
                         : '-'
                       }
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant={sub.is_complimentary ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => handleToggleComplimentary(sub)}
+                        disabled={updateSubscription.isPending}
+                        title={sub.is_complimentary ? 'Remover bonificação' : 'Bonificar / Isentar'}
+                      >
+                        <Gift className="h-4 w-4 mr-1" />
+                        {sub.is_complimentary ? 'Isenta' : 'Bonificar'}
+                      </Button>
                       <Button variant="ghost" size="sm">
                         <Clock className="h-4 w-4" />
                       </Button>

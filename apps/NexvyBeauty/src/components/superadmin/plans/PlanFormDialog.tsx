@@ -21,6 +21,7 @@ import {
   useUpdatePlan,
   useSyncCaktoOffer,
 } from '@/hooks/usePlatformPlans';
+import { MODULE_DEFINITIONS } from '@/config/modules';
 
 interface PlanFormDialogProps {
   open: boolean;
@@ -87,12 +88,15 @@ const emptyPlan: PlatformPlanInput = {
   trial_days: 7,
   grace_period_days: 3,
   max_users: 5,
+  max_professionals: null,
   max_connections: 1,
   max_sectors: 3,
   max_products: 5,
   max_contacts: 1000,
   max_messages_month: 5000,
   max_ai_tokens_month: 100000,
+  max_ai_agents: 0,
+  modules: ['erp_salao', 'crm_vendas', 'atendimento'],
   feature_whatsapp: true,
   feature_facebook: false,
   feature_instagram: false,
@@ -198,6 +202,37 @@ export function PlanFormBody({
       />
     </div>
   );
+
+  // Variante para campos nullable (ex.: max_professionals): vazio => null
+  // (ilimitado), em vez de coagir para 0.
+  const nullableNumberField = (
+    key: keyof PlatformPlanInput,
+    label: string,
+    placeholder = 'Ilimitado',
+  ) => (
+    <div className="space-y-2">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="number"
+        min={0}
+        placeholder={placeholder}
+        value={(form[key] as number | null) ?? ''}
+        onChange={(e) =>
+          set(key, (e.target.value === '' ? null : Number(e.target.value)) as any)
+        }
+      />
+    </div>
+  );
+
+  // Módulos liberados pelo plano (platform_plans.modules). Tratado como string[];
+  // null/undefined é coberto pelo fallback `[]`.
+  const selectedModules: string[] = Array.isArray(form.modules) ? form.modules : [];
+  const toggleModule = (id: string, on: boolean) => {
+    const next = on
+      ? Array.from(new Set([...selectedModules, id]))
+      : selectedModules.filter((m) => m !== id);
+    set('modules', next as any);
+  };
 
   return (
     <div>
@@ -309,16 +344,38 @@ export function PlanFormBody({
         <TabsContent value="limits" className="space-y-4 pt-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {numberField('max_users', 'Usuários')}
+            {nullableNumberField('max_professionals', 'Profissionais (cadeiras)')}
             {numberField('max_connections', 'Conexões WhatsApp')}
             {numberField('max_sectors', 'Setores')}
             {numberField('max_products', 'Produtos')}
             {numberField('max_contacts', 'Contatos')}
             {numberField('max_messages_month', 'Mensagens/mês')}
             {numberField('max_ai_tokens_month', 'Tokens IA/mês')}
+            {numberField('max_ai_agents', 'Agentes de IA')}
           </div>
         </TabsContent>
 
         <TabsContent value="features" className="space-y-6 pt-4">
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Módulos liberados
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {MODULE_DEFINITIONS.filter((m) => m.id !== 'gestao_plataforma').map((mod) => (
+                <div
+                  key={mod.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-card"
+                >
+                  <Label className="cursor-pointer text-sm">{mod.label}</Label>
+                  <Switch
+                    checked={selectedModules.includes(mod.id)}
+                    onCheckedChange={(v) => toggleModule(mod.id, v)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           {FEATURE_GROUPS.map((group) => (
             <div key={group.title} className="space-y-3">
               <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">

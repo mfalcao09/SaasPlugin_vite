@@ -292,6 +292,8 @@ export function useUpdateSubscription() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-subscriptions'] });
       queryClient.invalidateQueries({ queryKey: ['all-organizations'] });
+      // Bonificar/isentar (is_complimentary) muda a receita: recalcula MRR/ARR.
+      queryClient.invalidateQueries({ queryKey: ['super-admin-stats'] });
     },
   });
 }
@@ -413,10 +415,14 @@ export function useSuperAdminStats() {
       // Get active subscriptions and MRR
       const { data: subscriptions } = await supabase
         .from('subscriptions')
-        .select('price_monthly, status, plan_type');
-      
+        .select('price_monthly, status, plan_type, is_complimentary');
+
       const activeSubscriptions = subscriptions?.filter(s => s.status === 'active') || [];
-      const mrr = activeSubscriptions.reduce((sum, s) => sum + (Number(s.price_monthly) || 0), 0);
+      // Receita (MRR/ARR) exclui assinaturas bonificadas/cortesia: elas
+      // permanecem ativas mas contam como R$0 de receita recorrente.
+      const mrr = activeSubscriptions
+        .filter(s => !s.is_complimentary)
+        .reduce((sum, s) => sum + (Number(s.price_monthly) || 0), 0);
       
       // Get leads count
       const { count: leadsCount } = await supabase
@@ -430,13 +436,16 @@ export function useSuperAdminStats() {
       
       const totalDealsValue = deals?.reduce((sum, d) => sum + (Number(d.deal_value) || 0), 0) || 0;
       
-      // Plan breakdown
-      const planCounts = {
-        trial: subscriptions?.filter(s => s.plan_type === 'trial').length || 0,
-        starter: subscriptions?.filter(s => s.plan_type === 'starter').length || 0,
-        pro: subscriptions?.filter(s => s.plan_type === 'pro').length || 0,
-        enterprise: subscriptions?.filter(s => s.plan_type === 'enterprise').length || 0,
-      };
+      // Plan breakdown — contagem por slug do catálogo (plan_type unificado
+      // para os slugs de platform_plans). Objeto indexado dinamicamente, de
+      // forma que qualquer tier do catálogo (incl. 'premium') seja contado
+      // sem hardcode. Acessos por slug inexistente resolvem para undefined.
+      const planCounts: Record<string, number> = {};
+      (subscriptions || []).forEach((s) => {
+        const slug = s.plan_type;
+        if (!slug) return;
+        planCounts[slug] = (planCounts[slug] || 0) + 1;
+      });
       
       return {
         organizations: orgsCount || 0,

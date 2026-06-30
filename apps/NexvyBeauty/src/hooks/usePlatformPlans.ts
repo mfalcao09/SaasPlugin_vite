@@ -17,12 +17,18 @@ export interface PlatformPlan {
   grace_period_days: number;
 
   max_users: number;
+  max_professionals: number | null;
   max_connections: number;
   max_sectors: number;
   max_products: number;
   max_contacts: number;
   max_messages_month: number;
   max_ai_tokens_month: number;
+  max_ai_agents: number;
+
+  // Módulos liberados pelo plano. No banco é jsonb (default '[]'); aqui tratamos
+  // como string[] de IDs de MODULE_DEFINITIONS (ex.: 'erp_salao','crm_vendas').
+  modules: string[] | null;
 
   feature_whatsapp: boolean;
   feature_facebook: boolean;

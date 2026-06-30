@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/accordion';
 import { usePlatformName } from '@/hooks/usePlatformName';
 import { usePlatformBranding } from '@/hooks/usePlatformBranding';
+import { useActivePlans, type PlatformPlan } from '@/hooks/usePlatformPlans';
 import { LeadCaptureModal } from '@/components/sales/LeadCaptureModal';
 import { captureTrackingFromUrl } from '@/lib/tracking';
 
@@ -87,22 +88,52 @@ const insights = [
 ];
 
 // Garantias honestas (substituem o social proof fictício) — claims verdadeiros,
-// alinhados ao FAQ (trial sem cartão, sem fidelidade, migração assistida).
+// alinhados ao FAQ (sem fidelidade, migração assistida).
 const garantias = [
-  { t: '14 dias grátis', d: 'Teste tudo sem cartão de crédito. Só assina se gostar.' },
   { t: 'Sem fidelidade', d: 'Cancele quando quiser, sem multa e sem burocracia.' },
-  { t: 'Migração assistida', d: 'Trazemos sua base de clientes e serviços por planilha (planos Pro e Premium).' },
+  { t: 'Setup em minutos', d: 'Configure seu negócio e comece a usar no mesmo dia.' },
+  { t: 'Migração assistida', d: 'Trazemos sua base de clientes e serviços por planilha (planos superiores).' },
 ];
 
-const planos = [
-  { nome: 'Starter', preco: 'R$ 197', desc: 'Para negócios começando a se organizar.', features: ['Até 2 profissionais', 'Agenda completa', 'CRM de clientes', 'Link público de agendamento', 'Relatórios básicos'] },
-  { nome: 'Pro', preco: 'R$ 397', desc: 'O plano mais escolhido por negócios em crescimento.', features: ['Até 8 profissionais', 'Tudo do Starter', 'AI Growth Engine', 'Pacotes e sessões', 'WhatsApp ilimitado', 'Suporte prioritário'], destaque: true },
-  { nome: 'Premium', preco: 'R$ 697', desc: 'Para redes e operações high-end.', features: ['Profissionais ilimitados', 'White-label', 'Multi-unidade', 'API e integrações', 'Onboarding dedicado', 'Gerente de sucesso'] },
+// Catálogo de planos = platform_plans (fonte única). Os bullets de cada card
+// derivam das flags feature_* reais do plano — sem copy livre, sem promessa sem
+// lastro. Ordem do mapa = ordem de exibição das features no card.
+const FEATURE_LABELS: { key: keyof PlatformPlan; label: string }[] = [
+  { key: 'feature_whatsapp', label: 'WhatsApp integrado' },
+  { key: 'feature_instagram', label: 'Instagram integrado' },
+  { key: 'feature_facebook', label: 'Facebook integrado' },
+  { key: 'feature_scheduling', label: 'Agenda inteligente' },
+  { key: 'feature_kanban', label: 'Kanban de atendimentos' },
+  { key: 'feature_pipeline', label: 'Pipeline de vendas' },
+  { key: 'feature_campaigns', label: 'Campanhas de marketing' },
+  { key: 'feature_outreach', label: 'Prospecção ativa' },
+  { key: 'feature_capture_funnels', label: 'Funis de captação' },
+  { key: 'feature_forms', label: 'Formulários' },
+  { key: 'feature_internal_chat', label: 'Chat interno da equipe' },
+  { key: 'feature_ai_agents', label: 'Agentes de IA' },
+  { key: 'feature_voice_agents', label: 'Agentes de voz' },
+  { key: 'feature_audio_transcription_ai', label: 'Transcrição de áudio por IA' },
+  { key: 'feature_text_correction_ai', label: 'Correção de texto por IA' },
+  { key: 'feature_webhooks', label: 'Webhooks' },
+  { key: 'feature_external_api', label: 'API externa' },
+  { key: 'feature_integrations', label: 'Integrações' },
 ];
+
+const BRL = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+// Deriva os bullets do card a partir das flags feature_* ligadas no plano.
+function planFeatures(plan: PlatformPlan): string[] {
+  return FEATURE_LABELS.filter(({ key }) => plan[key] === true).map(({ label }) => label);
+}
 
 const faqs = [
   { q: 'Preciso instalar alguma coisa?', a: 'Não. Roda 100% no navegador, no celular e no computador. Basta criar a conta e começar a usar.' },
-  { q: 'E se eu já tiver dados em outro sistema?', a: 'Importamos sua base de clientes e serviços por planilha. Nosso time faz a migração com você nos planos Pro e Premium.' },
+  { q: 'E se eu já tiver dados em outro sistema?', a: 'Importamos sua base de clientes e serviços por planilha. Nosso time faz a migração com você nos planos superiores.' },
   { q: 'A IA realmente funciona?', a: 'Sim. A IA analisa o histórico real do seu negócio e gera sugestões concretas — quem reativar, qual horário promover, qual pacote oferecer.' },
   { q: 'Posso cancelar quando quiser?', a: 'Sim, sem multa e sem fidelidade.' },
   { q: 'Funciona para barbearia e estética?', a: 'Funciona para qualquer salão de beleza, estética, barbearia, nail bar ou clínica de bem-estar.' },
@@ -114,6 +145,25 @@ export default function SalesPage() {
   usePlatformBranding();
   const [buyOpen, setBuyOpen] = useState(false);
   const openBuy = () => setBuyOpen(true);
+
+  // Catálogo de planos vem do banco (platform_plans) — fonte única, sem preço
+  // nem feature hardcoded. useActivePlans já traz só is_active=true ordenado por
+  // display_order; aqui filtramos ainda is_public=true (o trial é is_public=false
+  // e não aparece na vitrine). Fetch falho → lista vazia → fallback gracioso (a LP
+  // nunca quebra; o card de planos some, o resto da página segue).
+  const { data: allPlans, isLoading: plansLoading } = useActivePlans();
+  const planos = (allPlans ?? []).filter((p) => p.is_public);
+
+  // CTA de cada plano: se há checkout_url (mensal), navega direto pro checkout
+  // Cakto (preservando o cookie de tracking 1st-party do hop LP→checkout). Sem
+  // URL ainda → abre o LeadCaptureModal (funil de captura).
+  const goToCheckout = (plan: PlatformPlan) => {
+    if (plan.checkout_url) {
+      window.location.href = plan.checkout_url;
+    } else {
+      openBuy();
+    }
+  };
 
   // Captura tracking (ref do afiliado + UTMs) no 1º carregamento e persiste em
   // cookie 1st-party — sobrevive ao hop LP → checkout.
@@ -142,7 +192,7 @@ export default function SalesPage() {
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login"><Button variant="ghost" size="sm">Entrar</Button></Link>
-            <Button size="sm" onClick={openBuy} className={`${GRADIENT} text-white hover:opacity-90`}>Começar grátis</Button>
+            <Button size="sm" onClick={openBuy} className={`${GRADIENT} text-white hover:opacity-90`}>Começar agora</Button>
           </div>
         </div>
       </header>
@@ -163,7 +213,7 @@ export default function SalesPage() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" onClick={openBuy} className={`h-14 px-8 text-base font-semibold ${GRADIENT} text-white shadow-xl shadow-rose-500/30 hover:opacity-90`}>
-              Começar grátis <ArrowRight className="ml-2 h-4 w-4" />
+              Começar agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Link to="/demo/cockpit">
               <Button size="lg" variant="outline" className="h-14 border-zinc-300 px-8 text-base font-semibold">
@@ -171,7 +221,7 @@ export default function SalesPage() {
               </Button>
             </Link>
           </div>
-          <p className="mt-5 text-sm text-zinc-500">Sem cartão de crédito · 14 dias grátis · Setup em 5 minutos</p>
+          <p className="mt-5 text-sm text-zinc-500">Cancele quando quiser, sem fidelidade · Setup em 5 minutos</p>
         </div>
       </section>
 
@@ -179,7 +229,7 @@ export default function SalesPage() {
       <section className={`${GRADIENT} px-6 py-14 text-white`}>
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 md:grid-cols-4">
           {[
-            { v: '14 dias', l: 'Grátis, sem cartão' },
+            { v: 'Sem fidelidade', l: 'Cancele quando quiser' },
             { v: '5 min', l: 'Para configurar' },
             { v: '6 módulos', l: 'Num só sistema' },
             { v: 'IA', l: 'Nativa de crescimento' },
@@ -274,7 +324,7 @@ export default function SalesPage() {
                 </li>
               ))}
             </ul>
-            <Button size="lg" onClick={openBuy} className={`mt-8 ${GRADIENT} h-12 px-7 text-white hover:opacity-90`}>Começar grátis <ArrowRight className="ml-2 h-4 w-4" /></Button>
+            <Button size="lg" onClick={openBuy} className={`mt-8 ${GRADIENT} h-12 px-7 text-white hover:opacity-90`}>Começar agora <ArrowRight className="ml-2 h-4 w-4" /></Button>
           </div>
           <div className="space-y-4">
             {insights.map((i) => (
@@ -318,42 +368,76 @@ export default function SalesPage() {
         </div>
       </section>
 
-      {/* PRICING */}
+      {/* PRICING — planos do catálogo (platform_plans). Preço e features vêm do
+          banco; nada hardcoded. Trial removido; sem fidelidade no lugar. */}
       <section id="planos" className="bg-zinc-50 px-6 py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-14 text-center">
             <Badge variant="outline" className="mb-3">Planos</Badge>
             <h2 className="text-4xl font-black tracking-tight md:text-5xl">Para cada <span className={GRADIENT_TEXT}>tamanho de negócio</span></h2>
-            <p className="mt-4 text-lg text-zinc-600">14 dias grátis em qualquer plano. Sem cartão.</p>
+            <p className="mt-4 text-lg text-zinc-600">Cancele quando quiser, sem fidelidade.</p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {planos.map((p) => (
-              <Card key={p.nome} className={p.destaque ? 'relative scale-105 border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20' : 'border-zinc-200 bg-white'}>
-                {p.destaque && (
-                  <Badge className={`absolute -top-3 left-1/2 -translate-x-1/2 ${GRADIENT} text-white shadow-lg`}>
-                    <Crown className="mr-1 h-3 w-3" /> Mais escolhido
-                  </Badge>
-                )}
-                <CardContent className="p-8">
-                  <h3 className="text-xl font-bold">{p.nome}</h3>
-                  <div className="mt-3">
-                    <span className="text-5xl font-black">{p.preco}</span>
-                    <span className={p.destaque ? 'text-zinc-400' : 'text-zinc-500'}>/mês</span>
-                  </div>
-                  <p className={`mt-3 text-sm ${p.destaque ? 'text-zinc-400' : 'text-zinc-600'}`}>{p.desc}</p>
-                  <ul className="mt-7 space-y-3">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm">
-                        <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${p.destaque ? 'text-rose-400' : 'text-rose-500'}`} />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button onClick={openBuy} className={p.destaque ? `mt-7 w-full ${GRADIENT} text-white hover:opacity-90` : 'mt-7 w-full'} variant={p.destaque ? 'default' : 'outline'}>Começar grátis</Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+          {plansLoading ? (
+            // Skeleton enquanto o catálogo carrega — preserva a altura da seção.
+            <div className="grid gap-6 md:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Card key={i} className="border-zinc-200 bg-white">
+                  <CardContent className="space-y-4 p-8">
+                    <div className="h-6 w-1/3 animate-pulse rounded bg-zinc-200" />
+                    <div className="h-12 w-1/2 animate-pulse rounded bg-zinc-200" />
+                    <div className="h-4 w-full animate-pulse rounded bg-zinc-200" />
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-zinc-200" />
+                    <div className="h-10 w-full animate-pulse rounded bg-zinc-200" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : planos.length === 0 ? (
+            // Fallback gracioso: catálogo vazio ou fetch falho → não quebra a LP.
+            // Mantém um CTA de captura para não perder o lead.
+            <div className="mx-auto max-w-md text-center">
+              <p className="text-lg text-zinc-600">Fale com a gente para conhecer os planos e começar.</p>
+              <Button onClick={openBuy} className={`mt-6 ${GRADIENT} px-8 text-white hover:opacity-90`}>
+                Falar com o time <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-3">
+              {planos.map((p) => {
+                const featured = !!p.highlight_label;
+                const features = planFeatures(p);
+                return (
+                  <Card key={p.id} className={featured ? 'relative scale-105 border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20' : 'border-zinc-200 bg-white'}>
+                    {featured && (
+                      <Badge className={`absolute -top-3 left-1/2 -translate-x-1/2 ${GRADIENT} text-white shadow-lg`}>
+                        <Crown className="mr-1 h-3 w-3" /> {p.highlight_label}
+                      </Badge>
+                    )}
+                    <CardContent className="p-8">
+                      <h3 className="text-xl font-bold">{p.name}</h3>
+                      <div className="mt-3">
+                        <span className="text-5xl font-black">{BRL.format(p.price_monthly)}</span>
+                        <span className={featured ? 'text-zinc-400' : 'text-zinc-500'}>/mês</span>
+                      </div>
+                      {p.description && (
+                        <p className={`mt-3 text-sm ${featured ? 'text-zinc-400' : 'text-zinc-600'}`}>{p.description}</p>
+                      )}
+                      <ul className="mt-7 space-y-3">
+                        {features.map((f) => (
+                          <li key={f} className="flex items-start gap-2 text-sm">
+                            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${featured ? 'text-rose-400' : 'text-rose-500'}`} />
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button onClick={() => goToCheckout(p)} className={featured ? `mt-7 w-full ${GRADIENT} text-white hover:opacity-90` : 'mt-7 w-full'} variant={featured ? 'default' : 'outline'}>Assinar agora</Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -383,7 +467,7 @@ export default function SalesPage() {
           <p className="mt-4 text-lg text-white/90">Transforme a gestão do seu negócio com inteligência artificial.</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" onClick={openBuy} className="h-14 bg-white px-8 text-base font-bold text-rose-600 hover:bg-zinc-100">
-              Começar grátis agora <ArrowRight className="ml-2 h-4 w-4" />
+              Começar agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Link to="/demo/cockpit">
               <Button size="lg" variant="outline" className="h-14 border-white/40 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/10 hover:text-white">
