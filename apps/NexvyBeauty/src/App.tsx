@@ -11,6 +11,7 @@ import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoi
 import { FooterDecoration } from "@/components/layout/FooterDecoration";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
+import { HostConfinementGuard } from "@/components/auth/HostConfinementGuard";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
@@ -201,6 +202,7 @@ const App = () => (
           <FooterDecoration />
           <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
+              <HostConfinementGuard>
               <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -232,17 +234,16 @@ const App = () => (
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
-              <Route path="/whitelabel" element={<Navigate to="/" replace />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
 
               {/* Jurídico público (sem login) */}
               <Route path="/termos" element={<Termos />} />
               <Route path="/privacidade" element={<Privacidade />} />
 
-              {/* Documentação pública (sem login) */}
-              <Route path="/docs" element={<Docs />} />
-              <Route path="/docs/:track" element={<Docs />} />
-              <Route path="/docs/:track/:slug" element={<Docs />} />
+              {/* Documentação (logado — confinada ao app.* pelo HostConfinementGuard) */}
+              <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
+              <Route path="/docs/:track" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
+              <Route path="/docs/:track/:slug" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
 
               {/* Home: no apex (marketing) mostra a LP de vendas; no app.*
                   mostra o hub autenticado. Visitante anônimo no apex NÃO cai
@@ -374,6 +375,7 @@ const App = () => (
               />
               <Route path="*" element={<NotFound />} />
               </Routes>
+              </HostConfinementGuard>
             </Suspense>
           </RouteErrorBoundary>
           </SuperAdminViewProvider>
