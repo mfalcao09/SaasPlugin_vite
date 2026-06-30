@@ -32,7 +32,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Bot, Plus, Trash2, GitBranch, Users, Zap } from 'lucide-react';
+import { Bot, Plus, Trash2, GitBranch, Users, Zap, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { useFeatureFlag } from '@/hooks/usePlanGating';
 
 const ROLE_OPTIONS = [
   { value: 'sdr', label: 'SDR (Qualificação)' },
@@ -54,6 +56,8 @@ export function AgentSupervisorPanel() {
   const deleteSpecialist = useDeleteSpecialist();
   const upsertRule = useUpsertRoutingRule();
   const deleteRule = useDeleteRoutingRule();
+  // Gating do canal de voz (agentes de voz é recurso de plano superior).
+  const { enabled: voiceEnabled } = useFeatureFlag('voice_agents');
 
   const [editingSpecialist, setEditingSpecialist] = useState<Partial<AgentSpecialist> | null>(null);
   const [editingRule, setEditingRule] = useState<Partial<AgentRoutingRule> | null>(null);
@@ -423,6 +427,28 @@ export function AgentSupervisorPanel() {
                 <div className="flex flex-wrap gap-2 mt-1">
                   {CHANNEL_OPTIONS.map((ch) => {
                     const active = editingRule.match_channels?.includes(ch);
+                    // Canal de voz exige plano com 'voice_agents'. Quando bloqueado,
+                    // o badge fica desabilitado com cadeado + tooltip (não selecionável).
+                    const locked = ch === 'voice' && !voiceEnabled;
+                    if (locked) {
+                      return (
+                        <TooltipProvider key={ch}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="cursor-not-allowed opacity-60 gap-1"
+                                aria-disabled
+                              >
+                                <Lock className="h-3 w-3" />
+                                {ch}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>Disponível em planos superiores</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
                     return (
                       <Badge
                         key={ch}

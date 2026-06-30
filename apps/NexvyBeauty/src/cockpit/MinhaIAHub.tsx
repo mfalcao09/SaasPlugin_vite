@@ -13,15 +13,19 @@ import { lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WheelLoader } from '@/components/brand/WheelLoader'
+import { FeatureGate } from '@/components/plan/FeatureGate'
 
 const AgentsManager = lazy(() => import('@/components/admin/agents/AgentsManager').then(m => ({ default: m.AgentsManager })))
 const CampaignsManager = lazy(() => import('@/components/admin/campaigns/CampaignsManager').then(m => ({ default: m.CampaignsManager })))
 const CadencesManager = lazy(() => import('@/components/admin/cadences/CadencesManager').then(m => ({ default: m.CadencesManager })))
 const Produtos = lazy(() => import('@/cockpit/Produtos'))
 
+// `feature` (opcional): se presente, o conteúdo da aba é envolvido por
+// <FeatureGate feature="…"> — libera/bloqueia por plano (fail-open enquanto
+// carrega). Abas sem `feature` ficam sempre liberadas.
 const TABS = [
   { id: 'agentes', label: 'Agentes', C: AgentsManager },
-  { id: 'campanhas', label: 'Campanhas', C: CampaignsManager },
+  { id: 'campanhas', label: 'Campanhas', C: CampaignsManager, feature: 'campaigns' },
   { id: 'cadencias', label: 'Cadências', C: CadencesManager },
   { id: 'ofertas', label: 'Ofertas da IA', C: Produtos },
 ] as const
@@ -46,13 +50,20 @@ export default function MinhaIAHub() {
             <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
           ))}
         </TabsList>
-        {TABS.map(({ id, C }) => (
-          <TabsContent key={id} value={id} className="mt-4">
+        {TABS.map((t) => {
+          const { id, C } = t
+          const feature = 'feature' in t ? t.feature : undefined
+          const body = (
             <Suspense fallback={<div className="py-12 flex justify-center"><WheelLoader size={48} /></div>}>
               <C />
             </Suspense>
-          </TabsContent>
-        ))}
+          )
+          return (
+            <TabsContent key={id} value={id} className="mt-4">
+              {feature ? <FeatureGate feature={feature}>{body}</FeatureGate> : body}
+            </TabsContent>
+          )
+        })}
       </Tabs>
     </div>
   )

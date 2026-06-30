@@ -8,6 +8,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { FeatureGate } from '@/components/plan/FeatureGate'
 import AiGrowth, { DEMO_AIGROWTH } from '@/cockpit/AiGrowth'
 import AcoesClientes, { DEMO_ACOES } from '@/cockpit/AcoesClientes'
 
@@ -17,7 +18,7 @@ export default function Oportunidades({ demo }: { demo?: boolean } = {}) {
   const tab = params.get('tab') === 'cliente' ? 'cliente' : 'geral'
   const setTab = (v: string) => setParams({ tab: v }, { replace: true })
 
-  return (
+  const content = (
     <div className="p-6 space-y-6">
       <PageHeader
         title="Oportunidades"
@@ -37,4 +38,9 @@ export default function Oportunidades({ demo }: { demo?: boolean } = {}) {
       </Tabs>
     </div>
   )
+
+  // A demo pública (/demo/ai-growth) roda sem org/plano — não gateia.
+  // No app logado, "outreach" (AI Growth + reativação de clientes) é feature paga.
+  if (demo) return content
+  return <div className="p-6"><FeatureGate feature="outreach">{content}</FeatureGate></div>
 }

@@ -7,6 +7,7 @@
 import { lazy, Suspense } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WheelLoader } from '@/components/brand/WheelLoader'
+import { FeatureGate } from '@/components/plan/FeatureGate'
 
 // Quiz agora é um hub de 2 sub-abas (Novo Quiz + Templates Quizzes).
 const QuizHub = lazy(() => import('./QuizHub').then(m => ({ default: m.QuizHub })))
@@ -17,12 +18,16 @@ const WidgetSection = lazy(() => import('@/components/admin/capture/channels/Wid
 const ChatBotSection = lazy(() => import('@/components/admin/capture/channels/ChatBotSection').then(m => ({ default: m.ChatBotSection })))
 const CaptureResultsSection = lazy(() => import('@/components/admin/capture/channels/CaptureResultsSection').then(m => ({ default: m.CaptureResultsSection })))
 
+// `feature: 'capture_funnels'` marca os FUNIS VISUAIS (builder FlowCanvas: quiz,
+// widget do site, chatbot) — feature paga por plano. Formulários, WhatsApp e
+// Resultados NÃO são gateados (features liberadas em todos os planos). Abas com
+// `feature` são envolvidas por <FeatureGate> (fail-open enquanto carrega).
 const TABS = [
-  { id: 'quiz', label: 'Quiz', C: QuizHub },
+  { id: 'quiz', label: 'Quiz', C: QuizHub, feature: 'capture_funnels' },
   { id: 'forms', label: 'Formulários', C: FormsHub },
   { id: 'whatsapp', label: 'WhatsApp', C: WhatsAppHub },
-  { id: 'site', label: 'No meu site', C: WidgetSection },
-  { id: 'chat', label: 'Chat', C: ChatBotSection },
+  { id: 'site', label: 'No meu site', C: WidgetSection, feature: 'capture_funnels' },
+  { id: 'chat', label: 'Chat', C: ChatBotSection, feature: 'capture_funnels' },
   { id: 'resultados', label: 'Resultados', C: CaptureResultsSection },
 ] as const
 
@@ -41,13 +46,20 @@ export default function CaptacaoHub() {
             <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
           ))}
         </TabsList>
-        {TABS.map(({ id, C }) => (
-          <TabsContent key={id} value={id} className="mt-4">
+        {TABS.map((t) => {
+          const { id, C } = t
+          const feature = 'feature' in t ? t.feature : undefined
+          const body = (
             <Suspense fallback={<div className="py-12 flex justify-center"><WheelLoader size={48} /></div>}>
               <C />
             </Suspense>
-          </TabsContent>
-        ))}
+          )
+          return (
+            <TabsContent key={id} value={id} className="mt-4">
+              {feature ? <FeatureGate feature={feature}>{body}</FeatureGate> : body}
+            </TabsContent>
+          )
+        })}
       </Tabs>
     </div>
   )

@@ -1,5 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import type { IntegrationItem } from '@/config/integrationsCatalog';
+import { FeatureGate } from '@/components/plan/FeatureGate';
 import { ApiKeysManager } from './ApiKeysManager';
 import { WhatsAppConfig } from './WhatsAppConfig';
 import { BotConversaConfig } from './BotConversaConfig';
@@ -48,7 +49,11 @@ export function IntegrationConfigDrawer({ item, open, onOpenChange }: Integratio
       case 'sankhya':
         return <SankhyaConfigManager />;
       case 'api-keys':
-        return <ApiKeysManager />;
+        return (
+          <FeatureGate feature="external_api">
+            <ApiKeysManager />
+          </FeatureGate>
+        );
       case 'openai':
         return <OpenAIConfig />;
       case 'anthropic':

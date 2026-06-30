@@ -2,15 +2,18 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { IntegrationItem } from '@/config/integrationsCatalog';
-import { CheckCircle2, Clock, Settings } from 'lucide-react';
+import { CheckCircle2, Clock, Settings, Lock } from 'lucide-react';
 
 interface IntegrationCardProps {
   item: IntegrationItem;
   isActive?: boolean;
   onClick: () => void;
+  /** Bloqueado pelo plano (feature não liberada). Card segue clicável — o clique
+   *  abre o CTA de upgrade no manager; aqui só refletimos o estado visual. */
+  locked?: boolean;
 }
 
-export function IntegrationCard({ item, isActive, onClick }: IntegrationCardProps) {
+export function IntegrationCard({ item, isActive, onClick, locked }: IntegrationCardProps) {
   const Icon = item.icon;
   const showActive = isActive || item.alwaysActive;
 
@@ -20,6 +23,7 @@ export function IntegrationCard({ item, isActive, onClick }: IntegrationCardProp
       className={cn(
         'group relative cursor-pointer p-4 transition-all hover:shadow-md hover:border-primary/40',
         item.comingSoon && 'opacity-60 hover:opacity-80',
+        locked && !item.comingSoon && 'opacity-70 hover:opacity-90',
       )}
     >
       <div className="flex items-start gap-3">
@@ -50,6 +54,11 @@ export function IntegrationCard({ item, isActive, onClick }: IntegrationCardProp
               <Badge variant="outline" className="shrink-0 gap-1 text-[10px]">
                 <Clock className="h-3 w-3" />
                 Em breve
+              </Badge>
+            ) : locked ? (
+              <Badge variant="outline" className="shrink-0 gap-1 text-[10px] border-primary/30 text-primary">
+                <Lock className="h-3 w-3" />
+                Plano superior
               </Badge>
             ) : showActive ? (
               <Badge className="shrink-0 gap-1 bg-green-500/10 text-green-600 hover:bg-green-500/15 text-[10px] border-green-500/20">

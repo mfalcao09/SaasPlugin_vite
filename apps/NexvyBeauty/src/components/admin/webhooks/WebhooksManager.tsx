@@ -58,11 +58,20 @@ import {
   Activity
 } from 'lucide-react';
 import { WebhookEditor } from './WebhookEditor';
+import { FeatureGate } from '@/components/plan/FeatureGate';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function WebhooksManager() {
+  return (
+    <FeatureGate feature="webhooks">
+      <WebhooksManagerInner />
+    </FeatureGate>
+  );
+}
+
+function WebhooksManagerInner() {
   const { data: webhooks, isLoading } = useWebhooks();
   const { data: products } = useProducts();
   const createWebhook = useCreateWebhook();

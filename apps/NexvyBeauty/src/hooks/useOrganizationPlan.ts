@@ -8,11 +8,13 @@ export interface EffectivePlan {
   limits: {
     max_users: number;
     max_connections: number;
+    max_professionals: number | null;
     max_sectors: number;
     max_products: number;
     max_contacts: number;
     max_messages_month: number;
     max_ai_tokens_month: number;
+    max_ai_agents: number;
   };
   features: Record<string, boolean>;
 }

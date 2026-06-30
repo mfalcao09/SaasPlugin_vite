@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sheet';
 import { Search, Plug, Sparkles, LayoutGrid, Menu } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { integrationsCatalog, type IntegrationItem } from '@/config/integrationsCatalog';
 import { IntegrationCard } from './IntegrationCard';
@@ -24,9 +25,20 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectivePlan } from '@/hooks/usePlanGating';
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'coming_soon';
 type CategoryFilter = 'all' | string;
+
+/**
+ * Cards de integração que são FEATURES PAGAS por plano (gating). Mapeia o
+ * `item.id` do catálogo → chave de feature do plano. Card fora deste mapa =
+ * sempre liberado. Fail-open enquanto o plano carrega (não pisca cadeado).
+ */
+const ITEM_PLAN_FEATURE: Record<string, string> = {
+  facebook: 'facebook',
+  'instagram-leads': 'instagram',
+};
 
 function useAllConfiguredIntegrations() {
   const { profile } = useAuth();
@@ -56,8 +68,18 @@ export function IntegrationsManager() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const navigate = useNavigate();
   useIntegrations();
   const { data: configuredMap = {} } = useAllConfiguredIntegrations();
+  const { data: plan, isLoading: planLoading } = useEffectivePlan();
+
+  /** Feature paga bloqueada pelo plano atual. Fail-open enquanto carrega. */
+  const isItemLocked = (item: IntegrationItem) => {
+    const feature = ITEM_PLAN_FEATURE[item.id];
+    if (!feature) return false;
+    if (planLoading || !plan) return false; // fail-open: não pisca cadeado
+    return plan.features?.[feature] !== true;
+  };
 
   const isItemActive = (item: IntegrationItem) => {
     if (item.alwaysActive) return true;
@@ -75,6 +97,13 @@ export function IntegrationsManager() {
     if (item.comingSoon) {
       toast.info(`${item.name} estará disponível em breve!`, {
         description: 'Vamos avisar você assim que liberarmos.',
+      });
+      return;
+    }
+    if (isItemLocked(item)) {
+      toast.info(`${item.name} é um recurso de planos superiores`, {
+        description: 'Faça upgrade do seu plano para liberar este recurso.',
+        action: { label: 'Ver planos', onClick: () => navigate('/plano') },
       });
       return;
     }
@@ -298,6 +327,7 @@ export function IntegrationsManager() {
                           key={item.id}
                           item={item}
                           isActive={isItemActive(item)}
+                          locked={isItemLocked(item)}
                           onClick={() => handleClick(item)}
                         />
                       ))}

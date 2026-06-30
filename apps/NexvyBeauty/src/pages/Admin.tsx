@@ -9,6 +9,7 @@ import { SectionErrorBoundary } from '@/components/admin/SectionErrorBoundary';
 import { lazyWithRetry, prefetch, onIdle } from '@/lib/lazyWithRetry';
 import { allMenuItems } from '@/config/adminMenu';
 import { AppTopBar } from '@/components/layout/AppTopBar';
+import { FeatureGate } from '@/components/plan/FeatureGate';
 
 // Factories nomeadas para podermos reutilizá-las no prefetch on-hover.
 const f = {
@@ -202,7 +203,7 @@ export default function Admin() {
       case 'notifications': return <Navigate to="/notificacoes" replace />;
       case 'webhooks': return <Navigate to="/webhooks" replace />;
       case 'custom-fields': return <Navigate to="/campos-personalizados" replace />;
-      case 'integrations': return <IntegrationsManager />;
+      case 'integrations': return <FeatureGate feature="integrations"><IntegrationsManager /></FeatureGate>;
       case 'sectors': return <Navigate to="/setores" replace />;
       case 'plan': return <Navigate to="/plano" replace />;
       case 'payments': return <Navigate to="/faturamento" replace />;
