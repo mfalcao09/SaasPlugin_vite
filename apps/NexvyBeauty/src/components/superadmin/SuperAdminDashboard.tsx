@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BootstrapSuperAdminCard } from './BootstrapSuperAdminCard';
 
 interface SuperAdminDashboardProps {
   onNavigate?: (section: string) => void;
@@ -41,8 +40,6 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <h1 className="text-2xl font-bold text-foreground">Dashboard Administrativo</h1>
         <p className="text-muted-foreground">Visão geral da plataforma</p>
       </div>
-
-      <BootstrapSuperAdminCard />
 
       {/* KPI Cards - Row 1 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
