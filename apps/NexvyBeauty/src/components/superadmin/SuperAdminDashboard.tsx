@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSuperAdminStats, useAuditLogs, useAllOrganizations } from '@/hooks/useSuperAdmin';
+import { useActivePlans } from '@/hooks/usePlatformPlans';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -19,10 +20,19 @@ interface SuperAdminDashboardProps {
   onNavigate?: (section: string) => void;
 }
 
+// Cor do indicador (dot) por slug do tier — continuidade visual; o NOME vem do catálogo.
+const PLAN_DOT: Record<string, string> = {
+  trial: 'bg-gray-400',
+  starter: 'bg-blue-500',
+  pro: 'bg-primary',
+  premium: 'bg-violet-500',
+};
+
 export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {}) {
   const { data: stats, isLoading: statsLoading } = useSuperAdminStats();
   const { data: logs, isLoading: logsLoading } = useAuditLogs(10);
   const { data: orgs, isLoading: orgsLoading } = useAllOrganizations();
+  const { data: activePlans } = useActivePlans();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -197,34 +207,15 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-gray-400" />
-                    <span className="font-medium">Trial</span>
+                {activePlans?.map((plan) => (
+                  <div key={plan.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${PLAN_DOT[plan.slug] ?? 'bg-muted-foreground'}`} />
+                      <span className="font-medium">{plan.name}</span>
+                    </div>
+                    <Badge variant="secondary">{stats?.planCounts?.[plan.slug] ?? 0}</Badge>
                   </div>
-                  <Badge variant="secondary">{stats?.planCounts?.trial || 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
-                    <span className="font-medium">Starter</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.planCounts?.starter || 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
-                    <span className="font-medium">Pro</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.planCounts?.pro || 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-violet-500" />
-                    <span className="font-medium">Enterprise</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.planCounts?.enterprise || 0}</Badge>
-                </div>
+                ))}
               </div>
             )}
           </CardContent>
