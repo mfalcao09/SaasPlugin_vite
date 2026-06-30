@@ -26,7 +26,7 @@ const Produtos = lazy(() => import('@/cockpit/Produtos'))
 const TABS = [
   { id: 'agentes', label: 'Agentes', C: AgentsManager },
   { id: 'campanhas', label: 'Campanhas', C: CampaignsManager, feature: 'campaigns' },
-  { id: 'cadencias', label: 'Cadências', C: CadencesManager },
+  { id: 'cadencias', label: 'Cadências', C: CadencesManager, feature: 'outreach' },
   { id: 'ofertas', label: 'Ofertas da IA', C: Produtos },
 ] as const
 
