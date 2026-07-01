@@ -324,12 +324,17 @@ export type Database = {
           id: string
           observacoes: string | null
           organization_id: string
+          origem: string | null
+          pacote_cliente_id: string | null
           profissional_id: string | null
           profissional_nome: string | null
           servico_id: string | null
           servico_nome: string | null
           status: string | null
           updated_at: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
           valor: number | null
         }
         Insert: {
@@ -343,12 +348,17 @@ export type Database = {
           id?: string
           observacoes?: string | null
           organization_id: string
+          origem?: string | null
+          pacote_cliente_id?: string | null
           profissional_id?: string | null
           profissional_nome?: string | null
           servico_id?: string | null
           servico_nome?: string | null
           status?: string | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           valor?: number | null
         }
         Update: {
@@ -362,12 +372,17 @@ export type Database = {
           id?: string
           observacoes?: string | null
           organization_id?: string
+          origem?: string | null
+          pacote_cliente_id?: string | null
           profissional_id?: string | null
           profissional_nome?: string | null
           servico_id?: string | null
           servico_nome?: string | null
           status?: string | null
           updated_at?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           valor?: number | null
         }
         Relationships: [
@@ -383,6 +398,20 @@ export type Database = {
             columns: ["profissional_id"]
             isOneToOne: false
             referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -470,7 +499,21 @@ export type Database = {
             foreignKeyName: "agent_action_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -548,7 +591,21 @@ export type Database = {
             foreignKeyName: "agent_activation_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_activation_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_activation_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -929,7 +986,21 @@ export type Database = {
             foreignKeyName: "agent_training_materials_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_training_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_training_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -1021,7 +1092,21 @@ export type Database = {
             foreignKeyName: "ai_insights_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -1075,7 +1160,21 @@ export type Database = {
             foreignKeyName: "ai_knowledge_base_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_knowledge_base_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_knowledge_base_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -1189,7 +1288,21 @@ export type Database = {
             foreignKeyName: "ai_outreach_queue_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_outreach_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_outreach_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -1479,6 +1592,24 @@ export type Database = {
           organization_id?: string
           provider?: string
           status_code?: number | null
+        }
+        Relationships: []
+      }
+      app_cron_secrets: {
+        Row: {
+          created_at: string
+          name: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          secret: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          secret?: string
         }
         Relationships: []
       }
@@ -2612,7 +2743,21 @@ export type Database = {
             foreignKeyName: "cadence_templates_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cadence_templates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cadence_templates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -2871,7 +3016,21 @@ export type Database = {
             foreignKeyName: "cakto_orders_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cakto_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cakto_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -3158,7 +3317,21 @@ export type Database = {
             foreignKeyName: "calendar_events_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -3544,7 +3717,21 @@ export type Database = {
             foreignKeyName: "capture_funnels_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_funnels_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_funnels_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -3627,7 +3814,21 @@ export type Database = {
             foreignKeyName: "catalog_sync_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_sync_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_sync_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -3707,55 +3908,93 @@ export type Database = {
             foreignKeyName: "chat_flows_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_flows_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_flows_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
       }
       clientes: {
         Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
           cpf_cnpj: string | null
           created_at: string
+          data_nascimento: string | null
           email: string | null
           endereco: string | null
           id: string
           lead_id: string | null
+          logradouro: string | null
           nome: string
+          numero: string | null
           observacoes: string | null
           organization_id: string
           status: string
           tags: string[] | null
           telefone: string | null
+          uf: string | null
           updated_at: string
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           id?: string
           lead_id?: string | null
+          logradouro?: string | null
           nome: string
+          numero?: string | null
           observacoes?: string | null
           organization_id: string
           status?: string
           tags?: string[] | null
           telefone?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
           id?: string
           lead_id?: string | null
+          logradouro?: string | null
           nome?: string
+          numero?: string | null
           observacoes?: string | null
           organization_id?: string
           status?: string
           tags?: string[] | null
           telefone?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3836,7 +4075,21 @@ export type Database = {
             foreignKeyName: "commission_rules_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -3922,7 +4175,21 @@ export type Database = {
             foreignKeyName: "commissions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -4196,7 +4463,21 @@ export type Database = {
             foreignKeyName: "deals_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -4551,7 +4832,21 @@ export type Database = {
             foreignKeyName: "facebook_lead_integrations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facebook_lead_integrations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facebook_lead_integrations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -4975,7 +5270,21 @@ export type Database = {
             foreignKeyName: "forms_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -5467,7 +5776,21 @@ export type Database = {
             foreignKeyName: "hotmart_orders_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotmart_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotmart_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -5512,7 +5835,21 @@ export type Database = {
             foreignKeyName: "hotmart_product_mapping_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotmart_product_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotmart_product_mapping_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -5853,7 +6190,21 @@ export type Database = {
             foreignKeyName: "lead_queue_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -6335,7 +6686,21 @@ export type Database = {
             foreignKeyName: "leads_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -6606,7 +6971,21 @@ export type Database = {
             foreignKeyName: "materials_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -6763,7 +7142,21 @@ export type Database = {
             foreignKeyName: "notifications_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -6820,7 +7213,21 @@ export type Database = {
             foreignKeyName: "objections_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -7174,7 +7581,21 @@ export type Database = {
             foreignKeyName: "orchestration_logs_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orchestration_logs_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orchestration_logs_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -7434,6 +7855,7 @@ export type Database = {
           presence_typing_chars_per_sec: number
           refund_policy: string | null
           settings: Json | null
+          slug: string | null
           status: string | null
           updated_at: string
         }
@@ -7474,6 +7896,7 @@ export type Database = {
           presence_typing_chars_per_sec?: number
           refund_policy?: string | null
           settings?: Json | null
+          slug?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -7514,6 +7937,7 @@ export type Database = {
           presence_typing_chars_per_sec?: number
           refund_policy?: string | null
           settings?: Json | null
+          slug?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -7537,6 +7961,161 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "platform_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacote_clientes: {
+        Row: {
+          cakto_checkout_url: string | null
+          cakto_offer_slug: string | null
+          cakto_order_id: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          data_inicio: string | null
+          data_validade: string | null
+          id: string
+          organization_id: string
+          pacote_id: string
+          pacote_nome: string | null
+          pagamento_status: string | null
+          sessoes_usadas: number
+          status: string
+          total_sessoes: number
+          updated_at: string
+          valor_pago: number | null
+        }
+        Insert: {
+          cakto_checkout_url?: string | null
+          cakto_offer_slug?: string | null
+          cakto_order_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          data_validade?: string | null
+          id?: string
+          organization_id: string
+          pacote_id: string
+          pacote_nome?: string | null
+          pagamento_status?: string | null
+          sessoes_usadas?: number
+          status?: string
+          total_sessoes: number
+          updated_at?: string
+          valor_pago?: number | null
+        }
+        Update: {
+          cakto_checkout_url?: string | null
+          cakto_offer_slug?: string | null
+          cakto_order_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          data_validade?: string | null
+          id?: string
+          organization_id?: string
+          pacote_id?: string
+          pacote_nome?: string | null
+          pagamento_status?: string | null
+          sessoes_usadas?: number
+          status?: string
+          total_sessoes?: number
+          updated_at?: string
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pacote_clientes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pacote_clientes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pacote_clientes_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pacote_clientes_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pacote_clientes_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacotes_legacy: {
+        Row: {
+          ativo: boolean
+          cakto_checkout_url: string | null
+          cakto_offer_slug: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          organization_id: string
+          servicos_incluidos: string[] | null
+          total_sessoes: number
+          updated_at: string
+          validade_dias: number
+          valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          cakto_checkout_url?: string | null
+          cakto_offer_slug?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          organization_id: string
+          servicos_incluidos?: string[] | null
+          total_sessoes: number
+          updated_at?: string
+          validade_dias?: number
+          valor: number
+        }
+        Update: {
+          ativo?: boolean
+          cakto_checkout_url?: string | null
+          cakto_offer_slug?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          organization_id?: string
+          servicos_incluidos?: string[] | null
+          total_sessoes?: number
+          updated_at?: string
+          validade_dias?: number
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pacotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -7776,7 +8355,21 @@ export type Database = {
             foreignKeyName: "pipeline_stages_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_stages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_stages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -7825,6 +8418,1130 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "public_booking_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_cadence_enrollments: {
+        Row: {
+          cadence_id: string
+          completed_at: string | null
+          created_at: string
+          current_step_id: string | null
+          current_step_index: number
+          enrolled_at: string
+          id: string
+          lead_id: string
+          source: string | null
+          source_ref: Json | null
+          status: string
+          stop_reason: string | null
+          stopped_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cadence_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step_id?: string | null
+          current_step_index?: number
+          enrolled_at?: string
+          id?: string
+          lead_id: string
+          source?: string | null
+          source_ref?: Json | null
+          status?: string
+          stop_reason?: string | null
+          stopped_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cadence_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step_id?: string | null
+          current_step_index?: number
+          enrolled_at?: string
+          id?: string
+          lead_id?: string
+          source?: string | null
+          source_ref?: Json | null
+          status?: string
+          stop_reason?: string | null
+          stopped_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_cadence_enrollments_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_cadence_enrollments_current_step_id_fkey"
+            columns: ["current_step_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadence_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_cadence_enrollments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_cadence_step_runs: {
+        Row: {
+          agent_message: string | null
+          conversation_id: string | null
+          created_at: string
+          enrollment_id: string
+          error: string | null
+          executed_at: string | null
+          id: string
+          scheduled_at: string
+          skip_reason: string | null
+          status: string
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_message?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          enrollment_id: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          scheduled_at: string
+          skip_reason?: string | null
+          status?: string
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_message?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          enrollment_id?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          scheduled_at?: string
+          skip_reason?: string | null
+          status?: string
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_cadence_step_runs_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_cadence_step_runs_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadence_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_cadence_steps: {
+        Row: {
+          cadence_id: string
+          conditions: Json
+          context_inline: string | null
+          created_at: string
+          delay_from: string
+          delay_unit: string
+          delay_value: number
+          execute_immediately: boolean
+          id: string
+          name: string
+          objective: string | null
+          order_index: number
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cadence_id: string
+          conditions?: Json
+          context_inline?: string | null
+          created_at?: string
+          delay_from?: string
+          delay_unit?: string
+          delay_value?: number
+          execute_immediately?: boolean
+          id?: string
+          name: string
+          objective?: string | null
+          order_index?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cadence_id?: string
+          conditions?: Json
+          context_inline?: string | null
+          created_at?: string
+          delay_from?: string
+          delay_unit?: string
+          delay_value?: number
+          execute_immediately?: boolean
+          id?: string
+          name?: string
+          objective?: string | null
+          order_index?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_cadence_steps_cadence_id_fkey"
+            columns: ["cadence_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_cadences: {
+        Row: {
+          agent_id: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          entry_filters: Json
+          exclusion_filters: Json
+          execution_window: Json
+          id: string
+          last_executed_at: string | null
+          name: string
+          objective: string | null
+          status: string
+          stop_actions: Json
+          stop_rules: Json
+          totals: Json
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entry_filters?: Json
+          exclusion_filters?: Json
+          execution_window?: Json
+          id?: string
+          last_executed_at?: string | null
+          name: string
+          objective?: string | null
+          status?: string
+          stop_actions?: Json
+          stop_rules?: Json
+          totals?: Json
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entry_filters?: Json
+          exclusion_filters?: Json
+          execution_window?: Json
+          id?: string
+          last_executed_at?: string | null
+          name?: string
+          objective?: string | null
+          status?: string
+          stop_actions?: Json
+          stop_rules?: Json
+          totals?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_commission_rules: {
+        Row: {
+          applies_to: string | null
+          base_value: number
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          max_value: number | null
+          min_value: number | null
+          rule_type: string
+          stage_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          applies_to?: string | null
+          base_value?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_type?: string
+          stage_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          applies_to?: string | null
+          base_value?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          max_value?: number | null
+          min_value?: number | null
+          rule_type?: string
+          stage_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_commission_rules_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_commissions: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          deal_id: string
+          earned_at: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          percentage_applied: number | null
+          rule_id: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          deal_id: string
+          earned_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          percentage_applied?: number | null
+          rule_id?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          deal_id?: string
+          earned_at?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          percentage_applied?: number | null
+          rule_id?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_commissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_commissions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_commission_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_custom_fields: {
+        Row: {
+          created_at: string
+          description: string | null
+          field_key: string
+          field_type: string
+          id: string
+          is_active: boolean
+          name: string
+          options: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          field_key: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          options?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          options?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_deals: {
+        Row: {
+          closed_at: string | null
+          created_at: string | null
+          deal_value: number
+          id: string
+          lead_id: string
+          notes: string | null
+          plan_name: string | null
+          seller_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string | null
+          deal_value: number
+          id?: string
+          lead_id: string
+          notes?: string | null
+          plan_name?: string | null
+          seller_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string | null
+          deal_value?: number
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          plan_name?: string | null
+          seller_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_deals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_distribution_config: {
+        Row: {
+          auto_reassign: boolean
+          created_at: string
+          id: string
+          max_accept_time_minutes: number | null
+          method: string
+          round_robin_index: number
+          squad_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_reassign?: boolean
+          created_at?: string
+          id?: string
+          max_accept_time_minutes?: number | null
+          method?: string
+          round_robin_index?: number
+          squad_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_reassign?: boolean
+          created_at?: string
+          id?: string
+          max_accept_time_minutes?: number | null
+          method?: string
+          round_robin_index?: number
+          squad_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_distribution_config_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_lead_notes: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          lead_id: string
+          role_label: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          role_label?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          role_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_lead_queue: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          id: string
+          lead_id: string
+          priority: number
+          queued_at: string
+          squad_id: string | null
+          status: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          id?: string
+          lead_id: string
+          priority?: number
+          queued_at?: string
+          squad_id?: string | null
+          status?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          id?: string
+          lead_id?: string
+          priority?: number
+          queued_at?: string
+          squad_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_lead_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_queue_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_lead_stage_history: {
+        Row: {
+          days_in_stage: number | null
+          entered_at: string
+          exited_at: string | null
+          id: string
+          lead_id: string
+          stage_id: string | null
+        }
+        Insert: {
+          days_in_stage?: number | null
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          lead_id: string
+          stage_id?: string | null
+        }
+        Update: {
+          days_in_stage?: number | null
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          lead_id?: string
+          stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_stage_history_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_lead_tag_assignments: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          lead_id: string
+          source: string
+          tag_id: string
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          lead_id: string
+          source?: string
+          tag_id: string
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          lead_id?: string
+          source?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_lead_tag_assignments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_lead_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_lead_tags: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_automatic: boolean
+          is_lifecycle_status: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_automatic?: boolean
+          is_lifecycle_status?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_automatic?: boolean
+          is_lifecycle_status?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_leads: {
+        Row: {
+          assigned_to: string | null
+          bant_authority: string | null
+          bant_budget: string | null
+          bant_need: string | null
+          bant_timing: string | null
+          cadence_day: number | null
+          closer_id: string | null
+          company: string | null
+          created_at: string
+          current_stage_id: string | null
+          deal_value: number | null
+          email: string | null
+          expected_close_date: string | null
+          id: string
+          landing_page: string | null
+          last_contact_at: string | null
+          lead_channel: string | null
+          lead_origin: string | null
+          metadata: Json | null
+          name: string
+          next_action: string | null
+          notes: string | null
+          phone: string | null
+          position: string | null
+          previous_assigned_to: string | null
+          referrer_url: string | null
+          sdr_id: string | null
+          source: string | null
+          squad_id: string | null
+          temperature: Database["public"]["Enums"]["lead_temperature"] | null
+          transfer_reason: string | null
+          transferred_at: string | null
+          transferred_by: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          bant_authority?: string | null
+          bant_budget?: string | null
+          bant_need?: string | null
+          bant_timing?: string | null
+          cadence_day?: number | null
+          closer_id?: string | null
+          company?: string | null
+          created_at?: string
+          current_stage_id?: string | null
+          deal_value?: number | null
+          email?: string | null
+          expected_close_date?: string | null
+          id?: string
+          landing_page?: string | null
+          last_contact_at?: string | null
+          lead_channel?: string | null
+          lead_origin?: string | null
+          metadata?: Json | null
+          name: string
+          next_action?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          previous_assigned_to?: string | null
+          referrer_url?: string | null
+          sdr_id?: string | null
+          source?: string | null
+          squad_id?: string | null
+          temperature?: Database["public"]["Enums"]["lead_temperature"] | null
+          transfer_reason?: string | null
+          transferred_at?: string | null
+          transferred_by?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          bant_authority?: string | null
+          bant_budget?: string | null
+          bant_need?: string | null
+          bant_timing?: string | null
+          cadence_day?: number | null
+          closer_id?: string | null
+          company?: string | null
+          created_at?: string
+          current_stage_id?: string | null
+          deal_value?: number | null
+          email?: string | null
+          expected_close_date?: string | null
+          id?: string
+          landing_page?: string | null
+          last_contact_at?: string | null
+          lead_channel?: string | null
+          lead_origin?: string | null
+          metadata?: Json | null
+          name?: string
+          next_action?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          previous_assigned_to?: string | null
+          referrer_url?: string | null
+          sdr_id?: string | null
+          source?: string | null
+          squad_id?: string | null
+          temperature?: Database["public"]["Enums"]["lead_temperature"] | null
+          transfer_reason?: string | null
+          transferred_at?: string | null
+          transferred_by?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_leads_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_leads_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_lost: boolean | null
+          is_won: boolean | null
+          name: string
+          order_index: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_lost?: boolean | null
+          is_won?: boolean | null
+          name: string
+          order_index?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_lost?: boolean | null
+          is_won?: boolean | null
+          name?: string
+          order_index?: number
+        }
+        Relationships: []
+      }
+      platform_crm_sales_goals: {
+        Row: {
+          achieved_deals: number | null
+          achieved_value: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          period_end: string
+          period_start: string
+          target_deals: number
+          target_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achieved_deals?: number | null
+          achieved_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          period_end: string
+          period_start: string
+          target_deals?: number
+          target_value?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achieved_deals?: number | null
+          achieved_value?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          period_end?: string
+          period_start?: string
+          target_deals?: number
+          target_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_sales_squads: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          icon_url: string | null
+          id: string
+          is_active: boolean | null
+          leader_id: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          leader_id?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          leader_id?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      platform_crm_squad_members: {
+        Row: {
+          id: string
+          joined_at: string | null
+          role: string | null
+          squad_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          squad_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          role?: string | null
+          squad_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_squad_members_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_stage_values: {
+        Row: {
+          created_at: string | null
+          expected_value: number | null
+          id: string
+          probability_percent: number | null
+          stage_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expected_value?: number | null
+          id?: string
+          probability_percent?: number | null
+          stage_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expected_value?: number | null
+          id?: string
+          probability_percent?: number | null
+          stage_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_stage_values_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: true
+            referencedRelation: "platform_crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_tag_automations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          is_active: boolean
+          tag_id_to_add: string
+          tag_id_to_remove: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean
+          tag_id_to_add: string
+          tag_id_to_remove?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          tag_id_to_add?: string
+          tag_id_to_remove?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_tag_automations_tag_id_to_add_fkey"
+            columns: ["tag_id_to_add"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_lead_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_tag_automations_tag_id_to_remove_fkey"
+            columns: ["tag_id_to_remove"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_lead_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string | null
+          priority: Database["public"]["Enums"]["task_priority"] | null
+          status: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title?: string
+          type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -7969,6 +9686,7 @@ export type Database = {
           max_contacts: number
           max_messages_month: number
           max_products: number
+          max_professionals: number | null
           max_sectors: number
           max_users: number
           modules: Json
@@ -8019,6 +9737,7 @@ export type Database = {
           max_contacts?: number
           max_messages_month?: number
           max_products?: number
+          max_professionals?: number | null
           max_sectors?: number
           max_users?: number
           modules?: Json
@@ -8069,6 +9788,7 @@ export type Database = {
           max_contacts?: number
           max_messages_month?: number
           max_products?: number
+          max_professionals?: number | null
           max_sectors?: number
           max_users?: number
           modules?: Json
@@ -8452,7 +10172,21 @@ export type Database = {
             foreignKeyName: "post_sale_event_actions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_sale_event_actions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_sale_event_actions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -8527,7 +10261,21 @@ export type Database = {
             foreignKeyName: "post_sale_event_logs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_sale_event_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_sale_event_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -8875,7 +10623,21 @@ export type Database = {
             foreignKeyName: "product_agents_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_agents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_agents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -8965,7 +10727,21 @@ export type Database = {
             foreignKeyName: "product_catalog_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_catalog_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_catalog_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9037,7 +10813,21 @@ export type Database = {
             foreignKeyName: "product_ctas_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_ctas_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_ctas_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9145,7 +10935,21 @@ export type Database = {
             foreignKeyName: "product_knowledge_sources_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_knowledge_sources_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_knowledge_sources_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9204,7 +11008,21 @@ export type Database = {
             foreignKeyName: "product_offers_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_offers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_offers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9261,7 +11079,21 @@ export type Database = {
             foreignKeyName: "product_onboarding_state_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_onboarding_state_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_onboarding_state_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9366,7 +11198,21 @@ export type Database = {
             foreignKeyName: "product_training_videos_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_training_videos_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_training_videos_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9402,6 +11248,7 @@ export type Database = {
           short_description: string | null
           status: Database["public"]["Enums"]["product_status"] | null
           suite_id: string | null
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -9434,6 +11281,7 @@ export type Database = {
           short_description?: string | null
           status?: Database["public"]["Enums"]["product_status"] | null
           suite_id?: string | null
+          tipo?: string
           updated_at?: string
         }
         Update: {
@@ -9466,6 +11314,7 @@ export type Database = {
           short_description?: string | null
           status?: Database["public"]["Enums"]["product_status"] | null
           suite_id?: string | null
+          tipo?: string
           updated_at?: string
         }
         Relationships: [
@@ -9567,9 +11416,12 @@ export type Database = {
           ativo: boolean | null
           comissao_pct: number | null
           created_at: string | null
+          dias_atendimento: Json | null
           email: string | null
           especialidades: string[] | null
           foto_url: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
           id: string
           nome: string
           organization_id: string
@@ -9580,9 +11432,12 @@ export type Database = {
           ativo?: boolean | null
           comissao_pct?: number | null
           created_at?: string | null
+          dias_atendimento?: Json | null
           email?: string | null
           especialidades?: string[] | null
           foto_url?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
           id?: string
           nome: string
           organization_id: string
@@ -9593,9 +11448,12 @@ export type Database = {
           ativo?: boolean | null
           comissao_pct?: number | null
           created_at?: string | null
+          dias_atendimento?: Json | null
           email?: string | null
           especialidades?: string[] | null
           foto_url?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
           id?: string
           nome?: string
           organization_id?: string
@@ -9603,6 +11461,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          ativo: boolean
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          organization_id: string
+          p256dh: string
+          ultimo_erro: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          organization_id: string
+          p256dh: string
+          ultimo_erro?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          organization_id?: string
+          p256dh?: string
+          ultimo_erro?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quick_replies: {
         Row: {
@@ -9815,7 +11723,21 @@ export type Database = {
             foreignKeyName: "sales_goals_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -9986,10 +11908,123 @@ export type Database = {
             foreignKeyName: "sales_squads_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_squads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sales_squads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      salon_automation_log: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          id: string
+          mensagem: string | null
+          organization_id: string
+          ref: string
+          status: string
+          telefone: string | null
+          tipo: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          id?: string
+          mensagem?: string | null
+          organization_id: string
+          ref: string
+          status?: string
+          telefone?: string | null
+          tipo: string
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          id?: string
+          mensagem?: string | null
+          organization_id?: string
+          ref?: string
+          status?: string
+          telefone?: string | null
+          tipo?: string
+        }
+        Relationships: []
+      }
+      salon_automation_rules: {
+        Row: {
+          antecedencia_dias: number
+          created_at: string
+          enabled: boolean
+          id: string
+          organization_id: string
+          template: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          antecedencia_dias?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id: string
+          template?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          antecedencia_dias?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id?: string
+          template?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      salon_monthly_goals: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          period_start: string
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          period_start: string
+          target_value: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          period_start?: string
+          target_value?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       sankhya_mappings: {
         Row: {
@@ -10342,7 +12377,7 @@ export type Database = {
         }
         Relationships: []
       }
-      servico_catalogo: {
+      servico_catalogo_legacy: {
         Row: {
           ativo: boolean
           categoria: string | null
@@ -10451,7 +12486,21 @@ export type Database = {
             foreignKeyName: "stage_values_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -10467,10 +12516,13 @@ export type Database = {
         Row: {
           billing_cycle: string | null
           canceled_at: string | null
+          complimentary_reason: string | null
+          complimentary_since: string | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          is_complimentary: boolean
           organization_id: string | null
           payment_method: Json | null
           plan_id: string | null
@@ -10485,10 +12537,13 @@ export type Database = {
         Insert: {
           billing_cycle?: string | null
           canceled_at?: string | null
+          complimentary_reason?: string | null
+          complimentary_since?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          is_complimentary?: boolean
           organization_id?: string | null
           payment_method?: Json | null
           plan_id?: string | null
@@ -10503,10 +12558,13 @@ export type Database = {
         Update: {
           billing_cycle?: string | null
           canceled_at?: string | null
+          complimentary_reason?: string | null
+          complimentary_since?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          is_complimentary?: boolean
           organization_id?: string | null
           payment_method?: Json | null
           plan_id?: string | null
@@ -10702,7 +12760,21 @@ export type Database = {
             foreignKeyName: "tag_automations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_automations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_automations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -10796,7 +12868,21 @@ export type Database = {
             foreignKeyName: "tasks_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -11103,7 +13189,21 @@ export type Database = {
             foreignKeyName: "user_product_assignments_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_product_assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_product_assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -11356,7 +13456,21 @@ export type Database = {
             foreignKeyName: "webchat_agent_configs_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_agent_configs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_agent_configs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -11659,7 +13773,21 @@ export type Database = {
             foreignKeyName: "webchat_conversations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_conversations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_conversations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -11853,7 +13981,21 @@ export type Database = {
             foreignKeyName: "webchat_widgets_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_widgets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webchat_widgets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -12049,7 +14191,21 @@ export type Database = {
             foreignKeyName: "webhooks_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "pacotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "servico_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -12074,6 +14230,62 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      pacotes: {
+        Row: {
+          ativo: boolean | null
+          cakto_checkout_url: string | null
+          cakto_offer_slug: string | null
+          created_at: string | null
+          descricao: string | null
+          id: string | null
+          nome: string | null
+          organization_id: string | null
+          servicos_incluidos: string[] | null
+          total_sessoes: number | null
+          updated_at: string | null
+          validade_dias: number | null
+          valor: number | null
+        }
+        Insert: {
+          ativo?: never
+          cakto_checkout_url?: never
+          cakto_offer_slug?: never
+          created_at?: string | null
+          descricao?: string | null
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          servicos_incluidos?: never
+          total_sessoes?: never
+          updated_at?: string | null
+          validade_dias?: never
+          valor?: never
+        }
+        Update: {
+          ativo?: never
+          cakto_checkout_url?: never
+          cakto_offer_slug?: never
+          created_at?: string | null
+          descricao?: string | null
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          servicos_incluidos?: never
+          total_sessoes?: never
+          updated_at?: string | null
+          validade_dias?: never
+          valor?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_branding_public: {
         Row: {
@@ -12212,6 +14424,50 @@ export type Database = {
           id?: string | null
         }
         Relationships: []
+      }
+      servico_catalogo: {
+        Row: {
+          ativo: boolean | null
+          categoria: string | null
+          created_at: string | null
+          descricao: string | null
+          duracao_minutos: number | null
+          id: string | null
+          nome: string | null
+          organization_id: string | null
+          preco_base: number | null
+        }
+        Insert: {
+          ativo?: never
+          categoria?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          duracao_minutos?: never
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          preco_base?: never
+        }
+        Update: {
+          ativo?: never
+          categoria?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          duracao_minutos?: never
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          preco_base?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_agent_quality_30d: {
         Row: {
@@ -12461,6 +14717,10 @@ export type Database = {
       is_system_initialized: { Args: never; Returns: boolean }
       is_within_business_hours: { Args: { p_org_id: string }; Returns: boolean }
       mark_super_admin_password_changed: { Args: never; Returns: boolean }
+      merge_clientes: {
+        Args: { p_dups: string[]; p_keep: string }
+        Returns: number
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -12479,6 +14739,10 @@ export type Database = {
           prompt_override: string
           variant_id: string
         }[]
+      }
+      platform_crm_calculate_commission: {
+        Args: { p_deal_id: string; p_deal_value: number; p_seller_id: string }
+        Returns: number
       }
       process_pending_queue: {
         Args: { p_user_id: string }
@@ -12592,6 +14856,7 @@ export type Database = {
         Returns: boolean
       }
       user_sector_ids: { Args: { _user_id: string }; Returns: string[] }
+      verify_salon_cron: { Args: { p_secret: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "manager" | "seller" | "super_admin"

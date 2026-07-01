@@ -11,6 +11,7 @@ import { EmailSettings } from '@/components/superadmin/EmailSettings';
 import { AuditLogs } from '@/components/superadmin/AuditLogs';
 import { SystemHealth } from '@/components/superadmin/SystemHealth';
 import { SalesLeadsManager } from '@/components/superadmin/SalesLeadsManager';
+import { PlatformCrmSection } from '@/components/superadmin/crm/PlatformCrmSection';
 import { EvolutionManager } from '@/components/superadmin/EvolutionManager';
 import { PlansManager } from '@/components/superadmin/PlansManager';
 import { CaktoSuperAdminPanel } from '@/components/superadmin/payments/CaktoSuperAdminPanel';
@@ -71,6 +72,8 @@ export default function SuperAdmin() {
         return <SystemHealth />;
       case 'sales-leads':
         return <SalesLeadsManager />;
+      case 'platform-crm':
+        return <PlatformCrmSection />;
       case 'affiliates':
         return <AffiliatesPanel />;
       case 'sales-payments':

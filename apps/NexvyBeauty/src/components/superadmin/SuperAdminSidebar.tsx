@@ -26,6 +26,7 @@ import {
   BarChart3,
   Handshake,
   Plug,
+  Target,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ const menuItems = [
   { id: 'payments', label: 'Pagamentos (Cakto)', icon: Banknote },
   { id: 'whatsapp', label: 'WhatsApp / Evolution', icon: Smartphone },
   { id: 'sales-leads', label: 'Leads Comerciais', icon: Megaphone },
+  { id: 'platform-crm', label: 'Vendas da Plataforma', icon: Target },
   { id: 'affiliates', label: 'Afiliados', icon: Handshake },
   { id: 'sales-payments', label: 'Pagamentos (Vendas)', icon: Banknote },
   { id: 'help', label: 'Central de Ajuda', icon: HelpCircle },
