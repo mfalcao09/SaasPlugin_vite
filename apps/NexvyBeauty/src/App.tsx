@@ -366,13 +366,13 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/super-admin" 
+              <Route
+                path="/super-admin"
                 element={
                   <SuperAdminRoute>
-                    <SuperAdmin />
+                    <PlatformShell />
                   </SuperAdminRoute>
-                } 
+                }
               />
               <Route path="*" element={<NotFound />} />
               </Routes>
