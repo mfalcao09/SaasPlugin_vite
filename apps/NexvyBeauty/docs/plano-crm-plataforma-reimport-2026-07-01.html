@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — CRM de Plataforma (reimport desacoplado) + Instagram DM</title>
+<style>
+  :root{--bg:#0d0f14;--panel:#151923;--panel2:#1b2130;--border:#2a3345;--text:#e6ebf2;--muted:#93a1b5;--pink:#ff3d8b;--pink2:#ff7ab0;--green:#35d07f;--red:#ff5c6c;--amber:#f5b942;--blue:#4aa3ff;--violet:#a97bff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:29px;line-height:1.25;margin:0 0 6px;background:linear-gradient(90deg,var(--pink),var(--pink2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .meta{color:var(--muted);font-size:14px;margin-bottom:26px}
+  h2{font-size:20px;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:16px;margin:20px 0 6px;color:var(--pink2)}
+  p{color:#d4dbe6}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:2px 6px;border-radius:5px;font-size:12.5px;color:var(--pink2);font-family:"SF Mono",Menlo,monospace}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:14px 0}
+  .phase{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--pink);border-radius:10px;padding:14px 18px;margin:12px 0}
+  .ok{color:var(--green);font-weight:700}.no{color:var(--red);font-weight:700}.warn{color:var(--amber);font-weight:700}
+  ul{padding-left:20px}li{margin:4px 0;color:#d4dbe6}
+  .bin{color:var(--green)}.eye{color:var(--blue)}.lock{color:var(--violet)}
+  .decide{background:linear-gradient(135deg,rgba(255,61,139,.12),rgba(169,123,255,.10));border:1px solid var(--pink);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Plano — CRM de Plataforma (reimport desacoplado) + Instagram DM</h1>
+  <div class="meta">2026-07-01 · execução em <b>/loop</b> (Opus = orquestrador+revisor, N subagentes) · validação visual no Chrome por fase · <b>supersede</b> a recomendação de "reuso" (refutada)</div>
+
+  <h2>1 · Requisito</h2>
+  <p>Super-admin precisa de um <b>CRM de venda de SaaS próprio</b> (prospectar salões → converter assinantes), <b>reimportado do original limpo</b> (<code>crm-src</code>, salon-free) e <b>totalmente desacoplado</b> do CRM do tenant — jamais compartilham tabela/componente/rota. + <b>Instagram DM</b> do mesmo original.</p>
+  <div class="card"><b>Por que reimport (não reuso):</b> o CRM do fork está <b class="no">morto ou salon-reframed</b> — Commission/Goals/StageValue/Squad Managers = 0 refs (órfãos); <code>/leads</code> e <code>/pipeline</code> viraram Contatos/Funil de salão no cockpit; <code>admin/booking/*</code> deletado. Reusar = ressuscitar morto ou acoplar plataforma↔tenant (proibido).</div>
+
+  <h2>2 · Decisões (⚠️ confirmar antes de disparar)</h2>
+  <table>
+    <tr><th>#</th><th>Decisão</th><th>Default recomendado</th></tr>
+    <tr><td><b>D1</b></td><td>Isolamento</td><td>Tabelas <code>platform_crm_*</code> em <code>public</code>, sem <code>organization_id</code>, RLS só super_admin; UI em <code>superadmin/crm/</code>; nunca importa <code>admin/</code> do tenant</td></tr>
+    <tr><td><b>D2</b></td><td>Pipeline</td><td>1 pipeline default (Novo→Contatado→Demo→Proposta→Ganho/Perdido)</td></tr>
+    <tr><td><b>D3</b></td><td><b>Alvo do Instagram DM</b></td><td><b>Inbox do TENANT</b> (reativar feature desligada) — <i>única ambiguidade real, confirme</i></td></tr>
+    <tr><td><b>D4</b></td><td>Escopo v1</td><td>Track A core (leads+kanban+deals+inbound+seção); profundidade depois</td></tr>
+  </table>
+
+  <h2>3 · Riscos</h2>
+  <table>
+    <tr><th>Sev</th><th>Risco</th><th>Mitigação</th></tr>
+    <tr><td class="no">ALTO</td><td>Vazamento de isolamento (tenant vê plataforma ou vice-versa)</td><td>RLS <code>is_super_admin()</code>; <code>get_advisors</code>; teste no Chrome como tenant</td></tr>
+    <tr><td class="no">ALTO</td><td>Instagram E2E exige Meta App + conta IG real</td><td>Validar UI+handshake; send/recv real gated a credencial</td></tr>
+    <tr><td class="warn">MÉDIO</td><td>Componentes reimportados carregam premissas do crm-src</td><td>Subagente reescreve camada de dados; <code>tsc</code> por fase</td></tr>
+    <tr><td class="warn">MÉDIO</td><td>Pipeline product-scoped → single-pipeline</td><td>D2 redesenha</td></tr>
+  </table>
+
+  <h2>4 · Plano por fases</h2>
+  <p style="font-size:13px;color:var(--muted)"><span class="bin">BIN</span>=critério binário · <span class="eye">👁 BROWSER</span>=validação Chrome · <span class="lock">🔒</span>=prova de não-vazamento</p>
+
+  <div class="phase"><h3>FASE 0 — Fundação: schema isolado + RLS <span style="color:var(--muted);font-size:13px">(1 subagente · barreira)</span></h3>
+    <ul>
+      <li><b>T0.1</b> Migration <code>platform_crm_*</code> (leads/pipeline_stages/deals/stage_history/tags/tasks/notes), sem org_id, RLS super_admin. <span class="bin">BIN:</span> aplica; advisors ok; anon=0. <span class="lock">🔒</span> não toca leads/deals/pipeline_stages do tenant.</li>
+      <li><b>T0.2</b> Seed pipeline (6 estágios) + 2-3 leads sintéticos. <span class="bin">BIN:</span> 6 stages + ≥2 leads.</li>
+    </ul></div>
+
+  <div class="phase"><h3>FASE 1 — Reimport componentes → <code>superadmin/crm/</code> <span style="color:var(--muted);font-size:13px">(N subagentes paralelos)</span></h3>
+    <ul>
+      <li><b>T1.1</b> Kanban (Board+cols/filters/cards/StageManagerDialog) → reescrito p/ <code>usePlatformCrm</code>. <span class="bin">BIN:</span> build verde; lê tabelas novas.</li>
+      <li><b>T1.2</b> Leads (Manager+Table/Filters/KPICards/Create/Import) → <code>platform_crm_leads</code>. <span class="bin">BIN:</span> build verde.</li>
+      <li><b>T1.3</b> Deals + notas + tags mínimos p/ fechar funil. <span class="bin">BIN:</span> build verde.</li>
+    </ul></div>
+
+  <div class="phase"><h3>FASE 2 — Seção "Vendas da Plataforma" no super-admin <span style="color:var(--muted);font-size:13px">(1 subagente · barreira)</span></h3>
+    <ul>
+      <li><b>T2.1</b> Seção em <code>SuperAdmin.tsx</code>+sidebar (Funil/Contatos/Negócios), guard super_admin. <span class="eye">👁</span> <code>gestao.*/super-admin</code> → "Vendas da Plataforma" → kanban com leads seed renderiza. <span class="lock">🔒</span> como tenant em <code>app.*</code> a seção não existe.</li>
+    </ul></div>
+
+  <div class="phase"><h3>FASE 3 — Inbound: <code>sales_leads</code> (LP) → <code>platform_crm_leads</code> <span style="color:var(--muted);font-size:13px">(1 subagente)</span></h3>
+    <ul>
+      <li><b>T3.1</b> Edge/trigger promove <code>sales_leads</code> novo → <code>platform_crm_leads</code> (estágio Novo). <span class="bin">BIN:</span> 1 insert → 1 lead. <span class="eye">👁</span> form da LP → lead no kanban "Novo".</li>
+    </ul></div>
+
+  <div class="phase"><h3>FASE 4 — Instagram DM (porte limpo) — Track B <span style="color:var(--muted);font-size:13px">(N subagentes)</span></h3>
+    <ul>
+      <li><b>T4.1</b> Migration <code>instagram_connections</code>+<code>instagram_webhook_logs</code> (tenant, AES-256).</li>
+      <li><b>T4.2</b> Deploy edges <code>instagram-draft/connect/webhook/send/test</code>.</li>
+      <li><b>T4.3</b> Portar <code>InstagramWizard</code>+<code>InstagramConnectionsPanel</code>; recepção → <code>webchat_conversations</code>. <span class="eye">👁</span> tenant→Integrações→Instagram: wizard abre, cria draft. <span class="lock">🔒</span> tenant-scoped; não toca <code>platform_crm_*</code>.</li>
+      <li><b>T4.4</b> (gated) Reativar <code>feature_instagram</code> só após E2E com conta Meta real.</li>
+    </ul></div>
+
+  <div class="phase"><h3>FASE 5 — Validação E2E no Chrome + prova de desacoplamento <span style="color:var(--muted);font-size:13px">(orquestrador)</span></h3>
+    <ul>
+      <li><b>T5.1</b> Walkthrough: super-admin opera funil (lead→estágio→deal); tenant opera salão sem ver plataforma; IG wizard+handshake. <span class="eye">👁</span> screenshots por marco. <span class="lock">🔒</span> provado nos 2 hosts.</li>
+    </ul></div>
+
+  <h2>5 · Modelo /loop</h2>
+  <ul>
+    <li><b>Eu (orquestrador)</b> disparo subagente(s) por tarefa (prompt self-contained + proibições de não-vazamento; não buildam/deployam — eu faço).</li>
+    <li>Retorno → <b>reviso diff</b> → <code>tsc</code>/<code>build</code> → <b>deploy</b> → <b>valido no Chrome</b>.</li>
+    <li>BIN + 👁 + 🔒 ✅ → avanço; senão re-disparo. <code>/loop</code> paceia entre fases; seguro cada marco p/ tua revisão.</li>
+    <li>Barreira: Fases 0 e 2 sequenciais; Fases 1 e 4 têm tarefas paralelas; Fase 3 depende de 0-2.</li>
+  </ul>
+
+  <h2>6 · Critério de "pronto"</h2>
+  <ul>
+    <li>Funil de SaaS funcional no super-admin (lead→estágios→deal ganho/perdido), provado no Chrome, alimentado pela LP.</li>
+    <li><b>Zero</b> compartilhamento com o CRM do tenant (2 hosts + RLS + advisors).</li>
+    <li>Instagram DM: wizard + handshake no tenant (send/recv real gated a credencial Meta).</li>
+    <li>Tipos regenerados; build verde; bundle novo servido (prova por string).</li>
+  </ul>
+
+  <div class="decide"><b>Gate de aprovação:</b> aguardando confirmação p/ iniciar o <code>/loop</code>. Confirme §2 — em especial <b>D3 (alvo do Instagram DM)</b> e <b>D4 (escopo v1)</b> — e disparo a Fase 0.</div>
+
+  <div class="foot">NexvyBeauty · plano de execução · pareado com <code>plano-crm-plataforma-reimport-2026-07-01.md</code></div>
+</div>
+</body>
+</html>

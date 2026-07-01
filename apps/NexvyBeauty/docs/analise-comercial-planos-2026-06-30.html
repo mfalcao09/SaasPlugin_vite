@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise comercial dos planos — NexvyBeauty</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#2a3240;--text:#e6edf3;--muted:#9aa6b2;--pink:#ec4899;--pink-soft:#f9a8d4;--green:#34d399;--amber:#fbbf24;--red:#f87171;--code:#0b0f16;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px;}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px;}
+  header{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(96,165,250,.08));border-bottom:1px solid var(--border);padding:40px 0 28px;margin-bottom:8px;}
+  header .wrap{padding-top:0;padding-bottom:0;}
+  h1{margin:0 0 8px;font-size:27px;letter-spacing:-.5px;} .sub{color:var(--muted);font-size:14px;}
+  .badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--pink-soft);border:1px solid rgba(236,72,153,.4);border-radius:999px;padding:2px 12px;font-size:12px;font-weight:600;margin-bottom:14px;}
+  h2{margin:36px 0 12px;font-size:20px;border-left:3px solid var(--pink);padding-left:12px;}
+  code{background:var(--code);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--pink-soft);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;}
+  th,td{text-align:left;padding:8px 10px;border:1px solid var(--border);vertical-align:top;}
+  th{background:var(--panel2);color:var(--pink-soft);font-weight:600;}
+  .callout{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:14px 16px;margin:16px 0;}
+  .callout.bad{border-left-color:var(--red);} .callout.good{border-left-color:var(--green);}
+  ul li,ol li{margin:5px 0;} hr{border:none;border-top:1px solid var(--border);margin:28px 0;}
+  .p0{color:var(--red);font-weight:700;} .p1{color:var(--amber);font-weight:700;} .ok{color:var(--green);} .no{color:var(--red);}
+  del{color:var(--muted);} .star{color:var(--amber);}
+  .foot{color:var(--muted);font-size:14px;font-style:italic;}
+  .verd{font-size:18px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:14px 18px;}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="badge">ANÁLISE COMERCIAL · 3 lentes + síntese</div>
+  <h1>Análise comercial dos planos — NexvyBeauty</h1>
+  <div class="sub">2026-06-30 · Sales Strategist × Sales Coach × Sales Engineer + síntese de Revenue · verificado no código e no banco.</div>
+</div></header>
+<div class="wrap">
+
+  <h2>Veredito</h2>
+  <p class="verd"><strong>NÃO.</strong> Os planos não servem nem o tenant nem a LP de forma unificada. São <strong>quatro narrativas de preço incompatíveis</strong> no mesmo produto, e o <strong>gating que diferenciaria os planos quase não existe em runtime</strong>. Antes de discutir preço, a fundação está quebrada.</p>
+
+  <h2>1 · O drift — 4 fontes, 4 verdades</h2>
+  <table>
+    <tr><th>Fonte</th><th>Starter</th><th>Pro</th><th>Premium</th><th>Cobra?</th></tr>
+    <tr><td><strong>DB <code>platform_plans</code></strong> (catálogo real)</td><td>R$247</td><td>R$391</td><td>R$587</td><td class="ok">✅ SIM (Cakto cobra isto)</td></tr>
+    <tr><td><strong>LP <code>SalesPage.tsx</code></strong> (hardcoded)</td><td>R$197</td><td>R$397</td><td>R$697</td><td class="no">❌ vitrine</td></tr>
+    <tr><td>Super-admin <code>SubscriptionsManager</code> (hardcoded)</td><td>R$97</td><td>R$497</td><td>"Enterprise"</td><td class="no">❌ fantasma</td></tr>
+    <tr><td>Narrativa da LP (capacidade)</td><td>até 2 prof.</td><td>até 8 prof.</td><td>ilimitado</td><td>—</td></tr>
+  </table>
+  <div class="callout bad"><strong class="p0">Consequência P0:</strong> o lead vê <strong>R$197</strong> na landing e o checkout cobra <strong>R$247</strong> (+25% no ponto mais sensível do funil). Preço-anunciado ≠ cobrado = abandono + chargeback + "vocês mentiram no preço". Só a tela "Planos" lê o catálogo; LP e "Assinaturas" são <strong>vitrines mortas</strong> (hardcoded).</div>
+
+  <h2>2 · Bugs e incoerências (verificados)</h2>
+  <table>
+    <tr><th>Achado</th><th>Sev.</th><th>Verificação</th></tr>
+    <tr><td>LP cobra ≠ anuncia (197 vs 247)</td><td class="p0">P0</td><td class="ok">✅ confirmado</td></tr>
+    <tr><td><del>Premium <code>max_ai_agents=0</code> (paga e não tem IA)</del></td><td>—</td><td class="no">❌ FALSO em prod — banco tem <strong>5</strong>. Migration com slug errado, valor vivo correto. Não é bug ativo.</td></tr>
+    <tr><td><strong>Gating fictício</strong> — das 18 flags, só 2 têm enforcement</td><td class="p0">P0</td><td><span class="p1">[Provável]</span> grep dos agentes</td></tr>
+    <tr><td>Starter: <code>feature_ai_agents=true</code> mas <code>max_ai_agents=0</code></td><td class="p1">P1</td><td class="ok">✅ confirmado no banco</td></tr>
+    <tr><td>Pro e Premium com o <strong>mesmo teto de tokens IA</strong> (50k)</td><td class="p1">P1</td><td class="ok">✅ confirmado</td></tr>
+    <tr><td>Taxonomia tripla (premium vs enterprise; master com 3 identidades)</td><td class="p1">P1</td><td class="ok">✅ confirmado</td></tr>
+    <tr><td>LP vende white-label/multi-unidade/API — <strong>não existem</strong></td><td class="p1">P1</td><td class="ok">✅ promessa sem lastro</td></tr>
+    <tr><td>Trial: LP "14 dias" vs catálogo "7 dias"</td><td class="p1">P1</td><td class="ok">✅ confirmado</td></tr>
+  </table>
+  <div class="callout good"><strong>Lição da verificação:</strong> o achado "Premium sem IA" parecia P0 mas era falso em produção (banco = 5). Checar o banco evitou propagar um bug inexistente. Os demais se confirmaram.</div>
+
+  <h2>3 · O gating é o problema invisível (pior que o preço)</h2>
+  <p>Das <strong>18 feature flags</strong>, <strong>só ~2 barram algo no produto</strong>. Hoje um cliente Starter usa quase tudo — nada checa a flag. <strong>Você vende 4 tiers que entregam o mesmo produto</strong>: não há motivo <em>técnico</em> de upgrade. A escada é decorativa.</p>
+  <p>E o <strong>value-metric está errado</strong>: cobra por <code>max_users</code> (usuário-do-sistema), métrica que o dono <strong>sonega</strong> (não dá login pra recepção) → subutilização → churn. Em salão, valor escala por <strong>profissionais/cadeiras</strong> — que a LP já usa mas não existe como quota.</p>
+
+  <h2>4 · Decisão de preço: <span class="star">vale 197/397/697</span> (os da LP)</h2>
+  <ol>
+    <li><strong>Assimetria de risco:</strong> baixar o cobrado (247→197) nunca gera reclamação; subir a LP (197→247) sim, e te deixa mais caro que Trinks/Belasis (~R$80-130).</li>
+    <li><strong>Psicologia:</strong> 197&lt;200, 397&lt;400 convertem melhor que 391 ("número sujo").</li>
+    <li><strong>O mercado já viu 197/397/697</strong> na LP — cravar no catálogo só formaliza.</li>
+  </ol>
+  <p><strong>Execução:</strong> editar <code>platform_plans</code> <strong>para baixo</strong> (197/397/697; anual 1970/3970/6970 = 2 meses grátis), via <strong>migration versionada</strong> (hoje o seed vive solto no banco).</p>
+
+  <h2>5 · Escada recomendada <span class="foot">(hipótese — validar)</span></h2>
+  <p>value-metric = <strong>profissionais/cadeiras</strong> · usuários ilimitados em todos os tiers · anual default "2 meses grátis".</p>
+  <table>
+    <tr><th>Tier</th><th>Mensal</th><th>Prof.</th><th>Conex.</th><th>Agentes IA</th><th>Tokens</th><th>Msgs</th><th>Papel</th></tr>
+    <tr><td>Trial</td><td>R$0 (14d)</td><td>até 3</td><td>1</td><td>1</td><td>50k</td><td>500</td><td>remover atrito</td></tr>
+    <tr><td>Essencial</td><td><strong>R$197</strong></td><td>até 2</td><td>1</td><td>0</td><td>20k</td><td>1.000</td><td>porta de entrada (IA = gancho)</td></tr>
+    <tr><td><span class="star">Pro ⭐</span></td><td><strong>R$397</strong></td><td>até 8</td><td>2</td><td>3</td><td>150k↑</td><td>8.000</td><td><strong>âncora (60-70%)</strong> — onde mora a IA</td></tr>
+    <tr><td>Premium</td><td><strong>R$697</strong></td><td>até 20</td><td>4</td><td>5</td><td>400k↑</td><td>25.000↑</td><td>gap real +76% vs Pro</td></tr>
+    <tr><td>Enterprise</td><td>sob consulta (≥1.497)</td><td>ilimit.</td><td>—</td><td>—</td><td>—</td><td>—</td><td>âncora de topo (rede)</td></tr>
+  </table>
+  <p><strong>Muda:</strong> mata o Starter-natimorto; Pro alinha com a LP; Premium ganha gap; tokens/mensagens <strong>escalam com o preço</strong> (hoje Pro=Premium=50k → margem exposta); IA vira o gancho #1 de upgrade.</p>
+  <div class="callout"><strong>⚠️ Ressalva honesta:</strong> os números são <strong>hipótese estruturada</strong> (benchmark BR + narrativa da LP), <strong>não verdade revelada</strong>. Antes de cravar, rodar <strong>Van Westendorp</strong> com 15-30 salões por segmento (solo / 2-5 cadeiras / rede).</div>
+
+  <h2>6 · Fix de arquitetura — fonte única <code>platform_plans</code></h2>
+  <ol>
+    <li><strong>LP:</strong> trocar o array hardcoded por <code>useActivePlans()</code> (hook <code>usePlatformPlans.ts</code> já existe); botão = <code>plan.checkout_url</code>.</li>
+    <li><strong>Assinaturas:</strong> cards/preços do catálogo, zero literal; matar "enterprise".</li>
+    <li><strong>Gating:</strong> <code>useFeatureFlag</code>/<code>usePlanLimit</code> lendo <code>get_organization_effective_limits</code> + guards nas features pagas. Regra: flag=true ⟺ quota&gt;0.</li>
+    <li><strong>Taxonomia:</strong> slug do catálogo; migrar <code>plan_type</code> enterprise→premium; CHECK anti-drift.</li>
+    <li><strong>Guarda-trilho:</strong> teste de CI que falha com literal de preço em páginas/componentes de plano.</li>
+  </ol>
+
+  <h2>7 · Top 5 ações</h2>
+  <table>
+    <tr><th>#</th><th>Ação</th><th>Prio.</th><th>Esforço</th></tr>
+    <tr><td>1</td><td><strong>Consertar a cobrança:</strong> migration 197/397/697 + LP lê <code>useActivePlans()</code></td><td class="p0">P0</td><td>~1-2h</td></tr>
+    <tr><td>2</td><td><strong>Ligar o gating real</strong> nas features pagas</td><td class="p0">P0</td><td>~1-2 dias</td></tr>
+    <tr><td>3</td><td><strong>Limpar promessa + taxonomia</strong> (white-label, R$97/497, trial 7→14d)</td><td class="p1">P1</td><td>~2-3h</td></tr>
+    <tr><td>4</td><td><strong>Value-metric:</strong> <code>max_professionals</code>; usuários ilimitados; tokens escalando</td><td class="p1">P1</td><td>médio</td></tr>
+    <tr><td>5</td><td><strong>Validar preço</strong> (Van Westendorp) antes de cravar</td><td class="p1">P1</td><td>pesquisa</td></tr>
+  </table>
+
+  <h2>8 · Item 5 — Bonificação da master (dovetail)</h2>
+  <p>A bonificação é da <strong>assinatura</strong>, não do plano: a Nexvy fica no plano completo, mas a assinatura ganha flag de cortesia → R$0 de receita, fora do MRR, selo "Bonificada". Coluna <code>is_complimentary</code> + toggle "Bonificar/Isentar" na tela Assinaturas. <strong>Mesmo refactor</strong> da ação #3 — implementar junto.</p>
+
+  <hr>
+  <p class="foot">Critério de pronto: LP == catálogo == cobrança Cakto · cada <code>feature_*</code> com guard · zero literal de preço no front · master "Bonificada" e fora do MRR.</p>
+</div>
+</body>
+</html>

@@ -73,6 +73,7 @@ const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
+const PlatformShell = lazyWithRetry(() => import("./components/superadmin/platform-shell/PlatformShell"));
 const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
@@ -255,7 +256,7 @@ const App = () => (
                     // gestao.nexvybeauty.com.br → painel de gestão da plataforma
                     // (super-admin), isolado do app do salão.
                     <SuperAdminRoute>
-                      <SuperAdmin />
+                      <PlatformShell />
                     </SuperAdminRoute>
                   ) : isApexDomain() ? (
                     <SalesPage />

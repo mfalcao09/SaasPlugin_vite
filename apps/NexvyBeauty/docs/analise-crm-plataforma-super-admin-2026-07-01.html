@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM da Plataforma no Super-Admin — Validação (reimport × reuso)</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#151923; --panel2:#1b2130; --border:#2a3345;
+    --text:#e6ebf2; --muted:#93a1b5; --pink:#ff3d8b; --pink2:#ff7ab0;
+    --green:#35d07f; --red:#ff5c6c; --amber:#f5b942; --blue:#4aa3ff; --violet:#a97bff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;background:linear-gradient(90deg,var(--pink),var(--pink2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .meta{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:21px;margin:36px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:17px;margin:22px 0 8px;color:var(--pink2)}
+  p{color:#d4dbe6}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.03em}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:2px 6px;border-radius:5px;font-size:13px;color:var(--pink2);font-family:"SF Mono",Menlo,monospace}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:16px 0}
+  .ok{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .warn{color:var(--amber);font-weight:700}
+  .verdict{background:linear-gradient(135deg,rgba(255,61,139,.12),rgba(169,123,255,.10));border:1px solid var(--pink);border-radius:14px;padding:20px 24px;margin:20px 0}
+  .verdict b{color:var(--pink2)}
+  ul{padding-left:20px}li{margin:5px 0;color:#d4dbe6}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.rec{background:rgba(53,208,127,.15);color:var(--green);border:1px solid rgba(53,208,127,.4)}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CRM da Plataforma no Super-Admin</h1>
+  <div class="meta">Validação <b>reimport × reuso</b> · 2026-07-01 · base: 4 subagentes de inspeção + diff direto do código (<code>mfalcao09/novo-remix-vendus-v4</code> × NexvyBeauty)</div>
+
+  <div class="verdict">
+    <div style="font-size:18px;margin-bottom:8px"><b>Veredito:</b> teoria "reimportar" — <span class="ok">A ✅</span> / <span class="no">B ❌</span> → <span class="pill rec">REUSAR, não reimportar</span></div>
+    <table style="margin:8px 0 0">
+      <tr><th>Afirmação</th><th>Status</th><th>Base</th></tr>
+      <tr><td><b>(A)</b> Original é CRM de venda de SaaS</td><td class="ok">CONFIRMADO</td><td>Zero salão; leads com BANT/SDR/closer, deals, comissões, cadências; <code>sales_leads</code> capta lead B2B</td></tr>
+      <tr><td><b>(B)</b> Fork salon-izou o CRM</td><td class="no">REFUTADO</td><td>CRM core (tabelas <b>e</b> componentes) quase idêntico ao original; salão foi adicionado <b>ao lado</b></td></tr>
+      <tr><td>Decisão</td><td><span class="pill rec">REUSO</span></td><td>Reimport = duplicar código quase idêntico (NIH). Reuso já ~90% cabeado</td></tr>
+    </table>
+    <p style="margin:10px 0 0;font-size:14px"><span class="warn">Ressalva honesta:</span> há <b>uma</b> razão legítima p/ separar — evolução desacoplada (não a contaminação). Ver §4.</p>
+  </div>
+
+  <h2>2 · A prova (o diff, com número)</h2>
+  <p><b>Original é salon-FREE:</b> nenhuma tabela <code>clientes</code>/<code>agendamentos</code>/<code>servico_catalogo</code>/<code>profissionais</code>; <code>leads</code> sem coluna de salão.</p>
+  <p><b>O fork NÃO mexeu no CRM core</b> — divergência de conteúdo (original × fork):</p>
+  <table>
+    <tr><th>Componente</th><th>Tamanho</th><th>Linhas divergentes</th><th>%</th></tr>
+    <tr><td><code>KanbanBoard.tsx</code></td><td>214 L</td><td>2</td><td>~1%</td></tr>
+    <tr><td><code>LeadsManager.tsx</code></td><td>433 L</td><td>37</td><td>~8%</td></tr>
+    <tr><td><code>LeadsTable.tsx</code></td><td>345 L</td><td>9</td><td>~3%</td></tr>
+    <tr><td><code>CommissionManager.tsx</code></td><td>353 L</td><td>0</td><td><b class="ok">idêntico</b></td></tr>
+  </table>
+  <p>+ <b>zero</b> menção a salão/agendamento/serviço dentro de <code>components/admin/kanban</code> e <code>components/admin/leads</code> do fork. <code>sales_leads</code> + <code>SalesLeadsManager</code> ("Leads Comerciais") existem nos dois — <b>herdados do original</b>.</p>
+  <div class="card"><b>Conclusão factual:</b> fork = <b>original + vertical de salão em tabelas/páginas separadas</b>. O CRM de vendas permaneceu intacto e SaaS-nativo. Não existe "CRM salon-izado" pra fugir — é o mesmo CRM.</div>
+
+  <h2>3 · O que o NexvyBeauty JÁ tem</h2>
+  <p><b>Maquinaria de CRM viva (herdada, por <code>organization_id</code>):</b> <code>leads</code>, <code>deals</code>, <code>pipeline_stages</code>, <code>stage_values</code>, <code>lead_stage_history</code>, <code>commissions</code>+<code>commission_rules</code>+payouts, <code>custom_fields</code>, <code>tasks</code>, <code>lead_notes</code>, <code>lead_tags</code>+automations, <code>cadences</code> (+steps/runs/enrollments), <code>sales_squads</code>+distribution, <code>sales_goals</code>, <code>lead_queue</code>, transfer/nba/semantic memory. UI: <code>KanbanBoard</code>, <code>LeadsManager</code>, <code>CommissionManager</code>, <code>GoalsManager</code>, <code>CadencesManager</code>, <code>ReportsManager</code>…</p>
+  <p><b>Platform-sales hoje ("Leads Comerciais"):</b> <code>SalesLeadsManager</code> sobre <code>sales_leads</code> (global, alimentada pela LP via <code>capture-lead</code>). É <b>raso</b>: stats + status + nota + WhatsApp. <b>Sem</b> pipeline/tarefa/atribuição/comissão/cadência.</p>
+  <p><b>Infra de plataforma pronta:</b> org master via <code>platform_settings.master_organization_id</code>; super-admin 2 modos (gestao/empresa) por hostname; <code>set_active_organization</code>; RLS <code>get_user_organization()</code> propaga escopo.</p>
+
+  <h2>4 · As duas opções (honestas)</h2>
+  <h3>REUSO — CRM existente escopado à org master <span class="pill rec">recomendada</span></h3>
+  <p>Super-admin opera a SaaS-sales CRM já existente como CRM da org master: leads = salões prospectados; "produto" = assinatura NexvyBeauty c/ pipeline SaaS; deals = assinaturas.</p>
+  <ul>
+    <li><b>Custo:</b> baixo — master-org + modo empresa + UI de CRM + <code>sales_leads</code> inbound já existem.</li>
+    <li><b class="ok">Prós:</b> zero duplicação; 1 CRM; cadência/comissão/squad de graça; drift impossível.</li>
+    <li><b class="warn">Contras:</b> <code>leads</code> da plataforma compartilha schema com o dos tenants (isolado por org_id/RLS, mas mesma tabela).</li>
+  </ul>
+  <h3>SEPARAR — tabelas <code>platform_*</code> dedicadas + UI própria</h3>
+  <ul>
+    <li><b>Custo:</b> alto — duplica ~30 tabelas + ~30 componentes quase idênticos + RLS + edge functions.</li>
+    <li><b class="ok">Prós:</b> evolução desacoplada; isolamento físico.</li>
+    <li><b class="warn">Contras:</b> NIH/duplicação; dobra manutenção; isolamento já entregue por org_id/RLS no Reuso.</li>
+  </ul>
+  <div class="card"><b>A pergunta que decide:</b> você quer o CRM da plataforma <b>evoluindo independente</b> do CRM do tenant? Não → <b>Reuso</b>. Sim, forte → Separar. Minha leitura: org_id já basta → <b class="ok">Reuso</b>.</div>
+
+  <h2>5 · Plano de plug (se REUSO)</h2>
+  <ul>
+    <li><b>1.</b> Semear no master org um "produto" = <i>Assinatura NexvyBeauty</i> + <code>pipeline_stages</code> SaaS (Novo→Contatado→Demo→Proposta→Fechado).</li>
+    <li><b>2.</b> Surface no super-admin: seção "Vendas da Plataforma" abrindo o CRM do master (KanbanBoard/LeadsManager) via modo empresa / <code>set_active_organization</code>.</li>
+    <li><b>3.</b> Ligar inbound: promover <code>sales_leads</code> → <code>leads</code> no master org; "Leads Comerciais" vira topo de funil.</li>
+    <li><b>4.</b> Copy contextual "venda da plataforma" (sem tocar lógica).</li>
+    <li><b>5.</b> (Opcional) MRR/conversão de tenants via <code>ReportsManager</code>.</li>
+  </ul>
+  <p>Estimativa: <b>dias, não semanas</b> (wiring + seed, não código novo).</p>
+
+  <h2>6 · Bônus — chat interno · Instagram · Facebook</h2>
+  <table>
+    <tr><th>Feature</th><th>Existe no original?</th><th>Portabilidade</th><th>Nota</th></tr>
+    <tr><td><b>Instagram (DM)</b></td><td class="ok">Completo</td><td class="ok">Alta</td><td>Envia+recebe, webhook HMAC, OAuth BYO, AES-256; usa o mesmo <code>webchat_conversations</code> → porte limpo</td></tr>
+    <tr><td><b>Facebook</b></td><td class="warn">Só Lead Ads</td><td class="ok">Alta</td><td>Captura de lead via webhook Meta; <b>não</b> é Messenger ("Messenger" na UI é cosmético)</td></tr>
+    <tr><td><b>Chat interno (humano↔humano)</b></td><td class="no">NÃO existe</td><td>N/A</td><td>Nem no original nem no fork. Só agente-IA + notificações + presença. <code>feature_internal_chat</code> = flag sem produto → seria <b>net-new</b></td></tr>
+  </table>
+  <div class="card"><b class="warn">Correção:</b> "está tudo nesse código" vale p/ Instagram e Facebook-LeadAds, <b>mas não p/ o chat interno de equipe</b> — esse é construção nova (tabela <code>team_messages</code> + realtime + UI), não porte.</div>
+
+  <h2>7 · Recomendação final</h2>
+  <ul>
+    <li><b>CRM da plataforma:</b> <b class="ok">REUSO</b> escopado ao master org (a menos que queira evolução desacoplada → Separar). Objetivo entregue em dias.</li>
+    <li><b>Instagram + Facebook-LeadAds:</b> portes limpos e auto-contidos — agendar quando reativar (hoje desligados por não funcionarem; o porte os torna reais).</li>
+    <li><b>Chat interno:</b> decisão à parte — <b>construção nova</b>, não reaproveitamento.</li>
+  </ul>
+
+  <div class="foot">NexvyBeauty · análise de arquitetura · pareado com <code>analise-crm-plataforma-super-admin-2026-07-01.md</code></div>
+</div>
+</body>
+</html>

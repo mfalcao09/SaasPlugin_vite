@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — Planos, Pricing & Gating · NexvyBeauty</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#2a3240;--text:#e6edf3;--muted:#9aa6b2;--pink:#ec4899;--pink-soft:#f9a8d4;--green:#34d399;--amber:#fbbf24;--red:#f87171;--code:#0b0f16;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px;}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px;}
+  header{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(96,165,250,.08));border-bottom:1px solid var(--border);padding:40px 0 28px;margin-bottom:8px;}
+  header .wrap{padding-top:0;padding-bottom:0;}
+  h1{margin:0 0 8px;font-size:27px;letter-spacing:-.5px;} .sub{color:var(--muted);font-size:14px;}
+  .badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--pink-soft);border:1px solid rgba(236,72,153,.4);border-radius:999px;padding:2px 12px;font-size:12px;font-weight:600;margin-bottom:14px;}
+  h2{margin:34px 0 12px;font-size:20px;border-left:3px solid var(--pink);padding-left:12px;}
+  code{background:var(--code);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--pink-soft);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;}
+  th,td{text-align:left;padding:7px 9px;border:1px solid var(--border);vertical-align:top;}
+  th{background:var(--panel2);color:var(--pink-soft);font-weight:600;}
+  .callout{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:14px 16px;margin:16px 0;}
+  .callout.bad{border-left-color:var(--red);} .callout.good{border-left-color:var(--green);}
+  ul li,ol li{margin:5px 0;} hr{border:none;border-top:1px solid var(--border);margin:28px 0;}
+  .star{color:var(--amber);} .y{color:var(--green);} .n{color:var(--red);}
+  .foot{color:var(--muted);font-size:14px;font-style:italic;}
+  .tldr{background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.25);border-radius:10px;padding:8px 18px;}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="badge">PLANO DE CORREÇÕES · pricing + gating</div>
+  <h1>Planos, Pricing &amp; Gating — NexvyBeauty</h1>
+  <div class="sub">2026-06-30 · benchmark de 12 concorrentes BR (web) + 3 lentes + síntese de Revenue + auditoria código/banco.</div>
+</div></header>
+<div class="wrap">
+
+  <h2>TL;DR</h2>
+  <div class="tldr"><ol>
+    <li><strong>Preço:</strong> Essencial <strong>R$147</strong> · Crescimento <strong>R$297 ⭐</strong> · Rede <strong>R$597</strong> (1:2:4, anual −20%) + Enterprise "fale com vendas". <strong>Mas não cravar sem validar seu COGS de IA + telemetria.</strong></li>
+    <li><strong>Value-metric:</strong> profissionais/cadeiras (base) + quota de IA (upgrade). <strong>Matar <code>max_users</code> como eixo.</strong></li>
+    <li><strong>Nomes:</strong> Essencial/Crescimento/Rede (não Starter/Pro/Premium).</li>
+    <li><strong>Seu gating está ~70% certo</strong> — 5 correções cirúrgicas, sem refazer arquitetura.</li>
+    <li><strong>2 tracks:</strong> Arquitetura (começa já) + Pricing (após validação).</li>
+  </ol></div>
+
+  <h2>1 · Escada de preço</h2>
+  <table>
+    <tr><th>Tier</th><th>Mensal</th><th>Anual (−20%)</th><th>Profissionais</th><th>Cadeira extra</th><th>Papel</th></tr>
+    <tr><td>Essencial</td><td><strong>R$147</strong></td><td>R$117/mês</td><td>até 2</td><td>+R$25</td><td>porta de entrada — recepcionista de IA</td></tr>
+    <tr><td><span class="star">Crescimento ⭐</span></td><td><strong>R$297</strong></td><td>R$237/mês</td><td>até 5</td><td>+R$22</td><td><strong>âncora (60-70%)</strong> — atende, vende e reativa</td></tr>
+    <tr><td>Rede</td><td><strong>R$597</strong></td><td>R$477/mês</td><td>ilimitado</td><td>—</td><td>voz + multi-instância + integrações</td></tr>
+    <tr><td>Enterprise</td><td>fale c/ vendas (~R$897+)</td><td>negociado</td><td>multi-CNPJ</td><td>—</td><td>franquia — não é card na LP</td></tr>
+  </table>
+  <p>Razão <strong>1:2:4</strong>; desconto anual único −20%; overage de IA = add-on (nunca cortar atendimento). <strong>Posicionamento:</strong> fora da guerra de booking (Trinks R$76); ancorar no médio (2-5 cadeiras). Concorrente perigoso = <strong>Avec</strong> (R$280-370). Justificar por custo de oportunidade: <em>"a Trinks organiza por R$76; o NexvyBeauty atende e vende sozinho por R$297". Eles vendem organização; você vende faturamento.</em></p>
+
+  <h2>2 · Value-metric: híbrida</h2>
+  <p>Base por <strong>profissionais/cadeiras</strong> (<code>max_professionals</code> — campo a criar) + <strong>quota de IA</strong> (msgs/tokens/agentes) como motor de upgrade. <strong>Matar <code>max_users</code> como eixo</strong> (anti-padrão: dono sonega login). LP diz "até 2/5/ilimitado", nunca "R$ por cadeira".</p>
+
+  <h2>3 · Matriz de gating (enforced)</h2>
+  <table>
+    <tr><th>Limite</th><th>Essencial</th><th>Crescimento ⭐</th><th>Rede</th></tr>
+    <tr><td><code>max_professionals</code></td><td>2</td><td>5</td><td>ilimitado</td></tr>
+    <tr><td><code>max_connections</code> (WhatsApp)</td><td>1</td><td>2</td><td>4</td></tr>
+    <tr><td><code>max_ai_agents</code></td><td><strong>1</strong> (era 0!)</td><td>3</td><td>5</td></tr>
+    <tr><td><code>max_messages_month</code></td><td>~2.000</td><td>~8.000</td><td>~25.000</td></tr>
+    <tr><td><code>max_ai_tokens_month</code></td><td>~300k</td><td>~1,5M</td><td>~4M</td></tr>
+    <tr><td><code>max_contacts</code></td><td>3.000</td><td>15.000</td><td>50.000</td></tr>
+  </table>
+  <table>
+    <tr><th>Feature</th><th>Essencial</th><th>Crescimento ⭐</th><th>Rede</th></tr>
+    <tr><td>agenda · WhatsApp · CRM · forms · pacotes</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+    <tr><td><strong>agentes IA</strong></td><td class="y">✅ (1)</td><td class="y">✅ (3)</td><td class="y">✅ (5)</td></tr>
+    <tr><td>transcrição/correção IA</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td></tr>
+    <tr><td>Instagram · campanhas · capture · chat interno</td><td class="n">❌</td><td class="y">✅</td><td class="y">✅</td></tr>
+    <tr><td><strong>outreach / AI Growth</strong></td><td class="n">❌</td><td class="y">✅ leader</td><td class="y">✅</td></tr>
+    <tr><td>Facebook · <strong>voice</strong> · integrações · API · webhooks</td><td class="n">❌</td><td class="n">❌</td><td class="y">✅</td></tr>
+  </table>
+  <p><strong>Regra dura:</strong> <code>feature=true ⟺ quota≥1</code> (nunca flag-ON-quota-0 = bait-and-switch). <strong>Fences:</strong> Essencial→Crescimento = "atende" vs "atende E VENDE/RECUPERA"; Crescimento→Rede = "1 salão" vs "a rede".</p>
+
+  <h2>4 · Veredito do seu desenho: ~70% certo</h2>
+  <table>
+    <tr><th>#</th><th>Errado hoje</th><th>Correção</th></tr>
+    <tr><td>1</td><td>eixo = <code>max_users</code></td><td>→ <code>max_professionals</code> (mudança nº1)</td></tr>
+    <tr><td>2</td><td><code>ai_agents=true</code> + quota=0</td><td>→ 1 agente real no Essencial</td></tr>
+    <tr><td>3</td><td>nomes Starter/Pro/Premium</td><td>→ Essencial/Crescimento/Rede</td></tr>
+    <tr><td>4</td><td>números 197/397/697</td><td>→ 147/297/597 (1:2:4)</td></tr>
+    <tr><td>5</td><td>gating não-enforced</td><td>→ enforcement em runtime</td></tr>
+  </table>
+  <p class="foot">Certo (manter): módulos fixos · 3 tiers com IA crescente · booking no entry · voz/API no topo · diferenciar por quota.</p>
+
+  <h2>5 · Sem trial público + "cancele quando quiser"</h2>
+  <p>Pra produto de IA, é <strong>melhor</strong> que free-trial (protege COGS desde o dia 1). <code>trial.is_public=false</code> (só super-admin libera pontual); remover "dias grátis"; <strong>"cancele quando quiser, sem fidelidade"</strong> gritante ao lado do preço. Substituem o trial: <strong>demo ao vivo com o número dela</strong> (IA atendendo via QR) · <strong>garantia 7 dias money-back</strong> · onboarding feito-pra-ela · prova social de resultado.</p>
+
+  <h2>6 · Plano de correções — 2 tracks</h2>
+  <p><strong>Track A — Arquitetura (independe do número, começa já):</strong></p>
+  <ol>
+    <li>Fonte única: LP + Assinaturas leem <code>useActivePlans()</code>; botão = <code>checkout_url</code>.</li>
+    <li>Completar <code>PlanFormDialog</code>: faltam <code>max_ai_agents</code>, <code>modules</code>, <code>max_professionals</code>.</li>
+    <li>Gating enforced: <code>useFeatureFlag</code>/<code>usePlanLimit</code> + guards + cortes de quota com upgrade/add-on.</li>
+    <li>Taxonomia única + migrar <code>plan_type</code> + CHECK anti-drift.</li>
+    <li>Sem trial: <code>is_public=false</code> + remover "dias grátis" + "cancele quando quiser".</li>
+    <li>Bonificação: <code>is_complimentary</code> + toggle + MRR exclui.</li>
+    <li>CI anti-drift (literal de preço) + limpar copy sem-lastro da LP.</li>
+  </ol>
+  <p><strong>Track B — Pricing (após validação):</strong> validar COGS (margem ≥60% no teto do Essencial?) → validar quotas com telemetria → (opcional) Van Westendorp → migration com nomes + 147/297/597 + <code>max_professionals</code>.</p>
+
+  <h2>7 · Ressalvas</h2>
+  <div class="callout bad"><strong>🔴 CRÍTICO — bloqueia fixar preço:</strong> COGS real não validado. Só você tem o custo de token (OpenRouter/litellm) + instância Evolution 24h. É a única coisa que pode invalidar a escada.</div>
+  <ul>
+    <li>🟡 WTP não revelada — 147/297/597 é prior por benchmark, não cliente real.</li>
+    <li>🟡 Quotas de IA são chutes — puxar telemetria dos tenants vivos.</li>
+    <li>🟡 Avec entrada ~R$64,90 (confiança média) — confirmar no browser.</li>
+    <li>🟡 Enforcement não existe hoje — pré-requisito, vai junto com a migration.</li>
+    <li>⚪ Money-back precisa de gate anti-abuso (1/CNPJ + uso mínimo).</li>
+  </ul>
+
+  <hr>
+  <p class="foot">Pronto = um preço só (LP==catálogo==Cakto) · form 100% · cada feature com guard · sem "dias grátis" · master "Bonificada" fora do MRR.</p>
+</div>
+</body>
+</html>
