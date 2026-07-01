@@ -8422,6 +8422,39 @@ export type Database = {
           },
         ]
       }
+      platform_crm_agent_configs: {
+        Row: {
+          created_at: string
+          handoff_enabled: boolean
+          id: string
+          is_active: boolean
+          name: string
+          persona_prompt: string | null
+          typing_delay_ms: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          handoff_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          name: string
+          persona_prompt?: string | null
+          typing_delay_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          handoff_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          name?: string
+          persona_prompt?: string | null
+          typing_delay_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_crm_cadence_enrollments: {
         Row: {
           cadence_id: string
@@ -8789,6 +8822,106 @@ export type Database = {
             columns: ["rule_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_commission_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_conversation_notes: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_conversation_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_conversations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          assigned_to: string | null
+          channel: string
+          created_at: string
+          current_agent_id: string | null
+          id: string
+          last_message_at: string | null
+          lead_id: string | null
+          needs_human: boolean
+          status: Database["public"]["Enums"]["platform_crm_conversation_status"]
+          unread_count_agents: number
+          updated_at: string
+          visitor_id: string
+          visitor_name: string | null
+          visitor_phone: string | null
+          visitor_whatsapp: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          assigned_to?: string | null
+          channel?: string
+          created_at?: string
+          current_agent_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          needs_human?: boolean
+          status?: Database["public"]["Enums"]["platform_crm_conversation_status"]
+          unread_count_agents?: number
+          updated_at?: string
+          visitor_id: string
+          visitor_name?: string | null
+          visitor_phone?: string | null
+          visitor_whatsapp?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          assigned_to?: string | null
+          channel?: string
+          created_at?: string
+          current_agent_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string | null
+          needs_human?: boolean
+          status?: Database["public"]["Enums"]["platform_crm_conversation_status"]
+          unread_count_agents?: number
+          updated_at?: string
+          visitor_id?: string
+          visitor_name?: string | null
+          visitor_phone?: string | null
+          visitor_whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
             referencedColumns: ["id"]
           },
         ]
@@ -9258,6 +9391,69 @@ export type Database = {
           },
         ]
       }
+      platform_crm_messages: {
+        Row: {
+          content: string
+          content_type: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          is_deleted: boolean
+          is_starred: boolean
+          message_type: string | null
+          metadata: Json
+          reply_to_message_id: string | null
+          sender_id: string | null
+          sender_type: string
+        }
+        Insert: {
+          content: string
+          content_type?: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          is_deleted?: boolean
+          is_starred?: boolean
+          message_type?: string | null
+          metadata?: Json
+          reply_to_message_id?: string | null
+          sender_id?: string | null
+          sender_type: string
+        }
+        Update: {
+          content?: string
+          content_type?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          is_deleted?: boolean
+          is_starred?: boolean
+          message_type?: string | null
+          metadata?: Json
+          reply_to_message_id?: string | null
+          sender_id?: string | null
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_messages_reply_to_message_id_fkey"
+            columns: ["reply_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_crm_pipeline_stages: {
         Row: {
           color: string | null
@@ -9545,6 +9741,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_crm_webchat_widgets: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          public_key: string
+          settings: Json
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          public_key: string
+          settings?: Json
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          public_key?: string
+          settings?: Json
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
       }
       platform_email_settings: {
         Row: {
@@ -14874,6 +15103,11 @@ export type Database = {
         | "opportunity"
         | "audit"
         | "system"
+      platform_crm_conversation_status:
+        | "bot_active"
+        | "waiting_human"
+        | "human_active"
+        | "closed"
       product_status: "draft" | "review" | "published" | "archived"
       sector_rotation_strategy: "round_robin" | "least_busy" | "random"
       support_ticket_priority: "low" | "normal" | "high" | "urgent"
@@ -15028,6 +15262,12 @@ export const Constants = {
         "opportunity",
         "audit",
         "system",
+      ],
+      platform_crm_conversation_status: [
+        "bot_active",
+        "waiting_human",
+        "human_active",
+        "closed",
       ],
       product_status: ["draft", "review", "published", "archived"],
       sector_rotation_strategy: ["round_robin", "least_busy", "random"],

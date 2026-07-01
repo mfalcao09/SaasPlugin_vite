@@ -37,6 +37,7 @@ import { PlatformCrmGoalsManager } from '@/components/superadmin/crm/goals/Platf
 import { PlatformCrmTagsManager } from '@/components/superadmin/crm/tags/PlatformCrmTagsManager';
 import { PlatformCrmCustomFieldsManager } from '@/components/superadmin/crm/custom-fields/PlatformCrmCustomFieldsManager';
 import { PlatformCrmSquadsManager } from '@/components/superadmin/crm/squads/PlatformCrmSquadsManager';
+import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
 
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
@@ -238,7 +239,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-chat',
         label: 'Chat',
         icon: I.MessageSquare,
-        render: () => <EmBreve titulo="Chat" />,
+        render: () => <PlatformCrmInbox />,
       },
       {
         id: 'v-painel',
