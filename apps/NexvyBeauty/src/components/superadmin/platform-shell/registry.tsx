@@ -31,6 +31,12 @@ import { SystemHealth } from '@/components/superadmin/SystemHealth';
 // Desacoplamento 🔒: só platform_crm/stub. Nada do cockpit do tenant.
 import { PlatformCrmKanban } from '@/components/superadmin/crm/kanban/PlatformCrmKanban';
 import { PlatformCrmLeadsManager } from '@/components/superadmin/crm/leads/PlatformCrmLeadsManager';
+import { PlatformCrmDealsManager } from '@/components/superadmin/crm/deals/PlatformCrmDealsManager';
+import { PlatformCrmCommissionsManager } from '@/components/superadmin/crm/commissions/PlatformCrmCommissionsManager';
+import { PlatformCrmGoalsManager } from '@/components/superadmin/crm/goals/PlatformCrmGoalsManager';
+import { PlatformCrmTagsManager } from '@/components/superadmin/crm/tags/PlatformCrmTagsManager';
+import { PlatformCrmCustomFieldsManager } from '@/components/superadmin/crm/custom-fields/PlatformCrmCustomFieldsManager';
+import { PlatformCrmSquadsManager } from '@/components/superadmin/crm/squads/PlatformCrmSquadsManager';
 
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
@@ -352,19 +358,19 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-negocios',
         label: 'Negócios',
         icon: I.Briefcase,
-        render: () => <EmBreve titulo="Negócios" />,
+        render: () => <PlatformCrmDealsManager />,
       },
       {
         id: 'v-comissoes',
         label: 'Comissões',
         icon: I.DollarSign,
-        render: () => <EmBreve titulo="Comissões" />,
+        render: () => <PlatformCrmCommissionsManager />,
       },
       {
         id: 'v-metas',
         label: 'Metas',
         icon: I.Goal,
-        render: () => <EmBreve titulo="Metas" />,
+        render: () => <PlatformCrmGoalsManager />,
       },
       {
         id: 'v-setores',
@@ -376,7 +382,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-equipes',
         label: 'Equipes',
         icon: I.UsersRound,
-        render: () => <EmBreve titulo="Equipes" />,
+        render: () => <PlatformCrmSquadsManager />,
       },
     ],
   },
@@ -388,13 +394,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-campos',
         label: 'Campos',
         icon: I.SlidersHorizontal,
-        render: () => <EmBreve titulo="Campos" />,
+        render: () => <PlatformCrmCustomFieldsManager />,
       },
       {
         id: 'v-etiquetas',
         label: 'Etiquetas',
         icon: I.Tags,
-        render: () => <EmBreve titulo="Etiquetas" />,
+        render: () => <PlatformCrmTagsManager />,
       },
       {
         id: 'v-notificacoes',
