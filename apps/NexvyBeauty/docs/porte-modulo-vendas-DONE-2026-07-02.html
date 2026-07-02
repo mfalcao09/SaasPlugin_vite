@@ -91,9 +91,9 @@ O <b>Módulo Vendas</b> (réplica 1:1 do CRM Vendus, desacoplado em <code>platfo
 </ul>
 </div>
 
-<h2>Sinal de infra a confirmar</h2>
+<h2>Sinal de infra — <span class="ok">VERIFICADO ✔</span></h2>
 <div class="card">
-<code>authenticatePlatformAgent</code> valida service-role por <code>token === SUPABASE_SERVICE_ROLE_KEY</code> do runtime; a key legada do CLI não bate (401 em testes CLI). O caminho de <b>produção</b> (front JWT super_admin via <code>getClaims</code>) é independente e <b class="ok">funciona</b> (QR renderizou). A conferir se motores server-side invocam esses edges por service-role.
+Caminho <b>front</b> (JWT super_admin via <code>getClaims</code>) funciona (QR provou). Caminho <b>interno</b> (service-role) exige <code>actorUserId</code>/<code>created_by</code> no body → os <code>401</code> dos testes-CLI eram <b>falta de actorUserId</b>, não mismatch de key. <b>Verificado no código:</b> o único invoke edge→edge real (<code>platform-campaign-dispatcher</code> → <code>platform-cadence-enroll</code>) <b class="ok">passa <code>actorUserId: campaign.created_by</code></b> e pula-com-warn se ausente; os <code>*-on-response</code> idem. As demais refs a <code>/platform-*-webhook</code> são só URLs de webhook (chamador externo). <b class="ok">Sem bug latente</b> — motores construídos cientes do requisito. Caveat encerrado.
 </div>
 
 </div>

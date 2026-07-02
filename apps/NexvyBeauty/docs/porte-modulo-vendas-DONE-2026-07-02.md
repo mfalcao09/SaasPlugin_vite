@@ -74,6 +74,6 @@ Deploy: commits `a122c47` (porte) + `c5498e9` (fix 400) em `main`; container `ne
 
 ---
 
-## 7. Sinal de infra a confirmar
+## 7. Sinal de infra — VERIFICADO ✔ (2026-07-02)
 
-`authenticatePlatformAgent` valida service-role por `token === SUPABASE_SERVICE_ROLE_KEY` do runtime; a key legada do CLI não bate (401 em testes via CLI). O caminho de **produção** (front com JWT super_admin via `getClaims`) é independente e **funciona** (provado: QR renderizou, mesmo helper do `platform-webchat-inbox`). A conferir se algum motor server-side invoca esses edges por service-role — se sim, alinhar a key.
+`authenticatePlatformAgent`: caminho **front** (JWT super_admin via `getClaims`) funciona (QR provou). Caminho **interno** (service-role) exige `actorUserId`/`created_by` no body → os `401` dos testes-CLI eram **falta de `actorUserId`**, não mismatch de key. **Verificado no código:** o único invoke edge→edge real (`platform-campaign-dispatcher` → `platform-cadence-enroll`, linha 434) **passa `actorUserId: campaign.created_by`** e pula-com-warn se ausente (linha 422); os `*-on-response` idem para `author_id`. As demais refs a `/functions/v1/platform-*-webhook` são só URLs de webhook (chamador **externo**). **Conclusão: sem bug latente** — os motores foram construídos cientes do requisito. Caveat encerrado.
