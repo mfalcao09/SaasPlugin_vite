@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consolidado — Correções &amp; Decisões · Módulo Vendas</title>
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161a21; --panel2:#1c2129; --line:#2a2f3a;
+    --tx:#e6e8ec; --mut:#9aa3b2; --acc:#5e8f7d; --acc2:#7aa2ff;
+    --red:#ff6b6b; --org:#ffa94d; --yel:#ffd43b; --grn:#63e6a8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:25px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-size:19px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+  h3{font-size:15.5px;margin:22px 0 8px;color:var(--acc2)}
+  p{margin:10px 0}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 22px}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);
+    border-radius:10px;padding:14px 18px;margin:16px 0}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d6dbe6}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 7px;margin-right:4px}
+  .b-red{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.35)}
+  .b-org{background:rgba(255,169,77,.13);color:var(--org);border:1px solid rgba(255,169,77,.32)}
+  .b-grn{background:rgba(99,230,168,.12);color:var(--grn);border:1px solid rgba(99,230,168,.3)}
+  ol,ul{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .rec{color:var(--grn);font-weight:600}
+  .opt{margin:6px 0 6px 12px;padding-left:10px;border-left:2px solid var(--line)}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Consolidado para Decisão — Módulo Vendas <span style="color:var(--mut)">(pós-entrega + pós-auditoria)</span></h1>
+<p class="sub"><b>2026-07-02</b> · Funde: relatório de entrega + auditoria de código (A–H) + liveness página-a-página (I: 48×32 telas). Esforço: <b>P</b>=horas · <b>M</b>=meio dia–1 dia · <b>G</b>=dias.</p>
+
+<div class="lead">
+<b>Estado em 5 linhas:</b> (1) CRM <b>instalado e operável (~90%)</b> — 19 telas 1:1, fronteira intacta 9/9, zero quebra no tenant, motores com liveness E2E. (2) Em pontos, o port <b>supera o original</b>. (3) O não-1:1 tem <b>uma causa-raiz</b>: cauda outbound/dispatch/canal/builder/ação deferida com TODO declarado. (4) <b>8 itens "parecem-mas-não-entregam"</b> — todos baratos (LOTE abaixo). (5) <b>10 decisões de produto</b> suas — nenhuma bloqueia operar hoje.
+</div>
+
+<h2>2 · <span class="badge b-red">🔴 LOTE ÚNICO</span> Correções objetivas — aprovar em bloco</h2>
+<p class="sub">Não envolvem decisão de produto: hoje mentem pro usuário ou são bugs/lixo. Aprovou "LOTE" → executo todos (~2 dias de agentes em paralelo + verificação).</p>
+<table>
+<thead><tr><th>#</th><th>Item</th><th>O que acontece HOJE</th><th>Correção</th><th>Esf.</th></tr></thead>
+<tbody>
+<tr><td>L1</td><td>Campanha "Recorrente"</td><td>grava recorrência; envia 1× e <b>nunca re-enfileira</b></td><td>portar <code>campaign-recurring-snapshot</code> + cron 15min</td><td>P/M</td></tr>
+<tr><td>L2</td><td>Cron dispatcher campanhas</td><td>edge existe, <b>ninguém dispara</b></td><td><code>pg_cron</code> (1 SQL)</td><td>P</td></tr>
+<tr><td>L3</td><td>Cron auto-notificações</td><td>idem</td><td><code>pg_cron</code> (1 SQL)</td><td>P</td></tr>
+<tr><td>L4</td><td>Notificações de booking</td><td>UI configura; <b>nada é enviado</b></td><td>portar <code>platform-booking-dispatcher</code> + cron</td><td>M</td></tr>
+<tr><td>L5</td><td>Cooldown de canal</td><td>hooks leem <code>cooldown_until</code> sem UI → <b>falha silenciosa</b></td><td><code>ProviderCooldownBadge</code> (67 linhas)</td><td>P</td></tr>
+<tr><td>L6</td><td>🐞 Menu "Formulários"</td><td>cai na aba Funis</td><td><code>initialTab</code> correto</td><td>P</td></tr>
+<tr><td>L7</td><td>LeadDetail → Cadência</td><td>stub "em breve" — <b>edges já existem</b></td><td>só wiring front</td><td>P</td></tr>
+<tr><td>L8</td><td>LeadDetail → Transferência</td><td>stub + sem histórico (bulk da lista funciona → confuso)</td><td><code>platform_crm_lead_transfers</code> + modal</td><td>M</td></tr>
+<tr><td>L9</td><td>Leads "Por Squad"</td><td>só visão pessoal</td><td>portar aba <code>by-squad</code></td><td>M</td></tr>
+<tr><td>L10</td><td>Disparo em lote</td><td>só 1-a-1</td><td>portar <code>manual-outreach-batch</code></td><td>P/M</td></tr>
+<tr><td>L11</td><td>Cadências s/ Biblioteca de Contextos</td><td>modelo 4 abas; port 3 — <b>Biblioteca já existe em Campanhas</b></td><td>reusar componente</td><td>P</td></tr>
+<tr><td>L12</td><td>Higiene</td><td>dead-code + <b>2 entrypoints coexistindo</b></td><td>remover + consolidar</td><td>P</td></tr>
+<tr><td>L13</td><td><code>followup-ai-draft</code></td><td>provável coberto por sales-copilot</td><td>1 diff; portar só se faltar</td><td>P</td></tr>
+</tbody>
+</table>
+
+<h2>3 · <span class="badge b-org">🟠 D1–D10</span> Decisões de produto — escolha por item</h2>
+
+<h3>D1 · CANAL — a decisão-raiz</h3>
+<p><b>Hoje:</b> 100% Evolution (QR pronto, aguarda você escanear). Meta/IG = wizard salva mas <b>conecta e fica muda</b>. Push = 0%.</p>
+<div class="opt"><b>(a)</b> Evolution-only por agora + badge "em breve" em Meta/IG. Custo P. <span class="rec">← recomendo</span></div>
+<div class="opt"><b>(b)</b> Plugar Meta Cloud agora (send+inbound+webhooks). Custo G; exige app Meta aprovado.</div>
+<div class="opt"><b>(c)</b> Deixar como está (canal mudo). <i>Não recomendo.</i></div>
+
+<h3>D2 · Plataforma DESENHA ou ORQUESTRA? (Captação)</h3>
+<p><b>Hoje:</b> cria/lista/analisa, não desenha (6 builders TODO = ~60% das linhas da Captação).</p>
+<div class="opt"><b>(a)</b> Orquestra-only + badge. Custo P.</div>
+<div class="opt"><b>(b)</b> Portar builders completos. Custo G/GG.</div>
+<div class="opt"><b>(c)</b> Meio-termo dirigido pela LP (só o builder que a LP usar). Custo M/G. <span class="rec">← recomendo (c) quando a LP definir; até lá (a)</span></div>
+
+<h3>D3 · Pipeline único global (sem product_id) — validar AGORA</h3>
+<p>Reverter depois = reescrita. Modelo é por-produto.</p>
+<div class="opt"><b>(a)</b> Manter único — vendemos 1 SaaS. <span class="rec">← recomendo</span></div>
+<div class="opt"><b>(b)</b> Reintroduzir dimensão produto (se o MESMO CRM for vender Oficinas/LAW…). Custo G.</div>
+
+<h3>D4 · Financeiro — dashboard de aprovação/pagamento</h3>
+<div class="opt"><b>(a)</b> Adiar até haver comissão real a pagar. <span class="rec">← recomendo</span></div>
+<div class="opt"><b>(b)</b> Portar agora. Custo M/G.</div>
+
+<h3>D5 · Mia v2 — AÇÃO + MEMÓRIA</h3>
+<p><b>Hoje:</b> read-only. Modelo: executa ações com confirmação + memória + wake-word.</p>
+<div class="opt"><b>(a)</b> Manter read-only V1.</div>
+<div class="opt"><b>(b)</b> Portar ação+memória. Custo G. <span class="rec">← recomendo como 1º upgrade pós-LP</span></div>
+
+<h3>D6 · Agentes IA — profundidade</h3>
+<p><b>Hoje:</b> superfície ok (Supervisor/Importar presentes); editor = 3 campos vs 13 abas do modelo.</p>
+<div class="opt"><b>(a)</b> Manter raso até usar agente-vendedor de verdade.</div>
+<div class="opt"><b>(b)</b> Portar editor completo + supervisor. Custo G. <i>Decidir junto com D5.</i></div>
+
+<h3>D7 · Webhooks (Actions/Requests) + API cadência</h3>
+<div class="opt"><b>(a)</b> Adiar até integração externa real. <span class="rec">← recomendo</span></div>
+<div class="opt"><b>(b)</b> Portar. Custo M.</div>
+
+<h3>D8 · Booking conversacional</h3>
+<div class="opt"><b>(a)</b> Adiar. <span class="rec">← recomendo</span> · <b>(b)</b> Ativar (migration + flag). Custo M.</div>
+
+<h3>D9 · Web push (VAPID)</h3>
+<div class="opt"><b>(a)</b> Adiar (in-app existe). <span class="rec">← recomendo</span> · <b>(b)</b> Portar stack push. Custo G.</div>
+
+<h3>D10 · campaign-ai-insights ("Analisar campanha")</h3>
+<div class="opt"><b>(a)</b> Reviver — canal-agnóstico, barato. Custo P/M. <span class="rec">← recomendo</span> · <b>(b)</b> Deixar dropado.</div>
+
+<h2>4 · Pendências já registradas (não são novas)</h2>
+<table>
+<thead><tr><th>Item</th><th>Status</th><th>Dono</th></tr></thead>
+<tbody>
+<tr><td><b>QR do WhatsApp</b> (<code>nexvy-operacao-vendas</code>)</td><td>QR renderizando no painel — aguardando escanear</td><td><b>Marcelo</b></td></tr>
+<tr><td><b>Widget do webchat na LP apex</b></td><td>aprovado; embutir no fim do ciclo</td><td>eu</td></tr>
+<tr><td><b>Módulo ERP + AffiliatesPanel</b></td><td>sessão conjunta · bônus: modelo tem <i>IA da Plataforma / Consumo de IA / Implantação</i> como referência</td><td>nós</td></tr>
+<tr><td><b>Re-skin institucional do gestao.*</b></td><td>plano a produzir (ref.: Bizon verde-escuro ou marca Nexvy)</td><td>eu</td></tr>
+<tr><td><b>LP nova</b> ("plano ousado")</td><td>recomendação registrada: LP antes do ERP</td><td>você</td></tr>
+</tbody>
+</table>
+
+<h2>5 · <span class="badge b-grn">Pacote recomendado</span> (se você só quiser dizer "vai")</h2>
+<ol>
+<li><b>LOTE ÚNICO completo</b> (L1–L13) — fecha tudo que "mente".</li>
+<li><b>D1(a)</b> Evolution-only + badges "em breve" (reversível, registrado).</li>
+<li><b>D3(a)</b> pipeline único confirmado (registrar no repo).</li>
+<li><b>D10(a)</b> reviver ai-insights.</li>
+<li><b>D2/D4–D9: adiar conscientemente</b> — reavaliar após a LP nova.</li>
+</ol>
+<p><b>Efeito:</b> zero "parece-mas-não-faz"; o que ficar de fora fica <b>explicitamente marcado</b> na UI e no repo, não silencioso.</p>
+
+<div class="foot">Fontes: <code>docs/porte-modulo-vendas-DONE-2026-07-02</code> · dossiês A–I · <code>RELATORIO-FINAL-AUDITORIA-MODULO-VENDAS</code> · cron verificado em produção.</div>
+
+</div>
+</body>
+</html>
