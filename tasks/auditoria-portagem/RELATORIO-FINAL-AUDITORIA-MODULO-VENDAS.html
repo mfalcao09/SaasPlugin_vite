@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoria de Portagem — Módulo Vendas</title>
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161a21; --panel2:#1c2129; --line:#2a2f3a;
+    --tx:#e6e8ec; --mut:#9aa3b2; --acc:#5e8f7d; --acc2:#7aa2ff;
+    --red:#ff6b6b; --org:#ffa94d; --yel:#ffd43b; --grn:#63e6a8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:26px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-size:19px;margin:38px 0 12px;padding-top:16px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:20px 0 8px;color:var(--acc)}
+  p{margin:10px 0}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 22px}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);
+    border-radius:10px;padding:16px 18px;margin:18px 0}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;
+    font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d6dbe6}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 7px}
+  .b-red{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.35)}
+  .b-org{background:rgba(255,169,77,.13);color:var(--org);border:1px solid rgba(255,169,77,.32)}
+  .b-yel{background:rgba(255,212,59,.12);color:var(--yel);border:1px solid rgba(255,212,59,.3)}
+  .b-grn{background:rgba(99,230,168,.12);color:var(--grn);border:1px solid rgba(99,230,168,.3)}
+  ol,ul{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .tag{color:var(--mut);font-style:italic;font-size:12px}
+  a{color:var(--acc2);text-decoration:none} a:hover{text-decoration:underline}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:12.5px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;border:1px solid var(--line);background:var(--panel2);color:var(--mut);margin:2px 4px 2px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Auditoria de Portagem — CRM Vendus (Bizon Sales) → Módulo Vendas <span style="color:var(--mut)">(super-admin <code>gestao.*</code>)</span></h1>
+<p class="sub"><b>2026-07-02</b> · 9 dossiês read-only (componente-a-componente vs <code>.vendus-src-reference/</code> = fonte Bizon) + liveness vs o app-modelo no lovable (<code>0cbaf443</code>). Auditoria de <b>fidelidade</b>, não certo-vs-errado.</p>
+
+<div class="lead">
+<b>O CRM foi instalado no módulo com alta fidelidade onde porta (~75–98% por área), desacoplamento rigoroso e zero quebra no tenant.</b> Os "gaps" numéricos de cabeçalho (edges 140→30, captação 72→10, integrations 30→8, agents 20→2) eram <b>ruído de contagem</b>. O "não-1:1" tem <b>causa-raiz única</b>: foi deferida, com <code>TODO(edge)</code> declarado, toda a <b>cauda outbound / dispatch / canal / builder-visual / ação-autônoma</b>. Porta fielmente o CRM que você <b>opera, lê e configura</b>; stuba o que <b>age sozinho, constrói visualmente e orquestra agentes</b>.
+</div>
+
+<h2>1 · Scorecard por área</h2>
+<table>
+<thead><tr><th></th><th>Área</th><th>Fidelidade</th><th>FALTA</th><th>ADICIONADO</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>Booking / Agenda</td><td><span class="badge b-grn">~98%</span></td><td>0</td><td>2 (melhorias)</td></tr>
+<tr><td>F</td><td>Pipeline / Kanban / Leads</td><td><span class="badge b-grn">~90%</span></td><td>5</td><td>2</td></tr>
+<tr><td>H</td><td>Config / Shell / Menu</td><td><span class="badge b-grn">~87%</span></td><td>4</td><td>1</td></tr>
+<tr><td>D</td><td>Edges backend</td><td><span class="badge b-grn">~92–95%</span></td><td>4</td><td>22 net-new</td></tr>
+<tr><td>C</td><td>Conexões (3 canais)</td><td><span class="badge b-grn">~92%</span></td><td>2+1</td><td>0</td></tr>
+<tr><td>G</td><td>Cadências / Campanhas</td><td><span class="badge b-org">~80%</span></td><td>4</td><td>1</td></tr>
+<tr><td>E</td><td>Inbox / Atendimento</td><td><span class="badge b-org">~75%</span></td><td>11</td><td>4</td></tr>
+<tr><td>B</td><td>Captação (camada platform)</td><td><span class="badge b-org">~65% / 40%</span></td><td>6 builders</td><td>camada nova</td></tr>
+</tbody>
+</table>
+<p class="tag">Captação: o motor original está preservado 1:1 tenant-side (~99%) em <code>cockpit/CaptacaoHub</code>; a camada platform é nova e rasa de propósito. Os dois números medem camadas diferentes.</p>
+
+<h2>2 · Veredito — "o CRM foi <i>inteiro</i> instalado?"</h2>
+<p><span class="badge b-grn">✅ OPERA / LÊ / CONFIGURA</span> &nbsp;<b>SIM (~90%)</b> — desacoplamento correto e até melhorias sobre o original.</p>
+<p><span class="badge b-org">⚠️ AGE SOZINHO / CONSTRÓI / ORQUESTRA AGENTES</span> &nbsp;<b>adiado por design</b> — <code>TODO(edge)</code> / stub / v2, não perda acidental.</p>
+<p><b>Fronteira respeitada com rigor em 9/9 áreas.</b> Zero <code>organization_id</code> vazando; slug em <code>platform_crm_seller_booking</code>; <code>useEvolutionInstances</code> (tenant) deliberadamente não importado. A "regressão" do <code>FormBlockEditor</code> era <b>falso alarme</b> (verificado). Nenhum evento-teste vazou pra tabela de tenant.</p>
+
+<h2>3 · A causa-raiz única do "não-1:1"</h2>
+<table>
+<thead><tr><th>Camada deferida</th><th>Evidência</th></tr></thead>
+<tbody>
+<tr><td>Envio/dispatch real</td><td>Booking não notifica (sem <code>platform-booking-dispatcher</code>); campanha/cadência entregam <b>só no webchat</b> (<code>skipped_no_channel</code> sem conversa)</td></tr>
+<tr><td>Canal</td><td>Meta/IG <b>connect-only</b> (sem inbound/send); <b>web push 100% ausente</b> (VAPID confirmado no modelo)</td></tr>
+<tr><td>Builder visual</td><td>Captação <b>não desenha</b> funil/form/quiz (6 builders = <code>TODO(edge)</code>)</td></tr>
+<tr><td>Orquestração de agente</td><td>Agentes: 20 arq. → CRUD de 3 campos; <b>Mia read-only</b></td></tr>
+<tr><td>Recorrência</td><td>Campanha "Recorrente" grava mas <b>não re-enfileira</b> (<code>recurring-snapshot</code> não portado)</td></tr>
+</tbody>
+</table>
+<p>Não é desleixo — é escolha arquitetural consistente de adiar o que depende de decisões de canal + edges de dispatch postergados.</p>
+
+<h2>4 · Catálogo de gaps priorizado</h2>
+
+<h3><span class="badge b-red">🔴 Parece que funciona, mas não entrega</span></h3>
+<ol>
+<li><b>Campanha "Recorrente"</b> → envia 1× e nunca recorre (<code>recurring-snapshot</code> não portado). <span class="tag">G</span></li>
+<li><b>Campanhas da plataforma não disparam</b> — sem <code>pg_cron</code> p/ <code>platform-campaign-dispatcher</code>. <span class="tag">cron</span></li>
+<li><b><code>platform-auto-notifications</code> sem cron</b> — notificações automáticas não saem. <span class="tag">cron</span></li>
+<li><b>Conexão Meta/IG conecta e fica muda</b> — sem webhook inbound Meta/IG. <span class="tag">C</span></li>
+<li><b>Booking</b>: notificações configuráveis mas <b>nunca enviadas</b> (sem dispatcher). <span class="tag">A</span></li>
+<li><b>Mia</b> parece assistente mas é <b>read-only</b> (perdeu enviar/atribuir/encerrar). <span class="tag">E</span></li>
+<li><b>LeadDetail</b>: inscrever/remover cadência + transferir carteira = stubs (mas bulk-transfer da lista é real → assimetria). <span class="tag">F</span></li>
+<li><b>Cooldown</b> dropado mas hooks referenciam <code>cooldown_until</code> → falha de envio silenciosa. <span class="tag">C</span></li>
+</ol>
+
+<h3><span class="badge b-org">🟠 Rasez deliberada (decisão de produto sua)</span></h3>
+<ol start="9">
+<li><b>Captação não desenha</b> funil/form/quiz — orquestra, não constrói (6 builders <code>TODO</code>). <span class="tag">B</span></li>
+<li><b>Agentes</b>: 20 arq. de orquestração → CRUD de 3 campos (sem editor completo/supervisor/roteamento). <span class="tag">E</span></li>
+<li><b>Webhooks</b> (painéis Actions/Requests) e <b>Financeiro</b> (dashboard de aprovação) pela metade. <span class="tag">H</span></li>
+</ol>
+
+<h3><span class="badge b-yel">🟡 Menor / cosmético</span></h3>
+<ul>
+<li>Booking conversacional = código morto (coluna <code>booking_experience</code> inexistente). <span class="tag">A</span></li>
+<li><code>cadence-api</code> = shell; <code>campaign-ai-insights</code> dropado (barato reviver). <span class="tag">G</span></li>
+<li>Mídia de header de template Meta não sobe. <span class="tag">C</span></li>
+<li><b>Higiene:</b> <code>PlatformCrmDealsManager</code> = dead-code órfão; <b>2 entrypoints coexistindo</b> (<code>SuperAdmin.tsx</code> ↔ <code>PlatformShell</code>). <span class="tag">H</span></li>
+<li>4 edges menores sem port: <code>manual-outreach-batch</code> (único operacional), <code>followup-ai-draft</code> (provável coberto), <code>booking-reply-ai</code>, <code>docs-scan-and-propose</code>. <span class="tag">D</span></li>
+</ul>
+
+<h2>5 · Decisão transversal (raiz de tudo): CANAL</h2>
+<p>Port aposta <b>100% em Evolution/Baileys</b> (v2.3.7 corrigido). <b>Meta WhatsApp Cloud</b> só connect/test/template — <b>sem send nem inbound</b>. <b>Web push</b> 100% removido (o original tinha, VAPID). → <b>Explicitar:</b> pluga Meta/push, ou marca "<b>Evolution-only by design</b>" no repo. Hoje, se o módulo <i>promete</i> WhatsApp oficial Meta ou push, não entrega.</p>
+
+<h2>6 · Infra — cron (verificado em produção)</h2>
+<p><code>pg_cron</code> = 19 jobs ativos. <b>Dos motores da plataforma, só <code>platform-cadence-tick</code> está agendado</b> (<code>*/5</code>). Faltam crons p/ <code>platform-campaign-dispatcher</code> e <code>platform-auto-notifications</code>. → Mesmo o código portado fielmente <b>não roda sozinho</b> hoje — é <b>config (2 crons) + 2 edges faltantes</b>, não re-portagem. Motores do tenant/salão rodam normal.</p>
+
+<h2>7 · Liveness — página a página (COMPLETA)</h2>
+<p><b>48 telas do modelo</b> (40 seções <code>/admin</code> via <code>?tab=</code> + 8 <code>/super-admin</code>) × <b>32 do port</b>, ambas autenticadas. Tabela integral no <b>Dossiê I</b> (<code>I-liveness-paginas.md</code>).</p>
+<ul>
+<li><span class="badge b-grn">✅ 19 telas 1:1</span> — Dashboard, Agenda+booking, Chat, Painel, Radar IA, Follow-Up, Relatórios, Webhooks, Form Vendedores, WhatsApp, Analytics, Conexões, Respostas, Campos, Etiquetas, Notificações, Horários, Central de Operação, Equipes.</li>
+<li><span class="badge b-org">⚠️ 7 deltas no olho</span> — Mia (2/5 abas, read-only) · Pipeline (único × por-produto) · Leads (sem "Por Squad" gerencial) · Agentes (Supervisor/Importar presentes; sem Hierarquia/por-produto) · Campanhas (sem <b>Throughput</b>) · Cadências (sem <b>Biblioteca de Contextos</b>) · Financeiro (sem dashboard de aprovação).</li>
+<li><span class="badge b-yel">🐞 1 bug pequeno</span> — menu "Formulários" (Captação) cai na aba Funis.</li>
+<li>🔁 <b>By design:</b> products→Planos (decisão Marcelo); payments/integrations/company/plan/support→ERP.</li>
+<li>➕ <b>Port melhor em:</b> Setores (renderiza; modelo em branco), banner honesto de canal, dados reais em tudo.</li>
+<li><b>Único delta puramente visual:</b> verde-escuro institucional (modelo) × rosa (port, herança do tenant beauty).</li>
+<li><b>Bônus ERP:</b> modelo tem <b>IA da Plataforma</b> (chaves+roteador), <b>Consumo de IA</b> e ação <b>Implantação</b> — insumo pra sessão conjunta do Módulo ERP.</li>
+</ul>
+
+<h2>8 · Onde o port SUPERA o original</h2>
+<ul>
+<li><code>normalizePhoneBR</code> agora roda ao criar lead (era código morto — <b>bugfix</b>).</li>
+<li>Picker de reagendamento <b>funcional</b> em <code>/reagendar/:token</code>.</li>
+<li>Seções <code>FormTemplatesSection</code> + <code>WhatsAppTemplatesSection</code> + <code>AnalyticsTab</code> adicionadas.</li>
+<li>Edge <code>platform-mia</code> unificada (2 modos) vs 4 no original.</li>
+</ul>
+
+<h2>9 · Recomendações priorizadas</h2>
+<ol>
+<li><b>Antes de demo/venda que toque automação:</b> resolver os 🔴 #1–#5 (recorrência, 2 crons, webhook Meta/IG, booking-dispatcher). Baratos e são os que "mentem" pro usuário.</li>
+<li><b>Decisão de produto:</b> plataforma <i>desenha</i> (Captação builders + Agentes + Mia-ação) ou só <i>orquestra</i>? Define ~60% do gap funcional.</li>
+<li><b>Decisão de canal:</b> Evolution-only, ou plugar Meta Cloud/push? Marcar no repo.</li>
+<li><b>Validar agora</b> (reverter depois = reescrita): "pipeline único sem <code>product_id</code>" é definitivo?</li>
+<li><b>Higiene barata:</b> remover <code>PlatformCrmDealsManager</code> + consolidar os 2 entrypoints.</li>
+</ol>
+
+<div class="foot">
+Dossiês completos em <code>tasks/auditoria-portagem/</code>:
+<span class="pill">A-booking</span><span class="pill">B-captacao</span><span class="pill">C-conexoes</span><span class="pill">D-edges</span><span class="pill">E-inbox</span><span class="pill">F-pipeline-leads</span><span class="pill">G-cadencias-campanhas</span><span class="pill">H-config-shell-menu</span>
+</div>
+
+</div>
+</body>
+</html>
