@@ -8422,6 +8422,66 @@ export type Database = {
           },
         ]
       }
+      platform_crm_admin_notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          created_by: string | null
+          emails_failed: number | null
+          emails_sent: number | null
+          id: string
+          message: string | null
+          recipients_count: number | null
+          scope: string
+          scope_filters: Json | null
+          send_app: boolean | null
+          send_email: boolean | null
+          sent_at: string | null
+          title: string
+          type:
+            | Database["public"]["Enums"]["platform_crm_notification_type"]
+            | null
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          emails_failed?: number | null
+          emails_sent?: number | null
+          id?: string
+          message?: string | null
+          recipients_count?: number | null
+          scope?: string
+          scope_filters?: Json | null
+          send_app?: boolean | null
+          send_email?: boolean | null
+          sent_at?: string | null
+          title: string
+          type?:
+            | Database["public"]["Enums"]["platform_crm_notification_type"]
+            | null
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          emails_failed?: number | null
+          emails_sent?: number | null
+          id?: string
+          message?: string | null
+          recipients_count?: number | null
+          scope?: string
+          scope_filters?: Json | null
+          send_app?: boolean | null
+          send_email?: boolean | null
+          sent_at?: string | null
+          title?: string
+          type?:
+            | Database["public"]["Enums"]["platform_crm_notification_type"]
+            | null
+        }
+        Relationships: []
+      }
       platform_crm_agent_configs: {
         Row: {
           created_at: string
@@ -8451,6 +8511,621 @@ export type Database = {
           name?: string
           persona_prompt?: string | null
           typing_delay_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_auto_notification_settings: {
+        Row: {
+          admin_agent_enabled: boolean | null
+          admin_user_id: string | null
+          admin_whatsapp_number: string | null
+          alert_agent_error_threshold: number | null
+          alert_critical_product_idle_hours: number | null
+          alert_goal_achieved: boolean | null
+          alert_high_value_threshold: number | null
+          alert_meeting_changes: boolean | null
+          alert_offline_minutes: number | null
+          alert_product_volume_spike: boolean | null
+          alert_product_volume_spike_pct: number | null
+          alert_unattended_minutes: number | null
+          commission_approved_enabled: boolean | null
+          created_at: string | null
+          daily_report_enabled: boolean | null
+          daily_report_hour: number | null
+          daily_report_send_email: boolean | null
+          daily_summary_enabled: boolean | null
+          daily_summary_hour: number | null
+          goal_achieved_enabled: boolean | null
+          id: string
+          monitored_product_ids: string[] | null
+          realtime_alerts_enabled: boolean | null
+          stalled_lead_days: number | null
+          stalled_lead_enabled: boolean | null
+          summary_kpis: string[] | null
+          updated_at: string | null
+          weekly_include_comparison: boolean | null
+          weekly_report_dow: number | null
+          weekly_report_enabled: boolean | null
+          weekly_report_hour: number | null
+        }
+        Insert: {
+          admin_agent_enabled?: boolean | null
+          admin_user_id?: string | null
+          admin_whatsapp_number?: string | null
+          alert_agent_error_threshold?: number | null
+          alert_critical_product_idle_hours?: number | null
+          alert_goal_achieved?: boolean | null
+          alert_high_value_threshold?: number | null
+          alert_meeting_changes?: boolean | null
+          alert_offline_minutes?: number | null
+          alert_product_volume_spike?: boolean | null
+          alert_product_volume_spike_pct?: number | null
+          alert_unattended_minutes?: number | null
+          commission_approved_enabled?: boolean | null
+          created_at?: string | null
+          daily_report_enabled?: boolean | null
+          daily_report_hour?: number | null
+          daily_report_send_email?: boolean | null
+          daily_summary_enabled?: boolean | null
+          daily_summary_hour?: number | null
+          goal_achieved_enabled?: boolean | null
+          id?: string
+          monitored_product_ids?: string[] | null
+          realtime_alerts_enabled?: boolean | null
+          stalled_lead_days?: number | null
+          stalled_lead_enabled?: boolean | null
+          summary_kpis?: string[] | null
+          updated_at?: string | null
+          weekly_include_comparison?: boolean | null
+          weekly_report_dow?: number | null
+          weekly_report_enabled?: boolean | null
+          weekly_report_hour?: number | null
+        }
+        Update: {
+          admin_agent_enabled?: boolean | null
+          admin_user_id?: string | null
+          admin_whatsapp_number?: string | null
+          alert_agent_error_threshold?: number | null
+          alert_critical_product_idle_hours?: number | null
+          alert_goal_achieved?: boolean | null
+          alert_high_value_threshold?: number | null
+          alert_meeting_changes?: boolean | null
+          alert_offline_minutes?: number | null
+          alert_product_volume_spike?: boolean | null
+          alert_product_volume_spike_pct?: number | null
+          alert_unattended_minutes?: number | null
+          commission_approved_enabled?: boolean | null
+          created_at?: string | null
+          daily_report_enabled?: boolean | null
+          daily_report_hour?: number | null
+          daily_report_send_email?: boolean | null
+          daily_summary_enabled?: boolean | null
+          daily_summary_hour?: number | null
+          goal_achieved_enabled?: boolean | null
+          id?: string
+          monitored_product_ids?: string[] | null
+          realtime_alerts_enabled?: boolean | null
+          stalled_lead_days?: number | null
+          stalled_lead_enabled?: boolean | null
+          summary_kpis?: string[] | null
+          updated_at?: string | null
+          weekly_include_comparison?: boolean | null
+          weekly_report_dow?: number | null
+          weekly_report_enabled?: boolean | null
+          weekly_report_hour?: number | null
+        }
+        Relationships: []
+      }
+      platform_crm_availability_overrides: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string | null
+          id: string
+          is_available: boolean | null
+          reason: string | null
+          start_time: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_time?: string | null
+          id?: string
+          is_available?: boolean | null
+          reason?: string | null
+          start_time?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string | null
+          id?: string
+          is_available?: boolean | null
+          reason?: string | null
+          start_time?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_booking_event_types: {
+        Row: {
+          buffer_after: number | null
+          buffer_before: number | null
+          color: string | null
+          confirmation_message: string | null
+          create_meet: boolean | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean | null
+          location_details: string | null
+          location_type: string
+          max_days_ahead: number | null
+          min_notice_hours: number | null
+          name: string
+          questions: Json | null
+          slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buffer_after?: number | null
+          buffer_before?: number | null
+          color?: string | null
+          confirmation_message?: string | null
+          create_meet?: boolean | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          location_details?: string | null
+          location_type?: string
+          max_days_ahead?: number | null
+          min_notice_hours?: number | null
+          name: string
+          questions?: Json | null
+          slug: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buffer_after?: number | null
+          buffer_before?: number | null
+          color?: string | null
+          confirmation_message?: string | null
+          create_meet?: boolean | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          location_details?: string | null
+          location_type?: string
+          max_days_ahead?: number | null
+          min_notice_hours?: number | null
+          name?: string
+          questions?: Json | null
+          slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_booking_logs: {
+        Row: {
+          booking_id: string
+          channel: string | null
+          created_at: string
+          error: string | null
+          id: string
+          payload: Json
+          type: string
+        }
+        Insert: {
+          booking_id: string
+          channel?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          type: string
+        }
+        Update: {
+          booking_id?: string
+          channel?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_booking_notification_settings: {
+        Row: {
+          confirmation_html_email: string | null
+          confirmation_message_whatsapp: string | null
+          confirmation_subject_email: string | null
+          created_at: string
+          event_type_id: string
+          id: string
+          internal_channel: string
+          internal_message_template: string | null
+          notify_seller_on_cancel: boolean
+          notify_seller_on_confirm: boolean
+          notify_seller_on_new: boolean
+          notify_seller_on_reschedule: boolean
+          recovery_enabled: boolean
+          recovery_message: string | null
+          recovery_offset_unit: string
+          recovery_offset_value: number
+          send_email: boolean
+          send_whatsapp: boolean
+          updated_at: string
+        }
+        Insert: {
+          confirmation_html_email?: string | null
+          confirmation_message_whatsapp?: string | null
+          confirmation_subject_email?: string | null
+          created_at?: string
+          event_type_id: string
+          id?: string
+          internal_channel?: string
+          internal_message_template?: string | null
+          notify_seller_on_cancel?: boolean
+          notify_seller_on_confirm?: boolean
+          notify_seller_on_new?: boolean
+          notify_seller_on_reschedule?: boolean
+          recovery_enabled?: boolean
+          recovery_message?: string | null
+          recovery_offset_unit?: string
+          recovery_offset_value?: number
+          send_email?: boolean
+          send_whatsapp?: boolean
+          updated_at?: string
+        }
+        Update: {
+          confirmation_html_email?: string | null
+          confirmation_message_whatsapp?: string | null
+          confirmation_subject_email?: string | null
+          created_at?: string
+          event_type_id?: string
+          id?: string
+          internal_channel?: string
+          internal_message_template?: string | null
+          notify_seller_on_cancel?: boolean
+          notify_seller_on_confirm?: boolean
+          notify_seller_on_new?: boolean
+          notify_seller_on_reschedule?: boolean
+          recovery_enabled?: boolean
+          recovery_message?: string | null
+          recovery_offset_unit?: string
+          recovery_offset_value?: number
+          send_email?: boolean
+          send_whatsapp?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_notification_settings_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: true
+            referencedRelation: "platform_crm_booking_event_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_booking_reminders: {
+        Row: {
+          channel: string
+          created_at: string
+          email_subject: string | null
+          event_type_id: string
+          id: string
+          is_active: boolean
+          message_template: string
+          offset_unit: string
+          offset_value: number
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          email_subject?: string | null
+          event_type_id: string
+          id?: string
+          is_active?: boolean
+          message_template: string
+          offset_unit: string
+          offset_value: number
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          email_subject?: string | null
+          event_type_id?: string
+          id?: string
+          is_active?: boolean
+          message_template?: string
+          offset_unit?: string
+          offset_value?: number
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_reminders_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_event_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_booking_requests: {
+        Row: {
+          additional_info: Json | null
+          calendar_event_id: string | null
+          cancellation_reason: string | null
+          confirmation_token: string | null
+          confirmed_at: string | null
+          created_at: string
+          end_time: string
+          event_type_id: string
+          guest_email: string
+          guest_name: string
+          guest_phone: string | null
+          host_user_id: string
+          id: string
+          last_reply_at: string | null
+          last_reply_text: string | null
+          lead_id: string | null
+          start_time: string
+          status: string | null
+          timezone: string | null
+          tracking: Json | null
+          updated_at: string
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          additional_info?: Json | null
+          calendar_event_id?: string | null
+          cancellation_reason?: string | null
+          confirmation_token?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          end_time: string
+          event_type_id: string
+          guest_email: string
+          guest_name: string
+          guest_phone?: string | null
+          host_user_id: string
+          id?: string
+          last_reply_at?: string | null
+          last_reply_text?: string | null
+          lead_id?: string | null
+          start_time: string
+          status?: string | null
+          timezone?: string | null
+          tracking?: Json | null
+          updated_at?: string
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          additional_info?: Json | null
+          calendar_event_id?: string | null
+          cancellation_reason?: string | null
+          confirmation_token?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          end_time?: string
+          event_type_id?: string
+          guest_email?: string
+          guest_name?: string
+          guest_phone?: string | null
+          host_user_id?: string
+          id?: string
+          last_reply_at?: string | null
+          last_reply_text?: string | null
+          lead_id?: string | null
+          start_time?: string
+          status?: string | null
+          timezone?: string | null
+          tracking?: Json | null
+          updated_at?: string
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_requests_calendar_event_id_fkey"
+            columns: ["calendar_event_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_booking_requests_event_type_id_fkey"
+            columns: ["event_type_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_event_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_booking_requests_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_booking_scheduled_jobs: {
+        Row: {
+          attempts: number
+          booking_id: string
+          channel: string
+          created_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          reminder_id: string | null
+          scheduled_for: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          booking_id: string
+          channel?: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          reminder_id?: string | null
+          scheduled_for: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          booking_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          reminder_id?: string | null
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_scheduled_jobs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_booking_scheduled_jobs_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_reminders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_booking_status_history: {
+        Row: {
+          booking_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          metadata: Json
+          source: string
+          to_status: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          source?: string
+          to_status: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          source?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_booking_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_business_holidays: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_business_hours: {
+        Row: {
+          created_at: string
+          id: string
+          out_of_hours_enabled: boolean
+          out_of_hours_message: string
+          schedule: Json
+          singleton: boolean
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          out_of_hours_enabled?: boolean
+          out_of_hours_message?: string
+          schedule?: Json
+          singleton?: boolean
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          out_of_hours_enabled?: boolean
+          out_of_hours_message?: string
+          schedule?: Json
+          singleton?: boolean
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
@@ -8704,6 +9379,553 @@ export type Database = {
           stop_rules?: Json
           totals?: Json
           updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_calendar_events: {
+        Row: {
+          all_day: boolean | null
+          attendees: Json | null
+          color: string | null
+          create_meet: boolean | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_time: string
+          event_type: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
+          id: string
+          is_recurring: boolean | null
+          last_synced_at: string | null
+          lead_id: string | null
+          location: string | null
+          meet_link: string | null
+          metadata: Json | null
+          notes: string | null
+          parent_event_id: string | null
+          recurrence_end_date: string | null
+          recurrence_rule: string | null
+          reminder_minutes: number[] | null
+          start_time: string
+          status: string | null
+          sync_status: string | null
+          timezone: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          attendees?: Json | null
+          color?: string | null
+          create_meet?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time: string
+          event_type?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          last_synced_at?: string | null
+          lead_id?: string | null
+          location?: string | null
+          meet_link?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          parent_event_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
+          reminder_minutes?: number[] | null
+          start_time: string
+          status?: string | null
+          sync_status?: string | null
+          timezone?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean | null
+          attendees?: Json | null
+          color?: string | null
+          create_meet?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string
+          event_type?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          last_synced_at?: string | null
+          lead_id?: string | null
+          location?: string | null
+          meet_link?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          parent_event_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_rule?: string | null
+          reminder_minutes?: number[] | null
+          start_time?: string
+          status?: string | null
+          sync_status?: string | null
+          timezone?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_calendar_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_campaign_contexts: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          cta: string | null
+          description: string | null
+          id: string
+          instructions: string
+          name: string
+          objective: string | null
+          tone: string | null
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          description?: string | null
+          id?: string
+          instructions: string
+          name: string
+          objective?: string | null
+          tone?: string | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          description?: string | null
+          id?: string
+          instructions?: string
+          name?: string
+          objective?: string | null
+          tone?: string | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
+      platform_crm_campaign_preparation_jobs: {
+        Row: {
+          attempts: number
+          batch_size: number
+          campaign_id: string
+          campaign_snapshot: Json | null
+          completed_at: string | null
+          created_at: string
+          cursor: number
+          error: string | null
+          id: string
+          lead_ids: string[]
+          processed_contacts: number
+          started_at: string | null
+          status: string
+          total_contacts: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          batch_size?: number
+          campaign_id: string
+          campaign_snapshot?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          cursor?: number
+          error?: string | null
+          id?: string
+          lead_ids?: string[]
+          processed_contacts?: number
+          started_at?: string | null
+          status?: string
+          total_contacts?: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          batch_size?: number
+          campaign_id?: string
+          campaign_snapshot?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          cursor?: number
+          error?: string | null
+          id?: string
+          lead_ids?: string[]
+          processed_contacts?: number
+          started_at?: string | null
+          status?: string
+          total_contacts?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_campaign_preparation_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_campaign_targets: {
+        Row: {
+          attempts: number
+          campaign_id: string
+          connection_type: string
+          context_id: string | null
+          context_used: string | null
+          conversation_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          instance_id: string | null
+          lead_id: string
+          outreach_queue_id: string | null
+          responded_at: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          campaign_id: string
+          connection_type?: string
+          context_id?: string | null
+          context_used?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          instance_id?: string | null
+          lead_id: string
+          outreach_queue_id?: string | null
+          responded_at?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          campaign_id?: string
+          connection_type?: string
+          context_id?: string | null
+          context_used?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          instance_id?: string | null
+          lead_id?: string
+          outreach_queue_id?: string | null
+          responded_at?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_campaign_targets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_campaign_targets_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_campaign_contexts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_campaign_targets_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_campaigns: {
+        Row: {
+          agent_id: string | null
+          audience_filters: Json
+          channel: string
+          completed_at: string | null
+          context_distribution: string
+          contexts: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          exclusion_filters: Json
+          id: string
+          instance_distribution: Json
+          instance_strategy: string
+          meta_template_config: Json | null
+          name: string
+          post_cadence_id: string | null
+          post_response_actions: Json
+          recurrence: Json | null
+          schedule_type: string
+          scheduled_at: string | null
+          speed_config: Json
+          speed_preset: string
+          started_at: string | null
+          status: string
+          tags_on_response: string[]
+          totals: Json
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          audience_filters?: Json
+          channel?: string
+          completed_at?: string | null
+          context_distribution?: string
+          contexts?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exclusion_filters?: Json
+          id?: string
+          instance_distribution?: Json
+          instance_strategy?: string
+          meta_template_config?: Json | null
+          name: string
+          post_cadence_id?: string | null
+          post_response_actions?: Json
+          recurrence?: Json | null
+          schedule_type?: string
+          scheduled_at?: string | null
+          speed_config?: Json
+          speed_preset?: string
+          started_at?: string | null
+          status?: string
+          tags_on_response?: string[]
+          totals?: Json
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          audience_filters?: Json
+          channel?: string
+          completed_at?: string | null
+          context_distribution?: string
+          contexts?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exclusion_filters?: Json
+          id?: string
+          instance_distribution?: Json
+          instance_strategy?: string
+          meta_template_config?: Json | null
+          name?: string
+          post_cadence_id?: string | null
+          post_response_actions?: Json
+          recurrence?: Json | null
+          schedule_type?: string
+          scheduled_at?: string | null
+          speed_config?: Json
+          speed_preset?: string
+          started_at?: string | null
+          status?: string
+          tags_on_response?: string[]
+          totals?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_campaigns_post_cadence_id_fkey"
+            columns: ["post_cadence_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_cadences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_capture_funnels: {
+        Row: {
+          ai_context: string | null
+          ai_enabled: boolean | null
+          appearance: Json | null
+          assigned_squad_id: string | null
+          assigned_user_id: string | null
+          channel_type: string
+          channels: Json
+          created_at: string | null
+          created_by: string | null
+          custom_scripts: Json | null
+          default_tags: string[] | null
+          default_temperature: string | null
+          description: string | null
+          distribution_rule: string
+          facebook_pixel_id: string | null
+          flow_blocks: Json
+          google_tag_id: string | null
+          id: string
+          name: string
+          round_robin_config: Json | null
+          slug: string
+          start_block_id: string | null
+          status: string
+          theme: Json | null
+          total_leads: number | null
+          total_views: number | null
+          updated_at: string | null
+          utm_capture: boolean | null
+          widget_config: Json | null
+        }
+        Insert: {
+          ai_context?: string | null
+          ai_enabled?: boolean | null
+          appearance?: Json | null
+          assigned_squad_id?: string | null
+          assigned_user_id?: string | null
+          channel_type?: string
+          channels?: Json
+          created_at?: string | null
+          created_by?: string | null
+          custom_scripts?: Json | null
+          default_tags?: string[] | null
+          default_temperature?: string | null
+          description?: string | null
+          distribution_rule?: string
+          facebook_pixel_id?: string | null
+          flow_blocks?: Json
+          google_tag_id?: string | null
+          id?: string
+          name: string
+          round_robin_config?: Json | null
+          slug: string
+          start_block_id?: string | null
+          status?: string
+          theme?: Json | null
+          total_leads?: number | null
+          total_views?: number | null
+          updated_at?: string | null
+          utm_capture?: boolean | null
+          widget_config?: Json | null
+        }
+        Update: {
+          ai_context?: string | null
+          ai_enabled?: boolean | null
+          appearance?: Json | null
+          assigned_squad_id?: string | null
+          assigned_user_id?: string | null
+          channel_type?: string
+          channels?: Json
+          created_at?: string | null
+          created_by?: string | null
+          custom_scripts?: Json | null
+          default_tags?: string[] | null
+          default_temperature?: string | null
+          description?: string | null
+          distribution_rule?: string
+          facebook_pixel_id?: string | null
+          flow_blocks?: Json
+          google_tag_id?: string | null
+          id?: string
+          name?: string
+          round_robin_config?: Json | null
+          slug?: string
+          start_block_id?: string | null
+          status?: string
+          theme?: Json | null
+          total_leads?: number | null
+          total_views?: number | null
+          updated_at?: string | null
+          utm_capture?: boolean | null
+          widget_config?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_capture_funnels_assigned_squad_id_fkey"
+            columns: ["assigned_squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_chat_flows: {
+        Row: {
+          blocks: Json
+          collected_variables: Json | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          start_block_id: string | null
+          trigger_conditions: Json | null
+          trigger_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          blocks?: Json
+          collected_variables?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_block_id?: string | null
+          trigger_conditions?: Json | null
+          trigger_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          blocks?: Json
+          collected_variables?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_block_id?: string | null
+          trigger_conditions?: Json | null
+          trigger_type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -9049,6 +10271,456 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_crm_form_blocks: {
+        Row: {
+          apply_tags: string[] | null
+          block_settings: Json | null
+          block_type: string
+          created_at: string | null
+          description: string | null
+          form_id: string
+          id: string
+          label: string
+          logic_rules: Json | null
+          maps_to: string | null
+          options: Json | null
+          order_index: number
+          placeholder: string | null
+          required: boolean | null
+          score_rules: Json | null
+          score_value: number | null
+          validation: Json | null
+        }
+        Insert: {
+          apply_tags?: string[] | null
+          block_settings?: Json | null
+          block_type: string
+          created_at?: string | null
+          description?: string | null
+          form_id: string
+          id?: string
+          label: string
+          logic_rules?: Json | null
+          maps_to?: string | null
+          options?: Json | null
+          order_index?: number
+          placeholder?: string | null
+          required?: boolean | null
+          score_rules?: Json | null
+          score_value?: number | null
+          validation?: Json | null
+        }
+        Update: {
+          apply_tags?: string[] | null
+          block_settings?: Json | null
+          block_type?: string
+          created_at?: string | null
+          description?: string | null
+          form_id?: string
+          id?: string
+          label?: string
+          logic_rules?: Json | null
+          maps_to?: string | null
+          options?: Json | null
+          order_index?: number
+          placeholder?: string | null
+          required?: boolean | null
+          score_rules?: Json | null
+          score_value?: number | null
+          validation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_form_blocks_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_form_submissions: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          form_id: string
+          geo_city: string | null
+          geo_country: string | null
+          id: string
+          ip_address: unknown
+          landing_page: string | null
+          lead_id: string | null
+          referrer_url: string | null
+          responses: Json
+          started_at: string | null
+          status: string | null
+          step_analytics: Json | null
+          tags: string[] | null
+          time_spent_seconds: number | null
+          total_score: number | null
+          user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          form_id: string
+          geo_city?: string | null
+          geo_country?: string | null
+          id?: string
+          ip_address?: unknown
+          landing_page?: string | null
+          lead_id?: string | null
+          referrer_url?: string | null
+          responses?: Json
+          started_at?: string | null
+          status?: string | null
+          step_analytics?: Json | null
+          tags?: string[] | null
+          time_spent_seconds?: number | null
+          total_score?: number | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          form_id?: string
+          geo_city?: string | null
+          geo_country?: string | null
+          id?: string
+          ip_address?: unknown
+          landing_page?: string | null
+          lead_id?: string | null
+          referrer_url?: string | null
+          responses?: Json
+          started_at?: string | null
+          status?: string | null
+          step_analytics?: Json | null
+          tags?: string[] | null
+          time_spent_seconds?: number | null
+          total_score?: number | null
+          user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_form_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_form_templates: {
+        Row: {
+          blocks: Json
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          is_system: boolean | null
+          name: string
+          settings: Json | null
+          theme: Json | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          blocks?: Json
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_system?: boolean | null
+          name: string
+          settings?: Json | null
+          theme?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          blocks?: Json
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          settings?: Json | null
+          theme?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
+      platform_crm_forms: {
+        Row: {
+          assigned_squad_id: string | null
+          assigned_user_id: string | null
+          created_at: string | null
+          created_by: string | null
+          custom_scripts: Json | null
+          default_temperature: string | null
+          description: string | null
+          distribution_rule: string | null
+          facebook_pixel_id: string | null
+          google_tag_id: string | null
+          id: string
+          name: string
+          round_robin_config: Json | null
+          settings: Json | null
+          slug: string
+          status: string | null
+          submissions_count: number | null
+          theme: Json | null
+          updated_at: string | null
+          utm_capture: boolean | null
+          views_count: number | null
+        }
+        Insert: {
+          assigned_squad_id?: string | null
+          assigned_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_scripts?: Json | null
+          default_temperature?: string | null
+          description?: string | null
+          distribution_rule?: string | null
+          facebook_pixel_id?: string | null
+          google_tag_id?: string | null
+          id?: string
+          name: string
+          round_robin_config?: Json | null
+          settings?: Json | null
+          slug: string
+          status?: string | null
+          submissions_count?: number | null
+          theme?: Json | null
+          updated_at?: string | null
+          utm_capture?: boolean | null
+          views_count?: number | null
+        }
+        Update: {
+          assigned_squad_id?: string | null
+          assigned_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_scripts?: Json | null
+          default_temperature?: string | null
+          description?: string | null
+          distribution_rule?: string | null
+          facebook_pixel_id?: string | null
+          google_tag_id?: string | null
+          id?: string
+          name?: string
+          round_robin_config?: Json | null
+          settings?: Json | null
+          slug?: string
+          status?: string | null
+          submissions_count?: number | null
+          theme?: Json | null
+          updated_at?: string | null
+          utm_capture?: boolean | null
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_forms_assigned_squad_id_fkey"
+            columns: ["assigned_squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_funnel_analytics: {
+        Row: {
+          channel: string
+          completions: number | null
+          date: string
+          funnel_id: string
+          id: string
+          leads_created: number | null
+          starts: number | null
+          views: number | null
+        }
+        Insert: {
+          channel: string
+          completions?: number | null
+          date?: string
+          funnel_id: string
+          id?: string
+          leads_created?: number | null
+          starts?: number | null
+          views?: number | null
+        }
+        Update: {
+          channel?: string
+          completions?: number | null
+          date?: string
+          funnel_id?: string
+          id?: string
+          leads_created?: number | null
+          starts?: number | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_funnel_analytics_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_capture_funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_funnel_webhook_logs: {
+        Row: {
+          block_id: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          funnel_id: string
+          id: string
+          lead_id: string | null
+          request_body: Json | null
+          request_headers: Json | null
+          request_method: string
+          request_url: string
+          response_body: string | null
+          response_status: number | null
+          success: boolean
+          trigger_source: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          funnel_id: string
+          id?: string
+          lead_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          request_method?: string
+          request_url: string
+          response_body?: string | null
+          response_status?: number | null
+          success?: boolean
+          trigger_source?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          funnel_id?: string
+          id?: string
+          lead_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          request_method?: string
+          request_url?: string
+          response_body?: string | null
+          response_status?: number | null
+          success?: boolean
+          trigger_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_funnel_webhook_logs_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_capture_funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_funnel_webhook_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_google_calendar_connections: {
+        Row: {
+          access_token: string | null
+          calendar_id: string | null
+          connected_at: string | null
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          refresh_token: string | null
+          sync_direction: string | null
+          sync_enabled: boolean | null
+          sync_error: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          calendar_id?: string | null
+          connected_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          refresh_token?: string | null
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          sync_error?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          calendar_id?: string | null
+          connected_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          refresh_token?: string | null
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          sync_error?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       platform_crm_lead_notes: {
         Row: {
@@ -9454,6 +11126,80 @@ export type Database = {
           },
         ]
       }
+      platform_crm_notification_logs: {
+        Row: {
+          id: string
+          notification_type: string
+          reference_date: string | null
+          reference_id: string | null
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notification_type: string
+          reference_date?: string | null
+          reference_id?: string | null
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notification_type?: string
+          reference_date?: string | null
+          reference_id?: string | null
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_notifications: {
+        Row: {
+          action_url: string | null
+          admin_notification_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string | null
+          metadata: Json | null
+          title: string
+          type: Database["public"]["Enums"]["platform_crm_notification_type"]
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          admin_notification_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          title: string
+          type?: Database["public"]["Enums"]["platform_crm_notification_type"]
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          admin_notification_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          title?: string
+          type?: Database["public"]["Enums"]["platform_crm_notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_notifications_admin_notification_id_fkey"
+            columns: ["admin_notification_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_admin_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_crm_pipeline_stages: {
         Row: {
           color: string | null
@@ -9484,6 +11230,120 @@ export type Database = {
           is_won?: boolean | null
           name?: string
           order_index?: number
+        }
+        Relationships: []
+      }
+      platform_crm_quick_replies: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          shortcut: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_quiz_templates: {
+        Row: {
+          appearance_json: Json | null
+          badges: string[]
+          category: string
+          cover_gradient: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_time: string | null
+          flow_json: Json
+          icon: string | null
+          id: string
+          is_official: boolean
+          is_public: boolean
+          name: string
+          objective: string | null
+          question_count: number
+          results_json: Json | null
+          scoring_json: Json | null
+          settings_json: Json | null
+          slug: string
+          thumbnail: string | null
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          appearance_json?: Json | null
+          badges?: string[]
+          category: string
+          cover_gradient?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_time?: string | null
+          flow_json?: Json
+          icon?: string | null
+          id?: string
+          is_official?: boolean
+          is_public?: boolean
+          name: string
+          objective?: string | null
+          question_count?: number
+          results_json?: Json | null
+          scoring_json?: Json | null
+          settings_json?: Json | null
+          slug: string
+          thumbnail?: string | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          appearance_json?: Json | null
+          badges?: string[]
+          category?: string
+          cover_gradient?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_time?: string | null
+          flow_json?: Json
+          icon?: string | null
+          id?: string
+          is_official?: boolean
+          is_public?: boolean
+          name?: string
+          objective?: string | null
+          question_count?: number
+          results_json?: Json | null
+          scoring_json?: Json | null
+          settings_json?: Json | null
+          slug?: string
+          thumbnail?: string | null
+          updated_at?: string
+          usage_count?: number
         }
         Relationships: []
       }
@@ -9568,6 +11428,137 @@ export type Database = {
           leader_id?: string | null
           name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      platform_crm_sector_members: {
+        Row: {
+          id: string
+          joined_at: string
+          sector_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          sector_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          sector_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_sector_members_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_sectors: {
+        Row: {
+          auto_close_ticket: boolean | null
+          bot_order: number | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          enable_scheduling: boolean | null
+          farewell_message: string | null
+          greeting_message: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          rotation_enabled: boolean | null
+          rotation_strategy:
+            | Database["public"]["Enums"]["platform_crm_sector_rotation_strategy"]
+            | null
+          updated_at: string
+        }
+        Insert: {
+          auto_close_ticket?: boolean | null
+          bot_order?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enable_scheduling?: boolean | null
+          farewell_message?: string | null
+          greeting_message?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          rotation_enabled?: boolean | null
+          rotation_strategy?:
+            | Database["public"]["Enums"]["platform_crm_sector_rotation_strategy"]
+            | null
+          updated_at?: string
+        }
+        Update: {
+          auto_close_ticket?: boolean | null
+          bot_order?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enable_scheduling?: boolean | null
+          farewell_message?: string | null
+          greeting_message?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          rotation_enabled?: boolean | null
+          rotation_strategy?:
+            | Database["public"]["Enums"]["platform_crm_sector_rotation_strategy"]
+            | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_seller_notification_settings: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          notify_cancel: boolean
+          notify_confirmed: boolean
+          notify_new_booking: boolean
+          notify_reschedule: boolean
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          notify_cancel?: boolean
+          notify_confirmed?: boolean
+          notify_new_booking?: boolean
+          notify_reschedule?: boolean
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          notify_cancel?: boolean
+          notify_confirmed?: boolean
+          notify_new_booking?: boolean
+          notify_reschedule?: boolean
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
@@ -9742,6 +11733,134 @@ export type Database = {
           },
         ]
       }
+      platform_crm_user_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean | null
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_available?: boolean | null
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean | null
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_webchat_agent_configs: {
+        Row: {
+          agent_avatar_url: string | null
+          agent_name: string | null
+          auto_handoff_enabled: boolean | null
+          chunked_messages_enabled: boolean | null
+          collect_before_chat: boolean | null
+          created_at: string | null
+          fallback_message: string | null
+          faq: Json | null
+          greeting_message: string | null
+          handoff_message: string | null
+          handoff_triggers: string[] | null
+          id: string
+          is_active: boolean | null
+          knowledge_base: string | null
+          max_message_length: number | null
+          max_tokens: number | null
+          persona_style: string | null
+          required_fields: string[] | null
+          sales_context: string | null
+          sales_prompt: string | null
+          system_prompt: string | null
+          temperature: number | null
+          typing_delay_ms: number | null
+          updated_at: string | null
+          use_product_brain: boolean | null
+          welcome_flow: Json | null
+          widget_id: string
+        }
+        Insert: {
+          agent_avatar_url?: string | null
+          agent_name?: string | null
+          auto_handoff_enabled?: boolean | null
+          chunked_messages_enabled?: boolean | null
+          collect_before_chat?: boolean | null
+          created_at?: string | null
+          fallback_message?: string | null
+          faq?: Json | null
+          greeting_message?: string | null
+          handoff_message?: string | null
+          handoff_triggers?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          knowledge_base?: string | null
+          max_message_length?: number | null
+          max_tokens?: number | null
+          persona_style?: string | null
+          required_fields?: string[] | null
+          sales_context?: string | null
+          sales_prompt?: string | null
+          system_prompt?: string | null
+          temperature?: number | null
+          typing_delay_ms?: number | null
+          updated_at?: string | null
+          use_product_brain?: boolean | null
+          welcome_flow?: Json | null
+          widget_id: string
+        }
+        Update: {
+          agent_avatar_url?: string | null
+          agent_name?: string | null
+          auto_handoff_enabled?: boolean | null
+          chunked_messages_enabled?: boolean | null
+          collect_before_chat?: boolean | null
+          created_at?: string | null
+          fallback_message?: string | null
+          faq?: Json | null
+          greeting_message?: string | null
+          handoff_message?: string | null
+          handoff_triggers?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          knowledge_base?: string | null
+          max_message_length?: number | null
+          max_tokens?: number | null
+          persona_style?: string | null
+          required_fields?: string[] | null
+          sales_context?: string | null
+          sales_prompt?: string | null
+          system_prompt?: string | null
+          temperature?: number | null
+          typing_delay_ms?: number | null
+          updated_at?: string | null
+          use_product_brain?: boolean | null
+          welcome_flow?: Json | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_webchat_agent_configs_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_webchat_widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_crm_webchat_widgets: {
         Row: {
           created_at: string
@@ -9772,6 +11891,164 @@ export type Database = {
           settings?: Json
           updated_at?: string
           welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      platform_crm_webhook_logs: {
+        Row: {
+          actions_executed: Json | null
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          parsed_fields: Json | null
+          processing_time_ms: number | null
+          request_body: Json | null
+          request_headers: Json | null
+          request_ip: string | null
+          request_method: string
+          status: string | null
+          webhook_id: string
+        }
+        Insert: {
+          actions_executed?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          parsed_fields?: Json | null
+          processing_time_ms?: number | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          request_ip?: string | null
+          request_method: string
+          status?: string | null
+          webhook_id: string
+        }
+        Update: {
+          actions_executed?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          parsed_fields?: Json | null
+          processing_time_ms?: number | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          request_ip?: string | null
+          request_method?: string
+          status?: string | null
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_webhook_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_webhook_sample_requests: {
+        Row: {
+          created_at: string
+          extracted_fields: Json
+          id: string
+          is_default: boolean | null
+          name: string | null
+          request_body: Json
+          webhook_id: string
+        }
+        Insert: {
+          created_at?: string
+          extracted_fields: Json
+          id?: string
+          is_default?: boolean | null
+          name?: string | null
+          request_body: Json
+          webhook_id: string
+        }
+        Update: {
+          created_at?: string
+          extracted_fields?: Json
+          id?: string
+          is_default?: boolean | null
+          name?: string | null
+          request_body?: Json
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_webhook_sample_requests_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_webhooks: {
+        Row: {
+          actions: Json | null
+          allowed_ips: string[] | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          identification_config: Json | null
+          is_active: boolean | null
+          is_test_mode: boolean | null
+          last_request_at: string | null
+          name: string
+          requests_count: number | null
+          requests_this_month: number | null
+          secret_key: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json | null
+          allowed_ips?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          identification_config?: Json | null
+          is_active?: boolean | null
+          is_test_mode?: boolean | null
+          last_request_at?: string | null
+          name: string
+          requests_count?: number | null
+          requests_this_month?: number | null
+          secret_key?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json | null
+          allowed_ips?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          identification_config?: Json | null
+          is_active?: boolean | null
+          is_test_mode?: boolean | null
+          last_request_at?: string | null
+          name?: string
+          requests_count?: number | null
+          requests_this_month?: number | null
+          secret_key?: string | null
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -14973,6 +17250,14 @@ export type Database = {
         Args: { p_deal_id: string; p_deal_value: number; p_seller_id: string }
         Returns: number
       }
+      platform_crm_increment_webhook_requests: {
+        Args: { p_webhook_id: string }
+        Returns: undefined
+      }
+      platform_crm_reset_monthly_webhook_requests: {
+        Args: never
+        Returns: undefined
+      }
       process_pending_queue: {
         Args: { p_user_id: string }
         Returns: {
@@ -15108,6 +17393,16 @@ export type Database = {
         | "waiting_human"
         | "human_active"
         | "closed"
+      platform_crm_notification_type:
+        | "cadence"
+        | "urgency"
+        | "opportunity"
+        | "audit"
+        | "system"
+      platform_crm_sector_rotation_strategy:
+        | "round_robin"
+        | "least_busy"
+        | "random"
       product_status: "draft" | "review" | "published" | "archived"
       sector_rotation_strategy: "round_robin" | "least_busy" | "random"
       support_ticket_priority: "low" | "normal" | "high" | "urgent"
@@ -15268,6 +17563,18 @@ export const Constants = {
         "waiting_human",
         "human_active",
         "closed",
+      ],
+      platform_crm_notification_type: [
+        "cadence",
+        "urgency",
+        "opportunity",
+        "audit",
+        "system",
+      ],
+      platform_crm_sector_rotation_strategy: [
+        "round_robin",
+        "least_busy",
+        "random",
       ],
       product_status: ["draft", "review", "published", "archived"],
       sector_rotation_strategy: ["round_robin", "least_busy", "random"],

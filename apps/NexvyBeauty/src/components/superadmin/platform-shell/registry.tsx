@@ -42,6 +42,15 @@ import { PlatformCrmCustomFieldsManager } from '@/components/superadmin/crm/cust
 import { PlatformCrmEquipes } from '@/components/superadmin/crm/team/PlatformCrmEquipes';
 import { PlatformCrmOperationCenter } from '@/components/superadmin/crm/operation/OperationCenter';
 import { PlatformCrmCadencesManager } from '@/components/superadmin/crm/cadences/PlatformCrmCadencesManager';
+import { PlatformCrmQuickRepliesManager } from '@/components/superadmin/crm/quick-replies/PlatformCrmQuickRepliesManager';
+import { PlatformCrmSectorsManager } from '@/components/superadmin/crm/sectors/PlatformCrmSectorsManager';
+import { PlatformCrmBusinessHoursManager } from '@/components/superadmin/crm/business-hours/PlatformCrmBusinessHoursManager';
+import { PlatformCrmWebhooksManager } from '@/components/superadmin/crm/webhooks/PlatformCrmWebhooksManager';
+import { PlatformCrmNotificationManager } from '@/components/superadmin/crm/notifications/PlatformCrmNotificationManager';
+import { PlatformCrmAgendaManager } from '@/components/superadmin/crm/agenda/PlatformCrmAgendaManager';
+import { PlatformCrmAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmAgentsManager';
+import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
+import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 
@@ -242,7 +251,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-agenda',
         label: 'Agenda',
         icon: I.CalendarDays,
-        render: () => <EmBreve titulo="Agenda" />,
+        render: () => <PlatformCrmAgendaManager />,
       },
     ],
   },
@@ -290,13 +299,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-agentes-ia',
         label: 'Agentes IA',
         icon: I.Bot,
-        render: () => <EmBreve titulo="Agentes IA" />,
+        render: () => <PlatformCrmAgentsManager />,
       },
       {
         id: 'v-campanhas',
         label: 'Campanhas',
         icon: I.Megaphone,
-        render: () => <EmBreve titulo="Campanhas Inteligentes" />,
+        render: () => <PlatformCrmCampaignsManager />,
       },
       {
         id: 'v-cadencias',
@@ -308,7 +317,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-webhooks',
         label: 'Webhooks',
         icon: I.Webhook,
-        render: () => <EmBreve titulo="Webhooks" />,
+        render: () => <PlatformCrmWebhooksManager />,
       },
     ],
   },
@@ -320,13 +329,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-quiz',
         label: 'Quiz',
         icon: I.FileQuestion,
-        render: () => <EmBreve titulo="Quiz" />,
+        render: () => <PlatformCrmCaptureManager initialTab="funnels" initialChannel="quiz" />,
       },
       {
         id: 'v-formularios',
         label: 'Formulários',
         icon: I.FormInput,
-        render: () => <EmBreve titulo="Formulários" />,
+        render: () => <PlatformCrmCaptureManager initialTab="forms" />,
       },
       {
         id: 'v-form-vendedores',
@@ -338,13 +347,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-chatbot',
         label: 'ChatBot',
         icon: I.MessageCircle,
-        render: () => <EmBreve titulo="ChatBot" />,
+        render: () => <PlatformCrmCaptureManager initialTab="funnels" initialChannel="chatbot" />,
       },
       {
         id: 'v-widget',
         label: 'Widget',
         icon: I.MousePointerClick,
-        render: () => <EmBreve titulo="Widget" />,
+        render: () => <PlatformCrmCaptureManager initialTab="widgets" />,
       },
       {
         id: 'v-whatsapp',
@@ -391,7 +400,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-setores',
         label: 'Setores',
         icon: I.Network,
-        render: () => <EmBreve titulo="Setores" />,
+        render: () => <PlatformCrmSectorsManager />,
       },
       {
         id: 'v-equipes',
@@ -427,7 +436,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-respostas',
         label: 'Respostas Rápidas',
         icon: I.MessagesSquare,
-        render: () => <EmBreve titulo="Respostas Rápidas" />,
+        render: () => <PlatformCrmQuickRepliesManager />,
       },
       {
         id: 'v-campos',
@@ -445,13 +454,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-notificacoes',
         label: 'Notificações',
         icon: I.BellRing,
-        render: () => <EmBreve titulo="Notificações" />,
+        render: () => <PlatformCrmNotificationManager />,
       },
       {
         id: 'v-horarios',
         label: 'Horários',
         icon: I.Clock,
-        render: () => <EmBreve titulo="Horários" />,
+        render: () => <PlatformCrmBusinessHoursManager />,
       },
     ],
   },
