@@ -51,6 +51,11 @@ import { PlatformCrmAgendaManager } from '@/components/superadmin/crm/agenda/Pla
 import { PlatformCrmAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmAgentsManager';
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
+import { PlatformCrmCaptureTemplatesTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureTemplatesTab';
+import { PlatformCrmCaptureResultsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureResultsTab';
+import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
+import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
+import { PlatformCrmSellerFormSection } from '@/components/superadmin/crm/capture/PlatformCrmSellerFormSection';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
 import { PlatformCrmInboxPanel } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxPanel';
 import { PlatformCrmInboxRadar } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxRadar';
@@ -346,7 +351,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-form-vendedores',
         label: 'Form Vendedores',
         icon: I.FileText,
-        render: () => <EmBreve titulo="Formulário de Vendedores" />,
+        render: () => <PlatformCrmSellerFormSection />,
       },
       {
         id: 'v-chatbot',
@@ -364,25 +369,25 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-whatsapp',
         label: 'WhatsApp',
         icon: I.MessageCircleMore,
-        render: () => <EmBreve titulo="WhatsApp (Captação)" />,
+        render: () => <PlatformCrmCaptureWhatsAppTab />,
       },
       {
         id: 'v-templates',
         label: 'Templates',
         icon: I.LayoutTemplate,
-        render: () => <EmBreve titulo="Templates" />,
+        render: () => <PlatformCrmCaptureTemplatesTab />,
       },
       {
         id: 'v-resultados',
         label: 'Resultados',
         icon: I.Trophy,
-        render: () => <EmBreve titulo="Resultados" />,
+        render: () => <PlatformCrmCaptureResultsTab />,
       },
       {
         id: 'v-analytics',
         label: 'Analytics',
         icon: I.LineChart,
-        render: () => <EmBreve titulo="Analytics" />,
+        render: () => <PlatformCrmCaptureAnalyticsTab />,
       },
     ],
   },
