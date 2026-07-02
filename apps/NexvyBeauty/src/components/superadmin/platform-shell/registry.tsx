@@ -63,6 +63,7 @@ import { PlatformCrmInboxFollowup } from '@/components/superadmin/crm/inbox-sect
 import { PlatformCrmInboxReports } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxReports';
 import { PlatformCrmMia } from '@/components/superadmin/crm/mia/PlatformCrmMia';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
+import { PlatformCrmConnectionsPanel } from '@/components/superadmin/crm/connections/PlatformCrmConnectionsPanel';
 
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
@@ -440,7 +441,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-conexoes',
         label: 'Conexões',
         icon: I.Plug,
-        render: () => <EmBreve titulo="Conexões" />,
+        render: () => <PlatformCrmConnectionsPanel />,
       },
       {
         id: 'v-respostas',

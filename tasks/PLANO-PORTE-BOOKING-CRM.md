@@ -18,7 +18,7 @@
 | **Reuniões** | `admin/booking/BookingsManager.tsx` (+ `BookingTimeline`, `BookingStatusBadge`) | `useBookings.ts` | `booking_requests` → `platform_crm_booking_requests` |
 | **Tipos de Evento** | `admin/booking/EventTypesManager.tsx` + `EventTypeEditor.tsx` | `useBookingEventTypes.ts` | `booking_event_types` → `platform_crm_booking_event_types` |
 | **Disponibilidade** | `admin/booking/AvailabilityManager.tsx` (+ `AddTimeSlotDialog`, `CopyDayDialog`) + `admin/schedules/BusinessHoursManager.tsx` | `useUserAvailability` / `useBusinessHours` | `user_availability`/`availability_overrides`/`business_hours`/`business_holidays` → `platform_crm_user_availability`/`_availability_overrides`/`_business_hours`/`_business_holidays` |
-| **Links da Equipe** | `admin/booking/TeamBookingLinks.tsx` + `seller/BookingLinkShare.tsx` | `bookingSlug.ts` (`ensureBookingSlug`) | usa `profiles.booking_slug` → **__NO_EQUIVALENT__**: platform não tem `profiles`; mapear slug p/ vendedor via `platform_crm_squad_members`/`auth.users` (decidir armazenamento do slug) |
+| **Links da Equipe** | `admin/booking/TeamBookingLinks.tsx` + `seller/BookingLinkShare.tsx` | `bookingSlug.ts` (`ensureBookingSlug`) | usa `profiles.booking_slug` → **RESOLVIDO (02/07)**: slug do vendedor mora em **`platform_crm_seller_booking`** (`user_id` PK, `booking_slug` unique, `booking_bio`; RLS super_admin + anon SELECT p/ página pública). `profiles.booking_slug` (tabela do TENANT) NUNCA é escrito. Nome do vendedor: leitura tolerada de `profiles.full_name` (read-only). |
 
 Notificações de booking: `useBookingNotifications.ts` → `booking_notification_settings`/`booking_reminders` → `platform_crm_booking_notification_settings`/`_booking_reminders` (confirmar no schema).
 

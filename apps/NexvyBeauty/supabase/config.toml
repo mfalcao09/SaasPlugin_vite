@@ -2,3 +2,7 @@ project_id = "fzhlbwhdejumkyqosuvq"
 
 [functions.platform-webhook-receiver]
 verify_jwt = false
+
+# Webhook público do Evolution Go (servidor externo -> plataforma). Sem JWT.
+[functions.platform-evolution-webhook]
+verify_jwt = false

@@ -10272,6 +10272,69 @@ export type Database = {
           },
         ]
       }
+      platform_crm_evolution_instances: {
+        Row: {
+          consecutive_failures: number
+          cooldown_until: string | null
+          created_at: string
+          id: string
+          instance_id: string | null
+          instance_token: string | null
+          is_default: boolean
+          last_connected_at: string | null
+          last_failure_at: string | null
+          last_failure_reason: string | null
+          metadata: Json | null
+          name: string
+          phone_number: string | null
+          qr_code: string | null
+          qr_code_updated_at: string | null
+          status: string
+          updated_at: string
+          webhook_subscribed: boolean
+        }
+        Insert: {
+          consecutive_failures?: number
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          instance_token?: string | null
+          is_default?: boolean
+          last_connected_at?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          metadata?: Json | null
+          name: string
+          phone_number?: string | null
+          qr_code?: string | null
+          qr_code_updated_at?: string | null
+          status?: string
+          updated_at?: string
+          webhook_subscribed?: boolean
+        }
+        Update: {
+          consecutive_failures?: number
+          cooldown_until?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          instance_token?: string | null
+          is_default?: boolean
+          last_connected_at?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          metadata?: Json | null
+          name?: string
+          phone_number?: string | null
+          qr_code?: string | null
+          qr_code_updated_at?: string | null
+          status?: string
+          updated_at?: string
+          webhook_subscribed?: boolean
+        }
+        Relationships: []
+      }
       platform_crm_form_blocks: {
         Row: {
           apply_tags: string[] | null
@@ -10719,6 +10782,66 @@ export type Database = {
           token_expires_at?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_instagram_connections: {
+        Row: {
+          app_id: string | null
+          app_secret_encrypted: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string
+          fb_page_id: string | null
+          fb_page_name: string | null
+          id: string
+          ig_business_account_id: string | null
+          ig_username: string | null
+          last_error: string | null
+          last_inbound_at: string | null
+          page_access_token_encrypted: string | null
+          status: string
+          updated_at: string
+          webhook_subscribed_at: string | null
+          webhook_verify_token: string
+        }
+        Insert: {
+          app_id?: string | null
+          app_secret_encrypted?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          fb_page_id?: string | null
+          fb_page_name?: string | null
+          id?: string
+          ig_business_account_id?: string | null
+          ig_username?: string | null
+          last_error?: string | null
+          last_inbound_at?: string | null
+          page_access_token_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          webhook_subscribed_at?: string | null
+          webhook_verify_token: string
+        }
+        Update: {
+          app_id?: string | null
+          app_secret_encrypted?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          fb_page_id?: string | null
+          fb_page_name?: string | null
+          id?: string
+          ig_business_account_id?: string | null
+          ig_username?: string | null
+          last_error?: string | null
+          last_inbound_at?: string | null
+          page_access_token_encrypted?: string | null
+          status?: string
+          updated_at?: string
+          webhook_subscribed_at?: string | null
+          webhook_verify_token?: string
         }
         Relationships: []
       }
@@ -11526,6 +11649,54 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_crm_seller_booking: {
+        Row: {
+          booking_bio: string | null
+          booking_slug: string
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_bio?: string | null
+          booking_slug: string
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_bio?: string | null
+          booking_slug?: string
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_seller_form_config: {
+        Row: {
+          created_at: string
+          fields: Json
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fields?: Json
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fields?: Json
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_crm_seller_notification_settings: {
         Row: {
           channel: string
@@ -11762,6 +11933,33 @@ export type Database = {
           id?: string
           is_available?: boolean | null
           start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_user_status: {
+        Row: {
+          active_leads_count: number
+          id: string
+          last_status_change: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_leads_count?: number
+          id?: string
+          last_status_change?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_leads_count?: number
+          id?: string
+          last_status_change?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -12054,6 +12252,151 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      platform_crm_whatsapp_meta_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          app_id: string | null
+          app_secret_encrypted: string | null
+          business_account_name: string | null
+          consecutive_failures: number
+          cooldown_until: string | null
+          created_at: string
+          created_by: string | null
+          default_reengagement_template_id: string | null
+          display_name: string
+          id: string
+          last_error: string | null
+          last_failure_at: string | null
+          last_failure_reason: string | null
+          last_health_check_at: string | null
+          messaging_limit_tier: string | null
+          phone_number: string | null
+          phone_number_id: string | null
+          quality_rating: string | null
+          status: string
+          updated_at: string
+          waba_id: string | null
+          webhook_subscribed_at: string | null
+          webhook_verify_token: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          app_id?: string | null
+          app_secret_encrypted?: string | null
+          business_account_name?: string | null
+          consecutive_failures?: number
+          cooldown_until?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_reengagement_template_id?: string | null
+          display_name: string
+          id?: string
+          last_error?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          last_health_check_at?: string | null
+          messaging_limit_tier?: string | null
+          phone_number?: string | null
+          phone_number_id?: string | null
+          quality_rating?: string | null
+          status?: string
+          updated_at?: string
+          waba_id?: string | null
+          webhook_subscribed_at?: string | null
+          webhook_verify_token: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          app_id?: string | null
+          app_secret_encrypted?: string | null
+          business_account_name?: string | null
+          consecutive_failures?: number
+          cooldown_until?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_reengagement_template_id?: string | null
+          display_name?: string
+          id?: string
+          last_error?: string | null
+          last_failure_at?: string | null
+          last_failure_reason?: string | null
+          last_health_check_at?: string | null
+          messaging_limit_tier?: string | null
+          phone_number?: string | null
+          phone_number_id?: string | null
+          quality_rating?: string | null
+          status?: string
+          updated_at?: string
+          waba_id?: string | null
+          webhook_subscribed_at?: string | null
+          webhook_verify_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_pcrm_wameta_default_tpl"
+            columns: ["default_reengagement_template_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_whatsapp_meta_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_whatsapp_meta_templates: {
+        Row: {
+          category: string
+          components: Json
+          connection_id: string
+          created_at: string
+          id: string
+          language: string
+          last_synced_at: string | null
+          meta_template_id: string | null
+          name: string
+          quality_score: Json | null
+          rejected_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          components?: Json
+          connection_id: string
+          created_at?: string
+          id?: string
+          language: string
+          last_synced_at?: string | null
+          meta_template_id?: string | null
+          name: string
+          quality_score?: Json | null
+          rejected_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          components?: Json
+          connection_id?: string
+          created_at?: string
+          id?: string
+          language?: string
+          last_synced_at?: string | null
+          meta_template_id?: string | null
+          name?: string
+          quality_score?: Json | null
+          rejected_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_whatsapp_meta_templates_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_whatsapp_meta_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_email_settings: {
         Row: {
@@ -12415,6 +12758,7 @@ export type Database = {
           logo_url: string | null
           master_organization_id: string | null
           meta_description: string | null
+          meta_wa_master_key: string | null
           og_image_url: string | null
           platform_name: string | null
           powered_by_text: string | null
@@ -12460,6 +12804,7 @@ export type Database = {
           logo_url?: string | null
           master_organization_id?: string | null
           meta_description?: string | null
+          meta_wa_master_key?: string | null
           og_image_url?: string | null
           platform_name?: string | null
           powered_by_text?: string | null
@@ -12505,6 +12850,7 @@ export type Database = {
           logo_url?: string | null
           master_organization_id?: string | null
           meta_description?: string | null
+          meta_wa_master_key?: string | null
           og_image_url?: string | null
           platform_name?: string | null
           powered_by_text?: string | null
@@ -17099,6 +17445,7 @@ export type Database = {
         }[]
       }
       get_invitation_by_token: { Args: { p_token: string }; Returns: Json }
+      get_or_create_meta_master_key: { Args: never; Returns: string }
       get_organization_effective_limits: {
         Args: { p_org_id: string }
         Returns: Json
@@ -17253,9 +17600,20 @@ export type Database = {
         Args: { p_deal_id: string; p_deal_value: number; p_seller_id: string }
         Returns: number
       }
+      platform_crm_distribute_lead: {
+        Args: { p_lead_id: string; p_squad_id: string }
+        Returns: string
+      }
       platform_crm_increment_webhook_requests: {
         Args: { p_webhook_id: string }
         Returns: undefined
+      }
+      platform_crm_process_pending_queue: {
+        Args: { p_user_id: string }
+        Returns: {
+          assigned_lead_id: string
+          assigned_squad_id: string
+        }[]
       }
       platform_crm_reset_monthly_webhook_requests: {
         Args: never

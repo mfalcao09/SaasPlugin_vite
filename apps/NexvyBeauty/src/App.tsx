@@ -79,6 +79,9 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const PublicForm = lazyWithRetry(() => import("./pages/PublicForm"));
 const PublicSalaoBooking = lazyWithRetry(() => import("./pages/PublicSalaoBooking"));
+// Booking público do módulo CRM da plataforma (Calendly de reunião de venda).
+const PlatformCrmPublicBooking = lazyWithRetry(() => import("./pages/PlatformCrmPublicBooking"));
+const PlatformCrmBookingConfirmation = lazyWithRetry(() => import("./pages/PlatformCrmBookingConfirmation"));
 const PublicSalaoPacotes = lazyWithRetry(() => import("./pages/PublicSalaoPacotes"));
 const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
 const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
@@ -235,6 +238,14 @@ const App = () => (
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
+
+              {/* Booking público do módulo CRM da plataforma (Calendly de reunião
+                  de venda). PÚBLICO — sem auth/super-admin; anon só fala com as
+                  edges platform-booking-*. Confinado ao apex pelo HostConfinementGuard. */}
+              <Route path="/agendar/:userSlug" element={<PlatformCrmPublicBooking />} />
+              <Route path="/agendar/:userSlug/:eventSlug" element={<PlatformCrmPublicBooking />} />
+              <Route path="/confirmar/:token" element={<PlatformCrmBookingConfirmation />} />
+              <Route path="/reagendar/:token" element={<PlatformCrmBookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
 
               {/* Jurídico público (sem login) */}

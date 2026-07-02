@@ -85,7 +85,9 @@ export function hostUrlFor(
 
 // Marketing/legal + superfícies públicas do cliente final → só apex/www.
 const PUBLIC_EXACT = new Set(['/vendas', '/termos', '/privacidade', '/unsubscribe']);
-const PUBLIC_PREFIXES = ['/demo', '/s/', '/f/', '/c/', '/q/'];
+// `/agendar/`, `/confirmar/`, `/reagendar/` = booking público do CRM da plataforma
+// (Calendly de reunião de venda) — anon fala só com as edges platform-booking-*.
+const PUBLIC_PREFIXES = ['/demo', '/s/', '/f/', '/c/', '/q/', '/agendar/', '/confirmar/', '/reagendar/'];
 // Gate de autenticação → alcançável em qualquer host (porta de entrada do logado).
 const AUTH_EXACT = new Set(['/login', '/reset-password', '/aceitar-convite']);
 

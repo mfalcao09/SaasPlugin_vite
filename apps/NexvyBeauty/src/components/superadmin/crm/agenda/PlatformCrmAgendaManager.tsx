@@ -45,6 +45,12 @@ import { PlatformCrmCalendarWeekView } from './PlatformCrmCalendarWeekView';
 import { PlatformCrmCalendarDayView } from './PlatformCrmCalendarDayView';
 import { PlatformCrmCalendarListView } from './PlatformCrmCalendarListView';
 import { PlatformCrmEventModal } from './PlatformCrmEventModal';
+import {
+  PlatformCrmBookingsManager,
+  PlatformCrmEventTypesManager,
+  PlatformCrmAvailabilityManager,
+  PlatformCrmTeamBookingLinks,
+} from './booking';
 
 /**
  * Agenda do CRM de PLATAFORMA (super_admin) — porte 1:1 do CalendarManager do
@@ -54,26 +60,14 @@ import { PlatformCrmEventModal } from './PlatformCrmEventModal';
  *    sem filtro de produto (coluna não existe na tabela de plataforma).
  *  - Super_admin sempre enxerga todos os usuários (sem gate isAdmin/isManager).
  *  - Abas Reuniões / Tipos de Evento / Disponibilidade / Links da Equipe =
- *    TODO(edge): subsistema de booking (tabelas platform_crm_booking_* +
- *    Edge Functions) não portado no core — UI presente como stub "em breve".
+ *    port 1:1 do subsistema de booking do CRM Vendus (tabelas
+ *    platform_crm_booking_* / _user_availability / _availability_overrides;
+ *    slug em profiles.booking_slug). CRUD direto nas tabelas; ações que
+ *    dependeriam de Edge Function trazem TODO(edge) nos componentes.
  *  - Google Calendar (OAuth + sync) = TODO(edge).
  */
 
 type ViewMode = 'month' | 'week' | 'day' | 'list';
-
-/** Stub visual para fluxos que dependem de Edge Function / OAuth (TODO(edge)). */
-function AgendaEmBreve({ titulo, descricao }: { titulo: string; descricao: string }) {
-  return (
-    <Card>
-      <CardContent className="py-12 text-center">
-        <div className="text-4xl mb-3">🛠️</div>
-        <h3 className="font-semibold text-lg">{titulo}</h3>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">{descricao}</p>
-        <p className="text-xs text-muted-foreground mt-3">Em breve.</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 /**
  * Visão de calendário (mês/semana/dia/lista) + CRUD de evento.
@@ -391,7 +385,7 @@ function AgendaCalendarView() {
  * Casca do módulo Agenda no super-admin: agrupa em uma única tela
  *  - Agenda (calendário visual) — CORE funcional
  *  - Reuniões / Tipos de Evento / Disponibilidade / Links da Equipe —
- *    TODO(edge): subsistema de booking não portado (stubs "em breve")
+ *    subsistema de booking portado 1:1 (platform_crm_booking_*)
  */
 export function PlatformCrmAgendaManager() {
   const isMobile = useIsMobile();
@@ -446,34 +440,23 @@ export function PlatformCrmAgendaManager() {
           <AgendaCalendarView />
         </TabsContent>
 
-        {/* TODO(edge): abas abaixo dependem do subsistema de booking
-            (platform_crm_booking_* + Edge Functions) não portado no core. */}
+        {/* Booking (Calendly de reunião de venda) — port 1:1 de admin/booking/
+            do CRM Vendus (tabelas platform_crm_booking_*). CRUD direto nas
+            tabelas; ações que dependem de Edge Function trazem TODO(edge). */}
         <TabsContent value="bookings" className="mt-6">
-          <AgendaEmBreve
-            titulo="Reuniões (bookings)"
-            descricao="Central de reuniões agendadas via links públicos de booking — depende do subsistema de agendamento (Edge Functions) ainda não portado."
-          />
+          <PlatformCrmBookingsManager />
         </TabsContent>
 
         <TabsContent value="event-types" className="mt-6">
-          <AgendaEmBreve
-            titulo="Tipos de Evento"
-            descricao="Pré-configuração de tipos de reunião com duração, confirmação e lembretes automáticos — depende do subsistema de agendamento ainda não portado."
-          />
+          <PlatformCrmEventTypesManager />
         </TabsContent>
 
         <TabsContent value="availability" className="mt-6">
-          <AgendaEmBreve
-            titulo="Disponibilidade"
-            descricao="Janelas de horário disponíveis para agendamento público — depende do subsistema de agendamento ainda não portado."
-          />
+          <PlatformCrmAvailabilityManager />
         </TabsContent>
 
         <TabsContent value="team-links" className="mt-6">
-          <AgendaEmBreve
-            titulo="Links da Equipe"
-            descricao="Links individuais de agendamento de cada vendedor para compartilhar — depende do subsistema de agendamento ainda não portado."
-          />
+          <PlatformCrmTeamBookingLinks />
         </TabsContent>
       </Tabs>
     </div>
