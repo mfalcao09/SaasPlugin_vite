@@ -52,6 +52,11 @@ import { PlatformCrmAgentsManager } from '@/components/superadmin/crm/agents/Pla
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
+import { PlatformCrmInboxPanel } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxPanel';
+import { PlatformCrmInboxRadar } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxRadar';
+import { PlatformCrmInboxFollowup } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxFollowup';
+import { PlatformCrmInboxReports } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxReports';
+import { PlatformCrmMia } from '@/components/superadmin/crm/mia/PlatformCrmMia';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 
 // ════════════════════════════════════════════════════════════
@@ -233,7 +238,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-mia',
         label: 'Mia',
         icon: I.Sparkles,
-        render: () => <EmBreve titulo="Mia — assistente de IA de vendas" />,
+        render: () => <PlatformCrmMia />,
       },
       {
         id: 'v-pipeline',
@@ -269,25 +274,25 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-painel',
         label: 'Painel',
         icon: I.LayoutPanelTop,
-        render: () => <EmBreve titulo="Painel de Atendimentos" />,
+        render: () => <PlatformCrmInboxPanel />,
       },
       {
         id: 'v-radar-ia',
         label: 'Radar IA',
         icon: I.Radar,
-        render: () => <EmBreve titulo="Radar IA" />,
+        render: () => <PlatformCrmInboxRadar />,
       },
       {
         id: 'v-follow-up',
         label: 'Follow-Up',
         icon: I.Repeat,
-        render: () => <EmBreve titulo="Follow-Up" />,
+        render: () => <PlatformCrmInboxFollowup />,
       },
       {
         id: 'v-relatorios',
         label: 'Relatórios',
         icon: I.BarChart3,
-        render: () => <EmBreve titulo="Relatórios" />,
+        render: () => <PlatformCrmInboxReports />,
       },
     ],
   },
