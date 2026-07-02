@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -49,11 +50,18 @@ import {
   Loader2,
   BadgeCheck,
   CircleDollarSign,
+  Users,
+  User,
+  Clock,
+  CheckCircle,
+  Check,
+  CreditCard,
 } from 'lucide-react';
 import {
   usePlatformCrmCommissions,
   useApprovePlatformCrmCommission,
   usePayPlatformCrmCommission,
+  useBulkUpdatePlatformCrmCommissions,
   usePlatformCrmCommissionRules,
   useCreatePlatformCrmCommissionRule,
   useUpdatePlatformCrmCommissionRule,
@@ -61,15 +69,19 @@ import {
   type PlatformCrmCommissionRule,
   type PlatformCrmCommissionRuleType,
   type PlatformCrmCommissionStatus,
+  type PlatformCrmCommissionWithDeal,
 } from '../data/usePlatformCrmCommissions';
+import { usePlatformCrmSellers, usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
 
 /**
  * COMISSÕES do CRM de PLATAFORMA (super_admin) — desacopladas do tenant.
  * Usa EXCLUSIVAMENTE os hooks `platform_crm_commissions` / `platform_crm_commission_rules`
  * + componentes @/components/ui. Sem organization/product, sem cockpit do salão.
  *
- * Aba Regras: CRUD de commission_rules (rule_type, base_value, applies_to).
- * Aba Comissões: lista de commissions (amount, status, deal vinculado) + aprovar/pagar.
+ * Aba Regras: CRUD de commission_rules (rule_type, base_value, applies_to, is_default,
+ *   user_id → vendedor específico). "Vendedor" = rep de venda DA PLATAFORMA (usePlatformCrmSellers).
+ *   Agrupamento por produto NÃO existe (o funil da plataforma não tem product_id) — TODO(produto).
+ * Aba Comissões: sumário (pendente/aprovada/paga) + lista + aprovar/pagar + bulk approve.
  */
 
 function formatCurrency(value: number): string {
@@ -86,6 +98,8 @@ interface RuleFormData {
   applies_to: string;
   min_value: number;
   max_value: number | null;
+  is_default: boolean;
+  user_id: string;
   is_active: boolean;
 }
 
@@ -95,6 +109,8 @@ const EMPTY_RULE_FORM: RuleFormData = {
   applies_to: 'deal',
   min_value: 0,
   max_value: null,
+  is_default: true,
+  user_id: '',
   is_active: true,
 };
 
@@ -131,6 +147,8 @@ export function PlatformCrmCommissionsManager() {
 
 function RulesTab() {
   const { data: rules = [], isLoading } = usePlatformCrmCommissionRules();
+  const { data: sellers = [] } = usePlatformCrmSellers();
+  const { map: sellersMap } = usePlatformCrmSellersMap();
   const createRule = useCreatePlatformCrmCommissionRule();
   const updateRule = useUpdatePlatformCrmCommissionRule();
   const deleteRule = useDeletePlatformCrmCommissionRule();
@@ -157,6 +175,8 @@ function RulesTab() {
       applies_to: rule.applies_to ?? 'deal',
       min_value: rule.min_value ?? 0,
       max_value: rule.max_value,
+      is_default: rule.is_default ?? true,
+      user_id: rule.user_id ?? '',
       is_active: rule.is_active ?? true,
     });
     setEditingId(rule.id);
@@ -170,6 +190,9 @@ function RulesTab() {
       applies_to: form.applies_to,
       min_value: form.min_value,
       max_value: form.max_value,
+      // Regra padrão → sem vendedor; senão, o vendedor escolhido.
+      is_default: form.is_default,
+      user_id: form.is_default ? null : form.user_id || null,
       is_active: form.is_active,
     };
     if (editingId) {
@@ -222,6 +245,7 @@ function RulesTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Aplicação</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Aplica a</TableHead>
                   <TableHead>Limites</TableHead>
@@ -240,6 +264,25 @@ function RulesTab() {
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                         )}
                         {rule.rule_type === 'percentage' ? 'Percentual' : 'Fixo'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {rule.is_default ? (
+                          <>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>Todos</span>
+                          </>
+                        ) : (
+                          <>
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span>
+                              {rule.user_id
+                                ? sellersMap[rule.user_id]?.full_name ?? 'Vendedor'
+                                : 'Vendedor'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -303,6 +346,43 @@ function RulesTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* TODO(produto): o funil da plataforma não tem product_id — o original
+                segmentava/agrupava as regras por produto (useProducts). Sem coluna,
+                a segmentação por produto fica pendente de decisão. */}
+
+            {/* Regra padrão (todos os vendedores) vs. vendedor específico */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="rule_is_default"
+                checked={form.is_default}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, is_default: checked, user_id: checked ? '' : form.user_id })
+                }
+              />
+              <Label htmlFor="rule_is_default">Regra padrão (todos os vendedores)</Label>
+            </div>
+
+            {!form.is_default && (
+              <div className="space-y-2">
+                <Label>Vendedor Específico</Label>
+                <Select
+                  value={form.user_id}
+                  onValueChange={(value) => setForm({ ...form, user_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller.id} value={seller.id}>
+                        {seller.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Tipo de Comissão</Label>
               <Select
@@ -434,39 +514,168 @@ function CommissionStatusBadge({ status }: { status: string | null }) {
   return <Badge variant="secondary">{status ?? '—'}</Badge>;
 }
 
+/** Card de sumário (pendente/aprovada/paga) — espelha os "Cards de Resumo" do original. */
+function SummaryCard({
+  title,
+  value,
+  hint,
+  icon,
+  valueClassName,
+}: {
+  title: string;
+  value: number;
+  hint: string;
+  icon: React.ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <span className="text-sm font-medium">{title}</span>
+          {icon}
+        </div>
+        <div className={`text-2xl font-bold ${valueClassName ?? ''}`}>
+          {formatCurrency(value)}
+        </div>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function CommissionsTab() {
   const [statusFilter, setStatusFilter] = useState<
     PlatformCrmCommissionStatus | typeof COMMISSION_STATUS_ALL
   >(COMMISSION_STATUS_ALL);
+  const [selectedCommissions, setSelectedCommissions] = useState<string[]>([]);
 
+  // Lista filtrada (renderizada) + lista completa para o sumário por status.
   const { data: commissions = [], isLoading } = usePlatformCrmCommissions(
     statusFilter === COMMISSION_STATUS_ALL ? undefined : statusFilter,
   );
+  const { data: allCommissions = [] } = usePlatformCrmCommissions();
+
   const approve = useApprovePlatformCrmCommission();
   const pay = usePayPlatformCrmCommission();
+  const bulkUpdate = useBulkUpdatePlatformCrmCommissions();
+
+  // Sumário por status (pendente/aprovada/paga) sobre o total.
+  const summary = useMemo(() => {
+    const acc = { pending: 0, approved: 0, paid: 0, total: 0 };
+    for (const c of allCommissions) {
+      const amount = Number(c.amount ?? 0);
+      if (c.status === 'pending') acc.pending += amount;
+      else if (c.status === 'approved') acc.approved += amount;
+      else if (c.status === 'paid') acc.paid += amount;
+      acc.total += amount;
+    }
+    return acc;
+  }, [allCommissions]);
+
+  const pendingIds = useMemo(
+    () => commissions.filter((c) => c.status === 'pending').map((c) => c.id),
+    [commissions],
+  );
+  const approvedIds = useMemo(
+    () => commissions.filter((c) => c.status === 'approved').map((c) => c.id),
+    [commissions],
+  );
+  const allPendingSelected =
+    pendingIds.length > 0 && selectedCommissions.length === pendingIds.length;
+  const allApprovedSelected =
+    approvedIds.length > 0 && selectedCommissions.length === approvedIds.length;
+
+  const toggleCommission = (id: string) => {
+    setSelectedCommissions((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedCommissions.length === 0) return;
+    await bulkUpdate.mutateAsync({ ids: selectedCommissions, status: 'approved' });
+    setSelectedCommissions([]);
+  };
+
+  // Espelha handleBulkApprove, mas marca as selecionadas como pagas (fiel ao
+  // handleBulkPay do FinancialDashboard original). Usado no contexto "Aprovadas".
+  const handleBulkPay = async () => {
+    if (selectedCommissions.length === 0) return;
+    await bulkUpdate.mutateAsync({ ids: selectedCommissions, status: 'paid' });
+    setSelectedCommissions([]);
+  };
 
   return (
     <div className="space-y-4">
+      {/* Cards de Resumo */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SummaryCard
+          title="Comissões Pendentes"
+          value={summary.pending}
+          hint="Aguardando aprovação"
+          icon={<Clock className="h-4 w-4 text-yellow-500" />}
+          valueClassName="text-yellow-600"
+        />
+        <SummaryCard
+          title="Comissões Aprovadas"
+          value={summary.approved}
+          hint="A pagar"
+          icon={<CheckCircle className="h-4 w-4 text-blue-500" />}
+          valueClassName="text-blue-600"
+        />
+        <SummaryCard
+          title="Comissões Pagas"
+          value={summary.paid}
+          hint="Total pago"
+          icon={<CircleDollarSign className="h-4 w-4 text-green-500" />}
+          valueClassName="text-green-600"
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Comissões geradas pelos negócios fechados.
         </p>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) =>
-            setStatusFilter(v as PlatformCrmCommissionStatus | typeof COMMISSION_STATUS_ALL)
-          }
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={COMMISSION_STATUS_ALL}>Todos os status</SelectItem>
-            <SelectItem value="pending">Pendente</SelectItem>
-            <SelectItem value="approved">Aprovada</SelectItem>
-            <SelectItem value="paid">Paga</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          {selectedCommissions.length > 0 && statusFilter === 'approved' && (
+            <Button onClick={handleBulkPay} disabled={bulkUpdate.isPending}>
+              {bulkUpdate.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="mr-2 h-4 w-4" />
+              )}
+              Marcar como Pagas ({selectedCommissions.length})
+            </Button>
+          )}
+          {selectedCommissions.length > 0 && statusFilter !== 'approved' && (
+            <Button onClick={handleBulkApprove} disabled={bulkUpdate.isPending}>
+              {bulkUpdate.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
+              Aprovar Selecionadas ({selectedCommissions.length})
+            </Button>
+          )}
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v as PlatformCrmCommissionStatus | typeof COMMISSION_STATUS_ALL);
+              setSelectedCommissions([]);
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={COMMISSION_STATUS_ALL}>Todos os status</SelectItem>
+              <SelectItem value="pending">Pendente</SelectItem>
+              <SelectItem value="approved">Aprovada</SelectItem>
+              <SelectItem value="paid">Paga</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -491,6 +700,25 @@ function CommissionsTab() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={
+                        statusFilter === 'approved' ? allApprovedSelected : allPendingSelected
+                      }
+                      disabled={
+                        statusFilter === 'approved'
+                          ? approvedIds.length === 0
+                          : pendingIds.length === 0
+                      }
+                      onCheckedChange={(checked) => {
+                        if (checked)
+                          setSelectedCommissions(
+                            statusFilter === 'approved' ? approvedIds : pendingIds,
+                          );
+                        else setSelectedCommissions([]);
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Negócio</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
@@ -498,8 +726,18 @@ function CommissionsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {commissions.map((commission) => (
+                {commissions.map((commission: PlatformCrmCommissionWithDeal) => (
                   <TableRow key={commission.id}>
+                    <TableCell>
+                      {(statusFilter === 'approved'
+                        ? commission.status === 'approved'
+                        : commission.status === 'pending') ? (
+                        <Checkbox
+                          checked={selectedCommissions.includes(commission.id)}
+                          onCheckedChange={() => toggleCommission(commission.id)}
+                        />
+                      ) : null}
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
                         <span>{commission.deal?.lead?.name ?? '—'}</span>
@@ -535,7 +773,7 @@ function CommissionsTab() {
                             onClick={() => pay.mutate(commission.id)}
                             disabled={pay.isPending}
                           >
-                            <CircleDollarSign className="h-4 w-4 mr-1" />
+                            <CreditCard className="h-4 w-4 mr-1" />
                             Pagar
                           </Button>
                         )}

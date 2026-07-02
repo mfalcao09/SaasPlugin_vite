@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { PlatformCrmKanbanLeadCard } from './PlatformCrmKanbanLeadCard';
 import type { PlatformCrmLeadWithStage } from '../data/usePlatformCrmLeads';
 import type { PlatformCrmStage } from '../data/usePlatformCrmStages';
+import type { PlatformCrmSeller } from '../data/usePlatformCrmSellers';
 
 /** Coluna do board = etapa + seus leads (agrupados por current_stage_id). */
 export interface PlatformCrmKanbanColumnData {
@@ -27,6 +28,10 @@ interface PlatformCrmKanbanColumnProps {
   draggedLeadId?: string | null;
   onDragStartLead?: (leadId: string) => void;
   onDropLead?: (stageId: string) => void;
+  /** Abre o detalhe de um lead (modal) ao clicar no card. */
+  onViewLead?: (leadId: string) => void;
+  /** Mapa id -> vendedor (rep de venda da plataforma) para o rodapé do card. */
+  sellersMap?: Record<string, PlatformCrmSeller>;
 }
 
 function formatCurrency(value: number) {
@@ -49,6 +54,8 @@ export function PlatformCrmKanbanColumn({
   draggedLeadId,
   onDragStartLead,
   onDropLead,
+  onViewLead,
+  sellersMap,
 }: PlatformCrmKanbanColumnProps) {
   const stageColor = column.color || '#6b7280';
   const [isOver, setIsOver] = useState(false);
@@ -121,6 +128,10 @@ export function PlatformCrmKanbanColumn({
                 key={lead.id}
                 lead={lead}
                 stageColor={stageColor}
+                seller={
+                  lead.assigned_to ? sellersMap?.[lead.assigned_to] ?? null : null
+                }
+                onViewDetails={() => onViewLead?.(lead.id)}
                 isDragging={draggedLeadId === lead.id}
                 onDragStart={() => onDragStartLead?.(lead.id)}
               />

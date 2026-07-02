@@ -63,7 +63,13 @@ export function usePlatformCrmCommissions(status?: PlatformCrmCommissionStatus) 
   });
 }
 
-/** Marca comissão como aprovada (status='approved', approved_at=now). */
+/** Resolve o UUID do usuário logado (super_admin) — desacoplado de `useAuth`/org. */
+async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+/** Marca comissão como aprovada (status='approved', approved_at=now, approved_by=me). */
 export function useApprovePlatformCrmCommission() {
   const queryClient = useQueryClient();
 
@@ -71,7 +77,11 @@ export function useApprovePlatformCrmCommission() {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from('platform_crm_commissions')
-        .update({ status: 'approved', approved_at: new Date().toISOString() })
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: await currentUserId(),
+        })
         .eq('id', id)
         .select()
         .single();
@@ -90,7 +100,7 @@ export function useApprovePlatformCrmCommission() {
   });
 }
 
-/** Marca comissão como paga (status='paid', paid_at=now). */
+/** Marca comissão como paga (status='paid', paid_at=now, paid_by=me). */
 export function usePayPlatformCrmCommission() {
   const queryClient = useQueryClient();
 
@@ -98,7 +108,11 @@ export function usePayPlatformCrmCommission() {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from('platform_crm_commissions')
-        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          paid_by: await currentUserId(),
+        })
         .eq('id', id)
         .select()
         .single();
@@ -113,6 +127,51 @@ export function usePayPlatformCrmCommission() {
     onError: (error: any) => {
       console.error('Error paying platform CRM commission:', error);
       toast.error('Erro ao pagar comissão');
+    },
+  });
+}
+
+/**
+ * Atualização em lote de comissões (aprovar/pagar várias de uma vez).
+ * Espelha `useBulkUpdateCommissions` do CRM original, mas só toca
+ * `platform_crm_commissions` e preenche approved_by/paid_by com o usuário logado.
+ */
+export function useBulkUpdatePlatformCrmCommissions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      ids,
+      status,
+    }: {
+      ids: string[];
+      status: 'approved' | 'paid';
+    }) => {
+      const me = await currentUserId();
+      const updates: PlatformCrmCommissionUpdate = { status };
+
+      if (status === 'approved') {
+        updates.approved_at = new Date().toISOString();
+        updates.approved_by = me;
+      } else if (status === 'paid') {
+        updates.paid_at = new Date().toISOString();
+        updates.paid_by = me;
+      }
+
+      const { error } = await supabase
+        .from('platform_crm_commissions')
+        .update(updates)
+        .in('id', ids);
+
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'commissions'] });
+    },
+    onError: (error: any) => {
+      console.error('Error bulk-updating platform CRM commissions:', error);
+      toast.error('Erro ao atualizar comissões em lote');
     },
   });
 }

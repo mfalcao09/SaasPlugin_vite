@@ -1,13 +1,22 @@
 import { Flame, Sun, Snowflake, Calendar, Target, DollarSign, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { PlatformCrmLeadWithStage } from '../data/usePlatformCrmLeads';
+import type { PlatformCrmSeller } from '../data/usePlatformCrmSellers';
 
 interface PlatformCrmKanbanLeadCardProps {
   lead: PlatformCrmLeadWithStage;
   stageColor: string;
+  /** Abre o detalhe do lead (modal). Torna o card clicável. */
+  onViewDetails?: () => void;
+  /**
+   * Vendedor responsável (rep de venda da plataforma) resolvido pelo mapa de
+   * sellers. Fallback para `lead.profiles` (assigned_to resolvido no hook de leads).
+   */
+  seller?: PlatformCrmSeller | null;
   isDragging?: boolean;
   onDragStart?: () => void;
 }
@@ -30,6 +39,8 @@ function formatCurrency(value: number) {
 export function PlatformCrmKanbanLeadCard({
   lead,
   stageColor,
+  onViewDetails,
+  seller,
   isDragging,
   onDragStart,
 }: PlatformCrmKanbanLeadCardProps) {
@@ -42,6 +53,10 @@ export function PlatformCrmKanbanLeadCard({
 
   const isStale = daysSinceContact !== null && daysSinceContact > 7;
   const dealValue = lead.deal_value ?? 0;
+
+  // Vendedor: mapa de sellers > profiles resolvido no hook de leads.
+  const sellerName = seller?.full_name ?? lead.profiles?.full_name ?? null;
+  const sellerAvatar = seller?.avatar_url ?? lead.profiles?.avatar_url ?? null;
 
   return (
     <div
@@ -58,6 +73,7 @@ export function PlatformCrmKanbanLeadCard({
         isDragging && 'opacity-50',
       )}
       style={{ borderLeftWidth: 4, borderLeftColor: stageColor }}
+      onClick={onViewDetails}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
@@ -103,13 +119,38 @@ export function PlatformCrmKanbanLeadCard({
 
       {/* Value */}
       {dealValue > 0 && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 mb-3">
           <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-md">
             <DollarSign className="h-3.5 w-3.5" />
             <span className="text-sm font-semibold">{formatCurrency(dealValue)}</span>
           </div>
         </div>
       )}
+
+      {/* Footer — vendedor (rep de venda da plataforma) */}
+      <div className="flex items-center justify-end pt-2 border-t">
+        {sellerName ? (
+          <div className="flex items-center gap-1.5">
+            <Avatar className="h-5 w-5">
+              <AvatarImage src={sellerAvatar || undefined} />
+              <AvatarFallback className="text-[9px]">
+                {sellerName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+              {sellerName.split(' ')[0]}
+            </span>
+          </div>
+        ) : (
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            Sem vendedor
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }

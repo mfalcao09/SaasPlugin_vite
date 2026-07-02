@@ -56,6 +56,7 @@ import {
   Tags,
   BellRing,
   Clock,
+  Package,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
@@ -291,6 +292,7 @@ export const PlatformIcons = {
   LineChart,
   // vendas — gestão de vendas
   Briefcase,
+  Package,
   DollarSign,
   Goal,
   Network,

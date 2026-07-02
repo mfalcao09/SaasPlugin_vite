@@ -17,13 +17,39 @@ export type PlatformCrmLeadUpdate = TablesUpdate<'platform_crm_leads'>;
 /** Lead com a etapa (stage) embutida via join FK current_stage_id. */
 export type PlatformCrmLeadWithStage = PlatformCrmLead & {
   stage: PlatformCrmStage | null;
+  /**
+   * Perfil do vendedor responsável (assigned_to), resolvido client-side contra
+   * `profiles` — não há FK declarada de assigned_to → profiles. Espelha o campo
+   * `profiles` do KanbanLead original.
+   */
+  profiles?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
 };
+
+/** Direção da ordenação do board/lista. */
+export type PlatformCrmLeadSortBy = 'created_at' | 'deal_value' | 'last_contact_at';
+export type PlatformCrmLeadSortDirection = 'asc' | 'desc';
 
 export interface PlatformCrmLeadFilters {
   /** Busca livre por nome, empresa ou email. */
   search?: string;
   /** Filtra por etapa (current_stage_id). */
   stageId?: string;
+  /** Filtra por vendedor responsável (assigned_to) — rep de venda da plataforma. */
+  sellerId?: string;
+  /** Valor mínimo de negociação (deal_value >=). */
+  minValue?: number | null;
+  /** Recorte por created_at (>=). */
+  dateFrom?: Date | null;
+  /** Recorte por created_at (<=). */
+  dateTo?: Date | null;
+  /** Campo de ordenação. */
+  sortBy?: PlatformCrmLeadSortBy;
+  /** Direção da ordenação. */
+  sortDirection?: PlatformCrmLeadSortDirection;
 }
 
 const PLATFORM_CRM_KEY = 'platform-crm';
@@ -32,6 +58,9 @@ export function usePlatformCrmLeads(filters?: PlatformCrmLeadFilters) {
   return useQuery({
     queryKey: [PLATFORM_CRM_KEY, 'leads', filters ?? null],
     queryFn: async (): Promise<PlatformCrmLeadWithStage[]> => {
+      const sortBy = filters?.sortBy ?? 'created_at';
+      const ascending = (filters?.sortDirection ?? 'desc') === 'asc';
+
       let query = supabase
         .from('platform_crm_leads')
         .select(
@@ -40,10 +69,27 @@ export function usePlatformCrmLeads(filters?: PlatformCrmLeadFilters) {
           stage:platform_crm_pipeline_stages!platform_crm_leads_current_stage_id_fkey (*)
         `,
         )
-        .order('created_at', { ascending: false });
+        .order(sortBy, { ascending });
 
       if (filters?.stageId) {
         query = query.eq('current_stage_id', filters.stageId);
+      }
+
+      // Filtro por vendedor (assigned_to) — rep de venda da plataforma, não tenant.
+      if (filters?.sellerId) {
+        query = query.eq('assigned_to', filters.sellerId);
+      }
+
+      if (filters?.minValue != null) {
+        query = query.gte('deal_value', filters.minValue);
+      }
+
+      if (filters?.dateFrom) {
+        query = query.gte('created_at', filters.dateFrom.toISOString());
+      }
+
+      if (filters?.dateTo) {
+        query = query.lte('created_at', filters.dateTo.toISOString());
       }
 
       const search = filters?.search?.trim();
@@ -56,7 +102,32 @@ export function usePlatformCrmLeads(filters?: PlatformCrmLeadFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as unknown as PlatformCrmLeadWithStage[];
+
+      const leads = (data ?? []) as unknown as PlatformCrmLeadWithStage[];
+
+      // Resolve o vendedor (assigned_to) em `profiles` num passo separado — sem FK
+      // declarada, então não há embed. Espelha o profilesMap do useKanbanData original.
+      const assignedIds = [
+        ...new Set(leads.map((l) => l.assigned_to).filter((v): v is string => !!v)),
+      ];
+      let profilesMap: Record<string, { id: string; full_name: string | null; avatar_url: string | null }> = {};
+
+      if (assignedIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', assignedIds);
+
+        profilesMap = (profilesData ?? []).reduce(
+          (acc, p) => ({ ...acc, [p.id]: p }),
+          {},
+        );
+      }
+
+      return leads.map((l) => ({
+        ...l,
+        profiles: l.assigned_to ? profilesMap[l.assigned_to] ?? null : null,
+      }));
     },
   });
 }

@@ -3,8 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, MoreVertical, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Loader2, UsersRound, Pencil, Trash2, Search } from 'lucide-react';
 import {
   usePlatformCrmSquads,
   useCreatePlatformCrmSquad,
@@ -29,29 +21,45 @@ import {
   type PlatformCrmSquadInsert,
 } from '@/components/superadmin/crm/data/usePlatformCrmSquads';
 import { PlatformCrmSquadMembersDialog } from '@/components/superadmin/crm/squads/PlatformCrmSquadMembersDialog';
+import { PlatformCrmSquadPerformanceCard } from '@/components/superadmin/crm/squads/PlatformCrmSquadPerformanceCard';
+import { PlatformCrmSquadIconUpload } from '@/components/superadmin/crm/squads/PlatformCrmSquadIconUpload';
+import { PlatformCrmSquadDistributionConfig } from '@/components/superadmin/crm/squads/PlatformCrmSquadDistributionConfig';
 
-const DEFAULT_COLOR = '#0ea5e9';
+const SQUAD_COLORS = [
+  { name: 'Roxo', value: '#6366F1' },
+  { name: 'Azul', value: '#3B82F6' },
+  { name: 'Verde', value: '#10B981' },
+  { name: 'Amarelo', value: '#F59E0B' },
+  { name: 'Vermelho', value: '#EF4444' },
+  { name: 'Rosa', value: '#EC4899' },
+  { name: 'Ciano', value: '#06B6D4' },
+  { name: 'Laranja', value: '#F97316' },
+];
+
+const DEFAULT_COLOR = '#6366F1';
 
 interface SquadForm {
   name: string;
   description: string;
   color: string;
-  leader_id: string;
-  is_active: boolean;
+  icon_url: string | undefined;
 }
 
 const emptyForm: SquadForm = {
   name: '',
   description: '',
   color: DEFAULT_COLOR,
-  leader_id: '',
-  is_active: true,
+  icon_url: undefined,
 };
 
 /**
- * Seção "Times/Equipes" do CRM de PLATAFORMA (super_admin). CRUD de squads de
- * vendas + gerenciamento de membros — só tabelas platform_crm_sales_squads e
- * platform_crm_squad_members. Sem escopo de tenant.
+ * Seção "Times/Equipes" do CRM de PLATAFORMA (super_admin). Port 1:1 do
+ * `SquadManager` do CRM Vendus: grid de cards de performance (vendas/deals/
+ * conversão/meta/top vendedor) + config de auto-dispatch por squad, com CRUD e
+ * gerenciamento de membros. Só `platform_crm_*` + `profiles`. Sem tenant.
+ *
+ * TODO(migration): "produto associado" ao squad — a coluna product_id não existe
+ * em `platform_crm_sales_squads` (o original tinha o select de produto aqui).
  */
 export function PlatformCrmSquadsManager() {
   const { data: squads = [], isLoading } = usePlatformCrmSquads();
@@ -61,7 +69,7 @@ export function PlatformCrmSquadsManager() {
 
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSquad, setEditingSquad] = useState<PlatformCrmSquad | null>(null);
   const [form, setForm] = useState<SquadForm>(emptyForm);
 
   const [membersSquad, setMembersSquad] = useState<PlatformCrmSquad | null>(null);
@@ -73,19 +81,18 @@ export function PlatformCrmSquadsManager() {
   );
 
   const handleOpenCreate = () => {
-    setEditingId(null);
+    setEditingSquad(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (squad: PlatformCrmSquad) => {
-    setEditingId(squad.id);
+    setEditingSquad(squad);
     setForm({
       name: squad.name,
       description: squad.description ?? '',
       color: squad.color ?? DEFAULT_COLOR,
-      leader_id: squad.leader_id ?? '',
-      is_active: squad.is_active ?? true,
+      icon_url: squad.icon_url ?? undefined,
     });
     setDialogOpen(true);
   };
@@ -95,20 +102,19 @@ export function PlatformCrmSquadsManager() {
     setMembersOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSubmit = () => {
     if (!form.name.trim()) return;
 
     const payload: PlatformCrmSquadInsert = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       color: form.color,
-      leader_id: form.leader_id.trim() || null,
-      is_active: form.is_active,
+      icon_url: form.icon_url ?? null,
     };
 
-    if (editingId) {
+    if (editingSquad) {
       updateSquad.mutate(
-        { id: editingId, ...payload },
+        { id: editingSquad.id, ...payload },
         { onSuccess: () => setDialogOpen(false) },
       );
     } else {
@@ -116,17 +122,28 @@ export function PlatformCrmSquadsManager() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este time?')) {
+      deleteSquad.mutate(id);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Times / Equipes</h2>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <UsersRound className="h-6 w-6 text-primary" />
+            Times / Equipes
+          </h2>
           <p className="text-muted-foreground">
             Organize os vendedores da plataforma em times de vendas
           </p>
         </div>
-        <Button onClick={handleOpenCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Criar Time
+        <Button onClick={handleOpenCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Time
         </Button>
       </div>
 
@@ -140,153 +157,147 @@ export function PlatformCrmSquadsManager() {
         />
       </div>
 
+      {/* Grid */}
       {isLoading ? (
-        <p className="text-muted-foreground">Carregando...</p>
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       ) : filteredSquads.length === 0 ? (
-        <Card>
+        <Card className="border-border">
           <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">Nenhum time criado</p>
+            <UsersRound className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">Nenhum time criado</h3>
+            <p className="text-muted-foreground mb-4">
+              Crie times para organizar os vendedores da plataforma
+            </p>
+            <Button onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Primeiro Time
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSquads.map((squad) => (
-            <Card key={squad.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4 min-w-0">
-                  <span
-                    className="inline-block h-4 w-4 rounded-full border shrink-0"
-                    style={{ backgroundColor: squad.color ?? DEFAULT_COLOR }}
-                    aria-hidden
-                  />
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{squad.name}</p>
-                    {squad.leader_id && (
-                      <p className="text-xs text-muted-foreground font-mono truncate">
-                        Líder: {squad.leader_id}
-                      </p>
-                    )}
-                  </div>
-                  {squad.is_active === false ? (
-                    <Badge variant="outline">Inativo</Badge>
-                  ) : (
-                    <Badge variant="secondary">Ativo</Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
+            <div key={squad.id} className="space-y-3">
+              <div className="relative group">
+                <PlatformCrmSquadPerformanceCard
+                  squad={squad}
+                  onManageMembers={() => handleOpenMembers(squad)}
+                />
+                {/* Editar/Excluir on hover */}
+                <div className="absolute top-4 right-12 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => handleOpenMembers(squad)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleOpenEdit(squad)}
                   >
-                    <Users className="h-4 w-4" /> Membros
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenEdit(squad)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => deleteSquad.mutate(squad.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(squad.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              {/* Auto-Dispatch */}
+              <PlatformCrmSquadDistributionConfig squadId={squad.id} />
+            </div>
           ))}
         </div>
       )}
 
+      {/* Dialog criar/editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Time' : 'Novo Time'}</DialogTitle>
+            <DialogTitle>{editingSquad ? 'Editar Time' : 'Novo Time'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
+              <Label htmlFor="name">Nome do Time</Label>
               <Input
+                id="name"
                 placeholder="Ex: Time Alpha"
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               />
             </div>
+
             <div className="space-y-2">
-              <Label>Cor</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  type="color"
-                  value={form.color}
-                  onChange={(e) => setForm((prev) => ({ ...prev, color: e.target.value }))}
-                  className="h-10 w-16 p-1"
-                />
-                <Input
-                  value={form.color}
-                  onChange={(e) => setForm((prev) => ({ ...prev, color: e.target.value }))}
-                  className="font-mono text-sm"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Líder (user_id — opcional)</Label>
-              <Input
-                placeholder="UUID do líder"
-                value={form.leader_id}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, leader_id: e.target.value }))
-                }
-                className="font-mono text-sm"
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <Label>Ativo</Label>
-                <p className="text-sm text-muted-foreground">
-                  Times inativos não recebem distribuição de leads
-                </p>
-              </div>
-              <Switch
-                checked={form.is_active}
-                onCheckedChange={(v) => setForm((prev) => ({ ...prev, is_active: v }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Descrição (opcional)</Label>
+              <Label htmlFor="description">Descrição</Label>
               <Textarea
-                placeholder="Objetivo ou território deste time"
+                id="description"
+                placeholder="Descreva o time..."
                 value={form.description}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, description: e.target.value }))
                 }
-                rows={2}
               />
             </div>
+
+            <PlatformCrmSquadIconUpload
+              currentIcon={form.icon_url}
+              onIconChange={(url) => setForm((prev) => ({ ...prev, icon_url: url || undefined }))}
+              squadName={form.name}
+              color={form.color}
+            />
+
+            <div className="space-y-2">
+              <Label>Cor do Time</Label>
+              <div className="flex flex-wrap gap-2">
+                {SQUAD_COLORS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    className={`w-8 h-8 rounded-full transition-all ${
+                      form.color === color.value
+                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110'
+                        : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    onClick={() => setForm((prev) => ({ ...prev, color: color.value }))}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* TODO(migration): "Produto Associado" — product_id inexistente em
+                platform_crm_sales_squads. O select de produto do original fica de
+                fora até existir a coluna/tabela de vínculo. */}
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
             <Button
-              onClick={handleSave}
+              onClick={handleSubmit}
               disabled={!form.name.trim() || createSquad.isPending || updateSquad.isPending}
             >
-              {editingId ? 'Salvar' : 'Criar'}
+              {createSquad.isPending || updateSquad.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : editingSquad ? (
+                'Salvar'
+              ) : (
+                'Criar Time'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Membros */}
       <PlatformCrmSquadMembersDialog
         squad={membersSquad}
         open={membersOpen}

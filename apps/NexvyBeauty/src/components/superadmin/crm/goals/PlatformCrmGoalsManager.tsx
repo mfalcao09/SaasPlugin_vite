@@ -13,6 +13,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +34,7 @@ import {
   usePlatformCrmGoals,
   useCreatePlatformCrmGoal,
 } from '../data/usePlatformCrmGoals';
+import { usePlatformCrmSellers, usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
 
 /**
  * METAS de vendas do CRM de PLATAFORMA (super_admin) — desacopladas do tenant.
@@ -34,8 +42,12 @@ import {
  * componentes @/components/ui. Sem organization/product, sem cockpit do salão.
  *
  * Composição: lista de metas por período (com progresso) + criação de meta.
- * O alvo (user_id) é informado como UUID pois o CRM de plataforma ainda não
- * expõe um seletor de vendedores desacoplado.
+ * O alvo (user_id) é escolhido num seletor de vendedores DA PLATAFORMA
+ * (`usePlatformCrmSellers`, resolvido contra `profiles`) e o nome é exibido na tabela.
+ *
+ * TODO(produto): o original tinha um campo "Produto (opcional)" na meta
+ * (useProducts + product_id). O funil da plataforma não tem product_id em
+ * `platform_crm_sales_goals`, então o campo produto fica pendente de decisão.
  */
 
 function formatCurrency(value: number): string {
@@ -71,6 +83,8 @@ const EMPTY_GOAL_FORM: GoalFormData = {
 
 export function PlatformCrmGoalsManager() {
   const { data: goals = [], isLoading } = usePlatformCrmGoals();
+  const { data: sellers = [] } = usePlatformCrmSellers();
+  const { map: sellersMap } = usePlatformCrmSellersMap();
   const createGoal = useCreatePlatformCrmGoal();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -79,12 +93,12 @@ export function PlatformCrmGoalsManager() {
   const resetForm = () => setForm(EMPTY_GOAL_FORM);
 
   const handleSubmit = async () => {
-    if (!form.user_id.trim() || !form.period_start || !form.period_end) {
-      toast.error('Preencha vendedor (UUID) e o período.');
+    if (!form.user_id || !form.period_start || !form.period_end) {
+      toast.error('Selecione o vendedor e o período.');
       return;
     }
     await createGoal.mutateAsync({
-      user_id: form.user_id.trim(),
+      user_id: form.user_id,
       period_start: form.period_start,
       period_end: form.period_end,
       target_value: form.target_value,
@@ -172,8 +186,12 @@ export function PlatformCrmGoalsManager() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono text-xs">
-                            {goal.user_id.slice(0, 8)}…
+                          <span>
+                            {sellersMap[goal.user_id]?.full_name ?? (
+                              <span className="font-mono text-xs">
+                                {goal.user_id.slice(0, 8)}…
+                              </span>
+                            )}
                           </span>
                         </div>
                       </TableCell>
@@ -236,13 +254,27 @@ export function PlatformCrmGoalsManager() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Vendedor (UUID) *</Label>
-              <Input
+              <Label>Vendedor *</Label>
+              <Select
                 value={form.user_id}
-                onChange={(e) => setForm({ ...form, user_id: e.target.value })}
-                placeholder="ID do vendedor"
-              />
+                onValueChange={(value) => setForm({ ...form, user_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sellers.map((seller) => (
+                    <SelectItem key={seller.id} value={seller.id}>
+                      {seller.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* TODO(produto): o original tinha "Produto (opcional)" aqui (useProducts +
+                product_id). Sem coluna product_id em platform_crm_sales_goals, o campo
+                produto fica pendente de decisão. */}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

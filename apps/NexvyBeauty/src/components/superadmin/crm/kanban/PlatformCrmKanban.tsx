@@ -1,19 +1,24 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Settings2, TrendingUp, Users, Loader2, Search, X } from 'lucide-react';
+import { LayoutGrid, Settings2, TrendingUp, Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { toast } from 'sonner';
 import {
   PlatformCrmKanbanColumn,
   type PlatformCrmKanbanColumnData,
 } from './PlatformCrmKanbanColumn';
 import { PlatformCrmStageManagerDialog } from './PlatformCrmStageManagerDialog';
+import { PlatformCrmKanbanFilters } from './PlatformCrmKanbanFilters';
+import { PlatformCrmLeadDetail } from '../leads/PlatformCrmLeadDetail';
 import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
 import {
   usePlatformCrmLeads,
   useMovePlatformCrmLeadToStage,
 } from '../data/usePlatformCrmLeads';
+import { usePlatformCrmKanbanFilters } from '../data/usePlatformCrmKanbanFilters';
+import { usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
 
 const UNASSIGNED_ID = 'unassigned';
 
@@ -34,13 +39,25 @@ function formatCurrency(value: number) {
 export function PlatformCrmKanban() {
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  const { filters, updateFilter, clearFilters, hasActiveFilters } =
+    usePlatformCrmKanbanFilters();
 
   const { data: stages, isLoading: stagesLoading } = usePlatformCrmStages();
-  const { data: leads, isLoading: leadsLoading } = usePlatformCrmLeads(
-    search.trim() ? { search: search.trim() } : undefined,
-  );
+  const { data: leads, isLoading: leadsLoading } = usePlatformCrmLeads({
+    search: filters.search.trim() || undefined,
+    sellerId: filters.sellerId || undefined,
+    minValue: filters.minValue,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection,
+  });
   const moveLead = useMovePlatformCrmLeadToStage();
+
+  // Vendedores = reps de venda da plataforma (squad_members / assigned_to), NÃO tenant.
+  const { data: sellers = [], map: sellersMap } = usePlatformCrmSellersMap();
 
   const isLoading = stagesLoading || leadsLoading;
 
@@ -48,7 +65,6 @@ export function PlatformCrmKanban() {
     const stageList = [...(stages ?? [])].sort((a, b) => a.order_index - b.order_index);
     const leadList = leads ?? [];
 
-    // Agrupa leads por current_stage_id.
     const byStage = new Map<string, typeof leadList>();
     for (const lead of leadList) {
       const key = lead.current_stage_id ?? UNASSIGNED_ID;
@@ -75,7 +91,6 @@ export function PlatformCrmKanban() {
       };
     });
 
-    // Coluna extra para leads sem etapa definida (não recebe drop).
     const unassignedLeads = byStage.get(UNASSIGNED_ID) ?? [];
     if (unassignedLeads.length > 0) {
       cols.push({
@@ -128,6 +143,10 @@ export function PlatformCrmKanban() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/*
+            DROP: seletor de Produto (pipeline-por-produto) do original omitido por
+            design — pipeline único na plataforma (decisão de desacoplamento do tenant).
+          */}
           <Button variant="outline" onClick={() => setStageManagerOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Gerenciar Etapas
@@ -170,29 +189,14 @@ export function PlatformCrmKanban() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-lg border">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar lead, empresa, email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {search && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSearch('')}
-            className="text-muted-foreground"
-          >
-            <X className="h-4 w-4 mr-1" />
-            Limpar
-          </Button>
-        )}
-      </div>
+      {/* Filters — 6 controles (busca, dataInício, dataFim, valorMín, ordenar, direção, vendedor) */}
+      <PlatformCrmKanbanFilters
+        filters={filters}
+        onFilterChange={updateFilter}
+        onClearFilters={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+        sellers={sellers}
+      />
 
       {/* Kanban Board */}
       {isLoading ? (
@@ -221,6 +225,8 @@ export function PlatformCrmKanban() {
                 draggedLeadId={draggedLeadId}
                 onDragStartLead={setDraggedLeadId}
                 onDropLead={handleDropOnStage}
+                onViewLead={setSelectedLeadId}
+                sellersMap={sellersMap}
               />
             ))}
           </div>
@@ -235,6 +241,21 @@ export function PlatformCrmKanban() {
         stages={stages ?? []}
         leadCountByStage={leadCountByStage}
       />
+
+      {/* Lead Detail Modal */}
+      <Dialog open={!!selectedLeadId} onOpenChange={() => setSelectedLeadId(null)}>
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0">
+          <VisuallyHidden>
+            <DialogTitle>Detalhes do Lead</DialogTitle>
+          </VisuallyHidden>
+          {selectedLeadId && (
+            <PlatformCrmLeadDetail
+              leadId={selectedLeadId}
+              onBack={() => setSelectedLeadId(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,9 +23,12 @@ import {
   Phone,
   Mail,
   MoreHorizontal,
+  ArrowUpDown,
   Eye,
+  ArrowRightLeft,
   Trash2,
   MessageSquare,
+  Globe,
   UserCircle,
   Calendar,
   Building,
@@ -32,41 +36,80 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { PlatformCrmLeadWithStage } from '../data/usePlatformCrmLeads';
+import type { PlatformCrmLead, PlatformCrmLeadSort } from '../data/usePlatformCrmLeadsManager';
 
 /**
- * Tabela do CRM de PLATAFORMA (super_admin) — pipeline único, desacoplado do tenant.
- * Lista `platform_crm_leads` com stage embutido. Colunas: nome, empresa, contato,
- * estágio (join), temperatura, valor (deal_value), criado_em. Zero campo de salão.
+ * Tabela da GESTÃO DE LEADS do CRM de PLATAFORMA (super_admin) — pipeline único,
+ * desacoplado do tenant. Porte 1:1 do LeadsTable: seleção múltipla (checkbox +
+ * select-all), ordenação por coluna (name/lead_origin/created_at via SortableHeader),
+ * coluna Origem (+utm_campaign), coluna Carteira (Atribuído/Sem carteira), ações por
+ * linha (Ver / WhatsApp / Transferir / Excluir). Zero campo de salão/organization.
  */
 interface PlatformCrmLeadsTableProps {
-  leads: PlatformCrmLeadWithStage[];
+  leads: PlatformCrmLead[];
+  selectedLeads: string[];
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
   onViewLead: (id: string) => void;
+  onTransferLead: (id: string) => void;
   onDeleteLead: (id: string) => void;
+  sort: PlatformCrmLeadSort;
+  onSort: (column: string) => void;
   isLoading?: boolean;
 }
 
 const temperatureIcons = {
-  hot: { icon: Flame, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Quente' },
-  warm: { icon: Thermometer, color: 'text-amber-500', bg: 'bg-amber-500/10', label: 'Morno' },
-  cold: { icon: Snowflake, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Frio' },
-} as const;
+  hot: { icon: Flame, color: 'text-red-500', bg: 'bg-red-500/10' },
+  warm: { icon: Thermometer, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  cold: { icon: Snowflake, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+};
 
-const brl = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function SortableHeader({
+  column,
+  label,
+  currentSort,
+  onSort,
+}: {
+  column: string;
+  label: string;
+  currentSort: PlatformCrmLeadSort;
+  onSort: (column: string) => void;
+}) {
+  const isActive = currentSort.column === column;
+
+  return (
+    <button
+      onClick={() => onSort(column)}
+      className="flex items-center gap-1 hover:text-foreground transition-colors"
+    >
+      {label}
+      <ArrowUpDown className={cn('h-3 w-3', isActive && 'text-primary')} />
+    </button>
+  );
+}
 
 export function PlatformCrmLeadsTable({
   leads,
+  selectedLeads,
+  onToggleSelect,
+  onToggleSelectAll,
   onViewLead,
+  onTransferLead,
   onDeleteLead,
+  sort,
+  onSort,
   isLoading,
 }: PlatformCrmLeadsTableProps) {
+  const allSelected = leads.length > 0 && selectedLeads.length === leads.length;
+  const someSelected = selectedLeads.length > 0 && selectedLeads.length < leads.length;
+
   if (isLoading) {
     return (
       <div className="border rounded-lg overflow-hidden">
         <div className="animate-pulse">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex items-center gap-4 p-4 border-b last:border-b-0">
+              <div className="h-4 w-4 bg-muted rounded" />
               <div className="h-10 w-10 bg-muted rounded-full" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 bg-muted rounded w-1/4" />
@@ -100,46 +143,91 @@ export function PlatformCrmLeadsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="min-w-[200px]">Lead</TableHead>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) {
+                    (el as HTMLButtonElement & { indeterminate: boolean }).indeterminate =
+                      someSelected;
+                  }
+                }}
+                onCheckedChange={onToggleSelectAll}
+              />
+            </TableHead>
+            <TableHead className="min-w-[200px]">
+              <SortableHeader column="name" label="Lead" currentSort={sort} onSort={onSort} />
+            </TableHead>
             <TableHead className="min-w-[150px]">Contato</TableHead>
-            <TableHead className="min-w-[140px]">Estágio</TableHead>
-            <TableHead className="min-w-[110px]">Temperatura</TableHead>
-            <TableHead className="min-w-[120px]">Valor</TableHead>
-            <TableHead className="min-w-[120px]">Criado</TableHead>
+            <TableHead className="min-w-[120px]">
+              <SortableHeader
+                column="lead_origin"
+                label="Origem"
+                currentSort={sort}
+                onSort={onSort}
+              />
+            </TableHead>
+            <TableHead className="min-w-[150px]">Carteira</TableHead>
+            <TableHead className="min-w-[120px]">
+              <SortableHeader
+                column="created_at"
+                label="Status"
+                currentSort={sort}
+                onSort={onSort}
+              />
+            </TableHead>
             <TableHead className="w-12" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {leads.map((lead) => {
-            const temp = (lead.temperature ?? 'cold') as keyof typeof temperatureIcons;
-            const tempCfg = temperatureIcons[temp] ?? temperatureIcons.cold;
-            const TempIcon = tempCfg.icon;
+            const isSelected = selectedLeads.includes(lead.id);
+            const temp = lead.temperature || 'cold';
+            const TempIcon =
+              temperatureIcons[temp as keyof typeof temperatureIcons]?.icon || Snowflake;
+            const tempColor =
+              temperatureIcons[temp as keyof typeof temperatureIcons]?.color || 'text-blue-500';
+            const tempBg =
+              temperatureIcons[temp as keyof typeof temperatureIcons]?.bg || 'bg-blue-500/10';
 
             return (
               <TableRow
                 key={lead.id}
-                className="cursor-pointer transition-colors"
+                className={cn('cursor-pointer transition-colors', isSelected && 'bg-primary/5')}
                 onClick={() => onViewLead(lead.id)}
               >
-                {/* Lead + empresa */}
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => onToggleSelect(lead.id)}
+                  />
+                </TableCell>
+
+                {/* Lead Info */}
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className={cn('p-1.5 rounded-full', tempCfg.bg)}>
-                      <TempIcon className={cn('h-4 w-4', tempCfg.color)} />
+                    <div className={cn('p-1.5 rounded-full', tempBg)}>
+                      <TempIcon className={cn('h-4 w-4', tempColor)} />
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium text-foreground truncate">{lead.name}</div>
-                      {lead.company && (
+                      {(lead.company || lead.position) && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Building className="h-3 w-3" />
-                          <span className="truncate">{lead.company}</span>
+                          {lead.position && <span>{lead.position}</span>}
+                          {lead.position && lead.company && <span>@</span>}
+                          {lead.company && (
+                            <span className="flex items-center gap-0.5">
+                              <Building className="h-3 w-3" />
+                              {lead.company}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
                 </TableCell>
 
-                {/* Contato: email/telefone */}
+                {/* Contact */}
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-1">
                     {lead.phone && (
@@ -160,55 +248,61 @@ export function PlatformCrmLeadsTable({
                         <span className="truncate max-w-[150px]">{lead.email}</span>
                       </a>
                     )}
-                    {!lead.phone && !lead.email && (
-                      <span className="text-xs text-muted-foreground">—</span>
+                  </div>
+                </TableCell>
+
+                {/* Origin */}
+                <TableCell>
+                  <div className="space-y-1">
+                    {lead.lead_origin && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Globe className="h-3 w-3 text-muted-foreground" />
+                        <span className="capitalize">{lead.lead_origin}</span>
+                      </div>
+                    )}
+                    {lead.utm_campaign && (
+                      <Badge variant="outline" className="text-xs font-normal">
+                        {lead.utm_campaign}
+                      </Badge>
                     )}
                   </div>
                 </TableCell>
 
-                {/* Estágio (join) */}
+                {/* Assignment (Carteira) */}
                 <TableCell>
-                  {lead.stage ? (
-                    <Badge
-                      style={{ backgroundColor: lead.stage.color || undefined }}
-                      className="text-white text-xs"
-                    >
-                      {lead.stage.name}
+                  {lead.assigned_to ? (
+                    <Badge variant="secondary" className="text-xs">
+                      Atribuído
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-muted-foreground">
-                      Sem estágio
+                      Sem carteira
                     </Badge>
                   )}
                 </TableCell>
 
-                {/* Temperatura */}
+                {/* Status (estágio + criado) */}
                 <TableCell>
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <TempIcon className={cn('h-3.5 w-3.5', tempCfg.color)} />
-                    <span>{tempCfg.label}</span>
+                  <div className="space-y-1">
+                    {lead.stage && (
+                      <Badge
+                        style={{ backgroundColor: lead.stage.color || undefined }}
+                        className="text-white text-xs"
+                      >
+                        {lead.stage.name}
+                      </Badge>
+                    )}
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {formatDistanceToNow(new Date(lead.created_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </div>
                   </div>
                 </TableCell>
 
-                {/* Valor (deal_value) */}
-                <TableCell>
-                  <span className="font-medium text-sm">
-                    {lead.deal_value ? brl(lead.deal_value) : '—'}
-                  </span>
-                </TableCell>
-
-                {/* Criado em */}
-                <TableCell>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(lead.created_at), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </div>
-                </TableCell>
-
-                {/* Ações */}
+                {/* Actions */}
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -234,6 +328,10 @@ export function PlatformCrmLeadsTable({
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onTransferLead(lead.id)}>
+                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        Transferir
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onDeleteLead(lead.id)}
                         className="text-destructive focus:text-destructive"

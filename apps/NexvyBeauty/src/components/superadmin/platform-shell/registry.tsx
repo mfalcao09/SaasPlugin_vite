@@ -29,15 +29,19 @@ import { SystemHealth } from '@/components/superadmin/SystemHealth';
 
 // ── Componentes CRM da PLATAFORMA (platform_crm) — módulo Vendas ──
 // Desacoplamento 🔒: só platform_crm/stub. Nada do cockpit do tenant.
+// Estrutura de navegação = RÉPLICA 1:1 do `adminMenu.ts` do CRM Vendus original,
+// MENOS o grupo de "conta/assinatura do cliente" (Plano/Empresa/Pagamentos/
+// Integrações/Suporte) — esses são a NOSSA operação de ERP e vivem no módulo ERP
+// (máxima: CRM ≠ ERP, não duplicar). Comissões e Metas NÃO são itens de menu no
+// original: vivem dentro de Financeiro (ver PlatformCrmFinanceiro). "Negócios" no
+// original = catálogo de Produtos (ProductListPage), não uma lista de deals.
 import { PlatformCrmKanban } from '@/components/superadmin/crm/kanban/PlatformCrmKanban';
 import { PlatformCrmLeadsManager } from '@/components/superadmin/crm/leads/PlatformCrmLeadsManager';
-import { PlatformCrmDealsManager } from '@/components/superadmin/crm/deals/PlatformCrmDealsManager';
-import { PlatformCrmCommissionsManager } from '@/components/superadmin/crm/commissions/PlatformCrmCommissionsManager';
-import { PlatformCrmGoalsManager } from '@/components/superadmin/crm/goals/PlatformCrmGoalsManager';
 import { PlatformCrmTagsManager } from '@/components/superadmin/crm/tags/PlatformCrmTagsManager';
 import { PlatformCrmCustomFieldsManager } from '@/components/superadmin/crm/custom-fields/PlatformCrmCustomFieldsManager';
-import { PlatformCrmSquadsManager } from '@/components/superadmin/crm/squads/PlatformCrmSquadsManager';
+import { PlatformCrmEquipes } from '@/components/superadmin/crm/team/PlatformCrmEquipes';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
+import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
@@ -198,7 +202,10 @@ const ERP_NAV: PlatformNavGroup[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
-// MÓDULO VENDAS (CRM) — só platform_crm + stub EmBreve
+// MÓDULO VENDAS (CRM) — RÉPLICA da IA do `adminMenu.ts` original.
+// Itens já portados apontam para os componentes platform_crm; o resto é stub
+// <EmBreve/> (porte progressivo). "Negócios" = Produtos (a portar). Comissões/
+// Metas moram dentro de "Financeiro". Labels fiéis ao original (Pipeline, Leads).
 // ════════════════════════════════════════════════════════════
 const VENDAS_NAV: PlatformNavGroup[] = [
   {
@@ -212,14 +219,20 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         render: () => <EmBreve titulo="Dashboard de Vendas" />,
       },
       {
-        id: 'v-funil',
-        label: 'Funil',
+        id: 'v-mia',
+        label: 'Mia',
+        icon: I.Sparkles,
+        render: () => <EmBreve titulo="Mia — assistente de IA de vendas" />,
+      },
+      {
+        id: 'v-pipeline',
+        label: 'Pipeline',
         icon: I.KanbanSquare,
         render: () => <PlatformCrmKanban />,
       },
       {
-        id: 'v-contatos',
-        label: 'Contatos',
+        id: 'v-leads',
+        label: 'Leads',
         icon: I.Contact,
         render: () => <PlatformCrmLeadsManager />,
       },
@@ -260,10 +273,10 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         render: () => <EmBreve titulo="Follow-Up" />,
       },
       {
-        id: 'v-relatorios-atend',
+        id: 'v-relatorios',
         label: 'Relatórios',
         icon: I.BarChart3,
-        render: () => <EmBreve titulo="Relatórios de Atendimento" />,
+        render: () => <EmBreve titulo="Relatórios" />,
       },
     ],
   },
@@ -281,13 +294,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-campanhas',
         label: 'Campanhas',
         icon: I.Megaphone,
-        render: () => <EmBreve titulo="Campanhas" />,
+        render: () => <EmBreve titulo="Campanhas Inteligentes" />,
       },
       {
         id: 'v-cadencias',
         label: 'Cadências',
         icon: I.Send,
-        render: () => <EmBreve titulo="Cadências" />,
+        render: () => <EmBreve titulo="Cadências Inteligentes" />,
       },
       {
         id: 'v-webhooks',
@@ -312,6 +325,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Formulários',
         icon: I.FormInput,
         render: () => <EmBreve titulo="Formulários" />,
+      },
+      {
+        id: 'v-form-vendedores',
+        label: 'Form Vendedores',
+        icon: I.FileText,
+        render: () => <EmBreve titulo="Formulário de Vendedores" />,
       },
       {
         id: 'v-chatbot',
@@ -353,25 +372,18 @@ const VENDAS_NAV: PlatformNavGroup[] = [
   },
   {
     id: 'vendas-gestao',
-    label: 'Gestão de Vendas',
+    label: 'Gestão',
     items: [
       {
         id: 'v-negocios',
         label: 'Negócios',
-        icon: I.Briefcase,
-        render: () => <PlatformCrmDealsManager />,
-      },
-      {
-        id: 'v-comissoes',
-        label: 'Comissões',
-        icon: I.DollarSign,
-        render: () => <PlatformCrmCommissionsManager />,
-      },
-      {
-        id: 'v-metas',
-        label: 'Metas',
-        icon: I.Goal,
-        render: () => <PlatformCrmGoalsManager />,
+        icon: I.Package,
+        // "Negócios" = catálogo do que vendemos = nossos PLANOS. Decisão Marcelo:
+        // "(a) apontar para planos... o nosso produto é aquele, o produto da LP".
+        // Reusa o PlansManager (fonte única dos planos do ERP — a máxima permite
+        // unificar o que é NOSSO dentro da plataforma). Uma visão-catálogo dedicada
+        // do CRM fica como ajuste futuro. A antiga tela "deals" read-only foi descartada.
+        render: () => <PlansManager />,
       },
       {
         id: 'v-setores',
@@ -383,17 +395,41 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-equipes',
         label: 'Equipes',
         icon: I.UsersRound,
-        render: () => <PlatformCrmSquadsManager />,
+        render: () => <PlatformCrmEquipes />,
+      },
+      {
+        id: 'v-operacao',
+        label: 'Central de Operação',
+        icon: I.Activity,
+        render: () => <EmBreve titulo="Central de Operação" />,
+      },
+      {
+        id: 'v-financeiro',
+        label: 'Financeiro',
+        icon: I.DollarSign,
+        render: () => <PlatformCrmFinanceiro />,
       },
     ],
   },
   {
     id: 'vendas-config',
-    label: 'Config de Vendas',
+    label: 'Configurações',
     items: [
       {
+        id: 'v-conexoes',
+        label: 'Conexões',
+        icon: I.Plug,
+        render: () => <EmBreve titulo="Conexões" />,
+      },
+      {
+        id: 'v-respostas',
+        label: 'Respostas Rápidas',
+        icon: I.MessagesSquare,
+        render: () => <EmBreve titulo="Respostas Rápidas" />,
+      },
+      {
         id: 'v-campos',
-        label: 'Campos',
+        label: 'Campos personalizados',
         icon: I.SlidersHorizontal,
         render: () => <PlatformCrmCustomFieldsManager />,
       },
@@ -434,7 +470,7 @@ export const PLATFORM_MODULES: PlatformModuleDefinition[] = [
   {
     id: 'vendas',
     label: 'Vendas',
-    description: 'CRM da plataforma — funil, contatos e captação',
+    description: 'CRM da plataforma — pipeline, leads, atendimentos e captação',
     icon: I.Target,
     color: 'bg-primary',
     nav: VENDAS_NAV,
