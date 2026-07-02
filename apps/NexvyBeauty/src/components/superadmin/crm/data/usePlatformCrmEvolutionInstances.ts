@@ -55,7 +55,7 @@ export function useCreatePlatformCrmEvolutionInstance() {
 export function useConnectPlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (id: string) => proxy({ action: 'connect', id }),
+    mutationFn: (id: string) => proxy({ action: 'connect_instance', id }),
     onSuccess: invalidate,
     onError: (e: any) => toast.error('Erro ao conectar: ' + e.message),
   });
@@ -64,7 +64,7 @@ export function useConnectPlatformCrmEvolutionInstance() {
 export function useDisconnectPlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (id: string) => proxy({ action: 'disconnect', id }),
+    mutationFn: (id: string) => proxy({ action: 'disconnect_instance', id }),
     onSuccess: () => {
       invalidate();
       toast.success('Sessão pausada. Reconecte quando quiser — o número fica salvo.');
@@ -76,7 +76,7 @@ export function useDisconnectPlatformCrmEvolutionInstance() {
 export function useLogoutPlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (id: string) => proxy({ action: 'logout', id }),
+    mutationFn: (id: string) => proxy({ action: 'logout_instance', id }),
     onSuccess: () => {
       invalidate();
       toast.success('WhatsApp desvinculado. Escaneie um novo QR para conectar outro número.');
@@ -88,7 +88,7 @@ export function useLogoutPlatformCrmEvolutionInstance() {
 export function useDeletePlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (id: string) => proxy({ action: 'delete', id }),
+    mutationFn: (id: string) => proxy({ action: 'delete_instance', id }),
     onSuccess: () => {
       invalidate();
       toast.success('Conexão excluída');
@@ -101,7 +101,7 @@ export function useRenamePlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (vars: { id: string; name: string }) =>
-      proxy({ action: 'rename', id: vars.id, name: vars.name }),
+      proxy({ action: 'rename_instance_self', id: vars.id, name: vars.name }),
     onSuccess: () => {
       invalidate();
       toast.success('Conexão renomeada');
