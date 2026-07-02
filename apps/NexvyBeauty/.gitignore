@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Referência 1:1 do CRM Vendus (porte super-admin) — nunca commitar
+.vendus-src-reference/
