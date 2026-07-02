@@ -40,6 +40,8 @@ import { PlatformCrmLeadsManager } from '@/components/superadmin/crm/leads/Platf
 import { PlatformCrmTagsManager } from '@/components/superadmin/crm/tags/PlatformCrmTagsManager';
 import { PlatformCrmCustomFieldsManager } from '@/components/superadmin/crm/custom-fields/PlatformCrmCustomFieldsManager';
 import { PlatformCrmEquipes } from '@/components/superadmin/crm/team/PlatformCrmEquipes';
+import { PlatformCrmOperationCenter } from '@/components/superadmin/crm/operation/OperationCenter';
+import { PlatformCrmCadencesManager } from '@/components/superadmin/crm/cadences/PlatformCrmCadencesManager';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 
@@ -216,7 +218,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-dashboard',
         label: 'Dashboard',
         icon: I.LayoutDashboard,
-        render: () => <EmBreve titulo="Dashboard de Vendas" />,
+        render: () => <PlatformCrmOperationCenter />,
       },
       {
         id: 'v-mia',
@@ -300,7 +302,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-cadencias',
         label: 'Cadências',
         icon: I.Send,
-        render: () => <EmBreve titulo="Cadências Inteligentes" />,
+        render: () => <PlatformCrmCadencesManager />,
       },
       {
         id: 'v-webhooks',
@@ -401,7 +403,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-operacao',
         label: 'Central de Operação',
         icon: I.Activity,
-        render: () => <EmBreve titulo="Central de Operação" />,
+        render: () => <PlatformCrmOperationCenter />,
       },
       {
         id: 'v-financeiro',
