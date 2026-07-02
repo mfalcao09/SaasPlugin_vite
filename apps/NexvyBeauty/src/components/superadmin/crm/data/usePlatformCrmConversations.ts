@@ -238,10 +238,11 @@ export function usePlatformCrmMessages(conversationId: string | null | undefined
  * Grava uma resposta do agente (outbound) em `platform_crm_messages`.
  * direction='outbound', sender_type='agent'.
  *
- * ⚠️ Client-side apenas: NÃO entrega por canal. A entrega real + broadcast virão
- * da Edge Function de envio (fase webchat/widget). Aqui só persistimos a mensagem
- * e atualizamos o cache local otimisticamente via injeção no cache + invalidação
- * da lista.
+ * Caminho canônico: Edge Function `platform-webchat-inbox` (action `send`)
+ * — persiste, entrega ao canal e emite o broadcast `new_message`. FALLBACK: se o
+ * invoke falhar (edge ainda não deployado/offline), cai no insert client-side
+ * (persiste sem entrega por canal, sem quebrar a UX). Nos dois caminhos o cache
+ * local é atualizado via injeção + invalidação da lista.
  */
 export function useSendPlatformCrmMessage() {
   const queryClient = useQueryClient();
@@ -256,6 +257,28 @@ export function useSendPlatformCrmMessage() {
       content: string;
       replyToMessageId?: string | null;
     }) => {
+      // 1) Caminho canônico — edge de envio (entrega por canal + broadcast).
+      try {
+        const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+          body: {
+            action: 'send',
+            conversation_id: conversationId,
+            content,
+            reply_to_message_id: replyToMessageId ?? null,
+          },
+        });
+        if (error) throw error;
+        const message = ((data as any)?.message ?? data) as PlatformCrmMessage | null;
+        if (message?.id) return message;
+        throw new Error('platform-webchat-inbox: resposta sem mensagem');
+      } catch (edgeError) {
+        console.warn(
+          'platform-webchat-inbox indisponível — fallback insert client-side:',
+          edgeError,
+        );
+      }
+
+      // 2) FALLBACK client-side — persiste a mensagem sem entrega por canal.
       const payload: PlatformCrmMessageInsert = {
         conversation_id: conversationId,
         content,
@@ -540,9 +563,12 @@ export function useEditPlatformCrmMessage() {
     }) => {
       const { error } = await supabase
         .from('platform_crm_messages')
-        // TODO(1:1): quando a coluna `edited_at` for adicionada em platform_crm_messages,
-        // setar edited_at=now() aqui e exibir "(editada)" na bolha (paridade total com o original).
-        .update({ content: newContent } as Partial<PlatformCrmMessage>)
+        .update({
+          content: newContent,
+          // Coluna criada em 20260702_platform_crm_inbox_motor.sql — habilita
+          // o "(editada)" na bolha (paridade total com o original).
+          edited_at: new Date().toISOString(), // TODO(types): regen
+        } as any)
         .eq('id', messageId);
       if (error) throw error;
       void conversationId;

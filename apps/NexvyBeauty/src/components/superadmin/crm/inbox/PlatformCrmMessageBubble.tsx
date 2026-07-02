@@ -22,8 +22,8 @@ import { cn } from '@/lib/utils';
  * PORTE 1:1 de `seller/inbox/MessageBubble.tsx` (CRM Vendus) — mesma estrutura:
  * markdown WhatsApp, reply preview, estrela, ações (responder/editar/apagar/
  * favoritar), avatares e agrupamento visual. Adaptado ao schema
- * `platform_crm_messages` (sem delivery_status/sender_name/edited_at/reações; usa
- * `reply_to_message_id`). Sem tenant/org.
+ * `platform_crm_messages` (sem delivery_status/sender_name/reações; usa
+ * `reply_to_message_id`; `edited_at` exibe o "(editada)"). Sem tenant/org.
  */
 
 export interface PlatformCrmBubbleReply {
@@ -42,6 +42,8 @@ export interface PlatformCrmMessageBubbleProps {
   isLastInGroup?: boolean;
   isDeleted?: boolean;
   isStarred?: boolean;
+  /** Timestamp da última edição (`edited_at`) — quando presente, exibe "(editada)". */
+  editedAt?: string | null;
   replyTo?: PlatformCrmBubbleReply | null;
   metadata?: any;
   currentUserId?: string;
@@ -62,6 +64,7 @@ export function PlatformCrmMessageBubble({
   isLastInGroup = true,
   isDeleted = false,
   isStarred = false,
+  editedAt = null,
   replyTo,
   metadata,
   currentUserId,
@@ -284,6 +287,9 @@ export function PlatformCrmMessageBubble({
               isVisitor ? 'justify-start' : 'justify-end',
             )}
           >
+            {editedAt && !isDeleted && (
+              <span className="text-[10px] italic text-muted-foreground/70">(editada)</span>
+            )}
             <span className="text-[10px] text-muted-foreground/80">
               {formatMessageTime(createdAt, 'bubble')}
             </span>

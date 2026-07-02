@@ -106,17 +106,26 @@ export function PlatformCrmInbox() {
   };
 
   /**
-   * "Sugerir Resposta IA" — STUB-COM-TODO.
-   * O botão está SEMPRE presente na ChatArea. A geração real depende do edge de LLM
-   * da plataforma (ex.: `platform-sales-copilot`), que ainda NÃO existe.
-   * TODO(edge): invocar o edge de sugestão passando o histórico de
-   *   `platform_crm_messages` da conversa selecionada.
+   * "Sugerir Resposta IA" — invoca o edge `platform-sales-copilot` com a conversa
+   * selecionada e retorna `data.suggestion`. FALLBACK: se o invoke falhar (edge
+   * ainda não deployado/offline), mantém o toast "em breve" e retorna '' (sem
+   * quebrar a UX do composer).
    */
   const handleAiSuggest = async (): Promise<string> => {
-    toast.info('Sugestão por IA disponível em breve', {
-      description: 'O copiloto de respostas da plataforma ainda será conectado.',
-    });
-    return '';
+    if (!selected) return '';
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-sales-copilot', {
+        body: { conversation_id: selected.id },
+      });
+      if (error) throw error;
+      return (data as any)?.suggestion ?? '';
+    } catch (edgeError) {
+      console.warn('platform-sales-copilot indisponível:', edgeError);
+      toast.info('Sugestão por IA disponível em breve', {
+        description: 'O copiloto de respostas da plataforma ainda será conectado.',
+      });
+      return '';
+    }
   };
 
   const handleConfirmArchive = async (payload: PlatformCrmArchivePayload) => {

@@ -11070,6 +11070,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           direction: string
+          edited_at: string | null
           id: string
           is_deleted: boolean
           is_starred: boolean
@@ -11085,6 +11086,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           direction: string
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean
           is_starred?: boolean
@@ -11100,6 +11102,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           direction?: string
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean
           is_starred?: boolean

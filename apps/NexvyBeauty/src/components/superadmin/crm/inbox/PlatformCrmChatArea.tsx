@@ -400,6 +400,7 @@ export function PlatformCrmChatArea({
                           isLastInGroup={isLastInGroup}
                           isDeleted={msg.is_deleted}
                           isStarred={msg.is_starred}
+                          editedAt={(msg as any).edited_at} // TODO(types): regen
                           replyTo={replyTo}
                           metadata={msg.metadata}
                           senderId={msg.sender_id}
