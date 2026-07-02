@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte Módulo Vendas — CONCLUÍDO (2026-07-02)</title>
+<style>
+  :root{--bg:#0e0b14;--card:#1a1522;--card2:#221a2e;--ink:#ece6f5;--mut:#a99fbe;--rose:#e84393;--rose2:#ff6fae;--ok:#33d69f;--warn:#ffb454;--danger:#ff5c7c;--line:#2e2440}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0e0b14,#150f1f 60%,#0e0b14);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px;background:linear-gradient(90deg,var(--rose2),var(--rose));-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:19px;margin:34px 0 12px;color:var(--rose2);border-bottom:1px solid var(--line);padding-bottom:6px}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:20px}
+  .badge{display:inline-block;background:rgba(51,214,159,.14);color:var(--ok);border:1px solid rgba(51,214,159,.35);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--rose2);font-weight:600;background:var(--card2)}
+  tr:last-child td{border-bottom:none}
+  code{background:var(--card2);padding:1.5px 6px;border-radius:6px;font-size:12.5px;color:#ffd9ec;font-family:"SF Mono",Menlo,monospace}
+  ul{margin:8px 0;padding-left:22px}li{margin:4px 0}
+  .ok{color:var(--ok)}.warn{color:var(--warn)}.danger{color:var(--danger)}
+  .quote{border-left:3px solid var(--rose);padding:8px 16px;color:var(--mut);font-style:italic;background:var(--card2);border-radius:0 10px 10px 0;margin:14px 0}
+  .n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--rose);color:#fff;font-size:12px;font-weight:700;margin-right:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Porte do CRM Vendus → Módulo Vendas (super-admin)</h1>
+<div class="sub">2026-07-02 · NexvyBeauty · <code>gestao.nexvybeauty.com.br</code> · Supabase <code>fzhlbwhdejumkyqosuvq</code> &nbsp; <span class="badge">✔ CONCLUÍDO com liveness</span></div>
+
+<div class="card">
+O <b>Módulo Vendas</b> (réplica 1:1 do CRM Vendus, desacoplado em <code>platform_crm_*</code>, host <code>gestao.*</code>) está <b>totalmente portado</b> e com liveness provada. Critério <b>"sem EmBreve"</b>: <code>registry.tsx</code> tem <b class="ok">zero &lt;EmBreve/&gt;</b> (54 itens de menu com <code>render:</code> real). As menções "em breve" restantes são <i>toasts inline de micro-features</i> em seções reais — não stubs.
+<br><br>
+<b class="warn">Único item por design para sessão conjunta:</b> desacoplamento do <code>AffiliatesPanel</code> / Módulo ERP/Gestão — o ERP fala com o tenant POR DESIGN (gerir empresas/assinaturas).
+</div>
+
+<h2>Frentes fechadas nesta rodada</h2>
+<table>
+<tr><th>Frente</th><th>Entrega</th><th>Tabelas / Edges</th></tr>
+<tr><td><b>Booking — fronteira do slug</b></td><td>Slug do vendedor sai de <code>profiles.booking_slug</code> (tenant) → nova <code>platform_crm_seller_booking</code> (fonte de verdade)</td><td><code>platform_crm_seller_booking</code></td></tr>
+<tr><td><b>Booking — aba Notificações</b></td><td>Portada 1:1 (faltava): template + variáveis + preview WhatsApp + lembretes + recuperação</td><td><code>..._booking_notification_settings</code> / <code>_reminders</code></td></tr>
+<tr><td><b>Página pública de agendamento</b></td><td>Rotas <code>/agendar/:slug</code>, <code>/confirmar</code>, <code>/reagendar</code>; guard via <code>PUBLIC_PREFIXES</code></td><td><code>platform-booking-availability/-submit/-token</code></td></tr>
+<tr><td><b>Conexões — 3 canais</b></td><td>"Suas Conexões": Evolution (QR) + Meta WhatsApp Cloud + Instagram; gate de limite removido</td><td>4 tabelas de canal + 11 edges <code>platform-*</code></td></tr>
+<tr><td><b>Evolution v2.3.7</b></td><td>Proxy corrigido p/ API clássica (<code>fetchInstances</code>, <code>connect/{name}</code>, <code>webhook/set/{name}</code>)</td><td><code>platform-evolution-proxy</code></td></tr>
+</table>
+
+<h2>Defeitos capturados — o valor da verificação + liveness</h2>
+<div class="card">
+<p><span class="n">1</span><b class="danger">Furo de fronteira (grave):</b> o booking gravava slug em <code>profiles.booking_slug</code> — e <code>profiles</code> tem <code>organization_id</code> = tabela do <b>tenant</b>. <b class="ok">Corrigido:</b> slug em <code>platform_crm_seller_booking</code>; nunca toca <code>profiles</code>.</p>
+<p><span class="n">2</span><b>Aba "Notificações" = FALTA:</b> dropada alegando "coluna inexistente", mas as tabelas existiam. <b class="ok">Corrigido:</b> portada 1:1.</p>
+<p><span class="n">3</span><b>Conexões — QR dava <code>400</code>:</b> front e edge divergiram no contrato (edge esperava <code>connect_instance</code>, front mandava <code>connect</code>). Detectado no eyeball → logs do edge (<code>400</code>, não 401 → auth ok) → 5 action names alinhados → <b class="ok">QR real renderizou</b>.</p>
+<div class="quote">Sem o eyeball em produção, o defeito #3 passaria como "verde" (build/tsc ok, edges deployados). Prova = liveness.</div>
+</div>
+
+<h2>Prova de liveness (produção)</h2>
+<table>
+<tr><th>Item</th><th>Prova</th></tr>
+<tr><td>Bundle servido (anti-phantom)</td><td><code>PlatformShell</code> contém <code>platform_crm_seller_booking</code>×6, <code>platform-evolution-proxy</code>, <code>..._evolution_instances</code>, <code>..._meta_connections</code>×4</td></tr>
+<tr><td>Dashboard / Central de Operação</td><td>Dados reais (2 conversas, Radar IA "4 leads sem responsável")</td></tr>
+<tr><td>Agenda</td><td>5 abas (Agenda · Reuniões · Tipos de Evento · Disponibilidade · Links da Equipe)</td></tr>
+<tr><td>Tipos de Evento + <b>Notificações</b></td><td>2 abas; template com variáveis + <b>preview WhatsApp ao vivo</b> substituído</td></tr>
+<tr><td>Escrita real</td><td>Criar evento → <code>platform_crm_booking_event_types</code> (toast + lista)</td></tr>
+<tr><td><b>Conexões</b></td><td>3 canais; <code>nexvy-operacao-vendas</code> listada (Padrão / Aguardando QR)</td></tr>
+<tr><td class="ok"><b>QR Evolution</b></td><td><b>QR real escaneável</b> no ConnectDialog (após fix 400) — pronto p/ parear</td></tr>
+<tr><td><b>Página pública</b></td><td><code>/agendar/vendas-nexvy</code> → apex → "Marcelo Falcão" + bio (de <code>seller_booking</code>) + evento</td></tr>
+<tr><td>Edge availability</td><td>curl 200 · 18 slots (fixture removido)</td></tr>
+</table>
+<div class="sub">Deploy: <code>a122c47</code> (porte) + <code>c5498e9</code> (fix 400) em <code>main</code>; container <code>nexvy-beauty</code> rebuild <code>--no-cache</code> servindo <code>app.*</code> + <code>gestao.*</code>.</div>
+
+<h2>Fronteira tenant ↔ plataforma (a máxima) — respeitada</h2>
+<div class="card">
+<ul>
+<li><b class="ok">Zero WRITE em <code>profiles</code></b> (só <code>.select</code> display-only de nome/avatar/email).</li>
+<li><b class="ok">Zero <code>organization_id</code></b> em código (só em comentários).</li>
+<li>Slug em <code>platform_crm_seller_booking</code>, não em <code>profiles</code>.</li>
+<li><code>evolution_instances</code> do tenant <b>intocada</b> — Conexões usa <code>platform_crm_evolution_instances</code>.</li>
+<li>Página pública anon nunca lê <code>profiles</code> direto — nome via edge service-role.</li>
+</ul>
+</div>
+
+<h2>Pendências explícitas (documentadas)</h2>
+<div class="card">
+<ul>
+<li><b>Meta WhatsApp Cloud + Instagram:</b> portados 1:1, <b class="warn">dormentes até credenciais Meta</b> (Evolution × API oficial — "no radar").</li>
+<li><b>Booking dispatcher:</b> envio real (email/WhatsApp) = <code>TODO(edge): platform-booking-dispatcher</code>.</li>
+<li><b>Micro-features "em breve":</b> builders visuais, filtros avançados do inbox, análise-IA, edição inline — toasts em seções reais.</li>
+<li><b class="danger">🚫 Módulo ERP/Gestão + <code>AffiliatesPanel</code>:</b> desacoplamento em sessão conjunta (ERP fala com o tenant por design).</li>
+</ul>
+</div>
+
+<h2>Sinal de infra a confirmar</h2>
+<div class="card">
+<code>authenticatePlatformAgent</code> valida service-role por <code>token === SUPABASE_SERVICE_ROLE_KEY</code> do runtime; a key legada do CLI não bate (401 em testes CLI). O caminho de <b>produção</b> (front JWT super_admin via <code>getClaims</code>) é independente e <b class="ok">funciona</b> (QR renderizou). A conferir se motores server-side invocam esses edges por service-role.
+</div>
+
+</div>
+</body>
+</html>
