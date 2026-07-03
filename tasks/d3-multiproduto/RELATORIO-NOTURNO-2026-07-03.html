@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório Noturno — CRM do Grupo Multiproduto · 2026-07-03</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111725; --panel2:#0e1420; --line:#1e293b;
+    --fg:#e5e9f0; --muted:#94a3b8; --blue:#3b82f6; --cyan:#22d3ee;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 22px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:30px}
+  h1{font-size:1.9rem;margin:0 0 6px;background:linear-gradient(135deg,var(--blue),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .sub{color:var(--muted);font-size:.92rem}
+  .sub code{background:var(--panel);padding:1px 6px;border-radius:5px;color:var(--cyan);font-size:.85em}
+  h2{font-size:1.25rem;margin:38px 0 14px;padding-left:12px;border-left:3px solid var(--blue)}
+  p{margin:12px 0}
+  .lead{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .lead strong{color:#fff}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.02em}
+  .ok{background:rgba(34,197,94,.14);color:#4ade80}
+  .wait{background:rgba(245,158,11,.14);color:#fbbf24}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.9rem;
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel);color:#cbd5e1;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  td strong{color:#fff}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(148,163,184,.12);
+    padding:1px 5px;border-radius:4px;font-size:.85em;color:var(--cyan)}
+  .commits code{color:#fbbf24}
+  .note{background:var(--panel);border-left:3px solid var(--cyan);border-radius:0 8px 8px 0;
+    padding:12px 16px;margin:16px 0;color:var(--muted);font-size:.9rem}
+  .you{background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(34,211,238,.05));
+    border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:8px 22px;margin:16px 0}
+  ol.next{padding-left:20px} ol.next li{margin:8px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+  .zero{color:#4ade80;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Relatório Noturno — CRM do Grupo Multiproduto</h1>
+  <div class="sub">Madrugada de <strong>2026-07-03</strong> · execução autônoma em <code>/loop</code><br>
+  Repo <code>SaasPlugin_vite/apps/NexvyBeauty</code> · branch <code>main</code> · bundle servido <code>index-BqittP2d.js</code></div>
+</header>
+
+<div class="lead">
+  <p>O <strong>grosso do roadmap aprovado foi entregue, gated e deployado</strong> nesta madrugada, sem intervenção. A decisão pivotal (<strong>D3 multiproduto</strong> — 1 CRM do grupo para ~10 SaaS) está <strong>live em produção</strong>, o domínio branded-house <code>gestao.nexvy.tech</code> está no ar com re-skin institucional, e o LOTE de correções/ports foi completado. Cada item passou pelo <strong>gate</strong> (fronteira 0 · tsc ≤ baseline · build verde) e foi provado por <strong>anti-phantom no bundle servido</strong> antes de virar "done".</p>
+  <p><span class="zero">Nada disparou para cliente real:</span> os crons OUTBOUND foram ligados ao vivo (sua decisão), mas com os guards verificados <strong>antes</strong> — e estão <strong>dormentes</strong> (0 campanhas ativas, 0 settings): <strong>0 envios reais</strong> até você configurar.</p>
+</div>
+
+<h2>✅ Feito + deployado + provado</h2>
+<table>
+  <tr><th>Fase</th><th>Entrega</th><th>Prova</th></tr>
+  <tr><td><strong>D3·P0</strong></td><td>Schema multiproduto: <code>product_id</code> em 21 tabelas + <code>platform_crm_products</code>/<code>product_agents</code>/<code>user_product_assignments</code>; seed/backfill Beauty</td><td>migração aplicada; backfill 13/13; zero NULL</td></tr>
+  <tr><td><strong>D3·P1</strong></td><td>Hub Produto (14 abas) · Pipeline/Leads por produto · Captação carimba <code>product_id</code> · Agentes por produto (=D6b)</td><td>gate PASSOU; anti-phantom no bundle servido</td></tr>
+  <tr><td><strong>f1c</strong></td><td>Filtro "Todos os produtos" na Agenda (1:1 Bizon)</td><td>gate PASSOU</td></tr>
+  <tr><td><strong>P3·domínio</strong></td><td><code>gestao.nexvy.tech</code>: DNS no <strong>Cloudflare</strong> (era o autoritativo, não Hostinger) + Traefik + cert Let's Encrypt</td><td>HTTP 200 + cert <code>CN=YR2</code> exp 2026-10-01</td></tr>
+  <tr><td><strong>P3·re-skin</strong></td><td>Tema institucional azul (<code>#0A52D1</code>/<code>#00D1FF</code>) escopado ao shell de gestão; tenant Beauty intocado (rosa)</td><td>anti-phantom (<code>.theme-nexvy-institucional</code> + <code>218 91% 43%</code> no CSS servido)</td></tr>
+  <tr><td><strong>L12</strong></td><td>Remoção de 3 UI órfãos pós-f1d. <code>agent_configs</code> <strong>mantido</strong> (era vivo, 15 refs)</td><td>gate PASSOU</td></tr>
+  <tr><td><strong>L6</strong></td><td>Bug da aba Captação (não trocava entre menus) → <code>useEffect</code> resync</td><td>gate PASSOU</td></tr>
+  <tr><td><strong>L7</strong></td><td>Enroll/stop de cadência no LeadDetail (3 TODOs stale → edges reais)</td><td>gate PASSOU</td></tr>
+  <tr><td><strong>L11</strong></td><td>Aba "Biblioteca de Contextos" restaurada nas Cadências</td><td>gate PASSOU</td></tr>
+  <tr><td><strong>L8</strong></td><td>Transferência de carteira: migração <code>platform_crm_lead_transfer_history</code> + modal + histórico</td><td>gate PASSOU; migração aplicada</td></tr>
+  <tr><td><strong>L2-L3</strong></td><td>Crons OUTBOUND campaign-dispatcher (1/min) + auto-notifications (*/15), <strong>ao vivo</strong></td><td>cron.job active + run <code>succeeded</code></td></tr>
+  <tr><td><strong>D8</strong></td><td>Booking conversacional: migração <code>booking_experience</code> + campo no editor (página pública já ramificava)</td><td>gate PASSOU; migração aplicada</td></tr>
+</table>
+<p class="sub commits">Commits: <code>59a9168</code> · <code>45e17f5</code> · <code>c0535ef</code> · <code>cdcb46e</code> · <code>6f16aec</code> · <code>c41a4af</code> · <code>e7ce537</code> · <code>7269466</code> · <code>2c5ae35</code> — todos deployados com anti-phantom.</p>
+
+<h2>🔔 Crons OUTBOUND — log de envios</h2>
+<p>Sua decisão foi <strong>ligar ao vivo</strong>. Honrei com a disciplina pedida: <strong>verifiquei o guard "0-regras = 0-envio" em cada dispatcher ANTES de agendar</strong>.</p>
+<table>
+  <tr><th>Cron</th><th>jobid</th><th>Freq.</th><th>Guard verificado</th><th>Envios reais</th></tr>
+  <tr><td><code>platform-campaign-dispatcher</code></td><td>20</td><td><code>* * * * *</code></td><td><span class="pill ok">✅</span> early-return <code>no_active_campaigns</code> + idempotência</td><td class="zero">0 · dormente</td></tr>
+  <tr><td><code>platform-auto-notifications</code></td><td>21</td><td><code>*/15 * * * *</code></td><td><span class="pill ok">✅</span> só settings <code>*_enabled</code> + dedup diário</td><td class="zero">0 · dormente</td></tr>
+</table>
+<p><strong>Estado no deploy:</strong> <code>active_campaigns = 0</code>, <code>notif_settings_on = 0</code> → rodam mas não têm o que enviar. <code>campaign-dispatcher</code> rodou (07:52, 07:53…) com status <strong>succeeded</strong> + retorno interno <code>no_active_campaigns</code>. <span class="zero">Nenhuma mensagem foi enviada a nenhum contato.</span></p>
+<div class="note">Para desligar a qualquer momento: <code>select cron.unschedule('platform-campaign-dispatcher');</code> (idem auto-notifications).</div>
+
+<h2>⏸️ Adiado — e por quê <span class="pill wait">honesto, não dropado</span></h2>
+<table>
+  <tr><th>Item</th><th>Razão</th></tr>
+  <tr><td><strong>L5</strong> ProviderCooldownBadge</td><td>Lê <code>evolution_instances</code> = tabela <strong>tenant</strong>; <code>crm/</code> não pode tocar (máxima).</td></tr>
+  <tr><td><strong>L13</strong> followup-ai-draft</td><td><strong>Não</strong> coberto por <code>platform-sales-copilot</code> (contratos diferentes); feature dropada no porte → edge+UI+eyeball.</td></tr>
+  <tr><td><strong>L1/L4/L10</strong> crons</td><td>Edges platform (<code>recurring-snapshot</code>/<code>booking-dispatcher</code>/<code>outreach-batch</code>) <strong>não existem</strong> — só tenant. Portar a edge antes.</td></tr>
+  <tr><td><strong>D2</strong> builders visuais</td><td>UI profunda (FormBuilder/runtime/respostas = stubs). Precisa eyeball iterativo.</td></tr>
+  <tr><td><strong>D4</strong> dashboard financeiro</td><td><code>CommissionsManager</code> já existe; gap = agrupamento por produto (viável agora com D3). Enhancement de UI.</td></tr>
+  <tr><td><strong>D5</strong> Mia ações+memória</td><td><code>platform-mia</code> existe; <code>mia_actions</code>/<code>mia_user_memory</code> não. Migração + <strong>sua decisão de UX</strong> de confirmação.</td></tr>
+  <tr><td><strong>D7</strong> webhooks painel</td><td>Infra existe (receiver + Manager/Editor/LogsTab); gap = painel Actions + API <code>cdn_</code>. Enhancement de UI.</td></tr>
+  <tr><td><strong>D9</strong> web-push</td><td>Port não tem stack platform push (sem edges, sem VAPID). Porte = 2 edges + <strong>service worker</strong> (precisa eyeball: permissão browser).</td></tr>
+  <tr><td><strong>P5</strong> Meta · <strong>P7</strong> Utmify</td><td><strong>Gate de credencial</strong> — app Meta aprovado / conta+API Utmify.</td></tr>
+  <tr><td><strong>Módulo-por-host ERP↔CRM</strong></td><td><em>Never-touch-alone</em>: o ERP fala com o tenant por design. Só em sessão conjunta.</td></tr>
+</table>
+
+<h2>🔑 2 coisas que dependem de você</h2>
+<div class="you">
+  <p><strong>1 · Eyeball no Chrome.</strong> A extensão travou no meio da noite. O código está provado por <strong>anti-phantom + gate</strong>, mas o print visual do multiproduto, do re-skin azul e dos modais (L7 cadência / L8 transferência / D8 booking) ficou pendente. <strong>Ação:</strong> foque a aba <code>gestao.nexvybeauty.com.br/super-admin</code> (ou <code>gestao.nexvy.tech</code>) no seu Chrome — aí eu fecho os prints na hora.</p>
+  <p><strong>2 · Credenciais Meta (P5) + Utmify (P7).</strong> Sem elas, adiei os dois. Largue as creds no <code>.env</code> do app e eu sigo.</p>
+</div>
+
+<h2>Próximos passos sugeridos</h2>
+<ol class="next">
+  <li>Eyeball rápido comigo (~5 min) pra fechar os prints e validar o visual.</li>
+  <li>Decidir a sessão conjunta do <strong>módulo-por-host ERP↔CRM</strong> (<code>gestao.nexvy.tech</code> = grupo-CRM vs <code>gestao.nexvybeauty</code> = ERP-beauty).</li>
+  <li>Escolher o próximo adiado: <strong>D9 web-push</strong> (bom valor, precisa SW), <strong>D4 dashboard por produto</strong> (agora viável), ou <strong>D2 builders</strong> (o maior).</li>
+</ol>
+
+<footer>Gerado autonomamente ao fim do <code>/loop</code> de 2026-07-03. Estado-máquina em <code>feature-list.json</code>; dossiê de handoff em <code>STATE.md</code>.</footer>
+</div>
+</body>
+</html>
