@@ -13,44 +13,288 @@
     "P7": "D10(a) ai-insights + Utmify MCP (por último)"
   },
   "features": [
-    { "id": "f0-migration", "phase": "P0", "desc": "platform_crm_products(30c)+product_agents(81c)+user_product_assignments + product_id em 21 tabelas + seed/backfill Beauty + 8 NOT NULL+DEFAULT", "status": "done", "verified": "seed vivo, backfill 13/13, zero NULL, attnotnull=true 8/8", "deps": [] },
-    { "id": "f0-types", "phase": "P0", "desc": "types.ts regen com os 3 blocos novos", "status": "done", "verified": "18.572 linhas", "deps": [] },
-
-    { "id": "f1a-hub", "phase": "P1", "desc": "Hub Produto 14 abas + hooks usePlatformCrmProducts/ProductSelector + registry v-negocios->ProductsSection", "status": "done", "verified": "gate verify.sh (build+tsc+fronteira). Recuperado de zumbi (ChatTab+CatalogSync stubs)", "deps": ["f0-types"] },
-    { "id": "f1b-kanban-leads-produto", "phase": "P1", "desc": "Pipeline seletor de produto + Leads 'Por Produto'+'Por Squad' (absorve L9)", "status": "done", "verified": "gate central P1 PASSOU 2026-07-03; 7 arq 1:1; tsc 0 no escopo", "deps": ["f1a-hub"] },
-    { "id": "f1c-captacao-produto", "phase": "P1", "desc": "select produto obrigatório em Form/Quiz/Widget/ChatBot + stamp product_id no lead (edge platform-webchat-api deployado)", "status": "done", "verified": "gate central P1 PASSOU; edge deployado; tsc 0 no escopo", "deps": ["f1a-hub"] },
-    { "id": "f1c-filtros-produto", "phase": "P1", "desc": "filtro 'Todos os produtos' na Agenda (1:1 Bizon CalendarManager). Tarefas: sem view global no port (so no Lead) -> ADIADO (criar view = fora de escopo de 'filtro'). Notificacoes: tabela sem product_id + fonte escopa AUDIENCIA via scope_filters JSON (nao filtra a lista) -> ADIADO (1:1 nao mapeia).", "status": "done", "verified": "gate PASSOU 2026-07-03 (fronteira 0, tsc 23, build EXIT=0); Agenda: +state selectedProductId +hook productId +PlatformCrmProductSelector entre vendedor e tipo; 1:1 fonte l.60/66/100/235-247; 2 docstrings stale corrigidos", "deps": ["f1a-hub"] },
-    { "id": "f1d-agentes-por-produto", "phase": "P1", "desc": "crm/agents/ 1:1 (editor 15 abas, supervisor, hierarquia, import) sobre platform_crm_product_agents — ABSORVE D6(b)", "status": "done", "verified": "gate central P1 PASSOU; 23 arq; registry Agentes->manager real; 2 vestígios org_id limpos", "deps": ["f1a-hub"] },
-
-    { "id": "f2-build-deploy", "phase": "P2", "desc": "npm build + deploy VPS + anti-phantom no bundle SERVIDO (strings platform_crm_products/product_agents)", "status": "done", "verified": "deploy 2026-07-03 container b6957f40; gestao 200; dist servido no container contem platform_crm_products(2 chunks)+platform_crm_product_agents(1)+platform_crm_seller_booking(1)", "deps": ["f1b-kanban-leads-produto","f1c-captacao-produto","f1d-agentes-por-produto"] },
-    { "id": "f2-liveness", "phase": "P2", "desc": "Chrome logado gestao.*: Negócios lista Beauty; Pipeline seletor(1 produto); hub 14 abas; agentes CRUD; captação exige produto", "status": "todo", "verified": false, "blocker": "extensao Chrome nao-responsiva 2026-07-03 (viewport 0x0; navigate/JS/read_page timeout) — precisa Marcelo focar a aba gestao / limpar prompt do side-panel, dai eu re-tento. Codigo ja provado por anti-phantom+gate.", "deps": ["f2-build-deploy"] },
-
-    { "id": "f3-dominio-host-split", "phase": "P3", "desc": "gestao.nexvy.tech: DNS+Traefik+cert. DNS estava na Hostinger mas AUTORITATIVO e CLOUDFLARE (NS remy/keira) -> criei A gestao->145.223.29.96 proxied=false no CF (zona ea83eda1). Router Traefik nexvy-gestao-grupo.yml->nexvy-beauty-svc. SPA ja host-agnostic (isGestaoHostname prefixo) -> ZERO mudanca de codigo. Confinamento inativo em nexvy.tech e correto (familia so-gestao, sem app./apex la).", "status": "done", "verified": "gestao.nexvy.tech HTTP 200 (VPS-side) + cert LE CN=YR2 exp 2026-10-01; serve o SPA (chunk index-nGy-8fzh.js). Eyeball visual do painel = pendente Chrome (mesmo bloqueio f2-liveness).", "deps": [] },
-    { "id": "f3-reskin", "phase": "P3", "desc": "tema institucional Nexvy (azul #0A52D1/cyan #00D1FF, fonte nexvy-brand-guide) escopado a .theme-nexvy-institucional, aplicado no <html> via script inline quando gestao.*. Tenant app.*/apex INTOCADO (rosa Beauty). Cor apenas; fonte Outfit/Jakarta = follow-up (sem eyeball, risco).", "status": "done", "verified": "deploy c2c606f0; anti-phantom no bundle SERVIDO: index.html tem o script 2x + CSS chunk index-B0XobRkn.css tem .theme-nexvy-institucional + token 218 91% 43%. Eyeball visual do azul = pendente Chrome (mesmo bloqueio).", "deps": ["f3-dominio-host-split"] },
-
-    { "id": "lote-L1-recurring", "phase": "P4", "desc": "campaign-recurring-snapshot -> platform-* + cron", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03): a edge platform-campaign-recurring-snapshot NAO existe no port (so a tenant campaign-recurring-snapshot). Cron sem edge=nada. Exige portar a edge (1:1, desacoplada) antes do cron. Sessao dedicada.", "deps": [] },
-    { "id": "lote-L2-L3-crons", "phase": "P4", "desc": "pg_cron para platform-campaign-dispatcher (1/min, jobid 20) + platform-auto-notifications (*/15, jobid 21). Guards VERIFICADOS antes de ligar: campaign-dispatcher early-return 'no_active_campaigns' (l.172-176) + idempotencia (claim+queued); auto-notifications so dispara settings *_enabled + dedup 'already notified today' (l.151-161). Ambos LOG (conversations/notifications).", "status": "done", "verified": "cron.job mostra ambos active (jobid 20/21); estado atual active_campaigns=0 + notif_settings_on=0 => dormentes/no-op ate Marcelo configurar; template service_role via vault (mesmo padrao do platform-cadence-tick jobid 19 que ja roda)", "deps": [] },
-    { "id": "lote-L4-booking-dispatcher", "phase": "P4", "desc": "platform-booking-dispatcher + confirmacao + cron", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03): a edge platform-booking-dispatcher NAO existe no port (so tenant booking-dispatcher; no port ha platform-booking-availability/submit/token mas nao o dispatcher de confirmacao/lembrete). Exige portar a edge antes do cron. Sessao dedicada.", "deps": [] },
-    { "id": "lote-L5-cooldown", "phase": "P4", "desc": "ProviderCooldownBadge reativado", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03): badge NAO existe no port; a fonte (.vendus/admin/integrations/ProviderCooldownBadge) le cooldown de evolution_instances = tabela TENANT (crm/ nao pode tocar, maxima). Portar exige campo cooldown num platform_crm_* + painel de conexoes da plataforma = infra nova fronteira-sensivel, nao 'reativar badge'. Fazer junto do painel de conexoes da plataforma (sessao dedicada).", "deps": [] },
-    { "id": "lote-L6-formularios-tab", "phase": "P4", "desc": "bug menu Formularios -> tab correto. Causa: useState(initialTab) nao re-sincroniza quando o shell reusa a instancia do CaptureManager entre menus de captacao. Fix: useEffect resync tab<-initialTab (troca manual preservada).", "status": "done", "verified": "gate PASSOU (tsc 23, build EXIT=0); PlatformCrmCaptureManager +useEffect", "deps": [] },
-    { "id": "lote-L7-leaddetail-cadencia", "phase": "P4", "desc": "wiring inscrever/remover cadencia no LeadDetail. LeadCadencesTab tinha 3 TODOs stale (edges ja existem): botao Adicionar -> dropdown de cadencias -> platform-cadence-enroll; botao Remover -> platform-cadence-stop. Auth JWT super-admin (authenticatePlatformAgent aceita).", "status": "done", "verified": "gate PASSOU (tsc 23, build EXIT=0); enroll/stop via functions.invoke; padrao ja usado por dezenas de platform-* edges no front", "deps": [] },
-    { "id": "lote-L8-transfer", "phase": "P4", "desc": "transfer de lead 1:1 da fonte (lead_transfer_history). Migration platform_crm_lead_transfer_history (aplicada MCP + SQL repo + types) + UI: PlatformCrmLeadTransfer.tsx (modal transferir p/ user via usePlatformCrmSellers + squad opcional via usePlatformCrmSquads + reason -> insert history + update lead assigned_to/previous_assigned_to/squad_id/transferred_at; + LeadTransferHistory). Fiado no LeadWalletTab (2 stubs + DROP comment substituidos).", "status": "done", "verified": "gate PASSOU (tsc 23, build EXIT=0); migration aplicada em prod; auth via RLS super_admin (insert direto pelo super-admin). Eyeball do modal = pendente Chrome.", "deps": [] },
-    { "id": "lote-L10-outreach-batch", "phase": "P4", "desc": "manual-outreach-batch (disparo em lote)", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03): a edge platform manual-outreach-batch NAO existe (so tenant manual-outreach). Alem disso e disparo MANUAL (user-triggered, nao cron) -> nao entra no fluxo de crons. Portar como acao de UI + edge platform-* numa sessao dedicada.", "deps": [] },
-    { "id": "lote-L11-biblioteca-contextos", "phase": "P4", "desc": "aba 'Biblioteca de Contextos' nas Cadencias. Fonte CadencesManager tem 4 abas (Cadencias/Biblioteca/Relatorios/API); o port so tinha 3 — restaurei a aba faltante renderizando <ContextLibrary/> (autocontido, platform_crm_campaign_contexts).", "status": "done", "verified": "gate PASSOU (tsc 23, build EXIT=0); 1:1 com a fonte", "deps": [] },
-    { "id": "lote-L12-higiene", "phase": "P4", "desc": "remover dead-code orfao pos-f1d. CORRECAO: agent_configs NAO e orfao (15 arquivos vivos: Inbox/Reports/Campaigns/Cadences/webchat) — mantido junto com usePlatformCrmAgentConfigs. Removidos so os 3 UI orfaos.", "status": "done", "verified": "removidos PlatformCrmDealsManager+PlatformCrmAgentsManager+PlatformCrmAgentFormDialog (0 imports externos confirmado por grep) + rmdir deals/; gate PASSOU (tsc 23, build EXIT=0)", "deps": [] },
-    { "id": "lote-L13-followup-confirm", "phase": "P4", "desc": "checar followup-ai-draft vs platform-sales-copilot", "status": "todo", "verified": false, "blocker": "INVESTIGADO+ADIADO (2026-07-03): NAO coberto. sales-copilot aceita {messages}->{suggestion} (chat geral, sem strategy); followup-ai-draft e draft ESTRATEGICO (6 strategies: reengage_silence/break_objection/...). A UI de followup do port (PlatformCrmInboxFollowup) e view de lista, nao invoca draft -> feature dropada no porte. Portar = edge platform-followup-ai-draft + UI de strategy picker = feature-sized (precisa UX+eyeball), NAO '1 diff'. Sessao dedicada.", "deps": [] },
-
-    { "id": "d1b-meta-instagram-canal", "phase": "P5", "desc": "platform-meta-whatsapp-webhook/-send + platform-instagram-*: canais mudos -> inbound+outbound (GATE EXTERNO: app Meta aprovado)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-
-    { "id": "d2b-captacao-builders", "phase": "P6", "desc": "builders visuais (FlowCanvas/Form/Quiz)", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03, triagem noturna): builders visuais sao UI PROFUNDA (PlatformCrmCaptureFormsTab l.164-175: FormBuilder/runtime publico/FormResponses = stubs 'em breve'). Porte grande + precisa de eyeball iterativo. Sessao dedicada com Marcelo.", "deps": [] },
-    { "id": "d4b-financeiro-dashboard", "phase": "P6", "desc": "comissao por produto (o TODO l.83/349 ficou stale — D3 restaurou product_id em commission_rules/deals/commissions). FEITO: migration platform_crm_calculate_commission product-aware (busca produto do deal, prefere regra do produto c/ fallback agnostico, grava product_id na comissao) + RulesTab seletor de produto + coluna Produto (regras + dashboard de comissoes).", "status": "done", "verified": "gate PASSOU (tsc 24<=25, build EXIT=0); migration aplicada; hook de regras spreada input (product_id flui). Eyeball do dashboard = pendente Chrome.", "deps": [] },
-    { "id": "d5b-mia-acao-memoria", "phase": "P6", "desc": "Mia acoes+memoria+wake-word", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03, triagem): platform-mia (edge) existe, mas as tabelas mia_actions + mia_user_memory NAO existem no port -> precisa migration + UX de CONFIRMACAO de acao (decisao de Marcelo: como a Mia confirma antes de executar acao com efeito colateral). Decisao de produto + eyeball. Sessao dedicada.", "deps": [] },
-    { "id": "d7b-webhooks-painel-api", "phase": "P6", "desc": "paineis Actions/Requests + API cadencia", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03, triagem): infra JA existe (edge platform-webhook-receiver + platform_crm_webhook 9 refs; UI PlatformCrmWebhooksManager/Editor/LogsTab existem). Gap = painel Actions dedicado + API de cadencia (cdn_). Enhancement de UI que pede eyeball. Sessao dedicada.", "deps": [] },
-    { "id": "d8b-booking-conversacional", "phase": "P6", "desc": "booking conversacional. A pagina publica PlatformCrmPublicBooking JA ramificava em booking_experience==='conversational' (l.100), mas a coluna faltava na platform table (so tenant). D8 = migration ADD booking_experience a platform_crm_booking_event_types + restaurar o campo no editor (hook input+insert, formData x3, select Padrao/Conversacional) -> liga o ramo que estava morto.", "status": "done", "verified": "gate PASSOU (tsc 24<=25 baseline, build EXIT=0); migration aplicada; meus arquivos com 0 erro tsc direto. Eyeball do fluxo conversacional = pendente Chrome.", "deps": [] },
-    { "id": "d9b-web-push", "phase": "P6", "desc": "stack push-* (VAPID) restaurada", "status": "todo", "verified": false, "blocker": "ADIADO (2026-07-03, triagem): port NAO tem stack platform push (so push_subscriptions tenant; sem platform-push-subscribe/send, sem VAPID secret). Porte = VAPID keys + 2 edges + service worker (registro no front) — o SW precisa de eyeball (permissao browser, teste real de push). Backend (gerar VAPID) e trivial, mas sem o SW+edges nao entrega valor. Sessao dedicada.", "deps": [] },
-
-    { "id": "d10a-ai-insights", "phase": "P7", "desc": "reviver campaign-ai-insights + AICampaignAssistant", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "utmify-mcp", "phase": "P7", "desc": "MCP Utmify: atribuição de campanha por LP -> product_id no lead (fecha N-LPs->1-CRM)", "status": "todo", "verified": false, "deps": ["d10a-ai-insights"] }
+    {
+      "id": "f0-migration",
+      "phase": "P0",
+      "desc": "platform_crm_products(30c)+product_agents(81c)+user_product_assignments + product_id em 21 tabelas + seed/backfill Beauty + 8 NOT NULL+DEFAULT",
+      "status": "done",
+      "verified": "seed vivo, backfill 13/13, zero NULL, attnotnull=true 8/8",
+      "deps": []
+    },
+    {
+      "id": "f0-types",
+      "phase": "P0",
+      "desc": "types.ts regen com os 3 blocos novos",
+      "status": "done",
+      "verified": "18.572 linhas",
+      "deps": []
+    },
+    {
+      "id": "f1a-hub",
+      "phase": "P1",
+      "desc": "Hub Produto 14 abas + hooks usePlatformCrmProducts/ProductSelector + registry v-negocios->ProductsSection",
+      "status": "done",
+      "verified": "gate verify.sh (build+tsc+fronteira). Recuperado de zumbi (ChatTab+CatalogSync stubs)",
+      "deps": [
+        "f0-types"
+      ]
+    },
+    {
+      "id": "f1b-kanban-leads-produto",
+      "phase": "P1",
+      "desc": "Pipeline seletor de produto + Leads 'Por Produto'+'Por Squad' (absorve L9)",
+      "status": "done",
+      "verified": "gate central P1 PASSOU 2026-07-03; 7 arq 1:1; tsc 0 no escopo",
+      "deps": [
+        "f1a-hub"
+      ]
+    },
+    {
+      "id": "f1c-captacao-produto",
+      "phase": "P1",
+      "desc": "select produto obrigatório em Form/Quiz/Widget/ChatBot + stamp product_id no lead (edge platform-webchat-api deployado)",
+      "status": "done",
+      "verified": "gate central P1 PASSOU; edge deployado; tsc 0 no escopo",
+      "deps": [
+        "f1a-hub"
+      ]
+    },
+    {
+      "id": "f1c-filtros-produto",
+      "phase": "P1",
+      "desc": "filtro 'Todos os produtos' na Agenda (1:1 Bizon CalendarManager). Tarefas: sem view global no port (so no Lead) -> ADIADO (criar view = fora de escopo de 'filtro'). Notificacoes: tabela sem product_id + fonte escopa AUDIENCIA via scope_filters JSON (nao filtra a lista) -> ADIADO (1:1 nao mapeia).",
+      "status": "done",
+      "verified": "gate PASSOU 2026-07-03 (fronteira 0, tsc 23, build EXIT=0); Agenda: +state selectedProductId +hook productId +PlatformCrmProductSelector entre vendedor e tipo; 1:1 fonte l.60/66/100/235-247; 2 docstrings stale corrigidos",
+      "deps": [
+        "f1a-hub"
+      ]
+    },
+    {
+      "id": "f1d-agentes-por-produto",
+      "phase": "P1",
+      "desc": "crm/agents/ 1:1 (editor 15 abas, supervisor, hierarquia, import) sobre platform_crm_product_agents — ABSORVE D6(b)",
+      "status": "done",
+      "verified": "gate central P1 PASSOU; 23 arq; registry Agentes->manager real; 2 vestígios org_id limpos",
+      "deps": [
+        "f1a-hub"
+      ]
+    },
+    {
+      "id": "f2-build-deploy",
+      "phase": "P2",
+      "desc": "npm build + deploy VPS + anti-phantom no bundle SERVIDO (strings platform_crm_products/product_agents)",
+      "status": "done",
+      "verified": "deploy 2026-07-03 container b6957f40; gestao 200; dist servido no container contem platform_crm_products(2 chunks)+platform_crm_product_agents(1)+platform_crm_seller_booking(1)",
+      "deps": [
+        "f1b-kanban-leads-produto",
+        "f1c-captacao-produto",
+        "f1d-agentes-por-produto"
+      ]
+    },
+    {
+      "id": "f2-liveness",
+      "phase": "P2",
+      "desc": "Chrome logado gestao.*: Negócios lista Beauty; Pipeline seletor(1 produto); hub 14 abas; agentes CRUD; captação exige produto",
+      "status": "todo",
+      "verified": false,
+      "blocker": "extensao Chrome nao-responsiva 2026-07-03 (viewport 0x0; navigate/JS/read_page timeout) — precisa Marcelo focar a aba gestao / limpar prompt do side-panel, dai eu re-tento. Codigo ja provado por anti-phantom+gate.",
+      "deps": [
+        "f2-build-deploy"
+      ]
+    },
+    {
+      "id": "f3-dominio-host-split",
+      "phase": "P3",
+      "desc": "gestao.nexvy.tech: DNS+Traefik+cert. DNS estava na Hostinger mas AUTORITATIVO e CLOUDFLARE (NS remy/keira) -> criei A gestao->145.223.29.96 proxied=false no CF (zona ea83eda1). Router Traefik nexvy-gestao-grupo.yml->nexvy-beauty-svc. SPA ja host-agnostic (isGestaoHostname prefixo) -> ZERO mudanca de codigo. Confinamento inativo em nexvy.tech e correto (familia so-gestao, sem app./apex la).",
+      "status": "done",
+      "verified": "gestao.nexvy.tech HTTP 200 (VPS-side) + cert LE CN=YR2 exp 2026-10-01; serve o SPA (chunk index-nGy-8fzh.js). Eyeball visual do painel = pendente Chrome (mesmo bloqueio f2-liveness).",
+      "deps": []
+    },
+    {
+      "id": "f3-reskin",
+      "phase": "P3",
+      "desc": "tema institucional Nexvy (azul #0A52D1/cyan #00D1FF, fonte nexvy-brand-guide) escopado a .theme-nexvy-institucional, aplicado no <html> via script inline quando gestao.*. Tenant app.*/apex INTOCADO (rosa Beauty). Cor apenas; fonte Outfit/Jakarta = follow-up (sem eyeball, risco).",
+      "status": "done",
+      "verified": "deploy c2c606f0; anti-phantom no bundle SERVIDO: index.html tem o script 2x + CSS chunk index-B0XobRkn.css tem .theme-nexvy-institucional + token 218 91% 43%. Eyeball visual do azul = pendente Chrome (mesmo bloqueio).",
+      "deps": [
+        "f3-dominio-host-split"
+      ]
+    },
+    {
+      "id": "lote-L1-recurring",
+      "phase": "P4",
+      "desc": "campaign-recurring-snapshot -> platform-* + cron",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03): a edge platform-campaign-recurring-snapshot NAO existe no port (so a tenant campaign-recurring-snapshot). Cron sem edge=nada. Exige portar a edge (1:1, desacoplada) antes do cron. Sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "lote-L2-L3-crons",
+      "phase": "P4",
+      "desc": "pg_cron para platform-campaign-dispatcher (1/min, jobid 20) + platform-auto-notifications (*/15, jobid 21). Guards VERIFICADOS antes de ligar: campaign-dispatcher early-return 'no_active_campaigns' (l.172-176) + idempotencia (claim+queued); auto-notifications so dispara settings *_enabled + dedup 'already notified today' (l.151-161). Ambos LOG (conversations/notifications).",
+      "status": "done",
+      "verified": "cron.job mostra ambos active (jobid 20/21); estado atual active_campaigns=0 + notif_settings_on=0 => dormentes/no-op ate Marcelo configurar; template service_role via vault (mesmo padrao do platform-cadence-tick jobid 19 que ja roda)",
+      "deps": []
+    },
+    {
+      "id": "lote-L4-booking-dispatcher",
+      "phase": "P4",
+      "desc": "platform-booking-dispatcher + confirmacao + cron",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03): a edge platform-booking-dispatcher NAO existe no port (so tenant booking-dispatcher; no port ha platform-booking-availability/submit/token mas nao o dispatcher de confirmacao/lembrete). Exige portar a edge antes do cron. Sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "lote-L5-cooldown",
+      "phase": "P4",
+      "desc": "ProviderCooldownBadge reativado",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03): badge NAO existe no port; a fonte (.vendus/admin/integrations/ProviderCooldownBadge) le cooldown de evolution_instances = tabela TENANT (crm/ nao pode tocar, maxima). Portar exige campo cooldown num platform_crm_* + painel de conexoes da plataforma = infra nova fronteira-sensivel, nao 'reativar badge'. Fazer junto do painel de conexoes da plataforma (sessao dedicada).",
+      "deps": []
+    },
+    {
+      "id": "lote-L6-formularios-tab",
+      "phase": "P4",
+      "desc": "bug menu Formularios -> tab correto. Causa: useState(initialTab) nao re-sincroniza quando o shell reusa a instancia do CaptureManager entre menus de captacao. Fix: useEffect resync tab<-initialTab (troca manual preservada).",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 23, build EXIT=0); PlatformCrmCaptureManager +useEffect",
+      "deps": []
+    },
+    {
+      "id": "lote-L7-leaddetail-cadencia",
+      "phase": "P4",
+      "desc": "wiring inscrever/remover cadencia no LeadDetail. LeadCadencesTab tinha 3 TODOs stale (edges ja existem): botao Adicionar -> dropdown de cadencias -> platform-cadence-enroll; botao Remover -> platform-cadence-stop. Auth JWT super-admin (authenticatePlatformAgent aceita).",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 23, build EXIT=0); enroll/stop via functions.invoke; padrao ja usado por dezenas de platform-* edges no front",
+      "deps": []
+    },
+    {
+      "id": "lote-L8-transfer",
+      "phase": "P4",
+      "desc": "transfer de lead 1:1 da fonte (lead_transfer_history). Migration platform_crm_lead_transfer_history (aplicada MCP + SQL repo + types) + UI: PlatformCrmLeadTransfer.tsx (modal transferir p/ user via usePlatformCrmSellers + squad opcional via usePlatformCrmSquads + reason -> insert history + update lead assigned_to/previous_assigned_to/squad_id/transferred_at; + LeadTransferHistory). Fiado no LeadWalletTab (2 stubs + DROP comment substituidos).",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 23, build EXIT=0); migration aplicada em prod; auth via RLS super_admin (insert direto pelo super-admin). Eyeball do modal = pendente Chrome.",
+      "deps": []
+    },
+    {
+      "id": "lote-L10-outreach-batch",
+      "phase": "P4",
+      "desc": "manual-outreach-batch (disparo em lote)",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03): a edge platform manual-outreach-batch NAO existe (so tenant manual-outreach). Alem disso e disparo MANUAL (user-triggered, nao cron) -> nao entra no fluxo de crons. Portar como acao de UI + edge platform-* numa sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "lote-L11-biblioteca-contextos",
+      "phase": "P4",
+      "desc": "aba 'Biblioteca de Contextos' nas Cadencias. Fonte CadencesManager tem 4 abas (Cadencias/Biblioteca/Relatorios/API); o port so tinha 3 — restaurei a aba faltante renderizando <ContextLibrary/> (autocontido, platform_crm_campaign_contexts).",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 23, build EXIT=0); 1:1 com a fonte",
+      "deps": []
+    },
+    {
+      "id": "lote-L12-higiene",
+      "phase": "P4",
+      "desc": "remover dead-code orfao pos-f1d. CORRECAO: agent_configs NAO e orfao (15 arquivos vivos: Inbox/Reports/Campaigns/Cadences/webchat) — mantido junto com usePlatformCrmAgentConfigs. Removidos so os 3 UI orfaos.",
+      "status": "done",
+      "verified": "removidos PlatformCrmDealsManager+PlatformCrmAgentsManager+PlatformCrmAgentFormDialog (0 imports externos confirmado por grep) + rmdir deals/; gate PASSOU (tsc 23, build EXIT=0)",
+      "deps": []
+    },
+    {
+      "id": "lote-L13-followup-confirm",
+      "phase": "P4",
+      "desc": "checar followup-ai-draft vs platform-sales-copilot",
+      "status": "todo",
+      "verified": false,
+      "blocker": "INVESTIGADO+ADIADO (2026-07-03): NAO coberto. sales-copilot aceita {messages}->{suggestion} (chat geral, sem strategy); followup-ai-draft e draft ESTRATEGICO (6 strategies: reengage_silence/break_objection/...). A UI de followup do port (PlatformCrmInboxFollowup) e view de lista, nao invoca draft -> feature dropada no porte. Portar = edge platform-followup-ai-draft + UI de strategy picker = feature-sized (precisa UX+eyeball), NAO '1 diff'. Sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "d1b-meta-instagram-canal",
+      "phase": "P5",
+      "desc": "platform-meta-whatsapp-webhook/-send + platform-instagram-*: canais mudos -> inbound+outbound (GATE EXTERNO: app Meta aprovado)",
+      "status": "todo",
+      "verified": false,
+      "deps": [
+        "f2-liveness"
+      ]
+    },
+    {
+      "id": "d2b-captacao-builders",
+      "phase": "P6",
+      "desc": "builders visuais (FlowCanvas/Form/Quiz)",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03, triagem noturna): builders visuais sao UI PROFUNDA (PlatformCrmCaptureFormsTab l.164-175: FormBuilder/runtime publico/FormResponses = stubs 'em breve'). Porte grande + precisa de eyeball iterativo. Sessao dedicada com Marcelo.",
+      "deps": []
+    },
+    {
+      "id": "d4b-financeiro-dashboard",
+      "phase": "P6",
+      "desc": "comissao por produto (o TODO l.83/349 ficou stale — D3 restaurou product_id em commission_rules/deals/commissions). FEITO: migration platform_crm_calculate_commission product-aware (busca produto do deal, prefere regra do produto c/ fallback agnostico, grava product_id na comissao) + RulesTab seletor de produto + coluna Produto (regras + dashboard de comissoes).",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 24<=25, build EXIT=0); migration aplicada; hook de regras spreada input (product_id flui). Eyeball do dashboard = pendente Chrome.",
+      "deps": []
+    },
+    {
+      "id": "d5b-mia-acao-memoria",
+      "phase": "P6",
+      "desc": "Mia acoes+memoria+wake-word",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03, triagem): platform-mia (edge) existe, mas as tabelas mia_actions + mia_user_memory NAO existem no port -> precisa migration + UX de CONFIRMACAO de acao (decisao de Marcelo: como a Mia confirma antes de executar acao com efeito colateral). Decisao de produto + eyeball. Sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "d7b-webhooks-painel-api",
+      "phase": "P6",
+      "desc": "paineis Actions/Requests + API cadencia",
+      "status": "done",
+      "verified": true,
+      "deps": [],
+      "evidence": "gate PASSOU 2026-07-03 (tsc 24 baseline, fronteira zero, build EXIT=0; 2 erros de tipo do desacoplamento capturados+corrigidos). Smoke-test real: POST platform-webhook-receiver com actions no shape da UI (create_lead/field_mappings) -> HTTP 200, actions_executed=1, lead criado com name/email/phone corretos em 315ms; teste limpo depois. RESIDUAL: render visual da UI pende de login super-admin (baixo risco: compila+builda+shape consumido). FOLLOW-UP separado: receiver nao propaga product_id no create_lead (gap D3, nao-UI)."
+    },
+    {
+      "id": "d8b-booking-conversacional",
+      "phase": "P6",
+      "desc": "booking conversacional. A pagina publica PlatformCrmPublicBooking JA ramificava em booking_experience==='conversational' (l.100), mas a coluna faltava na platform table (so tenant). D8 = migration ADD booking_experience a platform_crm_booking_event_types + restaurar o campo no editor (hook input+insert, formData x3, select Padrao/Conversacional) -> liga o ramo que estava morto.",
+      "status": "done",
+      "verified": "gate PASSOU (tsc 24<=25 baseline, build EXIT=0); migration aplicada; meus arquivos com 0 erro tsc direto. Eyeball do fluxo conversacional = pendente Chrome.",
+      "deps": []
+    },
+    {
+      "id": "d9b-web-push",
+      "phase": "P6",
+      "desc": "stack push-* (VAPID) restaurada",
+      "status": "todo",
+      "verified": false,
+      "blocker": "ADIADO (2026-07-03, triagem): port NAO tem stack platform push (so push_subscriptions tenant; sem platform-push-subscribe/send, sem VAPID secret). Porte = VAPID keys + 2 edges + service worker (registro no front) — o SW precisa de eyeball (permissao browser, teste real de push). Backend (gerar VAPID) e trivial, mas sem o SW+edges nao entrega valor. Sessao dedicada.",
+      "deps": []
+    },
+    {
+      "id": "d10a-ai-insights",
+      "phase": "P7",
+      "desc": "reviver campaign-ai-insights + AICampaignAssistant",
+      "status": "todo",
+      "verified": false,
+      "deps": [
+        "f2-liveness"
+      ]
+    },
+    {
+      "id": "utmify-mcp",
+      "phase": "P7",
+      "desc": "MCP Utmify: atribuição de campanha por LP -> product_id no lead (fecha N-LPs->1-CRM)",
+      "status": "todo",
+      "verified": false,
+      "deps": [
+        "d10a-ai-insights"
+      ]
+    }
   ],
   "gates": [
     "Front só vira done após verify.sh GATE PASSOU (fronteira + tsc baseline + build) — nunca só tsc",

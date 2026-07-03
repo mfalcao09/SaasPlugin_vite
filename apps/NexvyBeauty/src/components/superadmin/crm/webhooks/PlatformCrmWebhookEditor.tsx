@@ -17,9 +17,11 @@ import {
   Activity,
   FlaskConical,
   Check,
-  Zap,
 } from 'lucide-react';
 import { PlatformCrmWebhookLogsTab } from './PlatformCrmWebhookLogsTab';
+import { PlatformCrmWebhookRequestsPanel } from './PlatformCrmWebhookRequestsPanel';
+import { PlatformCrmWebhookActionsPanel } from './PlatformCrmWebhookActionsPanel';
+import type { WebhookAction } from '@/types/webhook';
 import { toast } from 'sonner';
 
 interface PlatformCrmWebhookEditorProps {
@@ -35,9 +37,9 @@ export function PlatformCrmWebhookEditor({ webhookId, onBack }: PlatformCrmWebho
   const [activeTab, setActiveTab] = useState('config');
   const [copied, setCopied] = useState(false);
 
-  // TODO(edge): a recepção HTTP/parsing/execução de ações roda numa Edge Function
-  // dedicada (ex.: `platform-crm-webhook-receiver`). A URL abaixo é o endpoint alvo.
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platform-crm-webhook-receiver/${webhookId}`;
+  // A recepção HTTP/parsing/execução de ações roda na Edge Function `platform-webhook-receiver`
+  // (twin desacoplado do `webhook-receiver` de tenant; executa os 16 tipos de action).
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platform-webhook-receiver/${webhookId}`;
 
   const copyUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -54,6 +56,10 @@ export function PlatformCrmWebhookEditor({ webhookId, onBack }: PlatformCrmWebho
   const handleToggleTestMode = async (checked: boolean) => {
     await updateWebhook.mutateAsync({ id: webhookId, is_test_mode: checked });
     toast.success(checked ? 'Modo teste ativado' : 'Modo teste desativado');
+  };
+
+  const handleActionsChange = async (actions: WebhookAction[]) => {
+    await updateWebhook.mutateAsync({ id: webhookId, actions: actions as never });
   };
 
   if (isLoading) {
@@ -77,7 +83,7 @@ export function PlatformCrmWebhookEditor({ webhookId, onBack }: PlatformCrmWebho
     );
   }
 
-  const sampleCount = samples?.length ?? 0;
+  const availableFields = (samples?.[0]?.extracted_fields as Record<string, unknown>) || {};
 
   return (
     <div className="space-y-6">
@@ -179,42 +185,18 @@ export function PlatformCrmWebhookEditor({ webhookId, onBack }: PlatformCrmWebho
         </TabsList>
 
         <TabsContent value="config" className="mt-6">
-          {/* Mapeamento de campos + ações (Criar Lead, aplicar tag, dispatch por squad)
-              dependem da Edge Function de recepção e de amostras de payload capturadas.
-              CORE expõe o resumo; o editor de ações profundo é TODO(edge). */}
-          <Card>
-            <CardContent className="py-8">
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Mapeamento de campos e ações</h3>
-                  <p className="text-muted-foreground max-w-md mt-1">
-                    Capture uma amostra de payload no endpoint acima e mapeie os campos para
-                    ações (criar lead, aplicar etiqueta, distribuir por squad). O motor de
-                    recepção e execução roda numa Edge Function dedicada.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {sampleCount > 0
-                      ? `${sampleCount} amostra(s) de payload capturada(s).`
-                      : 'Nenhuma amostra capturada ainda.'}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    // TODO(edge): abrir o editor de ações quando a Edge Function
-                    // `platform-crm-webhook-receiver` estiver publicada.
-                    toast.info('Editor de ações em breve — depende da Edge Function de recepção')
-                  }
-                >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Configurar ações
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Esquerda: amostras de payload capturadas */}
+            <PlatformCrmWebhookRequestsPanel webhookId={webhookId} samples={samples || []} />
+
+            {/* Direita: ações executadas na recepção */}
+            <PlatformCrmWebhookActionsPanel
+              actions={(webhook.actions as unknown as WebhookAction[]) || []}
+              availableFields={availableFields}
+              productId={webhook.product_id ?? undefined}
+              onChange={handleActionsChange}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="logs" className="mt-6">

@@ -209,3 +209,28 @@ export function usePlatformCrmWebhookSamples(webhookId: string | null) {
     enabled: !!webhookId,
   });
 }
+
+/** Remove uma amostra de payload capturada (usada pelo RequestsPanel). */
+export function useDeletePlatformCrmWebhookSample() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sampleId: string) => {
+      const { error } = await supabase
+        .from('platform_crm_webhook_sample_requests')
+        .delete()
+        .eq('id', sampleId);
+
+      if (error) throw error;
+      return sampleId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'webhook-samples'] });
+      toast.success('Amostra removida');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting platform CRM webhook sample:', error);
+      toast.error(`Erro ao remover amostra: ${error?.message ?? 'desconhecido'}`);
+    },
+  });
+}
