@@ -72,6 +72,7 @@ import {
   type PlatformCrmCommissionWithDeal,
 } from '../data/usePlatformCrmCommissions';
 import { usePlatformCrmSellers, usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
+import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 
 /**
  * COMISSÕES do CRM de PLATAFORMA (super_admin) — desacopladas do tenant.
@@ -100,6 +101,7 @@ interface RuleFormData {
   max_value: number | null;
   is_default: boolean;
   user_id: string;
+  product_id: string | null;
   is_active: boolean;
 }
 
@@ -111,6 +113,7 @@ const EMPTY_RULE_FORM: RuleFormData = {
   max_value: null,
   is_default: true,
   user_id: '',
+  product_id: null,
   is_active: true,
 };
 
@@ -148,6 +151,7 @@ export function PlatformCrmCommissionsManager() {
 function RulesTab() {
   const { data: rules = [], isLoading } = usePlatformCrmCommissionRules();
   const { data: sellers = [] } = usePlatformCrmSellers();
+  const { data: products = [] } = usePlatformCrmProducts();
   const { map: sellersMap } = usePlatformCrmSellersMap();
   const createRule = useCreatePlatformCrmCommissionRule();
   const updateRule = useUpdatePlatformCrmCommissionRule();
@@ -177,6 +181,7 @@ function RulesTab() {
       max_value: rule.max_value,
       is_default: rule.is_default ?? true,
       user_id: rule.user_id ?? '',
+      product_id: rule.product_id ?? null,
       is_active: rule.is_active ?? true,
     });
     setEditingId(rule.id);
@@ -193,6 +198,7 @@ function RulesTab() {
       // Regra padrão → sem vendedor; senão, o vendedor escolhido.
       is_default: form.is_default,
       user_id: form.is_default ? null : form.user_id || null,
+      product_id: form.product_id,
       is_active: form.is_active,
     };
     if (editingId) {
@@ -245,6 +251,7 @@ function RulesTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Produto</TableHead>
                   <TableHead>Aplicação</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Aplica a</TableHead>
@@ -265,6 +272,11 @@ function RulesTab() {
                         )}
                         {rule.rule_type === 'percentage' ? 'Percentual' : 'Fixo'}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {rule.product_id
+                        ? products.find((p) => p.id === rule.product_id)?.name ?? 'Produto'
+                        : 'Todos'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -346,9 +358,29 @@ function RulesTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* TODO(produto): o funil da plataforma não tem product_id — o original
-                segmentava/agrupava as regras por produto (useProducts). Sem coluna,
-                a segmentação por produto fica pendente de decisão. */}
+            {/* D4: segmentação por produto (product_id restaurado no D3; a função
+                platform_crm_calculate_commission prefere a regra do produto). */}
+            <div className="space-y-2">
+              <Label>Produto</Label>
+              <Select
+                value={form.product_id ?? '__all__'}
+                onValueChange={(v) =>
+                  setForm({ ...form, product_id: v === '__all__' ? null : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os produtos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os produtos</SelectItem>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Regra padrão (todos os vendedores) vs. vendedor específico */}
             <div className="flex items-center space-x-2">
@@ -554,6 +586,7 @@ function CommissionsTab() {
   const { data: commissions = [], isLoading } = usePlatformCrmCommissions(
     statusFilter === COMMISSION_STATUS_ALL ? undefined : statusFilter,
   );
+  const { data: products = [] } = usePlatformCrmProducts();
   const { data: allCommissions = [] } = usePlatformCrmCommissions();
 
   const approve = useApprovePlatformCrmCommission();
@@ -720,6 +753,7 @@ function CommissionsTab() {
                     />
                   </TableHead>
                   <TableHead>Negócio</TableHead>
+                  <TableHead>Produto</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -748,6 +782,11 @@ function CommissionsTab() {
                             : ''}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {commission.product_id
+                        ? products.find((p) => p.id === commission.product_id)?.name ?? 'Produto'
+                        : '—'}
                     </TableCell>
                     <TableCell>{formatCurrency(commission.amount ?? 0)}</TableCell>
                     <TableCell>
