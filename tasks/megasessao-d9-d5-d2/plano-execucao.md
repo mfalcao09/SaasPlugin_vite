@@ -1,0 +1,95 @@
+# Megasessão D9 + D5 + D2 — Plano de Execução em /loop
+> **Fonte única de verdade da megasessão.** Preparado em 2026-07-03 pela sessão que shipou o D7.
+> Cada fatia tem CHECK BINÁRIO (passou/falhou). Sem check verde, a fatia NÃO é `done` (Karpathy 8.3).
+> Marcar checkbox + anotar evidência inline conforme conclui. Este arquivo É o estado do loop.
+
+## Contexto obrigatório (ler antes da 1ª iteração)
+- App: `apps/NexvyBeauty` (Vite SPA). Modelo canônico: `apps/NexvyBeauty/.vendus-src-reference/` (byte-idêntico ao Remix Vendus — NUNCA portar de outro lugar).
+- **MÁXIMA (inegociável):** CRM de plataforma (`src/components/superadmin/crm/`) é port 1:1 DESACOPLADO → tabelas `platform_crm_*`, ZERO `organization_id` no código, RLS `has_role(auth.uid(),'super_admin'::app_role)`, NUNCA tocar tabela de tenant.
+- Supabase projeto `fzhlbwhdejumkyqosuvq` (MCP tools `execute_sql`/`apply_migration`/`deploy_edge_function`/`generate_typescript_types`).
+- **GATE oficial:** `bash tasks/d3-multiproduto/verify.sh` (fronteira + org_id + tsc ≤25 + build). `--fast` pula o build.
+- **Deploy:** `ssh vps-hostinger 'cd /opt/stacks/saasplugin-vite && git pull --ff-only origin main && bash infra/deploy-vps.sh NexvyBeauty nexvy-beauty app.nexvybeauty.com.br'` + anti-phantom (curl no bundle hash em gestao.nexvy.tech E app.nexvybeauty.com.br).
+- **Sino Telegram (PROVADO):** `bash tasks/megasessao-d9-d5-d2/notify-marcelo.sh "msg"` → celular do Marcelo. ONE-WAY: resposta dele vem NA SESSÃO. Notificar em: (a) decisão bloqueante; (b) átomo humano; (c) marco de frente/fase; (d) falha que trava >2 tentativas. Mensagens simples (sem aspas duplas).
+- Fundações JÁ APLICADAS em prod + commitadas: `platform_crm_push_subscriptions` (67eaf33) · `platform_crm_mia_actions` + `platform_crm_mia_user_memory` (ca3a745). D7 shipped (1ff9504, bundle index-BiOg-0EY.js no ar).
+
+## Regras de paralelismo (anti-quebra — aprendidas no D7)
+**SERIALIZAR no loop principal (NUNCA em subagente, NUNCA 2 ao mesmo tempo):**
+1. `apply_migration` (banco é um só).
+2. `generate_typescript_types` → regravar `src/integrations/supabase/types.ts` → rodar gate em seguida.
+3. `deploy_edge_function` (um por vez).
+4. Deploy VPS + anti-phantom.
+5. Edições em arquivos compartilhados: `App.tsx`, `nav`, `adminMenu`, `feature-list.json`, `types.ts`.
+
+**PARALELIZAR (subagentes, worktree quando mexem em muitos arquivos):** port de código isolado (arquivos novos em pastas distintas), cada subagente TERMINA com `verify.sh --fast` verde e reporta lista de passos seriais que sobraram pro loop principal.
+
+**Traps conhecidos (D7):** hooks platform_crm variam shape (`{data}` vs `{fields}` — checar antes de destructurar) · sem joins de produto nos hooks crus (`ProductAgent` NÃO tem `.product`) · queryKey padrão `['platform-crm', ...]` · o build do vite passa com erro de tipo — SÓ o tsc pega (não pular o gate) · edge real chama-se `platform-webhook-receiver` (não `platform-crm-*`).
+
+---
+
+## FRENTE D9 — Web Push + Telegram (esforço: ~meio dia)
+Estado: fundação ✅ (`platform_crm_push_subscriptions`). Decisões travadas: canais = **web push (desktop/Android) + Telegram (celular do Marcelo)** · VAPID subject = `mailto:contato@nexvy.tech`.
+
+- [ ] **D9.1** Portar `_shared/push.ts` → `supabase/functions/_shared/platform-push.ts`: tabela `platform_crm_push_subscriptions`, SEM filtro `user_notification_settings` (v1 = todos os super-admins inscritos; preferência granular é over-engineering p/ time interno). Modelo: `.vendus-src-reference/supabase/functions/_shared/push.ts` (webpush npm:web-push@3.6.7, revoga 404/410).
+  **CHECK:** arquivo existe + é importado pelos edges D9.2 (deno não roda local; validação = deploy D9.2 sem erro).
+- [ ] **D9.2** Portar 3 edges: `platform-push-subscribe`, `platform-push-unsubscribe`, `platform-push-dispatch` (modelo: `push-subscribe/-unsubscribe/-dispatch`; auth Bearer+getClaims; upsert onConflict endpoint; dispatch SEM preference_key gate v1). Registrar `verify_jwt` no `supabase/config.toml` espelhando o padrão dos edges existentes. Deploy um a um via MCP.
+  **CHECK:** `list_edge_functions` contém os 3 + `curl` no subscribe sem auth → 401 (prova que está vivo e protegido).
+- [ ] **D9.3** VAPID: gerar par (`npx web-push generate-vapid-keys`), `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:contato@nexvy.tech` + `VITE_VAPID_PUBLIC_KEY` no `.env` local E no build do VPS (checar como o deploy injeta env: `infra/deploy-vps.sh`/Dockerfile). NUNCA imprimir a privada.
+  **CHECK:** `supabase secrets list` mostra os 3 nomes (presença, não valor).
+- [ ] **D9.4** Telegram no dispatch: `platform-push-dispatch` também envia Telegram (secrets `TELEGRAM_BOT_TOKEN` — copiar do KVM4 sem imprimir — + `TELEGRAM_CHAT_ID_MARCELO=1118516471`). Envio best-effort (falha de um canal não derruba o outro).
+  **CHECK:** invocar dispatch de teste (service key, payload title=teste) → resposta `ok` + mensagem chega no Telegram (Marcelo confirma na sessão OU `"ok":true` no log do edge).
+- [ ] **D9.5** Frontend: portar `lib/push.ts` + `usePushNotifications` + `PushNotificationsCard` (modelo: `src/lib/push.ts`, `src/hooks/usePushNotifications.ts`, `src/components/notifications/PushNotificationsCard.tsx`) → decoupled, edges `platform-push-*`. Montar o Card na área de configurações/notificações da plataforma (descobrir onde o super-admin tem settings; se não houver, aba em notificações).
+  **CHECK:** `verify.sh --fast` verde (tsc ≤25, fronteira zero).
+- [ ] **D9.6** `public/sw.js`: adicionar handlers `push` (showNotification com title/body/url/tag) + `notificationclick` (focus/openWindow na url). NÃO adicionar cache (SW é intencionalmente network-only — não quebrar o anti-spinner).
+  **CHECK:** `grep -c "addEventListener('push'\|notificationclick" public/sw.js` ≥ 2 + `verify.sh` completo verde (com build).
+- [ ] **D9.7** Deploy VPS + anti-phantom (bundle novo nos 2 hosts).
+  **CHECK:** hash do bundle muda vs `index-BiOg-0EY.js` e é igual nos 2 hosts.
+- [ ] **D9.8** 🧍 **ÁTOMO HUMANO:** notify Marcelo → ele abre `gestao.nexvy.tech` no Chrome desktop, ativa push no Card, clica permitir. Depois: dispatch de teste → notificação aparece + Telegram chega.
+  **CHECK:** linha em `platform_crm_push_subscriptions` (SQL) + confirmação do Marcelo na sessão.
+- [ ] **D9.9** `feature-list.json`: `d9b-web-push` → done+verified com evidência. Commit+push.
+  **CHECK:** `verify.sh --fast` [4] ok.
+
+## FRENTE D5 — Mia: ações + memória (esforço: ~meio a 1 dia)
+Estado: fundação ✅ (2 tabelas). Decisão travada: confirmação = **(B) botões inline no chat**.
+
+- [ ] **D5.1** Recon do modelo (READ-ONLY): `mia-prepare-action/index.ts` + `mia-execute-action/index.ts` + `src/hooks/useMiaActions.ts` + `useMiaMemory.ts` + `src/components/mia/MiaPendingActions.tsx` + como o `AdminMia.tsx` integra. Mapear: contrato prepare/execute, os 8 action_types (já no CHECK da tabela), shape do preview.
+  **CHECK:** lista escrita neste arquivo (editar aqui) com: rota de cada edge, campos payload por action_type, e onde o chat da plataforma renderiza mensagens (`usePlatformCrmMiaChat` + componente de chat).
+- [ ] **D5.2** Portar edges `platform-mia-prepare-action` + `platform-mia-execute-action` (decoupled: `platform_crm_mia_actions`, targets `platform_crm_lead_tasks`/`platform_crm_leads`/etc. conforme action_type; SEM organization_id). Deploy um a um.
+  **CHECK:** `list_edge_functions` contém os 2 + curl sem auth → 401.
+- [ ] **D5.3** Estender edge `platform-mia` (existente, 22 tools): tools de ação (draft → grava `platform_crm_mia_actions` status `waiting_confirmation`, retorna preview) + memória (ler/gravar `platform_crm_mia_user_memory`: display_name, preferences, facts, last_active_entities). Seguir o padrão de tools que o arquivo já usa.
+  **CHECK (smoke SQL):** POST de teste ao platform-mia (service key) com prompt tipo "crie uma tarefa de teste pra amanhã" → row nova em `platform_crm_mia_actions` com status `waiting_confirmation` (SQL) → depois invocar execute → status `executed` + task real em `platform_crm_lead_tasks` (SQL). Limpar dados de teste ao final.
+- [ ] **D5.4** Hooks `usePlatformCrmMiaActions` (list pending por user + confirm/cancel mutations chamando execute edge) + `usePlatformCrmMiaMemory`. Padrões: queryKey `['platform-crm',...]`, shapes conferidos.
+  **CHECK:** `verify.sh --fast` verde.
+- [ ] **D5.5** UI botões inline: no componente de chat da Mia da plataforma, quando houver action `waiting_confirmation` do usuário → bolha inline com preview + botões **Confirmar / Cancelar** (mutations do D5.4). Portar a lógica visual do `MiaPendingActions.tsx` adaptada pra inline (decisão B).
+  **CHECK:** `verify.sh` completo verde (com build).
+- [ ] **D5.6** Deploy VPS + anti-phantom.
+  **CHECK:** bundle novo nos 2 hosts.
+- [ ] **D5.7** 🧍 notify Marcelo p/ teste visual (chat da Mia → pedir ação → botões aparecem → confirmar → executa). `feature-list.json`: `d5b-mia-acao-memoria` done+verified. Commit+push.
+  **CHECK:** confirmação do Marcelo OU smoke D5.3 como evidência mínima + [4] do gate ok.
+
+## FRENTE D2 — Builders visuais de captação (esforço TOTAL: 13-15 dias — NÃO fecha nesta megasessão)
+**Meta realista da megasessão: F1 + F2 (Widget) + F3 (Flow).** Quiz (F4) e Form (F5) continuam no loop em sessões seguintes. Total modelo: ~15.4k LOC (Form 7.3k · Quiz 5k · Flow 1.6k · Widget 1.4k).
+
+- [ ] **D2.F1** Camada de suporte (~1 dia). PASSO 0 OBRIGATÓRIO (aprendizado do subagente morto): `usePlatformCrmFormBlocks`/`usePlatformCrmForm` JÁ EXISTEM em `usePlatformCrmForms.ts` — NÃO duplicar; e as tabelas `platform_crm_{form,quiz,funnel}_blocks` NÃO existem em types.ts → descobrir no MODELO se blocks são tabela própria ou coluna jsonb (ler `useForms.ts` + migrations do modelo) e replicar a MESMA estratégia. Se precisar de migration: escrever `.sql` em `migrations_platform_crm/` e aplicar (serial, loop principal). Portar tipos (`forms.ts` 250+ linhas, `chatFlow.ts`) → `src/types/platformCrmCapture.ts` + hooks CRUD que faltarem.
+  **CHECK:** `verify.sh --fast` verde + tipos/hooks importáveis (um import em componente existente compila).
+- [ ] **D2.F2** WidgetBuilder (~1.5-2 dias): copiar `admin/capture/widget/` → `superadmin/crm/capture/widget/`, adaptar tipos/hooks (`usePlatformCrmWebchatWidgets` existe), integrar botão "Abrir builder" em `PlatformCrmCaptureWidgetsTab` (hoje toast TODO l.142), embed code generator.
+  **CHECK:** gate completo verde + smoke: criar widget via builder → row em `platform_crm_webchat_widgets` + embed snippet contém o widget id.
+- [ ] **D2.F3** FlowBuilder p/ funnels (~2 dias): copiar `admin/flowbuilder/` → adaptar `PlatformCrmFunnelBlock` (channel-agnostic), integrar em `PlatformCrmCaptureFunnelsTab`. Reuso ~90% (canvas/editor/palette @dnd-kit).
+  **CHECK:** gate completo verde + smoke: fluxo com 2 blocos salvo → JSON persistido (SQL) e re-carregado no canvas sem perda (abrir de novo = mesmos blocos).
+- [ ] **D2.F2/F3 deploy** + anti-phantom + notify marco.
+  **CHECK:** bundle novo nos 2 hosts.
+- [ ] **D2.F4** QuizBuilder (4-5d) — **PRÓXIMA SESSÃO** (registrar resume-point aqui ao parar).
+- [ ] **D2.F5** FormBuilder (5-6d, FormBlockEditor 50KB é o elefante) — **PRÓXIMA SESSÃO**.
+
+## Ordem do loop (cada iteração)
+1. Reler este arquivo → escolher a próxima fatia executável não-bloqueada. Prioridade: **D9 → D5 → D2** (D9/D5 curtas destravam valor; D2 é maratona). Quando D9/D5 esperarem átomo humano, avançar D2.
+2. Executar a fatia (subagente p/ port isolado grande; loop principal p/ tudo que é serial).
+3. Rodar o CHECK da fatia. Verde → marcar checkbox + evidência inline + commit (`feat(crm-grupo): ...`). Vermelho → consertar (causa raiz); >2 falhas → notify + registrar bloqueio aqui.
+4. Notify Telegram nos marcos (fim de frente/fase, deploy verde) e átomos humanos.
+5. Compactação de contexto vem? Sem pânico: este arquivo é o estado. Retomar do checkbox.
+
+## Critério de sucesso da megasessão (mensurável)
+- [ ] D9 100% (9/9) com push real recebido + Telegram no dispatch
+- [ ] D5 100% (7/7) com ação executada end-to-end via botões inline
+- [ ] D2 F1+F2+F3 verdes e deployados (F4/F5 com resume-point registrado)
+- [ ] Zero regressão: gate verde em TODO commit · fronteira sempre zero
+- [ ] `feature-list.json` refletindo a verdade com evidências
