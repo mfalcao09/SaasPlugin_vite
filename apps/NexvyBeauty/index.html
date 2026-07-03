@@ -63,11 +63,30 @@
       }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
       .app-mounted #boot-loader { display: none; }
+      /* Gestão (gestao.*): boot em azul institucional Nexvy (#0A52D1) */
+      html.theme-nexvy-institucional #boot-loader .spinner {
+        border-color: rgba(10, 82, 209, 0.18);
+        border-top-color: #0A52D1;
+      }
     </style>
     <meta property="og:title" content="NexvyBeauty — Beleza com gestão inteligente">
   <meta name="twitter:title" content="NexvyBeauty — Beleza com gestão inteligente">
   <meta property="og:description" content="NexvyBeauty — ERP e CRM com IA para oficinas">
   <meta name="twitter:description" content="NexvyBeauty — ERP e CRM com IA para oficinas">
+  <!-- Shell de gestão (gestao.*): tema institucional Nexvy (azul), aplicado
+       ANTES do React montar p/ evitar flash. app.*/apex seguem no tema Beauty. -->
+  <script>
+    (function () {
+      try {
+        if (location.hostname.indexOf('gestao.') === 0) {
+          document.documentElement.classList.add('theme-nexvy-institucional');
+          document.title = 'Nexvy · Gestão';
+          var tc = document.querySelector('meta[name="theme-color"]');
+          if (tc) tc.setAttribute('content', '#0A52D1');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
   <body>

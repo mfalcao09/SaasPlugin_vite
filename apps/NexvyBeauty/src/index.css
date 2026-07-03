@@ -158,6 +158,51 @@
     --sidebar-border: 0 50% 45%;
     --sidebar-ring: 0 0% 98%;
   }
+
+  /* ─────────────────────────────────────────────────────────────────
+     TEMA INSTITUCIONAL NEXVY — shell de gestão/plataforma (gestao.*)
+     Aplicado via classe no <html> (script inline no index.html) quando o
+     host começa com "gestao.". Troca o rosa Beauty (hue 330) pelo azul da
+     marca Nexvy (#0A52D1 → 218 91% 43%) + cyan (#00D1FF → 191 100% 50%).
+     Fonte canônica: memória nexvy-brand-guide (Branded House).
+     O app do tenant (app.*) e o apex NÃO recebem a classe → seguem no tema
+     Beauty/rosa. Só cores de marca mudam; layout/estrutura intactos.
+     ───────────────────────────────────────────────────────────────── */
+  .theme-nexvy-institucional {
+    --primary: 218 91% 43%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 218 91% 43%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 218 91% 43%;
+
+    --sidebar-primary: 218 91% 43%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 218 91% 43%;
+
+    --brand: 218 91% 43%;
+    --brand-foreground: 0 0% 100%;
+    --chart-1: 218 91% 43%;
+    --chart-2: 191 100% 45%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(218 91% 32%), hsl(218 91% 43%), hsl(191 100% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(191 100% 50% / 0.08), hsl(218 91% 43% / 0.04));
+    --gradient-accent: linear-gradient(135deg, hsl(218 91% 43% / 0.10), hsl(191 100% 50% / 0.04));
+    --shadow-glow: 0 0 20px hsl(218 91% 43% / 0.20);
+  }
+
+  /* Dark do shell institucional (2 classes p/ vencer .dark na especificidade) */
+  .theme-nexvy-institucional.dark {
+    --primary: 214 95% 60%;
+    --accent: 214 95% 60%;
+    --ring: 214 95% 60%;
+    --sidebar-primary: 214 95% 60%;
+    --sidebar-ring: 214 95% 60%;
+    --brand: 214 95% 60%;
+    --chart-1: 214 95% 60%;
+    --chart-2: 191 100% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(218 91% 40%), hsl(214 95% 60%), hsl(191 100% 55%));
+    --shadow-glow: 0 0 20px hsl(214 95% 60% / 0.30);
+  }
 }
 
 @layer base {
