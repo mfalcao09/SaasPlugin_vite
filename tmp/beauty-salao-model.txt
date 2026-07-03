@@ -1,0 +1,7 @@
+■ profissionais: id uuid, salao_id uuid, nome text, email text, telefone text, especialidades ARRAY, comissao_pct numeric, foto_url text, ativo boolean, created_at timestamp with time zone
+■ servicos: id uuid, salao_id uuid, nome text, descricao text, duracao_minutos integer, preco numeric, categoria text, ativo boolean, created_at timestamp with time zone
+■ agendamentos: id uuid, salao_id uuid, cliente_id uuid, cliente_nome text, profissional_id uuid, profissional_nome text, servico_id uuid, servico_nome text, data date, hora time without time zone, duracao_minutos integer, valor numeric, forma_pagamento text, status text, pacote_cliente_id uuid, observacoes text, created_at timestamp with time zone
+■ pacotes: id uuid, salao_id uuid, nome text, descricao text, preco numeric, servico_ids ARRAY, ativo boolean, created_at timestamp with time zone
+■ metas: id uuid, salao_id uuid, profissional_id uuid, tipo text, valor_meta numeric, periodo text, data_inicio date, data_fim date, created_at timestamp with time zone
+■ transacoes: id uuid, salao_id uuid, agendamento_id uuid, descricao text, tipo text, valor numeric, forma_pagamento text, data date, categoria text, created_at timestamp with time zone
+■ clientes: id uuid, salao_id uuid, nome text, telefone text, email text, data_nascimento date, observacoes text, origem text, total_atendimentos integer, total_gasto numeric, ultimo_atendimento date, created_at timestamp with time zone

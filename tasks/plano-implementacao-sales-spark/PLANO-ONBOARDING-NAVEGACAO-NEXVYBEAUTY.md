@@ -264,6 +264,12 @@ Confirmado: ~7 pontos user-facing + código morto. Tabela completa na seção "C
 | Enviar link por WhatsApp/e-mail | Evita o cliente redigitar e-mail | Cliente recebe link e paga sem digitar e-mail | P | acima |
 | Validar 1:1 e-mail checkout → acesso | Fechar o loop anti-duplicata | E-mail do acesso = e-mail do lead original | P | acima |
 
+### Fase 3 EXPANDIDA + Fase A — Afiliados, Tracking & Captura (atualização 2026-06-19)
+
+> O Estágio 0 foi **reformulado** (afiliados + rastreamento canal/plataforma + captura robusta antes do checkout). A Fase 3 cresceu e ganhou uma **Fase A — Afiliados & Atribuição**. Detalhe completo, benchmark (UTMify/Voxuy), arquitetura e tabelas novas em **`ESTAGIO0-AFILIADOS-TRACKING-CAPTURA.md`**. Resumo:
+> - **Fase 3 (expandida):** botão "Comprar" + modal de captura multi-step + cookie de tracking (`ref` + 5 UTMs) + Edge Function de captura (lead tagueado server-side) + redirect Cakto pré-preenchido + recuperação WhatsApp.
+> - **Fase A (nova):** tabelas `affiliates` / `affiliate_links` / `affiliate_commissions`, `cakto-webhook` passando a **atribuir a venda ao afiliado** (lê `data.affiliate`/`utm_*`), e painel mínimo do afiliado (link · vendas · comissão).
+
 ### Fase 4 — Costura dos 2 cérebros (dados)
 
 | O que | Por que | Critério verificável | Esforço | Dep. |

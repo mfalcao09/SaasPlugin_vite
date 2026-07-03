@@ -1,0 +1,715 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roadmap de Port — CBA → NexvyBeauty</title><style>
+:root{--bg:#0d0f14;--panel:#151922;--panel2:#1b2130;--bd:#262d3d;--tx:#e7eaf0;--mut:#9aa3b2;--pink:#ec4899;--pink2:#f472b6;--green:#34d399;--amber:#fbbf24;--red:#f87171;}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#1a1030,var(--bg) 55%);color:var(--tx);font:16px/1.7 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1060px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;background:linear-gradient(90deg,var(--pink2),#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+h2{font-size:22px;margin:46px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bd);color:#fff}
+h3{font-size:17px;margin:30px 0 10px;color:var(--pink2)}
+p{margin:12px 0}strong{color:#fff;font-weight:700}
+code{background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font:13px/1.4 ui-monospace,Menlo,monospace;color:#ffd9ec}
+ul,ol{margin:12px 0;padding-left:22px}li{margin:6px 0}hr{border:0;border-top:1px solid var(--bd);margin:34px 0}
+blockquote{border-left:3px solid var(--pink);margin:14px 0;padding:6px 16px;background:var(--panel);border-radius:0 8px 8px 0;color:var(--mut)}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;background:var(--panel);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+thead th{background:var(--panel2);text-align:left;padding:10px 12px;color:#fff;font-weight:700;border-bottom:1px solid var(--bd)}
+td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:rgba(236,72,153,.05)}
+.eff-p{color:var(--green);font-weight:700}.eff-m{color:var(--amber);font-weight:700}.eff-g{color:var(--red);font-weight:700}
+.r-lo{color:var(--green)}.r-md{color:var(--amber)}.r-hi{color:var(--red);font-weight:700}
+.badge{display:inline-block;background:var(--panel2);border:1px solid var(--bd);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--mut);margin:0 8px 6px 0}
+.hero{background:linear-gradient(180deg,var(--panel),transparent);border:1px solid var(--bd);border-radius:14px;padding:22px 24px;margin-bottom:8px}
+.foot{margin-top:64px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--bd);padding-top:16px}
+</style></head><body><div class="wrap">
+<div class="hero"><span class="badge">Port plan · NX é a base</span><span class="badge">CBA commit 922bc7e</span><span class="badge">7 receitas file-level · 8 agentes</span><span class="badge">Esforço: P/M/G · Risco: baixo/médio/alto</span></div>
+<h1>Roadmap de Port — Cloud-Beauty-AI → NexvyBeauty</h1>
+<p><strong>A decisão:</strong> o NexvyBeauty (NX) é a base inegociável — ele já tem salão, booking, ~119 edge functions em produção, multi-tenancy por <code>organization_id</code>, e os moats que não se reproduzem (Evolution/WhatsApp real, Cakto/cobrança real, <code>_shared/ai-router.ts</code> env-driven, soberania Docker/Traefik). Vamos portar 100% do <strong>melhor</strong> do cloud-beauty-ai (CBA, código nosso) para dentro do NX — UI superior, booking de salão, pacotes, web-push, profundidade de CRM e o copiloto que executa ações — <strong>traduzindo</strong> cada peça às 4 costuras de adaptação em vez de adotar a stack do CBA. <strong>Princípio inegociável: nenhum port pode degradar um moat do NX.</strong> Onde o CBA é melhor (composição de shell, padronização de tela, ações tipadas do copiloto), portamos; onde o NX já é superior (theming, RAG, A/B de prompt, IA que executa via Evolution), preservamos e o CBA é descartado.</p>
+<blockquote>
+<p><strong>Premissa declarada (Seção 8.1):</strong> assumo que o port é <strong>convergência sobre o NX existente</strong>, não greenfield; que o projeto Supabase alvo é <code>fzhlbwhdejumkyqosuvq</code> (NexvyBeauty); e que "UI superior do CBA" = composição de shell + padronização tela-a-tela, <strong>não</strong> theming (o NX tem token set mais rico). Se algum desses três estiver errado, pare antes da Onda 0.</p>
+</blockquote>
+<hr />
+<h2>As 4 costuras de adaptação</h2>
+<p>São as 4 incompatibilidades de stack que todo port atravessa. Fixá-las na Onda 0 destrava o resto.</p>
+<table>
+<thead>
+<tr>
+<th>Costura</th>
+<th>CBA</th>
+<th>NX</th>
+<th>O que o port exige</th>
+<th>Decisão recomendada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Styling</strong></td>
+<td>Tailwind v4, <code>@theme inline</code> + oklch (CSS-first, sem config), shadcn <code>new-york</code></td>
+<td>Tailwind v3.4, <code>tailwind.config</code> + <code>hsl(var())</code>, shadcn <code>default</code>, dark real</td>
+<td>Traduzir <strong>token a token</strong> os que faltam (oklch→HSL); re-gerar UI via CLI shadcn do NX</td>
+<td><strong>Traduzir p/ v3.</strong> NÃO subir o NX p/ v4 — reescreveria 200+ linhas de <code>@apply</code>/keyframes; ganho nulo, risco alto. NX tem MAIS tokens.</td>
+</tr>
+<tr>
+<td><strong>Server-fn</strong></td>
+<td><code>createServerFn().handler()</code> in-process (TanStack Start)</td>
+<td><code>Deno.serve</code> edge fn + <code>SERVICE_ROLE_KEY</code> server-only</td>
+<td>Cada <code>.handler</code> vira 1 edge fn Deno <strong>ou</strong> chamada client+RLS se for leitura simples</td>
+<td><strong>Re-home p/ edge fn.</strong> Template canônico baseado em <code>/tmp/cba-fresh/src/lib/public-booking.functions.ts</code>. <code>createServerFn</code> não existe no NX.</td>
+</tr>
+<tr>
+<td><strong>Auth-gateway</strong></td>
+<td><code>@lovable.dev/cloud-auth-js</code> (OAuth) + SSR Cloudflare gate</td>
+<td>Supabase auth (anon JWT + RLS) + edge fn com service_role</td>
+<td>Toda lógica usa JWT Supabase do NX; privilégio server-side só dentro de edge fn</td>
+<td><strong>Descartar Lovable.</strong> Validar que nenhum <code>@lovable.dev/*</code> sobrevive. Gate SSR do CBA não tem equivalente (vira Traefik p/ LP + RLS/JWT p/ app).</td>
+</tr>
+<tr>
+<td><strong>Routing + Data</strong></td>
+<td>File-based TanStack Router; schema <strong>singular PT</strong> (<code>salao</code>/<code>servico</code>/<code>agendamento</code>/<code>salao_id</code>, 1 nível)</td>
+<td>React Router 6 + <code>lazyWithRetry</code>; schema <strong>plural EN/ERP</strong> (<code>agendamentos</code>/<code>servico_catalogo</code>/<code>leads</code>/<code>organization_id</code>, multi-tenant)</td>
+<td>Re-wire <code>createFileRoute</code>→<code>&lt;Route&gt;</code>; <strong>naming map</strong> obrigatório CBA↔NX em toda query</td>
+<td><strong>React Router + naming map.</strong> Sem o map, todo port quebra silenciosamente em runtime (coluna/RLS inexistente). React 18 mantido — downlevel mecânico das APIs do React 19.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Roadmap por ondas</h2>
+<h3>Onda 0 — Fundação de adaptação (destrava tudo)</h3>
+<p><strong>Objetivo:</strong> fixar as 5 decisões de costura <em>antes</em> de portar qualquer feature, resolver o gotcha de fundação do <code>tailwind.config</code> duplicado, e produzir o template de re-home + naming map como docs de referência reutilizáveis.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resolver <code>tailwind.config</code> duplicado</td>
+<td>—</td>
+<td><code>apps/NexvyBeauty/tailwind.config.js</code> + <code>.ts</code></td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Traduzir tokens faltantes (oklch→HSL)</td>
+<td><code>src/styles.css</code></td>
+<td><code>src/index.css</code> + tailwind config</td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Template re-home server-fn→edge-fn (doc)</td>
+<td><code>src/lib/public-booking.functions.ts</code></td>
+<td>doc de referência</td>
+<td>server-fn</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Naming map de schema (doc)</td>
+<td>schema CBA singular</td>
+<td>schema NX plural</td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Diff design-system <code>new-york</code>↔<code>default</code> (doc)</td>
+<td><code>src/components/ui/</code> (46)</td>
+<td><code>src/components/ui/</code> (52)</td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Congelar lista do-que-NÃO-portar</td>
+<td><code>integrations/lovable</code>, <code>wrangler.jsonc</code>, <code>ai-gateway.server.ts</code>, <code>client.server.ts</code></td>
+<td>—</td>
+<td>auth-gateway</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> <code>_shared/ai-router.ts</code> + <code>_shared/ai.ts</code>; <code>vite.config</code> explícito (react-swc, não o caixa-preta <code>@lovable.dev/vite-tanstack-config</code>); paleta rosa <code>--primary 330 81% 60%</code>; <code>ThemeProvider</code> dark real; <code>client.ts</code> anon-key (service-role nunca no bundle).</p>
+<p><strong>Critério de DONE (binário):</strong>
+- [ ] Existe <strong>um único</strong> <code>tailwind.config</code> (o <code>.js</code> defasado removido/unificado com o <code>.ts</code> que tem <code>fontFamily Inter</code>/container/typography); <code>components.json</code> aponta pra ele.
+- [ ] <code>npm run build</code> no NexvyBeauty passa.
+- [ ] Tokens novos aparecem no bundle servido (<code>grep</code> de <code>bg-brand</code>/<code>bg-surface</code> no CSS gerado).
+- [ ] Dark/light continua alternando.
+- [ ] <strong>Zero</strong> <code>@lovable.dev/*</code> ou <code>@cloudflare/*</code> em <code>package.json</code> ou imports.</p>
+<p><strong>Dependências:</strong> nenhuma. É a raiz.</p>
+<hr />
+<h3>Onda 1 — UI/UX &amp; shell coeso <em>(prioridade do usuário)</em></h3>
+<p><strong>Objetivo:</strong> adotar o vocabulário visual do shell do CBA (sidebar agrupada por seção + rail colapsável de ícones + <code>PageHeader</code> padronizado) <strong>estendendo</strong> o <code>UnifiedShell</code> do NX, e unificar as <strong>DUAS cascas desktop</strong> do NX (<code>UnifiedShell</code> + o <code>Sidebar.tsx</code> flat do CRM) num único contrato visual. A vitória do CBA aqui é composição e padronização — <strong>não</strong> theming.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sidebar agrupada (<code>SidebarGroup</code>) + rail colapsável</td>
+<td><code>src/components/AppSidebar.tsx</code></td>
+<td><code>src/components/layout/UnifiedShell.tsx</code></td>
+<td>routing/styling</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td><code>PageHeader</code>/<code>FormDialog</code>/<code>NewButton</code></td>
+<td><code>src/components/PageHeader.tsx</code></td>
+<td><code>src/components/layout/PageHeader.tsx</code> (criar)</td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Aplicar <code>PageHeader</code> nas telas salão</td>
+<td>—</td>
+<td><code>src/pages/salao/*</code></td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Convergir casca do CRM (re-skin, manter tabs)</td>
+<td>—</td>
+<td><code>src/components/layout/Sidebar.tsx</code> + <code>src/pages/Index.tsx</code></td>
+<td>routing</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Footer sidebar (email + Sair)</td>
+<td><code>AppSidebar.tsx</code></td>
+<td><code>UnifiedShell.tsx</code></td>
+<td>styling</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Polish de tela premium (KPIs grid, recharts tematizado)</td>
+<td><code>src/routes/app.dashboard.tsx</code></td>
+<td><code>src/pages/salao/*</code> (referência)</td>
+<td>styling</td>
+<td class="eff-m">M</td>
+<td class="r-lo">baixo</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX (moat a manter):</strong> dark-mode real (<code>ThemeToggle</code> + next-themes — CBA tem <code>.dark</code> mas <strong>sem toggle</strong>); <code>MobileLayout</code>/<code>MobileBottomNav</code>/<code>MobileMoreMenu</code>; onboarding completo (<code>SplashScreen</code>/<code>GuidedOnboarding</code>/<code>SalaoActivationChecklist</code>); <code>AppTopBar</code> = <code>OrganizationSelector</code> (impersonação) + <code>WhatsAppDisconnectedBanner</code>; token set rico (<code>--gradient-*</code>/<code>--shadow-*</code>/<code>--success</code>/<code>--warning</code>); <code>lazyWithRetry</code>/<code>ProtectedRoute</code>; <code>ModuleHub</code> config-driven (<code>MODULE_DEFINITIONS</code> + <code>usePlanModules</code>).</p>
+<p><strong>Critério de DONE (binário):</strong>
+- [ ] <code>ModuleHub</code>, <code>salao/*</code> e CRM <code>Index</code> renderizam com sidebar <strong>visualmente idêntica</strong> (agrupada + rail colapsável).
+- [ ] <code>collapsible='icon'</code> funciona (exige <code>SidebarProvider</code> no topo — o <code>UnifiedShell</code> hoje usa <code>&lt;aside&gt;</code> manual sem Provider).
+- [ ] Em &lt;768px o rail colapsa pra Sheet (comportamento da primitiva shadcn) sem quebrar <code>MobileLayout</code>.
+- [ ] Toggle dark/light passa nas 3 cascas, zero cor hard-coded.
+- [ ] Tab-system in-memory do CRM (<code>activeTab</code>/<code>prefetchIndexTab</code>) <strong>preservado</strong> — re-skin por fora, não convertido em rotas.
+- [ ] Deploy provado por curl/screenshot da <code>app.</code> servida (não só build verde — ver phantom-deploy).</p>
+<p><strong>Dependências:</strong> Onda 0 (tokens + config unificado).</p>
+<hr />
+<h3>Onda 2 — Booking público de salão + Pacotes pré-pagos</h3>
+<p><strong>Objetivo:</strong> portar o booking público de salão (slot por jornada do profissional) + página de pacotes como 1 edge fn pública (<code>salao-public-booking</code>) + 2 páginas React Router, escrevendo em <code>agendamentos</code> (já existe) e tabelas <code>pacote</code>/<code>pacote_cliente</code> novas. <strong>Diferencial a somar (não está no CBA):</strong> confirmar via <code>evolution-send</code> (WhatsApp real) e vender pacote via Cakto.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4 server-fns de booking → 1 edge fn</td>
+<td><code>src/lib/public-booking.functions.ts</code></td>
+<td><code>supabase/functions/salao-public-booking/index.ts</code></td>
+<td>server-fn/auth</td>
+<td class="eff-g">G</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Migration: <code>pacote</code>/<code>pacote_cliente</code> + jornada + <code>booking_slug</code></td>
+<td>—</td>
+<td><code>migrations_salao/20260623_pacotes_e_booking_publico.sql</code></td>
+<td>data</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Wizard 5 passos</td>
+<td><code>src/routes/agendar.$slug.tsx</code></td>
+<td><code>src/pages/salao/AgendarPublico.tsx</code></td>
+<td>routing/styling</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Página pública de pacotes</td>
+<td><code>src/routes/pacotes.$slug.tsx</code></td>
+<td><code>src/pages/salao/PacotesPublico.tsx</code></td>
+<td>routing/styling</td>
+<td class="eff-m">M</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>CRUD interno de pacotes</td>
+<td><code>src/routes/app.pacotes.tsx</code></td>
+<td><code>src/pages/salao/Pacotes.tsx</code></td>
+<td>data</td>
+<td class="eff-m">M</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Confirmação WhatsApp (moat a somar)</td>
+<td>—</td>
+<td><code>invoke('evolution-send')</code> dentro da edge fn</td>
+<td>—</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Venda real via Cakto (moat a somar)</td>
+<td>—</td>
+<td><code>_shared/cakto-client.ts</code> <code>buildCaktoCheckoutUrl</code></td>
+<td>—</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> <code>evolution-send</code> como <strong>único</strong> caminho de WhatsApp; RLS por <code>organization_id</code> (leitura pública <strong>só</strong> via edge fn service_role — não abrir <code>anon</code> nas tabelas); Cakto como cobrança real (pacote nasce <code>pendente</code>, só vira <code>ativo</code> via <code>cakto-webhook</code> — <strong>não</strong> regredir pro "pagamento combinado" do CBA); <code>agendamentos</code> + <code>Agenda.tsx</code> do operador intactos; padrão de edge fn pública de <code>funnel-submit</code>.</p>
+<p><strong>Critério de DONE (binário):</strong> agendamento E2E pelo link público <strong>+</strong> mensagem WhatsApp real recebida <strong>+</strong> compra de pacote retorna <code>pay.cakto.com.br</code> válido e <code>cakto-webhook</code> muda status — <strong>os três provados em prod</strong>.</p>
+<p><strong>Dependências:</strong> Onda 0; baseline ERP salão (<code>migrations_salao/20260618_erp_salao.sql</code> — confirmado); Evolution conectada na org (sem ela o agendamento funciona, só não dispara WhatsApp); <code>_shared/cakto-client.ts</code> (confirmado); <code>organizations.booking_slug</code> populado.</p>
+<blockquote>
+<p><strong>Gotchas críticos:</strong> (1) NX <strong>não tem slug em <code>organizations</code></strong> — criar <code>booking_slug UNIQUE</code> ou o link público não resolve a org. (2) <code>profissionais</code> <strong>não tem</strong> <code>hora_inicio</code>/<code>hora_fim</code>/<code>dias_atendimento</code> — sem elas o algoritmo de slots não tem jornada. (3) NÃO confundir com <code>booking-availability</code>/<code>calendar_events</code> (Calendly de reunião — domínio diferente). (4) <code>evolution-send</code> espera telefone <strong>só dígitos</strong> — normalizar máscara antes. (5) Manter as <strong>duas</strong> checagens de overlap (slots + insert) contra race-condition.</p>
+</blockquote>
+<hr />
+<h3>Onda 3 — Plataforma-de-app: web-push + PWA + gate de borda</h3>
+<p><strong>Objetivo:</strong> portar o pipeline de web-push real do CBA (VAPID, subscribe/unsubscribe, <code>sendPushToUser</code> com GC de subs mortas 404/410) re-homeando os server-fns p/ edge fns Deno; portar os handlers <code>push</code>/<code>notificationclick</code> do <code>sw.js</code> <strong>sem matar o anti-stale-bundle do NX</strong>; tratar o gate SSR Cloudflare como <strong>não-portável</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sendPushToUser</code> + GC 404/410</td>
+<td><code>src/lib/push/push.server.ts</code></td>
+<td><code>supabase/functions/_shared/web-push.ts</code></td>
+<td>server-fn</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>4 edge fns push (subscribe/unsubscribe/vapid-public/test)</td>
+<td><code>src/lib/push/push.functions.ts</code></td>
+<td><code>supabase/functions/push-*/index.ts</code></td>
+<td>server-fn/auth</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Migration: <code>push_subscriptions</code> + VAPID + prefs por-tipo</td>
+<td>—</td>
+<td><code>migrations/*_push_subscriptions.sql</code> + <code>ALTER platform_settings</code>/<code>user_notification_settings</code></td>
+<td>data</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Handlers <code>sw.js</code> (só push/click)</td>
+<td><code>public/sw.js</code></td>
+<td><code>public/sw.js</code></td>
+<td>routing</td>
+<td class="eff-p">P</td>
+<td><strong>alto</strong></td>
+</tr>
+<tr>
+<td>UI subscribe/teste</td>
+<td><code>src/components/PushSubscriptionCard.tsx</code></td>
+<td><code>src/components/.../PushSubscriptionCard.tsx</code></td>
+<td>server-fn</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Acoplar push nos inserts de <code>notifications</code></td>
+<td><code>src/lib/crm/notificacoes.functions.ts</code></td>
+<td><code>auto-notifications</code>/<code>post-sale-engine</code>/<code>webchat-api</code></td>
+<td>server-fn</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> <strong><code>sw.js</code> cache-less DE PROPÓSITO</strong> (caching causou spinner infinito pós-deploy — NÃO trazer o app-shell network-first do CBA cru, só os 2 handlers); <code>notifications</code> + <code>useNotifications</code> (push é aditivo); <code>user_notification_settings</code> <strong>já é per-user</strong> com <code>push_enabled</code> (premissa do briefing "por-org" está parcialmente errada — só falta granularidade por-tipo + store de subscription); IA que executa (<code>lead-nba</code>→<code>evolution-send</code>); <code>main.tsx</code> SW registration guarded.</p>
+<p><strong>Critério de DONE (binário):</strong> clicar "Ativar" → permission granted → row em <code>push_subscriptions</code>; "Enviar teste" → notificação no device; evento real (ex: lead estagnado) → in-app <strong>E</strong> push chegam; <code>/sw.js</code> servido contém o novo <code>SW_VERSION</code> <strong>E</strong> <code>addEventListener('push')</code> <strong>E</strong> navigate de <code>/app</code> continua sem spinner pós-deploy. Provar <strong>os 2 canais</strong> (front via <code>deploy-vps.sh</code>, edge via <code>supabase functions deploy</code>).</p>
+<p><strong>Dependências:</strong> Onda 0; helper de edge fn autenticada por JWT do caller (<code>auth.getUser</code>); acesso de escrita a <code>fzhlbwhdejumkyqosuvq</code>; ícone — corrigir path CBA <code>/icon-192.png</code> → NX <code>/icons/icon-192x192.png</code>.</p>
+<blockquote>
+<p><strong>Gotchas:</strong> usar <code>@block65/webcrypto-web-push</code> (Web Crypto puro, edge-compatível via esm.sh) — <strong>NÃO</strong> a lib <code>web-push</code> do Node. VAPID private key é segredo (Seção 11): só a public sai via <code>push-vapid-public</code>. iOS Safari só com PWA instalado + 16.4+. NÃO portar <code>requireSupabaseAuth</code> do TanStack — usar <code>auth.getUser(jwt)</code>.</p>
+</blockquote>
+<hr />
+<h3>Onda 4 — Profundidade de CRM: scoring configurável + higiene + oportunidades</h3>
+<p><strong>Objetivo:</strong> portar 3 capacidades — (1) regras de scoring <strong>configuráveis</strong> (peso+decay por evento) que alimentam o decay temporal; (2) suíte de <strong>higiene</strong> (dedup/merge/normalizar-telefone/enriquecer-IA) que o NX não tem; (3) entidade de <strong>oportunidade</strong> aberta com forecasting ponderado.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crm_score_regra</code> + recompute configurável</td>
+<td><code>src/lib/crm/scoring.functions.ts</code></td>
+<td><code>migrations_salao/20260623_crm_score_regra.sql</code> + estender <code>recompute_lead_scores</code></td>
+<td>data</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Suíte de higiene (detect/merge/normalize/enrich)</td>
+<td><code>src/lib/crm/higiene.functions.ts</code></td>
+<td><code>supabase/functions/crm-higiene</code></td>
+<td>server-fn/data</td>
+<td class="eff-g">G</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td><code>crm_oportunidade</code> + KPIs ponderados</td>
+<td><code>src/lib/crm/oportunidades.functions.ts</code></td>
+<td><code>migrations_salao/20260623_crm_oportunidade.sql</code> + <code>supabase/functions/crm-oportunidade</code></td>
+<td>data/server-fn</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td><code>email_norm</code> em leads (dedup por email)</td>
+<td>—</td>
+<td><code>migrations_salao/20260623_leads_email_norm.sql</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>3 telas (tabs lazy)</td>
+<td><code>app.crm.scoring/higiene/oportunidades.tsx</code></td>
+<td><code>src/components/seller/*</code> + <code>src/pages/Index.tsx</code></td>
+<td>routing/styling</td>
+<td class="eff-m">M</td>
+<td class="r-lo">baixo</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> <code>recompute_lead_scores(p_org)</code> como <strong>função SQL pura</strong> chamada por <code>pg_cron</code> sem JWT (estender lendo <code>crm_score_regra</code>, <strong>não</strong> virar edge fn — quebraria o cron); RLS <code>organization_id in (select … from profiles where id=auth.uid())</code>; <code>_shared/phone.ts</code> <code>normalizePhoneBR</code> (E.164, <strong>não</strong> o <code>replace(\D)</code> ingênuo do CBA); <code>_shared/ai-router.ts</code> <code>resolveAIConfig</code> (enrich usa router multi-provedor, <strong>não</strong> <code>LOVABLE_API_KEY</code>); <code>lead-nba</code> como template de IA (tool-call estruturado, não <code>JSON.parse</code> frágil); <code>opportunity-scan</code> (Radar IA) é <strong>diferente</strong> de <code>crm_oportunidade</code> — não fundir (nomear "Negócios"/"Deals" na UI p/ evitar colisão).</p>
+<p><strong>Critério de DONE (binário):</strong> criar regra → <code>recompute</code> → score de um lead muda (provado antes/depois); <code>detect</code> retorna grupos → <code>merge</code> move FKs (<code>webchat_conversations</code>/<code>tasks</code>/<code>crm_oportunidade</code>/<code>lead_nba_sugestao</code>); criar oportunidade → KPI ponderado (Σ valor×prob/100) bate na conta manual. Migrations aplicadas em <code>fzhlbwhdejumkyqosuvq</code>, 2 edge fns deployadas.</p>
+<p><strong>Dependências:</strong> <code>recompute_lead_scores</code> + cron <code>lead-score-decay</code> (live 2026-06-23); <code>_shared/ai-router.ts</code> + <code>AI_API_KEY</code> (live 2026-06-22); <code>_shared/phone.ts</code>; schema <code>leads</code>/<code>pipeline_stages</code>/<code>webchat_*</code> em prod.</p>
+<blockquote>
+<p><strong>Gotcha de fundo:</strong> todo nome de tabela diverge (<code>crm_lead</code>/<code>crm_conversa</code>/<code>salao_id</code> → <code>leads</code>/<code>webchat_conversations</code>/<code>organization_id</code>). Copiar SQL/queries do CBA cru <strong>quebra</strong>. NÃO portar o <code>recomputeScoreBatch</code> (gambiarra confessa do CBA) — o <code>recompute_lead_scores</code> já é batch por org.</p>
+</blockquote>
+<hr />
+<h3>Onda 5 — IA conhecimento: KB + copiloto MIA com ações tipadas</h3>
+<p><strong>Objetivo:</strong> o NX já cobre/supera ~85% disto (KB ingestável, objeções com geração+refino IA, RAG <code>lead_semantic_memory</code>, <code>product_agents</code>, A/B <code>ai_prompt_*</code>, <code>sales-copilot</code> que injeta KB+objeções). O port real é fino: 3 flags/contadores + a <strong>única peça estrutural ausente</strong> — o ciclo copiloto human-in-the-loop com <strong>ações tipadas executáveis</strong> (sugere→aprova→executa no banco), que no CBA é <code>mia.functions.ts</code> e no NX hoje só devolve texto.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flag <code>visivel_para_ia</code> na KB</td>
+<td><code>src/lib/crm/kb.functions.ts</code></td>
+<td><code>ALTER ai_knowledge_base</code> + filtro em <code>sales-copilot/index.ts</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Contador <code>usos</code> em objeções</td>
+<td><code>src/lib/crm/playbook.functions.ts</code></td>
+<td><code>ALTER objections</code> + <code>ObjectionsView.tsx</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>★ Ciclo de ações tipadas (prepare/execute/reject/list)</td>
+<td><code>src/lib/crm/mia.functions.ts</code></td>
+<td><code>copilot-prepare-action</code> + <code>copilot-execute-action</code> edge fns</td>
+<td>server-fn/auth</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Tabela <code>copilot_actions</code></td>
+<td><code>crm_mia_acao</code></td>
+<td><code>migrations/*_copilot_actions.sql</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Painel "Ações sugeridas"</td>
+<td><code>app.crm.*.tsx</code></td>
+<td><code>src/components/seller/SellerInbox.tsx</code></td>
+<td>routing/styling</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> RAG <code>lead_semantic_memory</code> (jamais trocar pela busca <code>ilike</code> do CBA); <code>ai_prompt_experiments</code>/<code>ai_prompt_variants</code> + LLM-as-Judge; <code>process-knowledge-source</code> (ingestão website/YouTube); <code>product_agents</code> (capabilities tipadas — <strong>não</strong> regredir pro <code>crm_agente</code> raso); executor "responder" <strong>reusa <code>evolution-send</code></strong> (não cria canal); <code>agent_action_logs</code> como auditoria; escopo <code>product_id</code>/<code>organization_id</code>.</p>
+<p><strong>Critério de DONE (binário):</strong> salvar artigo com <code>visivel_para_ia=off</code> → some do contexto IA, fica na lista; abrir conversa → gerar ação → aprovar <code>adicionar_tag</code> aplica tag real / <code>responder</code> dispara WhatsApp via <code>evolution-send</code>; recusar muda status. <strong>Idempotência:</strong> ação só executa se <code>status='aprovada'</code> (clique duplo não dispara 2x WhatsApp).</p>
+<p><strong>Dependências:</strong> <code>webchat_conversations</code>/<code>webchat_messages</code> estáveis; Evolution operacional; <code>product_agents.active_in_copilot</code> + capabilities populados; <code>lead_stage_history</code>/<code>leads.status</code> (p/ ações mover_etapa/ganho-perdido).</p>
+<blockquote>
+<p><strong>Gotcha:</strong> <code>inbox-copilot</code> atual é hardcoded "oficina mecânica" (lê <code>inbox_messages</code>) — <strong>não</strong> é o copilot do salão (esse é <code>sales-copilot</code>). Não confundir ao re-homear. <code>prepare-action</code> deve respeitar <code>ai_prompt_variants</code> ativos (não introduzir prompt fixo que ignore o A/B).</p>
+</blockquote>
+<hr />
+<h3>Onda 6 — Paridade automação/omni/analytics</h3>
+<p><strong>Objetivo:</strong> portar 6 itens menores onde o CBA tem forma melhor — workflow builder UI, webhooks de <strong>saída</strong> assinados (HMAC), multi-funil, SLA por etapa, daily-report histórico org-level, ERP (Profissionais KPIs + Financeiro mensal/delete). Metade já tem base no NX (<code>lead_stage_history</code> p/ SLA, <code>capture_funnels</code> p/ multi-funil, <code>tag_automations</code> p/ parte do builder) — <strong>preencher lacunas, não recriar</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Origem CBA</th>
+<th>Alvo NX</th>
+<th>Costura</th>
+<th>Esforço</th>
+<th>Risco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ERP Profissionais (edit/delete + KPIs mensais)</td>
+<td><code>src/routes/app.profissionais.tsx</code></td>
+<td><code>src/pages/salao/Profissionais.tsx</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>ERP Financeiro (delete + filtro mensal)</td>
+<td><code>src/routes/app.financeiro.tsx</code></td>
+<td><code>src/pages/salao/Financeiro.tsx</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+<tr>
+<td>Daily-report histórico (org-level, persistido)</td>
+<td><code>src/lib/crm/daily-report.functions.ts</code></td>
+<td><code>daily-report-ai</code> (estender) + <code>crm_daily_report</code></td>
+<td>data/server-fn</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>SLA por etapa</td>
+<td>(evento <code>sla_estourado</code>)</td>
+<td><code>ALTER pipeline_stages</code> + agregar <code>lead_stage_history</code></td>
+<td>data</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Webhooks de saída HMAC</td>
+<td><code>src/lib/crm/webhooks.functions.ts</code></td>
+<td><code>outbound_webhooks</code> + <code>outbound-webhook-dispatch</code></td>
+<td>data/server-fn</td>
+<td class="eff-m">M</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Workflow builder (trigger→action)</td>
+<td><code>src/lib/crm/workflows.functions.ts</code></td>
+<td><code>crm_workflow</code> + <code>workflow-dispatcher</code> + <code>WorkflowBuilderPanel.tsx</code></td>
+<td>data/server-fn/routing</td>
+<td class="eff-g">G</td>
+<td class="r-md">médio</td>
+</tr>
+<tr>
+<td>Multi-funil (provável só UI)</td>
+<td><code>src/lib/crm/builder.functions.ts</code></td>
+<td><code>capture_funnels</code> + <code>funnel-api</code></td>
+<td>data</td>
+<td class="eff-p">P</td>
+<td class="r-lo">baixo</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Preserva do NX:</strong> <code>campaign-dispatcher</code>/<code>cadence-tick</code> (automação E2E real que envia via <code>evolution-send</code> — workflow <strong>orquestra</strong>, não reimplementa envio); <code>webhooks</code> <strong>INBOUND</strong> + <code>webhook-receiver</code> (saída é tabela <strong>nova</strong> <code>outbound_webhooks</code>, não colidir); <code>capture_funnels</code> (estender, não recriar com <code>crm_funnel</code> PT); <code>lead_stage_history</code> já populado (SLA só <strong>agrega</strong>); <code>tag_automations</code> (workflow é o caso genérico — reusar padrão de UI); ENUM financeiro <code>entrada/saida</code> (não copiar <code>receita/despesa</code> do CBA); action <code>atribuir_owner</code> usa <code>distribute-lead</code> (round-robin real) em vez do stub do CBA.</p>
+<p><strong>Critério de DONE (binário):</strong> workflow <code>lead.criado→criar_tarefa</code> → criar lead via <code>capture-lead</code> → tarefa criada + <code>crm_workflow_run</code> logado; outbound webhook → webhook.site → HMAC válido; daily snapshot gerado e legível no histórico; editar/excluir profissional + lançamento; SLA badge num lead parado.</p>
+<p><strong>Dependências:</strong> <code>pipeline_stages</code>/<code>lead_stage_history</code>, <code>capture_funnels</code>/<code>funnel-api</code>, <code>leads</code>/<code>lead_tag_assignments</code>/<code>tasks</code>/<code>notifications</code>/<code>distribute-lead</code>, <code>evolution-send</code>/<code>campaign-dispatcher</code>, <code>auto-notifications</code>. <strong>Pré-flight obrigatório:</strong> <code>list_tables</code> em <code>fzhlbwhdejumkyqosuvq</code> para confirmar schema EN real (não confiar no disco — <code>migrations_salao/</code> é não-padrão e tabelas CRM vivem no remoto).</p>
+<hr />
+<h2>O que NÃO portar (anti-escopo)</h2>
+<table>
+<thead>
+<tr>
+<th>Item descartado</th>
+<th>Por quê</th>
+<th>Substituto no NX</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>integrations/lovable</code> + <code>@lovable.dev/cloud-auth-js</code></td>
+<td>Auth OAuth Lovable</td>
+<td>Supabase auth (anon JWT + RLS)</td>
+</tr>
+<tr>
+<td><code>src/lib/ai-gateway.server.ts</code> (<code>LOVABLE_API_KEY</code> hardcoded)</td>
+<td>Cola de IA proprietária</td>
+<td><code>_shared/ai.ts</code> + <code>ai-router.ts</code> (env-driven)</td>
+</tr>
+<tr>
+<td><code>wrangler.jsonc</code> + <code>@cloudflare/vite-plugin</code> + <code>src/server.ts</code> (SSR)</td>
+<td>Stack Cloudflare Workers</td>
+<td>Docker/Traefik + edge fns Deno</td>
+</tr>
+<tr>
+<td><code>@lovable.dev/vite-tanstack-config</code> (vite caixa-preta)</td>
+<td>Injeta tanstackStart+tailwindcss+cloudflare</td>
+<td><code>vite.config</code> explícito (react-swc) do NX</td>
+</tr>
+<tr>
+<td><code>client.server.ts</code> (service-role no bundle)</td>
+<td>Vazaria key (viola Seção 11.1)</td>
+<td>service_role <strong>dentro</strong> da edge fn (<code>Deno.env</code>)</td>
+</tr>
+<tr>
+<td><code>styles.css</code> inteiro (oklch v4)</td>
+<td>NX tem token set mais rico em HSL</td>
+<td><code>index.css</code> v3 — só traduzir tokens faltantes</td>
+</tr>
+<tr>
+<td>App-shell network-first do <code>sw.js</code></td>
+<td>Causou spinner infinito pós-deploy no NX</td>
+<td><code>sw.js</code> cache-less + só handlers push/click</td>
+</tr>
+<tr>
+<td><code>crm_campanha_envio</code> (fila de campanha morta, sem consumer)</td>
+<td>Já morta no próprio CBA</td>
+<td><code>campaign-dispatcher</code>/<code>cadence-tick</code> do NX</td>
+</tr>
+<tr>
+<td><code>agentes.functions.ts</code> / <code>crm_agente</code></td>
+<td>Muito mais raso</td>
+<td><code>product_agents</code> (capabilities tipadas)</td>
+</tr>
+<tr>
+<td><code>recomputeScoreBatch</code> (gambiarra confessa)</td>
+<td>Pode nem rodar</td>
+<td><code>recompute_lead_scores(p_org)</code> (batch SQL)</td>
+</tr>
+<tr>
+<td><code>comprarPacote</code> "pagamento combinado"</td>
+<td>Regride o moat de cobrança</td>
+<td>Cakto checkout real (<code>cakto-webhook</code>)</td>
+</tr>
+<tr>
+<td>Migrar React 18→19 / Tailwind v3→v4</td>
+<td>Escopo-creep, ganho nulo, quebra 119 telas</td>
+<td>Downlevel mecânico + tradução de token</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Sequenciamento recomendado + estimativa agregada</h2>
+<p><strong>Ordem:</strong> <code>0 → 1 → 2 → 3 → 4 → 5 → 6</code>.</p>
+<ol>
+<li><strong>Onda 0 (P)</strong> primeiro e sozinha — sem o <code>tailwind.config</code> unificado e os tokens traduzidos, <strong>qualquer</strong> estilo portado pode não aparecer; sem o template de re-home e o naming map, todo port de feature trava ou quebra em runtime. É a raiz de dependência de todas as outras.</li>
+<li><strong>Onda 1 (M)</strong> logo após — é a <strong>prioridade declarada do usuário</strong> ("UI superior, não quero mais equiparar"), entrega valor visível cedo, e o <code>UnifiedShell</code>/<code>PageHeader</code> refatorados viram a casca onde as telas das Ondas 2/4/5/6 vão morar (evita retrabalho de re-skin depois).</li>
+<li><strong>Onda 2 (G)</strong> — primeira feature de receita (captação + venda de pacote), maior esforço, depende do shell pronto.</li>
+<li><strong>Onda 3 (M)</strong> — independente das features de CRM; pode rodar em paralelo conceitual com a 4, mas o gotcha do <code>sw.js</code> justifica isolá-la.</li>
+<li><strong>Onda 4 (G)</strong> — profundidade de CRM, depende de <code>leads</code>/<code>pipeline_stages</code> estáveis.</li>
+<li><strong>Onda 5 (M)</strong> — depende de 4 (pipeline/stage history p/ ações) e de inbox estável.</li>
+<li><strong>Onda 6 (G)</strong> — paridade fina, maior superfície de schema-mismatch; deixar por último porque depende de quase tudo (<code>lead_stage_history</code>, <code>capture_funnels</code>, <code>distribute-lead</code>).</li>
+</ol>
+<p><strong>Esforço agregado:</strong> 1×P (Onda 0) + 3×M (1, 3, 5) + 3×G (2, 4, 6). Em peso relativo: ~<strong>1 onda pequena de fundação + 3 médias + 3 grandes</strong>. As 3 grandes (booking+pacotes, profundidade CRM, paridade automação) concentram ~60% do trabalho; a fundação é barata mas <strong>bloqueante</strong>.</p>
+<hr />
+<h2>Riscos transversais &amp; mitigação</h2>
+<table>
+<thead>
+<tr>
+<th>Risco</th>
+<th>Onde mais dói</th>
+<th>Mitigação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tailwind v4→v3</strong> (classes/tokens incompatíveis por engine)</td>
+<td>1, 2, todas as UIs</td>
+<td>Traduzir token a token; ao copiar JSX validar que a classe existe na v3 (<code>bg-surface</code>→<code>bg-muted</code>); <strong>nunca</strong> subir o NX p/ v4. Re-gerar UI via CLI shadcn do NX.</td>
+</tr>
+<tr>
+<td><strong>React 19→18</strong> (<code>use()</code>, <code>useActionState</code>, ref-as-prop)</td>
+<td>1, 5 (forms)</td>
+<td>Downlevel mecânico; atenção a <code>react-hook-form</code>/<code>@hookform/resolvers</code> (CBA v5, NX v3 — breaking) e <code>date-fns</code> (CBA v4, NX v3.6 — assinaturas mudaram).</td>
+</tr>
+<tr>
+<td><strong>Re-home server-fn</strong> (<code>createServerFn</code> não existe; service-role)</td>
+<td>2, 3, 4, 5, 6</td>
+<td>Template canônico da Onda 0; leitura simples→client+RLS, privilégio→edge fn <code>SERVICE_ROLE_KEY</code>. Nunca importar service-role em código alcançável pelo bundle Vite (Seção 11.1).</td>
+</tr>
+<tr>
+<td><strong>Regressão de moat</strong> (jogar fora Evolution/Cakto/RAG/A-B/dark/ai-router ao "portar 1:1")</td>
+<td>2 (Cakto), 3 (sw.js/notif), 4 (ai-router/phone), 5 (RAG/agents)</td>
+<td>Coluna "Preserva do NX" é <strong>gate de revisão</strong> em cada onda. Pergunta-filtro: "isto degrada um moat?". Se sim, o port para.</td>
+</tr>
+<tr>
+<td><strong>Drift de migrations / schema-mismatch</strong> (PT singular vs EN plural; tabelas CRM só no remoto, <code>migrations_salao/</code> não-padrão)</td>
+<td>4, 6</td>
+<td>Naming map (Onda 0) obrigatório em toda query. Pré-flight <code>mcp list_tables</code> em <code>fzhlbwhdejumkyqosuvq</code> <strong>antes</strong> de codar — não confiar no disco. Regenerar <code>types.ts</code> pós-migration.</td>
+</tr>
+<tr>
+<td><strong>Phantom deploy</strong> (build verde ≠ código novo servido)</td>
+<td>1, 2, 3</td>
+<td><code>docker build --no-cache</code> + provar string/look no bundle <strong>servido</strong> (curl/screenshot), não no health. 2 canais distintos: front (<code>deploy-vps.sh</code>) + edge (<code>supabase functions deploy</code>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Primeiro passo concreto (esta semana)</h2>
+<p><strong>Toque a Onda 0, item 0 — resolver o <code>tailwind.config</code> duplicado — antes de qualquer outra coisa.</strong> Hoje coexistem, ambos tracked:
+- <code>/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tailwind.config.js</code> (o que o <strong>build usa</strong> — precedência de extensão <code>.js</code> antes de <code>.ts</code> no Tailwind v3, defasado)
+- <code>/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tailwind.config.ts</code> (o que <code>components.json</code> <strong>aponta</strong> — tem <code>fontFamily Inter</code>/container/typography, mas é ignorado pelo build)</p>
+<p>Enquanto isso não for unificado, <strong>qualquer token traduzido do CBA pode não aparecer</strong> (entra no <code>.ts</code> morto) e o diagnóstico vai ser confuso. Sequência mínima desta semana:</p>
+<ol>
+<li>Unificar num único config (consolidar o conteúdo do <code>.ts</code> no <code>.js</code> ou vice-versa, e alinhar <code>components.json</code>) → verifica: <code>npm run build</code> passa + só <strong>um</strong> config tracked.</li>
+<li>Traduzir de <code>/tmp/cba-fresh/src/styles.css</code> <strong>só</strong> os tokens que faltam (<code>--surface</code>, <code>--brand</code>/<code>--brand-foreground</code>/<code>--brand-master</code>, <code>.master-theme</code>, <code>--chart-2..5</code>), oklch→HSL, em <code>:root</code> e <code>.dark</code> do <code>src/index.css</code>, mantendo <code>--primary 330 81% 60%</code> → verifica: <code>grep</code> da classe nova no CSS servido.</li>
+<li>Escrever os 2 docs de referência (template re-home server-fn→edge-fn usando <code>public-booking.functions.ts</code> como exemplo; naming map CBA↔NX) — eles são consumidos por <strong>todas</strong> as ondas seguintes.</li>
+</ol>
+<p>Concluído isso, a Onda 1 (prioridade do usuário) destrava sem fricção de fundação.</p>
+<p>Arquivos-âncora desta semana: <code>apps/NexvyBeauty/tailwind.config.js</code>, <code>apps/NexvyBeauty/tailwind.config.ts</code>, <code>apps/NexvyBeauty/components.json</code>, <code>apps/NexvyBeauty/src/index.css</code>, <code>/tmp/cba-fresh/src/styles.css</code>.</p>
+<div class="foot">Gerado por workflow <code>cba-to-nx-port-roadmap</code> (run wf_ac81415e) · receitas verificadas contra /tmp/cba-fresh + NexvyBeauty · 2026-06-23</div>
+</div></body></html>

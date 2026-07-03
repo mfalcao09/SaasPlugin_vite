@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HANDOFF — Automação de Checkout Cakto (NexvyBeauty)</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--bd:#30363d;--fg:#e6edf3;--mut:#8b949e;--ac:#ec4899;--ok:#3fb950;--warn:#d29922;--code:#1f2630;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 16px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px;border-bottom:2px solid var(--ac);padding-bottom:12px}
+  h2{font-size:18px;margin:30px 0 10px;color:var(--ac)}
+  .meta{color:var(--mut);font-size:13px;margin-bottom:18px}
+  .badge{display:inline-block;background:rgba(63,185,80,.15);color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:2px 12px;font-size:13px;font-weight:600}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px 20px;margin:14px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+  th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left}
+  th{background:#0f141a;color:var(--mut);font-weight:600}
+  code{background:var(--code);padding:1.5px 6px;border-radius:5px;font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a5d6ff}
+  a{color:#58a6ff}
+  ul{margin:8px 0;padding-left:22px}li{margin:4px 0}
+  .ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}
+  .pill{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid}
+  .pill.ok{border-color:var(--ok);background:rgba(63,185,80,.12);color:var(--ok)}
+  .note{border-left:3px solid var(--warn);padding:8px 14px;background:rgba(210,153,34,.08);border-radius:0 8px 8px 0}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>HANDOFF — Automação de Checkout Cakto (NexvyBeauty) <span class="badge">✅ DONE · EM PRODUÇÃO</span></h1>
+<div class="meta">
+  Para a sessão master/coordenadora + sessão da vitrine <code>/vendas</code> ·
+  Frente: afiliados/pagamentos · Data: 2026-06-21 ·
+  Sessão <code>e6154015-…</code> · Branch <code>feat/afiliados-proprios</code> (<code>acf23be</code>) ·
+  Prod (main) <code>3ba8635</code>
+</div>
+
+<div class="card">
+<strong>TL;DR —</strong> A geração dos links de checkout Cakto dos planos foi <strong>automatizada</strong>.
+Antes: colar link à mão em <code>platform_plans</code>. Agora: <strong>1 botão "Sincronizar com a Cakto"</strong>
+(super-admin → Pagamentos → Vínculo de planos) que descobre os produtos na Cakto, casa cada um com o plano
+(por <strong>nome</strong> ou <strong>preço</strong>), gera as ofertas <strong>mensal + anual</strong> e grava as URLs.
+No ar e verificado (6 links HTTP 200).
+</div>
+
+<h2>Estado em produção (verificado 2026-06-21)</h2>
+<table>
+<tr><th>Plano</th><th>Mensal</th><th>Anual</th><th>Produto Cakto</th><th>Status</th></tr>
+<tr><td>Trial (R$0)</td><td>—</td><td>—</td><td>—</td><td>pulado (grátis)</td></tr>
+<tr><td>Starter (247/2470)</td><td><a href="https://pay.cakto.com.br/pgbqvbc">pgbqvbc</a></td><td><a href="https://pay.cakto.com.br/y9t5rao">y9t5rao</a></td><td><code>f23d881f-…</code></td><td><span class="pill ok">200</span></td></tr>
+<tr><td>Pro (391/3910)</td><td><a href="https://pay.cakto.com.br/3cmp8i2">3cmp8i2</a></td><td><a href="https://pay.cakto.com.br/35p4eig">35p4eig</a></td><td><code>2714084a-…</code></td><td><span class="pill ok">200</span></td></tr>
+<tr><td>Premium (587/5870)</td><td><a href="https://pay.cakto.com.br/hqete53">hqete53</a></td><td><a href="https://pay.cakto.com.br/f49okf4">f49okf4</a></td><td><code>e77c9869-…</code></td><td><span class="pill ok">200</span></td></tr>
+</table>
+<p class="meta">Colunas gravadas por plano: <code>checkout_url</code>, <code>checkout_url_yearly</code>, <code>checkout_url_cakto</code>, <code>cakto_offer_slug</code>, <code>cakto_product_id</code>.</p>
+
+<h2>O que foi construído</h2>
+<div class="card">
+<strong>Backend</strong> (Supabase <code>fzhlbwhdejumkyqosuvq</code>):
+<ul>
+<li><code>_shared/cakto-client.ts</code> — caktoCreateOffer/UpdateOffer/RetrieveOffer/ListOffers/ListProducts, buildCaktoCheckoutUrl, slugFromCaktoUrl.</li>
+<li><code>cakto-sync-offer/index.ts</code> (novo, deployado) — gate super_admin; modos <code>{plan_id}</code> e <code>{all:true}</code> com auto-match produto↔plano (nome/preço); reconciliação por preço+recorrência; URL = <code>${CAKTO_CHECKOUT_BASE}/${slug}</code>.</li>
+</ul>
+<strong>Frontend</strong> (<code>app.nexvybeauty.com.br</code>):
+<ul>
+<li><code>usePlatformPlans.ts</code> — hooks useSyncCaktoOffer (1 plano) + useSyncAllCaktoPlans (bulk).</li>
+<li><code>PlanFormDialog.tsx</code> — dispara sync ao salvar plano (não-bloqueante).</li>
+<li><code>CaktoPlanMapping.tsx</code> — redesenho 1-clique; removidos campos manuais Slug/URL (read-only gerados).</li>
+</ul>
+</div>
+
+<h2>Deploy realizado</h2>
+<ul>
+<li>Edge Function <code>cakto-sync-offer</code> → deployada no Supabase.</li>
+<li>Frontend: <strong>só o commit do Cakto</strong> cherry-pickado p/ <code>main</code> (<code>b4975b9 → 3ba8635</code>, FF) → VPS <code>git pull</code> + rebuild Docker <code>--no-cache</code> (<code>nexvy-beauty</code>) → Traefik hot-reload. Provado: string nova no bundle servido + HTTP 200.</li>
+</ul>
+<div class="note"><span class="warn">IMPORTANTE p/ a master:</span> o branch <code>feat/afiliados-proprios</code> carrega a <strong>feature de afiliados inteira (8 commits)</strong> que <strong>NÃO foi para produção</strong>. Só o checkout Cakto (<code>3ba8635</code>) está em prod. O resto = release separado.</div>
+
+<h2>Para a vitrine <code>/vendas</code></h2>
+<p>Já pode consumir, lendo <code>platform_plans</code> (planos pagos ativos): <code>checkout_url</code> (mensal) e <code>checkout_url_yearly</code> (anual) como botões de assinatura. Trial é grátis (sem checkout). Planos: Trial, Starter, Pro, Premium.</p>
+
+<h2>Como operar daqui pra frente</h2>
+<ul>
+<li><strong>Mudou o preço</strong> → "Sincronizar com a Cakto" (gera oferta nova; assinantes ativos da antiga não são afetados).</li>
+<li><strong>Plano novo</strong> → criar 1 produto na Cakto com o <strong>mesmo nome do plano</strong> → "Sincronizar" (auto-match por nome).</li>
+<li><strong>Pré-req:</strong> API key da credencial <code>platform</code> com escopo <code>write offers</code> — <span class="ok">já OK</span>.</li>
+<li><strong>Domínio próprio de checkout</strong>: Cakto não suporta nos docs (só <code>pay.cakto.com.br</code>). Base = env <code>CAKTO_CHECKOUT_BASE</code> (trocar 1 var se liberar/302 no Traefik).</li>
+</ul>
+
+<h2>Memórias gravadas (cross-sessão)</h2>
+<ul>
+<li><code>reference_cakto_offer_api_checkout_url_2026-06-20.md</code> — API Cakto ofertas/produtos.</li>
+<li><code>feedback_cakto_checkout_ux_oneclick_2026-06-21.md</code> — UX 1-clique + deploy isolado de feature-branch.</li>
+</ul>
+
+<h2>Localização da sessão</h2>
+<ul>
+<li>JSONL: <code>/Users/marcelosilva/.claude/projects/-Users-marcelosilva-Projects-GitHub/e6154015-9d5b-486c-8440-caad60c6b36d.jsonl</code></li>
+<li>cliSessionId: <code>e6154015-9d5b-486c-8440-caad60c6b36d</code></li>
+</ul>
+
+</div></body></html>

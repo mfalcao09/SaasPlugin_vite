@@ -1,0 +1,321 @@
+Deploying Function: super-admin-manage-user
+Uploading asset (super-admin-manage-user): supabase/functions/super-admin-manage-user/index.ts
+Deploying Function: webchat-api
+Uploading asset (webchat-api): supabase/functions/webchat-api/index.ts
+Deploying Function: admin-agent-summary
+Uploading asset (admin-agent-summary): supabase/functions/admin-agent-summary/index.ts
+Uploading asset (admin-agent-summary): supabase/functions/_shared/admin-send.ts
+Deploying Function: google-calendar-callback
+Uploading asset (google-calendar-callback): supabase/functions/google-calendar-callback/index.ts
+Deploying Function: handle-objection
+Uploading asset (handle-objection): supabase/functions/handle-objection/index.ts
+Uploading asset (handle-objection): supabase/functions/_shared/ai-call.ts
+Uploading asset (handle-objection): supabase/functions/_shared/ai.ts
+Uploading asset (handle-objection): supabase/functions/_shared/ai-router.ts
+Deploying Function: set-user-password
+Uploading asset (set-user-password): supabase/functions/set-user-password/index.ts
+Deploying Function: start-whatsapp-conversation
+Uploading asset (start-whatsapp-conversation): supabase/functions/start-whatsapp-conversation/index.ts
+Uploading asset (start-whatsapp-conversation): supabase/functions/_shared/phone.ts
+Deploying Function: cadence-tick
+Uploading asset (cadence-tick): supabase/functions/cadence-tick/index.ts
+Uploading asset (cadence-tick): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: catalog-sync-website
+Uploading asset (catalog-sync-website): supabase/functions/catalog-sync-website/index.ts
+Deploying Function: create-team-member
+Uploading asset (create-team-member): supabase/functions/create-team-member/index.ts
+Deploying Function: firecrawl-crawl
+Uploading asset (firecrawl-crawl): supabase/functions/firecrawl-crawl/index.ts
+Deploying Function: test-integration
+Uploading asset (test-integration): supabase/functions/test-integration/index.ts
+Deploying Function: google-calendar-refresh
+Uploading asset (google-calendar-refresh): supabase/functions/google-calendar-refresh/index.ts
+Deploying Function: send-csat
+Uploading asset (send-csat): supabase/functions/send-csat/index.ts
+Deploying Function: send-invite-email
+Uploading asset (send-invite-email): supabase/functions/send-invite-email/index.ts
+Uploading asset (send-invite-email): supabase/functions/_shared/platform-email-send.ts
+Deploying Function: agent-supervisor
+Uploading asset (agent-supervisor): supabase/functions/agent-supervisor/index.ts
+Deploying Function: ai-followup-cron
+Uploading asset (ai-followup-cron): supabase/functions/ai-followup-cron/index.ts
+Deploying Function: quiz-ai-result
+Uploading asset (quiz-ai-result): supabase/functions/quiz-ai-result/index.ts
+Uploading asset (quiz-ai-result): supabase/functions/_shared/ai-router.ts
+Uploading asset (quiz-ai-result): supabase/functions/_shared/ai.ts
+Deploying Function: funnel-chatbot-start
+Uploading asset (funnel-chatbot-start): supabase/functions/funnel-chatbot-start/index.ts
+Deploying Function: webchat-bot
+Uploading asset (webchat-bot): supabase/functions/webchat-bot/index.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/name-utils.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/humanizer.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/ai-router.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/ai.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/registry.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/impl/consultar_historico_cliente.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/types.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/impl/agendar_followup.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/impl/aplicar_etiqueta.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/impl/gerar_link_pagamento.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/tools/impl/criar_deal.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/quick-menu.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/orchestrator.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/ai-call.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/prompt-variables.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/handoff-parser.ts
+Uploading asset (webchat-bot): supabase/functions/_shared/agent-matcher.ts
+Deploying Function: evolution-proxy
+Uploading asset (evolution-proxy): supabase/functions/evolution-proxy/index.ts
+Deploying Function: generate-agent-ai
+Uploading asset (generate-agent-ai): supabase/functions/generate-agent-ai/index.ts
+Uploading asset (generate-agent-ai): supabase/functions/_shared/agent-prompt-templates.ts
+Deploying Function: webhook-receiver
+Uploading asset (webhook-receiver): supabase/functions/webhook-receiver/index.ts
+Uploading asset (webhook-receiver): supabase/functions/_shared/phone.ts
+Deploying Function: hotmart-sync-orders
+Uploading asset (hotmart-sync-orders): supabase/functions/hotmart-sync-orders/index.ts
+Deploying Function: sales-copilot
+Uploading asset (sales-copilot): supabase/functions/sales-copilot/index.ts
+Uploading asset (sales-copilot): supabase/functions/_shared/ai-router.ts
+Uploading asset (sales-copilot): supabase/functions/_shared/ai.ts
+Deploying Function: create-organization-admin
+Uploading asset (create-organization-admin): supabase/functions/create-organization-admin/index.ts
+Deploying Function: sankhya-auth
+Uploading asset (sankhya-auth): supabase/functions/sankhya-auth/index.ts
+Deploying Function: campaign-recurring-snapshot
+Uploading asset (campaign-recurring-snapshot): supabase/functions/campaign-recurring-snapshot/index.ts
+Uploading asset (campaign-recurring-snapshot): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: catalog-search
+Uploading asset (catalog-search): supabase/functions/catalog-search/index.ts
+Deploying Function: distribute-lead
+Uploading asset (distribute-lead): supabase/functions/distribute-lead/index.ts
+Deploying Function: evolution-webhook
+Uploading asset (evolution-webhook): supabase/functions/evolution-webhook/index.ts
+Uploading asset (evolution-webhook): supabase/functions/_shared/presence.ts
+Uploading asset (evolution-webhook): supabase/functions/_shared/phone.ts
+Deploying Function: process-training-material
+Uploading asset (process-training-material): supabase/functions/process-training-material/index.ts
+Deploying Function: save-ai-credential
+Uploading asset (save-ai-credential): supabase/functions/save-ai-credential/index.ts
+Deploying Function: start-conversation
+Uploading asset (start-conversation): supabase/functions/start-conversation/index.ts
+Deploying Function: admin-agent-handle-inbound
+Uploading asset (admin-agent-handle-inbound): supabase/functions/admin-agent-handle-inbound/index.ts
+Uploading asset (admin-agent-handle-inbound): supabase/functions/_shared/handoff-parser.ts
+Uploading asset (admin-agent-handle-inbound): supabase/functions/_shared/admin-send.ts
+Deploying Function: cadence-api
+Uploading asset (cadence-api): supabase/functions/cadence-api/index.ts
+Deploying Function: cadence-enroll
+Uploading asset (cadence-enroll): supabase/functions/cadence-enroll/index.ts
+Uploading asset (cadence-enroll): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: webchat-inbox
+Uploading asset (webchat-inbox): supabase/functions/webchat-inbox/index.ts
+Deploying Function: auth-email-hook
+Uploading asset (auth-email-hook): supabase/functions/auth-email-hook/deno.json
+Uploading asset (auth-email-hook): supabase/functions/auth-email-hook/index.ts
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/reauthentication.tsx
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/email-change.tsx
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/recovery.tsx
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/magic-link.tsx
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/invite.tsx
+Uploading asset (auth-email-hook): supabase/functions/_shared/email-templates/signup.tsx
+Deploying Function: campaign-start
+Uploading asset (campaign-start): supabase/functions/campaign-start/index.ts
+Uploading asset (campaign-start): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: handle-email-suppression
+Uploading asset (handle-email-suppression): supabase/functions/handle-email-suppression/deno.json
+Uploading asset (handle-email-suppression): supabase/functions/handle-email-suppression/index.ts
+Deploying Function: import-agent-from-document
+Uploading asset (import-agent-from-document): supabase/functions/import-agent-from-document/index.ts
+Deploying Function: cadence-stop
+Uploading asset (cadence-stop): supabase/functions/cadence-stop/index.ts
+Uploading asset (cadence-stop): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: funnel-submit
+Uploading asset (funnel-submit): supabase/functions/funnel-submit/index.ts
+Deploying Function: hotmart-test-credentials
+Uploading asset (hotmart-test-credentials): supabase/functions/hotmart-test-credentials/index.ts
+Deploying Function: send-mass-email
+Uploading asset (send-mass-email): supabase/functions/send-mass-email/index.ts
+Deploying Function: webchat-widget
+Uploading asset (webchat-widget): supabase/functions/webchat-widget/index.ts
+Deploying Function: firecrawl-map
+Uploading asset (firecrawl-map): supabase/functions/firecrawl-map/index.ts
+Deploying Function: handle-email-unsubscribe
+Uploading asset (handle-email-unsubscribe): supabase/functions/handle-email-unsubscribe/deno.json
+Uploading asset (handle-email-unsubscribe): supabase/functions/handle-email-unsubscribe/index.ts
+Deploying Function: memory-embedder
+Uploading asset (memory-embedder): supabase/functions/memory-embedder/index.ts
+Deploying Function: process-scheduled-messages
+Uploading asset (process-scheduled-messages): supabase/functions/process-scheduled-messages/index.ts
+Deploying Function: auto-notifications
+Uploading asset (auto-notifications): supabase/functions/auto-notifications/index.ts
+Deploying Function: evolution-send
+Uploading asset (evolution-send): supabase/functions/evolution-send/index.ts
+Deploying Function: firecrawl-scrape
+Uploading asset (firecrawl-scrape): supabase/functions/firecrawl-scrape/index.ts
+Deploying Function: inbox-auto-assign
+Uploading asset (inbox-auto-assign): supabase/functions/inbox-auto-assign/index.ts
+Deploying Function: process-post-sale-scheduled
+Uploading asset (process-post-sale-scheduled): supabase/functions/process-post-sale-scheduled/index.ts
+Deploying Function: agent-handoff-greeter
+Uploading asset (agent-handoff-greeter): supabase/functions/agent-handoff-greeter/index.ts
+Deploying Function: cakto-proxy
+Uploading asset (cakto-proxy): supabase/functions/cakto-proxy/index.ts
+Uploading asset (cakto-proxy): supabase/functions/_shared/cakto-client.ts
+Deploying Function: campaign-dispatcher
+Uploading asset (campaign-dispatcher): supabase/functions/campaign-dispatcher/index.ts
+Uploading asset (campaign-dispatcher): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: catalog-import-csv
+Uploading asset (catalog-import-csv): supabase/functions/catalog-import-csv/index.ts
+Deploying Function: generate-objections
+Uploading asset (generate-objections): supabase/functions/generate-objections/index.ts
+Uploading asset (generate-objections): supabase/functions/_shared/ai-call.ts
+Uploading asset (generate-objections): supabase/functions/_shared/ai.ts
+Uploading asset (generate-objections): supabase/functions/_shared/ai-router.ts
+Deploying Function: send-broadcast
+Uploading asset (send-broadcast): supabase/functions/send-broadcast/index.ts
+Deploying Function: presence-test
+Uploading asset (presence-test): supabase/functions/presence-test/index.ts
+Uploading asset (presence-test): supabase/functions/_shared/presence.ts
+Deploying Function: process-media-message
+Uploading asset (process-media-message): supabase/functions/process-media-message/index.ts
+Uploading asset (process-media-message): supabase/functions/_shared/ai-credentials.ts
+Uploading asset (process-media-message): supabase/functions/_shared/ai.ts
+Deploying Function: transcribe-audio
+Uploading asset (transcribe-audio): supabase/functions/transcribe-audio/index.ts
+Deploying Function: admin-agent-alerts
+Uploading asset (admin-agent-alerts): supabase/functions/admin-agent-alerts/index.ts
+Uploading asset (admin-agent-alerts): supabase/functions/_shared/admin-send.ts
+Deploying Function: campaign-preview
+Uploading asset (campaign-preview): supabase/functions/campaign-preview/index.ts
+Uploading asset (campaign-preview): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: memory-search
+Uploading asset (memory-search): supabase/functions/memory-search/index.ts
+Deploying Function: whatsapp-webhook
+Uploading asset (whatsapp-webhook): supabase/functions/whatsapp-webhook/index.ts
+Deploying Function: bootstrap-super-admin
+Uploading asset (bootstrap-super-admin): supabase/functions/bootstrap-super-admin/index.ts
+Deploying Function: funnel-api
+Uploading asset (funnel-api): supabase/functions/funnel-api/index.ts
+Uploading asset (funnel-api): supabase/functions/_shared/ai-router.ts
+Uploading asset (funnel-api): supabase/functions/_shared/ai.ts
+Deploying Function: optimize-product-field
+Uploading asset (optimize-product-field): supabase/functions/optimize-product-field/index.ts
+Uploading asset (optimize-product-field): supabase/functions/_shared/ai-call.ts
+Uploading asset (optimize-product-field): supabase/functions/_shared/ai.ts
+Uploading asset (optimize-product-field): supabase/functions/_shared/ai-router.ts
+Deploying Function: prompt-experiment-pick
+Uploading asset (prompt-experiment-pick): supabase/functions/prompt-experiment-pick/index.ts
+Deploying Function: sankhya-sync-clients
+Uploading asset (sankhya-sync-clients): supabase/functions/sankhya-sync-clients/index.ts
+Deploying Function: auto-promote-super-admin
+Uploading asset (auto-promote-super-admin): supabase/functions/auto-promote-super-admin/index.ts
+Deploying Function: funnel-generate-ai
+Uploading asset (funnel-generate-ai): supabase/functions/funnel-generate-ai/index.ts
+Deploying Function: send-catalog-item
+Uploading asset (send-catalog-item): supabase/functions/send-catalog-item/index.ts
+Deploying Function: campaign-ai-insights
+Uploading asset (campaign-ai-insights): supabase/functions/campaign-ai-insights/index.ts
+Uploading asset (campaign-ai-insights): supabase/functions/_shared/ai.ts
+Deploying Function: form-generate-ai
+Uploading asset (form-generate-ai): supabase/functions/form-generate-ai/index.ts
+Deploying Function: hotmart-webhook
+Uploading asset (hotmart-webhook): supabase/functions/hotmart-webhook/index.ts
+Deploying Function: opportunity-scan-cron
+Uploading asset (opportunity-scan-cron): supabase/functions/opportunity-scan-cron/index.ts
+Deploying Function: opportunity-scan-run
+Uploading asset (opportunity-scan-run): supabase/functions/opportunity-scan-run/index.ts
+Deploying Function: booking-availability
+Uploading asset (booking-availability): supabase/functions/booking-availability/index.ts
+Deploying Function: cakto-webhook
+Uploading asset (cakto-webhook): supabase/functions/cakto-webhook/index.ts
+Uploading asset (cakto-webhook): supabase/functions/_shared/cakto-plan-provisioning.ts
+Uploading asset (cakto-webhook): supabase/functions/_shared/cakto-client.ts
+Deploying Function: campaign-on-response
+Uploading asset (campaign-on-response): supabase/functions/campaign-on-response/index.ts
+Uploading asset (campaign-on-response): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: delete-organization
+Uploading asset (delete-organization): supabase/functions/delete-organization/index.ts
+Deploying Function: ensure-default-super-admin
+Uploading asset (ensure-default-super-admin): supabase/functions/ensure-default-super-admin/index.ts
+Deploying Function: generate-insights
+Uploading asset (generate-insights): supabase/functions/generate-insights/index.ts
+Uploading asset (generate-insights): supabase/functions/_shared/ai-router.ts
+Uploading asset (generate-insights): supabase/functions/_shared/ai.ts
+Deploying Function: inbox-followup
+Uploading asset (inbox-followup): supabase/functions/inbox-followup/index.ts
+Deploying Function: preview-transactional-email
+Uploading asset (preview-transactional-email): supabase/functions/preview-transactional-email/deno.json
+Uploading asset (preview-transactional-email): supabase/functions/preview-transactional-email/index.ts
+Uploading asset (preview-transactional-email): supabase/functions/_shared/transactional-email-templates/registry.ts
+Uploading asset (preview-transactional-email): supabase/functions/_shared/transactional-email-templates/welcome-admin-access.tsx
+Uploading asset (preview-transactional-email): supabase/functions/_shared/transactional-email-templates/test-email.tsx
+Uploading asset (preview-transactional-email): supabase/functions/_shared/transactional-email-templates/platform-generic.tsx
+Deploying Function: daily-report-ai
+Uploading asset (daily-report-ai): supabase/functions/daily-report-ai/index.ts
+Deploying Function: doppus-webhook
+Uploading asset (doppus-webhook): supabase/functions/doppus-webhook/index.ts
+Uploading asset (doppus-webhook): supabase/functions/_shared/post-sale-engine.ts
+Deploying Function: evaluate-conversation
+Uploading asset (evaluate-conversation): supabase/functions/evaluate-conversation/index.ts
+Deploying Function: google-calendar-sync
+Uploading asset (google-calendar-sync): supabase/functions/google-calendar-sync/index.ts
+Deploying Function: send-transactional-email
+Uploading asset (send-transactional-email): supabase/functions/send-transactional-email/deno.json
+Uploading asset (send-transactional-email): supabase/functions/send-transactional-email/index.ts
+Uploading asset (send-transactional-email): supabase/functions/_shared/transactional-email-templates/registry.ts
+Uploading asset (send-transactional-email): supabase/functions/_shared/transactional-email-templates/welcome-admin-access.tsx
+Uploading asset (send-transactional-email): supabase/functions/_shared/transactional-email-templates/test-email.tsx
+Uploading asset (send-transactional-email): supabase/functions/_shared/transactional-email-templates/platform-generic.tsx
+Deploying Function: analyze-conversation
+Uploading asset (analyze-conversation): supabase/functions/analyze-conversation/index.ts
+Uploading asset (analyze-conversation): supabase/functions/_shared/ai.ts
+Deploying Function: cakto-recovery-trigger
+Uploading asset (cakto-recovery-trigger): supabase/functions/cakto-recovery-trigger/index.ts
+Deploying Function: booking-submit
+Uploading asset (booking-submit): supabase/functions/booking-submit/index.ts
+Deploying Function: funnel-execute-webhook
+Uploading asset (funnel-execute-webhook): supabase/functions/funnel-execute-webhook/index.ts
+Deploying Function: google-calendar-auth
+Uploading asset (google-calendar-auth): supabase/functions/google-calendar-auth/index.ts
+Deploying Function: process-knowledge-source
+Uploading asset (process-knowledge-source): supabase/functions/process-knowledge-source/index.ts
+Deploying Function: sankhya-sync-products
+Uploading asset (sankhya-sync-products): supabase/functions/sankhya-sync-products/index.ts
+Deploying Function: webchat-handler
+Uploading asset (webchat-handler): supabase/functions/webchat-handler/index.ts
+Deploying Function: manual-outreach
+Uploading asset (manual-outreach): supabase/functions/manual-outreach/index.ts
+Uploading asset (manual-outreach): supabase/functions/_shared/humanizer.ts
+Deploying Function: send-notification-email
+Uploading asset (send-notification-email): supabase/functions/send-notification-email/index.ts
+Uploading asset (send-notification-email): supabase/functions/_shared/platform-email-send.ts
+Deploying Function: process-email-queue
+Uploading asset (process-email-queue): supabase/functions/process-email-queue/deno.json
+Uploading asset (process-email-queue): supabase/functions/process-email-queue/index.ts
+Deploying Function: booking-dispatcher
+Uploading asset (booking-dispatcher): supabase/functions/booking-dispatcher/index.ts
+Uploading asset (booking-dispatcher): supabase/functions/_shared/booking-templates.ts
+Deploying Function: cakto-reprocess-order
+Uploading asset (cakto-reprocess-order): supabase/functions/cakto-reprocess-order/index.ts
+Uploading asset (cakto-reprocess-order): supabase/functions/_shared/cakto-plan-provisioning.ts
+Deploying Function: inbox-copilot
+Uploading asset (inbox-copilot): supabase/functions/inbox-copilot/index.ts
+Deploying Function: quiz-generate-ai
+Uploading asset (quiz-generate-ai): supabase/functions/quiz-generate-ai/index.ts
+Deploying Function: send-booking-confirmation
+Uploading asset (send-booking-confirmation): supabase/functions/send-booking-confirmation/index.ts
+Uploading asset (send-booking-confirmation): supabase/functions/_shared/platform-email-send.ts
+Deploying Function: cadence-on-response
+Uploading asset (cadence-on-response): supabase/functions/cadence-on-response/index.ts
+Uploading asset (cadence-on-response): supabase/functions/_shared/campaign-audience.ts
+Deploying Function: facebook-leads-webhook
+Uploading asset (facebook-leads-webhook): supabase/functions/facebook-leads-webhook/index.ts
+Deploying Function: form-submit
+Uploading asset (form-submit): supabase/functions/form-submit/index.ts
+Deploying Function: sankhya-create-order
+Uploading asset (sankhya-create-order): supabase/functions/sankhya-create-order/index.ts
+Deployed Functions on project fzhlbwhdejumkyqosuvq: admin-agent-alerts, admin-agent-handle-inbound, admin-agent-summary, agent-handoff-greeter, agent-supervisor, ai-followup-cron, analyze-conversation, auth-email-hook, auto-notifications, auto-promote-super-admin, booking-availability, booking-dispatcher, booking-submit, bootstrap-super-admin, cadence-api, cadence-enroll, cadence-on-response, cadence-stop, cadence-tick, cakto-proxy, cakto-recovery-trigger, cakto-reprocess-order, cakto-webhook, campaign-ai-insights, campaign-dispatcher, campaign-on-response, campaign-preview, campaign-recurring-snapshot, campaign-start, catalog-import-csv, catalog-search, catalog-sync-website, create-organization-admin, create-team-member, daily-report-ai, delete-organization, distribute-lead, doppus-webhook, ensure-default-super-admin, evaluate-conversation, evolution-proxy, evolution-send, evolution-webhook, facebook-leads-webhook, firecrawl-crawl, firecrawl-map, firecrawl-scrape, form-generate-ai, form-submit, funnel-api, funnel-chatbot-start, funnel-execute-webhook, funnel-generate-ai, funnel-submit, generate-agent-ai, generate-insights, generate-objections, google-calendar-auth, google-calendar-callback, google-calendar-refresh, google-calendar-sync, handle-email-suppression, handle-email-unsubscribe, handle-objection, hotmart-sync-orders, hotmart-test-credentials, hotmart-webhook, import-agent-from-document, inbox-auto-assign, inbox-copilot, inbox-followup, manual-outreach, memory-embedder, memory-search, opportunity-scan-cron, opportunity-scan-run, optimize-product-field, presence-test, preview-transactional-email, process-email-queue, process-knowledge-source, process-media-message, process-post-sale-scheduled, process-scheduled-messages, process-training-material, prompt-experiment-pick, quiz-ai-result, quiz-generate-ai, sales-copilot, sankhya-auth, sankhya-create-order, sankhya-sync-clients, sankhya-sync-products, save-ai-credential, send-booking-confirmation, send-broadcast, send-catalog-item, send-csat, send-invite-email, send-mass-email, send-notification-email, send-transactional-email, set-user-password, start-conversation, start-whatsapp-conversation, super-admin-manage-user, test-integration, transcribe-audio, webchat-api, webchat-bot, webchat-handler, webchat-inbox, webchat-widget, webhook-receiver, whatsapp-webhook
+You can inspect your deployment in the Dashboard: https://supabase.com/dashboard/project/fzhlbwhdejumkyqosuvq/functions
+A new version of Supabase CLI is available: v2.107.0 (currently installed v2.90.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

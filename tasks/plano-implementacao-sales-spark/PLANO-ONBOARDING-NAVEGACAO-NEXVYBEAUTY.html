@@ -1,20 +1,17 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plano — Onboarding &amp; Navegação NexvyBeauty</title><style>
-:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899}
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plano — Onboarding & Navegação NexvyBeauty</title><style>:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px 20px}
-.wrap{max-width:980px;margin:0 auto}h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
+.wrap{max-width:1040px;margin:0 auto}h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
 h2{font-size:20px;color:#fff;margin-top:34px;border-left:3px solid var(--pri);padding-left:12px}h3{font-size:16px;color:var(--pri)}
 blockquote{background:var(--card);border-left:3px solid var(--pri);padding:14px 18px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px}
-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;background:var(--card);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;background:var(--card);border-radius:8px;overflow:hidden}
 th{background:#1b2334;color:#fff;text-align:left;padding:10px 12px;border-bottom:2px solid var(--pri)}
 td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}tr:last-child td{border-bottom:none}
-code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:13px/1 "SF Mono",Menlo,monospace}
-pre{background:#0e1118;color:#9fd3ff;padding:16px;border-radius:8px;overflow-x:auto;font:13px/1.5 "SF Mono",Menlo,monospace;border:1px solid var(--bd)}
+code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:12.5px/1 "SF Mono",Menlo,monospace}
+pre{background:#0e1118;color:#9fd3ff;padding:16px;border-radius:8px;overflow-x:auto;font:12.5px/1.5 "SF Mono",Menlo,monospace;border:1px solid var(--bd)}
 pre code{background:none;color:inherit;padding:0}
 strong{color:#fff}ul{padding-left:8px;list-style:none}li{margin:6px 0;padding-left:20px;position:relative}li::before{content:"▸";color:var(--pri);position:absolute;left:4px}
 ol{padding-left:22px}ol li{padding-left:4px}ol li::before{content:none}
-hr{border:none;border-top:1px solid var(--bd);margin:28px 0}.wrap>p{color:var(--mut)}
-a{color:var(--pri)}
-</style></head><body><div class="wrap"><h1>Plano de Melhoria — Onboarding e Navegação do NexvyBeauty</h1>
+hr{border:none;border-top:1px solid var(--bd);margin:28px 0}.wrap>p{color:var(--mut)}a{color:var(--pri)}</style></head><body><div class="wrap"><h1>Plano de Melhoria — Onboarding e Navegação do NexvyBeauty</h1>
 <p><strong>Para:</strong> Marcelo (fundador) · <strong>Data:</strong> 2026-06-18 · <strong>Fonte:</strong> investigação multi-agente de 7 mapas do código real (afirmações de maior impacto verificadas diretamente no código).<br />
 <strong>Relação:</strong> sucede e amplia o <code>plano-onboarding-redesign.md</code> (2026-06-10, escopo NexvyOficinas, já executado em <code>ea3b91b</code>). Aquele tratou tema/Lovable; <strong>este</strong> cobre funil de venda, checkout, provisionamento, onboarding unificado e navegação no Beauty.</p>
 <blockquote>
@@ -705,6 +702,12 @@ a{color:var(--pri)}
 </tr>
 </tbody>
 </table>
+<h3>Fase 3 EXPANDIDA + Fase A — Afiliados, Tracking &amp; Captura (atualização 2026-06-19)</h3>
+<blockquote>
+<p>O Estágio 0 foi <strong>reformulado</strong> (afiliados + rastreamento canal/plataforma + captura robusta antes do checkout). A Fase 3 cresceu e ganhou uma <strong>Fase A — Afiliados &amp; Atribuição</strong>. Detalhe completo, benchmark (UTMify/Voxuy), arquitetura e tabelas novas em <strong><code>ESTAGIO0-AFILIADOS-TRACKING-CAPTURA.md</code></strong>. Resumo:<br />
+- <strong>Fase 3 (expandida):</strong> botão "Comprar" + modal de captura multi-step + cookie de tracking (<code>ref</code> + 5 UTMs) + Edge Function de captura (lead tagueado server-side) + redirect Cakto pré-preenchido + recuperação WhatsApp.<br />
+- <strong>Fase A (nova):</strong> tabelas <code>affiliates</code> / <code>affiliate_links</code> / <code>affiliate_commissions</code>, <code>cakto-webhook</code> passando a <strong>atribuir a venda ao afiliado</strong> (lê <code>data.affiliate</code>/<code>utm_*</code>), e painel mínimo do afiliado (link · vendas · comissão).</p>
+</blockquote>
 <h3>Fase 4 — Costura dos 2 cérebros (dados)</h3>
 <table>
 <thead>

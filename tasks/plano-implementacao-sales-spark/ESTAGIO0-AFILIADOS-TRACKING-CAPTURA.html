@@ -1,0 +1,554 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Estágio 0 — Afiliados, Rastreamento & Captura</title><style>:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px 20px}
+.wrap{max-width:1040px;margin:0 auto}h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
+h2{font-size:20px;color:#fff;margin-top:34px;border-left:3px solid var(--pri);padding-left:12px}h3{font-size:16px;color:var(--pri)}
+blockquote{background:var(--card);border-left:3px solid var(--pri);padding:14px 18px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;background:var(--card);border-radius:8px;overflow:hidden}
+th{background:#1b2334;color:#fff;text-align:left;padding:10px 12px;border-bottom:2px solid var(--pri)}
+td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}tr:last-child td{border-bottom:none}
+code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:12.5px/1 "SF Mono",Menlo,monospace}
+pre{background:#0e1118;color:#9fd3ff;padding:16px;border-radius:8px;overflow-x:auto;font:12.5px/1.5 "SF Mono",Menlo,monospace;border:1px solid var(--bd)}
+pre code{background:none;color:inherit;padding:0}
+strong{color:#fff}ul{padding-left:8px;list-style:none}li{margin:6px 0;padding-left:20px;position:relative}li::before{content:"▸";color:var(--pri);position:absolute;left:4px}
+ol{padding-left:22px}ol li{padding-left:4px}ol li::before{content:none}
+hr{border:none;border-top:1px solid var(--bd);margin:28px 0}.wrap>p{color:var(--mut)}a{color:var(--pri)}</style></head><body><div class="wrap"><h1>Estágio 0 Reformulado — Afiliados, Rastreamento &amp; Captura (NexvyBeauty)</h1>
+<p><strong>Para:</strong> Marcelo (fundador) · <strong>Data:</strong> 2026-06-19 · <strong>Status:</strong> desenho para revisão. Substitui o Estágio 0/1 do <code>DESENHO-ONBOARDING-NEXVYBEAUTY-REVISAO</code>.</p>
+<blockquote>
+<p><strong>Veredito build-vs-buy:</strong> UTMify é referência de atribuição de mídia (atalho via API Token); Voxuy é referência de recuperação no WhatsApp. O que você pede — LP idêntica para todos, captura robusta antes do checkout e comissão/painel de afiliado — <strong>nenhuma das duas entrega pronto</strong>. É camada própria (Edge Function + tabelas + RLS, Seção 11). A base existe: o Cakto tem afiliados nativos e nosso schema de <code>leads</code> já é rico.</p>
+</blockquote>
+<hr />
+<h2>Mini-benchmark — UTMify x Voxuy (o que copiar pro NexvyBeauty)</h2>
+<blockquote>
+<p>Honestidade sobre incerteza: a doc oficial da UTMify é SPA em JS e <strong>não pôde ser lida na íntegra</strong> — a descrição vem das centrais de ajuda dos checkouts parceiros (Cakto, Kiwify, Monetizze etc.). "Funil blindado" da Voxuy <strong>não é um produto nomeado</strong> pela empresa (o motor real chama-se "Funil de Conversão"); é jargão de mercado. Há reclamações públicas (Reclame Aqui) sobre suporte/falhas de trackeamento em ambas — validar com <strong>venda-teste real (PIX-teste)</strong> antes de confiar 100%.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Eixo</th>
+<th>UTMify</th>
+<th>Voxuy</th>
+<th>O que COPIAMOS pro NexvyBeauty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Função principal</strong></td>
+<td>Fecha o "buraco negro" de atribuição entre anúncio (Meta/Google/TikTok) e venda no checkout. Slogan: "Trackeie suas vendas de forma precisa"</td>
+<td>Automação de WhatsApp para <strong>recuperar vendas</strong> e converter leads, disparada pelo <strong>status</strong> do pedido</td>
+<td>Da UTMify: o conceito de atribuição de 2 pontas. Da Voxuy: a recuperação por status</td>
+</tr>
+<tr>
+<td><strong>Modelo de rastreio</strong></td>
+<td><strong>HÍBRIDO de 2 pontas</strong>: (1) script JS client-side (<code>cdn.utmify.com.br/scripts/utms/latest.js</code>) lê UTMs/src/sck na URL, persiste em <strong>cookie 1st-party</strong> e reanexa na URL do checkout; (2) <strong>webhook server-side</strong> da venda casa com a sessão de UTMs</td>
+<td><strong>Só server-side por status de pagamento</strong>: a Cakto envia postback a cada evento (PIX gerado, boleto gerado, abandono, aprovado, reembolso). <strong>NÃO</strong> captura UTM/src/click-id — não faz atribuição de mídia</td>
+<td>A arquitetura de 2 pontas da UTMify é o coração do nosso desenho. Server-side é a <strong>fonte de verdade</strong></td>
+</tr>
+<tr>
+<td><strong>Atribuição de afiliado</strong></td>
+<td>O afiliado vem <strong>no payload server-side da venda</strong> (a Cakto sabe quem é o dono do link), independente de cookie/UTM</td>
+<td><strong>Não rastreia afiliado</strong> — gap confirmado</td>
+<td>Atribuição de afiliado é confiável via webhook server-side, <strong>não</strong> via cookie do browser do comprador</td>
+</tr>
+<tr>
+<td><strong>Captura do lead</strong></td>
+<td>Capta UTMs no clique e repassa pro checkout; o lead "vira venda" no webhook</td>
+<td>Capta <strong>telefone/nome/email/CPF/endereço</strong> que o contato preenche <strong>no checkout</strong> (não no clique do botão Comprar)</td>
+<td>A Voxuy mostra que a captura "no checkout" é frágil pro nosso caso; queremos captura <strong>antes</strong> do checkout (ver <code>captureMd</code>)</td>
+</tr>
+<tr>
+<td><strong>Recuperação de quem não pagou</strong></td>
+<td>Não é o foco (é atribuição/dashboard)</td>
+<td><strong>Núcleo do produto</strong>: cadência por status (PIX gerado sem pagar, boleto a vencer próximo dia / vence hoje / vencido, abandono de checkout — ex. 00h01)</td>
+<td>Replicável 1:1 como camada própria: Edge Function ouve webhook Cakto (PIX/boleto gerado, abandono) e dispara WhatsApp</td>
+</tr>
+<tr>
+<td><strong>Segredos / Seção 11</strong></td>
+<td>API TOKEN (UTMify) e chave de webhook (Cakto) são <strong>server-side</strong> — fora do front. O script JS de UTMs é client por natureza (só lê/repassa params, sem segredo) — aceitável no front</td>
+<td>Postback URL é server-side</td>
+<td>Manter token UTMify e segredo webhook Cakto fora de <code>NEXT_PUBLIC_*</code>; script de UTMs no front é OK</td>
+</tr>
+<tr>
+<td><strong>O que NÃO resolve</strong></td>
+<td>Recuperação no WhatsApp; gestão de comissão de afiliado (é dashboard de mídia)</td>
+<td>Atribuição de origem / anti-clone / UTM. Order bump/upsell só como "tipo de funil"</td>
+<td>Build vs buy: podemos usar UTMify como atalho de atribuição, <strong>mas</strong> comissão de afiliado e painel do parceiro são camada própria nossa</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Conclusão de build-vs-buy:</strong> a UTMify é boa referência (e atalho válido via API Token) para a <strong>atribuição de mídia</strong>; a Voxuy é referência para a <strong>recuperação no WhatsApp</strong>. Mas o que o Marcelo pede de diferente — LP idêntica para todos, captura robusta antes do checkout, e <strong>comissão/painel de afiliado</strong> — nenhuma das duas entrega pronto. Isso é camada própria: Edge Function + tabelas próprias + RLS (Seção 11).</p>
+<hr />
+<h2>ESTAGIO 0 reformulado — Descoberta &amp; Compra (ponta a ponta)</h2>
+<blockquote>
+<p><strong>Visão</strong>: o cliente do salão se preocupa só em operar o negócio; nós entregamos gestão com IA nativa. O Estagio 0 é onde o lead <strong>chega, é qualificado e compra</strong> — e onde decidimos <strong>quem ganha a comissão</strong> (afiliado) e <strong>de onde veio</strong> (plataforma). A LP e o onboarding são <strong>visualmente idênticos</strong> para todos; o que muda é invisível: o código de rastreio.</p>
+<p>Legenda: 🟢 <strong>JÁ EXISTE</strong> · 🟡 <strong>EXISTE PARCIAL</strong> (precisa expandir) · 🔴 <strong>NOVO</strong></p>
+</blockquote>
+<h3>Fluxo numerado com critério verificável</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Passo</th>
+<th>Estado</th>
+<th>Critério VERIFICÁVEL (binário)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Afiliado pega seu link</strong> apontando para a LP única, ex. <code>nexvybeauty.com/vendas?ref=&lt;código&gt;&amp;utm_source=meta&amp;utm_campaign=...</code></td>
+<td>🔴 NOVO</td>
+<td>Existe tabela <code>affiliate_links</code>; ao gerar link, retorna URL com <code>?ref=</code> resolvível. Teste: abrir link → LP carrega 200 e o <code>ref</code> aparece no cookie 1st-party</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Lead clica no anúncio/link</strong> e cai na LP <code>/vendas</code> (SalesPage.tsx) — <strong>idêntica para todos</strong></td>
+<td>🟡 PARCIAL (LP existe, hoje só salva interesse em <code>sales_leads</code> sem botão Comprar — <code>SalesPage.tsx:85-109</code>)</td>
+<td>A LP renderizada é byte-a-byte a mesma para <code>ref=A</code>, <code>ref=B</code> e sem <code>ref</code>. Teste visual: diff de screenshot = 0</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>LP captura e persiste o tracking</strong>: lê <code>ref</code>, <code>utm_source/medium/campaign/term/content</code>, <code>referrer</code>, <code>landing_page</code> da querystring → grava em <strong>cookie 1st-party</strong></td>
+<td>🟡 PARCIAL (hoje só 3 UTMs via <code>URLSearchParams</code> em <code>SalesPage.tsx:95-99</code>; faltam term, content, referrer, ref)</td>
+<td>Após carregar a LP, <code>document.cookie</code> contém <code>ref</code> + 5 UTMs + referrer. Teste: recarregar sem querystring → cookie persiste</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Lead clica em "Comprar"</strong> → abre o <strong>modal de Captura Robusta</strong> (multi-step) ANTES de ir ao checkout</td>
+<td>🔴 NOVO (não existe botão Comprar hoje)</td>
+<td>Clicar em Comprar abre o modal; o lead é <strong>imediatamente tagueado</strong> server-side com <code>ref</code> + UTMs (passo 6) mesmo se abandonar o modal</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Captura Robusta multi-step</strong> — coleta qualificação completa (campos e ordem exatos em <code>captureMd</code>). Mínimo: <strong>nome completo, e-mail, WhatsApp</strong> + qualificação</td>
+<td>🔴 NOVO</td>
+<td>Modal só avança ao próximo step com campo válido; ao concluir, retorna <code>lead_id</code>. Teste: e-mail inválido bloqueia avanço; WhatsApp valida formato BR</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Cria/atualiza lead TAGUEADO server-side</strong> numa Edge Function: <code>lead_channel='afiliado:&lt;ref&gt;'</code> ou <code>'organico'</code>, <code>lead_origin</code> derivado do UTM, <code>utm_*</code> completos, <code>referrer_url</code>, <code>landing_page</code>, <code>affiliate_id</code> resolvido do <code>ref</code></td>
+<td>🟡 PARCIAL (tabela <code>leads</code> já tem <code>lead_origin</code>, <code>lead_channel</code>, <code>utm_*</code>, <code>source</code>, <code>landing_page</code>, <code>referrer_url</code>, <code>metadata</code> — schema completo; mas <code>sales_leads</code> da LP só tem 3 UTMs e <strong>nenhum</strong> <code>affiliate_id</code>)</td>
+<td>Após submit, existe 1 row em <code>leads</code>/<code>sales_leads</code> com <code>affiliate_id</code> preenchido (quando <code>ref</code> válido) e os 5 UTMs. Teste: query retorna o lead com canal + plataforma</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Redireciona pro checkout Cakto PRE-PREENCHIDO</strong> carregando o tracking: <code>pay.cakto.com.br/&lt;CODIGO&gt;?affiliate=&lt;id&gt;&amp;src=&lt;canal&gt;&amp;utm_source=...&amp;email=&lt;email&gt;</code> (email pré-preenchido evita duplicidade)</td>
+<td>🟡 PARCIAL (o desenho já previa link pré-preenchido anti-email-duplicado; a Cakto <strong>aceita</strong> <code>affiliate</code>, <code>src</code>, <code>sck</code>, <code>utm_*</code> na URL — confirmado na pesquisa)</td>
+<td>A URL do botão final contém <code>affiliate</code> + <code>src</code> + 5 UTMs + email. Teste: inspecionar <code>href</code> do redirect → todos os params presentes</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Pagamento na Cakto</strong> (PIX/boleto/cartão). Eventos intermediários (PIX gerado, boleto gerado, abandono) habilitam <strong>recuperação estilo Voxuy</strong></td>
+<td>🔴 NOVO (recuperação) / 🟢 checkout Cakto já é o canal de venda</td>
+<td>Webhook recebe <code>pix_gerado</code>/<code>abandono</code> → dispara cadência WhatsApp. Teste: gerar PIX-teste sem pagar → mensagem sai</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Webhook de venda ATRIBUI ao afiliado</strong>: a Edge Function lê <code>data.affiliate</code>, <code>data.sck</code>, <code>data.utm_*</code>, <code>data.customer</code>, <code>data.fbc/fbp</code> do payload Cakto, casa com o <code>lead</code> pelo email, grava <code>order.affiliate_id</code> e cria registro de <strong>comissão</strong></td>
+<td>🟡 PARCIAL (cakto-webhook existe e provisiona, mas <strong>NÃO captura afiliado</strong> hoje — <code>cakto-webhook/index.ts</code> mapeia só <code>coupon_code</code>; sem <code>affiliate_email</code>/<code>affiliate_id</code>)</td>
+<td>Após venda aprovada, existe row em <code>affiliate_commissions</code> ligada ao <code>affiliate_id</code> e ao <code>order</code>. Teste: "Send test event" da Cakto → comissão criada (idempotente por <code>data.id</code>/<code>refId</code>)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Provisionamento pós-Cakto</strong> (cria org + admin + email + billing por email do cliente)</td>
+<td>🟢 JÁ EXISTE (<code>cakto-webhook/index.ts:81-171</code>; <code>cakto-plan-provisioning.ts</code>)</td>
+<td>Org + admin criados, email enviado. Já validado no fluxo atual — <strong>não muda</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>O que é NOVO vs JÁ EXISTE (resumo)</h3>
+<ul>
+<li><strong>JÁ EXISTE:</strong> LP <code>/vendas</code>, captura de 3 UTMs, webhook Cakto, provisionamento org+admin+email, schema rico de <code>leads</code>, link de checkout pré-preenchido (no desenho).</li>
+<li><strong>EXISTE PARCIAL (expandir):</strong> UTMs completos na LP, persistência em cookie 1st-party, taguear o lead da LP em <code>leads</code> (não só <code>sales_leads</code>), captura de afiliado no webhook.</li>
+<li><strong>NOVO:</strong> botão Comprar, modal de Captura Robusta multi-step, resolução de <code>ref</code>→<code>affiliate_id</code>, tabelas <code>affiliates</code>/<code>affiliate_links</code>/<code>affiliate_commissions</code>, cadência de recuperação WhatsApp, painel do afiliado.</li>
+</ul>
+<hr />
+<h2>Arquitetura técnica — rastreamento, persistência e atribuição</h2>
+<h3>A. Captura e persistência do <code>ref</code>/afiliado (querystring → cookie → server-side)</h3>
+<p>Espelha o modelo de 2 pontas da UTMify (pesquisa):</p>
+<ol>
+<li><strong>Querystring (entrada):</strong> o link do afiliado/anúncio carrega <code>?ref=&lt;código&gt;&amp;utm_source=...&amp;utm_medium=...&amp;utm_campaign=...&amp;utm_content=...&amp;utm_term=...</code>. O <code>ref</code> é o <strong>canal</strong> (parceiro/afiliado); os <code>utm_*</code> são a <strong>plataforma</strong> (meta/google). Os dois eixos viajam juntos.</li>
+<li><strong>Cookie 1st-party (persistência):</strong> a LP lê esses params no carregamento e grava num <strong>cookie 1st-party do domínio NexvyBeauty</strong> (sobrevive ao hop LP→checkout e a recargas). É o mesmo princípio confirmado na doc da Kiwify ("a informação fica em cookies e é usada toda vez que uma compra é feita"). Hoje a LP só lê 3 UTMs via <code>URLSearchParams(window.location.search)</code> (<code>SalesPage.tsx:95-99</code>) e <strong>não persiste em cookie</strong> — gap a fechar.</li>
+<li><strong>Lead server-side (fonte de verdade):</strong> no clique em Comprar / submit do modal, uma <strong>Edge Function</strong> recebe os params (do cookie + do form) e grava o lead. <strong>Nunca</strong> depender só do client (Seção 11). A função resolve <code>ref</code>→<code>affiliate_id</code> consultando <code>affiliate_links</code>.</li>
+</ol>
+<blockquote>
+<p><strong>Por que cookie não basta:</strong> cookie/pixel client é frágil (AdBlock, iOS, clonagem). A atribuição <strong>definitiva</strong> é o webhook server-side da venda (igual UTMify/XTracky). O cookie só carrega o tracking até o checkout; quem fecha a conta é o webhook.</p>
+</blockquote>
+<h3>B. Como os UTMs viajam até o webhook (LP → checkout → venda)</h3>
+<table>
+<thead>
+<tr>
+<th>Hop</th>
+<th>Mecanismo</th>
+<th>Risco se faltar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Anúncio → LP</td>
+<td>UTMs na querystring do anúncio</td>
+<td>—</td>
+</tr>
+<tr>
+<td>LP → checkout Cakto</td>
+<td><strong>Reanexar</strong> os params na URL do botão Comprar (<code>pay.cakto.com.br/&lt;COD&gt;?utm_source=...&amp;src=&lt;canal&gt;&amp;affiliate=&lt;id&gt;</code>). A Cakto persiste em cookie 1st-party dela e associa ao pedido</td>
+<td>Sem isso o UTM <strong>se perde no hop</strong> (confirmado na pesquisa)</td>
+</tr>
+<tr>
+<td>Checkout → webhook</td>
+<td>A Cakto faz POST server-to-server com <code>data.utm_*</code>, <code>data.affiliate</code>, <code>data.sck</code>, <code>data.fbc/fbp</code>, <code>data.customer</code></td>
+<td>Sem parser desses campos, a venda não é atribuída</td>
+</tr>
+</tbody>
+</table>
+<h3>C. Parâmetros que a Cakto aceita / retorna (da pesquisa)</h3>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Aceito na URL do checkout?</th>
+<th>Retorna no webhook?</th>
+<th>Nota</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>utm_source/medium/campaign/term/content</code></td>
+<td>✅ (ex. <code>pay.cakto.com.br/AA58c2n?src=test&amp;utm_source=facebook</code>)</td>
+<td>✅ <code>data.utm_source/medium/term/content/campaign</code> (doc oficial <code>event-history.md</code>)</td>
+<td>Padrão GA</td>
+</tr>
+<tr>
+<td><code>affiliate</code></td>
+<td>✅ (<code>?affiliate=dZkmk2PZ</code>)</td>
+<td>✅ <code>data.affiliate</code></td>
+<td><strong>(A VERIFICAR)</strong> formato: a doc lista <code>data.affiliate</code> sem tipar; algumas fontes indicam ser o <strong>email</strong> do afiliado — confirmar com "Send test event" antes de codar o parser</td>
+</tr>
+<tr>
+<td><code>src</code></td>
+<td>✅ (origem geral do tráfego, livre — recomendado pela UTMify)</td>
+<td><strong>(A VERIFICAR)</strong> a doc lista <code>sck</code> mas <strong>não confirma <code>src</code> literal</strong> no payload</td>
+<td>Usar <code>src=&lt;canal&gt;</code> na URL; checar se volta no webhook</td>
+</tr>
+<tr>
+<td><code>sck</code></td>
+<td>✅ (source checkout — origem específica da compra)</td>
+<td>✅ <code>data.sck</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>fbc</code> / <code>fbp</code></td>
+<td>(cookies do Facebook)</td>
+<td>✅ <code>data.fbc</code>, <code>data.fbp</code></td>
+<td>Para reenvio Meta CAPI server-side</td>
+</tr>
+<tr>
+<td><code>data.customer</code></td>
+<td>—</td>
+<td>✅ name/email/phone/docType/docNumber/birthDate</td>
+<td>Casa o lead pelo email</td>
+</tr>
+<tr>
+<td><code>data.id</code> / <code>data.refId</code></td>
+<td>—</td>
+<td>✅</td>
+<td><strong>Chave de idempotência</strong> obrigatória (anti-duplicação de comissão)</td>
+</tr>
+</tbody>
+</table>
+<h3>D. Tabelas novas sugeridas</h3>
+<pre><code class="language-text">affiliates            -- o parceiro
+  id, name, email, status, commission_pct (ou rule_id), created_at
+affiliate_links       -- cada link/código de rastreio
+  id, affiliate_id (fk), ref_code (único, = ?ref=), default_utm_*, label, created_at
+leads / sales_leads   -- EXPANDIR: hoje sales_leads só tem utm_source/medium/campaign
+  + utm_term, utm_content, referrer_url, landing_page, lead_channel, lead_origin,
+  + affiliate_id (fk), source
+orders (cakto_orders) -- EXPANDIR
+  + affiliate_id (fk), affiliate_raw (= data.affiliate cru), src, sck, utm_* completos
+affiliate_commissions -- NOVO (hoje commissions é só p/ sellers internos)
+  id, affiliate_id (fk), order_id (fk), amount, pct_applied,
+  status (pending|approved|paid), idempotency_key (= data.id/refId)
+</code></pre>
+<h3>E. Como casa com o código atual</h3>
+<ul>
+<li><strong><code>SalesPage.tsx:85-109</code></strong> — hoje captura 3 UTMs e salva interesse em <code>sales_leads</code>. <strong>Mudança:</strong> ler <code>ref</code> + 5 UTMs + referrer, persistir em cookie, e no botão Comprar chamar a Edge Function de captura. A LP continua idêntica visualmente.</li>
+<li><strong><code>sales_leads</code> (types.ts:9437-9496)</strong> — só <code>utm_source/medium/campaign</code>. <strong>Mudança:</strong> adicionar <code>utm_term</code>, <code>utm_content</code>, <code>referrer_url</code>, <code>landing_page</code>, <code>lead_channel</code>, <code>affiliate_id</code>. (A tabela <code>leads</code> "full" já tem quase tudo — <code>lead_origin</code>, <code>lead_channel</code>, <code>utm_*</code>, <code>source</code>, <code>landing_page</code>, <code>referrer_url</code>, <code>metadata</code> — falta só <code>affiliate_id</code>.)</li>
+<li><strong><code>cakto-webhook/index.ts</code></strong> — hoje <code>mapCaktoOrderForUpsert</code> captura só <code>coupon_code</code> (<code>cakto-client.ts:71</code>) e <strong>não</strong> mapeia afiliado. <strong>Mudança:</strong> ler <code>data.affiliate</code>/<code>data.sck</code>/<code>data.utm_*</code>/<code>data.fbc/fbp</code>, gravar em <code>cakto_orders</code> + criar <code>affiliate_commissions</code> (idempotente por <code>data.id</code>). O fluxo de provisionamento (<code>index.ts:81-171</code>) <strong>não muda</strong>.</li>
+<li><strong><code>cakto-plan-provisioning.ts:1-326</code></strong> — provisionamento por email. <strong>Não muda</strong>; só passa a conviver com a atribuição de afiliado gravada antes/junto.</li>
+<li><strong>Referência já existente no codebase:</strong> <code>hotmart_orders.affiliate_email</code> é a <strong>única</strong> tabela com afiliado hoje (isolada, sem virar lead). Serve de modelo de coluna, mas precisamos do vínculo <code>lead</code>↔<code>order</code>↔<code>commission</code> que ela não tem.</li>
+</ul>
+<hr />
+<h2>Captura Robusta — multi-step (estilo Cakto), campos e por quê</h2>
+<h3>Por que capturar ANTES do checkout (e não deixar pro checkout Cakto)</h3>
+<p>A Voxuy mostra o anti-padrão: ela captura os dados <strong>no checkout</strong> (telefone/nome/email/CPF que "o contato preenche no checkout"). Isso significa que <strong>quem abandona o checkout some</strong>. Para o NexvyBeauty queremos o oposto: <strong>taguear e qualificar o lead no clique em Comprar</strong>, antes do redirect — assim o lead fica salvo server-side mesmo se nunca pagar, e habilita recuperação. É a captura robusta que o Marcelo pediu (referência: a captação multi-step da própria Cakto — instagram, dores do negócio, nome, CNPJ, aceite).</p>
+<h3>Campos e ordem exata (mínimo + qualificação)</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Campo</th>
+<th>Obrigatório</th>
+<th>Por quê</th>
+<th>Critério verificável</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Nome completo</strong></td>
+<td>✅</td>
+<td>Identidade do lead; pré-preenche checkout</td>
+<td>Não avança vazio</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>E-mail</strong></td>
+<td>✅</td>
+<td><strong>Chave anti-duplicidade</strong> (casa lead↔venda no webhook por <code>data.customer.email</code>); pré-preenche o checkout Cakto</td>
+<td>Regex de email; bloqueia inválido</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>WhatsApp</strong></td>
+<td>✅</td>
+<td>Canal de recuperação (estilo Voxuy) e de relacionamento</td>
+<td>Valida formato BR (DDD + 9 dígitos)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Instagram do salão</strong></td>
+<td>recomendado</td>
+<td>Espelha a captação Cakto; enriquece o lead</td>
+<td>Aceita @handle ou URL; opcional</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Principal dor hoje</strong> (ex.: agenda no papel, WhatsApp bagunçado, sem controle de caixa)</td>
+<td>recomendado</td>
+<td>Qualificação → score/temperatura (o <code>funnel-submit</code> já faz scoring: <code>score</code>, <code>tags</code>, hot/warm/cold)</td>
+<td>Seleção registrada em <code>metadata</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Nome do negócio / salão</strong></td>
+<td>recomendado</td>
+<td>Contexto comercial</td>
+<td>Opcional</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>CNPJ</strong> (ou "ainda não tenho")</td>
+<td>opcional</td>
+<td>Espelha a captação Cakto; segmenta MEI vs estabelecido</td>
+<td>Se preenchido, valida 14 dígitos</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Aceite de termos + LGPD</strong></td>
+<td>✅</td>
+<td>Base legal para contato/WhatsApp; espelha o aceite Cakto</td>
+<td>Checkbox marcado obrigatório</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Ordem desenhada para <strong>fricção crescente</strong>: os 3 campos críticos (nome+email+whatsapp) primeiro, garantindo o lead mesmo se o usuário abandonar nos steps de qualificação. Cada step só avança com validação binária (sem isso, é "checklist de boa intenção").</p>
+</blockquote>
+<h3>Como resolve o e-mail duplicado</h3>
+<p>O e-mail coletado no Step 1 é injetado na URL do checkout Cakto <strong>pré-preenchido</strong> (<code>pay.cakto.com.br/&lt;COD&gt;?email=&lt;email&gt;&amp;affiliate=&lt;id&gt;&amp;...</code>). Como o provisionamento pós-Cakto cria org+admin <strong>por email do cliente</strong> (<code>cakto-webhook/index.ts:81-171</code>), garantir que o email do lead = email do checkout = email da venda <strong>elimina a divergência</strong> que causa org/admin duplicado. (A robustez final é a idempotência por <code>data.id</code>/<code>refId</code> no webhook.)</p>
+<h3>Como habilita recuperação de quem não pagou (estilo Voxuy)</h3>
+<p>Como o lead já está salvo server-side <strong>com WhatsApp</strong> antes do pagamento, quando a Cakto disparar <code>pix_gerado</code>, <code>boleto_gerado</code> ou <code>abandono_checkout</code>, a Edge Function aciona a cadência WhatsApp (ex.: 00h01 após gerar, "vence próximo dia", "vence hoje", "vencido") — replicando o Funil de Conversão da Voxuy como <strong>camada própria</strong> (a Voxuy não rastreia afiliado/UTM, então mantemos atribuição em casa). <strong>(A VERIFICAR)</strong> payload/eventos exatos de abandono da Cakto com "Send test event" real.</p>
+<hr />
+<h2>Atribuição &amp; comissão — quem vendeu, como remunerar, painel mínimo</h2>
+<h3>Como saber quem vendeu (cadeia de atribuição)</h3>
+<ol>
+<li><strong>No clique:</strong> o <code>ref</code> (cookie 1st-party) já resolve <code>affiliate_id</code> e taguei o lead (<code>lead_channel='afiliado:&lt;ref&gt;'</code>).</li>
+<li><strong>No checkout:</strong> o <code>affiliate</code>/<code>src</code> viajam na URL; a Cakto associa ao pedido por <strong>cookie 1st-party dela</strong> OU pelo param explícito.</li>
+<li><strong>Na venda (fonte de verdade):</strong> o webhook Cakto traz <code>data.affiliate</code> + <code>data.sck</code> + <code>data.utm_*</code>. A Edge Function casa pelo email (<code>data.customer.email</code>) e grava <code>order.affiliate_id</code>. Server-side = confiável, não depende do cookie do comprador.</li>
+</ol>
+<blockquote>
+<p><strong>Política de clique (decisão de produto):</strong> a Cakto suporta <strong>último-clique vs primeiro-clique configurável por produto</strong>, e a <strong>janela do cookie</strong> é definida pelo produtor (1 dia, 30 dias, indeterminado — <strong>(A VERIFICAR)</strong> default exato não documentado). Em "último clique", se outro afiliado entra na cadeia, ele vence. Isso precisa ser decidido conscientemente (ver <code>openDecisions</code>).</p>
+</blockquote>
+<h3>Registrar a comissão (idempotente)</h3>
+<ul>
+<li>Tabela <strong><code>affiliate_commissions</code></strong> (NOVA — hoje só existe <code>commissions</code> para sellers internos, ligada a <code>rule_id</code>, <strong>não</strong> a afiliado externo).</li>
+<li>Na venda aprovada: criar row <code>{affiliate_id, order_id, amount, pct_applied, status='pending', idempotency_key=data.id}</code>.</li>
+<li><strong>Idempotência obrigatória</strong> por <code>data.id</code>/<code>data.refId</code> (reentregas do webhook não podem duplicar comissão — Seção 6).</li>
+<li>Estados: <code>pending</code> (venda aprovada) → <code>approved</code> (passou janela de reembolso/chargeback) → <code>paid</code>. Eventos <code>reembolso</code>/<code>chargeback</code> da Cakto revertem para <code>cancelled</code>.</li>
+</ul>
+<h3>Escopo MÍNIMO do painel do afiliado</h3>
+<table>
+<thead>
+<tr>
+<th>Recurso</th>
+<th>Conteúdo</th>
+<th>Critério verificável</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Meu link</strong></td>
+<td>Link próprio com <code>?ref=&lt;code&gt;</code> (de <code>affiliate_links</code>); botão copiar; opção de adicionar <code>&amp;src=</code> por canal</td>
+<td>Link gerado abre a LP e taguei o lead</td>
+</tr>
+<tr>
+<td><strong>Minhas vendas</strong></td>
+<td>Lista de <code>orders</code> com <code>affiliate_id</code> = eu (data, valor, status)</td>
+<td>Bate com webhook aprovado</td>
+</tr>
+<tr>
+<td><strong>Minha comissão</strong></td>
+<td>Soma por status (pending/approved/paid) de <code>affiliate_commissions</code></td>
+<td>Total = soma das rows do afiliado</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Build vs buy:</strong> a Cakto tem <strong>programa de afiliados nativo</strong> (link com cookie de clique, comissão por venda). O painel mínimo acima pode ser apenas uma <strong>leitura</strong> dos dados que já gravamos via webhook — ou, num primeiro momento, delegar pagamento de comissão à própria Cakto e nós só <strong>espelharmos</strong> para o dashboard (decisão no <code>openDecisions</code>). Nenhuma das referências (UTMify/Voxuy) gere comissão de afiliado — essa camada é nossa.</p>
+</blockquote>
+<hr />
+<h2>DELTA no roadmap — Estagio 0 vira robusto</h2>
+<p>O Estagio 0 deixa de ser "LP que salva interesse" e passa a ser <strong>checkout assistido + tracking de 2 eixos + captura robusta + atribuição de afiliado</strong>. Sugiro dividir em <strong>Fase 3 expandida</strong> (a jornada de compra) e uma <strong>NOVA Fase A — Afiliados &amp; Atribuição</strong> (a infra de quem ganha a comissão), porque misturar as duas explode o escopo.</p>
+<h3>Fase 3 EXPANDIDA — Checkout assistido + tracking + captura</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Por quê</th>
+<th>Critério verificável</th>
+<th>Esforço</th>
+<th>Dependência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Botão "Comprar" na LP <code>/vendas</code></td>
+<td>Hoje a LP não tem botão (só salva interesse)</td>
+<td>Clicar abre o modal de captura</td>
+<td><strong>P</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Modal Captura Robusta multi-step</td>
+<td>Qualificação completa + lead salvo antes do pagamento</td>
+<td>E-mail/WhatsApp inválido bloqueia; conclui retornando <code>lead_id</code></td>
+<td><strong>M</strong></td>
+<td>botão Comprar</td>
+</tr>
+<tr>
+<td>Persistir <code>ref</code>+5 UTMs+referrer em cookie 1st-party na LP</td>
+<td>Hoje só 3 UTMs, sem cookie (<code>SalesPage.tsx:95-99</code>)</td>
+<td>Recarregar sem querystring → cookie persiste</td>
+<td><strong>P</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Edge Function de captura (lead tagueado server-side)</td>
+<td>Não depender do client (Seção 11)</td>
+<td>Submit cria 1 row em <code>leads</code> com canal+plataforma</td>
+<td><strong>M</strong></td>
+<td>modal</td>
+</tr>
+<tr>
+<td>Redirect Cakto pré-preenchido com tracking + email</td>
+<td>Anti email-duplicado + propagação de UTM/afiliado</td>
+<td><code>href</code> do botão final tem <code>affiliate</code>+<code>src</code>+5 UTMs+email</td>
+<td><strong>P</strong></td>
+<td>captura, Fase A</td>
+</tr>
+<tr>
+<td>Cadência de recuperação WhatsApp (estilo Voxuy)</td>
+<td>Recuperar PIX gerado/boleto/abandono</td>
+<td>PIX-teste sem pagar → mensagem sai</td>
+<td><strong>M</strong></td>
+<td>webhook eventos Cakto <strong>(A VERIFICAR)</strong> payload</td>
+</tr>
+</tbody>
+</table>
+<h3>Fase A NOVA — Afiliados &amp; Atribuição</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Por quê</th>
+<th>Critério verificável</th>
+<th>Esforço</th>
+<th>Dependência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tabelas <code>affiliates</code> + <code>affiliate_links</code></td>
+<td>Não existe modelo de afiliado hoje (gap)</td>
+<td>Gerar link retorna URL com <code>?ref=</code> resolvível</td>
+<td><strong>M</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Resolver <code>ref</code>→<code>affiliate_id</code> na captura</td>
+<td>Saber o canal (parceiro)</td>
+<td>Lead com <code>ref</code> válido grava <code>affiliate_id</code></td>
+<td><strong>P</strong></td>
+<td>Fase 3 captura</td>
+</tr>
+<tr>
+<td><code>cakto-webhook</code> lê afiliado/UTM/fbc do payload</td>
+<td>Hoje só pega <code>coupon_code</code> (<code>cakto-client.ts:71</code>)</td>
+<td>"Send test event" → <code>order.affiliate_id</code> preenchido</td>
+<td><strong>M</strong></td>
+<td>tabelas</td>
+</tr>
+<tr>
+<td>Tabela <code>affiliate_commissions</code> idempotente</td>
+<td><code>commissions</code> atual é só seller interno</td>
+<td>Venda aprovada → 1 comissão (sem duplicar em reentrega)</td>
+<td><strong>M</strong></td>
+<td>webhook</td>
+</tr>
+<tr>
+<td>Painel mínimo do afiliado (link/vendas/comissão)</td>
+<td>Parceiro precisa ver o que ganhou</td>
+<td>3 telas batem com dados do webhook</td>
+<td><strong>M</strong></td>
+<td>comissões</td>
+</tr>
+<tr>
+<td>Validar <code>data.affiliate</code>/<code>src</code> empiricamente</td>
+<td>Formato incerto (A VERIFICAR)</td>
+<td>Test event mostra tipo real antes de codar parser</td>
+<td><strong>P</strong></td>
+<td>acesso Cakto</td>
+</tr>
+</tbody>
+</table>
+<h3>O que NÃO muda</h3>
+<ul>
+<li>Provisionamento org+admin+email pós-Cakto (<code>cakto-webhook/index.ts:81-171</code>, <code>cakto-plan-provisioning.ts</code>) — <strong>estável, mantém</strong>.</li>
+<li>Schema rico de <code>leads</code> já cobre quase tudo; só falta <code>affiliate_id</code>.</li>
+</ul>
+<hr />
+<h2>Decisões pendentes (suas) — antes de eu construir</h2>
+<ol>
+<li>CAPTURA: coletar nome+email+WhatsApp ANTES do redirect (modal próprio, lead salvo mesmo sem pagar) OU deixar a coleta no checkout Cakto (mais simples, mas perde quem abandona — anti-padrão Voxuy)? Recomendação: antes, no modal próprio.</li>
+<li>MODELO DE COMISSÃO: usar o programa de afiliados NATIVO da Cakto (Cakto paga e nós só espelhamos no painel) OU gerir comissão própria em affiliate_commissions (mais controle, mais build)? Impacta esforço da Fase A.</li>
+<li>JANELA DE COOKIE + ÚLTIMO vs PRIMEIRO CLIQUE: a Cakto deixa configurável por produto (1d/30d/indeterminado, default A VERIFICAR). Qual janela e qual atribuição em disputa entre dois afiliados?</li>
+<li>CAMPOS DE QUALIFICAÇÃO: além de nome+email+WhatsApp, quais são obrigatórios vs opcionais (Instagram, dor principal, nome do salão, CNPJ, aceite LGPD)? Mais campos = mais fricção, menos conversão.</li>
+<li>FORMATO de data.affiliate e presença de data.src no payload do webhook Cakto sao INCERTOS (A VERIFICAR) — precisa de um 'Send test event' real da Cakto antes de codar o parser de atribuição.</li>
+<li>BUILD vs BUY do tracking de mídia: implementar propagação UTM + webhook próprios (mais controle, sem custo recorrente) OU usar UTMify via API Token (atalho, mas dependência e custo, e reclamações públicas sobre trackeamento)?</li>
+<li>RECUPERAÇÃO WhatsApp: construir cadência própria (Edge Function ouvindo eventos Cakto) OU integrar Voxuy (pronta, mas não rastreia afiliado/UTM e payload/preço não são públicos)?</li>
+<li>ESCOPO do painel do afiliado no MVP: só leitura (link/vendas/comissão) é suficiente para a 1a rodada, ou o Marcelo quer já saque/extrato/material de divulgação?</li>
+</ol>
+<hr />
+<h2>✅ Decisões travadas (2026-06-19) + pivot de checkout</h2>
+<p>Com base na sua revisão:</p>
+<ol>
+<li><strong>Captura ANTES do checkout (modal próprio).</strong> ✅ O lead é qualificado e salvo server-side no clique em "Comprar", antes de qualquer redirect.</li>
+<li><strong>Rastreamento de mídia PRÓPRIO</strong> (cookie 1st-party + webhook). ✅ Sem depender de UTMify.</li>
+<li><strong>Comissão de afiliado gerida DENTRO do nosso sistema</strong> (não delegar ao checkout). ✅ Tabelas <code>affiliates</code> / <code>affiliate_links</code> / <code>affiliate_commissions</code> nossas.</li>
+</ol>
+<h3>🔁 Possível pivot: sair da Cakto (taxas altas) → checkout próprio</h3>
+<p>Você sinalizou que <strong>provavelmente vamos pivotar</strong> e <strong>não usar a Cakto</strong> (taxas muito altas), construindo <strong>o mesmo modelo que eles fazem</strong> dentro do nosso sistema. Isso virou um <strong>card separado</strong> (benchmark dedicado: PSP direto + checkout próprio + split de comissão p/ afiliado + antifraude + economia de taxa).</p>
+<p><strong>Implicação de arquitetura (importante):</strong> como decidimos <strong>capturar e taguear o lead ANTES do checkout</strong> (decisão 1), a <strong>atribuição do afiliado e do tracking acontece na NOSSA camada</strong>, não na do meio de pagamento. Isso torna o desenho <strong>provider-agnóstico</strong>: o passo de "pagamento" vira um <strong>plugue</strong> (Cakto hoje; checkout próprio/PSP depois) sem refazer captura, tracking, lead ou comissão — tudo isso já mora no nosso banco.</p>
+<blockquote>
+<p>Em resumo: construímos <strong>captura + tracking + afiliados + comissão</strong> agora, de forma nossa; o <strong>meio de pagamento</strong> fica plugável e será decidido no card de benchmark do checkout próprio. As referências de payload/params da Cakto neste doc seguem válidas <strong>enquanto</strong> a Cakto for o checkout; ao trocar, só o adaptador de pagamento muda.</p>
+</blockquote></div></body></html>

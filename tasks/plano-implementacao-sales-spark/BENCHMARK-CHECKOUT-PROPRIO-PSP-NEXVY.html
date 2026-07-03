@@ -1,0 +1,264 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Benchmark — Checkout Próprio / PSP (substituir a Cakto?) · NexvyBeauty</title><style>:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px 20px}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
+h2{font-size:20px;color:#fff;margin-top:38px;border-left:3px solid var(--pri);padding-left:12px}
+h3{font-size:16px;color:var(--pri);margin-top:26px}
+h4{font-size:14px;color:#fff;margin:18px 0 6px}
+blockquote{background:var(--card);border-left:3px solid var(--pri);padding:14px 18px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px;margin:16px 0}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:12.5px;background:var(--card);border-radius:8px;overflow:hidden}
+th{background:#1b2334;color:#fff;text-align:left;padding:9px 10px;border-bottom:2px solid var(--pri);font-size:12px}
+td{padding:8px 10px;border-bottom:1px solid var(--bd);vertical-align:top}tr:last-child td{border-bottom:none}
+td:first-child{color:#fff}
+code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:12px/1 "SF Mono",Menlo,monospace}
+strong{color:#fff}
+ul{padding-left:8px;list-style:none}li{margin:6px 0;padding-left:20px;position:relative}li::before{content:"▸";color:var(--pri);position:absolute;left:4px}
+ol{padding-left:22px}ol li{padding-left:4px}ol li::before{content:none}
+hr{border:none;border-top:1px solid var(--bd);margin:30px 0}
+.wrap>p,.meta{color:var(--mut)}a{color:var(--pri)}
+.tldr{background:linear-gradient(135deg,#1a1320,#141927);border:1px solid var(--pri);border-radius:12px;padding:20px 24px;margin:22px 0}
+.tldr h2{border:none;padding:0;margin:0 0 10px;color:var(--pri)}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.ok{background:rgba(52,211,153,.15);color:var(--ok)}.warn{background:rgba(251,191,36,.15);color:var(--warn)}.bad{background:rgba(248,113,113,.15);color:var(--bad)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:18px 0}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+.c .n{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.c .v{font-size:18px;color:#fff;font-weight:700;margin:4px 0}
+.footer{color:var(--mut);font-size:12px;margin-top:40px;border-top:1px solid var(--bd);padding-top:16px}</style></head><body><div class="wrap">
+
+<h1>Benchmark Estratégico — Checkout / Plataforma de Pagamento Própria <span style="color:var(--mut);font-weight:400">(substituir a Cakto?)</span></h1>
+<p class="meta"><strong>Para:</strong> Marcelo (fundador) · <strong>Produto:</strong> NexvyBeauty (SaaS de gestão para salões) · <strong>Data:</strong> 2026-06-19 · <strong>Status:</strong> benchmark para decisão (build-vs-buy do meio de pagamento)</p>
+<blockquote><strong>Escopo:</strong> meio de pagamento + split de comissão + economia de taxa. Captura, tracking de 2 eixos e atribuição de afiliado <strong>já estão desenhados e migrados na NOSSA camada</strong> (<code>ESTAGIO0-AFILIADOS-TRACKING-CAPTURA.md</code> + <code>20260619_affiliates_tracking.sql</code>), de forma <strong>provider-agnóstica</strong>. O checkout é um <strong>plugue</strong>. Este documento decide <strong>qual plugue</strong> e <strong>se vale trocar</strong>.</blockquote>
+
+<div class="tldr">
+<h2>TL;DR — a recomendação primeiro</h2>
+<p><strong>NÃO fazer big-bang. Ir de HÍBRIDO FASEADO</strong> — manter a Cakto, plugar UM PSP direto atrás da camada provider-agnóstica que você já tem, <strong>medir a economia real com dados próprios</strong>, e só migrar o grosso se o volume justificar.</p>
+<ol>
+<li><strong>A Cakto NÃO é uniformemente cara.</strong> Real (jun/2026): <strong>PIX 0% + R$ 2,49 · Cartão 3,89% + R$ 2,49 · Boleto 4,99% + R$ 2,49</strong>. O PIX é quase imbatível; a dor está no <strong>cartão de ticket alto e no boleto</strong>.</li>
+<li><strong>A economia é real, mas modesta (~1,0–2,1 p.p.).</strong> Em fee, <strong>só paga o build acima de ~R$ 500k–1M de GMV/mês</strong>. Abaixo, a justificativa tem de ser estratégica.</li>
+<li><strong>O caro do build você já pagou.</strong> Captura, tracking, afiliados, comissão idempotente e provisionamento já existem e são agnósticos. Falta só o <strong>adaptador de pagamento</strong>.</li>
+</ol>
+</div>
+
+<h4>Veredito por GMV recorrente mensal</h4>
+<table>
+<thead><tr><th>GMV recorrente/mês</th><th>Recomendação</th><th>Por quê</th></tr></thead>
+<tbody>
+<tr><td>&lt; R$ 300k</td><td><span class="pill bad">Manter Cakto</span></td><td>Economia de fee não cobre build + operação de pagamento (chargeback, conciliação, antifraude, PCI).</td></tr>
+<tr><td>R$ 300k – 1M</td><td><span class="pill warn">Híbrido faseado</span></td><td>Plugar 1 PSP, rotear boleto + cartão de ticket alto, medir. Migrar só o que economiza.</td></tr>
+<tr><td>&gt; R$ 1M</td><td><span class="pill ok">Checkout próprio (faseado)</span></td><td>Break-even em ~6–11 meses; ganha fee + dono do dado + zero risco de plataforma.</td></tr>
+</tbody>
+</table>
+<blockquote><strong>Premissa que falta e muda tudo:</strong> seu <strong>GMV recorrente mensal</strong> e o <strong>mix PIX/cartão/boleto</strong> atuais. Sem isso, dou o modelo + o limiar; você se posiciona na tabela. Com o MRR e o mix reais, fecho o break-even exato.</blockquote>
+
+<hr/>
+<h2>0. Premissas declaradas e o que já está pronto</h2>
+<h3>0.1 O que JÁ está construído (não rebuildar)</h3>
+<ul>
+<li><strong>Camada de afiliado provider-agnóstica</strong> — <code>affiliates</code> (com <code>pix_key</code>), <code>affiliate_links</code> (<code>ref_code</code>), <code>affiliate_commissions</code> (idempotente, <code>pending|approved|paid|cancelled</code>) + RPC <code>resolve_affiliate_ref</code>. RLS por <code>is_super_admin()</code>.</li>
+<li><strong>Captura + tracking de 2 eixos</strong> — <code>ref</code> + 5 UTMs + <code>referrer/landing_page/fbc/fbp</code> em <code>sales_leads</code>, cookie 1st-party + gravação server-side <strong>antes</strong> do checkout. Atribuição = webhook (fonte de verdade).</li>
+<li><strong>Provisionamento pós-venda</strong> — <code>cakto-plan-provisioning.ts</code>: org + admin + e-mail + <code>billing_history</code>, idempotente por <code>cakto_id</code>, casado por e-mail. <strong>Agnóstico ao provedor</strong>: qualquer PSP que entregue <code>{email, valor, status=paid, plano}</code> reusa o pipeline.</li>
+</ul>
+<blockquote><strong>Implicação central:</strong> "checkout próprio" não envolve refazer captura/tracking/afiliado/provisionamento. Envolve só trocar o <strong>adaptador</strong> que recebe o dinheiro e dispara o evento <code>paid</code>.</blockquote>
+<h3>0.2 Premissas do benchmark</h3>
+<ul>
+<li>Entidade <strong>brasileira</strong>, liquidação em <strong>BRL</strong>, venda do SaaS por <strong>assinatura recorrente</strong> (o provisionamento grava <code>plan_status</code>, <code>cakto_subscription_id</code>, <code>price_monthly</code>).</li>
+<li>Tarifas = <strong>tabela de balcão pública (jun/2026)</strong>, todas <strong>negociáveis por volume</strong> — piso, não preço final.</li>
+<li>Ticket recorrente modelado em <strong>R$ 97 / R$ 197 / R$ 397</strong> (não sei o real — premissa).</li>
+</ul>
+
+<hr/>
+<h2>1. Benchmark de PSPs / adquirentes BR</h2>
+<h3>1.1 Tabela mestre — 6 PSPs diretos + a Cakto</h3>
+<p class="meta">Legenda: ✅ tem · ⚠️ tem com ressalva · ❓ confirmar · ❌ não tem. Tarifas = balcão público, negociáveis.</p>
+<table>
+<thead><tr><th>Dimensão</th><th>Cakto (atual)</th><th>Asaas</th><th>Pagar.me</th><th>Mercado Pago</th><th>Iugu</th><th>Efí</th><th>Stripe (BR)</th></tr></thead>
+<tbody>
+<tr><td>PIX</td><td><strong>0% + R$2,49</strong></td><td><strong>Grátis</strong> ⚠️</td><td>1,19%</td><td><strong>0,99%</strong></td><td>~0,99% (oculto)</td><td>1,19% API</td><td>1,19% ⚠️ <em>invite</em></td></tr>
+<tr><td>Cartão à vista</td><td><strong>3,89% + R$2,49</strong></td><td><strong>2,99% + R$0,49</strong></td><td>4,39% @D+15</td><td><strong>3,98%</strong> @D+30</td><td>~4% (oculto)</td><td>3,49%</td><td>3,99% + R$0,39</td></tr>
+<tr><td>Cartão parcelado</td><td>juros ao comprador</td><td>3,49–4,29%</td><td>~+1,25pp/parc.</td><td>~3,99% +juros</td><td>sob consulta</td><td>3,99–4,39%</td><td><span class="pill bad">❌ não</span></td></tr>
+<tr><td>Boleto (pago)</td><td>4,99% + R$2,49</td><td><strong>R$ 1,99</strong></td><td>R$ 3,49</td><td>R$ 3,49</td><td>~R$1,99–2,50</td><td>R$ 3,45</td><td>R$ 3,45</td></tr>
+<tr><td>Split nativo</td><td>✅ (afiliado)</td><td>✅ <code>walletId</code>, s/ fee extra</td><td>✅ <code>recipients</code> (<strong>padrão infoproduto</strong>)</td><td>✅ <code>application_fee</code> +OAuth</td><td>✅ subcontas</td><td>✅ 3 métodos, Pix inst.</td><td>✅ Connect (+R$6/conta/mês)</td></tr>
+<tr><td>Onboarding afiliado</td><td>—</td><td>conta/subconta API</td><td><strong>recipient via API (simples)</strong></td><td>conta MP + OAuth ⚠️</td><td>subconta + KYC</td><td>conta Efí (cada um)</td><td>conta Connect</td></tr>
+<tr><td>Antifraude</td><td>✅ incluído</td><td>✅ grátis</td><td>⚠️ add-on</td><td>✅ device FP</td><td>❓ sem doc</td><td>✅ incluído</td><td>✅ Radar R$0,08/tx</td></tr>
+<tr><td>Recorrência</td><td>✅ (+PIX rec.)</td><td>✅</td><td>✅ robusta v2</td><td>✅ (verify)</td><td>✅ <strong>forte</strong> (dunning)</td><td>✅ (Pix Automático)</td><td>✅ Billing +0,7%</td></tr>
+<tr><td>Settlement cartão</td><td>PIX inst.; saque grátis</td><td><strong>D+32</strong> ⚠️</td><td>D+15</td><td>D+30</td><td><strong>D+1</strong></td><td>D+30</td><td>~30d; payout diário</td></tr>
+<tr><td>Tokenização (SAQ A)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td>3DS 2.0</td><td>✅</td><td><span class="pill warn">❓ não doc.</span></td><td><span class="pill ok">✅</span></td><td><span class="pill ok">✅</span></td><td>❓ citado</td><td><span class="pill warn">❓</span></td><td>✅</td></tr>
+<tr><td>Parcelado/Elo/Hiper</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td><span class="pill bad">❌ lacuna</span></td></tr>
+<tr><td>Preços públicos?</td><td>✅</td><td>✅</td><td>parcial</td><td>✅</td><td><span class="pill bad">❌ oculto</span></td><td>✅</td><td>✅</td></tr>
+<tr><td>Mensalidade</td><td>não</td><td>não</td><td>não</td><td>não</td><td><strong>sim (plano)</strong></td><td>não</td><td>não</td></tr>
+</tbody>
+</table>
+
+<h3>1.2 Leitura por provedor (bottom line)</h3>
+<ul>
+<li><strong>Asaas</strong> — melhor custo transparente + split mais simples. Cartão à vista mais barato, PIX grátis, boleto R$1,99, antifraude incluso. <strong>Fechar:</strong> 3DS 2.0 não documentado, D+32.</li>
+<li><strong>Pagar.me</strong> — melhor fit técnico de split de afiliado (modelo <code>recipients</code> = o que a Cakto faz por baixo, migração 1:1), recorrência v2 robusta, 3DS ✅. <strong>Trade-off:</strong> antifraude add-on, PIX 1,19%, D+15.</li>
+<li><strong>Mercado Pago</strong> — mais barato na tabela + melhor DX + antifraude de escala + 3DS ✅. <strong>Trade-off:</strong> split via <code>application_fee</code> + OAuth por recebedor (atrito).</li>
+<li><strong>Efí</strong> — melhor API de PIX do Brasil + split nos 3 métodos + SDKs maduros. <strong>Trade-off:</strong> boleto caro, D+30, conta Efí por afiliado, 3DS a confirmar.</li>
+<li><strong>Iugu</strong> — a mais "marketplace-first" + recorrência madura. <strong>Trade-off:</strong> não publica preços, tem mensalidade, 3 lacunas (antifraude/3DS/chargeback).</li>
+<li><strong>Stripe</strong> — fraca como adquirente doméstica BR: <strong>não faz parcelado</strong>, sem Elo/Hipercard, PIX invite-only e caro. <span class="pill bad">não entra</span> para SaaS doméstico.</li>
+</ul>
+
+<h3>1.3 A Cakto não é o vilão que parece — onde é cara e onde não é</h3>
+<table>
+<thead><tr><th>Método</th><th>Cakto</th><th>Melhor PSP direto</th><th>Δ economia bruta</th><th>Veredito</th></tr></thead>
+<tbody>
+<tr><td>PIX</td><td>0% + R$2,49</td><td>Asaas grátis</td><td>só o R$2,49 fixo</td><td><span class="pill warn">quase empate</span> (some em ticket alto)</td></tr>
+<tr><td>Cartão à vista</td><td>3,89% + R$2,49</td><td>Asaas 2,99% + R$0,49</td><td>~0,9 p.p. + R$2,00</td><td><span class="pill warn">economia modesta</span></td></tr>
+<tr><td>Boleto</td><td>4,99% + R$2,49</td><td>Asaas R$1,99 (0%)</td><td><strong>~5 p.p.</strong></td><td><span class="pill ok">Cakto cara de verdade</span></td></tr>
+</tbody>
+</table>
+<blockquote>Se a venda é majoritariamente <strong>PIX</strong>, trocar de provedor economiza <strong>quase nada</strong>. O ganho mora em <strong>boleto</strong> e <strong>cartão de ticket alto / recorrência longa</strong>. <strong>Meça seu mix antes de qualquer build.</strong></blockquote>
+
+<h3>1.4 Modelo de economia (taxa efetiva)</h3>
+<h4>Ticket R$ 197/mês — taxa efetiva (% + fixo/ticket)</h4>
+<table>
+<thead><tr><th>Método</th><th>Cakto efetiva</th><th>Asaas efetiva</th><th>Δ p.p.</th></tr></thead>
+<tbody>
+<tr><td>PIX</td><td>1,26%</td><td>~0%</td><td>1,26</td></tr>
+<tr><td>Cartão</td><td>5,15%</td><td>3,24%</td><td>1,91</td></tr>
+<tr><td>Boleto</td><td>6,25%</td><td>1,01%</td><td>5,24</td></tr>
+</tbody>
+</table>
+<h4>Blended por mix (ticket R$ 197)</h4>
+<table>
+<thead><tr><th>Mix (PIX/Cartão/Boleto)</th><th>Cakto blended</th><th>Asaas blended</th><th>Δ p.p.</th></tr></thead>
+<tbody>
+<tr><td>PIX-heavy (70/20/10)</td><td>2,54%</td><td>0,75%</td><td><strong>1,79</strong></td></tr>
+<tr><td>Misto (40/45/15)</td><td>3,67%</td><td>1,62%</td><td><strong>2,05</strong></td></tr>
+<tr><td>Cartão-heavy (20/70/10)</td><td>4,48%</td><td>2,37%</td><td><strong>2,11</strong></td></tr>
+</tbody>
+</table>
+<p class="meta"><strong>Sensibilidade ao ticket (cartão, Δ p.p.):</strong> R$97 → ~2,5 · R$197 → ~1,9 · R$397 → ~1,4 (o fixo R$2,49 pesa mais em ticket baixo).</p>
+<blockquote><strong>Ressalvas honestas:</strong> (1) usa <strong>tabela</strong> — a Cakto também negocia, Δ real pode encolher; (2) <strong>PIX recorrente (Pix Automático)</strong> pode custar mais que a cobrança avulsa "grátis" (Efí cobra R$3,50/tx, <em>pior</em> que Cakto) — confirmar; (3) Asaas D+32 → antecipação (1,25%/mês) come parte do ganho.</blockquote>
+
+<hr/>
+<h2>2. Anatomia de um checkout próprio (o que construir)</h2>
+<blockquote>Você não constrói "o checkout inteiro" — constrói o <strong>adaptador de pagamento</strong>. O resto já existe e é agnóstico.</blockquote>
+<table>
+<thead><tr><th>Componente</th><th>O que é</th><th>Estado · esforço</th><th>Risco</th></tr></thead>
+<tbody>
+<tr><td>Página de pagamento</td><td>UI própria + <strong>hosted fields do PSP</strong> (PCI SAQ A); PIX QR; boleto linha digitável</td><td>🔴 novo · M</td><td>conversão</td></tr>
+<tr><td>Tokenização</td><td>cartão vira token no browser, nunca toca seu backend</td><td>🔴 novo (lib PSP) · P</td><td>baixo</td></tr>
+<tr><td>3DS 2.0</td><td>frictionless + challenge; habilita <strong>liability shift</strong></td><td>🔴 novo · M</td><td><span class="pill warn">médio</span> (confirmar PSP)</td></tr>
+<tr><td>Order bump</td><td>oferta extra 1-clique no checkout</td><td>🔴 novo · P</td><td>baixo</td></tr>
+<tr><td>Upsell / downsell 1-clique</td><td>oferta pós-compra reusando token</td><td>🔴 novo · M</td><td>médio</td></tr>
+<tr><td>Recuperação de carrinho</td><td>camada própria (Edge Function ouve <code>pix_gerado</code>/<code>abandono</code> → WhatsApp)</td><td>🟡 desenhado · M</td><td>eventos do PSP</td></tr>
+<tr><td>Recorrência + dunning</td><td>cobrança mensal, retry, pro-rata, troca de plano</td><td>🔴 novo · G</td><td><span class="pill bad">alto</span> (coração do SaaS)</td></tr>
+<tr><td>Refund / chargeback ops</td><td>estorno, reversão de comissão, disputa</td><td>🔴 novo · M</td><td><span class="pill bad">alto</span> (operação contínua)</td></tr>
+<tr><td>Conciliação financeira</td><td>casar payout × pedidos × comissões</td><td>🔴 novo · M</td><td>médio (obrigatório)</td></tr>
+</tbody>
+</table>
+<blockquote><strong>Custo "invisível":</strong> ao internalizar, você troca <strong>% de taxa</strong> por <strong>CapEx de engenharia + OpEx de operação de pagamento</strong> (antifraude, chargeback, conciliação, re-atestação PCI anual). É o trade que o break-even da Seção 5 quantifica.</blockquote>
+
+<hr/>
+<h2>3. Programa de afiliados próprio + split (a decisão-chave)</h2>
+<p>Você já tem <code>affiliate_commissions</code> (idempotente) e <code>affiliates.pix_key</code>. Dois caminhos para pagar o afiliado — a escolha importa mais que o PSP:</p>
+<h3>Caminho A — Split nativo no PSP</h3>
+<ul>
+<li><strong>Prós:</strong> dinheiro do afiliado não transita por você (contabilidade limpa); reversão automática em refund.</li>
+<li><strong>Contras:</strong> <strong>todo afiliado precisa de conta no PSP</strong> (atrito); você fica <strong>preso ao PSP</strong>; chargeback no split precisa de config (<code>liable</code>).</li>
+</ul>
+<h3>Caminho B — Payout próprio via PIX <span class="pill ok">recomendado para começar</span></h3>
+<ul>
+<li><strong>Prós:</strong> afiliado só precisa de uma <strong>chave PIX</strong> (zero onboarding no PSP); <strong>provider-agnóstico de verdade</strong>; controle total da régua <code>pending→approved→paid</code>. Aproveita 100% do que você já migrou.</li>
+<li><strong>Contras:</strong> comissão entra como receita e sai como despesa (impacto fiscal — falar com contador); você arca com o float; <strong>clawback</strong> em refund é sua responsabilidade (mas o estado <code>cancelled</code> já existe).</li>
+</ul>
+<blockquote><strong>Recomendação:</strong> começar pelo <strong>Caminho B</strong> — mais simples, mais barato, alinhado à arquitetura agnóstica, e elimina o maior atrito (afiliado abrir conta no PSP). A régua <code>pending → approved</code> (só após a janela de reembolso) é o próprio antifraude de <strong>auto-compra</strong>.</blockquote>
+<h4>Antifraude de auto-compra</h4>
+<ul>
+<li>Bloquear comissão quando <code>affiliate.email == order.customer_email</code> (ou mesmo CPF/CNPJ); manter <code>pending</code> até <code>approved</code>; flag de velocidade (muitos pedidos do mesmo cartão/IP).</li>
+<li><strong>Comissão recorrente:</strong> <code>commission_kind</code> (<code>first_sale</code> vs <code>recurring</code>), nova comissão a cada cobrança paga (idempotente por <code>id</code> do mês).</li>
+</ul>
+
+<hr/>
+<h2>4. Compliance</h2>
+<h3>4.1 PCI-DSS — a decisão que define o esforço</h3>
+<table>
+<thead><tr><th>Cenário</th><th>Onde o PAN passa</th><th>SAQ</th><th>Controles</th><th>Veredito</th></tr></thead>
+<tbody>
+<tr><td><strong>UI própria + hosted fields/iframe do PSP</strong></td><td>nunca toca seu backend (token)</td><td><strong>SAQ A</strong></td><td>~13</td><td><span class="pill ok">✅ o caminho</span></td></tr>
+<tr><td>JS direct-post na sua página</td><td>browser na sua página</td><td>SAQ A-EP</td><td>mais pesado</td><td><span class="pill warn">⚠️ evitar</span></td></tr>
+<tr><td>API própria recebendo PAN</td><td>PAN no seu servidor</td><td><strong>SAQ D</strong></td><td><strong>~300+</strong></td><td><span class="pill bad">❌ quase nunca</span></td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Regra de ouro:</strong> se o PAN passa pelo seu backend (mesmo que tokenize depois), você cai em <strong>SAQ D</strong>. O ponto de captura tem de ser o PSP.</li>
+<li><strong>PCI v4.0.1</strong> (obrigatório desde 31/03/2025): mesmo em SAQ A, você <strong>atesta</strong> que a página só carrega elementos vindos direto do PSP (anti-Magecart).</li>
+<li><strong>Casa com a Seção 11 do CLAUDE.md:</strong> chave do PSP server-side (Edge Function proxy), nunca em <code>NEXT_PUBLIC_*</code>; frontend usa só JWT Supabase.</li>
+</ul>
+<h3>4.2 3DS 2.0 e liability shift (BR)</h3>
+<ul>
+<li>Transação autenticada via 3DS → <strong>chargeback de fraude migra para o emissor</strong>. Não cobre disputa não-fraude. Visa assume se o cartão não está enrolado; Mastercard tende a manter no merchant.</li>
+<li>~85% das transações passam <strong>frictionless</strong> → impacto de conversão pequeno.</li>
+<li><strong>Due diligence #1:</strong> confirmar 3DS 2.0 por escrito. Pagar.me/MP ✅; <strong>Asaas/Efí não documentam</strong>. Sem 3DS, o chargeback de fraude é seu.</li>
+<li>Não há mandato legal do BC forçando 3DS em CNP — adoção dirigida por regra de bandeira, não por lei.</li>
+</ul>
+<h3>4.3 LGPD</h3>
+<ul>
+<li><strong>Base legal:</strong> checkout pago = Art. 7º, V (execução de contrato) → <strong>sem consentimento</strong> para o dado da compra. Antifraude = IX (legítimo interesse + LIA). Fiscal = II.</li>
+<li><strong>Erro comum:</strong> cartão e CPF <strong>NÃO são dado sensível</strong> — são comum. Só vira Art. 11 com biometria.</li>
+<li><strong>Minimização:</strong> nunca guardar PAN/CVV — só token/últimos 4/bandeira. Converge com o PCI.</li>
+<li><strong>Transferência internacional</strong> (Stripe/cross-border): exige cláusulas-padrão ANPD no DPA. PSP local não acende esse ponto.</li>
+</ul>
+
+<hr/>
+<h2>5. Esforço × risco × economia — break-even e recomendação</h2>
+<div class="cards">
+<div class="c"><div class="n">CapEx build (v1 robusta)</div><div class="v">R$ 60k–180k</div><div class="meta">estimate — calibrar com o time</div></div>
+<div class="c"><div class="n">OpEx contínuo</div><div class="v">R$ 2k–5k/mês</div><div class="meta">fraude + conciliação + chargeback + PCI</div></div>
+<div class="c"><div class="n">Limiar de decisão (fee)</div><div class="v">R$ 500k–1M/mês</div><div class="meta">GMV recorrente p/ o build se pagar</div></div>
+</div>
+<h3>5.2 Break-even <span class="meta" style="font-weight:400">(Δ blended 1,5 p.p.; build R$ 120k; OpEx R$ 3k/mês)</span></h3>
+<table>
+<thead><tr><th>GMV/mês</th><th>Economia bruta (1,5%)</th><th>− OpEx</th><th>Líquida/mês</th><th>Meses p/ pagar build</th><th>Vale?</th></tr></thead>
+<tbody>
+<tr><td>R$ 100k</td><td>R$ 1.500</td><td>−R$ 1.500</td><td><strong>negativo</strong></td><td>nunca</td><td><span class="pill bad">❌</span></td></tr>
+<tr><td>R$ 200k</td><td>R$ 3.000</td><td>R$ 0</td><td>~0</td><td>nunca recupera CapEx</td><td><span class="pill bad">❌</span></td></tr>
+<tr><td>R$ 300k</td><td>R$ 4.500</td><td>R$ 1.500</td><td>R$ 1.500</td><td>~80 meses</td><td><span class="pill bad">❌ (só estratégico)</span></td></tr>
+<tr><td>R$ 500k</td><td>R$ 7.500</td><td>R$ 4.500</td><td>R$ 4.500</td><td><strong>~27 meses</strong></td><td><span class="pill warn">⚠️ limítrofe</span></td></tr>
+<tr><td>R$ 1M</td><td>R$ 15.000</td><td>R$ 12.000</td><td>R$ 12.000</td><td><strong>~10 meses</strong></td><td><span class="pill ok">✅</span></td></tr>
+<tr><td>R$ 2M</td><td>R$ 30.000</td><td>R$ 27.000</td><td>R$ 27.000</td><td><strong>~4,4 meses</strong></td><td><span class="pill ok">✅✅</span></td></tr>
+</tbody>
+</table>
+<h3>5.3 Riscos do build (além do custo)</h3>
+<ul>
+<li><strong>Migração de cartão-on-file:</strong> assinaturas ativas <strong>não migram facilmente</strong> de PSP → risco de churn. Mitigação: novos clientes no PSP novo, base antiga decai na Cakto (argumento pró-híbrido).</li>
+<li><strong>Você vira operador de dinheiro:</strong> chargeback, conciliação, antifraude e PCI viram função <strong>permanente</strong>.</li>
+<li><strong>3DS não confirmado</strong> em Asaas/Efí → chargeback de fraude pode recair em você.</li>
+<li><strong>PIX recorrente</strong> pode custar mais que a Cakto (Pix Automático ≥ R$ 3,50 em alguns PSPs).</li>
+</ul>
+<h3>5.4 Recomendação final + roadmap faseado</h3>
+<p><strong>Híbrido faseado, provider-agnóstico, medindo antes de migrar.</strong> Cada fase com critério binário:</p>
+<table>
+<thead><tr><th>Fase</th><th>Objetivo</th><th>Entrega</th><th>Critério VERIFICÁVEL</th></tr></thead>
+<tbody>
+<tr><td><strong>0 — Medir</strong> (1 sem)</td><td>saber se vale</td><td>dashboard de mix, ticket médio, GMV/mês e <strong>taxa blended paga à Cakto hoje</strong></td><td>query retorna <code>{mix, ticket_medio, gmv_mensal, fee_blended_atual}</code></td></tr>
+<tr><td><strong>1 — Provar</strong> (2–4 sem)</td><td>validar economia sem risco</td><td>adaptador de 1 PSP (<strong>Asaas</strong> por custo / <strong>Pagar.me</strong> por split); rotear só boleto + cartão de ticket alto</td><td>venda-teste fecha <code>paid</code> → provisiona org+admin (reusa <code>provisionFromOrder</code>); fee medida &lt; Cakto</td></tr>
+<tr><td><strong>2 — Afiliado</strong> (1–2 sem)</td><td>pagar comissão sem atrito</td><td>payout PIX próprio em lote (Caminho B); régua + bloqueio de auto-compra</td><td>comissão aprovada vira PIX à <code>pix_key</code>; auto-compra fica <code>cancelled</code>; idempotente</td></tr>
+<tr><td><strong>3 — Conversão</strong> (2–4 sem)</td><td>paridade Cakto</td><td>checkout hosted-fields + 3DS + order bump + upsell + recorrência/dunning</td><td>aprova cartão tokenizado c/ 3DS; assinatura cobra mês 2 automaticamente</td></tr>
+<tr><td><strong>4 — Migrar</strong> (condicional)</td><td>só se Fase 0 ≥ R$500k–1M/mês</td><td>rotear o grosso; Cakto vira fallback; base antiga decai sem migração forçada</td><td>% de GMV no PSP próprio sobe; churn na virada ≈ 0; conciliação fecha mensal</td></tr>
+</tbody>
+</table>
+<blockquote><strong>Não pule a Fase 0.</strong> "Taxas altas demais" é hipótese até medir o mix e a taxa blended real. Se 80% das vendas são PIX, o PSP próprio economiza quase nada e o build não se paga — e isso só se descobre com o seu dado.</blockquote>
+
+<hr/>
+<h2>Anexo — Itens a confirmar e fontes</h2>
+<h4>Confirmar antes de fechar (anti-invenção)</h4>
+<ol>
+<li><strong>Seu GMV recorrente/mês + mix + ticket médio</strong> (Fase 0) — o dado que decide tudo.</li>
+<li><strong>3DS 2.0</strong> por escrito (Asaas/Efí ❓; Pagar.me/MP ✅).</li>
+<li><strong>Custo do PIX recorrente / Pix Automático</strong> (pode ser pior que Cakto).</li>
+<li><strong>Proposta comercial</strong> dos 2 finalistas com seu volume — tabela é piso, real cai 0,3–1,0 p.p.</li>
+<li><strong>Tabela Cakto</strong> na conta logada (central deu 404 em fetch; lida via snippets — validar).</li>
+<li><strong>Chargeback no split</strong> (quem é <code>liable</code>) e antecipação negociada.</li>
+</ol>
+<h4>Fontes (acessadas 2026-06-19)</h4>
+<p class="meta">Asaas (precos-e-taxas, docs split/tokenização) · Pagar.me (docs recebedores/split-rules; helpjuice taxas) · Mercado Pago (blog split; developers 3DS/prazos) · Iugu (dev split; blog tarifa) · Efí (tarifas; dev split Pix) · Stripe BR (pricing, connect, docs installments) · Cakto/concorrentes (ajuda.cakto 404→snippets; Kiwify 8,99%; Hotmart 9,9%; Eduzz 4,90%/8,90% 14/abr/2026) · Compliance (PCI SSC SAQ A/v4.0.1; EMVCo; Lei 13.709; ANPD).</p>
+<blockquote><strong>Labels:</strong> PIX/boleto/cartão à vista (melhor caso) = <strong>VERIFICADO</strong> (multi-fonte). Parcelado detalhado, antifraude Pagar.me, saque MP, estado 3DS Asaas/Efí/Elo, tabela Cakto = <strong>ESTIMATE/VERIFY</strong>. Todas as tarifas são <strong>piso negociável</strong>.</blockquote>
+
+<div class="footer">NexvyBeauty · Benchmark build-vs-buy do meio de pagamento · 2026-06-19 · pareado com <code>BENCHMARK-CHECKOUT-PROPRIO-PSP-NEXVY.md</code></div>
+
+</div></body></html>

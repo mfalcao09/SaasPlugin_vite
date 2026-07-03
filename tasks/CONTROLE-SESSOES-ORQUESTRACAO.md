@@ -64,6 +64,7 @@ Guardrail #2 é um **detonador**: qualquer seção "construída inspirada" em ve
 ## 3. Linhagem de sessões + AUTORIDADE
 
 ### 🔴 AUTORIDADE ATUAL
+`986d864f-da53-43a9-b3a9-1aa520721352` (Orq#1 REATIVADA pós-reset do limite, dir raiz `-…-GitHub`) — **REASSUMIU 2026-07-02 ~09:40 BRT**. Ground-truth conferido (HEAD `8de1879`; 16 edges `platform-*`; booking ainda stubado 5×; `.vendus-src-reference` copiado). Retomando onda **BOOKING**: UI das 4 abas EM PORTE agora; página-pública + Conexões aguardando decisão do Marcelo. Autoridade anterior:
 `81daecc0-97fb-449f-b9e5-df7cd4d21fbb` (dir `SaasPlugin_vite`) — assumiu 2026-07-02 ~06:53 BRT. **SESSÃO ENCERRADA 02/07** após concluir a onda dos 3 motores (commit `c2d4a5b` pushed). **Próxima onda = booking (NÃO iniciada — cancelada a pedido do Marcelo p/ encerrar):** retomar por `tasks/PLANO-PORTE-BOOKING-CRM.md` (4 abas + edges públicas; guardrail #11 salão≠booking). Ao retomar, quem assumir atualiza esta linha com seu sessionId.
 
 ### Tabela de linhagem (02/07/2026) — confirmada por forense (conteúdo, não mtime)

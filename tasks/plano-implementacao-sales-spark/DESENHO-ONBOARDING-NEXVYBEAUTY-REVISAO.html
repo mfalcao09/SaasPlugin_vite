@@ -1,0 +1,232 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Desenho do Onboarding NexvyBeauty — revisão</title><style>:root{--bg:#0b0e16;--card:#141927;--bd:#2c3342;--tx:#dbe2ec;--mut:#8b97a8;--pri:#EC4899}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px 20px}
+.wrap{max-width:1040px;margin:0 auto}h1{font-size:26px;color:#fff;border-bottom:2px solid var(--pri);padding-bottom:12px}
+h2{font-size:20px;color:#fff;margin-top:34px;border-left:3px solid var(--pri);padding-left:12px}h3{font-size:16px;color:var(--pri)}
+blockquote{background:var(--card);border-left:3px solid var(--pri);padding:14px 18px;border-radius:0 8px 8px 0;color:var(--mut);font-size:14px}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;background:var(--card);border-radius:8px;overflow:hidden}
+th{background:#1b2334;color:#fff;text-align:left;padding:10px 12px;border-bottom:2px solid var(--pri)}
+td{padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}tr:last-child td{border-bottom:none}
+code{background:#0e1118;color:#f7a8d0;padding:2px 6px;border-radius:4px;font:12.5px/1 "SF Mono",Menlo,monospace}
+pre{background:#0e1118;color:#9fd3ff;padding:16px;border-radius:8px;overflow-x:auto;font:12.5px/1.5 "SF Mono",Menlo,monospace;border:1px solid var(--bd)}
+pre code{background:none;color:inherit;padding:0}
+strong{color:#fff}ul{padding-left:8px;list-style:none}li{margin:6px 0;padding-left:20px;position:relative}li::before{content:"▸";color:var(--pri);position:absolute;left:4px}
+ol{padding-left:22px}ol li{padding-left:4px}ol li::before{content:none}
+hr{border:none;border-top:1px solid var(--bd);margin:28px 0}.wrap>p{color:var(--mut)}a{color:var(--pri)}</style></head><body><div class="wrap"><h1>Desenho do Onboarding NexvyBeauty — da compra à plataforma (para revisão)</h1>
+<p><strong>Para:</strong> Marcelo (fundador) · <strong>Data:</strong> 2026-06-18 · <strong>Status:</strong> desenho para sua revisão <strong>antes</strong> de construir as Fases 2 e 3.</p>
+<blockquote>
+<p>Legenda: ✅ <strong>No ar</strong> (já funciona, verificado no código) · 🔧 <strong>A construir</strong> (Fase 2 ou 3). Funil escolhido: <strong>"os dois"</strong> — comercial-assistido agora, self-serve depois.</p>
+</blockquote>
+<hr />
+<h2>A jornada em 8 estágios (visão geral)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Estágio</th>
+<th>Cliente vê</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Descoberta &amp; compra</td>
+<td>LP única (afiliado + UTM) + captura robusta</td>
+<td>🔧 Fase 3 + Fase A</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Checkout (Cakto)</td>
+<td>Paga; e-mail + tracking carregados</td>
+<td>🔧 Fase 3</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Provisionamento automático</td>
+<td>(bastidor) empresa + admin criados</td>
+<td>✅ No ar</td>
+</tr>
+<tr>
+<td>3</td>
+<td>E-mail de acesso</td>
+<td>"Defina sua senha"</td>
+<td>✅ No ar</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1º acesso unificado</td>
+<td>Senha → empresa → módulos</td>
+<td>🔧 Fase 2</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Onboarding ramificado</td>
+<td>Passos de cada módulo escolhido</td>
+<td>🔧 Fase 2</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Checklist de ativação</td>
+<td>"Ative seu salão" (ordem)</td>
+<td>✅ Fase 1</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Operação</td>
+<td>Agenda, atende, vende</td>
+<td>✅ No ar</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tradução:</strong> o <strong>meio da jornada já está pronto</strong> (pagou → empresa criada → e-mail de acesso). O que falta construir está nas <strong>duas pontas</strong>: a <strong>entrada</strong> (como ele compra) e o <strong>miolo do onboarding</strong> (deixar o setup de TODOS os módulos num fluxo só e ramificado).</p>
+<hr />
+<h2>Os dois caminhos de venda (você escolheu "os dois")</h2>
+<h3>🅰️ Comercial-assistido (começamos por aqui — Fase 3)</h3>
+<ol>
+<li>Cliente demonstra interesse (LP <code>/vendas</code> salva o lead com nome/e-mail/telefone).</li>
+<li>Você ou o comercial <strong>gera o link de checkout do plano já pré-preenchido com o e-mail dele</strong> e envia por <strong>WhatsApp/e-mail</strong>.</li>
+<li>Ele paga <strong>sem digitar e-mail de novo</strong> → garante e-mail único, sem duplicar cadastro.</li>
+</ol>
+<p><strong>Por que primeiro:</strong> elimina o risco de e-mail duplicado e dá controle de quem entra. Reaproveita o <code>PaymentLinkDialog</code> que já existe no inbox.</p>
+<h3>🅱️ Self-serve (depois — Fase 3+)</h3>
+<ol>
+<li>Página de <strong>preços pública</strong> com botão <strong>"Comprar"</strong> que leva direto ao checkout Cakto.</li>
+<li>Escala sem comercial, mas depende de <strong>instruir o cliente a usar o mesmo e-mail</strong> (não dá pra travar 100%).</li>
+</ol>
+<blockquote>
+<p>Os dois caminhos <strong>desembocam no mesmo lugar</strong>: o checkout do Cakto → provisionamento automático (estágio 2). A diferença é só como ele chega ao checkout.</p>
+</blockquote>
+<hr />
+<h2>Estágio a estágio (detalhado)</h2>
+<h3>Estágio 0 — Descoberta &amp; compra 🔧 Fase 3 + Fase A (REFORMULADO)</h3>
+<blockquote>
+<p><strong>Reprojetado</strong> para suportar <strong>afiliados + rastreamento (canal + plataforma) + captura robusta</strong>. Detalhe completo — benchmark UTMify/Voxuy, arquitetura, tabelas novas e roadmap — em <strong><code>ESTAGIO0-AFILIADOS-TRACKING-CAPTURA.md</code></strong>.</p>
+</blockquote>
+<ul>
+<li><strong>👤 Cliente vê:</strong> uma <strong>LP única</strong> (idêntica para todos), aberta por um link de afiliado/anúncio (<code>/vendas?ref=&lt;afiliado&gt;&amp;utm_source=meta&amp;...</code>). Ao clicar <strong>"Comprar"</strong>, um <strong>modal de captura robusta</strong> (multi-step) pede <strong>nome, e-mail, WhatsApp</strong> + qualificação (Instagram, dor principal…).</li>
+<li><strong>⚙️ Bastidor:</strong> a LP persiste <code>ref</code> (canal/afiliado) + 5 UTMs (plataforma) em <strong>cookie 1st-party</strong>; o submit cria o <strong>lead tagueado server-side</strong> (canal + plataforma + <code>affiliate_id</code>); o cliente segue pro checkout Cakto <strong>pré-preenchido</strong> carregando o tracking (e o e-mail, que mata a duplicidade).</li>
+<li><strong>🔧 O que entra:</strong> botão "Comprar", modal multi-step, tabelas <code>affiliates</code> / <code>affiliate_links</code> / <code>affiliate_commissions</code>, e o <code>cakto-webhook</code> passando a <strong>atribuir a venda ao afiliado</strong> (comissão). Mesmo quem <strong>não pagar</strong> fica salvo → habilita <strong>recuperação no WhatsApp</strong> (estilo Voxuy).</li>
+</ul>
+<h3>Estágio 1 — Checkout (Cakto) 🔧 Fase 3 (mensagens)</h3>
+<ul>
+<li><strong>👤 Cliente vê:</strong> a tela de pagamento do Cakto (fora do nosso app), com o <strong>e-mail já preenchido</strong> (assistido).</li>
+<li><strong>⚙️ Bastidor:</strong> o Cakto processa o pagamento. O e-mail do checkout é o que vai virar o login.</li>
+<li><strong>🔧 O que entra (mensagens claras — você cola no painel Cakto):</strong></li>
+<li><em>Antes de pagar:</em> "Use o <strong>mesmo e-mail</strong> em que você quer receber o acesso. Após o pagamento aprovado, enviamos o link em até 5 minutos."</li>
+<li><em>Tela de obrigado:</em> "Pagamento confirmado! 🎉 Enviamos o link de acesso para o seu e-mail. Abra, defina sua senha e configure seu salão."</li>
+</ul>
+<h3>Estágio 2 — Provisionamento automático ✅ No ar</h3>
+<ul>
+<li><strong>👤 Cliente vê:</strong> nada (acontece em segundos, nos bastidores).</li>
+<li><strong>⚙️ Bastidor (já funciona):</strong> o <code>cakto-webhook</code> recebe "pago" e o <code>cakto-plan-provisioning</code>:<br />
+  1. cria/acha a <strong>empresa</strong> (<code>organizations</code>) pelo e-mail do checkout;<br />
+  2. cria o <strong>usuário admin</strong> com esse mesmo e-mail;<br />
+  3. define o <strong>plano</strong> da empresa (o plano determina <strong>quais módulos ela pode ativar</strong>);<br />
+  4. dispara o e-mail de acesso.</li>
+<li><strong>Sem ação sua.</strong> É 100% automático no caminho Cakto-plataforma.</li>
+</ul>
+<h3>Estágio 3 — E-mail de acesso ✅ No ar (copy a melhorar)</h3>
+<ul>
+<li><strong>👤 Cliente vê:</strong> o e-mail "Seu acesso de administrador está pronto" → clica no botão → cai numa tela para <strong>definir a senha</strong>.</li>
+<li><strong>⚙️ Bastidor:</strong> template <code>welcome-admin-access</code> com um <em>link de recuperação</em> (definir senha) para o <strong>mesmo e-mail</strong> do checkout.</li>
+<li><strong>Observação:</strong> esse e-mail é <strong>compartilhado entre todos os SaaS</strong> (Oficinas, Beauty…), por isso é neutro de propósito — <strong>não</strong> vamos escrever "salão" nele.</li>
+</ul>
+<h3>Estágio 4 — 1º acesso unificado 🔧 Fase 2</h3>
+<blockquote>
+<p><strong>Hoje já existe a base:</strong> depois de definir a senha, o cliente cai no <strong>Hub de Módulos</strong> e o <strong>onboarding guiado abre sozinho</strong> (é o "1 de 5" que você viu). O que a Fase 2 faz é <strong>deixar esse fluxo único e completo</strong>.</p>
+</blockquote>
+<ul>
+<li><strong>👤 Cliente vê (alvo):</strong> uma sequência só, que cobre <strong>tudo</strong>:<br />
+  1. <strong>Definir senha</strong> (já existe)<br />
+  2. <strong>Confirmar os dados da empresa</strong> (nome, identidade visual) — 🔧 novo na Fase 2<br />
+  3. <strong>Escolher/confirmar os módulos</strong> que vai usar (já existe — passo "Módulos") — isso grava o <code>enabled_modules</code> da empresa, que é o que o Hub respeita (Fase 1 ✅)</li>
+<li><strong>⚙️ Bastidor:</strong> hoje a tela de aceite (<code>AcceptInvite</code>) só troca a senha; quem faz o setup é o <code>GuidedOnboarding</code>. A Fase 2 costura os dois para o cliente sentir <strong>um fluxo só</strong>, cobrindo salão + CRM + atendimento (e não "só CRM" como é hoje).</li>
+</ul>
+<h3>Estágio 5 — Onboarding ramificado por módulo 🔧 Fase 2</h3>
+<ul>
+<li><strong>👤 Cliente vê (alvo):</strong> depois de escolher os módulos, ele faz <strong>só os passos dos módulos que escolheu</strong>:</li>
+<li><strong>Salão</strong> → cadastrar <strong>Profissionais</strong> → <strong>Serviços</strong> → (Agenda liberada) <em>(hoje só tem "Serviços"; Fase 2 adiciona Profissionais e Agenda)</em></li>
+<li><strong>CRM</strong> → cadastrar <strong>Produto</strong> → conectar <strong>WhatsApp</strong> → criar <strong>Agente IA</strong> <em>(hoje existe, mas "chumbado"; Fase 2 organiza igual aos outros)</em></li>
+<li><strong>Atendimento</strong> → conectar um número de <strong>WhatsApp</strong></li>
+<li><strong>⚙️ Bastidor:</strong> todos os passos passam a vir de um <strong>registro único</strong> (<code>registry</code>), então cada módulo mostra os seus e nada de outro nicho aparece. (É também aqui que matamos de vez qualquer resíduo de fluxo.)</li>
+</ul>
+<h3>Estágio 6 — Checklist de ativação ✅ Fase 1 (já no ar)</h3>
+<ul>
+<li><strong>👤 Cliente vê:</strong> ao entrar no <strong>Salão</strong>, um card <strong>"Ative seu salão"</strong> com a ordem certa e ✓/○ por passo:<br />
+<strong>Profissionais → Serviços → Clientes → 1º agendamento.</strong> Clicou, vai direto pra tela. Some quando tudo está cadastrado.</li>
+<li><strong>No CRM</strong>, o equivalente: a tela vazia diz <strong>"Cadastre seu primeiro produto"</strong> → e a sequência segue Produto → Pipeline → Vendedor → Lead.</li>
+<li><strong>⚙️ Bastidor:</strong> o checklist conta os registros reais de cada tabela por empresa. Já está em produção (Fase 1).</li>
+</ul>
+<h3>Estágio 7 — Operação do dia a dia ✅ No ar</h3>
+<ul>
+<li><strong>👤 Cliente vê:</strong> o <strong>Hub</strong> mostra só os módulos que ele ativou (Fase 1 ✅). Ele agenda horários, atende no WhatsApp e (se usar o CRM) trabalha o pipeline.</li>
+<li><strong>⚙️ Bastidor:</strong> cada empresa só enxerga os próprios dados (segurança por empresa). Tudo já operante.</li>
+</ul>
+<hr />
+<h2>O que muda em relação a hoje (resumo honesto)</h2>
+<table>
+<thead>
+<tr>
+<th>Estágio</th>
+<th>Hoje</th>
+<th>Depois (Fases 2/3)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comprar</td>
+<td>Só formulário de interesse</td>
+<td>Link de checkout pré-preenchido (e depois página de preços)</td>
+</tr>
+<tr>
+<td>Checkout</td>
+<td>Sem orientação</td>
+<td>Mensagens claras de "mesmo e-mail / acesso por e-mail"</td>
+</tr>
+<tr>
+<td>Provisionar</td>
+<td>✅ Já automático</td>
+<td>(sem mudança)</td>
+</tr>
+<tr>
+<td>E-mail acesso</td>
+<td>✅ Já envia</td>
+<td>(sem mudança)</td>
+</tr>
+<tr>
+<td>1º acesso</td>
+<td>Senha + onboarding "CRM-pesado"</td>
+<td>Fluxo único: senha + empresa + módulos</td>
+</tr>
+<tr>
+<td>Onboarding</td>
+<td>Só "Serviços" no salão; CRM chumbado</td>
+<td>Passos completos por módulo, ramificados</td>
+</tr>
+<tr>
+<td>Ativação</td>
+<td>✅ Checklist do salão (Fase 1)</td>
+<td>(sem mudança)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Pontos que dependem de você (decisões antes de eu construir)</h2>
+<ol>
+<li><strong>Link pré-preenchido (Cakto):</strong> preciso confirmar no painel do Cakto se dá pra <strong>travar</strong> o e-mail por parâmetro. Se não der, a garantia anti-duplicata vira "instruir o cliente a usar o mesmo e-mail".</li>
+<li><strong>Confirmar dados da empresa no 1º acesso:</strong> você quer esse passo (nome + logo/cor) logo no começo, ou prefere deixar opcional/depois?</li>
+<li><strong><code>enabled_modules</code>:</strong> confirmar se a coluna já existe como migration tipada (está marcado A VERIFICAR no plano) — é o que liga o "escolher módulos" ao "Hub esconde o que não foi ativado".</li>
+<li><strong>Identidade no onboarding:</strong> quanto do branding (logo, cor) você quer pedir no 1º acesso vs deixar pré-configurado pela plataforma.</li>
+</ol>
+<hr />
+<h2>O que eu construo na Fase 2 e 3 (escopo)</h2>
+<p><strong>Fase 2 — onboarding unificado/ramificado</strong> (estágios 4 e 5):<br />
+- 1º acesso vira fluxo único (senha + empresa + módulos).<br />
+- Passos do salão completos (Profissionais + Agenda, além de Serviços).<br />
+- CRM movido para o mesmo "registro" dos outros (consistência).<br />
+- Garantir a coluna <code>enabled_modules</code> tipada.</p>
+<p><strong>Fase 3 — checkout assistido + mensagens</strong> (estágios 0 e 1):<br />
+- Gerar link de checkout pré-preenchido a partir do lead (estende o <code>PaymentLinkDialog</code>).<br />
+- Enviar por WhatsApp/e-mail.<br />
+- Mensagens claras de checkout/sucesso (copy acima).<br />
+- (Self-serve / página de preços fica para uma fase seguinte.)</p></div></body></html>

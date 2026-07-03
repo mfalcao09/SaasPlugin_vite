@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nexvybeauty",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty", "run", "dev"],
+      "port": 8080
+    },
+    {
+      "name": "nexvybeauty-afiliados",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite-afiliados/apps/NexvyBeauty", "run", "dev"],
+      "port": 8081
+    }
+  ]
+}

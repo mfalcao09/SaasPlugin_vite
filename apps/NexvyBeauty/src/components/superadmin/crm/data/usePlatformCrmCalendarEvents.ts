@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
  * `platform_crm_calendar_events` (join do lead via `platform_crm_leads`).
  *
  * Desacoplamento vs. o CRM de tenant original:
- *  - SEM organization_id / product_id / deal_id (essas colunas não existem na
- *    tabela de plataforma; a RLS super_admin-only isola os dados).
+ *  - SEM organization_id / deal_id (não existem na tabela de plataforma).
+ *  - product_id EXISTE (adicionado na migration D3/F0) e é filtrável — usado
+ *    pelo filtro "Todos os produtos" da Agenda; a RLS super_admin-only isola os dados.
  *  - `user_id` / `created_by` vêm de `auth.users` (super_admin logado).
  *  - lead → `platform_crm_leads` (não `leads`).
  *  - Google Calendar / sync = TODO(edge): a tabela tem colunas de sync, mas o
@@ -48,6 +49,7 @@ export interface PlatformCrmCreateEventData {
 
 export interface PlatformCrmCalendarFilters {
   userId?: string;
+  productId?: string;
   eventType?: string;
   startDate: Date;
   endDate: Date;
@@ -71,6 +73,10 @@ export function usePlatformCrmCalendarEvents(filters: PlatformCrmCalendarFilters
 
       if (filters.userId) {
         query = query.eq('user_id', filters.userId);
+      }
+
+      if (filters.productId) {
+        query = query.eq('product_id', filters.productId);
       }
 
       if (filters.eventType) {

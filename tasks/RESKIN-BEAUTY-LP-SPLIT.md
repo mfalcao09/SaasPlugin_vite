@@ -41,9 +41,28 @@ LP (apex/`/vendas`, com "Ver demonstração") → demo navegável (`/demo/salao/
 (`gestao.*`).
 - [x] Social proof neutralizado: stats honestos (14 dias/5 min/6 módulos/IA) +
       seção "garantias" no lugar dos depoimentos fictícios. Verificado.
-- [ ] **DEPLOY** — SEGURADO a pedido. Quando for: confirmar domínio prod →
-      DNS `gestao.*` (Hostinger) → `bash infra/deploy-vps.sh NexvyBeauty nexvy-beauty <DOMAIN>`
-      com `--no-cache` → provar com curl. Tudo está **uncommitted na branch `main`**.
+- [x] **DEPLOY EM PRODUÇÃO (2026-06-22)** ✅
+      - Commit `bd62142` em `main`, pushado pra `origin/main` (escopo: só o re-skin).
+      - VPS: `git reset --hard origin/main` + `docker build --no-cache` (anti-phantom)
+        + recria `nexvy-beauty` + render Traefik (com router `gestao.*`).
+      - **Prova curl:** apex + `app.nexvybeauty.com.br` servem o bundle NOVO
+        (`index-BLAj8cPe.js`), HTTP 200, container healthy.
+      - **DNS `gestao.nexvybeauty.com.br` → 145.223.29.96** criado no **Cloudflare**
+        (DNS-only, não Hostinger — domínio é gerido lá). Router roteia (200 -k);
+        cert Let's Encrypt emitindo (auto).
+      - Domínio prod confirmado: `nexvybeauty.com.br` (apex) + `app.*` + `gestao.*`.
+
+- [x] **SSL `gestao.*` corrigido (2026-06-22)** — causa: corrida de timing (DNS
+      criado após a 1ª tentativa ACME → NXDOMAIN → backoff). Fix: restart do
+      Traefik forçou re-emissão (DNS já resolvia). Cert Let's Encrypt válido,
+      HTTPS 200 sem `-k`. DNS é Cloudflare (não Hostinger).
+- [x] **Split COMPLETADO (commit `ccc23e2`, deploy 2026-06-22)** — o hostname
+      decide o `viewMode` (`useSuperAdminView`): gestao.*→'gestao', app.*→'empresa';
+      `showChoiceDialog=false` (dialog some). `ModuleHub` esconde o card
+      'Gestão da Plataforma' no app.*. Impersonação (OrganizationSelector) intacta.
+      Verificado: bundle novo servindo, gestao cert válido, container healthy.
+      Nota: rota `/super-admin` ainda acessível por URL no app.* (entry-points —
+      dialog/card — removidos; trancar a rota por hostname fica como follow-up).
 
 ## Sprint 2 — Features que vendem
 - [ ] **Booking público de salão** (`/agendar/<slug>` salão-nativo: serviço →

@@ -40,6 +40,8 @@ import {
   PlatformCrmCalendarEvent,
 } from '@/components/superadmin/crm/data/usePlatformCrmCalendarEvents';
 import { usePlatformCrmSellers } from '@/components/superadmin/crm/data/usePlatformCrmSellers';
+import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { PlatformCrmProductSelector } from '@/components/superadmin/crm/products/PlatformCrmProductSelector';
 import { PlatformCrmCalendarMonthView } from './PlatformCrmCalendarMonthView';
 import { PlatformCrmCalendarWeekView } from './PlatformCrmCalendarWeekView';
 import { PlatformCrmCalendarDayView } from './PlatformCrmCalendarDayView';
@@ -56,8 +58,9 @@ import {
  * Agenda do CRM de PLATAFORMA (super_admin) — porte 1:1 do CalendarManager do
  * CRM original, desacoplado do tenant:
  *  - Eventos em `platform_crm_calendar_events` (sem organization_id/product_id).
- *  - Filtro de vendedor via `usePlatformCrmSellers` (profiles de auth.users);
- *    sem filtro de produto (coluna não existe na tabela de plataforma).
+ *  - Filtro de vendedor via `usePlatformCrmSellers` (profiles de auth.users) +
+ *    filtro de produto via `PlatformCrmProductSelector` (product_id existe desde
+ *    D3/F0; auto-trava em label quando há 1 produto — Beauty hoje).
  *  - Super_admin sempre enxerga todos os usuários (sem gate isAdmin/isManager).
  *  - Abas Reuniões / Tipos de Evento / Disponibilidade / Links da Equipe =
  *    port 1:1 do subsistema de booking do CRM Vendus (tabelas
@@ -78,12 +81,14 @@ function AgendaCalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<PlatformCrmCalendarEvent | null>(null);
   const [clickedDate, setClickedDate] = useState<Date | undefined>();
 
   const { data: sellers } = usePlatformCrmSellers();
+  const { data: products } = usePlatformCrmProducts();
 
   const dateRange = useMemo(() => {
     switch (viewMode) {
@@ -116,6 +121,7 @@ function AgendaCalendarView() {
   const { data: events, isLoading } = usePlatformCrmCalendarEvents({
     ...dateRange,
     userId: selectedUserId || undefined,
+    productId: selectedProductId || undefined,
     eventType: selectedEventType || undefined,
   });
 
@@ -260,6 +266,12 @@ function AgendaCalendarView() {
                   ))}
                 </SelectContent>
               </Select>
+
+              <PlatformCrmProductSelector
+                products={products ?? []}
+                selectedProductId={selectedProductId}
+                onChange={setSelectedProductId}
+              />
 
               <Select
                 value={selectedEventType || 'all'}
