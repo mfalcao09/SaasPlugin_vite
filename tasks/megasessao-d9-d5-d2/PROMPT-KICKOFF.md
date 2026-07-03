@@ -16,13 +16,13 @@
 5. Segredos: nunca imprimir valor (presença/tamanho só). VAPID private + TELEGRAM_BOT_TOKEN via `supabase secrets set` sem eco.
 6. Dados de teste: sempre limpar após smoke (padrão do smoke D7).
 
-**Comunicação comigo (Telegram — Slice 3 da sessão paralela):**
-- No início da sessão: rode `~/.claude/hooks/cc-remote status`; se DESLIGADO, ligue com `~/.claude/hooks/cc-remote on`. Com isso, cada fim de turno + pedidos de permissão chegam no meu Telegram automaticamente (hook 3a `cc-telegram-notify.sh`, JÁ LIVE).
-- Se `~/.claude/hooks/.cc-control.env` existir, minhas respostas no Telegram chegam INJETADAS no turno (hook 3b `cc-telegram-control.sh`, decision:block+additionalContext) — trate-as como resposta minha na sessão. (Depende do bot de controle dedicado — átomo humano meu no KVM4.)
+**Comunicação comigo (Telegram — Slice 3, LIVE e verificado 2026-07-03 19:32: `.cc-control.env` presente + hooks no settings.json com Stop→control timeout 300s):**
+- **Primeira ação da sessão:** `~/.claude/hooks/cc-remote on` (liga o modo remoto). A partir daí os hooks cuidam do espelho: fim de turno + permissões chegam no meu Telegram (3a `cc-telegram-notify.sh`), e **minhas respostas no Telegram voltam injetadas no turno** (3b `cc-telegram-control.sh`, decision:block+additionalContext) — trate-as como resposta minha na sessão, com a mesma autoridade.
+- Sem resposta minha em ~280s o turno solta sozinho — **não fique bloqueado esperando**: siga o plano (as decisões já estão travadas nele; só pare se a fatia exigir input meu de verdade).
 - Para marcos/bloqueios NO MEIO de execuções longas (hooks só disparam no fim do turno): `bash SaasPlugin_vite/tasks/megasessao-d9-d5-d2/notify-marcelo.sh "msg"` — decisão bloqueante · átomo humano (ex.: D9.8 permitir push) · marco concluído · falha travada >2 tentativas. Não spammar.
 
 **Ritmo do loop:** a cada iteração, reler o plano → próxima fatia → executar → CHECK → commit → atualizar plano → (se marco/bloqueio) notify. Use ScheduleWakeup para pacing quando aguardar builds/átomos humanos. Se o contexto compactar, o plano-execucao.md é o estado — retome do checkbox.
 
-Comece agora: leia o plano e execute a primeira fatia (D9.1).
+Comece agora: ligue o cc-remote, leia o plano e execute a primeira fatia (D9.1).
 
 ---
