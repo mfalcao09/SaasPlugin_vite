@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { LeadTransferButton, LeadTransferHistory } from './PlatformCrmLeadTransfer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1610,8 +1611,8 @@ function UtmRow({
 
 // =====================================================================================
 // CARTEIRA — porte fiel do LeadWalletTab (responsável + squad + SDR/Closer).
-// DROP: histórico de transferências (tabela platform_crm_lead_transfers inexistente) →
-// card stub-com-TODO. Transferência via modal também é stub (botão + toast "em breve").
+// L8: transferência (modal) + histórico via platform_crm_lead_transfer_history —
+// componentes em ./PlatformCrmLeadTransfer (migration 2026-07-03).
 // =====================================================================================
 function LeadWalletTab({
   lead,
@@ -1625,6 +1626,7 @@ function LeadWalletTab({
   const assignee = lead.assigned_to ? sellers.find((s) => s.id === lead.assigned_to) : null;
   const sdr = lead.sdr_id ? sellers.find((s) => s.id === lead.sdr_id) : null;
   const closer = lead.closer_id ? sellers.find((s) => s.id === lead.closer_id) : null;
+  const [transferKey, setTransferKey] = useState(0);
 
   return (
     <div className="space-y-4">
@@ -1664,16 +1666,14 @@ function LeadWalletTab({
                 </div>
               </div>
             )}
-            {/* TODO: modal de transferência de carteira — em breve */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.info('Transferência de carteira em breve')}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Transferir
-            </Button>
+            <LeadTransferButton
+              leadId={lead.id}
+              currentAssignedTo={lead.assigned_to}
+              currentSquadId={lead.squad_id}
+              sellers={sellers}
+              onUpdateLead={onUpdateLead}
+              onTransferred={() => setTransferKey((k) => k + 1)}
+            />
           </div>
           {lead.transferred_at && (
             <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 text-sm text-muted-foreground">
@@ -1705,18 +1705,8 @@ function LeadWalletTab({
         onAssign={(userId) => onUpdateLead({ closer_id: userId })}
       />
 
-      {/* Histórico de transferências — DROP: sem tabela na plataforma (stub-com-TODO). */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Histórico de Transferências</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* TODO: implementar platform_crm_lead_transfers + hook. */}
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Histórico de transferências em breve
-          </p>
-        </CardContent>
-      </Card>
+      {/* L8: histórico real de platform_crm_lead_transfer_history */}
+      <LeadTransferHistory leadId={lead.id} sellers={sellers} refreshKey={transferKey} />
     </div>
   );
 }
