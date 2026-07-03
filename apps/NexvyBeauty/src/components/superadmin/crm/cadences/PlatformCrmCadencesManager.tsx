@@ -5,6 +5,7 @@ import { CadenceWizard } from './CadenceWizard';
 import { CadenceDetail } from './CadenceDetail';
 import { CadenceReports } from './CadenceReports';
 import { CadenceApiKeys } from './CadenceApiKeys';
+import { ContextLibrary } from '../campaigns/ContextLibrary';
 import { usePlatformCrmCadences } from '../data/usePlatformCrmCadences';
 
 /**
@@ -60,6 +61,7 @@ export function PlatformCrmCadencesManager() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="cadences">Cadências</TabsTrigger>
+          <TabsTrigger value="library">Biblioteca de Contextos</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
@@ -72,6 +74,10 @@ export function PlatformCrmCadencesManager() {
             onOpen={(id) => setView({ kind: 'detail', id })}
             onRefresh={refresh}
           />
+        </TabsContent>
+
+        <TabsContent value="library" className="mt-4">
+          <ContextLibrary />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-4">

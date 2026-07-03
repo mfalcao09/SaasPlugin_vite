@@ -2118,8 +2118,8 @@ function LeadNotesTab({
 
 // =====================================================================================
 // CADÊNCIAS — porte fiel do LeadCadencesTab. Enrollments via platform_crm_cadence_*.
-// TODO: enroll/stop dependem de edge functions (cadence-enroll/cadence-stop) que ainda
-// não existem no contexto plataforma → botões mantidos com toast "em breve".
+// L7: enroll/stop via edges platform-cadence-enroll / platform-cadence-stop
+// (super-admin JWT — authenticatePlatformAgent aceita o JWT + gate super_admin).
 // =====================================================================================
 interface PlatformEnrollment {
   id: string;
@@ -2146,6 +2146,8 @@ const cadenceStatusMeta: Record<
 function LeadCadencesTab({ leadId }: { leadId: string }) {
   const [enrollments, setEnrollments] = useState<PlatformEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cadences, setCadences] = useState<Array<{ id: string; name: string }>>([]);
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -2167,6 +2169,49 @@ function LeadCadencesTab({ leadId }: { leadId: string }) {
     refresh();
   }, [refresh]);
 
+  // L7: cadências disponíveis p/ inscrição manual.
+  useEffect(() => {
+    supabase
+      .from('platform_crm_cadences')
+      .select('id, name')
+      .order('name')
+      .then(({ data }) => setCadences((data as Array<{ id: string; name: string }>) ?? []));
+  }, []);
+
+  const enroll = useCallback(
+    async (cadenceId: string) => {
+      setBusy(true);
+      const { error } = await supabase.functions.invoke('platform-cadence-enroll', {
+        body: { cadence_id: cadenceId, lead_ids: [leadId], source: 'manual' },
+      });
+      setBusy(false);
+      if (error) {
+        toast.error('Falha ao inscrever na cadência', { description: error.message });
+        return;
+      }
+      toast.success('Lead inscrito na cadência');
+      refresh();
+    },
+    [leadId, refresh],
+  );
+
+  const stop = useCallback(
+    async (enrollmentId: string) => {
+      setBusy(true);
+      const { error } = await supabase.functions.invoke('platform-cadence-stop', {
+        body: { enrollment_id: enrollmentId },
+      });
+      setBusy(false);
+      if (error) {
+        toast.error('Falha ao remover da cadência', { description: error.message });
+        return;
+      }
+      toast.success('Lead removido da cadência');
+      refresh();
+    },
+    [refresh],
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">
@@ -2184,11 +2229,26 @@ function LeadCadencesTab({ leadId }: { leadId: string }) {
             Jornadas automatizadas inscritas ou já encerradas.
           </p>
         </div>
-        {/* TODO: edge function cadence-enroll — em breve na plataforma */}
-        <Button size="sm" onClick={() => toast.info('Inscrição em cadência em breve')}>
-          <Plus className="h-4 w-4 mr-1" />
-          Adicionar
-        </Button>
+        {/* L7: enroll manual via edge platform-cadence-enroll (super-admin JWT) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" disabled={busy}>
+              <Plus className="h-4 w-4 mr-1" />
+              {busy ? 'Processando…' : 'Adicionar'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+            {cadences.length === 0 ? (
+              <DropdownMenuItem disabled>Nenhuma cadência cadastrada</DropdownMenuItem>
+            ) : (
+              cadences.map((c) => (
+                <DropdownMenuItem key={c.id} onClick={() => enroll(c.id)}>
+                  {c.name}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {enrollments.length === 0 ? (
@@ -2228,11 +2288,11 @@ function LeadCadencesTab({ leadId }: { leadId: string }) {
                       )}
                     </div>
                     {e.status === 'active' && (
-                      // TODO: edge function cadence-stop — em breve na plataforma
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => toast.info('Remoção de cadência em breve')}
+                        disabled={busy}
+                        onClick={() => stop(e.id)}
                       >
                         <StopCircle className="h-4 w-4 mr-1" />
                         Remover
