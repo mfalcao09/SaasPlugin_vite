@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Filter as FunnelIcon, FileText, Code2, Megaphone } from 'lucide-react';
 import { PlatformCrmCaptureFunnelsTab } from './PlatformCrmCaptureFunnelsTab';
@@ -31,6 +31,14 @@ export function PlatformCrmCaptureManager({
   initialChannel,
 }: PlatformCrmCaptureManagerProps) {
   const [tab, setTab] = useState<string>(initialTab);
+
+  // L6: o platform-shell reusa esta instância ao trocar de menu de captação
+  // (Formulários/Widgets/Funis/Quiz/Chatbot), então o `initialTab` muda mas o
+  // useState não re-inicializa sozinho. Re-sincroniza a aba quando o menu muda;
+  // a troca manual de aba pelo usuário é preservada (initialTab inalterado).
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   return (
     <div className="space-y-6">
