@@ -1,12 +1,13 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Users, User, UserX, UsersRound } from 'lucide-react';
+import { Users, User, UserX, UsersRound, Package } from 'lucide-react';
 import type { PlatformCrmLeadsTabId } from '../data/usePlatformCrmLeadsManager';
 
 /**
  * Abas da GESTÃO DE LEADS do CRM de PLATAFORMA (super_admin) — desacopladas do tenant.
  * Todos · Minha Carteira (assigned_to = usuário atual) · Meu Squad (squad do usuário)
- * · Sem Atendimento (assigned_to null). "Por Produto" DROPADO — plataforma sem catálogo.
+ * · Sem Atendimento (assigned_to null) · Por Squad (gerencial) · Por Produto (dimensão
+ * D3 restaurada). Porte 1:1 de `.vendus-src-reference/.../LeadsTabs.tsx:17-24`.
  */
 interface PlatformCrmLeadsTabsProps {
   activeTab: string;
@@ -22,6 +23,8 @@ const tabs: { id: PlatformCrmLeadsTabId; label: string; icon: typeof Users }[] =
   { id: 'my-leads', label: 'Minha Carteira', icon: User },
   { id: 'my-squad', label: 'Meu Squad', icon: UsersRound },
   { id: 'unassigned', label: 'Sem Atendimento', icon: UserX },
+  { id: 'by-squad', label: 'Por Squad', icon: UsersRound },
+  { id: 'by-product', label: 'Por Produto', icon: Package },
 ];
 
 export function PlatformCrmLeadsTabs({ activeTab, onTabChange, stats }: PlatformCrmLeadsTabsProps) {

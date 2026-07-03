@@ -162,12 +162,15 @@ export function useCreatePlatformCrmFormFromTemplate() {
     mutationFn: async (input: {
       name: string;
       description?: string | null;
+      // Dimensão PRODUTO (D3 F1c): carimba o produto escolhido no dialog.
+      product_id?: string | null;
       template: PlatformCrmFormTemplate;
     }) => {
       const payload: PlatformCrmFormInsert = {
         name: input.name,
         slug: `${generateFunnelSlug(input.name) || 'form'}-${Date.now().toString(36)}`,
         description: input.description ?? input.template.description,
+        product_id: input.product_id ?? null,
         status: 'draft',
         settings: input.template.settings ?? {},
         theme: input.template.theme ?? {},

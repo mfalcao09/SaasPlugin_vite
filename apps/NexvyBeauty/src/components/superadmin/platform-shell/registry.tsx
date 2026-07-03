@@ -49,7 +49,7 @@ import { PlatformCrmBusinessHoursManager } from '@/components/superadmin/crm/bus
 import { PlatformCrmWebhooksManager } from '@/components/superadmin/crm/webhooks/PlatformCrmWebhooksManager';
 import { PlatformCrmNotificationManager } from '@/components/superadmin/crm/notifications/PlatformCrmNotificationManager';
 import { PlatformCrmAgendaManager } from '@/components/superadmin/crm/agenda/PlatformCrmAgendaManager';
-import { PlatformCrmAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmAgentsManager';
+import { PlatformCrmProductAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmProductAgentsManager';
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmCaptureTemplatesTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureTemplatesTab';
@@ -311,7 +311,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-agentes-ia',
         label: 'Agentes IA',
         icon: I.Bot,
-        render: () => <PlatformCrmAgentsManager />,
+        render: () => <PlatformCrmProductAgentsManager />,
       },
       {
         id: 'v-campanhas',

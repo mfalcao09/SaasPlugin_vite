@@ -70,6 +70,8 @@ import {
 } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 
 const statusConfig: Record<
   string,
@@ -91,14 +93,22 @@ export function PlatformCrmCaptureFormsTab() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  // Dimensão PRODUTO (D3 F1c) — fonte FormsManager l.73 `newFormProductId`.
+  const [productId, setProductId] = useState('');
 
   const { data: forms, isLoading } = usePlatformCrmForms();
   const { data: templates } = usePlatformCrmFormTemplates();
+  const { data: products = [] } = usePlatformCrmProducts();
   const createForm = useCreatePlatformCrmForm();
   const createFromTemplate = useCreatePlatformCrmFormFromTemplate();
   const deleteForm = useDeletePlatformCrmForm();
   const duplicateForm = useDuplicatePlatformCrmForm();
   const toggleStatus = useTogglePlatformCrmFormStatus();
+
+  // 1 produto → auto-seleciona e trava (label estática no campo).
+  const singleProductId = products.length === 1 ? products[0].id : '';
+  // Obrigatório quando há produtos; sem produtos o backend aplica o default.
+  const productReady = products.length === 0 || !!productId;
 
   const filtered = (forms || []).filter((form) => {
     const matchesSearch =
@@ -110,8 +120,17 @@ export function PlatformCrmCaptureFormsTab() {
 
   const isCreating = createForm.isPending || createFromTemplate.isPending;
 
+  const openCreate = () => {
+    setName('');
+    setDescription('');
+    setSelectedTemplateId('');
+    setCreateMethod('manual');
+    setProductId(singleProductId);
+    setIsCreateOpen(true);
+  };
+
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !productReady) return;
 
     if (createMethod === 'template') {
       const template = templates?.find((t) => t.id === selectedTemplateId);
@@ -122,12 +141,14 @@ export function PlatformCrmCaptureFormsTab() {
       await createFromTemplate.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
+        product_id: productId || null,
         template,
       });
     } else {
       await createForm.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
+        product_id: productId || null,
       });
     }
 
@@ -136,6 +157,7 @@ export function PlatformCrmCaptureFormsTab() {
     setDescription('');
     setSelectedTemplateId('');
     setCreateMethod('manual');
+    setProductId('');
   };
 
   const openBuilder = () => {
@@ -165,7 +187,7 @@ export function PlatformCrmCaptureFormsTab() {
             Formulários de captação de leads da plataforma.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+        <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Formulário
         </Button>
@@ -212,7 +234,7 @@ export function PlatformCrmCaptureFormsTab() {
                 : 'Crie seu primeiro formulário para captar leads.'}
             </p>
             {!searchQuery && statusFilter === 'all' && (
-              <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+              <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" /> Criar primeiro Formulário
               </Button>
             )}
@@ -400,6 +422,11 @@ export function PlatformCrmCaptureFormsTab() {
             </TabsContent>
           </Tabs>
           <div className="space-y-4 py-2">
+            <PlatformCrmCaptureProductField
+              products={products}
+              value={productId}
+              onChange={setProductId}
+            />
             <div className="space-y-2">
               <Label>Nome do Formulário *</Label>
               <Input
@@ -426,6 +453,7 @@ export function PlatformCrmCaptureFormsTab() {
               onClick={handleCreate}
               disabled={
                 !name.trim() ||
+                !productReady ||
                 isCreating ||
                 (createMethod === 'template' && !selectedTemplateId)
               }

@@ -68,6 +68,8 @@ import {
   PlatformCrmCaptureFunnel,
 } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
+import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -106,12 +108,20 @@ export function PlatformCrmCaptureFunnelsTab({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [channelType, setChannelType] = useState(initialChannel ?? 'chat');
+  // Dimensão PRODUTO (D3 F1c) — fonte WidgetManager/ChatBotManager l.50.
+  const [productId, setProductId] = useState('');
 
   const { data: funnels, isLoading } = usePlatformCrmCaptureFunnels();
+  const { data: products = [] } = usePlatformCrmProducts();
   const createFunnel = useCreatePlatformCrmCaptureFunnel();
   const deleteFunnel = useDeletePlatformCrmCaptureFunnel();
   const duplicateFunnel = useDuplicatePlatformCrmCaptureFunnel();
   const toggleStatus = useTogglePlatformCrmFunnelStatus();
+
+  // 1 produto → auto-seleciona e trava (label estática no campo).
+  const singleProductId = products.length === 1 ? products[0].id : '';
+  // Obrigatório quando há produtos; sem produtos o backend aplica o default.
+  const productReady = products.length === 0 || !!productId;
 
   const filtered = (funnels || []).filter((f) => {
     const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -120,16 +130,26 @@ export function PlatformCrmCaptureFunnelsTab({
     return matchesSearch && matchesStatus && matchesChannel;
   });
 
+  const openCreate = () => {
+    setName('');
+    setDescription('');
+    setChannelType(initialChannel ?? 'chat');
+    setProductId(singleProductId);
+    setIsCreateOpen(true);
+  };
+
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !productReady) return;
     await createFunnel.mutateAsync({
       name: name.trim(),
       description: description.trim() || undefined,
       channel_type: channelType,
+      product_id: productId || null,
     });
     setIsCreateOpen(false);
     setName('');
     setDescription('');
+    setProductId('');
   };
 
   const openBuilder = () => {
@@ -160,7 +180,7 @@ export function PlatformCrmCaptureFunnelsTab({
             Funis multicanal (chat, chatbot, quiz e widget) da plataforma.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+        <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Funil
         </Button>
@@ -220,7 +240,7 @@ export function PlatformCrmCaptureFunnelsTab({
                 : 'Crie seu primeiro funil para começar a captar leads.'}
             </p>
             {!searchQuery && statusFilter === 'all' && channelFilter === 'all' && (
-              <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+              <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" /> Criar primeiro Funil
               </Button>
             )}
@@ -376,6 +396,11 @@ export function PlatformCrmCaptureFunnelsTab({
                 </SelectContent>
               </Select>
             </div>
+            <PlatformCrmCaptureProductField
+              products={products}
+              value={productId}
+              onChange={setProductId}
+            />
             <div className="space-y-2">
               <Label>Nome do Funil *</Label>
               <Input
@@ -398,7 +423,10 @@ export function PlatformCrmCaptureFunnelsTab({
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={!name.trim() || createFunnel.isPending}>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || !productReady || createFunnel.isPending}
+            >
               {createFunnel.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

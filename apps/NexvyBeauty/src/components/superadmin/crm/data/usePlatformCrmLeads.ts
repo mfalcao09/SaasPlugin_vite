@@ -50,6 +50,12 @@ export interface PlatformCrmLeadFilters {
   sortBy?: PlatformCrmLeadSortBy;
   /** Direção da ordenação. */
   sortDirection?: PlatformCrmLeadSortDirection;
+  /**
+   * Filtra pelos leads de um produto (pipeline por produto — dimensão D3).
+   * Espelho de `useKanbanData`/`useLeads` da fonte (`.eq('product_id', productId)`).
+   * `null`/`undefined` = todos os produtos (mesma semântica de "todos" da fonte).
+   */
+  productId?: string | null;
 }
 
 const PLATFORM_CRM_KEY = 'platform-crm';
@@ -70,6 +76,12 @@ export function usePlatformCrmLeads(filters?: PlatformCrmLeadFilters) {
         `,
         )
         .order(sortBy, { ascending });
+
+      // Escopo por produto (pipeline por produto — dimensão D3). Espelho de
+      // useKanbanData:76 (`.eq('product_id', productId)`). null = todos os produtos.
+      if (filters?.productId) {
+        query = query.eq('product_id', filters.productId);
+      }
 
       if (filters?.stageId) {
         query = query.eq('current_stage_id', filters.stageId);

@@ -4,8 +4,9 @@
 > **Última atualização:** 2026-07-03.
 
 ## Onde estamos (cursor)
-- **P0 (schema) ✅** e **P1/F1a (Hub 14 abas) ✅** — build VERDE, gate passou. F1a foi **recuperado de um agente-zumbi** (travou num Bash após gravar 25 arquivos; recriei os 2 imports órfãos `ChatTab`+`CatalogSync` como stubs lean com TODO). tsc baseline = 23.
-- **Próximo:** disparar em paralelo **F1b** (kanban/leads por produto) + **F1c** (captação por produto) + **F1c-filtros** + **F1d** (agentes por produto = D6b). Deps do F1a satisfeitas (hooks compartilhados prontos: `usePlatformCrmProducts`, `PlatformCrmProductSelector`).
+- **P0 (schema) ✅** e **P1 COMPLETO ✅** — F1a(hub 14 abas) + F1b(kanban/leads por produto, abas Por Produto/Por Squad) + F1c(captação por produto, edge `platform-webchat-api` deployado carimba product_id) + F1d(agentes por produto, editor 15 abas = D6b). **Gate central PASSOU** (fronteira 0 + tsc 23 + build EXIT=0). A dimensão produto está restaurada de ponta a ponta.
+- **Próximo (P2):** deploy VPS + anti-phantom no bundle servido + eyeball Chrome logado (Negócios lista Beauty · Pipeline seletor travado em 1 produto · 14 abas · agentes CRUD). Depois `f1c-filtros` (leve) → P3.
+- **Follow-ups anotados:** F1d deixou scaffold antigo de agentes órfão (dead-code → L12). Lead manual (`CreatePlatformCrmLeadDialog`) sem seletor de produto → NULL até 2º SaaS. Edges `platform-form-submit`/`funnel-submit` inexistentes (só webchat carimba product hoje).
 
 ## Decisões travadas (Marcelo, 2026-07-02/03) — NÃO reabrir
 - **D3 = MULTIPRODUTO** (1 CRM do grupo p/ ~10 SaaS; restaurar `product_id` da fonte Bizon, que JÁ é multiproduto). Ver [[project-crm-grupo-multiproduto-decisoes]].

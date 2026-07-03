@@ -281,6 +281,12 @@ serve(async (req) => {
                 name: body.visitor_name || `Visitante #${visitorShort}`,
                 email: body.visitor_email || null,
                 phone: body.visitor_phone || null,
+                // DIMENSÃO PRODUTO (D3 F1c): o lead nasce carimbado com o produto da
+                // superfície (widget). Espelha a fonte, onde o lead herda o produto
+                // da superfície de captura no edge (webchat-api usa widget.product_id
+                // p/ chat_flows; form-submit l.638 / funnel-submit l.192 gravam
+                // product_id: form/funnel.product_id no insert do lead).
+                product_id: widget.product_id ?? null,
                 source: 'webchat',
                 lead_channel: 'webchat',
                 landing_page: body.current_page_url || null,

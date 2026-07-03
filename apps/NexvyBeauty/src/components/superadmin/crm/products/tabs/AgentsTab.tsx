@@ -1,8 +1,8 @@
 // Porte de `.vendus-src-reference/src/components/admin/products/tabs/AgentsTab.tsx`
-// Regra da onda D3 Fase 1a: esta aba LISTA os agentes de platform_crm_product_agents
-// (toggle, padrão, duplicar, excluir funcionais). O EDITOR PROFUNDO (AgentEditor,
-// AgentImportModal — 58+ campos) pertence à onda `crm/agents/` e NÃO é criado aqui:
-// TODO(onda-agents): Criar/Importar/Editar abrem aviso até a onda própria chegar.
+// D3 P1/F1d — RELIGADO ao subsistema real de agentes (`crm/agents/`): esta aba lista os
+// agentes de `platform_crm_product_agents` do produto e agora abre o EDITOR COMPLETO
+// (13 abas) + IMPORTAR reais, alem de toggle/padrao/duplicar/excluir funcionais.
+// Fonte de dados: `crm/data/usePlatformCrmProductAgents` (CRUD, zero organization_id).
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,13 +32,16 @@ import {
 } from 'lucide-react';
 import {
   usePlatformCrmProductAgents,
-  useToggleProductAgentStatus,
-  useSetDefaultProductAgent,
-  useDeleteProductAgent,
-  useDuplicateProductAgent,
-  type ProductAgent,
-} from '../hooks/useProductHubData';
-import { todoBackend } from '../hooks/useProductHubStubs';
+  useTogglePlatformCrmProductAgentStatus,
+  useSetDefaultPlatformCrmProductAgent,
+  useDeletePlatformCrmProductAgent,
+  useDuplicatePlatformCrmProductAgent,
+  useCreatePlatformCrmProductAgent,
+  useUpdatePlatformCrmProductAgent,
+} from '@/components/superadmin/crm/data/usePlatformCrmProductAgents';
+import type { ProductAgent } from '@/components/superadmin/crm/agents/types';
+import { AgentEditor } from '@/components/superadmin/crm/agents/AgentEditor';
+import { AgentImportModal } from '@/components/superadmin/crm/agents/AgentImportModal';
 
 interface AgentsTabProps {
   productId: string;
@@ -78,17 +81,31 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 export function AgentsTab({ productId }: AgentsTabProps) {
   const { data: agents, isLoading } = usePlatformCrmProductAgents(productId);
-  const deleteAgent = useDeleteProductAgent();
-  const setDefaultAgent = useSetDefaultProductAgent();
-  const toggleStatus = useToggleProductAgentStatus();
-  const duplicateAgent = useDuplicateProductAgent();
+  const deleteAgent = useDeletePlatformCrmProductAgent();
+  const setDefaultAgent = useSetDefaultPlatformCrmProductAgent();
+  const toggleStatus = useTogglePlatformCrmProductAgentStatus();
+  const duplicateAgent = useDuplicatePlatformCrmProductAgent();
+  const createAgent = useCreatePlatformCrmProductAgent();
+  const updateAgent = useUpdatePlatformCrmProductAgent();
 
   const [deletingAgent, setDeletingAgent] = useState<ProductAgent | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<ProductAgent | null>(null);
 
-  // TODO(onda-agents): editor profundo (AgentEditor + AgentImportModal da fonte)
-  const handleCreate = () => todoBackend('Editor de agente (criação)');
-  const handleImport = () => todoBackend('Importação de agente');
-  const handleEdit = (_agent: ProductAgent) => todoBackend('Editor profundo de agente');
+  // Editor completo (13 abas) + Importar reais — subsistema `crm/agents/`.
+  const handleCreate = () => { setEditingAgent(null); setEditorOpen(true); };
+  const handleImport = () => setImportOpen(true);
+  const handleEdit = (agent: ProductAgent) => { setEditingAgent(agent); setEditorOpen(true); };
+
+  const handleSave = (data: Partial<ProductAgent>) => {
+    const payload = { ...data, product_id: productId };
+    if (editingAgent && editingAgent.id) {
+      updateAgent.mutate({ id: editingAgent.id, ...payload }, { onSuccess: () => setEditorOpen(false) });
+    } else {
+      createAgent.mutate(payload, { onSuccess: () => setEditorOpen(false) });
+    }
+  };
 
   const confirmDelete = () => {
     if (deletingAgent) {
@@ -278,6 +295,27 @@ export function AgentsTab({ productId }: AgentsTabProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Editor completo (13 abas) */}
+      <AgentEditor
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        agent={editingAgent}
+        productId={productId}
+        onSave={handleSave}
+        isLoading={createAgent.isPending || updateAgent.isPending}
+      />
+
+      {/* Importar (JSON funcional; documento = TODO(edge)) */}
+      <AgentImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        fixedProductId={productId}
+        onDraftReady={(draft) => {
+          setEditingAgent({ ...(draft as ProductAgent), product_id: productId });
+          setEditorOpen(true);
+        }}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingAgent} onOpenChange={() => setDeletingAgent(null)}>

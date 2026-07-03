@@ -13,49 +13,49 @@
     "P7": "D10(a) ai-insights + Utmify MCP (por último)"
   },
   "features": [
-    { "id": "f0-migration", "phase": "P0", "desc": "platform_crm_products(30c)+product_agents(81c)+user_product_assignments + product_id em 21 tabelas + seed/backfill Beauty + 8 NOT NULL+DEFAULT", "status": "done", "verified": "execute_sql: seed vivo, backfill 13/13, zero NULL, attnotnull=true 8/8; incidente NOT NULL-sem-default pego pelo verify.sh e corrigido", "deps": [] },
-    { "id": "f0-types", "phase": "P0", "desc": "types.ts regen com os 3 blocos novos", "status": "done", "verified": "18.572 linhas; blocos presentes", "deps": [] },
+    { "id": "f0-migration", "phase": "P0", "desc": "platform_crm_products(30c)+product_agents(81c)+user_product_assignments + product_id em 21 tabelas + seed/backfill Beauty + 8 NOT NULL+DEFAULT", "status": "done", "verified": "seed vivo, backfill 13/13, zero NULL, attnotnull=true 8/8", "deps": [] },
+    { "id": "f0-types", "phase": "P0", "desc": "types.ts regen com os 3 blocos novos", "status": "done", "verified": "18.572 linhas", "deps": [] },
 
-    { "id": "f1a-hub", "phase": "P1", "desc": "Hub Produto 14 abas + hooks usePlatformCrmProducts/ProductSelector + registry v-negocios→ProductsSection", "status": "done", "verified": "verify.sh GATE PASSOU: build EXIT=0, tsc 23, fronteira 0. RECUPERADO de agente-zumbi (criei ChatTab+CatalogSync órfãos; ChatTab/CatalogSync = stub lean com TODO F1d/edge)", "deps": ["f0-types"] },
-    { "id": "f1b-kanban-leads-produto", "phase": "P1", "desc": "Pipeline com seletor de produto (stages/leads por product_id) + aba 'Por Produto' e 'Por Squad' no LeadsTabs (absorve LOTE L9)", "status": "todo", "verified": false, "deps": ["f1a-hub"] },
-    { "id": "f1c-captacao-produto", "phase": "P1", "desc": "select obrigatório de produto em Form/Quiz/Widget/ChatBot + stamp server-side product_id no lead capturado", "status": "todo", "verified": false, "deps": ["f1a-hub"] },
-    { "id": "f1c-filtros-produto", "phase": "P1", "desc": "filtros 'Todos os produtos' em Agenda/Tarefas/Notificações (onde a fonte tem)", "status": "todo", "verified": false, "deps": ["f1a-hub"] },
-    { "id": "f1d-agentes-por-produto", "phase": "P1", "desc": "crm/agents/ 1:1 fonte (editor 13 abas, supervisor, roteamento) sobre platform_crm_product_agents — ABSORVE D6(b) + fecha ChatTab/AgentsTab-hub", "status": "todo", "verified": false, "deps": ["f1a-hub"] },
+    { "id": "f1a-hub", "phase": "P1", "desc": "Hub Produto 14 abas + hooks usePlatformCrmProducts/ProductSelector + registry v-negocios->ProductsSection", "status": "done", "verified": "gate verify.sh (build+tsc+fronteira). Recuperado de zumbi (ChatTab+CatalogSync stubs)", "deps": ["f0-types"] },
+    { "id": "f1b-kanban-leads-produto", "phase": "P1", "desc": "Pipeline seletor de produto + Leads 'Por Produto'+'Por Squad' (absorve L9)", "status": "done", "verified": "gate central P1 PASSOU 2026-07-03; 7 arq 1:1; tsc 0 no escopo", "deps": ["f1a-hub"] },
+    { "id": "f1c-captacao-produto", "phase": "P1", "desc": "select produto obrigatório em Form/Quiz/Widget/ChatBot + stamp product_id no lead (edge platform-webchat-api deployado)", "status": "done", "verified": "gate central P1 PASSOU; edge deployado; tsc 0 no escopo", "deps": ["f1a-hub"] },
+    { "id": "f1c-filtros-produto", "phase": "P1", "desc": "filtros 'Todos os produtos' em Agenda/Tarefas/Notificações", "status": "todo", "verified": false, "deps": ["f1a-hub"] },
+    { "id": "f1d-agentes-por-produto", "phase": "P1", "desc": "crm/agents/ 1:1 (editor 15 abas, supervisor, hierarquia, import) sobre platform_crm_product_agents — ABSORVE D6(b)", "status": "done", "verified": "gate central P1 PASSOU; 23 arq; registry Agentes->manager real; 2 vestígios org_id limpos", "deps": ["f1a-hub"] },
 
-    { "id": "f2-build-deploy", "phase": "P2", "desc": "npm build + deploy VPS + anti-phantom no bundle SERVIDO (strings platform_crm_products/product_agents)", "status": "todo", "verified": false, "deps": ["f1b-kanban-leads-produto","f1c-captacao-produto","f1c-filtros-produto","f1d-agentes-por-produto"] },
-    { "id": "f2-liveness", "phase": "P2", "desc": "Chrome logado gestao.*: Negócios lista Beauty; Pipeline seletor travado(1 produto); hub 14 abas renderizam; agentes CRUD; captação exige produto", "status": "todo", "verified": false, "deps": ["f2-build-deploy"] },
+    { "id": "f2-build-deploy", "phase": "P2", "desc": "npm build + deploy VPS + anti-phantom no bundle SERVIDO (strings platform_crm_products/product_agents)", "status": "todo", "verified": false, "deps": ["f1b-kanban-leads-produto","f1c-captacao-produto","f1d-agentes-por-produto"] },
+    { "id": "f2-liveness", "phase": "P2", "desc": "Chrome logado gestao.*: Negócios lista Beauty; Pipeline seletor(1 produto); hub 14 abas; agentes CRUD; captação exige produto", "status": "todo", "verified": false, "deps": ["f2-build-deploy"] },
 
-    { "id": "f3-dominio-host-split", "phase": "P3", "desc": "gestao.nexvy.tech: Traefik file-provider alias + DNS + Supabase-auth redirect + host-class + visibilidade de módulo por host (nexvy.tech=Vendas, nexvybeauty=ERP)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "f3-reskin", "phase": "P3", "desc": "tema institucional Nexvy por host (sem rosa/floral) pesquisando nexvy-design-export; tenant beauty INTOCADO", "status": "todo", "verified": false, "deps": ["f3-dominio-host-split"] },
+    { "id": "f3-dominio-host-split", "phase": "P3", "desc": "gestao.nexvy.tech: Traefik file-provider + DNS + auth redirect + host-class + módulo por host", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "f3-reskin", "phase": "P3", "desc": "tema institucional Nexvy por host; tenant beauty INTOCADO", "status": "todo", "verified": false, "deps": ["f3-dominio-host-split"] },
 
-    { "id": "lote-L1-recurring", "phase": "P4", "desc": "campaign-recurring-snapshot → platform-* + cron", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "lote-L1-recurring", "phase": "P4", "desc": "campaign-recurring-snapshot -> platform-* + cron", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L2-L3-crons", "phase": "P4", "desc": "pg_cron para platform-campaign-dispatcher + platform-auto-notifications", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L4-booking-dispatcher", "phase": "P4", "desc": "platform-booking-dispatcher + confirmação + cron", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "lote-L5-cooldown", "phase": "P4", "desc": "ProviderCooldownBadge (67 linhas) reativado", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "lote-L6-formularios-tab", "phase": "P4", "desc": "bug: menu Formulários → initialTab correto", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "lote-L5-cooldown", "phase": "P4", "desc": "ProviderCooldownBadge reativado", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "lote-L6-formularios-tab", "phase": "P4", "desc": "bug menu Formulários -> initialTab correto", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L7-leaddetail-cadencia", "phase": "P4", "desc": "wiring inscrever/remover cadência no LeadDetail (edges já existem)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L8-transfer", "phase": "P4", "desc": "platform_crm_lead_transfers + modal + histórico", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L10-outreach-batch", "phase": "P4", "desc": "manual-outreach-batch (disparo em lote)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L11-biblioteca-contextos", "phase": "P4", "desc": "reusar Biblioteca de Contextos na aba de Cadências", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "lote-L12-higiene", "phase": "P4", "desc": "remover PlatformCrmDealsManager órfão + consolidar 2 entrypoints (SuperAdmin.tsx↔PlatformShell)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "lote-L12-higiene", "phase": "P4", "desc": "remover dead-code: PlatformCrmDealsManager + scaffold antigo de agentes (PlatformCrmAgentsManager/AgentFormDialog/agent_configs, órfão após f1d) + consolidar 2 entrypoints", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "lote-L13-followup-confirm", "phase": "P4", "desc": "1 diff: followup-ai-draft já coberto por sales-copilot? portar só se faltar", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
 
-    { "id": "d1b-meta-instagram-canal", "phase": "P5", "desc": "platform-meta-whatsapp-webhook/-send + platform-instagram-webhook/-send: conectar os canais mudos (inbound+outbound), product-aware", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d1b-meta-instagram-canal", "phase": "P5", "desc": "platform-meta-whatsapp-webhook/-send + platform-instagram-*: canais mudos -> inbound+outbound (GATE EXTERNO: app Meta aprovado)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
 
     { "id": "d2b-captacao-builders", "phase": "P6", "desc": "builders visuais completos (FlowCanvas/Form-builder/Quiz-builder+IA/Widget-embed) product-aware", "status": "todo", "verified": false, "deps": ["f1c-captacao-produto"] },
-    { "id": "d4b-financeiro-dashboard", "phase": "P6", "desc": "dashboard financeiro de aprovação/pagamento de comissões (Pendentes/Aprovadas)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "d5b-mia-acao-memoria", "phase": "P6", "desc": "Mia executa ações com confirmação (mia_actions) + memória (mia_user_memory) + wake-word", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "d7b-webhooks-painel-api", "phase": "P6", "desc": "painéis Actions/Requests dos Webhooks + API de cadência (cdn_) real", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "d8b-booking-conversacional", "phase": "P6", "desc": "migration booking_experience + UI: reativar branch conversacional (código morto 1:1 presente)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "d9b-web-push", "phase": "P6", "desc": "stack push-* (VAPID) restaurada: notificar vendedor por push", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d4b-financeiro-dashboard", "phase": "P6", "desc": "dashboard financeiro aprovação/pagamento comissões", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d5b-mia-acao-memoria", "phase": "P6", "desc": "Mia ações c/ confirmação (mia_actions) + memória (mia_user_memory) + wake-word", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d7b-webhooks-painel-api", "phase": "P6", "desc": "painéis Actions/Requests + API cadência (cdn_)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d8b-booking-conversacional", "phase": "P6", "desc": "migration booking_experience + UI branch conversacional", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d9b-web-push", "phase": "P6", "desc": "stack push-* (VAPID) restaurada", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
 
-    { "id": "d10a-ai-insights", "phase": "P7", "desc": "reviver campaign-ai-insights + AICampaignAssistant (canal-agnóstico)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "utmify-mcp", "phase": "P7", "desc": "plugar MCP da Utmify: atribuição de campanha por LP → product_id no lead (fecha o loop N-LPs→1-CRM)", "status": "todo", "verified": false, "deps": ["d10a-ai-insights"] }
+    { "id": "d10a-ai-insights", "phase": "P7", "desc": "reviver campaign-ai-insights + AICampaignAssistant", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "utmify-mcp", "phase": "P7", "desc": "MCP Utmify: atribuição de campanha por LP -> product_id no lead (fecha N-LPs->1-CRM)", "status": "todo", "verified": false, "deps": ["d10a-ai-insights"] }
   ],
   "gates": [
     "Front só vira done após verify.sh GATE PASSOU (fronteira + tsc baseline + build) — nunca só tsc",
-    "f2-*/release só após bundle SERVIDO provado (curl) + eyeball Chrome — build local não é prova (lição phantom-deploy)",
-    "Máxima: crm/ NUNCA toca tabela de tenant (products/organizations/evolution_instances do salão); ERP fica no nexvybeauty",
-    "D6(b) foi ABSORVIDO por f1d (mesmo subsistema de agentes) — não duplicar; L9 absorvido por f1b"
+    "f2-*/release só após bundle SERVIDO provado (curl) + eyeball Chrome — build local não é prova",
+    "Máxima: crm/ NUNCA toca tabela de tenant; ERP fica no nexvybeauty",
+    "D6(b) ABSORVIDO por f1d; L9 absorvido por f1b"
   ]
 }

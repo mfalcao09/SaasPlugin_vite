@@ -6,7 +6,10 @@ import { toast } from 'sonner';
 /**
  * CRM de PLATAFORMA (super_admin) — captação: WIDGETS de webchat, desacoplados do tenant.
  * Toca APENAS `platform_crm_webchat_widgets` (+ leitura de `platform_crm_webchat_agent_configs`).
- * Sem organization_id / product_id — a RLS super_admin-only isola os dados.
+ * Sem organization_id (sem tenant) — a RLS super_admin-only isola os dados.
+ * DIMENSÃO PRODUTO (D3 F1c): grava `product_id` na criação/edição, espelhando as
+ * fontes `WidgetManager` (l.71 create) + `WidgetSettingsTab` (l.23/l.80 edit) — o
+ * lead nascido do widget herda esse produto no edge platform-webchat-api.
  */
 
 export type PlatformCrmWebchatWidget = Tables<'platform_crm_webchat_widgets'>;
@@ -56,10 +59,16 @@ export function useCreatePlatformCrmWebchatWidget() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { name: string; welcome_message?: string | null }) => {
+    mutationFn: async (input: {
+      name: string;
+      welcome_message?: string | null;
+      product_id?: string | null;
+    }) => {
       const payload: PlatformCrmWebchatWidgetInsert = {
         name: input.name,
         welcome_message: input.welcome_message ?? null,
+        // Carimba o produto da superfície de captação (fonte WidgetManager l.71).
+        product_id: input.product_id ?? null,
         public_key: generateWidgetPublicKey(),
         is_active: false,
         settings: {},

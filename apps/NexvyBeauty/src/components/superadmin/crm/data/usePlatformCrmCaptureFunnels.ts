@@ -6,7 +6,11 @@ import { toast } from 'sonner';
 /**
  * CRM de PLATAFORMA (super_admin) — captação: FUNIS multicanal, desacoplados do tenant.
  * Toca APENAS `platform_crm_capture_funnels` + `platform_crm_funnel_analytics`.
- * Sem organization_id / product_id — a RLS super_admin-only isola os dados.
+ * Sem organization_id (sem tenant) — a RLS super_admin-only isola os dados.
+ * DIMENSÃO PRODUTO (D3 F1c): grava `product_id` na criação, espelhando as fontes
+ * `WidgetManager`/`ChatBotManager`/`QuizManager` (l.71: `product_id: productId` no
+ * insert de capture_funnels) — chatbot/quiz/widget/chat são `channel_type` deste
+ * mesmo funil. O lead herda o produto no edge (funnel-submit l.192).
  */
 
 export type PlatformCrmCaptureFunnel = Tables<'platform_crm_capture_funnels'>;
@@ -87,6 +91,7 @@ export function useCreatePlatformCrmCaptureFunnel() {
     mutationFn: async (input: {
       name: string;
       description?: string | null;
+      product_id?: string | null;
       channel_type?: string;
       distribution_rule?: string;
       status?: string;
@@ -95,6 +100,8 @@ export function useCreatePlatformCrmCaptureFunnel() {
       const payload: PlatformCrmCaptureFunnelInsert = {
         name: input.name,
         description: input.description ?? null,
+        // Carimba o produto da superfície de captação (fonte WidgetManager l.71).
+        product_id: input.product_id ?? null,
         slug,
         channel_type: input.channel_type ?? 'chat',
         distribution_rule: input.distribution_rule ?? 'round_robin',

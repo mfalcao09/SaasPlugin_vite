@@ -4,9 +4,15 @@ import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/type
 import { toast } from 'sonner';
 
 /**
- * CRM de PLATAFORMA (super_admin) — pipeline ÚNICO, desacoplado do tenant.
- * Toca APENAS `platform_crm_pipeline_stages`. Sem organization_id / product_id.
- * A RLS super_admin-only já isola os dados; não há filtro por escopo aqui.
+ * CRM de PLATAFORMA (super_admin) — pipeline POR PRODUTO (dimensão restaurada D3).
+ * Toca APENAS `platform_crm_pipeline_stages`. Sem organization_id / tenant.
+ * A RLS super_admin-only isola os dados; o escopo por produto é opcional (null/undefined
+ * = todos os funis, mesma semântica da fonte quando o produto ainda não foi escolhido).
+ *
+ * Porte 1:1 de `.vendus-src-reference/src/hooks/useProductPipelineStages.ts:12-26`
+ * (`useProductPipelineStages(productId)` → `.eq('product_id', productId)`). Aqui o
+ * filtro é opcional para preservar a chamada sem-argumento das telas que ainda não
+ * passaram por multiproduto (ex.: LeadsManager usa a lista completa de etapas).
  */
 
 export type PlatformCrmStage = Tables<'platform_crm_pipeline_stages'>;
@@ -15,15 +21,25 @@ export type PlatformCrmStageUpdate = TablesUpdate<'platform_crm_pipeline_stages'
 
 const PLATFORM_CRM_KEY = 'platform-crm';
 
-export function usePlatformCrmStages() {
+/**
+ * Etapas do pipeline. Com `productId` informado, filtra o funil daquele produto
+ * (`.eq('product_id', productId)`, espelho de useProductPipelineStages:19). Sem
+ * `productId`, retorna todas as etapas (compat com chamadas legadas mono-produto).
+ */
+export function usePlatformCrmStages(productId?: string | null) {
   return useQuery({
-    queryKey: [PLATFORM_CRM_KEY, 'stages'],
+    queryKey: [PLATFORM_CRM_KEY, 'stages', productId ?? null],
     queryFn: async (): Promise<PlatformCrmStage[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('platform_crm_pipeline_stages')
         .select('*')
         .order('order_index', { ascending: true });
 
+      if (productId) {
+        query = query.eq('product_id', productId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as PlatformCrmStage[];
     },

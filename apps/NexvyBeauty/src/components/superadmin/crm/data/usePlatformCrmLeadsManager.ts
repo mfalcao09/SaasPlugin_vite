@@ -51,6 +51,8 @@ export type PlatformCrmLeadFilters = {
   channel: string[];
   stageId: string | null;
   squadId: string | null;
+  /** Filtra por produto (dimensão D3). Espelho de useLeadsManager.ts:43/305 da fonte. */
+  productId: string | null;
   assignedTo: string | null;
   unassigned: boolean;
   dateFrom: Date | null;
@@ -70,12 +72,19 @@ export type PlatformCrmLeadSort = {
   direction: 'asc' | 'desc';
 };
 
-/** Abas disponíveis (Por Produto DROPADO — plataforma não tem catálogo de produto). */
+/**
+ * Abas disponíveis. Dimensão PRODUTO restaurada (D3): `by-product` (gerencial, espelho
+ * de LeadsTabs.tsx:23) e `by-squad` (gerencial, L9 do LOTE). Ambas são visões admin —
+ * o recorte efetivo (produto/squad) é aplicado pelos seletores de PlatformCrmLeadsFilters,
+ * mesmo padrão da fonte (o LeadsManager admin habilita as abas; o filtro faz o corte).
+ */
 export type PlatformCrmLeadsTabId =
   | 'all'
   | 'my-leads'
   | 'my-squad'
-  | 'unassigned';
+  | 'unassigned'
+  | 'by-squad'
+  | 'by-product';
 
 const defaultFilters: PlatformCrmLeadFilters = {
   search: '',
@@ -84,6 +93,7 @@ const defaultFilters: PlatformCrmLeadFilters = {
   channel: [],
   stageId: null,
   squadId: null,
+  productId: null,
   assignedTo: null,
   unassigned: false,
   dateFrom: null,
@@ -319,6 +329,8 @@ export function usePlatformCrmLeadsManager() {
       }
       if (filters.stageId) query = query.eq('current_stage_id', filters.stageId);
       if (filters.squadId) query = query.eq('squad_id', filters.squadId);
+      // Escopo por produto (dimensão D3) — espelho de useLeadsManager.ts:305 da fonte.
+      if (filters.productId) query = query.eq('product_id', filters.productId);
       if (filters.assignedTo) query = query.eq('assigned_to', filters.assignedTo);
       if (filters.unassigned) query = query.is('assigned_to', null);
 

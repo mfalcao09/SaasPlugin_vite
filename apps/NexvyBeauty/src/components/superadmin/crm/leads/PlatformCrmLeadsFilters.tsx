@@ -31,8 +31,8 @@ import type { PlatformCrmStage } from '../data/usePlatformCrmStages';
  * Filtros AVANÇADOS da GESTÃO DE LEADS do CRM de PLATAFORMA (super_admin) — pipeline
  * único, desacoplado do tenant. Porte 1:1 do LeadsFilters: busca, temperatura, origem,
  * canal, etiquetas (any/all), EXCLUSÕES (sem-tag/origem/canal), campos personalizados
- * (via metadata), squad, presets de data + chips de filtros ativos. "Produto" DROPADO
- * (plataforma sem catálogo). Zero organization_id / product_id.
+ * (via metadata), squad, PRODUTO (dimensão D3 restaurada — espelho de LeadsFilters.tsx:
+ * 754-773), presets de data + chips de filtros ativos. Zero organization_id.
  */
 interface PlatformCrmLeadsFiltersProps {
   filters: PlatformCrmLeadFilters;
@@ -42,6 +42,8 @@ interface PlatformCrmLeadsFiltersProps {
   ) => void;
   onClearFilters: () => void;
   squads: { id: string; name: string }[];
+  /** Catálogo do CRM da plataforma (dimensão D3). Espelho do prop `products` da fonte. */
+  products: { id: string; name: string }[];
   stages: PlatformCrmStage[];
 }
 
@@ -279,6 +281,7 @@ export function PlatformCrmLeadsFilters({
   onFilterChange,
   onClearFilters,
   squads,
+  products,
   stages,
 }: PlatformCrmLeadsFiltersProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -294,6 +297,7 @@ export function PlatformCrmLeadsFilters({
     filters.channel.length > 0,
     filters.stageId,
     filters.squadId,
+    filters.productId,
     filters.dateFrom || filters.dateTo || filters.datePreset,
     filters.tagIds.length > 0,
     filters.excludeTagIds.length > 0,
@@ -763,6 +767,27 @@ export function PlatformCrmLeadsFilters({
                     {squads.map((squad) => (
                       <SelectItem key={squad.id} value={squad.id}>
                         {squad.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Product — dimensão D3 restaurada (espelho de LeadsFilters.tsx:754-773). */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Produto</label>
+                <Select
+                  value={filters.productId || '__all__'}
+                  onValueChange={(v) => onFilterChange('productId', v === '__all__' ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os produtos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Todos os produtos</SelectItem>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

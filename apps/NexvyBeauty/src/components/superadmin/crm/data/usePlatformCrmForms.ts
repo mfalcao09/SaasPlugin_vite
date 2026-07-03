@@ -7,7 +7,10 @@ import { generateFunnelSlug } from './usePlatformCrmCaptureFunnels';
 /**
  * CRM de PLATAFORMA (super_admin) — captação: FORMULÁRIOS, desacoplados do tenant.
  * Toca APENAS `platform_crm_forms` (+ leitura de blocos/submissions/templates).
- * Sem organization_id / product_id — a RLS super_admin-only isola os dados.
+ * Sem organization_id (sem tenant) — a RLS super_admin-only isola os dados.
+ * DIMENSÃO PRODUTO (D3 F1c): grava `product_id` na criação, espelhando a fonte
+ * `FormsManager.tsx` (l.73/l.484: `productId: newFormProductId` no insert) — o
+ * lead nascido do formulário herda esse produto no edge (form-submit l.638).
  */
 
 export type PlatformCrmForm = Tables<'platform_crm_forms'>;
@@ -107,6 +110,7 @@ export function useCreatePlatformCrmForm() {
     mutationFn: async (input: {
       name: string;
       description?: string | null;
+      product_id?: string | null;
       distribution_rule?: string;
       status?: string;
     }) => {
@@ -114,6 +118,8 @@ export function useCreatePlatformCrmForm() {
       const payload: PlatformCrmFormInsert = {
         name: input.name,
         description: input.description ?? null,
+        // Carimba o produto da superfície de captação (fonte FormsManager l.484).
+        product_id: input.product_id ?? null,
         slug,
         distribution_rule: input.distribution_rule ?? 'round_robin',
         status: input.status ?? 'draft',

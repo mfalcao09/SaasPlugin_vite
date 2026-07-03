@@ -54,6 +54,8 @@ import {
 } from '@/components/superadmin/crm/data/usePlatformCrmWebchatWidgets';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 
 export function PlatformCrmCaptureWidgetsTab() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,12 +65,22 @@ export function PlatformCrmCaptureWidgetsTab() {
 
   const [name, setName] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  // Dimensão PRODUTO (D3 F1c) — fonte WidgetManager l.50 `useState('')`.
+  const [productId, setProductId] = useState('');
 
   const { data: widgets, isLoading } = usePlatformCrmWebchatWidgets();
+  const { data: products = [] } = usePlatformCrmProducts();
   const createWidget = useCreatePlatformCrmWebchatWidget();
   const updateWidget = useUpdatePlatformCrmWebchatWidget();
   const toggleWidget = useTogglePlatformCrmWebchatWidget();
   const deleteWidget = useDeletePlatformCrmWebchatWidget();
+
+  // Com 1 produto, a fonte trava a seleção nele (label estática, auto-select).
+  const singleProductId = products.length === 1 ? products[0].id : '';
+  // O produto é obrigatório para gravar, EXCETO quando ainda não há produtos
+  // cadastrados (aí o backend aplica o default) — espelha a fonte, que só exige
+  // o select quando há produtos para escolher.
+  const productReady = products.length === 0 || !!productId;
 
   const filtered = (widgets || []).filter((w) =>
     w.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -77,13 +89,22 @@ export function PlatformCrmCaptureWidgetsTab() {
   const resetForm = () => {
     setName('');
     setWelcomeMessage('');
+    setProductId('');
+  };
+
+  const openCreate = () => {
+    resetForm();
+    // Pré-seleciona o único produto (auto-trava) — fonte: label estática.
+    if (singleProductId) setProductId(singleProductId);
+    setIsCreateOpen(true);
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !productReady) return;
     await createWidget.mutateAsync({
       name: name.trim(),
       welcome_message: welcomeMessage.trim() || null,
+      product_id: productId || null,
     });
     setIsCreateOpen(false);
     resetForm();
@@ -93,14 +114,17 @@ export function PlatformCrmCaptureWidgetsTab() {
     setEditing(widget);
     setName(widget.name);
     setWelcomeMessage(widget.welcome_message ?? '');
+    // Edição herda o produto atual (fonte WidgetSettingsTab l.23).
+    setProductId(widget.product_id ?? singleProductId);
   };
 
   const handleUpdate = async () => {
-    if (!editing || !name.trim()) return;
+    if (!editing || !name.trim() || !productReady) return;
     await updateWidget.mutateAsync({
       id: editing.id,
       name: name.trim(),
       welcome_message: welcomeMessage.trim() || null,
+      product_id: productId || null,
     });
     setEditing(null);
     resetForm();
@@ -129,7 +153,7 @@ export function PlatformCrmCaptureWidgetsTab() {
             <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+        <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Widget
         </Button>
@@ -162,7 +186,7 @@ export function PlatformCrmCaptureWidgetsTab() {
                 : 'Crie seu primeiro widget para instalar a bolha de chat em qualquer site.'}
             </p>
             {!searchQuery && (
-              <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+              <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" /> Criar primeiro Widget
               </Button>
             )}
@@ -266,6 +290,11 @@ export function PlatformCrmCaptureWidgetsTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <PlatformCrmCaptureProductField
+              products={products}
+              value={productId}
+              onChange={setProductId}
+            />
             <div className="space-y-2">
               <Label>Nome do Widget *</Label>
               <Input
@@ -288,7 +317,10 @@ export function PlatformCrmCaptureWidgetsTab() {
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={!name.trim() || createWidget.isPending}>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || !productReady || createWidget.isPending}
+            >
               {createWidget.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -318,6 +350,11 @@ export function PlatformCrmCaptureWidgetsTab() {
             <DialogDescription>Altere o nome e a mensagem de boas-vindas.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <PlatformCrmCaptureProductField
+              products={products}
+              value={productId}
+              onChange={setProductId}
+            />
             <div className="space-y-2">
               <Label>Nome do Widget *</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -335,7 +372,10 @@ export function PlatformCrmCaptureWidgetsTab() {
             <Button variant="outline" onClick={() => setEditing(null)}>
               Cancelar
             </Button>
-            <Button onClick={handleUpdate} disabled={!name.trim() || updateWidget.isPending}>
+            <Button
+              onClick={handleUpdate}
+              disabled={!name.trim() || !productReady || updateWidget.isPending}
+            >
               {updateWidget.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
