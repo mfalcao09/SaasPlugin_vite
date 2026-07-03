@@ -16,7 +16,10 @@
 5. Segredos: nunca imprimir valor (presença/tamanho só). VAPID private + TELEGRAM_BOT_TOKEN via `supabase secrets set` sem eco.
 6. Dados de teste: sempre limpar após smoke (padrão do smoke D7).
 
-**Notificação (Telegram, PROVADO):** `bash SaasPlugin_vite/tasks/megasessao-d9-d5-d2/notify-marcelo.sh "msg"` — use em: decisão bloqueante (mande a pergunta + "responda na sessão"), átomo humano (ex.: D9.8 permitir push no browser), marco concluído (frente/fase/deploy verde), falha travada >2 tentativas. O canal é one-way: minhas respostas chegam AQUI na sessão. Não spammar (só os 4 casos).
+**Comunicação comigo (Telegram — Slice 3 da sessão paralela):**
+- No início da sessão: rode `~/.claude/hooks/cc-remote status`; se DESLIGADO, ligue com `~/.claude/hooks/cc-remote on`. Com isso, cada fim de turno + pedidos de permissão chegam no meu Telegram automaticamente (hook 3a `cc-telegram-notify.sh`, JÁ LIVE).
+- Se `~/.claude/hooks/.cc-control.env` existir, minhas respostas no Telegram chegam INJETADAS no turno (hook 3b `cc-telegram-control.sh`, decision:block+additionalContext) — trate-as como resposta minha na sessão. (Depende do bot de controle dedicado — átomo humano meu no KVM4.)
+- Para marcos/bloqueios NO MEIO de execuções longas (hooks só disparam no fim do turno): `bash SaasPlugin_vite/tasks/megasessao-d9-d5-d2/notify-marcelo.sh "msg"` — decisão bloqueante · átomo humano (ex.: D9.8 permitir push) · marco concluído · falha travada >2 tentativas. Não spammar.
 
 **Ritmo do loop:** a cada iteração, reler o plano → próxima fatia → executar → CHECK → commit → atualizar plano → (se marco/bloqueio) notify. Use ScheduleWakeup para pacing quando aguardar builds/átomos humanos. Se o contexto compactar, o plano-execucao.md é o estado — retome do checkbox.
 
