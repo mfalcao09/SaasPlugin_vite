@@ -11147,6 +11147,64 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_crm_lead_transfer_history: {
+        Row: {
+          created_at: string
+          from_squad_id: string | null
+          from_user_id: string | null
+          id: string
+          lead_id: string
+          reason: string | null
+          to_squad_id: string | null
+          to_user_id: string | null
+          transferred_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_squad_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          lead_id: string
+          reason?: string | null
+          to_squad_id?: string | null
+          to_user_id?: string | null
+          transferred_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_squad_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          lead_id?: string
+          reason?: string | null
+          to_squad_id?: string | null
+          to_user_id?: string | null
+          transferred_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_lead_transfer_history_from_squad_id_fkey"
+            columns: ["from_squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_transfer_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_transfer_history_to_squad_id_fkey"
+            columns: ["to_squad_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_crm_leads: {
         Row: {
           assigned_to: string | null
