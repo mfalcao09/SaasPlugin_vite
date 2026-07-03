@@ -10,6 +10,7 @@ import { SuperAdminDashboard } from '@/components/superadmin/SuperAdminDashboard
 import { OrganizationsManager } from '@/components/superadmin/OrganizationsManager';
 import { UsersManager } from '@/components/superadmin/UsersManager';
 import { PlansManager } from '@/components/superadmin/PlansManager';
+import { PlatformCrmProductsSection } from '@/components/superadmin/crm/products/PlatformCrmProductsSection';
 import { SubscriptionsManager } from '@/components/superadmin/SubscriptionsManager';
 import { BillingManager } from '@/components/superadmin/BillingManager';
 import { CaktoSuperAdminPanel } from '@/components/superadmin/payments/CaktoSuperAdminPanel';
@@ -400,12 +401,11 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-negocios',
         label: 'Negócios',
         icon: I.Package,
-        // "Negócios" = catálogo do que vendemos = nossos PLANOS. Decisão Marcelo:
-        // "(a) apontar para planos... o nosso produto é aquele, o produto da LP".
-        // Reusa o PlansManager (fonte única dos planos do ERP — a máxima permite
-        // unificar o que é NOSSO dentro da plataforma). Uma visão-catálogo dedicada
-        // do CRM fica como ajuste futuro. A antiga tela "deals" read-only foi descartada.
-        render: () => <PlansManager />,
+        // "Negócios" = catálogo de PRODUTOS do grupo (os SaaS que vendemos). Decisão
+        // Marcelo D3-multiproduto (2026-07-02): 1 CRM vende N produtos → esta é a casa
+        // deles. (Reverte a premissa mono-produto anterior de apontar pros planos.) Os
+        // planos de assinatura do Beauty seguem no PlansManager DENTRO do módulo ERP.
+        render: () => <PlatformCrmProductsSection />,
       },
       {
         id: 'v-setores',

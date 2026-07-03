@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano-Mestre — CRM do Grupo Multiproduto</title>
+<style>
+  :root{--bg:#0e1014;--panel:#161a21;--panel2:#1c2129;--line:#2a2f3a;--tx:#e6e8ec;--mut:#9aa3b2;--acc:#5e8f7d;--acc2:#7aa2ff;--grn:#63e6a8;--org:#ffa94d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-size:19px;margin:34px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+  h3{font-size:15px;margin:18px 0 6px;color:var(--acc2)}
+  p{margin:9px 0}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 20px}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;padding:14px 18px;margin:16px 0}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d6dbe6}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:12.5px/1.5 ui-monospace,Menlo,monospace;color:#d6dbe6}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  ol,ul{margin:9px 0;padding-left:22px}li{margin:5px 0}
+  .done{color:var(--grn);font-weight:700}.wip{color:var(--org);font-weight:700}
+  .foot{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Plano-Mestre — CRM do Grupo Multiproduto <span style="color:var(--mut)">(executável em /loop)</span></h1>
+<p class="sub"><b>2026-07-03</b> · D3 multiproduto completo + LOTE L1–L13 + D1–D9(b) + D10(a)/Utmify. Harness: <code>feature-list.json</code> + <code>verify.sh</code> + <code>STATE.md</code> + este roadmap. Custo: <b>P</b>=horas · <b>M</b>=½–1 dia · <b>G</b>=dias.</p>
+
+<div class="lead">
+<b>Como o /loop roda:</b> cada tick lê <code>feature-list.json</code> → pega <code>todo</code> com <code>deps</code> satisfeitas → fan-out de agentes disjuntos → <b>gate <code>verify.sh</code></b> (fronteira+tsc+build) → commit/push + atualiza STATE → continua. <b>Nada vira <code>done</code> sem <code>verified</code></b>. Handoff entre sessões garantido (hoje recuperei um agente-zumbi 100% do working-tree). O gate já pegou 2× o que revisão manual não pegaria.
+</div>
+
+<h2>Sequência mestre</h2>
+<pre>P0 D3 schema OK -> P1 D3 front -> P2 release D3 -> P3 dominio+re-skin
+   -> P4 LOTE L1-L13 -> P5 D1(b) Meta -> P6 D2/D4/D5/D7/D8/D9(b) -> P7 D10(a)+Utmify</pre>
+<p><b>Regra de ouro:</b> D3 antes de tudo — LOTE e D-features nascem <b>product-aware</b> (senão retrabalho).</p>
+
+<h2>Fases</h2>
+<table>
+<thead><tr><th>Fase</th><th>Conteúdo</th><th>Status</th><th>Custo</th></tr></thead>
+<tbody>
+<tr><td><b>P0</b> schema</td><td>products(30c)+product_agents(81c)+product_id×21 tabelas+seed/backfill+8 NOT NULL</td><td class="done">✅ provado</td><td>—</td></tr>
+<tr><td><b>P1</b> D3 front</td><td>F1a Hub 14 abas ✅ · F1b kanban/leads-por-produto · F1c captação-por-produto · F1d agentes(=D6b)</td><td class="wip">🔄 F1a done; F1b/c/d prontos</td><td>G</td></tr>
+<tr><td><b>P2</b> release</td><td>build+deploy+anti-phantom servido+eyeball Chrome</td><td>todo</td><td>P/M</td></tr>
+<tr><td><b>P3</b> domínio+skin</td><td><code>gestao.nexvy.tech</code> (Traefik+DNS+auth) + módulo por host + tema institucional</td><td>todo</td><td>M/G</td></tr>
+<tr><td><b>P4</b> LOTE</td><td>L1–L13 product-aware (L9 já em F1b)</td><td>todo</td><td>M</td></tr>
+<tr><td><b>P5</b> D1(b)</td><td>Meta Cloud + Instagram: canais mudos → inbound+outbound</td><td>todo</td><td>G</td></tr>
+<tr><td><b>P6</b> D2/4/5/7/8/9(b)</td><td>builders · financeiro · Mia-ação · webhooks · booking-conv · push</td><td>todo</td><td>G</td></tr>
+<tr><td><b>P7</b> D10(a)+Utmify</td><td>ai-insights + MCP Utmify (atribuição LP→produto)</td><td>todo</td><td>P/M</td></tr>
+</tbody>
+</table>
+
+<h3>P1 — o que dispara JUNTO agora (têm os hooks do F1a)</h3>
+<table>
+<thead><tr><th>Onda</th><th>O que</th><th>Custo</th></tr></thead>
+<tbody>
+<tr><td>F1b</td><td>Pipeline por produto + Leads "Por Produto"+"Por Squad" (absorve L9)</td><td>M/G</td></tr>
+<tr><td>F1c</td><td>Captação: select de produto obrigatório + stamp product_id no lead</td><td>M</td></tr>
+<tr><td>F1c-filtros</td><td>"Todos os produtos" em Agenda/Tarefas/Notif</td><td>P</td></tr>
+<tr><td>F1d</td><td>Agentes por produto (editor 13 abas, supervisor) = <b>D6(b)</b></td><td>G</td></tr>
+</tbody>
+</table>
+
+<h2>Dedups que o D3-primeiro nos deu</h2>
+<ul>
+<li><b>D6(b) = F1d</b> (mesmo subsistema de agentes) → poupa uma onda inteira.</li>
+<li><b>L9 (Por Squad) = F1b</b> (mesma restauração do LeadsTabs).</li>
+<li><b>D2(b) builders</b> encaixam na captação-por-produto.</li>
+<li><b>Domínio + re-skin (seu item 2)</b> = 1 workstream (tema por host).</li>
+</ul>
+
+<h2>LPs — resolvido no plano</h2>
+<p><b>N LPs (1 por SaaS) → 1 CRM.</b> Cada superfície de captação carrega <code>product_id</code> (F1c faz o stamp); a <b>Utmify (P7)</b> injeta a atribuição por LP no lead certo. Consolidação impossível com 10 CRMs.</p>
+
+<h2>Guardrails (o gate reforça)</h2>
+<ol>
+<li><b>Máxima:</b> <code>crm/</code> nunca toca tabela de tenant; ERP fica no nexvybeauty.</li>
+<li><b>Prova = liveness:</b> release só com bundle SERVIDO (curl) + Chrome.</li>
+<li><b>Fidelidade 1:1</b> Bizon; muda só tabela→<code>platform_crm_*</code>, tema, desacoplamento.</li>
+<li><b>Nada <code>done</code> sem <code>verified</code></b>.</li>
+</ol>
+
+<div class="lead" style="border-left-color:var(--acc2)">
+<b>Total ~2–3 semanas de agente</b> (multi-sessão), dominadas por P1(F1d)+P5+P6 — o caso de uso do /loop. <b>Próximo tick:</b> F1b+F1c+F1c-filtros+F1d em paralelo → gate → P2.
+</div>
+
+<div class="foot">Harness: <code>tasks/d3-multiproduto/</code> — feature-list.json · verify.sh · STATE.md · CONTRATO-DIMENSAO-PRODUTO.md · este plano.</div>
+
+</div>
+</body>
+</html>

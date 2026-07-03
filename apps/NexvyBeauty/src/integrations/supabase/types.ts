@@ -9336,6 +9336,7 @@ export type Database = {
           last_executed_at: string | null
           name: string
           objective: string | null
+          product_id: string
           status: string
           stop_actions: Json
           stop_rules: Json
@@ -9355,6 +9356,7 @@ export type Database = {
           last_executed_at?: string | null
           name: string
           objective?: string | null
+          product_id?: string
           status?: string
           stop_actions?: Json
           stop_rules?: Json
@@ -9374,13 +9376,22 @@ export type Database = {
           last_executed_at?: string | null
           name?: string
           objective?: string | null
+          product_id?: string
           status?: string
           stop_actions?: Json
           stop_rules?: Json
           totals?: Json
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_cadences_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_calendar_events: {
         Row: {
@@ -9404,6 +9415,7 @@ export type Database = {
           metadata: Json | null
           notes: string | null
           parent_event_id: string | null
+          product_id: string | null
           recurrence_end_date: string | null
           recurrence_rule: string | null
           reminder_minutes: number[] | null
@@ -9436,6 +9448,7 @@ export type Database = {
           metadata?: Json | null
           notes?: string | null
           parent_event_id?: string | null
+          product_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
           reminder_minutes?: number[] | null
@@ -9468,6 +9481,7 @@ export type Database = {
           metadata?: Json | null
           notes?: string | null
           parent_event_id?: string | null
+          product_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
           reminder_minutes?: number[] | null
@@ -9492,6 +9506,13 @@ export type Database = {
             columns: ["parent_event_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_calendar_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -9801,6 +9822,7 @@ export type Database = {
           google_tag_id: string | null
           id: string
           name: string
+          product_id: string
           round_robin_config: Json | null
           slug: string
           start_block_id: string | null
@@ -9832,6 +9854,7 @@ export type Database = {
           google_tag_id?: string | null
           id?: string
           name: string
+          product_id?: string
           round_robin_config?: Json | null
           slug: string
           start_block_id?: string | null
@@ -9863,6 +9886,7 @@ export type Database = {
           google_tag_id?: string | null
           id?: string
           name?: string
+          product_id?: string
           round_robin_config?: Json | null
           slug?: string
           start_block_id?: string | null
@@ -9882,6 +9906,13 @@ export type Database = {
             referencedRelation: "platform_crm_sales_squads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "platform_crm_capture_funnels_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       platform_crm_chat_flows: {
@@ -9894,6 +9925,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          product_id: string | null
           start_block_id: string | null
           trigger_conditions: Json | null
           trigger_type: string | null
@@ -9908,6 +9940,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          product_id?: string | null
           start_block_id?: string | null
           trigger_conditions?: Json | null
           trigger_type?: string | null
@@ -9922,12 +9955,21 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          product_id?: string | null
           start_block_id?: string | null
           trigger_conditions?: Json | null
           trigger_type?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_chat_flows_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_commission_rules: {
         Row: {
@@ -9939,6 +9981,7 @@ export type Database = {
           is_default: boolean | null
           max_value: number | null
           min_value: number | null
+          product_id: string
           rule_type: string
           stage_id: string | null
           updated_at: string | null
@@ -9953,6 +9996,7 @@ export type Database = {
           is_default?: boolean | null
           max_value?: number | null
           min_value?: number | null
+          product_id?: string
           rule_type?: string
           stage_id?: string | null
           updated_at?: string | null
@@ -9967,12 +10011,20 @@ export type Database = {
           is_default?: boolean | null
           max_value?: number | null
           min_value?: number | null
+          product_id?: string
           rule_type?: string
           stage_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_crm_commission_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_crm_commission_rules_stage_id_fkey"
             columns: ["stage_id"]
@@ -9995,6 +10047,7 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           percentage_applied: number | null
+          product_id: string
           rule_id: string | null
           status: string | null
           user_id: string
@@ -10011,6 +10064,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           percentage_applied?: number | null
+          product_id?: string
           rule_id?: string | null
           status?: string | null
           user_id: string
@@ -10027,6 +10081,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           percentage_applied?: number | null
+          product_id?: string
           rule_id?: string | null
           status?: string | null
           user_id?: string
@@ -10037,6 +10092,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_commissions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
           {
@@ -10092,6 +10154,7 @@ export type Database = {
           last_message_at: string | null
           lead_id: string | null
           needs_human: boolean
+          product_id: string | null
           status: Database["public"]["Enums"]["platform_crm_conversation_status"]
           unread_count_agents: number
           updated_at: string
@@ -10111,6 +10174,7 @@ export type Database = {
           last_message_at?: string | null
           lead_id?: string | null
           needs_human?: boolean
+          product_id?: string | null
           status?: Database["public"]["Enums"]["platform_crm_conversation_status"]
           unread_count_agents?: number
           updated_at?: string
@@ -10130,6 +10194,7 @@ export type Database = {
           last_message_at?: string | null
           lead_id?: string | null
           needs_human?: boolean
+          product_id?: string | null
           status?: Database["public"]["Enums"]["platform_crm_conversation_status"]
           unread_count_agents?: number
           updated_at?: string
@@ -10144,6 +10209,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_conversations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -10193,6 +10265,7 @@ export type Database = {
           lead_id: string
           notes: string | null
           plan_name: string | null
+          product_id: string
           seller_id: string
           status: string | null
           updated_at: string | null
@@ -10205,6 +10278,7 @@ export type Database = {
           lead_id: string
           notes?: string | null
           plan_name?: string | null
+          product_id?: string
           seller_id: string
           status?: string | null
           updated_at?: string | null
@@ -10217,6 +10291,7 @@ export type Database = {
           lead_id?: string
           notes?: string | null
           plan_name?: string | null
+          product_id?: string
           seller_id?: string
           status?: string | null
           updated_at?: string | null
@@ -10227,6 +10302,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_deals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -10561,6 +10643,7 @@ export type Database = {
           google_tag_id: string | null
           id: string
           name: string
+          product_id: string
           round_robin_config: Json | null
           settings: Json | null
           slug: string
@@ -10584,6 +10667,7 @@ export type Database = {
           google_tag_id?: string | null
           id?: string
           name: string
+          product_id?: string
           round_robin_config?: Json | null
           settings?: Json | null
           slug: string
@@ -10607,6 +10691,7 @@ export type Database = {
           google_tag_id?: string | null
           id?: string
           name?: string
+          product_id?: string
           round_robin_config?: Json | null
           settings?: Json | null
           slug?: string
@@ -10623,6 +10708,13 @@ export type Database = {
             columns: ["assigned_squad_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_sales_squads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_forms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -10887,6 +10979,7 @@ export type Database = {
           id: string
           lead_id: string
           priority: number
+          product_id: string | null
           queued_at: string
           squad_id: string | null
           status: string
@@ -10897,6 +10990,7 @@ export type Database = {
           id?: string
           lead_id: string
           priority?: number
+          product_id?: string | null
           queued_at?: string
           squad_id?: string | null
           status?: string
@@ -10907,6 +11001,7 @@ export type Database = {
           id?: string
           lead_id?: string
           priority?: number
+          product_id?: string | null
           queued_at?: string
           squad_id?: string | null
           status?: string
@@ -10917,6 +11012,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_lead_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
           {
@@ -11072,6 +11174,7 @@ export type Database = {
           phone: string | null
           position: string | null
           previous_assigned_to: string | null
+          product_id: string | null
           referrer_url: string | null
           sdr_id: string | null
           source: string | null
@@ -11113,6 +11216,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           previous_assigned_to?: string | null
+          product_id?: string | null
           referrer_url?: string | null
           sdr_id?: string | null
           source?: string | null
@@ -11154,6 +11258,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           previous_assigned_to?: string | null
+          product_id?: string | null
           referrer_url?: string | null
           sdr_id?: string | null
           source?: string | null
@@ -11175,6 +11280,13 @@ export type Database = {
             columns: ["current_stage_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_leads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
           {
@@ -11288,6 +11400,7 @@ export type Database = {
           is_read: boolean | null
           message: string | null
           metadata: Json | null
+          product_id: string | null
           title: string
           type: Database["public"]["Enums"]["platform_crm_notification_type"]
           user_id: string
@@ -11300,6 +11413,7 @@ export type Database = {
           is_read?: boolean | null
           message?: string | null
           metadata?: Json | null
+          product_id?: string | null
           title: string
           type?: Database["public"]["Enums"]["platform_crm_notification_type"]
           user_id: string
@@ -11312,6 +11426,7 @@ export type Database = {
           is_read?: boolean | null
           message?: string | null
           metadata?: Json | null
+          product_id?: string | null
           title?: string
           type?: Database["public"]["Enums"]["platform_crm_notification_type"]
           user_id?: string
@@ -11322,6 +11437,13 @@ export type Database = {
             columns: ["admin_notification_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_admin_notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -11336,6 +11458,7 @@ export type Database = {
           is_won: boolean | null
           name: string
           order_index: number
+          product_id: string
         }
         Insert: {
           color?: string | null
@@ -11346,6 +11469,7 @@ export type Database = {
           is_won?: boolean | null
           name: string
           order_index?: number
+          product_id?: string
         }
         Update: {
           color?: string | null
@@ -11356,6 +11480,381 @@ export type Database = {
           is_won?: boolean | null
           name?: string
           order_index?: number
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_pipeline_stages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_product_agents: {
+        Row: {
+          activation_keywords: string[]
+          activation_phrases: string[]
+          activation_priority: number
+          activation_scope: string
+          active_in_chat: boolean | null
+          active_in_copilot: boolean | null
+          active_in_facebook: boolean | null
+          active_in_funnels: boolean | null
+          active_in_inbox: boolean | null
+          active_in_instagram: boolean | null
+          active_in_whatsapp: boolean | null
+          active_in_widget: boolean | null
+          additional_prompt: string | null
+          agent_type: string
+          allowed_event_type_ids: string[] | null
+          always_end_with_question: boolean | null
+          auto_tag_leads: boolean | null
+          avatar_url: string | null
+          booking_notification_user_ids: string[] | null
+          booking_notify_org_admins: boolean | null
+          can_add_notes: boolean
+          can_apply_tags: boolean
+          can_create_tasks: boolean | null
+          can_do: string[] | null
+          can_notify: boolean
+          can_qualify: boolean
+          can_schedule_meetings: boolean | null
+          can_send_emails: boolean
+          can_send_materials: boolean
+          can_start_cadence: boolean
+          can_transfer: boolean
+          can_trigger_flows: boolean
+          can_update_lead: boolean
+          can_update_pipeline: boolean | null
+          cannot_do: string[] | null
+          created_at: string | null
+          created_by: string | null
+          default_schedule_user_id: string | null
+          default_tags: string[] | null
+          description: string | null
+          enable_audio_transcription: boolean
+          enable_image_vision: boolean
+          end_conversation_triggers: string[] | null
+          evolution_instance_id: string | null
+          followup_attempt_hints: Json
+          followup_channels: string[]
+          followup_enabled: boolean
+          followup_extra_instructions: string | null
+          followup_intervals_minutes: number[]
+          followup_max_attempts: number
+          followup_respect_business_hours: boolean
+          followup_stop_on_booking: boolean
+          followup_stop_on_human: boolean
+          followup_tone: string
+          handoff_delay_seconds: number
+          handoff_include_summary: boolean
+          handoff_incoming_message: string | null
+          handoff_outgoing_message: string | null
+          handoff_triggers: string[] | null
+          humanization: Json
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          message_delay_seconds: number
+          message_style: string | null
+          name: string
+          primary_objective: string
+          product_id: string | null
+          prohibited_phrases: string[] | null
+          qualification_schema: Json | null
+          quick_menu_intro: string | null
+          quick_menu_invalid_message: string | null
+          quick_menu_mode: string
+          quick_menu_options: Json
+          required_phrases: string[] | null
+          takeover_on_match: boolean
+          tone_style: string | null
+          tool_configs: Json
+          updated_at: string | null
+          welcome_enabled: boolean
+          welcome_message: string | null
+        }
+        Insert: {
+          activation_keywords?: string[]
+          activation_phrases?: string[]
+          activation_priority?: number
+          activation_scope?: string
+          active_in_chat?: boolean | null
+          active_in_copilot?: boolean | null
+          active_in_facebook?: boolean | null
+          active_in_funnels?: boolean | null
+          active_in_inbox?: boolean | null
+          active_in_instagram?: boolean | null
+          active_in_whatsapp?: boolean | null
+          active_in_widget?: boolean | null
+          additional_prompt?: string | null
+          agent_type?: string
+          allowed_event_type_ids?: string[] | null
+          always_end_with_question?: boolean | null
+          auto_tag_leads?: boolean | null
+          avatar_url?: string | null
+          booking_notification_user_ids?: string[] | null
+          booking_notify_org_admins?: boolean | null
+          can_add_notes?: boolean
+          can_apply_tags?: boolean
+          can_create_tasks?: boolean | null
+          can_do?: string[] | null
+          can_notify?: boolean
+          can_qualify?: boolean
+          can_schedule_meetings?: boolean | null
+          can_send_emails?: boolean
+          can_send_materials?: boolean
+          can_start_cadence?: boolean
+          can_transfer?: boolean
+          can_trigger_flows?: boolean
+          can_update_lead?: boolean
+          can_update_pipeline?: boolean | null
+          cannot_do?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          default_schedule_user_id?: string | null
+          default_tags?: string[] | null
+          description?: string | null
+          enable_audio_transcription?: boolean
+          enable_image_vision?: boolean
+          end_conversation_triggers?: string[] | null
+          evolution_instance_id?: string | null
+          followup_attempt_hints?: Json
+          followup_channels?: string[]
+          followup_enabled?: boolean
+          followup_extra_instructions?: string | null
+          followup_intervals_minutes?: number[]
+          followup_max_attempts?: number
+          followup_respect_business_hours?: boolean
+          followup_stop_on_booking?: boolean
+          followup_stop_on_human?: boolean
+          followup_tone?: string
+          handoff_delay_seconds?: number
+          handoff_include_summary?: boolean
+          handoff_incoming_message?: string | null
+          handoff_outgoing_message?: string | null
+          handoff_triggers?: string[] | null
+          humanization?: Json
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          message_delay_seconds?: number
+          message_style?: string | null
+          name: string
+          primary_objective: string
+          product_id?: string | null
+          prohibited_phrases?: string[] | null
+          qualification_schema?: Json | null
+          quick_menu_intro?: string | null
+          quick_menu_invalid_message?: string | null
+          quick_menu_mode?: string
+          quick_menu_options?: Json
+          required_phrases?: string[] | null
+          takeover_on_match?: boolean
+          tone_style?: string | null
+          tool_configs?: Json
+          updated_at?: string | null
+          welcome_enabled?: boolean
+          welcome_message?: string | null
+        }
+        Update: {
+          activation_keywords?: string[]
+          activation_phrases?: string[]
+          activation_priority?: number
+          activation_scope?: string
+          active_in_chat?: boolean | null
+          active_in_copilot?: boolean | null
+          active_in_facebook?: boolean | null
+          active_in_funnels?: boolean | null
+          active_in_inbox?: boolean | null
+          active_in_instagram?: boolean | null
+          active_in_whatsapp?: boolean | null
+          active_in_widget?: boolean | null
+          additional_prompt?: string | null
+          agent_type?: string
+          allowed_event_type_ids?: string[] | null
+          always_end_with_question?: boolean | null
+          auto_tag_leads?: boolean | null
+          avatar_url?: string | null
+          booking_notification_user_ids?: string[] | null
+          booking_notify_org_admins?: boolean | null
+          can_add_notes?: boolean
+          can_apply_tags?: boolean
+          can_create_tasks?: boolean | null
+          can_do?: string[] | null
+          can_notify?: boolean
+          can_qualify?: boolean
+          can_schedule_meetings?: boolean | null
+          can_send_emails?: boolean
+          can_send_materials?: boolean
+          can_start_cadence?: boolean
+          can_transfer?: boolean
+          can_trigger_flows?: boolean
+          can_update_lead?: boolean
+          can_update_pipeline?: boolean | null
+          cannot_do?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          default_schedule_user_id?: string | null
+          default_tags?: string[] | null
+          description?: string | null
+          enable_audio_transcription?: boolean
+          enable_image_vision?: boolean
+          end_conversation_triggers?: string[] | null
+          evolution_instance_id?: string | null
+          followup_attempt_hints?: Json
+          followup_channels?: string[]
+          followup_enabled?: boolean
+          followup_extra_instructions?: string | null
+          followup_intervals_minutes?: number[]
+          followup_max_attempts?: number
+          followup_respect_business_hours?: boolean
+          followup_stop_on_booking?: boolean
+          followup_stop_on_human?: boolean
+          followup_tone?: string
+          handoff_delay_seconds?: number
+          handoff_include_summary?: boolean
+          handoff_incoming_message?: string | null
+          handoff_outgoing_message?: string | null
+          handoff_triggers?: string[] | null
+          humanization?: Json
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          message_delay_seconds?: number
+          message_style?: string | null
+          name?: string
+          primary_objective?: string
+          product_id?: string | null
+          prohibited_phrases?: string[] | null
+          qualification_schema?: Json | null
+          quick_menu_intro?: string | null
+          quick_menu_invalid_message?: string | null
+          quick_menu_mode?: string
+          quick_menu_options?: Json
+          required_phrases?: string[] | null
+          takeover_on_match?: boolean
+          tone_style?: string | null
+          tool_configs?: Json
+          updated_at?: string | null
+          welcome_enabled?: boolean
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_product_agents_evolution_instance_id_fkey"
+            columns: ["evolution_instance_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_evolution_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_product_agents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_crm_products: {
+        Row: {
+          banner_url: string | null
+          benefits: string | null
+          bonuses: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          custom_info: string | null
+          description: string | null
+          differentials: string[] | null
+          discount_policy: string | null
+          external_links: Json | null
+          guarantee: string | null
+          icp: string | null
+          id: string
+          knowledge_base: string | null
+          logo_url: string | null
+          name: string
+          objections: string | null
+          payment_conditions: string | null
+          pitch_15s: string | null
+          pitch_2min: string | null
+          pitch_30s: string | null
+          plans: string | null
+          pricing: Json | null
+          product_image_url: string | null
+          settings: Json | null
+          short_description: string | null
+          slug: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          benefits?: string | null
+          bonuses?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_info?: string | null
+          description?: string | null
+          differentials?: string[] | null
+          discount_policy?: string | null
+          external_links?: Json | null
+          guarantee?: string | null
+          icp?: string | null
+          id?: string
+          knowledge_base?: string | null
+          logo_url?: string | null
+          name: string
+          objections?: string | null
+          payment_conditions?: string | null
+          pitch_15s?: string | null
+          pitch_2min?: string | null
+          pitch_30s?: string | null
+          plans?: string | null
+          pricing?: Json | null
+          product_image_url?: string | null
+          settings?: Json | null
+          short_description?: string | null
+          slug?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          benefits?: string | null
+          bonuses?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_info?: string | null
+          description?: string | null
+          differentials?: string[] | null
+          discount_policy?: string | null
+          external_links?: Json | null
+          guarantee?: string | null
+          icp?: string | null
+          id?: string
+          knowledge_base?: string | null
+          logo_url?: string | null
+          name?: string
+          objections?: string | null
+          payment_conditions?: string | null
+          pitch_15s?: string | null
+          pitch_2min?: string | null
+          pitch_30s?: string | null
+          plans?: string | null
+          pricing?: Json | null
+          product_image_url?: string | null
+          settings?: Json | null
+          short_description?: string | null
+          slug?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -11483,6 +11982,7 @@ export type Database = {
           is_active: boolean | null
           period_end: string
           period_start: string
+          product_id: string | null
           target_deals: number
           target_value: number
           updated_at: string
@@ -11497,6 +11997,7 @@ export type Database = {
           is_active?: boolean | null
           period_end: string
           period_start: string
+          product_id?: string | null
           target_deals?: number
           target_value?: number
           updated_at?: string
@@ -11511,12 +12012,21 @@ export type Database = {
           is_active?: boolean | null
           period_end?: string
           period_start?: string
+          product_id?: string | null
           target_deals?: number
           target_value?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_sales_goals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_sales_squads: {
         Row: {
@@ -11529,6 +12039,7 @@ export type Database = {
           is_active: boolean | null
           leader_id: string | null
           name: string
+          product_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -11541,6 +12052,7 @@ export type Database = {
           is_active?: boolean | null
           leader_id?: string | null
           name: string
+          product_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -11553,9 +12065,18 @@ export type Database = {
           is_active?: boolean | null
           leader_id?: string | null
           name?: string
+          product_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_sales_squads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_sector_members: {
         Row: {
@@ -11774,6 +12295,7 @@ export type Database = {
           expected_value: number | null
           id: string
           probability_percent: number | null
+          product_id: string
           stage_id: string
           updated_at: string | null
         }
@@ -11782,6 +12304,7 @@ export type Database = {
           expected_value?: number | null
           id?: string
           probability_percent?: number | null
+          product_id?: string
           stage_id: string
           updated_at?: string | null
         }
@@ -11790,10 +12313,18 @@ export type Database = {
           expected_value?: number | null
           id?: string
           probability_percent?: number | null
+          product_id?: string
           stage_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_crm_stage_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_crm_stage_values_stage_id_fkey"
             columns: ["stage_id"]
@@ -11810,6 +12341,7 @@ export type Database = {
           event_type: string
           id: string
           is_active: boolean
+          product_id: string | null
           tag_id_to_add: string
           tag_id_to_remove: string | null
           updated_at: string
@@ -11820,6 +12352,7 @@ export type Database = {
           event_type: string
           id?: string
           is_active?: boolean
+          product_id?: string | null
           tag_id_to_add: string
           tag_id_to_remove?: string | null
           updated_at?: string
@@ -11830,11 +12363,19 @@ export type Database = {
           event_type?: string
           id?: string
           is_active?: boolean
+          product_id?: string | null
           tag_id_to_add?: string
           tag_id_to_remove?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_crm_tag_automations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_crm_tag_automations_tag_id_to_add_fkey"
             columns: ["tag_id_to_add"]
@@ -11861,6 +12402,7 @@ export type Database = {
           id: string
           lead_id: string | null
           priority: Database["public"]["Enums"]["task_priority"] | null
+          product_id: string | null
           status: Database["public"]["Enums"]["task_status"] | null
           title: string
           type: string | null
@@ -11876,6 +12418,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"] | null
+          product_id?: string | null
           status?: Database["public"]["Enums"]["task_status"] | null
           title: string
           type?: string | null
@@ -11891,6 +12434,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"] | null
+          product_id?: string | null
           status?: Database["public"]["Enums"]["task_status"] | null
           title?: string
           type?: string | null
@@ -11903,6 +12447,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_crm_tasks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
             referencedColumns: ["id"]
           },
         ]
@@ -11936,6 +12487,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      platform_crm_user_product_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          monthly_goal: number | null
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          monthly_goal?: number | null
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          monthly_goal?: number | null
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_user_product_assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_user_status: {
         Row: {
@@ -11983,6 +12569,7 @@ export type Database = {
           max_message_length: number | null
           max_tokens: number | null
           persona_style: string | null
+          product_id: string | null
           required_fields: string[] | null
           sales_context: string | null
           sales_prompt: string | null
@@ -12012,6 +12599,7 @@ export type Database = {
           max_message_length?: number | null
           max_tokens?: number | null
           persona_style?: string | null
+          product_id?: string | null
           required_fields?: string[] | null
           sales_context?: string | null
           sales_prompt?: string | null
@@ -12041,6 +12629,7 @@ export type Database = {
           max_message_length?: number | null
           max_tokens?: number | null
           persona_style?: string | null
+          product_id?: string | null
           required_fields?: string[] | null
           sales_context?: string | null
           sales_prompt?: string | null
@@ -12053,6 +12642,13 @@ export type Database = {
           widget_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "platform_crm_webchat_agent_configs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "platform_crm_webchat_agent_configs_widget_id_fkey"
             columns: ["widget_id"]
@@ -12068,6 +12664,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          product_id: string | null
           public_key: string
           settings: Json
           updated_at: string
@@ -12078,6 +12675,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          product_id?: string | null
           public_key: string
           settings?: Json
           updated_at?: string
@@ -12088,12 +12686,21 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          product_id?: string | null
           public_key?: string
           settings?: Json
           updated_at?: string
           welcome_message?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_webchat_widgets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_webhook_logs: {
         Row: {
@@ -12209,6 +12816,7 @@ export type Database = {
           is_test_mode: boolean | null
           last_request_at: string | null
           name: string
+          product_id: string | null
           requests_count: number | null
           requests_this_month: number | null
           secret_key: string | null
@@ -12227,6 +12835,7 @@ export type Database = {
           is_test_mode?: boolean | null
           last_request_at?: string | null
           name: string
+          product_id?: string | null
           requests_count?: number | null
           requests_this_month?: number | null
           secret_key?: string | null
@@ -12245,13 +12854,22 @@ export type Database = {
           is_test_mode?: boolean | null
           last_request_at?: string | null
           name?: string
+          product_id?: string | null
           requests_count?: number | null
           requests_this_month?: number | null
           secret_key?: string | null
           slug?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_crm_webhooks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_crm_whatsapp_meta_connections: {
         Row: {
