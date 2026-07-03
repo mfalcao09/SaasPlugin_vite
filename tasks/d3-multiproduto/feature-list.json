@@ -46,7 +46,7 @@
     { "id": "d4b-financeiro-dashboard", "phase": "P6", "desc": "dashboard financeiro aprovação/pagamento comissões", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "d5b-mia-acao-memoria", "phase": "P6", "desc": "Mia ações c/ confirmação (mia_actions) + memória (mia_user_memory) + wake-word", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
     { "id": "d7b-webhooks-painel-api", "phase": "P6", "desc": "painéis Actions/Requests + API cadência (cdn_)", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
-    { "id": "d8b-booking-conversacional", "phase": "P6", "desc": "migration booking_experience + UI branch conversacional", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
+    { "id": "d8b-booking-conversacional", "phase": "P6", "desc": "booking conversacional. A pagina publica PlatformCrmPublicBooking JA ramificava em booking_experience==='conversational' (l.100), mas a coluna faltava na platform table (so tenant). D8 = migration ADD booking_experience a platform_crm_booking_event_types + restaurar o campo no editor (hook input+insert, formData x3, select Padrao/Conversacional) -> liga o ramo que estava morto.", "status": "done", "verified": "gate PASSOU (tsc 24<=25 baseline, build EXIT=0); migration aplicada; meus arquivos com 0 erro tsc direto. Eyeball do fluxo conversacional = pendente Chrome.", "deps": [] },
     { "id": "d9b-web-push", "phase": "P6", "desc": "stack push-* (VAPID) restaurada", "status": "todo", "verified": false, "deps": ["f2-liveness"] },
 
     { "id": "d10a-ai-insights", "phase": "P7", "desc": "reviver campaign-ai-insights + AICampaignAssistant", "status": "todo", "verified": false, "deps": ["f2-liveness"] },

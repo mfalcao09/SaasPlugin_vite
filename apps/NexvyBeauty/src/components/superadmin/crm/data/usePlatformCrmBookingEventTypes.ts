@@ -67,6 +67,7 @@ export interface CreatePlatformCrmEventTypeInput {
   questions?: QuestionField[];
   confirmation_message?: string;
   create_meet?: boolean;
+  booking_experience?: string;
 }
 
 const PLATFORM_CRM_KEY = 'platform-crm';
@@ -120,6 +121,7 @@ export function usePlatformCrmBookingEventTypes() {
           questions: (input.questions ?? []) as unknown as Json,
           confirmation_message: input.confirmation_message,
           create_meet: input.create_meet,
+          booking_experience: input.booking_experience,
           user_id: user.id,
         })
         .select()

@@ -45,9 +45,9 @@ import { cn } from '@/lib/utils';
  *    config vem completo; o ENVIO real depende de edge não portada. TODO(edge):
  *    `platform-booking-dispatcher`.
  *
- * Diferenças vs. original (schema de plataforma não tem estas colunas):
- *  - Campo "Experiência de Agendamento" (`booking_experience`) removido — coluna
- *    inexistente em `platform_crm_booking_event_types`.
+ * D8 (P6): campo "Experiência de Agendamento" (`booking_experience`) RESTAURADO —
+ * coluna adicionada a `platform_crm_booking_event_types` (migration 2026-07-03).
+ * A página pública já ramifica em 'conversational' (PlatformCrmPublicBooking).
  */
 
 interface PlatformCrmEventTypeEditorProps {
@@ -104,6 +104,7 @@ export function PlatformCrmEventTypeEditor({ open, onOpenChange, eventType }: Pl
     create_meet: true,
     confirmation_message: '',
     is_active: false,
+    booking_experience: 'standard',
   });
 
   const [questions, setQuestions] = useState<QuestionField[]>([]);
@@ -127,6 +128,7 @@ export function PlatformCrmEventTypeEditor({ open, onOpenChange, eventType }: Pl
         create_meet: eventType.create_meet,
         confirmation_message: eventType.confirmation_message || '',
         is_active: eventType.is_active,
+        booking_experience: eventType.booking_experience || 'standard',
       });
       setQuestions(eventType.questions || []);
       setSlugEdited(true);
@@ -146,6 +148,7 @@ export function PlatformCrmEventTypeEditor({ open, onOpenChange, eventType }: Pl
         create_meet: true,
         confirmation_message: '',
         is_active: false,
+        booking_experience: 'standard',
       });
       setQuestions([]);
       setSlugEdited(false);
@@ -249,6 +252,23 @@ export function PlatformCrmEventTypeEditor({ open, onOpenChange, eventType }: Pl
                 rows={3}
               />
             </div>
+          </div>
+
+          {/* D8: Experiência de Agendamento (standard | conversational) */}
+          <div className="space-y-2">
+            <Label>Experiência de Agendamento</Label>
+            <Select
+              value={formData.booking_experience}
+              onValueChange={(v) => setFormData((prev) => ({ ...prev, booking_experience: v }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Padrão (formulário direto)</SelectItem>
+                <SelectItem value="conversational">Conversacional (passo a passo)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Duration and Location */}

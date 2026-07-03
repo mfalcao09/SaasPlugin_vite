@@ -8652,6 +8652,7 @@ export type Database = {
       }
       platform_crm_booking_event_types: {
         Row: {
+          booking_experience: string | null
           buffer_after: number | null
           buffer_before: number | null
           color: string | null
@@ -8673,6 +8674,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          booking_experience?: string | null
           buffer_after?: number | null
           buffer_before?: number | null
           color?: string | null
@@ -8694,6 +8696,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          booking_experience?: string | null
           buffer_after?: number | null
           buffer_before?: number | null
           color?: string | null
