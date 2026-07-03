@@ -5,22 +5,15 @@ import { toast } from 'sonner';
 import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { translateAuthError } from '@/lib/auth-errors';
+import { getActiveBrand } from '@/config/brand';
 
 /* ============================================================
-   BRAND — único ponto de customização por vertical.
-   TODO: ligar ao platform_settings via usePlatformBranding no
-   futuro (name/tagline/accent/backgroundImage/logoUrl dinâmicos).
+   BRAND — resolvido por HOST (config/brand.ts → getActiveBrand):
+   gestao.* = marca institucional Nexvy (ecobrand do grupo);
+   app.* / apex = NexvyBeauty (produto do tenant). Mesma lógica
+   host-aware do tema. name/tagline/accent/metrics vêm daqui.
    ============================================================ */
-const BRAND = {
-  name: 'NexvyBeauty',
-  tagline: 'Beleza com gestão inteligente',
-  accent: '#EC4899', // cor de destaque (rosa/magenta para beleza)
-  backgroundImage: null as string | null, // sem poster (fundo neutro gradiente da marca)
-  backgroundVideo: null as string | null, // sem vídeo (wordmark + fundo neutro — decisão de lançamento)
-  logoUrl: null as string | null, // se null, renderiza o name estilizado como wordmark
-  metrics: '+40% conversão · −50% tempo de resposta',
-  bgHint: 'salão de beleza',
-};
+const BRAND = getActiveBrand();
 
 /* ---------- Helpers ---------- */
 // Contraste AA no botão principal: texto escuro p/ accents claros, branco p/ escuros

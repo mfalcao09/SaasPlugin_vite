@@ -61,7 +61,7 @@ export function BrandingPreview({
         }}
       >
         <div className="flex justify-center mb-3 [&_img]:!h-10 [&_img]:brightness-0 [&_img]:invert">
-          <Logo size="lg" />
+          <Logo size="lg" respectTenantBranding />
         </div>
         <h3 className="text-lg font-bold">Sua Plataforma</h3>
         <p className="text-sm opacity-90">Gradiente principal aplicado</p>
@@ -134,7 +134,7 @@ export function BrandingPreview({
               color: styles.primaryFg,
             }}
           >
-            <Logo size="sm" />
+            <Logo size="sm" respectTenantBranding />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">Card de exemplo</p>

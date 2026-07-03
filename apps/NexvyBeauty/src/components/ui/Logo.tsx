@@ -9,14 +9,18 @@ import {
   fetchPlatformBranding,
   readCachedBrandingSync,
 } from '@/hooks/usePlatformBranding';
+import { getActiveBrand } from '@/config/brand';
 
 interface LogoProps {
   className?: string;
   showText?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  /** Em gestao.* o Logo vira a marca institucional Nexvy. Passe true para
+   *  forçar o branding do tenant (ex.: preview de white-label). */
+  respectTenantBranding?: boolean;
 }
 
-export function Logo({ className, showText = true, size = 'md' }: LogoProps) {
+export function Logo({ className, showText = true, size = 'md', respectTenantBranding = false }: LogoProps) {
   const { resolvedTheme } = useTheme();
 
   // Mesma query canônica de branding — garante consistência entre Sidebar,
@@ -51,6 +55,19 @@ export function Logo({ className, showText = true, size = 'md' }: LogoProps) {
     md: 'text-base',
     lg: 'text-xl',
   };
+
+  // gestao.* = plataforma do GRUPO → marca institucional Nexvy (a marca-mãe do
+  // ecobrand tem a palavra final; NÃO lê o platform_settings do tenant).
+  // respectTenantBranding fura isso (ex.: preview de white-label do tenant).
+  if (!respectTenantBranding && getActiveBrand().key === 'nexvy') {
+    return (
+      <div className={cn('flex items-center', className)}>
+        <span className={cn('font-bold text-foreground leading-none', textClasses[size])}>
+          Nexvy<span className="text-primary">.</span>
+        </span>
+      </div>
+    );
+  }
 
   // Sem logo custom configurado: renderiza o nome da plataforma como
   // wordmark dinâmico — evita exibir o logo da marca-base (legado) quando

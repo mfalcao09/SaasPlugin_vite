@@ -57,3 +57,51 @@ export const BRAND_CONFIG = {
     backgroundImage: null,
   },
 } as const;
+
+// ─── MARCA ATIVA POR HOST (host-aware) ──────────────────────────────────────
+// gestao.* = plataforma do GRUPO → marca-mãe institucional **Nexvy** (ecobrand).
+// app.* / apex = produto do tenant → **NexvyBeauty** (deriva de BRAND_CONFIG).
+// Mesma lógica host-aware do tema (.theme-nexvy-institucional). Fonte da marca
+// institucional: memória nexvy-brand-guide (Branded House · "The Next Vector").
+export interface ActiveBrand {
+  key: string;
+  name: string;
+  tagline: string;
+  accent: string;
+  backgroundImage: string | null;
+  backgroundVideo: string | null;
+  logoUrl: string | null;
+  metrics: string;
+  bgHint: string;
+}
+
+const PRODUCT_BRAND: ActiveBrand = {
+  key: BRAND_CONFIG.key,
+  name: BRAND_CONFIG.name,
+  tagline: BRAND_CONFIG.tagline,
+  accent: BRAND_CONFIG.primaryColor,
+  backgroundImage: null,
+  backgroundVideo: null,
+  logoUrl: null,
+  metrics: '+40% conversão · −50% tempo de resposta',
+  bgHint: 'salão de beleza',
+};
+
+const NEXVY_BRAND: ActiveBrand = {
+  key: 'nexvy',
+  name: 'Nexvy',
+  tagline: 'The Next Vector',
+  accent: '#0A52D1', // nexvy-blue
+  backgroundImage: null,
+  backgroundVideo: null,
+  logoUrl: null,
+  metrics: 'A plataforma do ecossistema Nexvy',
+  bgHint: 'plataforma institucional',
+};
+
+/** gestao.* → marca institucional Nexvy; app.* / apex → produto (NexvyBeauty). */
+export function getActiveBrand(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): ActiveBrand {
+  return hostname.startsWith('gestao.') ? NEXVY_BRAND : PRODUCT_BRAND;
+}
