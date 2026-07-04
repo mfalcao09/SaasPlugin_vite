@@ -42,6 +42,8 @@ import {
   KeyRound,
   Loader2,
   Clock,
+  Wrench,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -56,12 +58,18 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
+import { usePublicAppUrl } from '@/lib/publicUrl';
+import { PlatformCrmWidgetManager } from './widget/PlatformCrmWidgetManager';
 
 export function PlatformCrmCaptureWidgetsTab() {
+  // Alterna entre a lista de widgets de webchat e o builder visual de fluxo
+  // (PlatformCrmWidgetManager → PlatformCrmWidgetBuilder), portado do WidgetBuilder.
+  const [showBuilder, setShowBuilder] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<PlatformCrmWebchatWidget | null>(null);
+  const { data: baseUrl } = usePublicAppUrl();
 
   const [name, setName] = useState('');
   const [welcomeMessage, setWelcomeMessage] = useState('');
@@ -135,10 +143,28 @@ export function PlatformCrmCaptureWidgetsTab() {
     toast.success('Chave pública copiada!');
   };
 
-  const copySnippet = () => {
-    // TODO(edge): snippet de embed depende do runtime público do webchat (Edge Function + loader JS).
-    toast.info('Snippet de instalação em breve');
+  // Embed snippet real do webchat (espelha WidgetShareTab: carrega o loader JS
+  // com a chave pública do widget). Cole antes de </body> em qualquer página.
+  const buildSnippet = (widget: PlatformCrmWebchatWidget) =>
+    `<script src="${baseUrl}/webchat-widget.js" data-widget-key="${widget.public_key}" async></script>`;
+
+  const copySnippet = (widget: PlatformCrmWebchatWidget) => {
+    navigator.clipboard.writeText(buildSnippet(widget));
+    toast.success('Snippet de instalação copiado!');
   };
+
+  // "Abrir builder" — navega para o builder visual de fluxo (funis de canal widget).
+  if (showBuilder) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setShowBuilder(false)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Voltar aos widgets de webchat
+        </Button>
+        <PlatformCrmWidgetManager />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -153,10 +179,16 @@ export function PlatformCrmCaptureWidgetsTab() {
             <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Widget
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowBuilder(true)} className="gap-2">
+            <Wrench className="h-4 w-4" />
+            Abrir builder
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Widget
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -254,7 +286,7 @@ export function PlatformCrmCaptureWidgetsTab() {
                         <DropdownMenuItem onClick={() => copyPublicKey(w)}>
                           <KeyRound className="h-4 w-4 mr-2" /> Copiar chave pública
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={copySnippet}>
+                        <DropdownMenuItem onClick={() => copySnippet(w)}>
                           <Copy className="h-4 w-4 mr-2" /> Copiar snippet
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
