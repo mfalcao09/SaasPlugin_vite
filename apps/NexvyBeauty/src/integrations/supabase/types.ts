@@ -11425,6 +11425,93 @@ export type Database = {
           },
         ]
       }
+      platform_crm_mia_actions: {
+        Row: {
+          action_type: string
+          cancelled_at: string | null
+          created_at: string
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          payload: Json
+          preview: string
+          result: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          cancelled_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json
+          preview?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          cancelled_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          payload?: Json
+          preview?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_crm_mia_user_memory: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          facts: Json
+          id: string
+          last_active_entities: Json
+          locale: string | null
+          preferences: Json
+          role_label: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          facts?: Json
+          id?: string
+          last_active_entities?: Json
+          locale?: string | null
+          preferences?: Json
+          role_label?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          facts?: Json
+          id?: string
+          last_active_entities?: Json
+          locale?: string | null
+          preferences?: Json
+          role_label?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_crm_notification_logs: {
         Row: {
           id: string
@@ -11916,6 +12003,51 @@ export type Database = {
           slug?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_crm_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          is_standalone: boolean
+          last_seen_at: string | null
+          p256dh: string
+          platform: string | null
+          revoked_at: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          is_standalone?: boolean
+          last_seen_at?: string | null
+          p256dh: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          is_standalone?: boolean
+          last_seen_at?: string | null
+          p256dh?: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }

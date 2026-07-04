@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, Plus, Users, UsersRound, User, Mail, Loader2, Zap, Send } from 'lucide-react';
+import { Bell, Plus, Users, UsersRound, User, Mail, Loader2, Zap, Send, Smartphone } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { usePlatformCrmNotificationHistory } from '../data/usePlatformCrmNotifications';
 import { PlatformCrmCreateNotificationDialog } from './PlatformCrmCreateNotificationDialog';
 import { PlatformCrmAutoNotificationSettings } from './PlatformCrmAutoNotificationSettings';
+import { PlatformPushNotificationsCard } from './PlatformPushNotificationsCard';
 
 /**
  * Central de Notificações da PLATAFORMA (super_admin) — entry component.
@@ -62,7 +63,7 @@ export function PlatformCrmNotificationManager() {
 
       {/* Tabs */}
       <Tabs defaultValue="manual" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-xl grid-cols-3">
           <TabsTrigger value="manual" className="flex items-center gap-2">
             <Send className="h-4 w-4" />
             Envio Manual
@@ -70,6 +71,10 @@ export function PlatformCrmNotificationManager() {
           <TabsTrigger value="automatic" className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
             Automáticas
+          </TabsTrigger>
+          <TabsTrigger value="devices" className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4" />
+            Dispositivos
           </TabsTrigger>
         </TabsList>
 
@@ -214,6 +219,10 @@ export function PlatformCrmNotificationManager() {
 
         <TabsContent value="automatic">
           <PlatformCrmAutoNotificationSettings />
+        </TabsContent>
+
+        <TabsContent value="devices" className="max-w-xl">
+          <PlatformPushNotificationsCard />
         </TabsContent>
       </Tabs>
 
