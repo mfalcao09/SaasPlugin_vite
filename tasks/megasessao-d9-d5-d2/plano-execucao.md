@@ -68,10 +68,10 @@ Estado: fundação ✅ (2 tabelas). Decisão travada: confirmação = **(B) bot�
   **CHECK:** ✅ (2026-07-03) `src/components/superadmin/crm/data/usePlatformCrmMiaActions.ts`: `usePlatformCrmMiaActions()` (pending por user_id via RLS+filtro, confirm→invoke `platform-mia-execute-action`, cancel→update status cancelled) + `usePlatformCrmMiaMemory()`. queryKey `['platform-crm','mia',...]`, tipos de `types.ts`. Gate FULL verde (incluído no CHECK D5.5).
 - [x] **D5.5** UI botões inline: no componente de chat da Mia da plataforma, quando houver action `waiting_confirmation` do usuário → bolha inline com preview + botões **Confirmar / Cancelar** (mutations do D5.4). Portar a lógica visual do `MiaPendingActions.tsx` adaptada pra inline (decisão B).
   **CHECK:** ✅ (2026-07-03) `PlatformCrmMia.tsx`: bolha amber inline após os turns (Clock "Aguardando sua confirmação" + preview + Confirmar/Cancelar); `handleToolEvent` faz refetch dos pendentes quando um draft (`awaiting_confirmation`) chega no tool_event. `verify.sh` completo: tsc 24, build EXIT=0, fronteira/org_id zero.
-- [ ] **D5.6** Deploy VPS + anti-phantom.
-  **CHECK:** bundle novo nos 2 hosts.
-- [ ] **D5.7** 🧍 notify Marcelo p/ teste visual (chat da Mia → pedir ação → botões aparecem → confirmar → executa). `feature-list.json`: `d5b-mia-acao-memoria` done+verified. Commit+push.
-  **CHECK:** confirmação do Marcelo OU smoke D5.3 como evidência mínima + [4] do gate ok.
+- [x] **D5.6** Deploy VPS + anti-phantom.
+  **CHECK:** ✅ (2026-07-03) DEPLOY-VERDE; ambos os hosts servem `index-A0isSitT.js` (!= anterior `index-CuVRhOd7.js`). Frontend com botões inline + hooks D5.4/D5.5 no ar.
+- [ ] **D5.7** 🧍 **ÁTOMO HUMANO — NOTIFICADO 2026-07-03, aguardando Marcelo:** teste visual (chat da Mia em gestao.nexvy.tech → pedir "crie uma tarefa" → bolha com botões aparece → Confirmar → executa → task em `platform_crm_tasks`). É também o smoke e2e que fecha o gap do D5.3 (JWT real do super_admin). Depois: `feature-list.json` `d5b-mia-acao-memoria` done+verified + commit+push.
+  **CHECK:** confirmação do Marcelo (ação executada end-to-end via botões inline).
 
 ## FRENTE D2 — Builders visuais de captação (esforço TOTAL: 13-15 dias — NÃO fecha nesta megasessão)
 **Meta realista da megasessão: F1 + F2 (Widget) + F3 (Flow).** Quiz (F4) e Form (F5) continuam no loop em sessões seguintes. Total modelo: ~15.4k LOC (Form 7.3k · Quiz 5k · Flow 1.6k · Widget 1.4k).
