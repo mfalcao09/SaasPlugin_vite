@@ -9,6 +9,7 @@ import {
   Loader2, Sparkles, MessageCircle, Flame, ListTodo,
   CalendarDays, Users, BarChart3, BookOpen, Send,
   User as UserIcon, MessageSquare, TrendingUp, RefreshCw, Radio, Moon,
+  Check, X, Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -17,6 +18,7 @@ import {
   usePlatformMiaOperationSummary,
   type PlatformMiaToolEvent,
 } from '../data/usePlatformCrmMia';
+import { usePlatformCrmMiaActions } from '../data/usePlatformCrmMiaActions';
 
 /**
  * CRM de PLATAFORMA (super_admin) — Mia, copiloto executivo.
@@ -60,7 +62,21 @@ export function PlatformCrmMia() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Ações propostas pela Mia (D5) — botões inline de confirmar/cancelar.
+  const {
+    pending: pendingActions,
+    confirm: confirmAction,
+    cancel: cancelAction,
+    isConfirming,
+    isCancelling,
+    refetch: refetchActions,
+  } = usePlatformCrmMiaActions();
+
   const handleToolEvent = useCallback((event: PlatformMiaToolEvent) => {
+    // Se a Mia propôs uma ação (draft), recarrega os pendentes p/ mostrar os botões inline.
+    if ((event?.result as any)?.awaiting_confirmation) {
+      void refetchActions();
+    }
     setMiaContext((prev) => {
       const next: MiaContextState = { ...prev, lastTool: event.tool, lastAt: Date.now() };
       switch (event.tool) {
@@ -86,7 +102,7 @@ export function PlatformCrmMia() {
       }
       return next;
     });
-  }, []);
+  }, [refetchActions]);
 
   const { turns, status, queriesCount, sendText } = usePlatformCrmMiaChat({
     onToolEvent: handleToolEvent,
@@ -234,6 +250,25 @@ export function PlatformCrmMia() {
                       </div>
                     </div>
                   )}
+                  {/* Ações propostas pela Mia aguardando confirmação (D5) — bolha inline */}
+                  {pendingActions.map((a) => (
+                    <div key={a.id} className="flex justify-start">
+                      <div className="max-w-[85%] w-full rounded-2xl border border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20 px-4 py-3 space-y-2">
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                          <Clock className="h-3 w-3" /> Aguardando sua confirmação
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{a.preview}</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => confirmAction(a.id)} disabled={isConfirming || isCancelling}>
+                            <Check className="h-3 w-3 mr-1" /> Confirmar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => cancelAction(a.id)} disabled={isConfirming || isCancelling}>
+                            <X className="h-3 w-3 mr-1" /> Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex gap-2">
                   <Input
