@@ -55,6 +55,21 @@ export async function sendReactivation(item: OpportunityCardData): Promise<React
       // silêncio proposital: a marcação é secundária; o que importa é que enviou.
     }
 
+    // Trilha do "R$ recuperado" (F2.1): registra o disparo em reactivation_log —
+    // é ela que permite atribuir agendamentos concluídos à reativação (view
+    // recovered_agendamentos). organization_id tem DEFAULT no servidor
+    // (get_user_organization), então o insert não envia tenant. Best-effort.
+    try {
+      await (supabase as any).from('reactivation_log').insert({
+        phone,
+        deal_value: Number.isFinite(item.dealValue) ? item.dealValue : null,
+        message: item.followupMessage,
+        source: 'reactivation',
+      })
+    } catch {
+      // best-effort: a trilha não pode derrubar o envio.
+    }
+
     return 'sent'
   } catch (e) {
     return looksLikeNoInstance(e) ? 'no_instance' : 'error'

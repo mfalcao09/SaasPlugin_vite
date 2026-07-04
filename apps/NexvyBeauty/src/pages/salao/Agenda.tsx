@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MaybeSalaoShell, NoOrg, useOrganizationId, formatCurrency, formatDate } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { MeuLinkBooking } from './MeuLinkBooking'
 import { convertLeadToCliente } from '@/hooks/useLeadToCliente'
 import { CalendarMonthView } from '@/components/calendar/CalendarMonthView'
 import { CalendarWeekView } from '@/components/calendar/CalendarWeekView'
@@ -333,7 +334,12 @@ export default function Agenda({ demo, bare }: { demo?: Agendamento[]; bare?: bo
         <PageHeader
           title="Agenda"
           description={`${agendamentos.length} ${agendamentos.length === 1 ? 'agendamento' : 'agendamentos'}`}
-          action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>}
+          action={
+            <div className="flex items-center gap-2">
+              <MeuLinkBooking />
+              <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" />Novo agendamento</Button>
+            </div>
+          }
         />
 
         {/* Stats inline: hoje + total no período/lista */}

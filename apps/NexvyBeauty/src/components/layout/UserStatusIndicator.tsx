@@ -21,9 +21,11 @@ const STATUS_CONFIG: Record<UserStatusType, { label: string; description: string
     color: 'text-yellow-500',
   },
   offline: {
-    label: 'Offline',
-    description: 'Sai da rotação completamente',
-    color: 'text-red-500',
+    // F2.5 (lancamento-v3): "Offline" em vermelho lia como "sistema quebrado"
+    // pra dona — é só presença de atendimento, não saúde do WhatsApp.
+    label: 'Fora do expediente',
+    description: 'Não recebe conversas novas',
+    color: 'text-zinc-400',
   },
 };
 
@@ -41,7 +43,7 @@ export function UserStatusIndicator() {
           <Circle
             className={cn('h-3.5 w-3.5 fill-current', current.color)}
           />
-          <span className="sr-only">Status: {current.label}</span>
+          <span className="sr-only">Atendimento: {current.label}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

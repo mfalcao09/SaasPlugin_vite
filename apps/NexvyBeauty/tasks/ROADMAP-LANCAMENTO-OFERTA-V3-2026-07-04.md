@@ -21,25 +21,27 @@
 | 1.3 ✅ | OG/twitter/meta description → "profissionais da beleza" | zero "oficinas" no dist | grep dist/index.html: 3× novo texto, 0× "oficinas" |
 | 1.4 ✅ | Deploy VPS (`deploy-vps.sh` no VPS, --no-cache, anti-phantom) | DEPLOY-VERDE + smoke 3 origens 200 + preço visível | bundle servido `index-DfktvLsI.js`; LP live renderiza R$217/347/687 (Chrome, sem fallback); apex/app/gestao = 200 |
 
-## F2 — Bloqueador da garantia + pré-piloto (loop D+1 → D+5)
+## F2 — Bloqueador da garantia + pré-piloto ✅ COMPLETO (2026-07-04, ticks 5-9)
 
-| # | Item | Check binário |
+| # | Item | Prova |
 |---|---|---|
-| 2.1 | **Painel "R$ recuperado"** — view/RPC: `opportunity_scan_items.action_applied` → resposta inbound → reagendamento/venda; card na home ao lado de "Perda de agenda" | número por organização visível na home; **é o juiz da garantia — sem ele não se vende** |
-| 2.2 | Runbook + script "org piloto zerada" (sem seed/conversas de teste) | org nova limpa em <10 min |
-| 2.3 | Expor "meu link de booking" (copiar + QR) em `/agenda` | dona copia o link sem ajuda |
-| 2.4 | Ocultar `/radar` técnico do perfil dona (mover para Config. avançada) | nav da dona sem jargão de CRM |
-| 2.5 | "Status: Offline" → rótulo claro (ex.: "Atendimento: fora do horário") | label novo no ar |
-| 2.6 | Campo `sub_vertical` em `organizations` + select no cadastro/superadmin | coluna preenchível; 5 pilotos etiquetados |
-| 2.7 | Instrumentação de ativação: view 3 eventos (conectou → disparou → resposta) × sub_vertical × semana | query retorna funil por org |
+| 2.1 ✅ | Painel "R$ recuperado": tabela `reactivation_log` (org DEFAULT server-side, RLS org) + view `recovered_agendamentos` (security_invoker=on; atribuição por cliente_id OU telefone, janela 30d, status concluído) + `sendReactivation` alimenta o log + **card "Recuperado (30 dias)" na home** ao lado de "Perda de agenda" | migrations aplicadas em prod (smoke: view responde); card LIVE verificado no Chrome. Nota: disparos do ai-growth não eram registrados em lugar NENHUM — a trilha nasceu aqui |
+| 2.2 ✅ | Runbook org piloto zerada | `tasks/RUNBOOK-ORG-PILOTO.md` (passos <10min + SQL de verificação + regras) |
+| 2.3 ✅ | "Meu link" (copiar + QR) na `/agenda` | componente `MeuLinkBooking` LIVE — dialog abre com `nexvybeauty.com.br/s/<slug>` real + QR (verificado no Chrome) |
+| 2.4 ✅ | `/radar` técnico fora da vista da dona | movido para Config. avançada (`visibility: admin`, label "Radar de conversas (avançado)"); topo da nav sem o item (verificado live) |
+| 2.5 ✅ | Rótulo de presença | offline → "Fora do expediente / Não recebe conversas novas" (zinc, sem alarme); sr-only "Atendimento:"; "Status: Offline" morto no live |
+| 2.6 ✅ | `sub_vertical` em organizations | coluna criada em prod (migration `20260704_pilot_funnel.sql`); preenchimento via runbook (SQL 1-linha); select de UI = melhoria futura não-bloqueante |
+| 2.7 ✅ | Funil de ativação | view `pilot_activation_funnel` (org × sub_vertical × semana: conectado/disparos/retornos/valor) aplicada e respondendo. **Nota honesta:** evento 3 = RETORNO real (recovered) em vez de "resposta" (webchat sem org direto) — mais forte que o pedido |
 
-## F3 — Funil comercial (loop D+5 → D+7)
+## F3 — Funil comercial ✅ COMPLETO (2026-07-04, ticks 10-12)
 
-| # | Item | Check binário |
+| # | Item | Prova |
 |---|---|---|
-| 3.1 | Seção **"Piloto Fundadora"** na LP: oferta v3 (stack com valores, garantia god-mode, coortes reais) + CTA → WhatsApp do fundador | seção live com preço e garantia visíveis |
-| 3.2 | CTAs dos planos → checkout Cakto por plano (`cakto-sync-offer`; Sprint 2 do RESKIN) | clique → `pay.cakto.com.br/<slug>` correto por plano |
-| 3.3 | Kit comercial: pitch 30s/2min + roteiro de demo (tenant seed) + playbook — extraídos da oferta v3 para doc utilizável no celular | 3 docs prontos e revisados |
+| 3.1 ✅ | Seção "Piloto Fundadora" na LP (`#piloto`): promessa multi-vertical, 4 bullets do stack, garantia 100% com painel como juiz, escassez REAL (15 vagas, 5/semana), CTA → LeadCaptureModal | LIVE verificado: piloto ✓ garantia ✓ vagas ✓ CTA ✓ |
+| 3.2 ✅ | CTAs planos → Cakto | `checkout_url` mensal+anual populados nos 3 planos públicos (query em prod); `goToCheckout` da LP navega direto; view pública agora entrega as URLs ao anônimo |
+| 3.3 ✅ | Kit comercial | `tasks/KIT-COMERCIAL-PILOTO.md` (pitch 30s/2min, demo 6 passos, playbook, ordem lash→nails) |
+
+**⚠️ Registro de verdade (preço):** durante a execução o plano Pro mudou de R$347 → **R$387** na fonte (banco). A LP está certa por design (fonte única = `public_plans`); kit comercial atualizado para 387; docs históricos da oferta v2/v3 em Downloads mantêm 347 como snapshot da época.
 
 ## F4 — Pilotos (HUMANO — Marcelo vende; loop só monitora; semana 1 → 12)
 

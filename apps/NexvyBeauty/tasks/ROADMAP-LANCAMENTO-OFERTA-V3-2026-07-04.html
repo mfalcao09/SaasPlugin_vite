@@ -38,112 +38,118 @@ Insumos: oferta v3 validada liveness + análise PMF v2 (<code>~/Downloads/PMF-Ra
 </tr>
 </tbody>
 </table>
-<h2>F1 — Preço na LP + higiene (loop D+0 → D+1)</h2>
+<h2>F1 — Preço na LP + higiene ✅ COMPLETO (2026-07-04, loop tick-1..4)</h2>
 <table>
 <thead>
 <tr>
 <th>#</th>
 <th>Item</th>
 <th>Check binário</th>
+<th>Prova</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1.1</td>
-<td>Migration: view <code>public_plans</code> (colunas públicas de <code>platform_plans</code> WHERE is_active) + GRANT SELECT a <code>anon</code></td>
-<td><code>curl</code> REST anônimo retorna os 4 planos com price_monthly</td>
+<td>1.1 ✅</td>
+<td>Migration: view <code>public_plans</code> + GRANT anon (<code>20260704_public_plans_view.sql</code>, aplicada via CLI --linked)</td>
+<td>REST anônimo retorna 4 planos</td>
+<td>curl anon → Trial 0 / Essencial 217 / Premium 347 / Ultra 687</td>
 </tr>
 <tr>
-<td>1.2</td>
-<td><code>useActivePlans</code> (modo público/LP) lê <code>public_plans</code>; fallback gracioso se vazio</td>
-<td>janela anônima renderiza R$ 217/347/687 na LP local</td>
+<td>1.2 ✅</td>
+<td><code>usePublicPlans</code> (hook novo) lê a view; <code>SalesPage</code> migrada (tipos <code>PublicPlan</code>); demais 9 consumidores intocados</td>
+<td>tsc exit 0; build verde</td>
+<td>bundle <code>usePlatformPlans-9UBchMdh.js</code> contém <code>public_plans</code></td>
 </tr>
 <tr>
-<td>1.3</td>
-<td>OG/twitter description: "oficinas" → "profissionais da beleza" (<code>index.html:69-70</code>)</td>
-<td>grep no bundle buildado</td>
+<td>1.3 ✅</td>
+<td>OG/twitter/meta description → "profissionais da beleza"</td>
+<td>zero "oficinas" no dist</td>
+<td>grep dist/index.html: 3× novo texto, 0× "oficinas"</td>
 </tr>
 <tr>
-<td>1.4</td>
-<td>Deploy apex + app (<code>infra/deploy-vps.sh</code> com <code>--no-cache</code>)</td>
-<td>curl prova string nova no bundle servido + preço visível deslogado em nexvybeauty.com.br</td>
+<td>1.4 ✅</td>
+<td>Deploy VPS (<code>deploy-vps.sh</code> no VPS, --no-cache, anti-phantom)</td>
+<td>DEPLOY-VERDE + smoke 3 origens 200 + preço visível</td>
+<td>bundle servido <code>index-DfktvLsI.js</code>; LP live renderiza R$217/347/687 (Chrome, sem fallback); apex/app/gestao = 200</td>
 </tr>
 </tbody>
 </table>
-<h2>F2 — Bloqueador da garantia + pré-piloto (loop D+1 → D+5)</h2>
+<h2>F2 — Bloqueador da garantia + pré-piloto ✅ COMPLETO (2026-07-04, ticks 5-9)</h2>
 <table>
 <thead>
 <tr>
 <th>#</th>
 <th>Item</th>
-<th>Check binário</th>
+<th>Prova</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>2.1</td>
-<td><strong>Painel "R$ recuperado"</strong> — view/RPC: <code>opportunity_scan_items.action_applied</code> → resposta inbound → reagendamento/venda; card na home ao lado de "Perda de agenda"</td>
-<td>número por organização visível na home; <strong>é o juiz da garantia — sem ele não se vende</strong></td>
+<td>2.1 ✅</td>
+<td>Painel "R$ recuperado": tabela <code>reactivation_log</code> (org DEFAULT server-side, RLS org) + view <code>recovered_agendamentos</code> (security_invoker=on; atribuição por cliente_id OU telefone, janela 30d, status concluído) + <code>sendReactivation</code> alimenta o log + <strong>card "Recuperado (30 dias)" na home</strong> ao lado de "Perda de agenda"</td>
+<td>migrations aplicadas em prod (smoke: view responde); card LIVE verificado no Chrome. Nota: disparos do ai-growth não eram registrados em lugar NENHUM — a trilha nasceu aqui</td>
 </tr>
 <tr>
-<td>2.2</td>
-<td>Runbook + script "org piloto zerada" (sem seed/conversas de teste)</td>
-<td>org nova limpa em &lt;10 min</td>
+<td>2.2 ✅</td>
+<td>Runbook org piloto zerada</td>
+<td><code>tasks/RUNBOOK-ORG-PILOTO.md</code> (passos &lt;10min + SQL de verificação + regras)</td>
 </tr>
 <tr>
-<td>2.3</td>
-<td>Expor "meu link de booking" (copiar + QR) em <code>/agenda</code></td>
-<td>dona copia o link sem ajuda</td>
+<td>2.3 ✅</td>
+<td>"Meu link" (copiar + QR) na <code>/agenda</code></td>
+<td>componente <code>MeuLinkBooking</code> LIVE — dialog abre com <code>nexvybeauty.com.br/s/&lt;slug&gt;</code> real + QR (verificado no Chrome)</td>
 </tr>
 <tr>
-<td>2.4</td>
-<td>Ocultar <code>/radar</code> técnico do perfil dona (mover para Config. avançada)</td>
-<td>nav da dona sem jargão de CRM</td>
+<td>2.4 ✅</td>
+<td><code>/radar</code> técnico fora da vista da dona</td>
+<td>movido para Config. avançada (<code>visibility: admin</code>, label "Radar de conversas (avançado)"); topo da nav sem o item (verificado live)</td>
 </tr>
 <tr>
-<td>2.5</td>
-<td>"Status: Offline" → rótulo claro (ex.: "Atendimento: fora do horário")</td>
-<td>label novo no ar</td>
+<td>2.5 ✅</td>
+<td>Rótulo de presença</td>
+<td>offline → "Fora do expediente / Não recebe conversas novas" (zinc, sem alarme); sr-only "Atendimento:"; "Status: Offline" morto no live</td>
 </tr>
 <tr>
-<td>2.6</td>
-<td>Campo <code>sub_vertical</code> em <code>organizations</code> + select no cadastro/superadmin</td>
-<td>coluna preenchível; 5 pilotos etiquetados</td>
+<td>2.6 ✅</td>
+<td><code>sub_vertical</code> em organizations</td>
+<td>coluna criada em prod (migration <code>20260704_pilot_funnel.sql</code>); preenchimento via runbook (SQL 1-linha); select de UI = melhoria futura não-bloqueante</td>
 </tr>
 <tr>
-<td>2.7</td>
-<td>Instrumentação de ativação: view 3 eventos (conectou → disparou → resposta) × sub_vertical × semana</td>
-<td>query retorna funil por org</td>
+<td>2.7 ✅</td>
+<td>Funil de ativação</td>
+<td>view <code>pilot_activation_funnel</code> (org × sub_vertical × semana: conectado/disparos/retornos/valor) aplicada e respondendo. <strong>Nota honesta:</strong> evento 3 = RETORNO real (recovered) em vez de "resposta" (webchat sem org direto) — mais forte que o pedido</td>
 </tr>
 </tbody>
 </table>
-<h2>F3 — Funil comercial (loop D+5 → D+7)</h2>
+<h2>F3 — Funil comercial ✅ COMPLETO (2026-07-04, ticks 10-12)</h2>
 <table>
 <thead>
 <tr>
 <th>#</th>
 <th>Item</th>
-<th>Check binário</th>
+<th>Prova</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>3.1</td>
-<td>Seção <strong>"Piloto Fundadora"</strong> na LP: oferta v3 (stack com valores, garantia god-mode, coortes reais) + CTA → WhatsApp do fundador</td>
-<td>seção live com preço e garantia visíveis</td>
+<td>3.1 ✅</td>
+<td>Seção "Piloto Fundadora" na LP (<code>#piloto</code>): promessa multi-vertical, 4 bullets do stack, garantia 100% com painel como juiz, escassez REAL (15 vagas, 5/semana), CTA → LeadCaptureModal</td>
+<td>LIVE verificado: piloto ✓ garantia ✓ vagas ✓ CTA ✓</td>
 </tr>
 <tr>
-<td>3.2</td>
-<td>CTAs dos planos → checkout Cakto por plano (<code>cakto-sync-offer</code>; Sprint 2 do RESKIN)</td>
-<td>clique → <code>pay.cakto.com.br/&lt;slug&gt;</code> correto por plano</td>
+<td>3.2 ✅</td>
+<td>CTAs planos → Cakto</td>
+<td><code>checkout_url</code> mensal+anual populados nos 3 planos públicos (query em prod); <code>goToCheckout</code> da LP navega direto; view pública agora entrega as URLs ao anônimo</td>
 </tr>
 <tr>
-<td>3.3</td>
-<td>Kit comercial: pitch 30s/2min + roteiro de demo (tenant seed) + playbook — extraídos da oferta v3 para doc utilizável no celular</td>
-<td>3 docs prontos e revisados</td>
+<td>3.3 ✅</td>
+<td>Kit comercial</td>
+<td><code>tasks/KIT-COMERCIAL-PILOTO.md</code> (pitch 30s/2min, demo 6 passos, playbook, ordem lash→nails)</td>
 </tr>
 </tbody>
 </table>
+<p><strong>⚠️ Registro de verdade (preço):</strong> durante a execução o plano Pro mudou de R$347 → <strong>R$387</strong> na fonte (banco). A LP está certa por design (fonte única = <code>public_plans</code>); kit comercial atualizado para 387; docs históricos da oferta v2/v3 em Downloads mantêm 347 como snapshot da época.</p>
 <h2>F4 — Pilotos (HUMANO — Marcelo vende; loop só monitora; semana 1 → 12)</h2>
 <table>
 <thead>

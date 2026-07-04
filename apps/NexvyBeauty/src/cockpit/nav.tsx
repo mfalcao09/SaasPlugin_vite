@@ -25,7 +25,9 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/agenda', label: 'Minha Agenda', icon: CalendarDays },
       { to: '/clientes', label: 'Meus Clientes', icon: Users },
       { to: '/conversas', label: 'Conversas', icon: MessageSquare },
-      { to: '/radar', label: 'Oportunidades nas conversas', icon: Radar }, // junto do atendimento (inbox intocado)
+      // F2.4 (lancamento-v3): /radar (score/temperatura/HOT-COLD) é jargão de CRM —
+      // saiu da vista diária da dona; vive em Config. avançada como ferramenta admin.
+      // O radar "leigo" da dona é o /ai-growth (Crescer → Oportunidades).
     ],
   },
   // ── 💰 Crescer: a IA te ajuda a vender (Fase 2 funde Oportunidades) ──
@@ -90,6 +92,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
     title: 'Config. avançada',
     collapsible: true,
     items: [
+      { to: '/radar', label: 'Radar de conversas (avançado)', icon: Radar, visibility: 'admin' },
       { to: '/webhooks', label: 'Webhooks', icon: Webhook, visibility: 'admin' },
       { to: '/campos-personalizados', label: 'Campos personalizados', icon: FileText, visibility: 'admin' },
       { to: '/etiquetas', label: 'Etiquetas', icon: Tag, visibility: 'admin' },

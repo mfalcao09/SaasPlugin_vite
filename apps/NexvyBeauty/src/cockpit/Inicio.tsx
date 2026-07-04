@@ -157,6 +157,27 @@ export default function Inicio() {
 
   const { data: tarefasHoje } = useTodaysTasks(user?.id ?? '')
 
+  // F2.1 (lancamento-v3) — "R$ recuperado" (30d): o juiz da garantia da oferta.
+  // Lê a view recovered_agendamentos (security_invoker=on: o RLS das tabelas
+  // base vale pra quem consulta) — agendamentos concluídos até 30 dias após
+  // uma reativação enviada ao mesmo cliente.
+  const { data: recuperados } = useQuery({
+    queryKey: ['inicio-recuperados', organizationId],
+    enabled: !!organizationId,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
+      const { data, error } = await (supabase as any)
+        .from('recovered_agendamentos')
+        .select('valor, data')
+        .eq('organization_id', organizationId!)
+        .gte('data', since)
+      if (error) throw error
+      return (data ?? []) as { valor: number | null; data: string }[]
+    },
+  })
+  const recuperado30d = (recuperados ?? []).reduce((s, r) => s + Number(r.valor ?? 0), 0)
+  const recuperadoCount = (recuperados ?? []).length
+
   const m = useMemo(
     () => compute(agendamentos ?? [], lancamentos ?? [], pacotes ?? [], profissionais ?? []),
     [agendamentos, lancamentos, pacotes, profissionais],
@@ -182,7 +203,7 @@ export default function Inicio() {
       </div>
 
       {/* ── Bloco A — Como vai o salão ───────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <KpiCard
           label="Faturamento do mês" icon={DollarSign}
           value={formatCurrency(m.faturamentoMes)} delta={m.faturamentoDelta}
@@ -203,6 +224,14 @@ export default function Inicio() {
           value={formatCurrency(m.perdaValor)}
           hint={m.perdaCount > 0 ? `${m.perdaCount} desmarcação${m.perdaCount === 1 ? '' : 'ões'} · ${m.desmarcacaoPct.toFixed(0)}%` : 'Nenhuma no mês 🎉'}
           onClick={() => navigate('/faturamento')}
+        />
+        <KpiCard
+          label="Recuperado (30 dias)" icon={TrendingUp}
+          value={formatCurrency(recuperado30d)}
+          hint={recuperadoCount > 0
+            ? `${recuperadoCount} retorno${recuperadoCount === 1 ? '' : 's'} após reativação`
+            : 'Dispare reativações para medir'}
+          onClick={() => navigate('/ai-growth')}
         />
       </div>
 

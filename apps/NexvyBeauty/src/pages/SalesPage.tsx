@@ -442,6 +442,58 @@ export default function SalesPage() {
         </div>
       </section>
 
+      {/* PILOTO FUNDADORA (F3.1 lancamento-v3) — oferta de entrada com garantia.
+          Escassez REAL: 15 vagas totais, abertas 5 por semana (capacidade de
+          acompanhamento 1-a-1 do time) — sem relógio falso. CTA reusa o funil
+          de captura existente (LeadCaptureModal). */}
+      <section id="piloto" className="px-6 py-24">
+        <div className="mx-auto max-w-4xl">
+          <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20">
+            <CardContent className="p-10 md:p-12">
+              <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 15 vagas</Badge>
+              <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
+                Cliente de Volta — <span className={GRADIENT_TEXT}>30 dias</span> para recuperar
+                dinheiro parado na sua carteira
+              </h2>
+              <p className="mt-4 text-lg text-zinc-300">
+                Para salões, nails, lash, sobrancelhas, podologia e estética: a IA varre sua
+                carteira, mostra quem sumiu e quanto vale, escreve a mensagem e dispara pelo
+                <strong> seu</strong> WhatsApp — você só aprova.
+              </p>
+              <ul className="mt-8 grid gap-3 md:grid-cols-2">
+                {[
+                  'Setup feito por nós em 30 min (sem trocar de número)',
+                  'Primeiro R$ recuperável identificado na primeira sessão',
+                  'Painel "Recuperado (30 dias)" — você vê o retorno em R$',
+                  'Linha direta com o fundador durante o piloto',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2 text-sm text-zinc-200">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 rounded-xl border border-rose-400/30 bg-rose-500/10 p-5">
+                <p className="text-sm font-semibold text-rose-200">Garantia do piloto</p>
+                <p className="mt-1 text-zinc-200">
+                  Se em 30 dias o painel não mostrar clientes recuperadas somando mais que a sua
+                  mensalidade, <strong>devolvemos 100% do que você pagou</strong> — e o seu link
+                  de agendamento fica configurado.
+                </p>
+              </div>
+              <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <Button onClick={openBuy} size="lg" className={`${GRADIENT} px-8 text-white hover:opacity-90`}>
+                  Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <p className="text-sm text-zinc-400">
+                  Abrimos 5 vagas por semana — é o nosso limite real de acompanhamento 1-a-1.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="px-6 py-24">
         <div className="mx-auto max-w-3xl">
