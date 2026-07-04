@@ -955,11 +955,89 @@ async function getCadencesOverview(admin: any, args: any) {
 }
 
 // ============================================================
+// Ações (propor→confirmar) + memória — D5
+// ============================================================
+
+function buildActionPreview(type: string, payload: Record<string, any>): string {
+  switch (type) {
+    case 'create_task':
+      return `Criar tarefa "${payload.title ?? '(sem título)'}"` +
+        (payload.assignee_name ? ` para ${payload.assignee_name}` : '') +
+        (payload.due_at ? ` em ${new Date(payload.due_at).toLocaleString('pt-BR')}` : '') +
+        (payload.priority ? ` (prioridade ${payload.priority})` : '');
+    case 'schedule_followup':
+      return `Agendar follow-up` +
+        (payload.lead_name ? ` com ${payload.lead_name}` : '') +
+        (payload.when ? ` em ${new Date(payload.when).toLocaleString('pt-BR')}` : '');
+    case 'notify_seller':
+      return `Notificar ${payload.seller_name ?? 'vendedor'}: ${String(payload.message ?? '').slice(0, 120)}`;
+    default:
+      return type;
+  }
+}
+
+/** Propõe uma ação (NÃO executa): grava em platform_crm_mia_actions status waiting_confirmation.
+ *  O frontend renderiza botões inline (Confirmar/Cancelar) a partir do tool_event. */
+async function draftAction(admin: any, userId: string, actionType: string, args: Record<string, any>): Promise<any> {
+  const payload = args ?? {};
+  const preview = buildActionPreview(actionType, payload);
+  const { data, error } = await admin.from('platform_crm_mia_actions').insert({
+    user_id: userId,
+    action_type: actionType,
+    payload,
+    preview,
+    status: 'waiting_confirmation',
+  }).select('id, status, preview, action_type').single();
+  if (error) return { error: 'draft_failed', message: error.message };
+  return {
+    action_id: data.id,
+    status: data.status,
+    preview: data.preview,
+    action_type: data.action_type,
+    awaiting_confirmation: true,
+    narration: `${preview}. Confirma?`,
+  };
+}
+
+async function getUserMemory(admin: any, userId: string): Promise<any> {
+  const { data } = await admin.from('platform_crm_mia_user_memory')
+    .select('display_name, role_label, timezone, locale, preferences, facts, last_active_entities')
+    .eq('user_id', userId).maybeSingle();
+  return data ?? { display_name: null, preferences: {}, facts: [], last_active_entities: {} };
+}
+
+async function saveUserMemory(admin: any, userId: string, args: Record<string, any>): Promise<any> {
+  const patch: Record<string, any> = { user_id: userId, updated_at: new Date().toISOString() };
+  for (const k of ['display_name', 'role_label', 'timezone', 'locale', 'preferences', 'last_active_entities']) {
+    if (args?.[k] !== undefined) patch[k] = args[k];
+  }
+  if (typeof args?.add_fact === 'string' && args.add_fact.trim()) {
+    const cur = await getUserMemory(admin, userId);
+    const facts = Array.isArray(cur.facts) ? [...cur.facts] : [];
+    if (!facts.includes(args.add_fact.trim())) facts.push(args.add_fact.trim());
+    patch.facts = facts;
+  } else if (Array.isArray(args?.facts)) {
+    patch.facts = args.facts;
+  }
+  const { data, error } = await admin.from('platform_crm_mia_user_memory')
+    .upsert(patch, { onConflict: 'user_id' })
+    .select('display_name, preferences, facts').single();
+  if (error) return { error: 'save_failed', message: error.message };
+  return { ok: true, memory: data };
+}
+
+// ============================================================
 // Dispatch de tools
 // ============================================================
 
-async function runTool(admin: any, tool: string, args: any): Promise<any> {
+async function runTool(admin: any, tool: string, args: any, userId: string): Promise<any> {
   switch (tool) {
+    // Ações (propor→confirmar) + memória — D5
+    case 'create_task': return await draftAction(admin, userId, 'create_task', args);
+    case 'schedule_followup': return await draftAction(admin, userId, 'schedule_followup', args);
+    case 'notify_seller': return await draftAction(admin, userId, 'notify_seller', args);
+    case 'get_user_memory': return await getUserMemory(admin, userId);
+    case 'save_user_memory': return await saveUserMemory(admin, userId, args);
     case 'get_operation_summary': return await getOperationSummary(admin);
     case 'get_team_status': return await getTeamStatus(admin);
     case 'get_unanswered_conversations': return await getUnansweredConversations(admin);
@@ -986,6 +1064,9 @@ async function runTool(admin: any, tool: string, args: any): Promise<any> {
 }
 
 const ALLOWED_TOOLS = new Set([
+  // Ações (propor→confirmar) + memória — D5
+  'create_task', 'schedule_followup', 'notify_seller',
+  'get_user_memory', 'save_user_memory',
   'get_operation_summary', 'get_team_status', 'get_unanswered_conversations',
   'get_hot_leads', 'get_overdue_tasks', 'get_today_schedule',
   'get_lead_context', 'get_conversation_summary', 'get_conversation_messages',
@@ -1001,6 +1082,13 @@ const ALLOWED_TOOLS = new Set([
 // ============================================================
 
 const LLM_TOOLS = [
+  // Ações (propor→confirmar) — D5. Retornam preview + action_id; o usuário confirma nos botões inline.
+  { type: 'function', function: { name: 'create_task', description: 'PROPÕE criar uma tarefa (NÃO executa — precisa de confirmação do usuário). Use quando o admin pedir para criar/anotar uma tarefa. Retorna preview + action_id.', parameters: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' }, assignee_name: { type: 'string', description: 'Responsável (opcional; default = o próprio admin).' }, assignee_id: { type: 'string' }, due_at: { type: 'string', description: 'ISO datetime do prazo.' }, priority: { type: 'string', enum: ['low', 'medium', 'high'] }, lead_id: { type: 'string' } }, required: ['title'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'schedule_followup', description: 'PROPÕE agendar um follow-up com um lead (cria tarefa de follow-up após confirmação). NÃO executa direto.', parameters: { type: 'object', properties: { lead_name: { type: 'string' }, lead_id: { type: 'string' }, when: { type: 'string', description: 'ISO datetime do follow-up.' }, objective: { type: 'string' }, extra_context: { type: 'string' } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'notify_seller', description: 'PROPÕE enviar uma notificação interna a um vendedor (após confirmação). NÃO executa direto.', parameters: { type: 'object', properties: { seller_name: { type: 'string' }, seller_id: { type: 'string' }, title: { type: 'string' }, message: { type: 'string' } }, required: ['message'], additionalProperties: false } } },
+  // Memória — D5. Personaliza o atendimento entre sessões.
+  { type: 'function', function: { name: 'get_user_memory', description: 'Lê o que você lembra deste admin: nome, papel, preferências e fatos salvos. Use no início da conversa para personalizar.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'save_user_memory', description: 'Salva/atualiza memória sobre este admin. Use add_fact para guardar um fato novo; display_name/role_label/preferences para preferências.', parameters: { type: 'object', properties: { display_name: { type: 'string' }, role_label: { type: 'string' }, add_fact: { type: 'string' }, preferences: { type: 'object', additionalProperties: true } }, additionalProperties: false } } },
   { type: 'function', function: { name: 'get_operation_summary', description: 'Resumo geral da operação agora: conversas abertas, sem resposta, leads quentes, leads sem responsável, tarefas atrasadas, reuniões hoje.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'get_team_status', description: 'Status de cada vendedor: conversas abertas, leads ativos, tarefas atrasadas e reuniões hoje.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'get_unanswered_conversations', description: 'Conversas aguardando resposta humana, com lead, responsável e tempo de espera.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
@@ -1246,6 +1334,8 @@ O que você faz por baixo dos panos:
 - CAMPANHAS E CADÊNCIAS: get_campaigns_overview / get_cadences_overview.
 - AGENDA: find_calendar_event.
 - MEMÓRIA DE ENTIDADE ATIVA: pronomes ("dela", "ele", "essa conversa") reaproveitam o lead/conversa/vendedor da última tool de contexto.
+- AÇÕES (propor→confirmar): create_task / schedule_followup / notify_seller. Você PROPÕE — o admin confirma nos botões inline. NUNCA diga que "já criei/agendei/notifiquei"; diga o que vai fazer e peça confirmação (a tool já devolve o texto de confirmação). Use só quando o admin pedir uma ação, nunca em consultas.
+- MEMÓRIA PESSOAL: get_user_memory (leia no começo pra personalizar) / save_user_memory (guarde nome, papel e fatos estáveis com add_fact quando o admin revelar algo sobre si ou suas preferências).
 
 ESCOPO: VOCÊ ENXERGA A OPERAÇÃO INTEIRA
 Você vê TODAS as conversas do CRM da plataforma — atendimentos humanos de qualquer vendedor, conversas conduzidas por agentes IA (current_agent_id preenchido / status bot_active) e tudo que está em fila (waiting_human). Não filtre por "usuário logado".
@@ -1269,7 +1359,7 @@ interface ToolEvent {
   result: any;
 }
 
-async function runChat(admin: any, userMessages: any[]): Promise<{ reply: string; tool_events: ToolEvent[] }> {
+async function runChat(admin: any, userMessages: any[], userId: string): Promise<{ reply: string; tool_events: ToolEvent[] }> {
   const messages: any[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     ...userMessages,
@@ -1307,7 +1397,7 @@ async function runChat(admin: any, userMessages: any[]): Promise<{ reply: string
         result = { error: 'unknown_tool', tool: name };
       } else {
         try {
-          result = await runTool(admin, name, args);
+          result = await runTool(admin, name, args, userId);
         } catch (e) {
           console.error(`[platform-mia] tool ${name} error`, e);
           result = { error: 'tool_failed', message: String(e) };
@@ -1358,7 +1448,7 @@ Deno.serve(async (req) => {
       if (!ALLOWED_TOOLS.has(tool)) {
         return json({ error: 'unknown_tool', tool }, 400);
       }
-      const data = await runTool(admin, tool, body?.args ?? {});
+      const data = await runTool(admin, tool, body?.args ?? {}, user.id);
       return json({ ok: true, tool, data });
     }
 
@@ -1375,7 +1465,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Envie `messages` (chat) ou `tool` (consulta direta).' }, 400);
     }
 
-    const { reply, tool_events } = await runChat(admin, messages);
+    const { reply, tool_events } = await runChat(admin, messages, user.id);
     if (!reply && !tool_events.length) {
       return json({ error: 'O modelo não retornou resposta. Tente novamente.' }, 502);
     }
