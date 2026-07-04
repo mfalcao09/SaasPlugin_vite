@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { Loader2, UploadCloud, FileJson, FileText, CheckCircle2, AlertCircle, Download } from 'lucide-react';
-import { downloadAgentTemplate } from './agentTemplates';
+import { Loader2, UploadCloud, FileJson, FileText, CheckCircle2, AlertCircle, Download, FileCode } from 'lucide-react';
+import { downloadAgentTemplate, downloadAgentMarkdownTemplate } from './agentTemplates';
+import { parseAgentFile } from './agentImportParsers';
 import { useCreatePlatformCrmProductAgent } from '@/components/superadmin/crm/data/usePlatformCrmProductAgents';
 import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import type { ProductAgent } from './types';
@@ -255,46 +256,61 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
     onOpenChange(v);
   };
 
-  const parseJsonString = (text: string) => {
+  // Parseia o conteúdo de um arquivo (.json ou .md) ou de texto colado (JSON).
+  // `filename` decide o formato; ausente = trata como JSON colado.
+  const parseFileText = (text: string, filename: string) => {
     setJsonError(null);
     setJsonPreview(null);
     if (!text.trim()) return;
     try {
-      const parsed = JSON.parse(text);
-      const sanitized = sanitizeAgentJson(parsed);
+      const raw = parseAgentFile(filename, text);
+      const sanitized = sanitizeAgentJson(raw);
       setJsonPreview(sanitized);
     } catch (e) {
-      setJsonError(e instanceof Error ? e.message : 'Falha ao ler JSON');
+      setJsonError(e instanceof Error ? e.message : 'Falha ao ler o arquivo');
     }
   };
 
   const handleJsonFile = async (file: File) => {
+    const ext = '.' + (file.name.split('.').pop()?.toLowerCase() ?? '');
+    if (!['.json', '.md', '.markdown'].includes(ext)) {
+      toast.error('Formato não suportado. Use .json ou .md');
+      return;
+    }
     setJsonFile(file);
     const text = await file.text();
     setJsonText(text);
-    parseJsonString(text);
+    parseFileText(text, file.name);
   };
 
   const handleJsonTextChange = (text: string) => {
     setJsonText(text);
     setJsonFile(null);
-    parseJsonString(text);
+    // Texto colado é sempre tratado como JSON.
+    parseFileText(text, 'colado.json');
   };
 
   const handleImportJson = async () => {
     if (!jsonPreview) return;
-    setBusy(true);
     const finalProductId = (fixedProductId ?? null) || (productId === '__global__' ? null : productId);
-    createAgent.mutate(
-      { ...jsonPreview, product_id: finalProductId, is_default: false } as Partial<ProductAgent>,
-      {
-        onSuccess: () => {
-          toast.success('Agente importado com sucesso!');
-          close(false);
-        },
-        onSettled: () => setBusy(false),
-      }
-    );
+    const draft = { ...jsonPreview, product_id: finalProductId, is_default: false } as Partial<ProductAgent>;
+
+    // Fluxo canônico: abre o editor preenchido para revisão. Salvar no editor cria o agente.
+    if (onDraftReady) {
+      onDraftReady(draft, finalProductId);
+      close(false);
+      return;
+    }
+
+    // Fallback (consumidor sem editor): cria direto.
+    setBusy(true);
+    createAgent.mutate(draft, {
+      onSuccess: () => {
+        toast.success('Agente importado com sucesso!');
+        close(false);
+      },
+      onSettled: () => setBusy(false),
+    });
   };
 
   const handleDocFile = (file: File) => {
@@ -324,11 +340,12 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar Agente</DialogTitle>
           <DialogDescription>
-            Traga um agente pronto via JSON exportado, ou estruture um a partir de um briefing em PDF, Word, TXT ou Markdown.
+            Um arquivo preenche o agente inteiro. Traga um agente pronto via JSON ou Markdown (.md),
+            ou estruture um a partir de um briefing em PDF, Word ou TXT.
           </DialogDescription>
         </DialogHeader>
 
@@ -349,7 +366,7 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'json' | 'doc')}>
           <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="json"><FileJson className="h-4 w-4 mr-2" /> JSON exportado</TabsTrigger>
+            <TabsTrigger value="json"><FileJson className="h-4 w-4 mr-2" /> Arquivo (JSON / Markdown)</TabsTrigger>
             <TabsTrigger value="doc"><FileText className="h-4 w-4 mr-2" /> Documento (PDF/Word/TXT)</TabsTrigger>
           </TabsList>
 
@@ -360,6 +377,9 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
                   Baixe um modelo, edite os campos e arraste de volta aqui.
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
+                  <Button type="button" variant="outline" size="sm" onClick={downloadAgentMarkdownTemplate}>
+                    <FileCode className="h-3.5 w-3.5 mr-1.5" /> Modelo .md
+                  </Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => downloadAgentTemplate('sdr')}>
                     <Download className="h-3.5 w-3.5 mr-1.5" /> SDR
                   </Button>
@@ -376,15 +396,15 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
             <Card className="border-dashed p-6 text-center">
               <input
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.md,.markdown,application/json,text/markdown"
                 id="agent-json-input"
                 className="hidden"
                 onChange={(e) => e.target.files?.[0] && handleJsonFile(e.target.files[0])}
               />
               <label htmlFor="agent-json-input" className="cursor-pointer flex flex-col items-center gap-2">
                 <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm font-medium">{jsonFile?.name ?? 'Selecionar arquivo .json'}</span>
-                <span className="text-xs text-muted-foreground">Use o "Exportar JSON" de outro agente</span>
+                <span className="text-sm font-medium">{jsonFile?.name ?? 'Selecionar arquivo .json ou .md'}</span>
+                <span className="text-xs text-muted-foreground">JSON exportado de outro agente, ou Markdown com frontmatter</span>
               </label>
             </Card>
 
@@ -422,6 +442,11 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
                   {' · '}
                   {Array.isArray(jsonPreview.cannot_do) ? `${jsonPreview.cannot_do.length} restrições` : '—'}
                 </div>
+                {onDraftReady && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Ao continuar, o editor abre com todos os campos preenchidos para revisão. Salvar cria o agente.
+                  </p>
+                )}
               </Card>
             )}
           </TabsContent>
@@ -470,7 +495,7 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
           {tab === 'json' ? (
             <Button onClick={handleImportJson} disabled={!jsonPreview || busy}>
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Importar Agente
+              {onDraftReady ? 'Revisar e importar' : 'Importar Agente'}
             </Button>
           ) : (
             <Button onClick={handleImportDoc} disabled={!docFile || busy}>

@@ -1,7 +1,14 @@
-// STUB (edge/tabela ausente) do `AgentTrainingSection` da fonte Bizon.
-// D3 P1/F1d — o treinamento (upload de PDFs/docs para RAG do agente) depende de
-// tabela `agent_training_documents` + Edge de ingestao, que NAO tem twin
-// `platform_crm_*` nesta onda. UI presente; acao real: // TODO(edge).
+// STUB (por-escopo) do `AgentTrainingSection` da fonte Bizon.
+// D3 P1/F1d — o treinamento por material (upload de PDF/doc para a base de
+// conhecimento do agente) existe no schema em `agent_training_materials`
+// (colunas: agent_id, product_id, organization_id NOT NULL, title, material_type,
+// extracted_content, file_url, processing_status). PORÉM este builder é o
+// platform-level (`platform_crm_product_agents`), DELIBERADAMENTE zero-tenant/
+// zero-organization_id — escopo é o PRODUTO. Como `agent_training_materials`
+// exige `organization_id NOT NULL` e não há tenant neste contexto, gravar aqui
+// violaria a arquitetura. Falta: (a) tabela `platform_crm_agent_training_materials`
+// (twin sem organization_id) OU um org de plataforma bem-definido, mais (b) a Edge
+// de ingestão/embedding. Até lá, UI honesta "em breve". // TODO(edge/schema)
 import { GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -11,8 +18,7 @@ interface Props {
 }
 
 export function AgentTrainingSection({ agentId, productId }: Props) {
-  // TODO(edge): ingestao de material (PDF/doc) para a base de conhecimento do agente.
-  // Requer tabela de documentos + Edge Function de embedding — inexistente na plataforma.
+  // TODO(edge/schema): ver cabeçalho — falta twin sem organization_id + Edge de embedding.
   void agentId;
   void productId;
   return (
