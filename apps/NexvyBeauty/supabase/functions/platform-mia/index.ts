@@ -1360,8 +1360,14 @@ interface ToolEvent {
 }
 
 async function runChat(admin: any, userMessages: any[], userId: string): Promise<{ reply: string; tool_events: ToolEvent[] }> {
+  const hoje = new Date().toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', dateStyle: 'full', timeStyle: 'short',
+  });
   const messages: any[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    {
+      role: 'system',
+      content: `${SYSTEM_PROMPT}\n\nCONTEXTO TEMPORAL: agora é ${hoje} (fuso America/Sao_Paulo). Use SEMPRE esta data como referência para "hoje", "amanhã", "semana que vem", prazos etc. NUNCA invente ou chute datas.`,
+    },
     ...userMessages,
   ];
   const toolEvents: ToolEvent[] = [];
