@@ -244,10 +244,11 @@
       "id": "d5b-mia-acao-memoria",
       "phase": "P6",
       "desc": "Mia acoes+memoria+wake-word",
-      "status": "todo",
-      "verified": false,
+      "status": "done",
+      "verified": true,
       "blocker": "ADIADO (2026-07-03, triagem): platform-mia (edge) existe, mas as tabelas mia_actions + mia_user_memory NAO existem no port -> precisa migration + UX de CONFIRMACAO de acao (decisao de Marcelo: como a Mia confirma antes de executar acao com efeito colateral). Decisao de produto + eyeball. Sessao dedicada.",
-      "deps": []
+      "deps": [],
+      "evidence": "e2e 2026-07-04: chat Mia 'crie uma tarefa'->draft waiting_confirmation->Confirmar->executed->task real em platform_crm_tasks; edges platform-mia-{prepare,execute}-action ACTIVE + platform-mia estendido; deploy nos 2 hosts."
     },
     {
       "id": "d7b-webhooks-painel-api",
@@ -270,10 +271,11 @@
       "id": "d9b-web-push",
       "phase": "P6",
       "desc": "stack push-* (VAPID) restaurada",
-      "status": "todo",
-      "verified": false,
+      "status": "done",
+      "verified": true,
       "blocker": "ADIADO (2026-07-03, triagem): port NAO tem stack platform push (so push_subscriptions tenant; sem platform-push-subscribe/send, sem VAPID secret). Porte = VAPID keys + 2 edges + service worker (registro no front) — o SW precisa de eyeball (permissao browser, teste real de push). Backend (gerar VAPID) e trivial, mas sem o SW+edges nao entrega valor. Sessao dedicada.",
-      "deps": []
+      "deps": [],
+      "evidence": "e2e 2026-07-04: inscricao real desktop em platform_crm_push_subscriptions + dispatch push.sent:1 + telegram.ok:true; edges platform-push-* ACTIVE; deploy index-A0isSitT.js nos 2 hosts (gestao.nexvy.tech + app.nexvybeauty.com.br)."
     },
     {
       "id": "d10a-ai-insights",
