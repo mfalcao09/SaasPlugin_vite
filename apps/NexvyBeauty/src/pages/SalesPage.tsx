@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/accordion';
 import { usePlatformName } from '@/hooks/usePlatformName';
 import { usePlatformBranding } from '@/hooks/usePlatformBranding';
-import { useActivePlans, type PlatformPlan } from '@/hooks/usePlatformPlans';
+import { usePublicPlans, type PublicPlan } from '@/hooks/usePlatformPlans';
 import { LeadCaptureModal } from '@/components/sales/LeadCaptureModal';
 import { captureTrackingFromUrl } from '@/lib/tracking';
 
@@ -98,7 +98,7 @@ const garantias = [
 // Catálogo de planos = platform_plans (fonte única). Os bullets de cada card
 // derivam das flags feature_* reais do plano — sem copy livre, sem promessa sem
 // lastro. Ordem do mapa = ordem de exibição das features no card.
-const FEATURE_LABELS: { key: keyof PlatformPlan; label: string }[] = [
+const FEATURE_LABELS: { key: keyof PublicPlan; label: string }[] = [
   { key: 'feature_whatsapp', label: 'WhatsApp integrado' },
   { key: 'feature_instagram', label: 'Instagram integrado' },
   { key: 'feature_facebook', label: 'Facebook integrado' },
@@ -127,7 +127,7 @@ const BRL = new Intl.NumberFormat('pt-BR', {
 });
 
 // Deriva os bullets do card a partir das flags feature_* ligadas no plano.
-function planFeatures(plan: PlatformPlan): string[] {
+function planFeatures(plan: PublicPlan): string[] {
   return FEATURE_LABELS.filter(({ key }) => plan[key] === true).map(({ label }) => label);
 }
 
@@ -147,17 +147,18 @@ export default function SalesPage() {
   const openBuy = () => setBuyOpen(true);
 
   // Catálogo de planos vem do banco (platform_plans) — fonte única, sem preço
-  // nem feature hardcoded. useActivePlans já traz só is_active=true ordenado por
+  // nem feature hardcoded. usePublicPlans lê a view public_plans (SELECT anônimo
+  // — migration 20260704), já filtrada por is_active e ordenada por
   // display_order; aqui filtramos ainda is_public=true (o trial é is_public=false
   // e não aparece na vitrine). Fetch falho → lista vazia → fallback gracioso (a LP
   // nunca quebra; o card de planos some, o resto da página segue).
-  const { data: allPlans, isLoading: plansLoading } = useActivePlans();
+  const { data: allPlans, isLoading: plansLoading } = usePublicPlans();
   const planos = (allPlans ?? []).filter((p) => p.is_public);
 
   // CTA de cada plano: se há checkout_url (mensal), navega direto pro checkout
   // Cakto (preservando o cookie de tracking 1st-party do hop LP→checkout). Sem
   // URL ainda → abre o LeadCaptureModal (funil de captura).
-  const goToCheckout = (plan: PlatformPlan) => {
+  const goToCheckout = (plan: PublicPlan) => {
     if (plan.checkout_url) {
       window.location.href = plan.checkout_url;
     } else {

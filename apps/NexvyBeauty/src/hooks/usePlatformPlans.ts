@@ -92,6 +92,36 @@ export function useActivePlans() {
   });
 }
 
+// Vitrine pública (LP/apex): lê a view `public_plans` (migration 20260704),
+// que tem SELECT anônimo — platform_plans segue fechada por RLS. A view expõe
+// só colunas de exibição (sem max_*/extra_features), então o tipo é um
+// subconjunto de PlatformPlan; o cast é seguro para os campos que a LP usa.
+export type PublicPlan = Pick<PlatformPlan,
+  'id' | 'name' | 'slug' | 'description' | 'price_monthly' | 'price_yearly' |
+  'trial_days' | 'highlight_label' | 'display_order' | 'is_public' |
+  'checkout_url' | 'checkout_url_yearly' |
+  'feature_whatsapp' | 'feature_instagram' | 'feature_facebook' |
+  'feature_scheduling' | 'feature_kanban' | 'feature_pipeline' |
+  'feature_campaigns' | 'feature_outreach' | 'feature_capture_funnels' |
+  'feature_forms' | 'feature_internal_chat' | 'feature_ai_agents' |
+  'feature_voice_agents' | 'feature_audio_transcription_ai' |
+  'feature_text_correction_ai' | 'feature_webhooks' | 'feature_external_api' |
+  'feature_integrations'>;
+
+export function usePublicPlans() {
+  return useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('public_plans')
+        .select('*')
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return (data || []) as PublicPlan[];
+    },
+  });
+}
+
 export function usePlan(id?: string | null) {
   return useQuery({
     queryKey: ['platform-plan', id],

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Roadmap — Lançamento Oferta v3 NexvyBeauty</title><style>:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--accent2:#f0883e}*{box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.65;max-width:980px;margin:0 auto;padding:48px 28px 96px}h1{font-size:1.7rem;border-bottom:2px solid var(--accent2);padding-bottom:.5rem}h2{font-size:1.35rem;color:var(--accent);margin-top:2.4rem;border-bottom:1px solid var(--border);padding-bottom:.35rem}blockquote{margin:1rem 0;padding:.7rem 1.1rem;background:var(--panel);border-left:4px solid var(--accent2);border-radius:0 8px 8px 0}table{border-collapse:collapse;width:100%;margin:1.2rem 0;font-size:.9rem;display:block;overflow-x:auto}th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}th{background:var(--panel);color:var(--accent);white-space:nowrap}tr:nth-child(even) td{background:rgba(255,255,255,.02)}code{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:.12rem .38rem;font-size:.88em}hr{border:none;border-top:1px solid var(--border);margin:2.2rem 0}strong{color:#fff}em{color:var(--muted)}</style></head><body>
+<h1>ROADMAP — Lançamento da Oferta v3 "Cliente de Volta — Piloto Fundadora"</h1>
+<blockquote>
+<p>Cofundador (modo esteira, escopo=roadmap) + /plan · 2026-07-04
+Insumos: oferta v3 validada liveness + análise PMF v2 (<code>~/Downloads/PMF-Rachleff/</code>) + RESKIN-BEAUTY-LP-SPLIT.md (Sprint 2 absorvido) + todo.md (quotas ✅)
+<strong>Worktree de execução: <code>SaasPlugin_vite</code> (main)</strong> — PROVADO como fonte do deploy vivo (commit f2b2e7a cita o bundle servido <code>index-Cq6h2PX7.js</code>). trackB segue paralelo (coesão UX) e NÃO recebe trabalho deste roadmap.</p>
+</blockquote>
+<h2>F0 — Decisões travadas (2026-07-04)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decisão</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>Deploy da LP: <strong>LIBERADO</strong> (Marcelo)</td>
+<td>✅ travada</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>Preços na LP: <strong>seguem do banco</strong> (<code>platform_plans</code> via superadmin gestao.nexvy.tech — decisão Marcelo). Fix = <strong>view pública <code>public_plans</code></strong> (name, slug, price_monthly, price_yearly, trial_days, features expostas, is_active) com SELECT anônimo; <code>useActivePlans</code> aponta pra view. Não abrir a tabela-mãe.</td>
+<td>✅ travada (mecanismo = view, recomendação do cofundador)</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>Lançamento: coortes de piloto ANTES de checkout aberto. <strong>Escassez: CONTRA-PROPOSTA do cofundador à "escassez elástica"</strong> (15 vagas anunciadas aceitando todos): usar <strong>15 vagas REAIS divididas em 3 coortes semanais de 5</strong> (5 = capacidade real de concierge/semana). Mede a MESMA reação ("vou ver se ainda tem vaga desta semana") sem escassez falsa — que está na lista de rejeição do próprio framework Hormozi e queima confiança em rede de warm intros.</td>
+<td>⏳ ratificar com Marcelo</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>Worktree: <strong>main</strong> (provado).</td>
+<td>✅ travada</td>
+</tr>
+</tbody>
+</table>
+<h2>F1 — Preço na LP + higiene (loop D+0 → D+1)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check binário</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1</td>
+<td>Migration: view <code>public_plans</code> (colunas públicas de <code>platform_plans</code> WHERE is_active) + GRANT SELECT a <code>anon</code></td>
+<td><code>curl</code> REST anônimo retorna os 4 planos com price_monthly</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td><code>useActivePlans</code> (modo público/LP) lê <code>public_plans</code>; fallback gracioso se vazio</td>
+<td>janela anônima renderiza R$ 217/347/687 na LP local</td>
+</tr>
+<tr>
+<td>1.3</td>
+<td>OG/twitter description: "oficinas" → "profissionais da beleza" (<code>index.html:69-70</code>)</td>
+<td>grep no bundle buildado</td>
+</tr>
+<tr>
+<td>1.4</td>
+<td>Deploy apex + app (<code>infra/deploy-vps.sh</code> com <code>--no-cache</code>)</td>
+<td>curl prova string nova no bundle servido + preço visível deslogado em nexvybeauty.com.br</td>
+</tr>
+</tbody>
+</table>
+<h2>F2 — Bloqueador da garantia + pré-piloto (loop D+1 → D+5)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check binário</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.1</td>
+<td><strong>Painel "R$ recuperado"</strong> — view/RPC: <code>opportunity_scan_items.action_applied</code> → resposta inbound → reagendamento/venda; card na home ao lado de "Perda de agenda"</td>
+<td>número por organização visível na home; <strong>é o juiz da garantia — sem ele não se vende</strong></td>
+</tr>
+<tr>
+<td>2.2</td>
+<td>Runbook + script "org piloto zerada" (sem seed/conversas de teste)</td>
+<td>org nova limpa em &lt;10 min</td>
+</tr>
+<tr>
+<td>2.3</td>
+<td>Expor "meu link de booking" (copiar + QR) em <code>/agenda</code></td>
+<td>dona copia o link sem ajuda</td>
+</tr>
+<tr>
+<td>2.4</td>
+<td>Ocultar <code>/radar</code> técnico do perfil dona (mover para Config. avançada)</td>
+<td>nav da dona sem jargão de CRM</td>
+</tr>
+<tr>
+<td>2.5</td>
+<td>"Status: Offline" → rótulo claro (ex.: "Atendimento: fora do horário")</td>
+<td>label novo no ar</td>
+</tr>
+<tr>
+<td>2.6</td>
+<td>Campo <code>sub_vertical</code> em <code>organizations</code> + select no cadastro/superadmin</td>
+<td>coluna preenchível; 5 pilotos etiquetados</td>
+</tr>
+<tr>
+<td>2.7</td>
+<td>Instrumentação de ativação: view 3 eventos (conectou → disparou → resposta) × sub_vertical × semana</td>
+<td>query retorna funil por org</td>
+</tr>
+</tbody>
+</table>
+<h2>F3 — Funil comercial (loop D+5 → D+7)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check binário</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.1</td>
+<td>Seção <strong>"Piloto Fundadora"</strong> na LP: oferta v3 (stack com valores, garantia god-mode, coortes reais) + CTA → WhatsApp do fundador</td>
+<td>seção live com preço e garantia visíveis</td>
+</tr>
+<tr>
+<td>3.2</td>
+<td>CTAs dos planos → checkout Cakto por plano (<code>cakto-sync-offer</code>; Sprint 2 do RESKIN)</td>
+<td>clique → <code>pay.cakto.com.br/&lt;slug&gt;</code> correto por plano</td>
+</tr>
+<tr>
+<td>3.3</td>
+<td>Kit comercial: pitch 30s/2min + roteiro de demo (tenant seed) + playbook — extraídos da oferta v3 para doc utilizável no celular</td>
+<td>3 docs prontos e revisados</td>
+</tr>
+</tbody>
+</table>
+<h2>F4 — Pilotos (HUMANO — Marcelo vende; loop só monitora; semana 1 → 12)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check binário</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.1</td>
+<td>Warm intros coorte 1 (5 vagas): começar <strong>lash</strong> e <strong>nails</strong></td>
+<td>5 conversas de venda com P1-P6 anotadas verbatim</td>
+</tr>
+<tr>
+<td>4.2</td>
+<td>≥3 pagamentos reais na coorte 1</td>
+<td>comprovantes; se &lt;3, iterar no who (não em features)</td>
+</tr>
+<tr>
+<td>4.3</td>
+<td>Coortes 2-3 (semanas 2-3) até 15 pilotos</td>
+<td>15 orgs etiquetadas por sub_vertical</td>
+</tr>
+<tr>
+<td>4.4</td>
+<td>Medição semanal: funil de ativação + R$ recuperado ÷ mensalidade por sub-vertical</td>
+<td>dashboard preenchido toda sexta</td>
+</tr>
+<tr>
+<td>4.5</td>
+<td>Semana 12 — veredito da métrica-mãe: ≥60% disparando 1×/semana E razão ≥1,0</td>
+<td>sub-vertical campeã declarada → HXC → GTM público focado</td>
+</tr>
+</tbody>
+</table>
+<h2>Riscos</h2>
+<ol>
+<li><strong>View pública expor demais</strong> → só colunas de vitrine; nunca checkout_url interno/ids sensíveis.</li>
+<li><strong>Deploy apex derrubar app.</strong>* → deploy com <code>--no-cache</code> + smoke nas 3 origens (apex, app, gestao) antes de encerrar.</li>
+<li><strong>Painel R$ sem dados retroativos</strong> → aceitar começar do zero (pilotos novos geram o dado); não inventar histórico.</li>
+<li><strong>Cakto dessincronizado</strong> → conferir <code>checkout_url</code> por plano no superadmin antes do 3.2.</li>
+<li><strong>Escassez elástica (se Marcelo insistir)</strong> → registrar como "Desafio do cofundador": viola a lista de rejeição do framework; alternativa honesta proposta em 0.3.</li>
+</ol>
+<h2>Execução</h2>
+<ul>
+<li><strong>Loop:</strong> F1 → F2 → F3 nesta ordem, item a item, cada check provado antes do próximo; deploy autorizado (decisão 0.1); commits no main com mensagens <code>feat(beauty/lancamento-v3): ...</code>.</li>
+<li><strong>Fora do loop:</strong> F4 (vendas humanas) e ratificação 0.3.</li>
+<li><strong>STATE:</strong> este arquivo é o estado vivo — loop marca checks ✅ com data/prova a cada item concluído.</li>
+</ul>
+</body></html>
