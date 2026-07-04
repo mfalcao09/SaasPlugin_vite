@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PlatformCrmFormBuilder } from './form';
+import { PlatformCrmFormResponses } from './form/PlatformCrmFormResponses';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +91,7 @@ export function PlatformCrmCaptureFormsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [builderFormId, setBuilderFormId] = useState<string | null>(null);
+  const [responsesFormId, setResponsesFormId] = useState<string | null>(null);
 
   const [createMethod, setCreateMethod] = useState<'manual' | 'template'>('manual');
   const [name, setName] = useState('');
@@ -171,9 +173,8 @@ export function PlatformCrmCaptureFormsTab() {
     toast.info('Link público do formulário em breve');
   };
 
-  const openResponses = () => {
-    // TODO(edge): visualização detalhada de respostas (FormResponses) — porte posterior.
-    toast.info('Respostas do formulário em breve');
+  const openResponses = (formId: string) => {
+    setResponsesFormId(formId);
   };
 
   return (
@@ -307,7 +308,7 @@ export function PlatformCrmCaptureFormsTab() {
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            openResponses();
+                            openResponses(form.id);
                           }}
                         >
                           <BarChart3 className="h-4 w-4 mr-2" /> Respostas
@@ -388,6 +389,19 @@ export function PlatformCrmCaptureFormsTab() {
             {builderFormId && (
               <PlatformCrmFormBuilder formId={builderFormId} onClose={() => setBuilderFormId(null)} />
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Respostas do formulário (FormResponses de plataforma) — dialog fullscreen. */}
+      <Dialog open={!!responsesFormId} onOpenChange={(o) => !o && setResponsesFormId(null)}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>Respostas do Formulário</DialogTitle>
+            <DialogDescription>Veja e filtre as respostas recebidas e abra o detalhe de cada lead.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {responsesFormId && <PlatformCrmFormResponses formId={responsesFormId} />}
           </div>
         </DialogContent>
       </Dialog>
