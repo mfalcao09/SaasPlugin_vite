@@ -450,7 +450,7 @@ export default function SalesPage() {
         <div className="mx-auto max-w-4xl">
           <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20">
             <CardContent className="p-10 md:p-12">
-              <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 15 vagas</Badge>
+              <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 30 vagas em 30 dias</Badge>
               <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
                 Cliente de Volta — <span className={GRADIENT_TEXT}>30 dias</span> para recuperar
                 dinheiro parado na sua carteira
@@ -476,9 +476,10 @@ export default function SalesPage() {
               <div className="mt-8 rounded-xl border border-rose-400/30 bg-rose-500/10 p-5">
                 <p className="text-sm font-semibold text-rose-200">Garantia do piloto</p>
                 <p className="mt-1 text-zinc-200">
-                  Se em 30 dias o painel não mostrar clientes recuperadas somando mais que a sua
-                  mensalidade, <strong>devolvemos 100% do que você pagou</strong> — e o seu link
-                  de agendamento fica configurado.
+                  Se em 30 dias corridos <strong>a partir do seu setup</strong> o painel não mostrar
+                  clientes recuperadas somando mais que a sua mensalidade,
+                  <strong> devolvemos 100% do que você pagou</strong> — e o seu link de agendamento
+                  fica configurado.
                 </p>
               </div>
               <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -486,7 +487,9 @@ export default function SalesPage() {
                   Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <p className="text-sm text-zinc-400">
-                  Abrimos 5 vagas por semana — é o nosso limite real de acompanhamento 1-a-1.
+                  Entra no máximo <strong className="text-zinc-200">1 negócio novo por dia</strong> — é o
+                  limite real do acompanhamento 1-a-1. Vaga do dia não vendida não acumula. Depois das 30,
+                  o NexvyBeauty continua aberto — sem as condições de fundadora.
                 </p>
               </div>
             </CardContent>

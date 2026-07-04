@@ -13,7 +13,7 @@
    - Sobrancelha (~R$80-150): 2 retornos pagam o mês.
    - Salão/equipe (R$387): 2-3 clientes reativadas pagam o mês.
 4. **Risco meu, não seu:** painel "Recuperado (30 dias)" dentro do sistema é o juiz — não recuperou mais que a mensalidade, devolvo 100%.
-5. **Escassez real:** 15 vagas do piloto, 5 por semana (meu limite de acompanhamento 1-a-1).
+5. **Escassez real (estrutura 30/30/1):** 30 vagas de fundadora em 30 dias, **no máximo 1 negócio novo por dia** (limite real do acompanhamento 1-a-1). Vaga do dia não vendida NÃO acumula. Depois das 30 (ou do dia 30), o produto continua aberto — **sem** as condições de fundadora (preço travado pra sempre + garantia + linha direta). Frase de campo: "hoje ainda tenho A vaga do dia — quer que eu segure pra você?" (verdadeira por construção).
 
 ## Roteiro de demo (20 min)
 1. Abrir a HOME do tenant demo → "isso é um salão de exemplo — olha o raio-x" (card **Onde tem dinheiro**).
