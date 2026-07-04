@@ -70,6 +70,7 @@ import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/cr
 import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 import { PlatformCrmFlowTab } from './flowbuilder';
+import { PlatformCrmQuizBuilder } from './quiz';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -447,14 +448,20 @@ export function PlatformCrmCaptureFunnelsTab({
       <Dialog open={!!builderFunnel} onOpenChange={(o) => !o && setBuilderFunnel(null)}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b">
-            <DialogTitle>Builder de Fluxo — {builderFunnel?.name}</DialogTitle>
+            <DialogTitle>
+              {builderFunnel?.channel_type === 'quiz' ? 'Builder de Quiz' : 'Builder de Fluxo'} — {builderFunnel?.name}
+            </DialogTitle>
             <DialogDescription>
-              Monte a jornada de qualificação (chatbot híbrido) do funil.
+              {builderFunnel?.channel_type === 'quiz'
+                ? 'Monte as etapas, lógica e resultados do quiz de captação.'
+                : 'Monte a jornada de qualificação (chatbot híbrido) do funil.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto p-6">
             {builderFunnel && (
-              <PlatformCrmFlowTab productId={builderFunnel.product_id ?? undefined} />
+              builderFunnel.channel_type === 'quiz'
+                ? <PlatformCrmQuizBuilder funnelId={builderFunnel.id} onBack={() => setBuilderFunnel(null)} />
+                : <PlatformCrmFlowTab productId={builderFunnel.product_id ?? undefined} />
             )}
           </div>
         </DialogContent>

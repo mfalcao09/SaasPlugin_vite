@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PlatformCrmFormBuilder } from './form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +89,7 @@ export function PlatformCrmCaptureFormsTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [builderFormId, setBuilderFormId] = useState<string | null>(null);
 
   const [createMethod, setCreateMethod] = useState<'manual' | 'template'>('manual');
   const [name, setName] = useState('');
@@ -160,9 +162,8 @@ export function PlatformCrmCaptureFormsTab() {
     setProductId('');
   };
 
-  const openBuilder = () => {
-    // TODO(edge): construtor visual de formulário (FormBuilder/FormCanvas) — porte profundo.
-    toast.info('Construtor visual do formulário em breve');
+  const openBuilder = (formId: string) => {
+    setBuilderFormId(formId);
   };
 
   const openPublicLink = () => {
@@ -248,7 +249,7 @@ export function PlatformCrmCaptureFormsTab() {
               <Card
                 key={form.id}
                 className="hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={openBuilder}
+                onClick={() => openBuilder(form.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -298,7 +299,7 @@ export function PlatformCrmCaptureFormsTab() {
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            openBuilder();
+                            openBuilder(form.id);
                           }}
                         >
                           <FileEdit className="h-4 w-4 mr-2" /> Editar
@@ -375,6 +376,21 @@ export function PlatformCrmCaptureFormsTab() {
           })}
         </div>
       )}
+
+      {/* Builder visual do formulário (FormBuilder de plataforma) — dialog fullscreen. */}
+      <Dialog open={!!builderFormId} onOpenChange={(o) => !o && setBuilderFormId(null)}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>Construtor de Formulário</DialogTitle>
+            <DialogDescription>Monte os campos, o design e a publicação do formulário.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {builderFormId && (
+              <PlatformCrmFormBuilder formId={builderFormId} onClose={() => setBuilderFormId(null)} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
