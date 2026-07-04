@@ -59,7 +59,6 @@ import {
   MousePointerClick,
   FormInput,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   usePlatformCrmCaptureFunnels,
   useCreatePlatformCrmCaptureFunnel,
@@ -70,6 +69,7 @@ import {
 import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
 import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
+import { PlatformCrmFlowTab } from './flowbuilder';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -104,6 +104,8 @@ export function PlatformCrmCaptureFunnelsTab({
   const [channelFilter, setChannelFilter] = useState<string>(initialChannel ?? 'all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  // Builder visual de fluxo (FlowBuilder de plataforma) aberto em dialog fullscreen.
+  const [builderFunnel, setBuilderFunnel] = useState<PlatformCrmCaptureFunnel | null>(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -152,9 +154,10 @@ export function PlatformCrmCaptureFunnelsTab({
     setProductId('');
   };
 
-  const openBuilder = () => {
-    // TODO(edge): builder visual de fluxo (FlowCanvas/FunnelBlockEditor) — depende de porte profundo.
-    toast.info('Builder visual do funil em breve');
+  const openBuilder = (funnel: PlatformCrmCaptureFunnel) => {
+    // Abre o FlowBuilder de plataforma (lista ↔ builder visual) em dialog fullscreen.
+    // Filtra os fluxos pelo produto do funil quando houver (org-agnóstico se null).
+    setBuilderFunnel(funnel);
   };
 
   const formatViews = (v: number | null) => {
@@ -256,7 +259,7 @@ export function PlatformCrmCaptureFunnelsTab({
               <Card
                 key={f.id}
                 className="hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={openBuilder}
+                onClick={() => openBuilder(f)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -310,7 +313,7 @@ export function PlatformCrmCaptureFunnelsTab({
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            openBuilder();
+                            openBuilder(f);
                           }}
                         >
                           <Edit className="h-4 w-4 mr-2" /> Editar fluxo
@@ -437,6 +440,23 @@ export function PlatformCrmCaptureFunnelsTab({
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Builder visual de fluxo (FlowBuilder de plataforma) — dialog fullscreen. */}
+      <Dialog open={!!builderFunnel} onOpenChange={(o) => !o && setBuilderFunnel(null)}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>Builder de Fluxo — {builderFunnel?.name}</DialogTitle>
+            <DialogDescription>
+              Monte a jornada de qualificação (chatbot híbrido) do funil.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-6">
+            {builderFunnel && (
+              <PlatformCrmFlowTab productId={builderFunnel.product_id ?? undefined} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
