@@ -192,6 +192,26 @@ export async function provisionPlatformPlan(
     }
     orgId = created.id;
     orgCreated = true;
+
+    // F2.4 — trava fundadora: org nascida de VENDA durante a campanha 30/30/1
+    // é carimbada is_founder (se ainda há vaga) ou not_founder. A view
+    // founder_campaign_status DERIVA slots_left da contagem de is_founder —
+    // este write é o que faz o contador andar. Non-fatal por construção.
+    try {
+      const { data: camp } = await admin
+        .from('founder_campaign_status')
+        .select('slots_left, campanha_encerrada')
+        .limit(1)
+        .maybeSingle();
+      const isFounder = !!camp && !camp.campanha_encerrada && Number(camp.slots_left) > 0;
+      const { error: fsErr } = await admin
+        .from('organizations')
+        .update({ founder_status: isFounder ? 'is_founder' : 'not_founder' })
+        .eq('id', orgId);
+      if (fsErr) errors.push(`founder_status: ${fsErr.message}`);
+    } catch (e) {
+      console.warn('[cakto-provisioning] founder_status (non-fatal):', e);
+    }
   }
 
   // 2) Ativa plano
