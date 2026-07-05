@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Plano — Autopilot de Venda NexvyBeauty</title><style>:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--accent2:#f0883e}*{box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.65;max-width:980px;margin:0 auto;padding:48px 28px 96px}h1{font-size:1.7rem;border-bottom:2px solid var(--accent2);padding-bottom:.5rem}h2{font-size:1.35rem;color:var(--accent);margin-top:2.4rem;border-bottom:1px solid var(--border);padding-bottom:.35rem}h3{font-size:1.05rem;color:var(--accent2)}blockquote{margin:1rem 0;padding:.7rem 1.1rem;background:var(--panel);border-left:4px solid var(--accent2);border-radius:0 8px 8px 0}table{border-collapse:collapse;width:100%;margin:1.2rem 0;font-size:.9rem;display:block;overflow-x:auto}th,td{border:1px solid var(--border);padding:.5rem .75rem;text-align:left;vertical-align:top}th{background:var(--panel);color:var(--accent);white-space:nowrap}tr:nth-child(even) td{background:rgba(255,255,255,.02)}code{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:.12rem .38rem;font-size:.88em}hr{border:none;border-top:1px solid var(--border);margin:2.2rem 0}strong{color:#fff}em{color:var(--muted)}</style></head><body>
+<h1>PLANO — Autopilot de VENDA 100% (dia-0 da captação)</h1>
+<blockquote>
+<p>2026-07-05 · Base: AUDITORIA-AUTOPILOT-DIA0.md (bloqueadores A1-A7 verificados no código/banco)
+Funil-alvo: <strong>LP → clicou → WhatsApp → tirou dúvida → comprou → provisionado</strong> — zero toque humano (Marcelo só monitora pelo Telegram).
+No radar (fase 2, não bloqueia): Utmify + tráfego pago gerido no gestao.*.</p>
+</blockquote>
+<h2>Estado verificado (de onde partimos)</h2>
+<ul>
+<li>✅ LP no ar com preços + oferta 30/30/1 + checkout Cakto populado (3 planos)</li>
+<li>✅ 5 agentes criados em <code>platform_crm_product_agents</code> (is_active + active_in_whatsapp = true), com Objetivo/Regras/Tom</li>
+<li>✅ Provisionamento Cakto→organizations→admin existe (<code>cakto-webhook</code> → <code>provisionPlatformPlan</code> → <code>ensureAdminUser</code>)</li>
+<li>❌ <strong>A6:</strong> não existe número de WhatsApp de vendas (Salvy travou — ver triagem no fim)</li>
+<li>❌ <strong>A1:</strong> <code>platform-evolution-webhook</code> ignora <code>MESSAGES_UPSERT</code> (<code>// TODO(inbox)</code>) — mensagem recebida cai no vazio</li>
+<li>❌ <strong>A2:</strong> o runtime lê <code>platform_crm_agent_configs</code> (persona crua), NÃO os 5 agentes ricos — descasamento de tabela</li>
+<li>❌ <strong>A3/A4:</strong> handoff não executa; Supervisor é stub em memória (some no reload); <code>agent_specialists</code>/<code>agent_routing_rules</code> = 0</li>
+<li>❌ <strong>A7:</strong> <code>cakto-sync-offer</code> precisa rodar/conferir slugs — senão pagante cai em "plan not found" silencioso</li>
+<li>❌ <strong>B2:</strong> org nasce sem slug → página pública 404</li>
+<li>❌ <strong>C1:</strong> falha de provisionamento = console.error invisível — sem alerta</li>
+</ul>
+<hr />
+<h2>FASES (ordem de execução; cada uma com check binário)</h2>
+<h3>F0 — Número de vendas + instância (HOJE; humano: 1 scan de QR — inevitável e único)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>Obter número BR (triagem Salvy abaixo — recomendação: chip pré-pago hoje; migração p/ API oficial na fase de tráfego pago)</td>
+<td>número ativo recebendo SMS/ligação</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>Criar <code>evolution_instances</code> de VENDAS (escopo plataforma) + conectar via QR</td>
+<td>status "Conectado" na gestão</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td><strong>Warm-up do número</strong> (2-3 dias de conversa orgânica leve antes de tráfego): número novo disparando frio = ban Baileys</td>
+<td>≥20 conversas orgânicas antes de escala</td>
+</tr>
+</tbody>
+</table>
+<h3>F1 — Motor inbound (o ouvido da máquina) — CÓDIGO</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1</td>
+<td>Implementar <code>MESSAGES_UPSERT</code> no <code>platform-evolution-webhook</code>: mensagem → upsert lead da plataforma (por telefone) + conversa + mensagem persistidas</td>
+<td>lead novo aparece no CRM da plataforma ao mandar "oi"</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td>Distinguir instância de VENDAS (plataforma) vs instâncias de tenant no webhook (roteamento por instance)</td>
+<td>msg pro nº de vendas NUNCA vira lead de tenant</td>
+</tr>
+</tbody>
+</table>
+<h3>F2 — Cérebro que responde (agentes ricos no runtime) — CÓDIGO (o maior)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.1</td>
+<td>Motor de resposta lê <code>platform_crm_product_agents</code> (os 5 ricos) — corrigir o descasamento A2 (runtime aponta pra tabela rica, ou compila rico→config no save)</td>
+<td>resposta usa as REGRAS da Duda (pedir desconto → reancora na garantia)</td>
+</tr>
+<tr>
+<td>2.2</td>
+<td>Persistir Supervisor: twins de <code>agent_specialists</code>/<code>agent_routing_rules</code> da plataforma + UI salvando neles (matar o stub em memória)</td>
+<td>reload mantém especialistas/regras</td>
+</tr>
+<tr>
+<td>2.3</td>
+<td>Handoff REAL: Orquestrador troca o agente ativo da conversa (Duda→Bia; →humano nos gatilhos) + grava histórico</td>
+<td>conversa qualificada muda de persona comprovadamente</td>
+</tr>
+<tr>
+<td>2.4</td>
+<td>Trava fundadora no fluxo: Orquestrador lê <code>founder_campaign_status.slots_left</code> (mesmo banco!) e injeta permissão na Bia; <code>cakto-webhook</code> passa a ESCREVER <code>organizations.founder_status</code></td>
+<td>venda 31 não recebe oferta fundadora</td>
+</tr>
+<tr>
+<td>2.5</td>
+<td>Humanização (agrupamento/digitação, config da /empresa) aplicada às respostas de venda</td>
+<td>delay/typing visíveis no WhatsApp</td>
+</tr>
+</tbody>
+</table>
+<h3>F3 — Fio LP→WhatsApp — CÓDIGO (pequeno)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.1</td>
+<td>CTA "Quero uma vaga do piloto" → <code>wa.me/&lt;numero&gt;?text=</code> com msg pré-pronta + origem/UTM no texto (LeadCaptureModal vira fallback)</td>
+<td>clique abre WhatsApp com contexto</td>
+</tr>
+<tr>
+<td>3.2</td>
+<td>Tracking 1st-party preservado na passagem LP→zap (código de origem na mensagem)</td>
+<td>origem recuperável na conversa</td>
+</tr>
+</tbody>
+</table>
+<h3>F4 — Fecho do caixa (Cakto blindado) — CONFIG+CÓDIGO</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.1</td>
+<td>Rodar/conferir <code>cakto-sync-offer</code> p/ os 3 planos (slugs mapeados)</td>
+<td>webhook de teste não cai em "plan not found"</td>
+</tr>
+<tr>
+<td>4.2</td>
+<td>Slug da org no provisionamento (B2) — gerar no INSERT</td>
+<td>org nova → <code>/s/&lt;slug&gt;</code> responde 200</td>
+</tr>
+<tr>
+<td>4.3</td>
+<td><strong>Alerta de falha → Telegram</strong> (C1): provisionamento falhou → mensagem no controlador na hora</td>
+<td>falha simulada chega no Telegram</td>
+</tr>
+<tr>
+<td>4.4</td>
+<td>Pós-pagamento → boas-vindas automática + entrada no fluxo de onboarding (Nexvy)</td>
+<td>pagante recebe boas-vindas sem toque</td>
+</tr>
+</tbody>
+</table>
+<h3>F5 — Prova de fogo (gate de GO) — TESTE</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5.1</td>
+<td>Lead E2E real (+5518996267790): LP → WhatsApp → Duda qualifica → Bia oferta → link Cakto → pagamento teste → org com slug + founder_status + boas-vindas</td>
+<td>funil completo sem toque humano, prova por etapa</td>
+</tr>
+<tr>
+<td>5.2</td>
+<td>Edge cases: desconto / pedir humano / raiva / fora de escopo</td>
+<td>respostas nas regras; handoff humano dispara</td>
+</tr>
+<tr>
+<td>5.3</td>
+<td>Monitoramento: cada venda e cada falha chegam no seu Telegram</td>
+<td>2 notificações de teste recebidas</td>
+</tr>
+</tbody>
+</table>
+<h3>F6 — Carteira-do-WhatsApp (decisão do Marcelo; paralelo, não bloqueia a venda)</h3>
+<p>Ingestão 180d da instância da DONA no onboarding: ao conectar, edge function puxa chats/contatos da Evolution → deriva clientes (nome+telefone+última interação) → Radar nasce com matéria-prima. <strong>Ingestão INCREMENTAL</strong> (history-sync do WhatsApp desce em camadas e varia por aparelho — contatos/chats vêm logo, profundidade chega progressivamente). Vira a espinha do autopilot de OPERAÇÃO — spec própria depois da venda no ar.</p>
+<h2>Estimativa honesta</h2>
+<p>F0 = hoje (depende do número). F1+F3+F4 = 1-2 dias de código. F2 = o grosso, 2-4 dias (motor + supervisor persistido + handoff). F5 = meio dia. <strong>Total realista: ~1 semana até o funil de venda 100% autopilot PROVADO.</strong></p>
+<h2>Riscos assumidos</h2>
+<ol>
+<li><strong>Baileys (não-oficial) + tráfego pago = risco de ban real.</strong> Mitigação: warm-up (0.3), perfil responder-first (inbound da LP é o mais seguro), e migrar o número de vendas para <strong>WhatsApp Cloud API oficial</strong> quando Utmify/ads entrarem (Evolution v2 suporta Cloud API).</li>
+<li>Volume dia-0 baixo por design (30 vagas, 1/dia) — escala não é problema nesta fase.</li>
+</ol>
+<hr />
+<h2>TRIAGEM — Salvy travou; alternativas para o número HOJE</h2>
+<p><strong>Por que a Salvy pode estar recusando:</strong> cadastro deles exige CNPJ ativo com validação (e-mail corporativo + dados batendo com a Receita); CNPJs muito novos, MEI de categoria divergente ou validação de e-mail pessoal (gmail) costumam barrar. Vale 1 tentativa com: e-mail @nexvy.tech, CNPJ da operadora do SaaS, dados idênticos ao cartão CNPJ. Se barrar de novo, não insista — o número é commodity.</p>
+<p><strong>Alternativas (da mais rápida à mais robusta):</strong>
+1. <strong>Chip físico pré-pago (RECOMENDADA pra hoje):</strong> Vivo/TIM/Claro, ~R$20 + recarga mínima, ativa em qualquer banca/farmácia. Coloca num celular secundário (ou slot eSIM/2º chip do seu), abre WhatsApp Business normal, escaneia o QR da Evolution. Em 1h está no ar. Guardar o chip vivo (recarga a cada ~3 meses) — só é preciso pra re-pareamento.
+2. <strong>eSIM pré-pago da operadora (mesma velocidade, sem loja):</strong> Vivo Easy / TIM / Claro eSIM pelo app — compra digital, QR do eSIM no aparelho secundário, mesmo fluxo.
+3. <strong>WhatsApp Cloud API oficial (a rota da fase de tráfego):</strong> número virtual (Twilio/Zenvia/360dialog/Gupshup) + Meta Business verificado. Mais setup (verificação Meta, templates), mas elimina risco de ban e escala com ads. <strong>Não é pra hoje; é pra quando o Utmify entrar.</strong> O plano já prevê a migração.
+4. <strong>Reusar temporariamente um número existente do grupo</strong> (ex.: um chip Nexvy ocioso) só para o warm-up do funil enquanto o definitivo chega — aceitável por dias, não como identidade permanente da marca.</p>
+<p><strong>Recomendação:</strong> faz o (1) hoje (chip físico), conecta na Evolution, e o funil F0 destrava; a Salvy/Cloud API ficam pra fase de tráfego pago com verificação Meta.</p>
+</body></html>
