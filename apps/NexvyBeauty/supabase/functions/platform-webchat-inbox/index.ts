@@ -27,8 +27,11 @@
 //   * webchat_assignment_events → inexistente na plataforma; auditoria omitida.
 //   * Assinatura do atendente (getAttendantSignature) → recurso de organização
 //     do tenant; sem equivalente na plataforma.
-//   * Roteamento WhatsApp/Instagram (whatsapp-router/instagram-send) → entrega
-//     por canal é fase futura da plataforma; aqui só persiste + broadcast.
+//   * Roteamento de canal: conversas `channel='whatsapp'` (número de VENDAS,
+//     Cloud API oficial) são ENTREGUES via Graph API na action `send` — a
+//     connection ativa vem de platform_crm_whatsapp_meta_connections e o wamid
+//     retornado vai no metadata (statuses do webhook atualizam por ele).
+//     Instagram segue fase futura.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
@@ -36,12 +39,74 @@ import {
   authenticatePlatformAgent,
 } from '../_shared/platform-crm-auth.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
+import { decryptSecret } from '../_shared/meta-crypto.ts';
+import { GRAPH_BASE } from '../_shared/meta-graph.ts';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Entrega uma mensagem outbound no WhatsApp Cloud API (número de VENDAS).
+ * Mono-connection por ora: usa a connection `active` mais recente. Retorna o
+ * wamid para casar com os statuses (sent/delivered/read) do webhook.
+ */
+async function deliverViaWhatsAppCloud(
+  supabase: any,
+  toPhone: string,
+  content: string,
+  media?: { kind: string; url: string } | null,
+): Promise<{ wamid: string | null; error: string | null }> {
+  try {
+    const { data: conn } = await supabase
+      .from('platform_crm_whatsapp_meta_connections')
+      .select('id, phone_number_id, access_token_encrypted')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
+      return { wamid: null, error: 'no_active_connection' };
+    }
+    const token = await decryptSecret(conn.access_token_encrypted as string);
+    const to = String(toPhone ?? '').replace(/\D/g, '');
+    if (!to) return { wamid: null, error: 'no_destination_phone' };
+
+    let payload: Record<string, unknown>;
+    if (media?.url && media?.kind) {
+      const typeMap: Record<string, string> = {
+        image: 'image', audio: 'audio', video: 'video', document: 'document', sticker: 'image',
+      };
+      const waType = typeMap[media.kind] ?? 'document';
+      payload = {
+        messaging_product: 'whatsapp', to, type: waType,
+        [waType]: waType === 'image' || waType === 'video'
+          ? { link: media.url, ...(content ? { caption: content } : {}) }
+          : { link: media.url },
+      };
+    } else {
+      payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body: content } };
+    }
+
+    const res = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.error?.message ?? `graph ${res.status}`;
+      console.error('[platform-webchat-inbox] entrega WhatsApp falhou:', msg);
+      return { wamid: null, error: String(msg).slice(0, 300) };
+    }
+    return { wamid: data?.messages?.[0]?.id ?? null, error: null };
+  } catch (e) {
+    console.error('[platform-webchat-inbox] entrega WhatsApp exception:', e);
+    return { wamid: null, error: String(e).slice(0, 300) };
+  }
 }
 
 /**
@@ -204,7 +269,7 @@ Deno.serve(async (req) => {
 
       const { data: conversation, error: convError } = await supabase
         .from('platform_crm_conversations')
-        .select('id, assigned_to, status, channel')
+        .select('id, assigned_to, status, channel, visitor_phone, visitor_whatsapp')
         .eq('id', body.conversation_id)
         .single();
 
@@ -278,18 +343,47 @@ Deno.serve(async (req) => {
         })
         .eq('id', body.conversation_id);
 
-      // ⚠️ Entrega por canal externo (WhatsApp/Instagram) NÃO acontece aqui —
-      // fase futura da plataforma. O original roteava via whatsapp-router.
+      // Entrega no canal externo: WhatsApp (Cloud API, número de vendas).
+      // A mensagem já está persistida — a entrega atualiza o metadata com o
+      // wamid (sucesso) ou delivery_status='failed' + motivo (ex.: janela 24h).
+      let finalMessage = message;
+      if (conversation.channel === 'whatsapp') {
+        const dest = conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '';
+        const { wamid, error: deliveryError } = await deliverViaWhatsAppCloud(
+          supabase,
+          dest,
+          String(body.content ?? ''),
+          hasMedia ? body.media : null,
+        );
+        const deliveryMeta = wamid
+          ? { ...(message.metadata ?? {}), wamid, delivery_status: 'sent', channel: 'whatsapp_cloud' }
+          : { ...(message.metadata ?? {}), delivery_status: 'failed', delivery_error: deliveryError };
+        const { data: updated } = await supabase
+          .from('platform_crm_messages')
+          .update({ metadata: deliveryMeta })
+          .eq('id', message.id)
+          .select('*')
+          .single();
+        if (updated) finalMessage = updated;
+        if (!wamid) {
+          console.error('[platform-webchat-inbox] WhatsApp NÃO entregue:', deliveryError);
+        }
+      }
 
       // Broadcast message to all listeners on this conversation channel.
       // Inclui `client_temp_id` (se enviado) para o frontend conseguir substituir
       // a bolha otimista pela mensagem real, evitando duplicação visual.
       const broadcastPayload = body.client_temp_id
-        ? { ...message, client_temp_id: body.client_temp_id }
-        : message;
+        ? { ...finalMessage, client_temp_id: body.client_temp_id }
+        : finalMessage;
       await broadcastToConversation(supabase, body.conversation_id, 'new_message', broadcastPayload);
 
-      return json({ message: broadcastPayload });
+      return json({
+        message: broadcastPayload,
+        ...(conversation.channel === 'whatsapp' && (finalMessage.metadata as any)?.delivery_status === 'failed'
+          ? { delivery_warning: (finalMessage.metadata as any)?.delivery_error ?? 'entrega falhou' }
+          : {}),
+      });
     }
 
     // ACTION: Close conversation
