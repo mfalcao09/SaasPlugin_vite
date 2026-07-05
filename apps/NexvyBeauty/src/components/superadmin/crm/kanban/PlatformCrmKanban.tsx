@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Settings2, TrendingUp, Users, Loader2 } from 'lucide-react';
+import { LayoutGrid, Settings2, TrendingUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { toast } from 'sonner';
 import {
@@ -56,8 +58,18 @@ export function PlatformCrmKanban() {
   // Auto-seleciona o 1º produto quando ainda não há escolha (KanbanBoard.tsx:42-44).
   const effectiveProductId = selectedProductId ?? products[0]?.id ?? null;
 
-  const { data: stages, isLoading: stagesLoading } = usePlatformCrmStages(effectiveProductId);
-  const { data: leads, isLoading: leadsLoading } = usePlatformCrmLeads({
+  const {
+    data: stages,
+    isLoading: stagesLoading,
+    isError: stagesError,
+    refetch: refetchStages,
+  } = usePlatformCrmStages(effectiveProductId);
+  const {
+    data: leads,
+    isLoading: leadsLoading,
+    isError: leadsError,
+    refetch: refetchLeads,
+  } = usePlatformCrmLeads({
     search: filters.search.trim() || undefined,
     sellerId: filters.sellerId || undefined,
     minValue: filters.minValue,
@@ -73,6 +85,13 @@ export function PlatformCrmKanban() {
   const { data: sellers = [], map: sellersMap } = usePlatformCrmSellersMap();
 
   const isLoading = stagesLoading || leadsLoading;
+  // Erro dos LEADS = estado por coluna (as etapas já carregaram). Erro das ETAPAS
+  // não tem board pra render — cai no empty de "nenhuma etapa" já existente.
+  const leadsFailed = leadsError && !stagesError;
+  const retryBoard = () => {
+    void refetchStages();
+    void refetchLeads();
+  };
 
   const { columns, leadCountByStage, totalPipelineValue, totalLeads } = useMemo(() => {
     const stageList = [...(stages ?? [])].sort((a, b) => a.order_index - b.order_index);
@@ -109,7 +128,8 @@ export function PlatformCrmKanban() {
       cols.push({
         id: UNASSIGNED_ID,
         name: 'Sem etapa',
-        color: '#6b7280',
+        // null → a coluna aplica o token muted-foreground (sem hex hardcoded).
+        color: null,
         is_won: false,
         is_lost: false,
         leads: unassignedLeads,
@@ -145,17 +165,19 @@ export function PlatformCrmKanban() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-5rem)] gap-4 -mb-6 min-h-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <LayoutGrid className="h-6 w-6" />
+      {/* Header — título text-lg + subtítulo text-sm (escala da rubric §1.4) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-primary" />
             Pipeline de Vendas
           </h1>
-          <p className="text-muted-foreground">Gestão visual de oportunidades da plataforma</p>
+          <p className="text-sm text-muted-foreground">
+            Gestão visual de oportunidades da plataforma
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/*
             Seletor de Produto (pipeline-por-produto — dimensão D3). Espelha
             KanbanBoard.tsx:92-103 da fonte. Com 1 produto vira label estática
@@ -166,46 +188,49 @@ export function PlatformCrmKanban() {
             selectedProductId={effectiveProductId}
             onChange={setSelectedProductId}
           />
-          <Button variant="outline" onClick={() => setStageManagerOpen(true)}>
+          <Button variant="outline" size="sm" className="h-9" onClick={() => setStageManagerOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Gerenciar Etapas
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <TrendingUp className="h-4 w-4" />
-            Valor Total
+      {/* Stats KPI (§F3-lite) — ícone em chip + label uppercase + valor tabular */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          {
+            label: 'Valor Total',
+            value: formatCurrency(totalPipelineValue),
+            icon: TrendingUp,
+            accent: true,
+          },
+          { label: 'Total de Leads', value: String(totalLeads), icon: Users },
+          { label: 'Etapas', value: String(stageCount), icon: LayoutGrid },
+          {
+            label: 'Ticket Médio',
+            value: totalLeads > 0 ? formatCurrency(totalPipelineValue / totalLeads) : 'R$ 0',
+            icon: TrendingUp,
+          },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-card border rounded-lg p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+              <kpi.icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">
+                {kpi.label}
+              </p>
+              <p
+                className={cn(
+                  'text-2xl font-bold tabular-nums leading-tight truncate',
+                  kpi.accent && 'text-primary',
+                )}
+              >
+                {kpi.value}
+              </p>
+            </div>
           </div>
-          <div className="text-2xl font-bold text-primary">
-            {formatCurrency(totalPipelineValue)}
-          </div>
-        </div>
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <Users className="h-4 w-4" />
-            Total de Leads
-          </div>
-          <div className="text-2xl font-bold">{totalLeads}</div>
-        </div>
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            <LayoutGrid className="h-4 w-4" />
-            Etapas
-          </div>
-          <div className="text-2xl font-bold">{stageCount}</div>
-        </div>
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-            Ticket Médio
-          </div>
-          <div className="text-2xl font-bold">
-            {totalLeads > 0 ? formatCurrency(totalPipelineValue / totalLeads) : 'R$ 0'}
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Filters — 6 controles (busca, dataInício, dataFim, valorMín, ordenar, direção, vendedor) */}
@@ -219,34 +244,74 @@ export function PlatformCrmKanban() {
 
       {/* Kanban Board */}
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        // Skeleton anatômico (§3.1): mesmas colunas/cards do board real, sem spinner central.
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="flex gap-3 h-full min-h-[400px]">
+            {Array.from({ length: 4 }).map((_, ci) => (
+              <div
+                key={ci}
+                className="flex flex-col h-full w-[300px] shrink-0 bg-muted/20 rounded-lg border border-border/60 overflow-hidden"
+              >
+                <div className="px-3 py-2.5 border-b border-border/60 bg-muted/40">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 w-2 rounded-full" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="ml-auto h-5 w-6 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-1.5 h-3 w-16" />
+                </div>
+                <div className="p-2.5 space-y-2.5">
+                  {Array.from({ length: 3 }).map((_, li) => (
+                    <div key={li} className="bg-card border rounded-lg p-3 space-y-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-28" />
+                          <Skeleton className="h-2.5 w-20" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-4 w-20" />
+                      <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                        <Skeleton className="h-2.5 w-16" />
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       ) : stageCount === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <LayoutGrid className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nenhuma etapa configurada</h3>
-          <p className="text-muted-foreground mb-4">
+          <LayoutGrid className="h-12 w-12 text-muted-foreground opacity-30 mb-4" />
+          <h3 className="text-sm font-medium mb-2">Nenhuma etapa configurada</h3>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
             Crie etapas para começar a organizar seu pipeline.
           </p>
-          <Button onClick={() => setStageManagerOpen(true)}>
+          <Button size="sm" onClick={() => setStageManagerOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Gerenciar Etapas
           </Button>
         </div>
       ) : (
+        // snap-x no mobile (§3.6): scroll horizontal com encaixe; nunca empilhar colunas.
         <ScrollArea className="flex-1 min-h-0">
-          <div className="flex gap-4 h-full min-h-[400px]">
+          <div className="flex gap-3 h-full min-h-[400px] snap-x snap-mandatory lg:snap-none">
             {columns.map((column) => (
-              <PlatformCrmKanbanColumn
-                key={column.id}
-                column={column}
-                draggedLeadId={draggedLeadId}
-                onDragStartLead={setDraggedLeadId}
-                onDropLead={handleDropOnStage}
-                onViewLead={setSelectedLeadId}
-                sellersMap={sellersMap}
-              />
+              <div key={column.id} className="snap-start shrink-0 h-full">
+                <PlatformCrmKanbanColumn
+                  column={column}
+                  draggedLeadId={draggedLeadId}
+                  onDragStartLead={setDraggedLeadId}
+                  onDropLead={handleDropOnStage}
+                  onViewLead={setSelectedLeadId}
+                  sellersMap={sellersMap}
+                  isError={leadsFailed}
+                  onRetry={retryBoard}
+                />
+              </div>
             ))}
           </div>
           <ScrollBar orientation="horizontal" />

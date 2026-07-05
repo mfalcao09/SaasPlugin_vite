@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -94,6 +94,20 @@ export function PlatformCrmLeadsManager() {
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
   const [leadsToDelete, setLeadsToDelete] = useState<string[]>([]);
 
+  // Atalho Ctrl+K / Cmd+K → foca a busca de leads (paridade com o exemplar Inbox).
+  // Consome o `data-leads-search` posto no <Input> de PlatformCrmLeadsFilters.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>('[data-leads-search]');
+        searchInput?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleViewLead = (leadId: string) => {
     setSelectedLeadId(leadId);
     setLeadDetailOpen(true);
@@ -124,6 +138,23 @@ export function PlatformCrmLeadsManager() {
     await createLead.mutateAsync(values);
     setCreateDialogOpen(false);
   };
+
+  // Filtros ativos: muda a copy do empty state (F5 §3.1 — "ajuste filtros" vs "crie o primeiro").
+  const hasActiveFilters =
+    Boolean(filters.search) ||
+    filters.temperature.length > 0 ||
+    filters.origin.length > 0 ||
+    filters.channel.length > 0 ||
+    Boolean(filters.stageId) ||
+    Boolean(filters.squadId) ||
+    Boolean(filters.productId) ||
+    Boolean(filters.dateFrom || filters.dateTo || filters.datePreset) ||
+    filters.tagIds.length > 0 ||
+    filters.excludeTagIds.length > 0 ||
+    filters.excludeOrigin.length > 0 ||
+    filters.excludeChannel.length > 0 ||
+    filters.customFieldRules.length > 0 ||
+    activeTab !== 'all';
 
   const handleBulkTransfer = async (data: {
     assignedTo: string | null;
@@ -258,39 +289,47 @@ export function PlatformCrmLeadsManager() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-            <Target className="h-7 w-7 text-primary" />
-            Gestão de Leads
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Pipeline único da plataforma. Gerencie todos os leads do CRM.
-          </p>
+    <div className="space-y-4">
+      {/* Header de página — escala §1.4 (título text-lg + subtítulo) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+            <Target className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold text-foreground leading-tight">Gestão de Leads</h1>
+            <p className="text-sm text-muted-foreground">
+              Pipeline único da plataforma — todos os leads do CRM.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
+            className="h-9"
             onClick={() => handleExport(false)}
             disabled={exporting}
           >
             {exporting ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
             ) : (
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="h-4 w-4 mr-1.5" />
             )}
             Exportar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="h-4 w-4 mr-1.5" />
             Importar
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
+          <Button size="sm" className="h-9" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" />
             Novo Lead
           </Button>
         </div>
@@ -341,33 +380,38 @@ export function PlatformCrmLeadsManager() {
         sort={sort}
         onSort={updateSort}
         isLoading={isLoading}
+        onCreateLead={() => setCreateDialogOpen(true)}
+        hasActiveFilters={hasActiveFilters}
       />
 
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {(page - 1) * 20 + 1}-{Math.min(page * 20, total)} de {total} leads
+      {/* Rodapé — contagem "N de M" SEMPRE visível (§F5) + paginação quando > 1 página */}
+      {!isLoading && total > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-[11px] text-muted-foreground tabular-nums">
+            {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} de {total} lead
+            {total > 1 ? 's' : ''}
           </p>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                />
-              </PaginationItem>
-              {renderPaginationItems()}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setPage(Math.min(totalPages, page + 1))}
-                  className={
-                    page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+                {renderPaginationItems()}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    className={
+                      page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       )}
 

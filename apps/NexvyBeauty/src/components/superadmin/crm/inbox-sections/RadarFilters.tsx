@@ -42,10 +42,13 @@ const STATUSES = [
   { id: 'bot_active', label: 'Com IA' },
 ];
 
+// Cores de TEMPERATURA (§1.3) — literais de SIGNIFICADO permitidas.
+// Frio = sky-500 (NÃO blue), morno = amber-500, quente = red-500. Usadas só como
+// preenchimento do pill selecionado (padrão de seleção Vendus), fora do DOM de marca.
 const TEMPERATURES = [
-  { id: 'hot', label: 'Quente', color: '#ef4444' },
-  { id: 'warm', label: 'Morno', color: '#f59e0b' },
-  { id: 'cold', label: 'Frio', color: '#3b82f6' },
+  { id: 'hot', label: 'Quente', color: '#ef4444' }, // red-500
+  { id: 'warm', label: 'Morno', color: '#f59e0b' }, // amber-500
+  { id: 'cold', label: 'Frio', color: '#0ea5e9' }, // sky-500
 ];
 
 export function RadarFilters({ value, onChange }: Props) {

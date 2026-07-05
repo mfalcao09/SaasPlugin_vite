@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   usePlatformCrmFollowupStats,
@@ -63,18 +64,57 @@ export function PlatformCrmInboxFollowup({
   const leads = usePlatformCrmFollowupActiveLeads(filters);
   const agentsQ = usePlatformCrmAgentConfigs();
 
+  const queryClient = useQueryClient();
+
+  // ── Estado de ERRO da fila (§3.1 — nunca silenciar; Seção 5 do CLAUDE.md) ──
+  // Os wrappers `usePlatformCrmFollowup*` retornam só `{ data, isLoading }` e
+  // DESCARTAM o `isError` da query base — logo, sem isto, uma falha real cai no
+  // estado vazio ("Nenhum follow-up na fila") e o bloco de erro com retry da
+  // tabela vira código morto.
+  //
+  // FRONTEIRA: o hook mora em `crm/data/` (compartilhado, PROIBIDO tocar neste
+  // braço). Em vez de alterá-lo, apenas OBSERVAMOS (read-only) o estado da mesma
+  // entrada de cache da query base via subscribe no QueryCache — sem criar uma
+  // Query nem tocar a queryFn (evita corrida de options entre observadores). A
+  // queryKey base é `['platform-crm','followup','base', agentId|null]` (ver
+  // useFollowupBase). Caminho definitivo: expor `isError` no próprio wrapper
+  // (mudança aditiva de 1 linha), fora do escopo deste braço — reportado.
+  const baseKey = useMemo(
+    () => ['platform-crm', 'followup', 'base', filters.agentId ?? null] as const,
+    [filters.agentId],
+  );
+  const [isFollowupError, setIsFollowupError] = useState(false);
+  useEffect(() => {
+    const cache = queryClient.getQueryCache();
+    const read = () =>
+      setIsFollowupError(queryClient.getQueryState(baseKey)?.status === 'error');
+    read(); // estado inicial
+    const unsubscribe = cache.subscribe(read);
+    return unsubscribe;
+  }, [queryClient, baseKey]);
+
+  // Retry manual (§3.1): invalida a família de queries do follow-up — seguro e
+  // idempotente (dispara refetch de todas as views da seção).
+  const onRetry = () => {
+    queryClient.invalidateQueries({ queryKey: ['platform-crm', 'followup'] });
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Follow-ups</h1>
+          {/* Título de página na escala canônica §1.4 (text-lg) — alinhado às
+              seções irmãs calibradas (Painel/Radar). */}
+          <h1 className="text-lg font-semibold tracking-tight">Follow-ups</h1>
           <p className="text-sm text-muted-foreground">
             Acompanhe o desempenho dos follow-ups automáticos em tempo real.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[160px] h-9" aria-label="Selecionar período">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Hoje</SelectItem>
               <SelectItem value="7d">Últimos 7 dias</SelectItem>
@@ -82,7 +122,9 @@ export function PlatformCrmInboxFollowup({
             </SelectContent>
           </Select>
           <Select value={agentId} onValueChange={setAgentId}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Todos os agentes" /></SelectTrigger>
+            <SelectTrigger className="w-[200px] h-9" aria-label="Filtrar por agente">
+              <SelectValue placeholder="Todos os agentes" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os agentes</SelectItem>
               {(agentsQ.data ?? []).map((a) => (
@@ -106,6 +148,8 @@ export function PlatformCrmInboxFollowup({
           <FollowupActiveLeadsTable
             rows={leads.data ?? []}
             loading={leads.isLoading}
+            isError={isFollowupError}
+            onRetry={onRetry}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
           />

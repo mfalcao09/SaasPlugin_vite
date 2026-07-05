@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, History, CalendarClock, Play, Loader2 } from 'lucide-react';
+import { Sparkles, History, CalendarClock, Play, Loader2, SlidersHorizontal, Rocket } from 'lucide-react';
 import { RadarFilters } from './RadarFilters';
 import { RadarActionsConfig } from './RadarActionsConfig';
 import { RadarDashboard } from './RadarDashboard';
@@ -89,26 +89,28 @@ export function PlatformCrmInboxRadar({
 
   return (
     <div className="space-y-4">
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Radar IA
-              </CardTitle>
-              <CardDescription>
-                Analisa conversas em aberto e identifica oportunidades quentes que precisam de
-                atenção
-              </CardDescription>
-            </div>
-            <Badge variant="secondary" className="gap-1">
-              <Sparkles className="h-3 w-3" />
-              Powered by AI
-            </Badge>
+      {/* Header de página (receita F3): título text-lg + subtítulo + badge IA
+          na cor semântica §1.3 (emerald = IA). Sem gradient hero (era ruído). */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-5 w-5" />
           </div>
-        </CardHeader>
-      </Card>
+          <div>
+            <h2 className="text-lg font-semibold leading-tight">Radar IA</h2>
+            <p className="text-sm text-muted-foreground">
+              Analisa conversas em aberto e identifica oportunidades quentes que precisam de atenção
+            </p>
+          </div>
+        </div>
+        <Badge
+          variant="outline"
+          className="gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+        >
+          <Sparkles className="h-3 w-3" />
+          Powered by AI
+        </Badge>
+      </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
@@ -163,10 +165,57 @@ export function PlatformCrmInboxRadar({
                   onBackToLatest={() => setActiveScanId(null)}
                 />
               ) : (
+                /* Empty-state dia-0 HONESTO (§3.1 + guia do braço): diz que ainda
+                   não há análise E o que fazer para ter dados. Padrão do
+                   PlatformCrmEmptyInboxState (círculo h-20 + cards bg-muted/50). */
                 <Card>
-                  <CardContent className="py-16 text-center text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>Configure os filtros e rode sua primeira análise</p>
+                  <CardContent className="py-12 flex items-center justify-center">
+                    <div className="text-center max-w-md space-y-6">
+                      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                        <Sparkles className="h-10 w-10 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg mb-1">Nenhuma análise ainda</h3>
+                        <p className="text-sm text-muted-foreground">
+                          O Radar IA lê suas conversas em aberto e classifica cada lead por
+                          temperatura. Rode a primeira análise para ver os resultados aqui.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 text-left">
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <SlidersHorizontal className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">1. Ajuste os filtros</p>
+                            <p className="text-xs text-muted-foreground">
+                              Ao lado: período de inatividade, temperatura, canal, etiquetas e
+                              atendentes que o radar deve considerar.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <Rocket className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">2. Rode o Radar</p>
+                            <p className="text-xs text-muted-foreground">
+                              Clique em <span className="font-medium">Rodar Radar agora</span>. O
+                              motor de análise está em construção — enquanto isso, a tela avisa
+                              quando estiver disponível.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          <CalendarClock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">3. Automatize (opcional)</p>
+                            <p className="text-xs text-muted-foreground">
+                              Na aba <span className="font-medium">Agendamentos</span>, deixe o
+                              radar rodar sozinho em horários fixos.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

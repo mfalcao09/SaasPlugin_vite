@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Trophy, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Trophy, XCircle, MousePointerClick, AlertCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PlatformCrmKanbanLeadCard } from './PlatformCrmKanbanLeadCard';
@@ -32,15 +31,16 @@ interface PlatformCrmKanbanColumnProps {
   onViewLead?: (leadId: string) => void;
   /** Mapa id -> vendedor (rep de venda da plataforma) para o rodapé do card. */
   sellersMap?: Record<string, PlatformCrmSeller>;
+  /** Erro no carregamento dos leads — exibe estado de erro por coluna (§3.1). */
+  isError?: boolean;
+  /** Retry do carregamento (refetch do board). */
+  onRetry?: () => void;
 }
 
-function formatCurrency(value: number) {
-  if (value >= 1000000) {
-    return `R$ ${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `R$ ${(value / 1000).toFixed(0)}k`;
-  }
+// Soma da coluna: BRL compacto (R$ 12k / R$ 1,2M) — cabe no header estreito.
+function formatCompactBRL(value: number) {
+  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')}M`;
+  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}k`;
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -56,8 +56,11 @@ export function PlatformCrmKanbanColumn({
   onDropLead,
   onViewLead,
   sellersMap,
+  isError,
+  onRetry,
 }: PlatformCrmKanbanColumnProps) {
-  const stageColor = column.color || '#6b7280';
+  // Cor de estágio no banco (dado). Fallback = token muted (nunca hex de marca).
+  const stageColor = column.color || 'hsl(var(--muted-foreground))';
   const [isOver, setIsOver] = useState(false);
   const isUnassigned = column.id === 'unassigned';
 
@@ -80,47 +83,66 @@ export function PlatformCrmKanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col h-full w-[300px] shrink-0 bg-muted/30 rounded-xl overflow-hidden transition-colors',
-        isOver && 'ring-2 ring-primary/60 bg-primary/5',
+        'flex flex-col h-full w-[300px] shrink-0 bg-muted/20 rounded-lg border border-border/60 overflow-hidden transition-colors',
+        isOver && 'ring-2 ring-primary/40 border-primary/40',
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header */}
-      <div
-        className="p-4 text-white"
-        style={{ background: `linear-gradient(135deg, ${stageColor}, ${stageColor}cc)` }}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            {column.is_won && <Trophy className="h-4 w-4" />}
-            {column.is_lost && <XCircle className="h-4 w-4" />}
-            <h3 className="font-semibold text-sm uppercase tracking-wide">{column.name}</h3>
-          </div>
-          <Badge
-            variant="secondary"
-            className="bg-white/20 text-white hover:bg-white/30 text-xs"
+      {/* Header sticky — dot da cor do banco + nome + contagem + soma R$ (F2 §2) */}
+      <div className="sticky top-0 z-10 px-3 py-2.5 border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Cor de estágio no banco (dado) — único literal permitido no header. */}
+          <span
+            className="h-2 w-2 rounded-full shrink-0"
+            style={{ backgroundColor: stageColor }}
+            aria-hidden
+          />
+          {column.is_won && <Trophy className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+          {column.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+          <h3
+            className="text-[11px] font-semibold uppercase tracking-wide truncate text-foreground/80"
+            title={column.name}
           >
+            {column.name}
+          </h3>
+          <span className="ml-auto shrink-0 inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-full bg-muted text-muted-foreground text-[11px] font-semibold tabular-nums">
             {column.leadCount}
-          </Badge>
+          </span>
         </div>
-
-        <div className="text-xl font-bold">{formatCurrency(column.totalValue)}</div>
+        {column.totalValue > 0 && (
+          <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+            {formatCompactBRL(column.totalValue)}
+          </p>
+        )}
       </div>
 
       {/* Cards */}
-      <ScrollArea className="flex-1 p-3">
-        <div className="space-y-3">
-          {column.leads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div
-                className="w-12 h-12 rounded-full mb-3 flex items-center justify-center opacity-30"
-                style={{ backgroundColor: stageColor }}
-              >
-                <span className="text-white text-lg">0</span>
-              </div>
-              <p className="text-sm text-muted-foreground">Nenhum lead</p>
+      <ScrollArea className="flex-1">
+        <div className="p-2.5 space-y-2.5">
+          {isError ? (
+            // Estado de erro por coluna (§3.1) — banner com retry, nunca silenciar.
+            <div className="flex flex-col items-center justify-center gap-2 py-8 px-3 text-center">
+              <AlertCircle className="h-8 w-8 text-destructive/60" />
+              <p className="text-xs text-muted-foreground">Falha ao carregar os leads.</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Tentar novamente
+                </button>
+              )}
+            </div>
+          ) : column.leads.length === 0 ? (
+            // Vazio (§2 F2) — mini empty com dica de ação.
+            <div className="flex flex-col items-center justify-center gap-2 py-8 px-3 text-center">
+              <MousePointerClick className="h-8 w-8 text-muted-foreground opacity-30" />
+              <p className="text-xs text-muted-foreground">
+                {isUnassigned ? 'Nenhum lead sem etapa' : 'Arraste um lead para cá'}
+              </p>
             </div>
           ) : (
             column.leads.map((lead) => (

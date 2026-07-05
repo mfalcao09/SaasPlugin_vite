@@ -47,10 +47,12 @@ interface PlatformCrmLeadsFiltersProps {
   stages: PlatformCrmStage[];
 }
 
+// Cores de temperatura — vocabulário canônico §1.3, alinhado à tabela + KPIs desta tela:
+// quente=red · morno=orange · frio=sky (NÃO amber/blue).
 const temperatures = [
   { value: 'hot', label: 'Quente', color: 'bg-red-500' },
-  { value: 'warm', label: 'Morno', color: 'bg-amber-500' },
-  { value: 'cold', label: 'Frio', color: 'bg-blue-500' },
+  { value: 'warm', label: 'Morno', color: 'bg-orange-500' },
+  { value: 'cold', label: 'Frio', color: 'bg-sky-500' },
 ];
 
 const datePresets: { value: Exclude<DatePreset, null>; label: string }[] = [
@@ -353,20 +355,22 @@ export function PlatformCrmLeadsFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          {/* data-leads-search: alvo de foco por atalho (padrão Ctrl+K do exemplar) */}
           <Input
+            data-leads-search
             placeholder="Buscar por nome, email, telefone..."
             value={filters.search}
             onChange={(e) => onFilterChange('search', e.target.value)}
-            className="pl-9"
+            className="h-9 pl-8 bg-muted/40 border-0"
           />
         </div>
 
         <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="h-9 gap-2 shrink-0">
               <SlidersHorizontal className="h-4 w-4" />
               Filtros
               {activeFiltersCount > 0 && (

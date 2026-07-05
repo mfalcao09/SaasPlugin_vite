@@ -21,14 +21,23 @@ interface Props {
   icon?: ReactNode;
   items: PlatformPanelConversation[];
   onCardClick: (id: string) => void;
-  accent?: 'primary' | 'amber' | 'emerald' | 'violet';
+  /**
+   * Contexto semântico da coluna. `warning` = atenção/staleness (§1.3), via
+   * TOKEN canônico — espelha o `PanelSection` irmão. `amber` é alias legado do
+   * mesmo significado (retrocompat); ambos resolvem para `bg-warning/…`.
+   */
+  accent?: 'primary' | 'warning' | 'amber' | 'emerald' | 'violet';
 }
 
+// §1.2/§1.3: só tokens semânticos — sem override `dark:` por tela nem hex de
+// marca. `warning`/`amber` codificam SIGNIFICADO (fila em espera/atenção), não a
+// marca, e usam a classe canônica `bg-warning/… text-warning` (não `amber-*`).
 const accentBg: Record<NonNullable<Props['accent']>, string> = {
   primary: 'bg-primary/10 text-primary',
-  amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  emerald: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
-  violet: 'bg-violet-500/15 text-violet-700 dark:text-violet-400',
+  warning: 'bg-warning/15 text-warning',
+  amber: 'bg-warning/15 text-warning',
+  emerald: 'bg-emerald-500/15 text-emerald-600',
+  violet: 'bg-violet-500/15 text-violet-600',
 };
 
 export function PanelColumn({

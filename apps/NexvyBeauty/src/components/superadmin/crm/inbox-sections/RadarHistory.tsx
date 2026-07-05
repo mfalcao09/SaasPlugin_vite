@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformCrmOpportunityScans } from '../data/usePlatformCrmRadar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Eye, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Eye, Clock, CheckCircle2, XCircle, History } from 'lucide-react';
 
 /**
  * Histórico de análises do Radar IA.
@@ -16,20 +17,39 @@ export function RadarHistory({ onSelect }: { onSelect: (id: string) => void }) {
   const { data: scans, isLoading } = usePlatformCrmOpportunityScans();
 
   if (isLoading) {
+    // Skeleton anatômico das linhas do histórico (§3.1) — sem spinner central.
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+        <CardHeader>
+          <CardTitle className="text-base">Histórico de análises</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="border rounded-lg p-3 flex items-center gap-3">
+              <Skeleton className="h-4 w-4 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+              <Skeleton className="h-8 w-16 rounded-md shrink-0" />
+            </div>
+          ))}
         </CardContent>
       </Card>
     );
   }
 
   if (!scans?.length) {
+    // Empty HONESTO (§3.1): ícone + o que fazer para ter histórico.
     return (
       <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Nenhuma análise realizada ainda
+        <CardContent className="py-12 text-center">
+          <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p className="text-sm font-medium">Nenhuma análise realizada ainda</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Rode o Radar na aba <span className="font-medium">Rodar Análise</span> — cada execução
+            aparece aqui para você revisitar depois.
+          </p>
         </CardContent>
       </Card>
     );

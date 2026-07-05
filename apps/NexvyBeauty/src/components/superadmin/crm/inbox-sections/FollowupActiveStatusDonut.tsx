@@ -2,15 +2,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 /**
- * Donut "Status das réguas ativas" do painel de Follow-ups do CRM de
- * PLATAFORMA. PORTE 1:1 de `admin/followup/FollowupActiveStatusDonut.tsx`.
+ * Donut "Status das réguas ativas" da seção Follow-Up (família F3). Restyle de
+ * FORMA sobre o porte 1:1 do CRM Vendus: contrato intacto; cores das fatias
+ * agora por TOKEN semântico (§1.3/§1.2 — proibido hsl() de marca hardcoded).
+ * As fatias codificam SIGNIFICADO de status: aguardando=success (verde),
+ * aguardando-resposta=primary (azul institucional), pausa=warning (âmbar),
+ * outros=muted-foreground.
  */
 
 interface Props {
   data?: { waiting_next: number; waiting_reply: number; paused: number; others: number };
 }
 
-const COLORS = ['hsl(142 71% 45%)', 'hsl(217 91% 60%)', 'hsl(38 92% 50%)', 'hsl(220 9% 70%)'];
+// Sempre via token — o hue troca sozinho com o tema (azul no gestao, rosa no app).
+const COLORS = [
+  'hsl(var(--success))',
+  'hsl(var(--primary))',
+  'hsl(var(--warning))',
+  'hsl(var(--muted-foreground))',
+];
 
 export function FollowupActiveStatusDonut({ data }: Props) {
   const slices = [
@@ -37,7 +47,7 @@ export function FollowupActiveStatusDonut({ data }: Props) {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className="text-2xl font-semibold">{total}</div>
+              <div className="text-2xl font-bold tabular-nums">{total}</div>
               <div className="text-[10px] text-muted-foreground">Leads</div>
             </div>
           </div>

@@ -248,6 +248,10 @@ export function usePlatformCrmAttendancePanel(filters: PlatformPanelFilters) {
     sections,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
+    // §3.1: erro NUNCA silenciado — exposto p/ banner com retry na UI. Aditivo,
+    // retrocompatível (nenhum consumidor existente lê estes campos).
+    isError: query.isError,
+    error: query.error as Error | null,
     refetch: () => {
       query.refetch();
     },

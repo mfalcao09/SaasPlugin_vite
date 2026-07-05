@@ -4,8 +4,12 @@ import { Users, Clock, Send, MessageCircle, Percent, Flag } from 'lucide-react';
 import type { PlatformFollowupPanelStats } from '../data/usePlatformCrmFollowup';
 
 /**
- * KPIs do painel de Follow-ups.
- * PORTE 1:1 de `admin/followup/FollowupKpiCards.tsx` do CRM Vendus.
+ * KPIs da seção Follow-Up (família F3 do TEMPLATE-UI-GESTAO). Restyle de FORMA
+ * sobre o porte 1:1 do CRM Vendus: contrato (`PlatformFollowupPanelStats`)
+ * intacto; ícone padronizado em `bg-primary/10 text-primary` (§F3 — sem cores
+ * decorativas fora dos tokens/§1.3), valor `text-2xl font-bold tabular-nums`,
+ * label `text-[11px] uppercase`. Cor de SIGNIFICADO (§1.3) só na "Taxa de
+ * Recuperação", que é um KPI de sucesso semântico (verde).
  */
 
 interface Props {
@@ -21,45 +25,46 @@ export function FollowupKpiCards({ stats, loading }: Props) {
   const items = [
     {
       icon: Users,
-      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
       title: 'Leads em Follow-up',
       value: k?.leads_in_followup ?? 0,
       sub: 'Em réguas ativas',
+      accent: false,
     },
     {
       icon: Clock,
-      color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
       title: 'Aguardando Próxima Tentativa',
       value: k?.waiting_next ?? 0,
       sub: 'Leads',
+      accent: false,
     },
     {
       icon: Send,
-      color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
       title: 'Follow-ups Enviados Hoje',
       value: k?.sent_today ?? 0,
       sub: 'Total de envios',
+      accent: false,
     },
     {
       icon: MessageCircle,
-      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
       title: 'Respostas Recuperadas',
       value: k?.recovered ?? 0,
       sub: 'Após follow-up',
+      accent: false,
     },
     {
+      // Sucesso semântico (§1.3): destaque verde no ícone e no valor.
       icon: Percent,
-      color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
       title: 'Taxa de Recuperação',
       value: recoveryRate,
       sub: 'Respostas / Enviados',
+      accent: true,
     },
     {
       icon: Flag,
-      color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
       title: 'Réguas Encerradas',
       value: k?.rulers_closed ?? 0,
       sub: 'Esgotaram tentativas',
+      accent: false,
     },
   ];
 
@@ -71,17 +76,27 @@ export function FollowupKpiCards({ stats, loading }: Props) {
           <Card key={it.title}>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-start gap-3">
-                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${it.color}`}>
+                <div
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    it.accent
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-primary/10 text-primary'
+                  }`}
+                >
                   <Icon className="h-4 w-4" />
                 </div>
-                <div className="text-xs font-medium text-muted-foreground leading-snug">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-snug">
                   {it.title}
                 </div>
               </div>
-              <div className="text-3xl font-semibold tracking-tight">
+              <div
+                className={`text-2xl font-bold tracking-tight tabular-nums ${
+                  it.accent ? 'text-emerald-600' : ''
+                }`}
+              >
                 {loading ? <Skeleton className="h-8 w-16" /> : it.value}
               </div>
-              <div className="text-xs text-muted-foreground">{it.sub}</div>
+              <div className="text-[11px] text-muted-foreground">{it.sub}</div>
             </CardContent>
           </Card>
         );

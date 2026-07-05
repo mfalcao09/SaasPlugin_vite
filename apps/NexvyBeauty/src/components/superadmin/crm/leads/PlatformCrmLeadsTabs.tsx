@@ -1,6 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Users, User, UserX, UsersRound, Package } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { PlatformCrmLeadsTabId } from '../data/usePlatformCrmLeadsManager';
 
 /**
@@ -34,27 +34,32 @@ export function PlatformCrmLeadsTabs({ activeTab, onTabChange, stats }: Platform
       onValueChange={(v) => onTabChange(v as PlatformCrmLeadsTabId)}
       className="w-full"
     >
-      <TabsList className="w-full h-auto flex-wrap justify-start bg-muted/50 p-1 gap-1">
+      <TabsList className="w-full h-auto flex-wrap justify-start bg-muted/40 rounded-lg p-1 gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const showBadge = tab.id === 'unassigned' && stats?.unassigned;
+          // Contador SEMPRE visível na aba "Sem Atendimento" (§3.4): 0 em muted, >0 em danger.
+          const unassignedCount = tab.id === 'unassigned' ? stats?.unassigned ?? 0 : null;
 
           return (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
-              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{tab.label}</span>
-              {showBadge && (
-                <Badge
-                  variant="destructive"
-                  className="h-5 min-w-5 p-0 flex items-center justify-center text-xs"
+              {unassignedCount !== null ? (
+                <span
+                  className={cn(
+                    'h-4 min-w-4 px-1 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums',
+                    unassignedCount > 0
+                      ? 'bg-red-500 text-white'
+                      : 'bg-muted text-muted-foreground',
+                  )}
                 >
-                  {stats.unassigned}
-                </Badge>
-              )}
+                  {unassignedCount}
+                </span>
+              ) : null}
             </TabsTrigger>
           );
         })}

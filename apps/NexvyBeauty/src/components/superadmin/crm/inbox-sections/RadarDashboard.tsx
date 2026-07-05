@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   usePlatformCrmOpportunityScan,
   usePlatformCrmScanItems,
@@ -31,11 +32,14 @@ import {
   CloudSun,
   FileText,
   ArrowLeft,
+  AlertTriangle,
+  RotateCw,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { RadarLeadActions } from './RadarLeadActions';
 import { RadarLeadDetailSheet } from './RadarLeadDetailSheet';
+import { resolveVisitorIdentity } from '../inbox/platformCrmIdentity';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -46,12 +50,33 @@ import { ptBR } from 'date-fns/locale';
  * Dados via hooks stub do platform (TODO(edge) — motor de scan LLM).
  */
 
+/**
+ * Cores de TEMPERATURA — SÓ para os fills do recharts (SVG), onde o token
+ * semântico não resolve. No DOM usar as classes canônicas de significado (§1.3):
+ * `TEMP_CLASSES` (badge/box tintado) e `TEMP_ICON` (cor do ícone).
+ */
 const COLORS = {
   hot: '#ef4444',
   warm: '#f97316',
-  cold: '#3b82f6',
+  cold: '#0ea5e9', // sky-500 (§1.3 — frio é sky, NÃO blue)
   lost: '#71717a',
 };
+
+// Classes canônicas de temperatura (§1.3) — box tintado + borda + texto.
+const TEMP_CLASSES = {
+  hot: 'bg-red-500/10 text-red-600 border-red-500/30',
+  warm: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
+  cold: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
+  lost: 'bg-muted text-muted-foreground border-border',
+} as const;
+
+// Cor do ícone/dot por temperatura (§1.3).
+const TEMP_ICON = {
+  hot: 'text-red-600',
+  warm: 'text-orange-600',
+  cold: 'text-sky-600',
+  lost: 'text-muted-foreground',
+} as const;
 
 const ICONS = {
   hot: Flame,
@@ -78,8 +103,17 @@ export function RadarDashboard({
   isHistorical?: boolean;
   onBackToLatest?: () => void;
 }) {
-  const { data: scan } = usePlatformCrmOpportunityScan(scanId);
-  const { data: items } = usePlatformCrmScanItems(scanId);
+  const {
+    data: scan,
+    isLoading: scanLoading,
+    isError: scanError,
+    refetch: refetchScan,
+  } = usePlatformCrmOpportunityScan(scanId);
+  const {
+    data: items,
+    isError: itemsError,
+    refetch: refetchItems,
+  } = usePlatformCrmScanItems(scanId);
   const [filter, setFilter] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [detailItem, setDetailItem] = useState<PlatformScanItem | null>(null);
@@ -115,13 +149,82 @@ export function RadarDashboard({
     }));
   }, [items]);
 
-  if (!scan) {
+  // Erro-com-retry (§3.1): banner acionável, nunca silenciar. Cobre tanto a
+  // falha do scan quanto a dos items (ambos alimentam esta tela).
+  if (scanError || itemsError) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+      <Card className="border-destructive/30 bg-destructive/5">
+        <CardContent className="py-8 flex flex-col items-center text-center gap-3">
+          <AlertTriangle className="h-10 w-10 text-destructive opacity-80" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Não foi possível carregar a análise</p>
+            <p className="text-xs text-muted-foreground">
+              Verifique sua conexão e tente novamente.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => {
+              if (scanError) refetchScan();
+              if (itemsError) refetchItems();
+            }}
+          >
+            <RotateCw className="h-3.5 w-3.5" /> Tentar novamente
+          </Button>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (scanLoading || !scan) {
+    // Skeleton ANATÔMICO (§3.1): mesma altura/estrutura do conteúdo real
+    // (KPIs + 2 charts + lista) para evitar layout-shift — nunca spinner central.
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-9 w-9 rounded-lg" />
+                  <Skeleton className="h-7 w-8" />
+                </div>
+                <Skeleton className="h-3 w-10" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          <Card className="md:col-span-1">
+            <CardContent className="p-4">
+              <Skeleton className="h-[200px] w-full rounded-lg" />
+            </CardContent>
+          </Card>
+          <Card className="md:col-span-2">
+            <CardContent className="p-4">
+              <Skeleton className="h-[200px] w-full rounded-lg" />
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <div className="space-y-1.5 flex-1">
+                    <Skeleton className="h-3.5 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -172,7 +275,9 @@ export function RadarDashboard({
         </Card>
       )}
 
-      {/* KPIs */}
+      {/* KPIs (receita F3): ícone em badge h-9 w-9 rounded-lg tintado com a cor
+          da TEMPERATURA (dado semântico §1.3), label uppercase, valor tabular-nums.
+          Card clicável = filtro da lista → aria-pressed/label p/ a11y (§3.7). */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(['hot', 'warm', 'cold', 'lost'] as const).map((k) => {
           const Icon = ICONS[k];
@@ -181,15 +286,33 @@ export function RadarDashboard({
           return (
             <Card
               key={k}
-              className={`cursor-pointer transition-all ${isActive ? 'ring-2 ring-primary' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isActive}
+              aria-label={`Filtrar leads ${LABELS[k]} (${count})`}
+              className={`cursor-pointer transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isActive ? 'ring-2 ring-primary' : 'hover:border-primary/40'
+              }`}
               onClick={() => setFilter(isActive ? null : k)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilter(isActive ? null : k);
+                }
+              }}
             >
-              <CardContent className="pt-4 pb-3">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <Icon className="h-5 w-5" style={{ color: COLORS[k] }} />
-                  <span className="text-2xl font-bold">{count}</span>
+                  <div
+                    className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border ${TEMP_CLASSES[k]}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-2xl font-bold tabular-nums">{count}</span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">{LABELS[k]}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                  {LABELS[k]}
+                </div>
               </CardContent>
             </Card>
           );
@@ -215,7 +338,15 @@ export function RadarDashboard({
                     <Cell key={entry.key} fill={COLORS[entry.key as keyof typeof COLORS]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.08)',
+                  }}
+                />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
@@ -231,9 +362,18 @@ export function RadarDashboard({
               <BarChart data={scoreDistribution}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="range" fontSize={11} />
-                <YAxis fontSize={11} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <YAxis fontSize={11} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ fill: 'hsl(var(--muted) / 0.4)' }}
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.08)',
+                  }}
+                />
+                <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -245,14 +385,15 @@ export function RadarDashboard({
           <div className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Receita potencial:</span>
-            <span className="font-bold text-lg">
-              R${' '}
-              {Number(scan.potential_revenue || 0).toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-              })}
+            <span className="font-bold text-lg tabular-nums">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                Number(scan.potential_revenue || 0),
+              )}
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">{scan.total_analyzed} análises</div>
+          <div className="text-xs text-muted-foreground tabular-nums">
+            {scan.total_analyzed} análises
+          </div>
         </CardContent>
       </Card>
 
@@ -280,6 +421,14 @@ export function RadarDashboard({
           )}
           {filteredItems.map((item) => {
             const Icon = ICONS[item.classification];
+            // Identidade §3.3: nome inútil ("~"/1-2 chars) → telefone formatado
+            // vira primário; e-mail entra como fallback quando não há telefone.
+            const identity = resolveVisitorIdentity(
+              item.lead_snapshot?.name,
+              item.lead_snapshot?.phone,
+            );
+            const secondary =
+              identity.secondary || (identity.usefulName ? null : item.lead_snapshot?.email) || null;
             return (
               <div
                 key={item.id}
@@ -287,27 +436,21 @@ export function RadarDashboard({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Icon
-                      className="h-4 w-4 shrink-0"
-                      style={{ color: COLORS[item.classification] }}
-                    />
+                    <Icon className={`h-4 w-4 shrink-0 ${TEMP_ICON[item.classification]}`} />
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {item.lead_snapshot?.name || 'Sem nome'}
+                      <div className="font-medium text-sm truncate" title={identity.primary}>
+                        {identity.primary}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {item.lead_snapshot?.phone || item.lead_snapshot?.email || '—'}
+                      <div
+                        className="text-[11px] text-muted-foreground truncate"
+                        title={secondary || undefined}
+                      >
+                        {secondary || '—'}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      variant="outline"
-                      style={{
-                        borderColor: COLORS[item.classification],
-                        color: COLORS[item.classification],
-                      }}
-                    >
+                    <Badge variant="outline" className={TEMP_CLASSES[item.classification]}>
                       Score {item.score}
                     </Badge>
                     {item.action_applied && (
@@ -344,6 +487,7 @@ export function RadarDashboard({
                       size="sm"
                       variant="ghost"
                       className="h-7 shrink-0"
+                      aria-label="Copiar mensagem de follow-up"
                       onClick={() => copyMessage(item.id, item.followup_message!)}
                     >
                       {copiedId === item.id ? (

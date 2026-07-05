@@ -2,9 +2,12 @@ import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Toggle } from '@/components/ui/toggle';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import {
   Search,
   Filter,
@@ -13,7 +16,8 @@ import {
   Inbox as InboxIcon,
   Hash,
   RefreshCw,
-  Wifi,
+  Activity,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   usePlatformCrmAttendancePanel,
@@ -50,12 +54,58 @@ interface Props {
 
 export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
   const { filters, setFilters } = usePlatformCrmPanelFiltersState();
-  const { sections, isLoading, isFetching, refetch } = usePlatformCrmAttendancePanel(filters);
+  const { sections, isLoading, isFetching, isError, error, refetch } =
+    usePlatformCrmAttendancePanel(filters);
   const { data: sectors = [] } = usePlatformCrmSectors();
 
   const handleOpenConversation = (id: string) => {
     onOpenConversation?.(id);
   };
+
+  // FORMA F3 (§2): faixa de KPIs derivada de `sections.totals` (dado que o hook
+  // já entrega — SEM tocar contrato). Cada card mapeia para o accent semântico
+  // da seção correspondente (§1.3). "Total ativos" = soma das 3 frentes.
+  const totalActive = sections.totals.queue + sections.totals.ai + sections.totals.humans;
+  const kpis = [
+    {
+      key: 'queue',
+      label: 'Na fila',
+      value: sections.totals.queue,
+      hint: 'Aguardando atendimento humano',
+      icon: InboxIcon,
+      iconClass: 'bg-warning/10 text-warning',
+    },
+    {
+      key: 'ai',
+      label: 'Com IA',
+      value: sections.totals.ai,
+      hint: 'Atendidas por agentes de IA',
+      icon: Bot,
+      iconClass: 'bg-primary/10 text-primary',
+    },
+    {
+      key: 'humans',
+      label: 'Com humanos',
+      value: sections.totals.humans,
+      hint: 'Em atendimento humano ativo',
+      icon: Users,
+      iconClass: 'bg-emerald-500/10 text-emerald-600',
+    },
+    {
+      key: 'total',
+      label: 'Total ativas',
+      value: totalActive,
+      hint: 'Conversas abertas no momento',
+      icon: Activity,
+      iconClass: 'bg-muted text-muted-foreground',
+    },
+  ] as const;
+
+  // §3.3/§3.8: horário legível da última sincronização (tempo real).
+  const updatedAt = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date());
 
   const sectorOptions = useMemo(
     () => [
@@ -72,19 +122,118 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header de página F3 (§2): título + subtítulo com dot pulsante de tempo
+          real + timestamp; ação (refresh) à direita, acessível. */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-lg font-bold">Painel de Atendimentos</h2>
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Wifi className="h-3 w-3 text-emerald-500" />
-            Atualização em tempo real
+        <div className="space-y-0.5">
+          <h2 className="text-lg font-semibold">Painel de Atendimentos</h2>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            {/* §3.4: dot pulsante de atividade viva (tempo real). */}
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Tempo real
+            <span className="text-[11px] tabular-nums text-muted-foreground/70">
+              · atualizado às {updatedAt}
+            </span>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch} disabled={isFetching}>
-          <RefreshCw className={isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refetch}
+              disabled={isFetching}
+              aria-label="Atualizar painel"
+              className="h-9 w-9 p-0"
+            >
+              <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Atualizar agora</TooltipContent>
+        </Tooltip>
       </div>
+
+      {/* Erro (§3.1): banner com retry — NUNCA silenciar. Aparece no topo do
+          conteúdo preservando os filtros; token `destructive` (§1.1), sem hex. */}
+      {isError && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-sm font-medium">Não foi possível carregar o painel</p>
+            <p className="text-xs text-destructive/80">
+              {error?.message?.trim()
+                ? error.message
+                : 'Falha ao buscar os atendimentos. Verifique a conexão e tente novamente.'}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={isFetching}
+            className="h-8 shrink-0 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
+      {/* Faixa de KPIs F3 (§2): grid responsivo; valor grande tabular, label
+          micro, ícone tokenizado. Skeleton anatômico espelha esta anatomia. */}
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                  <div className="h-7 w-10 animate-pulse rounded bg-muted" />
+                </div>
+                <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {kpis.map((kpi) => {
+            const Icon = kpi.icon;
+            return (
+              <Card key={kpi.key} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {kpi.label}
+                    </p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums leading-none">
+                      {kpi.value}
+                    </p>
+                    <p className="mt-1.5 truncate text-[11px] text-muted-foreground" title={kpi.hint}>
+                      {kpi.hint}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                      kpi.iconClass,
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-muted/40 border border-border">
@@ -165,13 +314,15 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
 
         <div className="flex-1" />
 
-        {/* Status toggles */}
+        {/* Status toggles — §1.2/§1.3: estados via TOKEN semântico, sem `dark:`
+            por tela. warning=fila em espera, primary=IA ativa, emerald=humano. */}
         <div className="flex items-center gap-1 bg-background rounded-md border border-border p-0.5">
           <Toggle
             size="sm"
             pressed={filters.showQueue}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showQueue: v }))}
-            className="data-[state=on]:bg-amber-500/15 data-[state=on]:text-amber-700 dark:data-[state=on]:text-amber-400 h-7 text-xs gap-1"
+            aria-label="Mostrar conversas na fila"
+            className="data-[state=on]:bg-warning/15 data-[state=on]:text-warning h-7 text-xs gap-1"
           >
             <InboxIcon className="h-3.5 w-3.5" /> Fila
           </Toggle>
@@ -179,7 +330,8 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
             size="sm"
             pressed={filters.showAI}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showAI: v }))}
-            className="data-[state=on]:bg-violet-500/15 data-[state=on]:text-violet-700 dark:data-[state=on]:text-violet-400 h-7 text-xs gap-1"
+            aria-label="Mostrar conversas com IA"
+            className="data-[state=on]:bg-primary/15 data-[state=on]:text-primary h-7 text-xs gap-1"
           >
             <Bot className="h-3.5 w-3.5" /> IA
           </Toggle>
@@ -187,7 +339,8 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
             size="sm"
             pressed={filters.showHumans}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showHumans: v }))}
-            className="data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-700 dark:data-[state=on]:text-emerald-400 h-7 text-xs gap-1"
+            aria-label="Mostrar conversas com atendentes humanos"
+            className="data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-600 h-7 text-xs gap-1"
           >
             <Users className="h-3.5 w-3.5" /> Humanos
           </Toggle>
@@ -205,28 +358,73 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
         )}
       </div>
 
-      {/* Loading state */}
+      {/* Carregando (§3.1): skeleton ANATÔMICO — espelha seções + colunas do
+          conteúdo real, não um bloco genérico. */}
       {isLoading && (
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 rounded-xl bg-muted/40 animate-pulse" />
+        <div className="space-y-6" aria-hidden="true">
+          {[0, 1].map((s) => (
+            <section key={s} className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <span className="h-2 w-2 rounded-full bg-muted" />
+                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="flex gap-3">
+                {[0, 1, 2].map((c) => (
+                  <div
+                    key={c}
+                    className="h-64 w-72 shrink-0 animate-pulse rounded-xl border border-border bg-muted/40"
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
 
-      {!isLoading && (
+      {/* Vazio de tela (§3.1): nenhuma conversa ativa e nenhum toggle desligado
+          escondendo dado — empty acionável, não em branco. */}
+      {!isLoading &&
+        !isError &&
+        totalActive === 0 &&
+        filters.showQueue &&
+        filters.showAI &&
+        filters.showHumans && (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 py-16 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+              <Activity className="h-9 w-9 text-primary opacity-70" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Nenhum atendimento ativo agora</p>
+              <p className="text-xs text-muted-foreground">
+                Assim que uma conversa entrar na fila, for atendida pela IA ou por um
+                atendente, ela aparece aqui em tempo real.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refetch}
+              disabled={isFetching}
+              className="mt-1 gap-1.5"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
+              Atualizar
+            </Button>
+          </div>
+        )}
+
+      {!isLoading && totalActive > 0 && (
         <div className="space-y-6">
           {filters.showQueue && (
             <PanelSection
               title="Fila"
               icon={<InboxIcon className="h-4 w-4" />}
               count={sections.totals.queue}
-              accent="amber"
+              accent="warning"
             >
               {sections.queueBySector.length === 0 ? (
-                <div className="w-full text-center text-sm text-muted-foreground py-8">
-                  🎉 Fila vazia
-                </div>
+                <SectionEmpty icon={InboxIcon} label="Fila vazia" />
               ) : (
                 sections.queueBySector.map((g) => (
                   <PanelColumn
@@ -237,7 +435,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
                     icon={<Hash className="h-4 w-4" />}
                     items={g.items}
                     onCardClick={handleOpenConversation}
-                    accent="amber"
+                    accent="warning"
                   />
                 ))
               )}
@@ -249,12 +447,10 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
               title="Agentes IA"
               icon={<Bot className="h-4 w-4" />}
               count={sections.totals.ai}
-              accent="violet"
+              accent="primary"
             >
               {sections.aiByAgent.length === 0 ? (
-                <div className="w-full text-center text-sm text-muted-foreground py-8">
-                  Nenhum agente atendendo no momento
-                </div>
+                <SectionEmpty icon={Bot} label="Nenhum agente atendendo no momento" />
               ) : (
                 sections.aiByAgent.map((g) => (
                   <PanelColumn
@@ -267,7 +463,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
                     icon={<Bot className="h-4 w-4" />}
                     items={g.items}
                     onCardClick={handleOpenConversation}
-                    accent="violet"
+                    accent="primary"
                   />
                 ))
               )}
@@ -279,12 +475,10 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
               title="Atendentes Humanos"
               icon={<Users className="h-4 w-4" />}
               count={sections.totals.humans}
-              accent="emerald"
+              accent="success"
             >
               {sections.humansByUser.length === 0 ? (
-                <div className="w-full text-center text-sm text-muted-foreground py-8">
-                  Nenhum atendente humano ativo
-                </div>
+                <SectionEmpty icon={Users} label="Nenhum atendente humano ativo" />
               ) : (
                 sections.humansByUser.map((g) => (
                   <PanelColumn
@@ -304,6 +498,22 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Empty de seção (§3.1): ícone esmaecido + dica, no lugar de emoji cru. */
+function SectionEmpty({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof InboxIcon;
+  label: string;
+}) {
+  return (
+    <div className="flex w-full flex-col items-center justify-center gap-2 py-8 text-center">
+      <Icon className="h-8 w-8 text-muted-foreground opacity-30" />
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }

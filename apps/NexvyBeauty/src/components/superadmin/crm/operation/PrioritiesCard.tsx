@@ -1,78 +1,132 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, Flame, Calendar, CheckSquare, Send, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MessageCircle, Flame, Calendar, CheckSquare, Send, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { OperationPriorities } from '@/components/superadmin/crm/data/usePlatformCrmOperationCenter';
 
 interface Props {
   data?: OperationPriorities;
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onNavigate: (section: string) => void;
 }
 
-export function PrioritiesCard({ data, onNavigate }: Props) {
-  const items = [
+interface PriorityItem {
+  icon: LucideIcon;
+  count: number;
+  label: string;
+  section: string;
+}
+
+export function PrioritiesCard({ data, isLoading, isError, onRetry, onNavigate }: Props) {
+  // Estado de erro (§3.1): banner com retry — NUNCA silenciar mostrando
+  // "Tudo em ordem" sem dados (senão o card mente que não há pendências).
+  if (isError) {
+    return (
+      <Card className="border-border h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Prioridades Agora</CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 px-4 flex flex-col items-center text-center gap-2">
+          <AlertCircle className="h-8 w-8 text-destructive/70" />
+          <p className="text-sm text-muted-foreground">Não foi possível carregar as prioridades.</p>
+          {onRetry && (
+            <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs">
+              Tentar novamente
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Skeleton anatômico (§3.1): 5 linhas com ícone + texto, como o conteúdo real.
+  if (isLoading) {
+    return (
+      <Card className="border-border h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Prioridades Agora</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 p-2.5">
+              <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
+              <Skeleton className="h-4 flex-1" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const items: PriorityItem[] = [
     {
       icon: MessageCircle,
-      iconBg: 'bg-red-50 text-red-500',
       count: data?.unansweredConversations ?? 0,
       label: 'conversas sem resposta',
-      onClick: () => onNavigate('inbox-chat'),
+      section: 'inbox-chat',
     },
     {
       icon: Flame,
-      iconBg: 'bg-orange-50 text-orange-500',
       count: data?.hotLeadsUnassigned ?? 0,
       label: 'leads quentes sem responsável',
-      onClick: () => onNavigate('leads'),
+      section: 'leads',
     },
     {
       icon: Calendar,
-      iconBg: 'bg-blue-50 text-blue-500',
       count: data?.meetingsStartingSoon ?? 0,
       label: 'reuniões começam em 1 hora',
-      onClick: () => onNavigate('calendar'),
+      section: 'calendar',
     },
     {
       icon: CheckSquare,
-      iconBg: 'bg-violet-50 text-violet-500',
       count: data?.overdueTasks ?? 0,
       label: 'tarefas atrasadas',
-      onClick: () => onNavigate('leads'),
+      section: 'leads',
     },
     {
       icon: Send,
-      iconBg: 'bg-emerald-50 text-emerald-600',
       count: data?.scheduledMessagesToday ?? 0,
       label: 'mensagens agendadas para hoje',
-      onClick: () => onNavigate('inbox-chat'),
+      section: 'inbox-chat',
     },
   ];
 
-  const allZero = items.every((i) => i.count === 0);
+  // Só as prioridades com contagem > 0 são acionáveis; as zeradas somem para
+  // manter o foco (as pendências que importam). Tudo zerado → empty positivo.
+  const active = items.filter((i) => i.count > 0);
 
   return (
     <Card className="border-border h-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Prioridades Agora</CardTitle>
+        <CardTitle className="text-sm font-semibold">Prioridades Agora</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
-        {allZero ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            Tudo em ordem. Nenhuma ação urgente.
+        {active.length === 0 ? (
+          <div className="py-10 flex flex-col items-center text-center gap-2">
+            <CheckCircle2 className="h-8 w-8 text-emerald-500/70" />
+            <p className="text-sm font-medium text-foreground">Tudo em ordem</p>
+            <p className="text-xs text-muted-foreground">Nenhuma ação urgente agora.</p>
           </div>
         ) : (
-          items.map((item) => {
+          active.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.label}
-                onClick={item.onClick}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                onClick={() => onNavigate(item.section)}
+                aria-label={`${item.count} ${item.label}`}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
+                  {/* Ícone via token de marca (F3): bg-primary/10 text-primary */}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </div>
                   <span className="text-sm text-foreground truncate">
-                    <span className="font-semibold">{item.count}</span> {item.label}
+                    <span className="font-semibold tabular-nums">{item.count}</span> {item.label}
                   </span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
