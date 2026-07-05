@@ -24,8 +24,10 @@ Número de vendas **+55 11 95502-1205** (WABA NEXVY_VENDAS `976904392005535`, ap
 - ✅ **Webhook repontado** do projeto antigo (`ifdnjieklngcfodmtied/whatsapp-webhook-nexvy`) → NexvyBeauty (`platform-meta-whatsapp-webhook/1f7ca6e3`), **verificado pelo Meta** (GET challenge) + campo `messages` assinado. Decisão do Marcelo: número é EXCLUSIVO do canal de vendas do NexvyBeauty (falar com salões) → repontar era o correto.
 - ✅ **System User** `nexvysystemadmin` com a WABA NEXVY_VENDAS atribuída (acesso total) + token permanente (nunca expira, escopos whatsapp_business_management/messaging/business_management).
 - ✅ **Conexão `1f7ca6e3` ACTIVE**: app_secret (HMAC) + access_token cifrados, validados no Graph. `subscribed_apps` = NEXVY app (200/success).
-- ✅ Segredos transferidos browser→edge→DB (nunca pelo chat); EF descartável removida.
-- ⏳ **F5.1 E2E**: aguardando 1ª mensagem real no número → provar lead no CRM.
+- ✅ Segredos transferidos browser→edge→DB (nunca pelo chat); EFs descartáveis removidas.
+- ✅ **Entrega determinística por API**: `override_callback_uri` na WABA (`POST /{waba}/subscribed_apps`) → Meta entrega direto na nossa função, sem depender da UI. App subscription confirmada via app token: `callback_url`=nossa função, `active:true`, campo `messages` assinado.
+- 🐛 **Bug achado e corrigido (raiz do "não chega"):** a tela Configurações Básicas do Meta tem 2 campos mascarados; o App Secret certo é `js_d7` (não `js_bi`). O errado passava no shape (32-hex) mas o Meta rejeitava (`Error validating client secret`) → HMAC 401 silencioso. Fix: captura do campo certo + **validação contra o Meta (client_credentials) ANTES de salvar**.
+- ✅ **F1.1 + F5.1 E2E PROVADO (2026-07-05 17:06Z):** msg real "Oi, quero saber do piloto" de +5518996267790 → **lead + conversa (`bot_active`) + mensagem no pipeline**, wamid real do Meta. Meta → webhook → HMAC OK → CRM. Instrumentação de debug removida; webhook limpo redeployado.
 
 ### F0 — Número de vendas ✅ PIVOTADO p/ Cloud API OFICIAL (2026-07-05 — Salvy comprada)
 > Marcelo comprou linha Salvy → número de vendas vai na **WhatsApp Cloud API oficial** (não Baileys). Consequências: 0.2 (QR) e 0.3 (warm-up anti-ban) **caem** — API oficial não tem ban de automação nem precisa de aquecimento; risco assumido nº 1 deixa de existir para o funil de venda. Infra descoberta: porte Vendus (`platform-meta-whatsapp-*`, 6 EFs + wizard no gestao.* → CRM Plataforma → Conexões) já cobria connect/send/templates; faltava o RECEPTOR.
