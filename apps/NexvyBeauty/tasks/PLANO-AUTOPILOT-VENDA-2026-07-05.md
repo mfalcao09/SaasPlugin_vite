@@ -44,6 +44,11 @@ Número de vendas **+55 11 95502-1205** (WABA NEXVY_VENDAS `976904392005535`, ap
 | 1.2 ✅ | Vendas vs tenant: resolvido POR CONSTRUÇÃO — vendas = Cloud API (webhook próprio, tabelas `platform_crm_*`); tenants = Evolution (webhook próprio, tabelas de org). Canais fisicamente separados | msg pro nº de vendas não passa pelo caminho de tenant |
 | 1.3 ✅ | **Bug de prod achado e corrigido pelo smoke:** `get_or_create_meta_master_key()` estourava 42883 (`gen_random_bytes` fora do search_path — pgcrypto vive em `extensions`) → o wizard quebraria no PRIMEIRO submit de credenciais. Fix: `extensions.gen_random_bytes` (migration `20260705_fix_meta_master_key_pgcrypto.sql`) | RPC retorna chave (len 44) em prod |
 
+### F2 — ✅ ENTREGUE E PROVADO E2E (2026-07-05 18:25Z, ondas 1+2 paralelas)
+> **Prova real:** Duda (agente rico, SDR) respondeu SOZINHA no WhatsApp do Marcelo: "Eu sou a Duda, SDR Qualificadora… te explicar tudo sobre o **Piloto Fundadora**… você trabalha como autônoma ou tem salão/equipe? E há quanto tempo atende?" — vocabulário do playbook ✓, qualificação ≥8 meses ✓, entrega Cloud API (wamid) ✓.
+> Peças: `platform-sales-brain` (persona rica + playbook de `platform_crm_products` + `slots_left` real + `[HANDOFF_HUMANO]`→waiting_human + dedupe 5s) · gatilho fire-and-forget no webhook (só `bot_active`; humano assumiu = IA cala) · **ABERTO PARA TODOS** (decisão Marcelo 05/07) · copiloto com mesmo knowledge · hub editável (PlaybookTab/ObjectionsTab) · outbound humano na action send · supervisor twins persistidos (specialists/routing_rules) — UI do supervisor + especialistas múltiplos = D6b restante.
+> Commits: ae73873 (webhook F1) · 12d51cb · cac095c · 555badc (F2+onda2). Deploy: 9 EFs + DEPLOY-VERDE `index-CZBRjXGg.js` + 3 origens 200.
+
 ### F2 — Cérebro que responde (agentes ricos no runtime) — CÓDIGO (o maior)
 | # | Item | Check |
 |---|---|---|
