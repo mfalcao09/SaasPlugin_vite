@@ -79,6 +79,11 @@ Número de vendas **+55 11 95502-1205** (WABA NEXVY_VENDAS `976904392005535`, ap
 | 5.2 | Edge cases: desconto / pedir humano / raiva / fora de escopo | respostas nas regras; handoff humano dispara |
 | 5.3 | Monitoramento: cada venda e cada falha chegam no seu Telegram | 2 notificações de teste recebidas |
 
+
+
+### ONDA 4/4b — VISUAL P1 NO AR (2026-07-05, gate GAN ≥85)
+> 6 telas do gestao.* restyled pelo TEMPLATE-UI-GESTAO + revisão adversarial Fable (rubric 0-100): Pipeline (kanban), **Leads 88**, **Painel 86**, **Radar IA 92**, **Follow-Up 90**, **Dashboard/Central 88**. Estados vazio/skeleton/erro-com-retry em todas; identidade nome→telefone; tokens azuis institucionais (zero verde-lima/dark); fim do 'tudo em ordem' falso em erro; Ctrl+K nos leads; Supervisor CRUD; heartbeat de presença. Handoff Duda→Bia (fix crítico do SELECT role). Deploy: commit aeadcec, DEPLOY-VERDE index-BC0Rhvwp.js, 3 origens 200.
+
 ### FILA — ONDA 5 "Duda 95/100 + Bia Master-Closer" (especificada 2026-07-05; dispara quando a onda 4 drenar — teto 10-12 tarefas paralelas, ≤6 braços/onda)
 > Diretivas Marcelo: (a) SDR ≥95/100, "é o seu melhor?"; (b) transição Duda→Bia = UPGRADE ("seu negócio é tão bom que merece uma atendente especial"); (c) Bia vende VALOR a cliente crítico — onde o PMF se materializa; qualquer erro perde lead qualificado.
 
