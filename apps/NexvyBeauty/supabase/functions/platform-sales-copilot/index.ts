@@ -4,9 +4,11 @@
 //   * Entrada: `conversation_id` — o histórico é lido de `platform_crm_messages`
 //     (visitor → role user; agent/bot → role assistant). Também aceita `messages[]`
 //     direto (contrato do original), útil para follow-ups do vendedor.
-//   * Contexto de produto: FIXO — a plataforma vende o SaaS NexvyBeauty (planos
-//     Essencial / Premium / Ultra). Substitui o fetch de products/objections/
-//     knowledge base do tenant (adaptação única permitida no prompt).
+//   * Contexto de produto: DINÂMICO — lê `product_id` da conversa e monta o
+//     bloco de conhecimento de `platform_crm_products` (playbook: oferta,
+//     preços, garantia, objeções, pitches) + escassez real da view
+//     `founder_campaign_status`. Sem product_id (webchat antigo) cai no
+//     fallback fixo PLATFORM_KNOWLEDGE_CONTEXT — nada quebra.
 //   * LLM: gateway OpenRouter via env `AI_API_KEY` (+ `AI_GATEWAY_URL` opcional,
 //     default https://openrouter.ai/api/v1). Modelo: google/gemini-2.5-flash
 //     (mesmo default do original; override via env AI_SALES_COPILOT_MODEL).
@@ -32,7 +34,9 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** Contexto de conhecimento da PLATAFORMA (substitui produto/objeções do tenant). */
+/** FALLBACK de conhecimento da plataforma — usado apenas quando a conversa não
+ *  tem product_id ou o produto não existe mais (webchat sem produto continua
+ *  funcionando). O caminho principal monta o bloco de `platform_crm_products`. */
 const PLATFORM_KNOWLEDGE_CONTEXT = `
 ## PRODUTO: NexvyBeauty
 Descrição: Plataforma SaaS de gestão para salões de beleza e clínicas de estética — agenda inteligente, CRM de atendimento com WhatsApp, campanhas/automações de marketing e agentes de IA para atendimento e vendas.
@@ -74,13 +78,14 @@ Deno.serve(async (req) => {
     });
 
     let visitorName: string | null = null;
+    let productId: string | null = null;
 
     // Modo plataforma: monta o histórico a partir de platform_crm_messages.
     if (messages.length === 0 && conversationId) {
       const [convRes, msgsRes] = await Promise.all([
         supabase
           .from('platform_crm_conversations')
-          .select('id, visitor_name, lead_id')
+          .select('id, visitor_name, lead_id, product_id')
           .eq('id', conversationId)
           .maybeSingle(),
         supabase
@@ -96,6 +101,7 @@ Deno.serve(async (req) => {
       }
 
       visitorName = convRes.data.visitor_name ?? null;
+      productId = (convRes.data.product_id as string | null) ?? null;
       if (!visitorName && convRes.data.lead_id) {
         const { data: lead } = await supabase
           .from('platform_crm_leads')
@@ -127,13 +133,89 @@ Deno.serve(async (req) => {
       return json({ error: 'Nenhuma mensagem enviada ao copiloto.' }, 400);
     }
 
+    // ── Conhecimento dinâmico do playbook (mesmo padrão do sales-copilot do
+    // tenant: seções tituladas, texto puro). Ordem deliberada: OFERTA/
+    // knowledge_base primeiro (contém o vocabulário obrigatório — "piloto" ≠
+    // "teste gratuito"), depois preços, garantia, desconto, objeções, pitches,
+    // ICP, diferenciais. Qualquer falha aqui degrada para o fallback fixo. ──
+    let knowledgeContext = PLATFORM_KNOWLEDGE_CONTEXT;
+    let productName = 'NexvyBeauty';
+
+    if (productId) {
+      const [productRes, campaignRes] = await Promise.all([
+        supabase
+          .from('platform_crm_products')
+          .select(
+            'name, description, pitch_15s, pitch_30s, pitch_2min, icp, objections, benefits, differentials, guarantee, discount_policy, plans, pricing, knowledge_base, custom_info',
+          )
+          .eq('id', productId)
+          .maybeSingle(),
+        // View de 1 linha derivada de organizations (30 − fundadoras ativas):
+        // escassez VERDADEIRA lida do banco em tempo real, nunca inventada.
+        supabase
+          .from('founder_campaign_status')
+          .select('total_vagas, fundadoras_ativas, slots_left, campanha_encerrada')
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      const product = productRes.data as Record<string, any> | null;
+      if (!product) {
+        console.warn(
+          '[platform-sales-copilot] product_id sem produto correspondente — usando fallback fixo:',
+          productId,
+        );
+      } else {
+        productName = product.name || productName;
+
+        let ctx = `\n## PRODUTO: ${product.name}\n`;
+        if (product.description) ctx += `Descrição: ${product.description}\n`;
+
+        if (product.knowledge_base) {
+          ctx += `\n## OFERTA E BASE DE CONHECIMENTO\n${product.knowledge_base}\n`;
+        }
+
+        // Escassez da campanha fundadora: só entra se a view respondeu (erro
+        // na view não pode derrubar a sugestão — non-fatal por construção).
+        const campaign = campaignRes.data as Record<string, any> | null;
+        if (campaign) {
+          ctx += campaign.campanha_encerrada
+            ? `\nCAMPANHA FUNDADORA AGORA: campanha encerrada — as ${campaign.total_vagas} vagas de fundadora foram preenchidas. NÃO ofertar condições de fundadora.\n`
+            : `\nCAMPANHA FUNDADORA AGORA: restam ${campaign.slots_left} de ${campaign.total_vagas} vagas de fundadora (dado real do banco, neste momento).\n`;
+        }
+
+        if (product.plans || product.pricing) {
+          ctx += `\n## PLANOS E PREÇOS\n`;
+          if (product.plans) ctx += `${product.plans}\n`;
+          if (product.pricing) ctx += `Tabela vigente (JSON): ${JSON.stringify(product.pricing)}\n`;
+        }
+        if (product.guarantee) ctx += `\n## GARANTIA\n${product.guarantee}\n`;
+        if (product.discount_policy) ctx += `\n## POLÍTICA DE DESCONTO\n${product.discount_policy}\n`;
+        if (product.objections) ctx += `\n## OBJEÇÕES E RESPOSTAS\n${product.objections}\n`;
+        if (product.pitch_15s || product.pitch_30s || product.pitch_2min) {
+          ctx += `\n## PITCHES\n`;
+          if (product.pitch_15s) ctx += `Pitch 15s: ${product.pitch_15s}\n`;
+          if (product.pitch_30s) ctx += `Pitch 30s: ${product.pitch_30s}\n`;
+          if (product.pitch_2min) ctx += `Pitch 2min:\n${product.pitch_2min}\n`;
+        }
+        if (product.icp) ctx += `\n## ICP (CLIENTE IDEAL)\n${product.icp}\n`;
+        if (Array.isArray(product.differentials) && product.differentials.length) {
+          ctx += `\n## DIFERENCIAIS\n${product.differentials.map((d: string) => `- ${d}`).join('\n')}\n`;
+        }
+        if (product.benefits) ctx += `\n## BENEFÍCIOS\n${product.benefits}\n`;
+        if (product.custom_info) ctx += `\n## INFORMAÇÕES ADICIONAIS\n${product.custom_info}\n`;
+
+        knowledgeContext = ctx;
+      }
+    }
+
     // System prompt — VERBATIM do original; só o bloco de conhecimento adaptado.
     const systemPrompt = `Você é o COPILOTO DE VENDAS — estrategista que ajuda vendedores a responder clientes.
 
-PRODUTO: NexvyBeauty
+PRODUTO: ${productName}
 ${visitorName ? `CLIENTE: ${visitorName}` : ''}
 
-${PLATFORM_KNOWLEDGE_CONTEXT}
+${knowledgeContext}
 
 ═══════════════════════════════════════
 COMO USAR A BASE DE CONHECIMENTO

@@ -154,10 +154,30 @@ Deno.serve(async (req) => {
 
     console.log(`[platform-booking-submit] booking created: ${booking.id}`);
 
-    // 6. Notificações (confirmação por e-mail/WhatsApp ao convidado + aviso
-    //    interno ao vendedor) e sync de calendário externo:
-    // TODO(edge): platform-booking-dispatcher
-    //   — a submissão nunca depende do envio (fire-and-forget, igual aos motores).
+    // 6. Notificações (confirmação por WhatsApp ao convidado + aviso interno ao
+    //    vendedor): delegadas ao platform-booking-dispatcher. Fire-and-forget e
+    //    NON-FATAL — a submissão NUNCA depende do envio (igual aos demais motores).
+    //    server-to-server com SERVICE_ROLE (o dispatcher não é público); em
+    //    EdgeRuntime.waitUntil pra não bloquear a resposta ao cliente.
+    try {
+      const dispatch = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/platform-booking-dispatcher`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({ booking_id: booking.id }),
+      }).catch((e) => {
+        console.error('[platform-booking-submit] dispatch falhou (non-fatal):', e);
+      });
+      // @ts-ignore — EdgeRuntime existe no runtime das Supabase Edge Functions
+      if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any).waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(dispatch);
+      }
+    } catch (e) {
+      console.error('[platform-booking-submit] dispatch setup falhou (non-fatal):', e);
+    }
 
     return json({
       success: true,

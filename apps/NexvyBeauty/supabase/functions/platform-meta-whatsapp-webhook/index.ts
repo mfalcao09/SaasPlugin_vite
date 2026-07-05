@@ -80,11 +80,33 @@ function extractContent(msg: Json): { content: string; contentType: string } {
   }
 }
 
+/** Produto padrão do canal de vendas. O número de WhatsApp de vendas é
+ *  mono-produto por ora (vende só o NexvyBeauty, slug fixo); o destino certo
+ *  é uma coluna default_product_id em platform_crm_whatsapp_meta_connections.
+ *  Non-fatal: sem produto cadastrado, conversa/lead seguem sem product_id. */
+async function resolveDefaultProductId(
+  supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('platform_crm_products')
+      .select('id')
+      .eq('slug', 'nexvybeauty')
+      .limit(1)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  } catch (e) {
+    console.warn('[platform-meta-whatsapp-webhook] resolveDefaultProductId (non-fatal):', e);
+    return null;
+  }
+}
+
 /** Lead por telefone (dedupe) ou cria — espelho do auto-create do webchat. */
 async function ensureLead(
   supabase: ReturnType<typeof createClient>,
   fromDigits: string,
   profileName: string | null,
+  productId: string | null,
 ): Promise<string | null> {
   try {
     const phonePlus = `+${fromDigits}`;
@@ -103,6 +125,8 @@ async function ensureLead(
         phone: phonePlus,
         source: 'whatsapp',
         lead_channel: 'whatsapp',
+        // Só no INSERT: lead existente nunca tem product_id sobrescrito.
+        ...(productId ? { product_id: productId } : {}),
       })
       .select('id')
       .single();
@@ -123,6 +147,7 @@ async function ensureConversation(
   supabase: ReturnType<typeof createClient>,
   fromDigits: string,
   profileName: string | null,
+  productId: string | null,
 ): Promise<Json | null> {
   const visitorId = `wa:${fromDigits}`;
   const { data: rows } = await supabase
@@ -160,6 +185,8 @@ async function ensureConversation(
         channel: 'whatsapp',
         status: 'bot_active',
         needs_human: false,
+        // Só no INSERT: conversa existente nunca tem product_id sobrescrito.
+        ...(productId ? { product_id: productId } : {}),
       })
       .select()
       .single();
@@ -171,7 +198,7 @@ async function ensureConversation(
   }
 
   if (!conversation['lead_id']) {
-    const leadId = await ensureLead(supabase, fromDigits, profileName);
+    const leadId = await ensureLead(supabase, fromDigits, profileName, productId);
     if (leadId) {
       await supabase
         .from('platform_crm_conversations')
@@ -185,16 +212,19 @@ async function ensureConversation(
   return conversation;
 }
 
-/** Uma mensagem inbound: dedupe por wamid → conversa/lead → insert → broadcast. */
+/** Uma mensagem inbound: dedupe por wamid → conversa/lead → insert → broadcast.
+ *  Retorna o id da conversa quando a mensagem foi persistida E a conversa está
+ *  bot_active — é o sinal para o gatilho do cérebro de vendas (F2). */
 async function processInboundMessage(
   supabase: ReturnType<typeof createClient>,
   connectionId: string,
   value: Json,
   msg: Json,
-): Promise<void> {
+  defaultProductId: string | null,
+): Promise<string | null> {
   const wamid = String(msg['id'] ?? '');
   const fromDigits = String(msg['from'] ?? '').replace(/\D/g, '');
-  if (!wamid || !fromDigits) return;
+  if (!wamid || !fromDigits) return null;
 
   const { data: dupe } = await supabase
     .from('platform_crm_messages')
@@ -202,7 +232,7 @@ async function processInboundMessage(
     .eq('metadata->>wamid', wamid)
     .limit(1)
     .maybeSingle();
-  if (dupe) return;
+  if (dupe) return null;
 
   const contacts = (value['contacts'] as Json[] | undefined) ?? [];
   const profileName =
@@ -210,8 +240,8 @@ async function processInboundMessage(
       ? String((contacts[0]?.['profile'] as Json | undefined)?.['name'] ?? '') || null
       : null;
 
-  const conversation = await ensureConversation(supabase, fromDigits, profileName);
-  if (!conversation) return;
+  const conversation = await ensureConversation(supabase, fromDigits, profileName, defaultProductId);
+  if (!conversation) return null;
 
   const { content, contentType } = extractContent(msg);
   const metadata = (value['metadata'] as Json | undefined) ?? {};
@@ -241,7 +271,7 @@ async function processInboundMessage(
     if (!String(error.code).includes('23505')) {
       console.error('[platform-meta-whatsapp-webhook] insert message failed:', error);
     }
-    return;
+    return null;
   }
 
   await supabase
@@ -253,6 +283,9 @@ async function processInboundMessage(
     .eq('id', conversation['id']);
 
   await broadcastPlatformNewMessage(supabase, String(conversation['id']), inserted as Json);
+
+  // Só conversa em atendimento da IA aciona o cérebro (humano assumiu = IA cala).
+  return conversation['status'] === 'bot_active' ? String(conversation['id']) : null;
 }
 
 /** Statuses (sent/delivered/read/failed) → metadata da mensagem outbound. */
@@ -344,6 +377,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     let sawMessage = false;
+    // Conversas bot_active que receberam inbound nesta entrega → gatilho do cérebro.
+    const convsForBrain = new Set<string>();
+    // Resolvido no máximo 1x por invocação (memo), e só se houver mensagem.
+    let defaultProductId: string | null | undefined;
     const entries = (payload['entry'] as Json[] | undefined) ?? [];
     for (const entry of entries) {
       const changes = (entry['changes'] as Json[] | undefined) ?? [];
@@ -358,7 +395,11 @@ Deno.serve(async (req: Request) => {
           }
           for (const m of (value['messages'] as Json[] | undefined) ?? []) {
             sawMessage = true;
-            await processInboundMessage(supabase, connectionId, value, m);
+            if (defaultProductId === undefined) {
+              defaultProductId = await resolveDefaultProductId(supabase);
+            }
+            const brainConvId = await processInboundMessage(supabase, connectionId, value, m, defaultProductId);
+            if (brainConvId) convsForBrain.add(brainConvId);
           }
         } else if (field === 'message_template_status_update') {
           // Sincronização fina fica com platform-meta-whatsapp-templates-sync;
@@ -373,6 +414,24 @@ Deno.serve(async (req: Request) => {
         .from('platform_crm_whatsapp_meta_connections')
         .update({ last_health_check_at: new Date().toISOString(), last_error: null })
         .eq('id', connectionId);
+    }
+
+    // ── Gatilho do cérebro de vendas (F2) ────────────────────────────────
+    // Fire-and-forget: a resposta 200 ao Meta NÃO espera o LLM. O brain só
+    // age em conversa bot_active (revalida lá) e tem dedupe próprio.
+    const brainSecret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+    for (const convId of convsForBrain) {
+      const call = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/platform-sales-brain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-brain-secret': brainSecret },
+        body: JSON.stringify({ conversation_id: convId }),
+      }).then(async (r) => {
+        if (!r.ok) console.error('[platform-meta-whatsapp-webhook] brain retornou', r.status, (await r.text()).slice(0, 200));
+      }).catch((e) => console.error('[platform-meta-whatsapp-webhook] brain fetch error:', e));
+      // deno-lint-ignore no-explicit-any
+      const rt = (globalThis as any).EdgeRuntime;
+      if (rt?.waitUntil) rt.waitUntil(call);
+      else await call;
     }
   } catch (e) {
     // Nunca 5xx aqui: o Meta re-entregaria um payload que quebra por bug de

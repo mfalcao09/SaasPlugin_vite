@@ -11,3 +11,8 @@ verify_jwt = false
 # Auth real = X-Hub-Signature-256 (HMAC do app_secret) validada na função.
 [functions.platform-meta-whatsapp-webhook]
 verify_jwt = false
+
+# Cérebro de vendas (F2): chamada server-to-server do webhook. Sem JWT.
+# Auth real = service-role key OU x-brain-secret (BRAIN_INTERNAL_SECRET) na função.
+[functions.platform-sales-brain]
+verify_jwt = false

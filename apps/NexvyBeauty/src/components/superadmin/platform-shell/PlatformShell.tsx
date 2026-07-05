@@ -6,10 +6,14 @@ import {
 } from './usePlatformModule';
 import { PlatformSidebar } from './PlatformSidebar';
 import { PLATFORM_MODULES } from './registry';
+import { usePlatformPresenceHeartbeat } from '@/components/superadmin/crm/data/usePlatformPresenceHeartbeat';
 
 // ─── Conteúdo (consome o Context) ───────────────────────────
 function ShellContent() {
   const { activeModuleDefinition, activeNavItem } = usePlatformModule();
+
+  // Mantém a presença do atendente super_admin viva (motor de distribuição de leads).
+  usePlatformPresenceHeartbeat();
 
   return (
     <div className="flex min-h-screen bg-background">

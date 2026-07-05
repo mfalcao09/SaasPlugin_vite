@@ -235,6 +235,20 @@ export function MaterialsTab({ productId }: MaterialsTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Aviso: o playbook editável (oferta, garantia, desconto, planos, objeções)
+          já vive na aba Playbook — aqui é só a biblioteca de arquivos de apoio. */}
+      <Card className="bg-gradient-to-r from-primary/5 to-transparent border-primary/20">
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">
+            A <strong className="text-foreground">estratégia editável</strong> (oferta vigente,
+            garantia, política de desconto, planos e objeções) já vive na aba{' '}
+            <strong className="text-foreground">Playbook</strong> — é de lá que o copiloto e a IA
+            de resposta bebem. Esta aba é a biblioteca de arquivos de apoio; o upload entra quando
+            o armazenamento for ligado.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Header with Add Button */}
       <div className="flex items-center justify-between">
         <div>

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search, Filter, Globe, MessageCircle, Phone, Plus, Bot, Loader2,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Instagram,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,19 +20,24 @@ import type {
   PlatformCrmStatusTab,
   PlatformCrmTabCounts,
 } from '../data/usePlatformCrmConversations';
+import type { PlatformCrmTabActivity } from '../data/usePlatformCrmInboxActivity';
+import { resolveVisitorIdentity, visitorInitials } from './platformCrmIdentity';
 
 /**
  * Lista de conversas (painel ESQUERDO) da inbox do CRM de PLATAFORMA.
  * PORTE 1:1 de `seller/inbox/ConversationList.tsx` (CRM Vendus) — mesma toolbar
- * (filtro + busca + som + nova conversa), mesmas 3 abas (Atendendo/Agentes/Em Fila)
- * com contadores, mesmo layout de card. Trocas permitidas: fonte de dados
- * (`platform_crm_conversations`) e desacoplamento (sem setor/produto/org).
+ * (filtro + busca + som + nova conversa), 4 abas (Atendendo/Agentes/Em Fila/
+ * Resolvidas) com contadores SEMPRE visíveis + tooltip + ponto pulsante de
+ * novidade (U2), badge de canal por cor (U1a) e fallback de identidade por
+ * telefone (U3). Trocas permitidas: fonte de dados (`platform_crm_conversations`)
+ * e desacoplamento (sem setor/produto/org).
  */
 
-type ConvProvider = 'webchat' | 'whatsapp' | 'unknown';
+type ConvProvider = 'webchat' | 'whatsapp' | 'instagram' | 'unknown';
 
 function resolveProvider(conv: PlatformCrmConversationRow): ConvProvider {
   const ch = (conv.channel || '').toLowerCase();
+  if (ch.includes('instagram')) return 'instagram';
   if (ch.includes('whatsapp') || conv.visitor_whatsapp) return 'whatsapp';
   if (ch === 'webchat' || ch === 'site' || ch === 'widget') return 'webchat';
   return 'unknown';
@@ -41,18 +46,23 @@ function resolveProvider(conv: PlatformCrmConversationRow): ConvProvider {
 const PROVIDER_LABEL: Record<ConvProvider, string> = {
   webchat: 'Site',
   whatsapp: 'WhatsApp',
+  instagram: 'Instagram',
   unknown: 'Canal',
 };
 
 const providerIcon: Record<ConvProvider, React.ReactNode> = {
   webchat: <Globe className="h-2.5 w-2.5" />,
   whatsapp: <Phone className="h-2.5 w-2.5" />,
+  instagram: <Instagram className="h-2.5 w-2.5" />,
   unknown: <Globe className="h-2.5 w-2.5" />,
 };
 
+// Cores por canal (U1a): whatsapp=verde, webchat=azul institucional (token
+// primary do tema gestao), instagram=rosa. Ícone pequeno + cor no avatar.
 const providerAvatarBadgeClass: Record<ConvProvider, string> = {
   webchat: 'bg-primary text-primary-foreground',
   whatsapp: 'bg-emerald-500 text-white',
+  instagram: 'bg-pink-500 text-white',
   unknown: 'bg-muted text-muted-foreground',
 };
 
@@ -75,12 +85,8 @@ interface PlatformCrmConversationListProps {
   /** Abre o drawer de filtros (fase futura). */
   onOpenFilters?: () => void;
   activeFilterCount?: number;
-}
-
-function getInitials(name: string | null, phone: string | null) {
-  if (name) return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
-  if (phone) return phone.slice(-2);
-  return 'V';
+  /** U2 — novidade por aba (ponto pulsante) desde a última visualização. */
+  tabActivity?: Partial<PlatformCrmTabActivity>;
 }
 
 // Data BR como na referência: hoje → "HH:mm", ontem → "Ontem",
@@ -117,6 +123,7 @@ export function PlatformCrmConversationList({
   onTestSound,
   onOpenFilters,
   activeFilterCount = 0,
+  tabActivity,
 }: PlatformCrmConversationListProps) {
   const [internalSearch, setInternalSearch] = useState('');
   const [internalTab, setInternalTab] = useState<PlatformCrmStatusTab>('attending');
@@ -256,32 +263,50 @@ export function PlatformCrmConversationList({
         )}
       </div>
 
-      {/* Tabs pílula — Atendendo / Agentes / Em Fila (com contadores) */}
+      {/* Tabs pílula — Atendendo / Agentes / Em Fila / Resolvidas.
+          U2: contadores SEMPRE visíveis + tooltip descritivo + ponto pulsante
+          na aba com conversa nova desde a última visualização. */}
       <div className="px-2 py-2 border-b bg-background">
-        <div className="grid gap-1 p-1 bg-muted/40 rounded-lg grid-cols-3">
+        <div className="grid gap-1 p-1 bg-muted/40 rounded-lg grid-cols-4">
           <TabButton
             label="Atendendo"
+            description="Humano atendendo"
             count={counts.attending}
             isLoadingCount={isLoadingCounts && !tabCounts}
             active={activeTab === 'attending'}
             onClick={() => setActiveTab('attending')}
             badgeVariant="success"
+            hasNewActivity={!!tabActivity?.attending}
           />
           <TabButton
             label="Agentes"
+            description="IA atendendo"
             count={counts.agents}
             isLoadingCount={isLoadingCounts && !tabCounts}
             active={activeTab === 'agents'}
             onClick={() => setActiveTab('agents')}
             badgeVariant="muted"
+            hasNewActivity={!!tabActivity?.agents}
           />
           <TabButton
             label="Em Fila"
+            description="Aguardando humano"
             count={counts.waiting}
             isLoadingCount={isLoadingCounts && !tabCounts}
             active={activeTab === 'waiting'}
             onClick={() => setActiveTab('waiting')}
             badgeVariant="danger"
+            hasNewActivity={!!tabActivity?.waiting}
+          />
+          <TabButton
+            label="Resolvidas"
+            description="Conversas encerradas"
+            count={counts.resolved}
+            isLoadingCount={isLoadingCounts && !tabCounts}
+            active={activeTab === 'resolved'}
+            onClick={() => setActiveTab('resolved')}
+            badgeVariant="muted"
+            hasNewActivity={!!tabActivity?.resolved}
           />
         </div>
       </div>
@@ -321,6 +346,12 @@ export function PlatformCrmConversationList({
               const channelLabel = PROVIDER_LABEL[provider] ?? conv.channel;
               const unread = conv.unread_count_agents || 0;
               const preview = previewWithMedia(conv.last_message, conv.last_message_metadata, 60);
+              // U3 — fallback de identidade: nome inútil ("~", 1-2 chars) →
+              // telefone formatado como primário; nome cru vira secundário.
+              const identity = resolveVisitorIdentity(
+                conv.visitor_name,
+                conv.visitor_phone || conv.visitor_whatsapp,
+              );
               return (
                 <button
                   key={conv.id}
@@ -342,7 +373,10 @@ export function PlatformCrmConversationList({
                             unread > 0 ? 'bg-primary/10 text-primary' : 'bg-muted',
                           )}
                         >
-                          {getInitials(conv.visitor_name, conv.visitor_phone)}
+                          {visitorInitials(
+                            conv.visitor_name,
+                            conv.visitor_phone || conv.visitor_whatsapp,
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <Tooltip>
@@ -362,16 +396,24 @@ export function PlatformCrmConversationList({
 
                     {/* Conteúdo (nome / preview / status IA) */}
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex items-baseline gap-1">
                         <span
                           className={cn(
-                            'block font-semibold text-[14px] leading-tight truncate',
+                            'font-semibold text-[14px] leading-tight truncate',
                             unread > 0 ? 'text-foreground' : 'text-foreground/90',
                           )}
-                          title={conv.visitor_name || conv.visitor_phone || 'Visitante'}
+                          title={identity.primary}
                         >
-                          {shortenName(conv.visitor_name || conv.visitor_phone || 'Visitante')}
+                          {shortenName(identity.primary)}
                         </span>
+                        {identity.secondary && (
+                          <span
+                            className="flex-shrink-0 max-w-[64px] truncate text-[11px] font-normal text-muted-foreground"
+                            title={identity.secondary}
+                          >
+                            · {identity.secondary}
+                          </span>
+                        )}
                       </div>
 
                       <p
@@ -432,42 +474,65 @@ export function PlatformCrmConversationList({
 
 function TabButton({
   label,
+  description,
   count,
   isLoadingCount = false,
   active,
   onClick,
   badgeVariant,
+  hasNewActivity = false,
 }: {
   label: string;
+  /** U2 — descrição curta exibida em tooltip ("Humano atendendo" etc.). */
+  description: string;
   count: number;
   isLoadingCount?: boolean;
   active: boolean;
   onClick: () => void;
   badgeVariant: 'success' | 'danger' | 'muted';
+  /** U2 — conversa nova desde a última visualização → ponto pulsante. */
+  hasNewActivity?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'relative flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-all',
-        active
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground hover:bg-background/40',
-      )}
-    >
-      <span className="truncate">{label}</span>
-      {(isLoadingCount || count > 0) && (
-        <span
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onClick}
           className={cn(
-            'inline-flex items-center justify-center h-4 min-w-[20px] px-1.5 rounded-full text-[10px] font-bold',
-            badgeVariant === 'success' && 'bg-emerald-500 text-white',
-            badgeVariant === 'danger' && 'bg-red-500 text-white',
-            badgeVariant === 'muted' && 'bg-muted text-muted-foreground',
+            'relative flex items-center justify-center gap-1 py-1.5 px-1 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-all',
+            active
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-background/40',
           )}
         >
-          {isLoadingCount ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : count}
-        </span>
-      )}
-    </button>
+          {hasNewActivity && (
+            <span
+              className="absolute top-0.5 right-0.5 flex h-2 w-2"
+              aria-label="Nova conversa nesta aba"
+            >
+              <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+          )}
+          <span className="truncate">{label}</span>
+          {/* U2 — contador SEMPRE visível (inclusive 0, em estilo muted). */}
+          <span
+            className={cn(
+              'inline-flex items-center justify-center h-4 min-w-[20px] px-1 rounded-full text-[10px] font-bold flex-shrink-0',
+              count === 0 && !isLoadingCount
+                ? 'bg-muted text-muted-foreground'
+                : badgeVariant === 'success'
+                ? 'bg-emerald-500 text-white'
+                : badgeVariant === 'danger'
+                ? 'bg-red-500 text-white'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {isLoadingCount ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : count}
+          </span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{description}</TooltipContent>
+    </Tooltip>
   );
 }

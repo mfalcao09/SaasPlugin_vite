@@ -1,9 +1,15 @@
 // Porte de `.vendus-src-reference/src/components/admin/products/tabs/ObjectionsTab.tsx`
 // + ObjectionsView (385 l.) e ManualObjectionForm (306 l.) de components/objections/,
-// embutidos aqui (hub-local). Dados: TODO(table: platform_crm_objections).
+// embutidos aqui (hub-local). Dados relacionais: TODO(table: platform_crm_objections).
 // Ações IA: TODO(edge: generate-objections / handle-objection) — botões presentes.
-import { useState } from 'react';
-import { usePlatformCrmProduct } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+// TOPO: editor REAL do campo TEXT `objections` de platform_crm_products (playbook de
+//   objeções em texto livre) — save via useUpdatePlatformCrmProduct (hook existente).
+//   Esse campo alimenta o copiloto e a IA de resposta.
+import { useState, useEffect } from 'react';
+import {
+  usePlatformCrmProduct,
+  useUpdatePlatformCrmProduct,
+} from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import { useProductObjections, todoBackend, type ProductObjection } from '../hooks/useProductHubStubs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -62,12 +68,89 @@ export function ObjectionsTab({ productId }: ObjectionsTabProps) {
   }
 
   return (
-    <ObjectionsView
-      objections={objections || []}
-      productId={productId}
-      productName={product?.name}
-      showAdminActions
-    />
+    <div className="space-y-6">
+      {/* Editor do campo TEXT `objections` — playbook de objeções que a IA consome */}
+      <ObjectionsPlaybookEditor productId={productId} />
+
+      <ObjectionsView
+        objections={objections || []}
+        productId={productId}
+        productName={product?.name}
+        showAdminActions
+      />
+    </div>
+  );
+}
+
+// ─── ObjectionsPlaybookEditor ────────────────────────────────────────────────
+// Editor do campo TEXT `objections` de platform_crm_products (texto livre no
+// formato "objeção" → resposta). Alimenta o copiloto e a IA de resposta.
+// Save via useUpdatePlatformCrmProduct (mesmo hook do SettingsTab).
+function ObjectionsPlaybookEditor({ productId }: { productId: string }) {
+  const { data: product } = usePlatformCrmProduct(productId);
+  const updateProduct = useUpdatePlatformCrmProduct();
+  const [isFormReady, setIsFormReady] = useState(false);
+  const [objectionsText, setObjectionsText] = useState('');
+
+  useEffect(() => {
+    if (product) {
+      setObjectionsText(product.objections || '');
+      setIsFormReady(true);
+    }
+  }, [product]);
+
+  const handleSave = async () => {
+    if (!isFormReady) {
+      toast.error('Aguarde os dados carregarem');
+      return;
+    }
+    try {
+      await updateProduct.mutateAsync({
+        id: productId,
+        objections: objectionsText || null,
+      });
+      toast.success('Playbook de objeções salvo!');
+    } catch (e) {
+      console.error('[ObjectionsTab] salvar falhou:', e);
+      toast.error('Erro ao salvar objeções');
+    }
+  };
+
+  return (
+    <Card className="bg-card">
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-primary" />
+              Playbook de objeções (texto livre)
+            </CardTitle>
+            <CardDescription>
+              Objeções comuns e as respostas padrão da equipe. Este campo alimenta o
+              copiloto e a IA de resposta. Um bloco por objeção.
+            </CardDescription>
+          </div>
+          <Button onClick={handleSave} disabled={updateProduct.isPending || !isFormReady} size="sm">
+            {updateProduct.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Salvar
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Textarea
+          value={objectionsText}
+          onChange={(e) => setObjectionsText(e.target.value)}
+          rows={10}
+          placeholder={
+            'Objeção: "Está caro demais"\nResposta: Entendo! Vamos olhar juntos o retorno...\n\nObjeção: "Preciso pensar / falar com meu sócio"\nResposta: Claro. Que informação ajudaria a decisão de vocês?\n\nObjeção: "Não é o momento"\nResposta: Faz sentido. O que precisaria mudar para ser o momento certo?'
+          }
+        />
+      </CardContent>
+    </Card>
   );
 }
 

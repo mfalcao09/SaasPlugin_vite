@@ -18,28 +18,62 @@ import {
   type PlatformCrmStatusTab,
 } from '../data/usePlatformCrmConversations';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
+import { usePlatformCrmInboxTabActivity } from '../data/usePlatformCrmInboxActivity';
+import { usePlatformModule } from '@/components/superadmin/platform-shell/usePlatformModule';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { PlatformCrmConversationList } from './PlatformCrmConversationList';
 import { PlatformCrmChatArea } from './PlatformCrmChatArea';
+import { PlatformCrmLeadContextPanel } from './PlatformCrmLeadContextPanel';
 import { PlatformCrmTransferModal } from './PlatformCrmTransferModal';
 import { PlatformCrmArchiveDialog, type PlatformCrmArchivePayload } from './PlatformCrmArchiveDialog';
 import { PlatformCrmStartConversationDialog } from './PlatformCrmStartConversationDialog';
 import { PlatformCrmAnalysisPanel } from './PlatformCrmAnalysisPanel';
 
 /**
- * INBOX do CRM de PLATAFORMA (super_admin) — container de 2 painéis.
- * PORTE 1:1 da UX de `seller/SellerInbox.tsx` (CRM Vendus): abas (Atendendo/Agentes/
- * Em Fila) + header da lista (filtro/busca/som/nova) + área de chat (bolhas +
- * composer + "Sugerir Resposta IA") + empty-state (3 cards) + dialogs
- * (Transferir/Encerrar/Nova conversa/Analisar).
+ * INBOX do CRM de PLATAFORMA (super_admin) — container de 3 painéis
+ * (REF-VENDUS-INBOX): lista | chat | contexto do lead. Porte da UX de
+ * `seller/SellerInbox.tsx` (CRM Vendus): abas (Atendendo/Agentes/Em Fila/
+ * Resolvidas) + header da lista (filtro/busca/som/nova) + área de chat (bolhas +
+ * composer + "Sugerir Resposta IA") + painel direito de contexto do lead
+ * (w-80 colapsável ≥lg, Sheet no mobile) + dialogs (Transferir/Encerrar/Nova
+ * conversa/Analisar).
  *
  * DESACOPLADO do tenant: toca APENAS `platform_crm_*`. Zero organization_id /
  * product_id / sector_id / evolution_instance_id. A RLS super_admin-only isola os
  * dados. Ações que dependem de edge/LLM inexistente permanecem com o BOTÃO presente
  * (stub-com-TODO + toast "em breve").
  */
+
+/** Persistência do colapso do painel de contexto (U1b). '1' aberto / '0' fechado. */
+const CONTEXT_PANEL_STORAGE_KEY = 'nexvybeauty_platform_crm_inbox_context_panel';
+
+function loadPanelOpen(): boolean {
+  try {
+    return localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function savePanelOpen(open: boolean) {
+  try {
+    localStorage.setItem(CONTEXT_PANEL_STORAGE_KEY, open ? '1' : '0');
+  } catch {
+    // localStorage indisponível — o estado só não persiste.
+  }
+}
+
 export function PlatformCrmInbox() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PlatformCrmStatusTab>('attending');
+
+  // Painel de contexto do lead (U1): docked ≥lg (persistido) + Sheet no mobile.
+  const [panelOpen, setPanelOpen] = useState<boolean>(loadPanelOpen);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+  // Navegação p/ a tela de leads existente ("Abrir lead completo") — a inbox
+  // vive dentro da PlatformShell (módulo vendas), seção 'v-leads' do registry.
+  const { setActiveSection } = usePlatformModule();
 
   // Dialogs
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -55,6 +89,9 @@ export function PlatformCrmInbox() {
   const { data: allConversations = [], isLoading: loadingConversations } =
     usePlatformCrmConversations();
   const tabCounts = usePlatformCrmConversationCounts(allConversations);
+
+  // U2 — novidade por aba (ponto pulsante) desde a última visualização.
+  const tabActivity = usePlatformCrmInboxTabActivity(allConversations, activeTab);
 
   // Lista filtrada pela aba ativa (client-side).
   const visibleConversations = useMemo(
@@ -103,6 +140,35 @@ export function PlatformCrmInbox() {
   const handleSend = (content: string, replyToMessageId?: string) => {
     if (!selected) return;
     sendMessage.mutate({ conversationId: selected.id, content, replyToMessageId });
+  };
+
+  /**
+   * Toggle do painel de contexto (U1c): em telas ≥lg alterna a coluna docked
+   * (persistindo em localStorage); abaixo de lg abre o Sheet lateral.
+   */
+  const handleTogglePanel = () => {
+    const isDesktop =
+      typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+    if (isDesktop) {
+      setPanelOpen((prev) => {
+        const next = !prev;
+        savePanelOpen(next);
+        return next;
+      });
+    } else {
+      setMobilePanelOpen(true);
+    }
+  };
+
+  const handleClosePanel = () => {
+    setPanelOpen(false);
+    savePanelOpen(false);
+  };
+
+  /** "Abrir lead completo" → seção de Leads existente do módulo vendas. */
+  const handleOpenLead = () => {
+    setMobilePanelOpen(false);
+    setActiveSection('v-leads');
   };
 
   /**
@@ -206,10 +272,11 @@ export function PlatformCrmInbox() {
                 description: 'Refino por canal/etiqueta será habilitado em breve.',
               })
             }
+            tabActivity={tabActivity}
           />
         </div>
 
-        {/* Painel direito — chat */}
+        {/* Painel central — chat */}
         <div className="flex-1 min-w-0 h-full">
           <PlatformCrmChatArea
             conversation={selected}
@@ -227,18 +294,42 @@ export function PlatformCrmInbox() {
             onResume={handleResume}
             onReturnToQueue={handleReturnToQueue}
             onTransfer={() => setShowTransferModal(true)}
-            onTogglePanel={() =>
-              toast.info('Dados do contato em breve', {
-                description: 'O painel de contexto do visitante será habilitado em breve.',
-              })
-            }
+            onTogglePanel={handleTogglePanel}
+            isPanelOpen={panelOpen}
             onAnalyze={() => setShowAnalysis(true)}
             isReopening={reopenConversation.isPending}
             isResuming={acceptConversation.isPending}
             isReturning={returnToQueue.isPending}
           />
         </div>
+
+        {/* Painel direito — contexto do lead (U1b): docked ≥lg, colapsável. */}
+        {panelOpen && (
+          <div className="hidden lg:block w-80 flex-shrink-0 h-full border-l border-border">
+            <PlatformCrmLeadContextPanel
+              conversation={selected}
+              mode="docked"
+              onClose={handleClosePanel}
+              onOpenLead={handleOpenLead}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Contexto do lead no MOBILE (<lg) — Sheet lateral. */}
+      <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
+        <SheetContent side="right" className="w-[340px] sm:max-w-sm p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Contexto do lead</SheetTitle>
+            <SheetDescription>Dados do lead vinculado à conversa selecionada</SheetDescription>
+          </SheetHeader>
+          <PlatformCrmLeadContextPanel
+            conversation={selected}
+            mode="sheet"
+            onOpenLead={handleOpenLead}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Dialogs */}
       {selected && (

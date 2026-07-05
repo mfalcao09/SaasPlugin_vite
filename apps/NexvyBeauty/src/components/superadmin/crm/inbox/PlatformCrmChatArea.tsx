@@ -19,6 +19,7 @@ import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PlatformCrmMessageBubble, type PlatformCrmBubbleReply } from './PlatformCrmMessageBubble';
 import { PlatformCrmEmptyInboxState } from './PlatformCrmEmptyInboxState';
+import { resolveVisitorIdentity, visitorInitials } from './platformCrmIdentity';
 import type {
   PlatformCrmConversation,
   PlatformCrmMessage,
@@ -57,6 +58,8 @@ interface PlatformCrmChatAreaProps {
   onReturnToQueue?: () => void;
   onTransfer?: () => void;
   onTogglePanel?: () => void;
+  /** U1c — estado do painel de contexto (estiliza o botão de toggle). */
+  isPanelOpen?: boolean;
   onAnalyze?: () => void;
   isReopening?: boolean;
   isResuming?: boolean;
@@ -80,6 +83,7 @@ export function PlatformCrmChatArea({
   onReturnToQueue,
   onTransfer,
   onTogglePanel,
+  isPanelOpen,
   onAnalyze,
   isReopening,
   isResuming,
@@ -196,7 +200,13 @@ export function PlatformCrmChatArea({
     return <PlatformCrmEmptyInboxState />;
   }
 
-  const visitorName = conversation.visitor_name || conversation.visitor_phone || 'Visitante';
+  // U3 — fallback de identidade: nome inútil → telefone formatado como
+  // primário; o nome cru (ex.: "~") vira secundário na sublinha do header.
+  const identity = resolveVisitorIdentity(
+    conversation.visitor_name,
+    conversation.visitor_phone || conversation.visitor_whatsapp,
+  );
+  const visitorName = identity.primary;
   const isClosed = status === 'closed';
   const headerAccent = 'hsl(var(--primary))';
   const ticketCode = conversation.id.slice(0, 6);
@@ -217,7 +227,10 @@ export function PlatformCrmChatArea({
               className="font-semibold text-sm"
               style={{ backgroundColor: `${headerAccent}1a`, color: headerAccent }}
             >
-              {visitorName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'V'}
+              {visitorInitials(
+                conversation.visitor_name,
+                conversation.visitor_phone || conversation.visitor_whatsapp,
+              )}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -234,10 +247,20 @@ export function PlatformCrmChatArea({
               <span>·</span>
               <div className={cn('h-1.5 w-1.5 rounded-full', getStatusColor())} />
               <span>{getStatusText()}</span>
-              {conversation.visitor_phone && (
+              {/* Nome útil no título → telefone na sublinha; telefone no
+                  título (fallback U3) → nome cru como secundário aqui. */}
+              {identity.usefulName && conversation.visitor_phone && (
                 <>
                   <span>·</span>
                   <span className="truncate max-w-[120px]">{conversation.visitor_phone}</span>
+                </>
+              )}
+              {identity.secondary && (
+                <>
+                  <span>·</span>
+                  <span className="truncate max-w-[120px]" title={identity.secondary}>
+                    {identity.secondary}
+                  </span>
                 </>
               )}
             </div>
@@ -299,11 +322,18 @@ export function PlatformCrmChatArea({
           {onTogglePanel && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onTogglePanel}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('h-8 w-8', isPanelOpen && 'text-primary bg-primary/10')}
+                  onClick={onTogglePanel}
+                >
                   <UserCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Dados do Contato</TooltipContent>
+              <TooltipContent>
+                {isPanelOpen ? 'Ocultar dados do lead' : 'Dados do lead'}
+              </TooltipContent>
             </Tooltip>
           )}
 

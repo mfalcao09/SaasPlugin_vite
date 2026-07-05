@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { mapCaktoOrderForUpsert } from '../_shared/cakto-client.ts';
 import { provisionFromOrder, extractOfferSlug } from '../_shared/cakto-plan-provisioning.ts';
+import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +37,14 @@ Deno.serve(async (req) => {
     const { data: cred } = await credQuery.maybeSingle();
     if (!cred) return json({ error: 'credentials not found' }, 404);
     if (cred.webhook_secret && cred.webhook_secret !== secretParam) {
+      // Assinatura inválida: pode ser tentativa de fraude OU secret desalinhado
+      // (venda real que não vai provisionar). Aciona o operador.
+      const buyer = await peekBuyerEmail(req);
+      await sendTelegramAlert(
+        `🚨 Cakto webhook: assinatura inválida (scope=${scopeParam}${orgId ? `, org=${orgId}` : ''})` +
+          `${buyer ? `\nComprador: ${buyer}` : ''}` +
+          `\nMotivo: webhook_secret não confere — venda pode não provisionar.`,
+      );
       return json({ error: 'invalid secret' }, 401);
     }
 
@@ -163,22 +172,63 @@ Deno.serve(async (req) => {
 
     // Provisionamento do plano da plataforma + usuário admin (escopo platform, pedidos pagos).
     if (scopeParam === 'platform') {
+      const buyer = row.customer_email ?? '(sem e-mail)';
       try {
         const result = await provisionFromOrder(admin, row);
         console.log('[cakto-webhook] provisioning result', JSON.stringify(result));
-      } catch (provErr) {
+
+        // Plano não mapeado numa venda PAGA: cliente pagou e não vai receber acesso.
+        if (result?.skipped && result.skipped.startsWith('plan not found')) {
+          await sendTelegramAlert(
+            `🚨 Cakto: PLANO NÃO ENCONTRADO (venda paga sem acesso)\n` +
+              `Evento: ${event ?? '-'}\nComprador: ${buyer}\nMotivo: ${result.skipped}`,
+          );
+        } else if (result && result.ok === false && (result.errors?.length ?? 0) > 0) {
+          // Provisionamento rodou mas com erros parciais (org/plano/usuário/e-mail).
+          await sendTelegramAlert(
+            `🚨 Cakto: provisionamento com ERRO\n` +
+              `Evento: ${event ?? '-'}\nComprador: ${buyer}\n` +
+              `Motivo: ${(result.errors ?? []).join('; ').slice(0, 400)}`,
+          );
+        }
+      } catch (provErr: any) {
         console.error('[cakto-webhook] provisioning error', provErr);
+        await sendTelegramAlert(
+          `🚨 Cakto: FALHA no provisionamento (exceção)\n` +
+            `Evento: ${event ?? '-'}\nComprador: ${buyer}\n` +
+            `Motivo: ${String(provErr?.message ?? provErr).slice(0, 400)}`,
+        );
       }
     }
 
     return json({ ok: true, event });
   } catch (e: any) {
     console.error('cakto-webhook error', e);
+    // Falha inesperada no webhook — venda pode não ter sido processada.
+    await sendTelegramAlert(
+      `🚨 Cakto webhook: erro inesperado\nMotivo: ${String(e?.message ?? e).slice(0, 400)}`,
+    );
     return json({ error: String(e?.message ?? e) }, 500);
   }
 });
 
 // ===== Helpers do motor de etiquetas =====
+
+/**
+ * Best-effort: extrai o e-mail do comprador do corpo do request para enriquecer
+ * o alerta de assinatura inválida (o body ainda não foi consumido nesse ponto).
+ * Clona o request para não interferir no fluxo normal. Nunca lança.
+ */
+async function peekBuyerEmail(req: Request): Promise<string | null> {
+  try {
+    const p = await req.clone().json();
+    const o = p?.data?.order ?? p?.data ?? p?.order ?? p;
+    const email = o?.customer?.email ?? o?.customer_email ?? p?.customer?.email ?? null;
+    return typeof email === 'string' ? email : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Traduz event/status/payment_method da Cakto para o tipo de evento das tag_automations.

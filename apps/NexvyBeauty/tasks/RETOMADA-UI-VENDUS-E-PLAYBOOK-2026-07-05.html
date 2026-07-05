@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retomada — UI Vendus + Playbook na IA · 2026-07-05</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--accent:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--pink:#f778ba}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:2rem;max-width:1100px;margin:0 auto}
+h1{font-size:1.6rem;margin-bottom:.3rem;color:var(--accent)}
+h2{font-size:1.2rem;margin:2rem 0 .8rem;padding-bottom:.3rem;border-bottom:1px solid var(--border);color:var(--pink)}
+h3{font-size:1rem;margin:1.2rem 0 .5rem;color:var(--accent)}
+p{margin:.6rem 0}.dim{color:var(--dim);font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.88rem}
+th,td{border:1px solid var(--border);padding:.45rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--accent)}
+code{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:.1rem .35rem;font-size:.85em;color:var(--pink)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem;margin:.8rem 0}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+ul,ol{margin:.5rem 0 .5rem 1.4rem}li{margin:.3rem 0}
+.badge{display:inline-block;padding:.1rem .5rem;border-radius:10px;font-size:.75rem;font-weight:600;margin-right:.4rem}
+.b-ok{background:#0f2e18;color:var(--ok);border:1px solid var(--ok)}
+.b-warn{background:#2e2508;color:var(--warn);border:1px solid var(--warn)}
+.b-bad{background:#2e0f0f;color:var(--bad);border:1px solid var(--bad)}
+</style>
+</head>
+<body>
+<h1>RETOMADA — Modelo de UI (Remix Vendus) + Playbook na IA da ponta</h1>
+<p class="dim">2026-07-05 · Forense de 3 sessões (986d864f "Nexvybeauty CRM porting work" 481MB · 7034f3dd · 81daecc0) + worktree _wt-crm-pele-viva + mapa do copiloto.<br>Gatilho: "a UI está ruim, bagunçada" + copiloto respondeu "piloto = teste gratuito" ❌</p>
+
+<h2>1 · A sessão encontrada</h2>
+<table>
+<tr><th>Sessão</th><th>Período</th><th>Papel</th></tr>
+<tr><td><code>986d864f</code> (CWD /Projects/GitHub — por isso "outra conta")</td><td>26/06→03/07</td><td><b>Autoridade.</b> Modelo de UI (5 prints shell Remix Vendus v4) + porte 1:1 atendimento + D1-D10 + D3 multiproduto + gestao.nexvy.tech</td></tr>
+<tr><td><code>7034f3dd</code></td><td>02/07 manhã</td><td>6 critérios de DONE; morreu no limite</td></tr>
+<tr><td><code>81daecc0</code></td><td>02/07</td><td>3 motores server-side (93/96/96) + documentou o inacabado + CONTROLE-SESSOES-ORQUESTRACAO.md</td></tr>
+<tr><td>Irmão: <code>_wt-crm-pele-viva</code> (FIC)</td><td>03-04/07</td><td><b>Design calibrado</b>: inbox Vendus v4 rubric GAN <b>86/100</b> — spec REF-VENDUS-INBOX.md</td></tr>
+</table>
+<p class="dim">Canônicos: tasks/CONTROLE-SESSOES-ORQUESTRACAO.md · tasks/auditoria-portagem/ (A-I, L1-L13, D1-D10) · tasks/d3-multiproduto/STATE.md · _wt-crm-pele-viva/.../REF-VENDUS-INBOX.md</p>
+
+<h2>2 · O modelo de UI</h2>
+<div class="card">
+<p><span class="badge b-ok">EM PRODUÇÃO</span> Shell modular padrão-Intentus (ModuleSwitcher: VENDAS=CRM Vendus 1:1 · ERP), sidebar Vendas réplica do adminMenu (grupo Atendimentos: Chat/Painel/Radar IA/Follow-Up/Relatórios), registry 54 itens zero EmBreve, re-skin azul institucional #0A52D1 só no gestao.* (guardrail: NUNCA dark do Remix).</p>
+<p><span class="badge b-warn">PENDE VOCÊ</span> Eyeball visual do re-skin azul (Chrome travou 03/07).</p>
+<p><span class="badge b-bad">NÃO APLICADO AO GESTAO.*</span> O refinamento <b>"CRM Pele Viva"</b> (calibrado 86/100 no FIC): 3 painéis (lista redimensionável · thread · painel de contexto do lead), badges de canal, quick-action bar, estágio+temperatura+valor+UTM+timeline, filtros GHL/Helena. É exatamente o que resolve o "não identifiquei a conversa": abas sem sinalização, sem badge de canal, visitor_name "~" sem fallback, sem painel de contexto.</p>
+</div>
+
+<h2>3 · Checklist do inacabado</h2>
+<h3>3a · Atendimento</h3>
+<table>
+<tr><th>#</th><th>Item</th></tr>
+<tr><td>A1</td><td>Composer: QuickReplies "/", Notas internas, LeadContextPanel, JourneyTimeline, ScheduleMessage, Forward</td></tr>
+<tr><td>A2</td><td>AnalysisPanel → falta edge platform-analyze-conversation</td></tr>
+<tr><td>A3</td><td>Bug transfer_sector no webhook-receiver</td></tr>
+<tr><td>A4</td><td>Heartbeat de presença no front (auto-assign)</td></tr>
+<tr><td>A5</td><td>send_email / notify_whatsapp / ai_agent_outreach = no-op</td></tr>
+<tr><td>A6</td><td>platform-booking-dispatcher (confirmações não enviam)</td></tr>
+<tr><td>A7</td><td>followup-ai-draft + L5/L1/L10</td></tr>
+<tr><td>A8</td><td>Suíte profunda Agentes IA (D6b) — cruza com F2 do autopilot</td></tr>
+</table>
+<h3>3b · UI</h3>
+<table>
+<tr><td>U1</td><td>Aplicar REF-VENDUS-INBOX ao PlatformCrmInbox (paleta azul do gestao.*, nunca verde-lima/dark)</td></tr>
+<tr><td>U2</td><td>Sinalização das abas + notificação de conversa nova</td></tr>
+<tr><td>U3</td><td>Fallback identidade: nome→telefone quando profile "~"</td></tr>
+<tr><td>U4</td><td>Eyeball re-skin azul + P-CRM-01..11 aplicáveis</td></tr>
+</table>
+<h3>3c · Átomos seus</h3>
+<p>Eyeball azul · sessão CONJUNTA ERP/AffiliatesPanel + módulo-por-host · creds Utmify (por último).</p>
+
+<h2>4 · Playbook → IA da ponta</h2>
+<div class="card">
+<p><b>Mapa provado:</b> botão → <code>platform-sales-copilot</code> → prompt = 50 msgs + nome + <span class="bad"><b>conhecimento HARDCODED (6 linhas genéricas)</b></span>. Zero products/agents/playbook — o porte removeu o knowledge dinâmico que o tenant tem.</p>
+<p><b>O banco já tem o lugar:</b> <code>platform_crm_products</code> (knowledge_base, objections, pitches, icp, differentials, pricing, discount_policy, guarantee) + <code>conversations.product_id</code> (D3).</p>
+<ol>
+<li><b>A — religar o cano (~40 linhas):</b> EF lê o produto via product_id + injeta <code>founder_campaign_status.slots_left</code> (escassez real, do banco). Webhook de vendas passa a carimbar product_id.</li>
+<li><b>Carga canônica:</b> popular a linha NexvyBeauty com a oferta 30/30/1 (piloto ≠ "teste gratuito"), garantia painel-juiz, conta por sub-vertical, objeções do KIT, regras (PROIBIDO desconto; escassez só a real).</li>
+<li><b>C — destino (D6b/F2):</b> twins knowledge_sources/objections + EF ingestão → BrainTab/ObjectionsTab/PlaybookTab vivos; o MESMO knowledge alimenta a resposta automática. Editável no gestao.* — uma fonte, zero drift.</li>
+</ol>
+</div>
+
+<h2>5 · Ordem proposta</h2>
+<ol>
+<li><b>Playbook A + carga</b> (horas; pré-requisito do F2)</li>
+<li><b>UI U1-U3</b> (modelo Pele Viva no Chat do gestao.*)</li>
+<li><b>Atendimento A1-A5</b></li>
+<li><b>F2 autopilot</b> + A8/D6b</li>
+<li>A6/A7 + átomos seus em paralelo</li>
+</ol>
+</body>
+</html>

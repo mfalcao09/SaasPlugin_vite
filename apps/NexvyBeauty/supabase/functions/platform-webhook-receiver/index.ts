@@ -774,16 +774,16 @@ async function executeAction(
       if (!config.target_sector_id) throw new Error('No target sector specified');
 
       // platform_crm_leads NÃO tem coluna `sector_id` (setores da plataforma são
-      // por conversa/membros, não no lead). O update abaixo falharia — mas o
-      // branch é preservado 1:1; a coluna ausente é sinalizada.
+      // por conversa/membros, não no lead). __NO_EQUIVALENT__: o update original
+      // falharia em runtime (coluna inexistente) — branch neutralizado com skip
+      // explícito, sem tentar o update. NÃO inventar migration.
       // TODO: sem equivalente platform_crm — leads.sector_id ausente (transfer_sector).
-      const { error } = await supabase
-        .from('platform_crm_leads')
-        .update({ sector_id: config.target_sector_id })
-        .eq('id', existingLeadId);
-
-      if (error) throw error;
-      return { lead_id: existingLeadId, transferred_to_sector: config.target_sector_id };
+      console.warn('[Webhook] transfer_sector sem equivalente platform_crm (leads.sector_id ausente) — pulado');
+      return {
+        lead_id: existingLeadId,
+        skipped: true,
+        reason: 'transfer_sector sem equivalente platform_crm (leads.sector_id ausente)',
+      };
     }
 
     case 'move_stage': {

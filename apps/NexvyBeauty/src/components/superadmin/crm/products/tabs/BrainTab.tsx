@@ -139,6 +139,12 @@ export function BrainTab({ productId }: BrainTabProps) {
             Adicione conhecimento através de diferentes fontes. Quanto mais dados, mais inteligente
             a IA ficará para ajudar com objeções, cadências e respostas contextualizadas.
           </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Precisa editar a <strong className="text-foreground">oferta vigente, garantia,
+            política de desconto e planos</strong> agora? Isso já é editável na aba{' '}
+            <strong className="text-foreground">Playbook</strong> — as IAs bebem daqueles campos
+            diretamente. As fontes abaixo (arquivos, sites, vídeos) entram quando a indexação for ligada.
+          </p>
         </CardContent>
       </Card>
 
