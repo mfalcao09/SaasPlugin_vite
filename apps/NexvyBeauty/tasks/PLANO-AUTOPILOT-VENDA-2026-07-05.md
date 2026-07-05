@@ -19,18 +19,20 @@
 
 ## FASES (ordem de execução; cada uma com check binário)
 
-### F0 — Número de vendas + instância (HOJE; humano: 1 scan de QR — inevitável e único)
+### F0 — Número de vendas ✅ PIVOTADO p/ Cloud API OFICIAL (2026-07-05 — Salvy comprada)
+> Marcelo comprou linha Salvy → número de vendas vai na **WhatsApp Cloud API oficial** (não Baileys). Consequências: 0.2 (QR) e 0.3 (warm-up anti-ban) **caem** — API oficial não tem ban de automação nem precisa de aquecimento; risco assumido nº 1 deixa de existir para o funil de venda. Infra descoberta: porte Vendus (`platform-meta-whatsapp-*`, 6 EFs + wizard no gestao.* → CRM Plataforma → Conexões) já cobria connect/send/templates; faltava o RECEPTOR.
 | # | Item | Check |
 |---|---|---|
-| 0.1 | Obter número BR (triagem Salvy abaixo — recomendação: chip pré-pago hoje; migração p/ API oficial na fase de tráfego pago) | número ativo recebendo SMS/ligação |
-| 0.2 | Criar `evolution_instances` de VENDAS (escopo plataforma) + conectar via QR | status "Conectado" na gestão |
-| 0.3 | **Warm-up do número** (2-3 dias de conversa orgânica leve antes de tráfego): número novo disparando frio = ban Baileys | ≥20 conversas orgânicas antes de escala |
+| 0.1 ✅ | Número BR (Salvy) | comprado (Marcelo, 2026-07-05) |
+| 0.2 | Meta Business + app + WABA + registrar nº Salvy (OTP via painel Salvy) + System User Token — **checklist com Marcelo** | wizard do gestao.* salva conexão `active` |
+| 0.3 | Webhook no Meta Console (URL+verify_token que o wizard exibe) + assinar `messages` | GET verification 200 no console |
 
-### F1 — Motor inbound (o ouvido da máquina) — CÓDIGO
+### F1 — Motor inbound (o ouvido da máquina) ✅ ENTREGUE E PROVADO (2026-07-05, Cloud API)
 | # | Item | Check |
 |---|---|---|
-| 1.1 | Implementar `MESSAGES_UPSERT` no `platform-evolution-webhook`: mensagem → upsert lead da plataforma (por telefone) + conversa + mensagem persistidas | lead novo aparece no CRM da plataforma ao mandar "oi" |
-| 1.2 | Distinguir instância de VENDAS (plataforma) vs instâncias de tenant no webhook (roteamento por instance) | msg pro nº de vendas NUNCA vira lead de tenant |
+| 1.1 ✅ | `platform-meta-whatsapp-webhook/{connection_id}` (nova EF, deployada): GET verification + POST HMAC X-Hub-Signature-256 (timing-safe) → lead plataforma (dedupe por telefone) + conversa (`channel='whatsapp'`, `bot_active`) + mensagem + broadcast realtime pro inbox. Idempotência por wamid (índice único `uq_platform_crm_messages_wamid`) | **PROVADO E2E em prod** com payload sintético assinado: 200 + lead/conversa/mensagem criados no pipeline; re-entrega do mesmo wamid NÃO duplicou; token errado 403; POST sem assinatura 401 (rig de teste desmontado) |
+| 1.2 ✅ | Vendas vs tenant: resolvido POR CONSTRUÇÃO — vendas = Cloud API (webhook próprio, tabelas `platform_crm_*`); tenants = Evolution (webhook próprio, tabelas de org). Canais fisicamente separados | msg pro nº de vendas não passa pelo caminho de tenant |
+| 1.3 ✅ | **Bug de prod achado e corrigido pelo smoke:** `get_or_create_meta_master_key()` estourava 42883 (`gen_random_bytes` fora do search_path — pgcrypto vive em `extensions`) → o wizard quebraria no PRIMEIRO submit de credenciais. Fix: `extensions.gen_random_bytes` (migration `20260705_fix_meta_master_key_pgcrypto.sql`) | RPC retorna chave (len 44) em prod |
 
 ### F2 — Cérebro que responde (agentes ricos no runtime) — CÓDIGO (o maior)
 | # | Item | Check |

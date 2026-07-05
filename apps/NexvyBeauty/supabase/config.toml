@@ -6,3 +6,8 @@ verify_jwt = false
 # Webhook público do Evolution Go (servidor externo -> plataforma). Sem JWT.
 [functions.platform-evolution-webhook]
 verify_jwt = false
+
+# Webhook público da WhatsApp Cloud API (Meta -> plataforma, número de vendas).
+# Auth real = X-Hub-Signature-256 (HMAC do app_secret) validada na função.
+[functions.platform-meta-whatsapp-webhook]
+verify_jwt = false
