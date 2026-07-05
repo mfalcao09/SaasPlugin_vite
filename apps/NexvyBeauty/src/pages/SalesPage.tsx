@@ -25,6 +25,34 @@ import { captureTrackingFromUrl } from '@/lib/tracking';
 const GRADIENT = 'bg-gradient-to-r from-rose-500 to-pink-500';
 const GRADIENT_TEXT = 'bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent';
 
+// Número de vendas (WhatsApp) — FONTE ÚNICA. Nunca hardcodar solto na página:
+// qualquer CTA que abra o WhatsApp deriva daqui. Formato E.164 sem '+' (padrão wa.me).
+const SALES_WHATSAPP = '5511955021205';
+
+// Monta o link wa.me do CTA do piloto com mensagem pré-pronta + sufixo de origem
+// compacto. Lê utm_source/medium/campaign da URL ATUAL (quando existirem) e anexa
+// de forma curta — o handoff LP→WhatsApp carrega o contexto do lead pro atendente.
+// Client-only: guardado por typeof window (a LP nunca é SSR, mas o guard evita
+// crash caso o bundle rode em contexto sem window).
+function buildPilotoWhatsAppUrl(): string {
+  const base = 'Oi! Quero saber mais sobre o Piloto Fundadora 💅';
+  const params =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  // origem sempre presente ('lp-piloto'); UTMs só entram se existirem (sufixo enxuto).
+  const origin = ['lp-piloto']
+    .concat(
+      (['utm_source', 'utm_medium', 'utm_campaign'] as const)
+        .map((k) => {
+          const v = params.get(k);
+          return v ? `${k.replace('utm_', '')}=${v}` : null;
+        })
+        .filter((x): x is string => x !== null),
+    )
+    .join(' ');
+  const text = `${base}\n\n[origem: ${origin}]`;
+  return `https://wa.me/${SALES_WHATSAPP}?text=${encodeURIComponent(text)}`;
+}
+
 // A LP é página pública de marketing → sempre tema CLARO, mesmo que o app
 // esteja em dark mode (html.dark). Forçamos os tokens shadcn claros no subtree
 // da LP via custom properties inline (vencem a regra .dark{} por cascata), pra
@@ -444,8 +472,9 @@ export default function SalesPage() {
 
       {/* PILOTO FUNDADORA (F3.1 lancamento-v3) — oferta de entrada com garantia.
           Escassez REAL: 15 vagas totais, abertas 5 por semana (capacidade de
-          acompanhamento 1-a-1 do time) — sem relógio falso. CTA reusa o funil
-          de captura existente (LeadCaptureModal). */}
+          acompanhamento 1-a-1 do time) — sem relógio falso. CTA principal abre o
+          WhatsApp de vendas (funil autopilot); LeadCaptureModal fica como fallback
+          secundário ("prefiro deixar meu contato"). */}
       <section id="piloto" className="px-6 py-24">
         <div className="mx-auto max-w-4xl">
           <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20">
@@ -482,9 +511,16 @@ export default function SalesPage() {
                   fica configurado.
                 </p>
               </div>
+              {/* CTA principal do piloto: WhatsApp direto de vendas (funil autopilot).
+                  Link real (Button asChild → <a>) para abrir em nova aba com a msg
+                  pré-pronta + origem/UTM. Fallback secundário (link menor) mantém o
+                  LeadCaptureModal pra quem prefere deixar o contato. Os CTAs de PLANOS
+                  seguem no Cakto (goToCheckout) — intocados. */}
               <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                <Button onClick={openBuy} size="lg" className={`${GRADIENT} px-8 text-white hover:opacity-90`}>
-                  Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
+                <Button asChild size="lg" className={`${GRADIENT} px-8 text-white hover:opacity-90`}>
+                  <a href={buildPilotoWhatsAppUrl()} target="_blank" rel="noopener noreferrer">
+                    Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
+                  </a>
                 </Button>
                 <p className="text-sm text-zinc-400">
                   Entra no máximo <strong className="text-zinc-200">1 negócio novo por dia</strong> — é o
@@ -492,6 +528,13 @@ export default function SalesPage() {
                   o NexvyBeauty continua aberto — sem as condições de fundadora.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={openBuy}
+                className="mt-4 text-sm text-zinc-400 underline underline-offset-4 transition-colors hover:text-zinc-200"
+              >
+                Prefiro deixar meu contato
+              </button>
             </CardContent>
           </Card>
         </div>

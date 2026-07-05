@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEMPLATE-UI-GESTAO — Design system operacional · 2026-07-05</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--accent:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--pink:#f778ba}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:2rem;max-width:1100px;margin:0 auto}
+h1{font-size:1.6rem;margin-bottom:.3rem;color:var(--accent)}
+h2{font-size:1.2rem;margin:2rem 0 .8rem;padding-bottom:.3rem;border-bottom:1px solid var(--border);color:var(--pink)}
+h3{font-size:1rem;margin:1.2rem 0 .5rem;color:var(--accent)}
+p{margin:.6rem 0}.dim{color:var(--dim);font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.88rem}
+th,td{border:1px solid var(--border);padding:.45rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--panel);color:var(--accent)}
+code{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:.1rem .35rem;font-size:.85em;color:var(--pink)}
+pre{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.8rem;overflow-x:auto;font-size:.82rem;margin:.8rem 0}
+pre code{border:0;background:none;padding:0;color:var(--text)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem;margin:.8rem 0}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+ul,ol{margin:.5rem 0 .5rem 1.4rem}li{margin:.3rem 0}
+.badge{display:inline-block;padding:.1rem .5rem;border-radius:10px;font-size:.75rem;font-weight:600;margin-right:.4rem}
+.b-ok{background:#0f2e18;color:var(--ok);border:1px solid var(--ok)}
+.b-warn{background:#2e2508;color:var(--warn);border:1px solid var(--warn)}
+.b-bad{background:#2e0f0f;color:var(--bad);border:1px solid var(--bad)}
+.b-p1{background:#0d2440;color:var(--accent);border:1px solid var(--accent)}
+.swatch{display:inline-block;width:.85rem;height:.85rem;border-radius:3px;border:1px solid var(--border);vertical-align:-2px;margin-right:.35rem}
+kbd{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:0 .3rem;font-size:.8em}
+</style>
+</head>
+<body>
+<h1>TEMPLATE-UI-GESTAO — Design system operacional do gestao.* (54 telas)</h1>
+<p class="dim">2026-07-05 · Braço TEMPLATE-UI-GESTAO. Propaga o modelo calibrado (inbox Vendus v4, rubric GAN <b>86/100</b> no Pele Viva) às 54 telas do registry (20 ERP + 34 Vendas).<br>
+Fontes: REF-VENDUS-INBOX.md · exemplar <code>src/components/superadmin/crm/inbox/*</code> · tokens <code>src/index.css</code> (.theme-nexvy-institucional) + <code>tailwind.config.ts</code> · .vendus-src-reference/ (só leitura).<br>
+<b>Como usar:</b> tela → família (§5) → receita (§2) + transversais (§3) → RUBRIC (§4) → gate ≥85 (máx 4 iterações).</p>
+
+<h2>1 · Tokens canônicos</h2>
+<div class="card">
+<p><b>Regra nº 1:</b> cor de marca SÓ via token semântico (<code>bg-primary</code>, <code>hsl(var(--primary))</code>). O azul institucional entra pela classe <code>.theme-nexvy-institucional</code> no <code>&lt;html&gt;</code> (host gestao.*) — <b>componente nunca sabe o hue</b>. O mesmo componente no app.* renderiza rosa Beauty sem mudar 1 linha.</p>
+</div>
+
+<h3>1.1 Paleta efetiva no gestao.* (tema claro)</h3>
+<table>
+<tr><th>Token</th><th>HSL</th><th>Uso</th></tr>
+<tr><td><code>--background</code></td><td><span class="swatch" style="background:#fcfcfc"></span>0 0% 99%</td><td>fundo de página</td></tr>
+<tr><td><code>--foreground</code></td><td><span class="swatch" style="background:#0f172a"></span>222 47% 11%</td><td>texto principal</td></tr>
+<tr><td><code>--card</code> / <code>--popover</code></td><td><span class="swatch" style="background:#fff"></span>0 0% 100%</td><td>superfícies</td></tr>
+<tr><td><code>--primary</code> / <code>--accent</code> / <code>--ring</code></td><td><span class="swatch" style="background:#0a52d1"></span>218 91% 43% (#0A52D1)</td><td>ação, seleção, foco — azul Nexvy</td></tr>
+<tr><td><code>--muted</code> · <code>--muted-foreground</code></td><td>220 14% 96% · 220 8% 46%</td><td>fundos (<code>/40</code> inputs, <code>/20</code> áreas) · texto secundário</td></tr>
+<tr><td><code>--border</code> / <code>--input</code></td><td>220 13% 91%</td><td>bordas (suave: <code>border-border/30</code>)</td></tr>
+<tr><td><code>--destructive</code> · <code>--success</code> · <code>--warning</code></td><td>0 72% 51% · 142 71% 40% · 38 92% 50%</td><td>semânticas</td></tr>
+<tr><td><code>--surface</code></td><td>40 23% 96%</td><td>off-white quente</td></tr>
+<tr><td><code>--chart-1..5</code></td><td><span class="swatch" style="background:#0a52d1"></span>azul · <span class="swatch" style="background:#00c2e6"></span>cyan 191 100% 45% · roxo · âmbar · verde</td><td>gráficos — SEMPRE por token</td></tr>
+<tr><td><code>--radius</code></td><td>0.75rem</td><td>rounded-lg = radius; md = −2px; sm = −4px</td></tr>
+</table>
+
+<h3>1.2 Proibições (reprova direto)</h3>
+<div class="card">
+<p><span class="badge b-bad">PROIBIDO</span> <b>Verde-lima Vendus</b> (#84CC16; <code>bg-vendus-gradient</code> do tailwind.config = legado, não usar) · <b>Dark nativo do Remix</b> (guardrail #5 — gestao.* desenha e calibra no CLARO; sem <code>dark:</code> custom por tela) · <b>Hex de marca hardcoded</b> (#0A52D1 literal, <code>text-blue-600</code> p/ ação → sempre <code>primary</code>) · <b>Rosa Beauty (hue 330) direto</b> — o token troca sozinho por host.</p>
+</div>
+
+<h3>1.3 Cores fixas de SIGNIFICADO (únicas literais permitidas)</h3>
+<table>
+<tr><th>Significado</th><th>Classe canônica</th></tr>
+<tr><td>Canal WhatsApp</td><td><span class="swatch" style="background:#10b981"></span><code>bg-emerald-500 text-white</code></td></tr>
+<tr><td>Canal Instagram</td><td><span class="swatch" style="background:#ec4899"></span><code>bg-pink-500 text-white</code></td></tr>
+<tr><td>Canal Site/WebChat</td><td><span class="swatch" style="background:#0a52d1"></span><code>bg-primary text-primary-foreground</code></td></tr>
+<tr><td>Não-lidas / atividade viva</td><td><code>bg-emerald-500</code> (badge) · <code>text-emerald-600</code> (texto)</td></tr>
+<tr><td>Badge IA atendendo</td><td><code>bg-emerald-500/10 text-emerald-600 border-emerald-500/30</code></td></tr>
+<tr><td>Fila / urgência (contador)</td><td><code>bg-red-500 text-white</code></td></tr>
+<tr><td>Status conversa (dots)</td><td>humano <code>green-500</code> · aguardando <code>yellow-500</code> · IA <code>blue-500</code> · encerrada <code>muted</code></td></tr>
+<tr><td>Temperatura</td><td>quente <code>red-500/10+600</code> · morna <code>orange</code> · fria <code>sky</code></td></tr>
+<tr><td>Seleção de item de lista</td><td>barra <code>before:</code> <code>bg-emerald-500</code> (herança Vendus)</td></tr>
+</table>
+
+<h3>1.4 Tipografia</h3>
+<p><b>Inter</b> única (400–800). <code>html { font-size: 90% }</code> = densidade global — não compensar com fontes maiores. Inputs travados em 16px (anti-zoom iOS).</p>
+<table>
+<tr><th>Papel</th><th>Classe</th></tr>
+<tr><td>Micro-label de seção</td><td><code>text-[10px] font-semibold uppercase tracking-wider text-muted-foreground</code></td></tr>
+<tr><td>Metadado/timestamp</td><td><code>text-[11px]</code> + <code>tabular-nums</code></td></tr>
+<tr><td>Preview/secundário</td><td><code>text-[13px]</code></td></tr>
+<tr><td>Título de item de lista</td><td><code>text-[14px] font-semibold leading-tight truncate</code></td></tr>
+<tr><td>Corpo · título de painel · título de página · KPI</td><td><code>text-xs/sm</code> · <code>text-sm font-semibold</code> · <code>text-lg font-semibold</code> · <code>text-2xl font-bold tabular-nums</code></td></tr>
+</table>
+
+<h3>1.5 Spacing / densidade (receita 86/100)</h3>
+<table>
+<tr><th>Elemento</th><th>Medida canônica</th></tr>
+<tr><td>Toolbar de painel</td><td><code>px-3 py-2.5 border-b</code> · controles <code>h-9</code></td></tr>
+<tr><td>Headers</td><td>contexto <code>h-14 px-4</code> · chat/detalhe <code>h-16</code> + barra accent <code>w-1</code></td></tr>
+<tr><td>Item de lista</td><td><code>px-3 py-3 border-b border-border/30</code></td></tr>
+<tr><td>Corpo de painel</td><td><code>p-4</code>, seções <code>space-y-5</code>, subitens <code>space-y-2.5</code></td></tr>
+<tr><td>Ícones · botões</td><td><code>h-4/3.5/2.5</code> · icon <code>h-8/9</code> · ação header <code>h-7 text-xs</code></td></tr>
+<tr><td>Avatares · radius</td><td><code>h-11</code> lista/chat, <code>h-16</code> perfil, <code>h-5/8</code> mini · <code>rounded-lg</code> containers, <code>rounded-2xl</code> bolhas, <code>rounded-full</code> pills</td></tr>
+</table>
+
+<h2>2 · Receitas por FAMÍLIA</h2>
+
+<h3>F1 — Lista + Detalhe (inbox 3 painéis) <span class="badge b-ok">CALIBRADA 86/100</span></h3>
+<pre><code>h-[calc(100dvh-10rem)] flex flex-col rounded-lg border overflow-hidden bg-background
+└ flex-1 flex min-w-0 overflow-hidden
+  [LISTA w-[340px] flex-shrink-0] [DETALHE flex-1 min-w-0] [CONTEXTO hidden lg:block w-80 border-l]
++ &lt;Sheet side="right" w-[340px] p-0&gt; para o contexto em &lt;lg</code></pre>
+<ul>
+<li><b>Lista:</b> toolbar (Filter c/ badge · busca <code>pl-8 h-9 bg-muted/40 border-0</code> + <kbd>Ctrl+K</kbd> · som · <code>+</code>) → tabs pílula (§3.4) → ScrollArea <code>bg-muted/20</code>: avatar h-11 + badge de canal (§3.2), 3 linhas, coluna direita (data relativa + não-lidas <code>h-5 min-w-[22px] rounded-full</code>), seleção <code>bg-accent/40</code> + barra emerald.</li>
+<li><b>Detalhe:</b> header h-16 (barra accent w-1 · avatar ring-2 · nome + <code>#código · dot · status</code>) · ações: contextuais <code>outline h-7 text-xs</code>, secundárias icon h-8 c/ Tooltip, resto no DropdownMenu (destrutiva <code>text-destructive</code>) · corpo com fundo pontilhado (radial-gradient muted 18px) + separador de dia sticky · footer = composer (<code>Textarea bg-muted/40 rounded-2xl</code> + enviar <code>rounded-full h-10</code>) OU faixa de encerrada. Botão IA (Sparkles) SEMPRE presente.</li>
+<li><b>Contexto:</b> header h-14 · identidade central (avatar h-16) · SectionTitle/InfoRow (Contato → Pipeline: estágio + temperatura + valor → Origem/UTM → Notas) · Separator entre seções · CTA outline w-full.</li>
+<li>Aplica-se: Chat (feito), Mia, Suporte, Agenda (variante calendário).</li>
+</ul>
+
+<h3>F2 — Kanban (Pipeline)</h3>
+<ul>
+<li>Corpo <code>flex-1 overflow-x-auto</code> → <code>flex gap-3 p-4</code>, colunas <code>w-[300px] flex-shrink-0 bg-muted/20 rounded-lg</code>.</li>
+<li>Header de coluna: dot com cor do estágio DO BANCO (style inline — é dado, não marca) + nome uppercase 11px + contador (pílula §3.4) + soma R$ tabular-nums.</li>
+<li>Card de deal: <code>bg-card border rounded-lg p-3 shadow-sm hover:shadow-md</code> — identidade §3.3 → valor <code>font-semibold tabular-nums</code> → badges (canal + temperatura + IA) → data relativa + mini-avatar h-5 do responsável.</li>
+<li>Drag: <code>cursor-grab</code>; alvo <code>ring-2 ring-primary/40</code>; otimista + rollback com toast. Mobile: snap horizontal, detalhe em Sheet, NUNCA empilhar colunas.</li>
+</ul>
+
+<h3>F3 — Dashboard / KPIs</h3>
+<ul>
+<li>Header: título text-lg + subtítulo muted + Select de período h-9 + refresh.</li>
+<li>Grid KPI <code>grid gap-3 sm:grid-cols-2 xl:grid-cols-4</code>; card = label 11px uppercase + valor text-2xl bold tabular-nums + delta (verde/vermelho + seta) + ícone <code>h-9 w-9 rounded-lg bg-primary/10 text-primary</code>.</li>
+<li>Charts SEMPRE <code>hsl(var(--chart-1..5))</code>; skeleton na MESMA altura (anti-CLS). Listas embutidas clicáveis → <code>setActiveSection</code>. Tempo real: dot pulsante + "atualizado às HH:mm".</li>
+</ul>
+
+<h3>F4 — Editor / Wizard</h3>
+<ul>
+<li><code>max-w-3xl</code> ou split lista+editor. Stepper: círculos h-7 (ativo bg-primary; concluído bg-primary/10 + check; futuro bg-muted) ligados por h-px bg-border.</li>
+<li>Seções em Card (título text-sm + descrição 11px; corpo p-4 space-y-4). Campo: Label text-xs + controle h-9 + ajuda 11px + erro text-destructive.</li>
+<li>Footer sticky <code>border-t p-3 justify-between</code>: Voltar ghost / Salvar primary (disabled até validar, Loader2 no isPending — nunca overlay). Dirty state = Dialog de descarte; salvo = toast + permanecer.</li>
+</ul>
+
+<h3>F5 — Tabela de gestão</h3>
+<ul>
+<li>Toolbar: busca + Filter popover c/ contagem + ações em massa (só com seleção) + "Nova …" primary c/ Plus.</li>
+<li>Table em <code>rounded-lg border overflow-x-auto</code>; th 11px uppercase muted; td text-sm py-2.5; pessoa = avatar h-8 + identidade §3.3; status = Badge outline c/ dot §1.3; <b>ações por linha = DropdownMenu no MoreVertical</b> (nunca fileira de ícones); destrutiva após Separator.</li>
+<li>Rodapé "N de M" 11px + paginação ou sentinel. Ordenação no th; filtros ativos = chips removíveis. Mobile: colunas essenciais + Sheet no tap.</li>
+</ul>
+
+<h3>F6 — Configurações</h3>
+<ul>
+<li><code>max-w-3xl space-y-4</code>; grupo = Card; linha = <code>flex justify-between py-2.5</code> (label+descrição × Switch/Select/Input) separadas por border-b/30.</li>
+<li>Zona de perigo: Card <code>border-destructive/30</code> + Dialog de confirmação. <b>Segredos mascarados</b> (•••• + últimos 4 + copiar) — NUNCA plaintext em toast/log.</li>
+<li>Salvar por Card ou auto-save com toast — nunca "Salvar" global fora da viewport.</li>
+</ul>
+
+<h2>3 · Padrões transversais</h2>
+<table>
+<tr><th>#</th><th>Padrão</th><th>Receita</th></tr>
+<tr><td>3.1</td><td><b>Estados obrigatórios</b></td><td>Vazio: ícone h-12 opacity-30 + título + dica contextual + CTA (tela inteira = EmptyInboxState: círculo bg-primary/10 + 3 cards de dicas). Carregando: skeleton com a MESMA anatomia (nunca spinner central; Loader2 só em botão). Erro: banner c/ retry ou toast.error + estado preservado. Sucesso otimista (invalidate/realtime). <b>Stub-com-TODO:</b> botão visível + <code>toast.info('… em breve')</code> — nunca esconder affordance.</td></tr>
+<tr><td>3.2</td><td><b>Badge de canal</b></td><td><code>absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full border-2 border-background</code> + ícone h-2.5 + cor §1.3 + Tooltip. Resolver com <code>resolveProvider</code> do exemplar — reusar.</td></tr>
+<tr><td>3.3</td><td><b>Identidade nome→telefone</b></td><td>Importar SEMPRE de <code>inbox/platformCrmIdentity.ts</code>: <code>resolveVisitorIdentity</code> (nome "~" → telefone formatado primário + nome cru secundário), <code>formatVisitorPhone</code>, <code>visitorInitials</code>. Vale p/ lista, kanban, tabela, header, painel. PROIBIDO reimplementar.</td></tr>
+<tr><td>3.4</td><td><b>Abas: contador + tooltip + novidade</b></td><td>TabButton: trilho <code>bg-muted/40 rounded-lg p-1</code>, ativo <code>bg-background shadow-sm</code>. Contador SEMPRE visível (0 = muted; &gt;0 = success/danger/muted). Tooltip descritivo ("IA atendendo"). Novidade = ponto pulsante <code>animate-ping bg-primary</code>.</td></tr>
+<tr><td>3.5</td><td><b>localStorage</b></td><td>Chave <code>nexvybeauty_platform_&lt;área&gt;_&lt;coisa&gt;</code>; helpers load/save com try/catch. Persistir colapso de painéis, larguras, som. Nunca dados de negócio.</td></tr>
+<tr><td>3.6</td><td><b>Mobile &lt;lg</b></td><td>Painel lateral → Sheet <code>side="right" w-[340px] p-0</code> + SheetHeader sr-only; decisão via <code>matchMedia('(min-width:1024px)')</code>; lista/detalhe exclusivos c/ back; touch ≥44px; kanban snap-x; tabela → colunas essenciais + Sheet.</td></tr>
+<tr><td>3.7</td><td><b>A11y + higiene</b></td><td>aria-label em TODO botão-ícone · Tooltip em toda ação de ícone · title= em truncados · 0 erro console · destrutiva via Dialog com nome do alvo.</td></tr>
+<tr><td>3.8</td><td><b>Datas/números</b></td><td>Hoje <code>HH:mm</code> · Ontem · &lt;7d <code>EEE HH:mm</code> · resto <code>dd/MM/yyyy</code>. BRL via Intl. <code>tabular-nums</code>.</td></tr>
+</table>
+
+<h2>4 · RUBRIC (0–100) — gate ≥ 85, máx 4 iterações</h2>
+<table>
+<tr><th>#</th><th>Critério</th><th>O que mede</th><th>Peso</th></tr>
+<tr><td>1</td><td><b>Hierarquia visual</b></td><td>1 ação primária clara; escala §1.4; anatomia da família §2; ordem fiel ao modelo</td><td>25</td></tr>
+<tr><td>2</td><td><b>Densidade & usabilidade</b></td><td>densidade Vendus §1.5; Nielsen; atalhos</td><td>20</td></tr>
+<tr><td>3</td><td><b>Affordance</b></td><td>tooltips, hovers, contadores sempre visíveis, stub-com-TODO</td><td>15</td></tr>
+<tr><td>4</td><td><b>Consistência de token</b></td><td>zero hex de marca; zero verde-lima/dark; literais só da §1.3</td><td>15</td></tr>
+<tr><td>5</td><td><b>Estados</b></td><td>vazio/carregando/erro/otimista completos, skeleton anatômico</td><td>15</td></tr>
+<tr><td>6</td><td><b>Mobile + higiene</b></td><td>&lt;lg funcional; a11y básica; 0 erro console</td><td>10</td></tr>
+</table>
+<div class="card">
+<p><b>Loop GAN:</b> gerador aplica receita → avaliador pontua com evidência (print preview/Telegram) → &lt;85 itera (máx 4) → sem 85 em 4 = EXCEÇÃO documentada no tracker, sem gambiarra.</p>
+<p><b>Checklist binário pré-score</b> (1 reprova ⇒ volta): sem hex de marca (grep) · sem vendus-gradient/verde-lima/dark-first · identidade via platformCrmIdentity (nunca "~" cru) · vazio+skeleton+erro presentes · aria-label+Tooltip nos ícones · &lt;lg testado · <code>npx tsc --noEmit -p tsconfig.app.json</code> verde · 0 erro novo de console.</p>
+</div>
+
+<h2>5 · Mapa dos 54 itens → família + prioridade</h2>
+<p class="dim"><span class="badge b-p1">P1</span> telas que o Marcelo mais opera (ordem de ataque) · P2 operação recorrente/infra · P3 cauda.</p>
+
+<h3>5.1 VENDAS (34)</h3>
+<table>
+<tr><th>Item</th><th>Label</th><th>Família</th><th>Prior.</th><th>Nota</th></tr>
+<tr><td>v-pipeline</td><td>Pipeline</td><td><b>F2 Kanban</b></td><td><span class="badge b-p1">P1</span></td><td>primeira propagação da F2</td></tr>
+<tr><td>v-leads</td><td>Leads</td><td><b>F5 Tabela</b> + detalhe</td><td><span class="badge b-p1">P1</span></td><td>identidade §3.3 obrigatória</td></tr>
+<tr><td>v-painel</td><td>Painel</td><td><b>F3 Dashboard</b> (tempo real)</td><td><span class="badge b-p1">P1</span></td><td>dot pulsante + auto-refresh</td></tr>
+<tr><td>v-radar-ia</td><td>Radar IA</td><td><b>F3</b> + bloco F5</td><td><span class="badge b-p1">P1</span></td><td>cards risco/oportunidade → conversa</td></tr>
+<tr><td>v-follow-up</td><td>Follow-Up</td><td><b>F5 Tabela</b></td><td><span class="badge b-p1">P1</span></td><td>identidade · último contato · próximo passo · responsável</td></tr>
+<tr><td>v-dashboard</td><td>Dashboard</td><td><b>F3 Dashboard</b></td><td><span class="badge b-p1">P1</span></td><td>= v-operacao (mesmo componente) — calibra 1x</td></tr>
+<tr><td>v-chat</td><td>Chat</td><td><b>F1 Lista+Detalhe</b></td><td><span class="badge b-ok">✅ 86</span></td><td>EXEMPLAR — não retocar sem rubric</td></tr>
+<tr><td>v-mia</td><td>Mia</td><td>F1 (chat IA)</td><td>P2</td><td>contexto = memória/ações da Mia</td></tr>
+<tr><td>v-agenda</td><td>Agenda</td><td>F1 (variante calendário)</td><td>P2</td><td></td></tr>
+<tr><td>v-relatorios</td><td>Relatórios</td><td>F3</td><td>P2</td><td>chart-1..5 only</td></tr>
+<tr><td>v-agentes-ia</td><td>Agentes IA</td><td>F4 Editor/Wizard</td><td>P2</td><td>cruza com D6b/F2 autopilot</td></tr>
+<tr><td>v-campanhas</td><td>Campanhas</td><td>F5 + F4</td><td>P2</td><td></td></tr>
+<tr><td>v-cadencias</td><td>Cadências</td><td>F4</td><td>P2</td><td>steps = passos da cadência</td></tr>
+<tr><td>v-negocios</td><td>Negócios (Produtos)</td><td>F5 + hub de abas</td><td>P2</td><td>casa do multiproduto D3</td></tr>
+<tr><td>v-financeiro</td><td>Financeiro</td><td>F3 + F5</td><td>P2</td><td>Comissões/Metas internas</td></tr>
+<tr><td>v-respostas</td><td>Respostas Rápidas</td><td>F5</td><td>P2</td><td>alimenta o composer "/" do Chat</td></tr>
+<tr><td>v-conexoes</td><td>Conexões</td><td>F6 Config</td><td>P2</td><td>segredos mascarados</td></tr>
+<tr><td>v-webhooks</td><td>Webhooks</td><td>F5</td><td>P3</td><td></td></tr>
+<tr><td>v-quiz · v-formularios · v-form-vendedores · v-chatbot</td><td>Captação builders</td><td>F4 (builder)</td><td>P3</td><td></td></tr>
+<tr><td>v-widget</td><td>Widget</td><td>F4 + F6</td><td>P3</td><td></td></tr>
+<tr><td>v-whatsapp</td><td>WhatsApp (captação)</td><td>F6</td><td>P3</td><td></td></tr>
+<tr><td>v-templates</td><td>Templates</td><td>F5 (galeria)</td><td>P3</td><td></td></tr>
+<tr><td>v-resultados</td><td>Resultados</td><td>F5</td><td>P3</td><td></td></tr>
+<tr><td>v-analytics</td><td>Analytics</td><td>F3</td><td>P3</td><td></td></tr>
+<tr><td>v-setores · v-equipes</td><td>Setores · Equipes</td><td>F5</td><td>P3</td><td></td></tr>
+<tr><td>v-operacao</td><td>Central de Operação</td><td>F3</td><td>—</td><td>= v-dashboard (mesmo componente)</td></tr>
+<tr><td>v-campos</td><td>Campos personalizados</td><td>F5 + F6</td><td>P3</td><td></td></tr>
+<tr><td>v-etiquetas</td><td>Etiquetas</td><td>F5</td><td>P3</td><td></td></tr>
+<tr><td>v-notificacoes · v-horarios</td><td>Notificações · Horários</td><td>F6</td><td>P3</td><td></td></tr>
+</table>
+
+<h3>5.2 ERP/Gestão (20)</h3>
+<table>
+<tr><th>Item</th><th>Label</th><th>Família</th><th>Prior.</th><th>Nota</th></tr>
+<tr><td>dashboard</td><td>Dashboard da Plataforma</td><td>F3</td><td>P2</td><td></td></tr>
+<tr><td>organizations · users · subscriptions · billing</td><td>Empresas · Usuários · Assinaturas · Faturamento</td><td>F5</td><td>P2</td><td>drill-down de org pendente (no-op hoje)</td></tr>
+<tr><td>payments</td><td>Pagamentos (Cakto)</td><td>F3 + F5</td><td>P2</td><td></td></tr>
+<tr><td>whatsapp</td><td>WhatsApp / Evolution</td><td>F6</td><td>P2</td><td>infra crítica; segredos mascarados</td></tr>
+<tr><td>support</td><td>Suporte</td><td>F1</td><td>P2</td><td>tickets = anatomia da inbox</td></tr>
+<tr><td>ai-quality · health</td><td>Qualidade da IA · Saúde</td><td>F3</td><td>P2</td><td></td></tr>
+<tr><td>plans</td><td>Planos</td><td>F5 + F4</td><td>P3</td><td></td></tr>
+<tr><td>affiliates</td><td>Afiliados</td><td>F5</td><td>P3</td><td>⚠️ sessão CONJUNTA (never-touch-alone)</td></tr>
+<tr><td>sales-payments</td><td>Pagamentos (Vendas)</td><td>F5</td><td>P3</td><td></td></tr>
+<tr><td>integrations · branding · email</td><td>Integrações · Identidade Visual · E-mail</td><td>F6</td><td>P3</td><td></td></tr>
+<tr><td>help</td><td>Central de Ajuda</td><td>F4</td><td>P3</td><td></td></tr>
+<tr><td>agent-tools · audit</td><td>Ações dos Agentes · Logs</td><td>F5</td><td>P3</td><td>audit: font-mono p/ payloads</td></tr>
+<tr><td>releases</td><td>Atualizações</td><td>F5 + F4</td><td>P3</td><td></td></tr>
+</table>
+
+<h3>5.3 Tracker de calibração (P1)</h3>
+<table>
+<tr><th>Tela</th><th>Família</th><th>Score</th><th>Iterações</th><th>Status</th></tr>
+<tr><td>Chat (v-chat)</td><td>F1</td><td>86</td><td>3/4</td><td><span class="ok">✅ referência</span></td></tr>
+<tr><td>Pipeline</td><td>F2</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+<tr><td>Leads</td><td>F5</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+<tr><td>Painel</td><td>F3</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+<tr><td>Radar IA</td><td>F3</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+<tr><td>Follow-Up</td><td>F5</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+<tr><td>Dashboard (v-dashboard/v-operacao)</td><td>F3</td><td>—</td><td>0/4</td><td>⏳</td></tr>
+</table>
+
+<h2>6 · Decisões, limites e riscos</h2>
+<ol>
+<li><b>[Certo]</b> Tokens/medidas extraídos verbatim do código real em produção (index.css, tailwind.config, exemplar inbox) — não são proposta.</li>
+<li><b>[Provável]</b> F2–F6 são derivação (o 86/100 cobre só F1): a 1ª tela de cada família nova roda o loop GAN completo; divergiu → atualizar ESTE doc (<code>_v2</code>), não forkar padrão por tela.</li>
+<li><b>Risco:</b> REF-VENDUS-INBOX.md mora no repo do FIC — sincronização manual se a spec evoluir.</li>
+<li><b>Risco:</b> v-operacao = v-dashboard (mesmo componente 2x no registry) — variações por contexto devem ser prop-driven.</li>
+<li><b>Guardrails herdados:</b> never-touch-alone (AffiliatesPanel/ERP) · porte 1:1 (nunca "simplificar") · eyeball do re-skin azul pendente do Marcelo (U4).</li>
+</ol>
+</body>
+</html>

@@ -1,22 +1,20 @@
-// PORTE 1:1 de `.vendus-src-reference/src/components/admin/agents/AgentSupervisorPanel.tsx`
-// D3 P1/F1d — supervisor multi-agente. Agentes vem de platform_crm_product_agents;
-// especialistas/regras via stub local `./useAgentSupervisor` (// TODO(edge)).
+// Supervisor multi-agente da PLATAFORMA — F2 (O Cérebro).
+// Agentes vêm de platform_crm_product_agents; especialistas/regras persistem no
+// banco via `../data/usePlatformAgentSupervisor` (tabelas platform_crm_agent_*).
+// RESTRIÇÃO: a UI só fala as colunas reais da migration (name/role/focus para
+// especialista; trigger_description/target/priority para regra). Sem inventar campos.
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  useAgentSpecialists,
-  useUpsertSpecialist,
-  useDeleteSpecialist,
-  useAgentRoutingRules,
-  useUpsertRoutingRule,
-  useDeleteRoutingRule,
-  type AgentSpecialist,
-  type AgentRoutingRule,
-} from './useAgentSupervisor';
+  usePlatformAgentSupervisor,
+  type SpecialistUpsertInput,
+  type RoutingRuleUpsertInput,
+} from '../data/usePlatformAgentSupervisor';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +32,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Bot, Plus, Trash2, GitBranch, Users, Zap } from 'lucide-react';
 
@@ -47,8 +44,9 @@ const ROLE_OPTIONS = [
   { value: 'custom', label: 'Outro' },
 ];
 
-const CHANNEL_OPTIONS = ['whatsapp', 'instagram', 'webchat', 'facebook', 'voice'];
-const EVENT_OPTIONS = ['paid', 'abandoned', 'refunded', 'new_message', 'first_contact'];
+// Rascunhos de edição espelham só as colunas editáveis pela UI.
+type SpecialistDraft = SpecialistUpsertInput;
+type RuleDraft = RoutingRuleUpsertInput;
 
 export function AgentSupervisorPanel() {
   const { data: allAgents = [] } = useQuery({
@@ -62,15 +60,24 @@ export function AgentSupervisorPanel() {
       return (data ?? []) as Array<{ id: string; name: string }>;
     },
   });
-  const { data: specialists = [], isLoading: spLoading } = useAgentSpecialists();
-  const { data: rules = [], isLoading: rulesLoading } = useAgentRoutingRules();
-  const upsertSpecialist = useUpsertSpecialist();
-  const deleteSpecialist = useDeleteSpecialist();
-  const upsertRule = useUpsertRoutingRule();
-  const deleteRule = useDeleteRoutingRule();
 
-  const [editingSpecialist, setEditingSpecialist] = useState<Partial<AgentSpecialist> | null>(null);
-  const [editingRule, setEditingRule] = useState<Partial<AgentRoutingRule> | null>(null);
+  const {
+    specialists,
+    specialistsLoading,
+    specialistsError,
+    rules,
+    rulesLoading,
+    rulesError,
+    upsertSpecialist,
+    isUpsertingSpecialist,
+    deleteSpecialist,
+    upsertRule,
+    isUpsertingRule,
+    deleteRule,
+  } = usePlatformAgentSupervisor();
+
+  const [editingSpecialist, setEditingSpecialist] = useState<SpecialistDraft | null>(null);
+  const [editingRule, setEditingRule] = useState<RuleDraft | null>(null);
 
   const specialistsById = useMemo(
     () => Object.fromEntries(specialists.map((s) => [s.id, s])),
@@ -110,10 +117,11 @@ export function AgentSupervisorPanel() {
               size="sm"
               onClick={() =>
                 setEditingSpecialist({
+                  agent_id: '',
+                  name: '',
                   role: 'sdr',
-                  display_name: '',
+                  focus: '',
                   is_active: true,
-                  priority: 100,
                 })
               }
             >
@@ -122,8 +130,13 @@ export function AgentSupervisorPanel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {spLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
-          {!spLoading && specialists.length === 0 && (
+          {specialistsLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+          {specialistsError && (
+            <p className="text-sm text-destructive">
+              Erro ao carregar especialistas: {specialistsError.message}
+            </p>
+          )}
+          {!specialistsLoading && !specialistsError && specialists.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Nenhum especialista cadastrado. Vincule seus agentes a um papel pra ativar o roteamento.
             </p>
@@ -139,26 +152,40 @@ export function AgentSupervisorPanel() {
                   <Bot className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium truncate">{sp.display_name}</span>
+                      <span className="font-medium truncate">{sp.name}</span>
                       <Badge variant="secondary" className="text-xs">
-                        {ROLE_OPTIONS.find((r) => r.value === sp.role)?.label ?? sp.role}
+                        {ROLE_OPTIONS.find((r) => r.value === sp.role)?.label ?? sp.role ?? '—'}
                       </Badge>
                       {!sp.is_active && <Badge variant="outline">Inativo</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      Agente: {agent?.name ?? sp.agent_id} · prioridade {sp.priority}
+                      Agente: {agent?.name ?? sp.agent_id}
+                      {sp.focus ? ` · ${sp.focus}` : ''}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingSpecialist(sp)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setEditingSpecialist({
+                        id: sp.id,
+                        agent_id: sp.agent_id,
+                        name: sp.name,
+                        role: sp.role,
+                        focus: sp.focus,
+                        is_active: sp.is_active,
+                      })
+                    }
+                  >
                     Editar
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      if (confirm(`Remover ${sp.display_name}?`)) deleteSpecialist.mutate(sp.id);
+                      if (confirm(`Remover ${sp.name}?`)) deleteSpecialist(sp.id);
                     }}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -183,10 +210,12 @@ export function AgentSupervisorPanel() {
               disabled={specialists.length === 0}
               onClick={() =>
                 setEditingRule({
-                  name: '',
+                  // Regra herda o agente-mãe do especialista alvo (padrão: 1º da lista).
+                  agent_id: specialists[0]?.agent_id ?? '',
+                  trigger_description: '',
+                  target_specialist_id: specialists[0]?.id ?? null,
+                  priority: 0,
                   is_active: true,
-                  priority: 100,
-                  target_specialist_id: specialists[0]?.id,
                 })
               }
             >
@@ -196,13 +225,18 @@ export function AgentSupervisorPanel() {
         </CardHeader>
         <CardContent className="space-y-2">
           {rulesLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
-          {!rulesLoading && rules.length === 0 && (
+          {rulesError && (
+            <p className="text-sm text-destructive">
+              Erro ao carregar regras: {rulesError.message}
+            </p>
+          )}
+          {!rulesLoading && !rulesError && rules.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Nenhuma regra. Sem regras, o supervisor IA decide cada handoff automaticamente.
             </p>
           )}
           {rules.map((r) => {
-            const target = specialistsById[r.target_specialist_id];
+            const target = r.target_specialist_id ? specialistsById[r.target_specialist_id] : null;
             return (
               <div
                 key={r.id}
@@ -210,34 +244,40 @@ export function AgentSupervisorPanel() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{r.name}</span>
+                    <span className="font-medium truncate">
+                      {r.trigger_description || 'Sem gatilho descrito'}
+                    </span>
                     {!r.is_active && <Badge variant="outline">Inativa</Badge>}
                     <Badge variant="secondary" className="text-xs">
-                      → {target?.display_name ?? '?'}
+                      → {target?.name ?? '(sem especialista)'}
                     </Badge>
-                    {r.match_count > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        {r.match_count} matches
-                      </Badge>
-                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Prioridade {r.priority}
-                    {r.match_events?.length ? ` · eventos: ${r.match_events.join(', ')}` : ''}
-                    {r.match_channels?.length ? ` · canais: ${r.match_channels.join(', ')}` : ''}
-                    {r.deal_value_min != null ? ` · ≥ R$${r.deal_value_min}` : ''}
-                    {r.deal_value_max != null ? ` · ≤ R$${r.deal_value_max}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingRule(r)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setEditingRule({
+                        id: r.id,
+                        agent_id: r.agent_id,
+                        trigger_description: r.trigger_description,
+                        target_specialist_id: r.target_specialist_id,
+                        priority: r.priority,
+                        is_active: r.is_active,
+                      })
+                    }
+                  >
                     Editar
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => {
-                      if (confirm(`Remover regra "${r.name}"?`)) deleteRule.mutate(r.id);
+                      if (confirm(`Remover esta regra?`)) deleteRule(r.id);
                     }}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -263,11 +303,11 @@ export function AgentSupervisorPanel() {
           {editingSpecialist && (
             <div className="space-y-4">
               <div>
-                <Label>Nome de exibição</Label>
+                <Label>Nome</Label>
                 <Input
-                  value={editingSpecialist.display_name ?? ''}
+                  value={editingSpecialist.name ?? ''}
                   onChange={(e) =>
-                    setEditingSpecialist({ ...editingSpecialist, display_name: e.target.value })
+                    setEditingSpecialist({ ...editingSpecialist, name: e.target.value })
                   }
                   placeholder="Ex: SDR de WhatsApp"
                 />
@@ -275,11 +315,11 @@ export function AgentSupervisorPanel() {
               <div>
                 <Label>Papel</Label>
                 <Select
-                  value={editingSpecialist.role}
+                  value={editingSpecialist.role ?? undefined}
                   onValueChange={(v) => setEditingSpecialist({ ...editingSpecialist, role: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione um papel" />
                   </SelectTrigger>
                   <SelectContent>
                     {ROLE_OPTIONS.map((o) => (
@@ -293,7 +333,7 @@ export function AgentSupervisorPanel() {
               <div>
                 <Label>Agente</Label>
                 <Select
-                  value={editingSpecialist.agent_id}
+                  value={editingSpecialist.agent_id || undefined}
                   onValueChange={(v) => setEditingSpecialist({ ...editingSpecialist, agent_id: v })}
                 >
                   <SelectTrigger>
@@ -309,38 +349,24 @@ export function AgentSupervisorPanel() {
                 </Select>
               </div>
               <div>
-                <Label>Descrição (ajuda o supervisor IA a escolher)</Label>
-                <Input
-                  value={editingSpecialist.description ?? ''}
+                <Label>Foco (ajuda o supervisor IA a escolher)</Label>
+                <Textarea
+                  value={editingSpecialist.focus ?? ''}
                   onChange={(e) =>
-                    setEditingSpecialist({ ...editingSpecialist, description: e.target.value })
+                    setEditingSpecialist({ ...editingSpecialist, focus: e.target.value })
                   }
                   placeholder="Ex: especialista em qualificação BANT pra leads novos"
+                  rows={2}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Prioridade</Label>
-                  <Input
-                    type="number"
-                    value={editingSpecialist.priority ?? 100}
-                    onChange={(e) =>
-                      setEditingSpecialist({
-                        ...editingSpecialist,
-                        priority: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between pt-6">
-                  <Label>Ativo</Label>
-                  <Switch
-                    checked={editingSpecialist.is_active ?? true}
-                    onCheckedChange={(v) =>
-                      setEditingSpecialist({ ...editingSpecialist, is_active: v })
-                    }
-                  />
-                </div>
+              <div className="flex items-center justify-between">
+                <Label>Ativo</Label>
+                <Switch
+                  checked={editingSpecialist.is_active ?? true}
+                  onCheckedChange={(v) =>
+                    setEditingSpecialist({ ...editingSpecialist, is_active: v })
+                  }
+                />
               </div>
             </div>
           )}
@@ -349,9 +375,10 @@ export function AgentSupervisorPanel() {
               Cancelar
             </Button>
             <Button
+              disabled={isUpsertingSpecialist}
               onClick={() => {
-                if (!editingSpecialist?.display_name || !editingSpecialist.agent_id) return;
-                upsertSpecialist.mutate(editingSpecialist as any, {
+                if (!editingSpecialist?.name || !editingSpecialist.agent_id) return;
+                upsertSpecialist(editingSpecialist, {
                   onSuccess: () => setEditingSpecialist(null),
                 });
               }}
@@ -370,122 +397,49 @@ export function AgentSupervisorPanel() {
               {editingRule?.id ? 'Editar regra' : 'Nova regra de roteamento'}
             </DialogTitle>
             <DialogDescription>
-              Quando todas as condições preenchidas baterem, a conversa vai pro especialista escolhido.
+              Descreva o gatilho e escolha o especialista alvo. Quando o gatilho bater, a conversa vai
+              pra ele; a menor prioridade é avaliada primeiro.
             </DialogDescription>
           </DialogHeader>
           {editingRule && (
             <div className="space-y-4">
               <div>
-                <Label>Nome</Label>
-                <Input
-                  value={editingRule.name ?? ''}
-                  onChange={(e) => setEditingRule({ ...editingRule, name: e.target.value })}
-                  placeholder="Ex: Pix abandonado vai pra recuperação"
+                <Label>Gatilho (descrição)</Label>
+                <Textarea
+                  value={editingRule.trigger_description ?? ''}
+                  onChange={(e) =>
+                    setEditingRule({ ...editingRule, trigger_description: e.target.value })
+                  }
+                  placeholder="Ex: Pix abandonado nas últimas 2h vai pra recuperação"
+                  rows={2}
                 />
               </div>
 
               <div>
                 <Label>Especialista alvo</Label>
                 <Select
-                  value={editingRule.target_specialist_id}
-                  onValueChange={(v) =>
-                    setEditingRule({ ...editingRule, target_specialist_id: v })
-                  }
+                  value={editingRule.target_specialist_id ?? undefined}
+                  onValueChange={(v) => {
+                    const sp = specialistsById[v];
+                    // Mantém agent_id da regra coerente com o agente-mãe do especialista.
+                    setEditingRule({
+                      ...editingRule,
+                      target_specialist_id: v,
+                      agent_id: sp?.agent_id ?? editingRule.agent_id,
+                    });
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione um especialista" />
                   </SelectTrigger>
                   <SelectContent>
                     {specialists.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.display_name} ({s.role})
+                        {s.name} ({s.role ?? '—'})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <Label>Eventos (qualquer)</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {EVENT_OPTIONS.map((ev) => {
-                    const active = editingRule.match_events?.includes(ev);
-                    return (
-                      <Badge
-                        key={ev}
-                        variant={active ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          const cur = editingRule.match_events ?? [];
-                          setEditingRule({
-                            ...editingRule,
-                            match_events: active
-                              ? cur.filter((c) => c !== ev)
-                              : [...cur, ev],
-                          });
-                        }}
-                      >
-                        {ev}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <Label>Canais (qualquer)</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {CHANNEL_OPTIONS.map((ch) => {
-                    const active = editingRule.match_channels?.includes(ch);
-                    return (
-                      <Badge
-                        key={ch}
-                        variant={active ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          const cur = editingRule.match_channels ?? [];
-                          setEditingRule({
-                            ...editingRule,
-                            match_channels: active
-                              ? cur.filter((c) => c !== ch)
-                              : [...cur, ch],
-                          });
-                        }}
-                      >
-                        {ch}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Valor mínimo (R$)</Label>
-                  <Input
-                    type="number"
-                    value={editingRule.deal_value_min ?? ''}
-                    onChange={(e) =>
-                      setEditingRule({
-                        ...editingRule,
-                        deal_value_min: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Valor máximo (R$)</Label>
-                  <Input
-                    type="number"
-                    value={editingRule.deal_value_max ?? ''}
-                    onChange={(e) =>
-                      setEditingRule({
-                        ...editingRule,
-                        deal_value_max: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -493,7 +447,7 @@ export function AgentSupervisorPanel() {
                   <Label>Prioridade (menor = primeiro)</Label>
                   <Input
                     type="number"
-                    value={editingRule.priority ?? 100}
+                    value={editingRule.priority ?? 0}
                     onChange={(e) =>
                       setEditingRule({ ...editingRule, priority: Number(e.target.value) })
                     }
@@ -514,9 +468,10 @@ export function AgentSupervisorPanel() {
               Cancelar
             </Button>
             <Button
+              disabled={isUpsertingRule}
               onClick={() => {
-                if (!editingRule?.name || !editingRule.target_specialist_id) return;
-                upsertRule.mutate(editingRule as any, {
+                if (!editingRule?.target_specialist_id || !editingRule.agent_id) return;
+                upsertRule(editingRule, {
                   onSuccess: () => setEditingRule(null),
                 });
               }}

@@ -7,24 +7,31 @@
 //   POST { conversation_id }
 //   auth = service-role key  OU  x-brain-secret == BRAIN_INTERNAL_SECRET.
 //   1. Carrega a conversa; só age se channel='whatsapp' E status='bot_active'.
-//   2. Idempotência leve: se a última msg é outbound do bot com <5s, não repete.
-//   3. Últimas 30 msgs (is_deleted=false) → histórico.
-//   4. PERSONA: platform_crm_product_agents do produto (ativo + whatsapp);
-//      escolhe o SDR/qualificação (agent_type/role contendo 'sdr'|'qualifica'),
-//      senão o primeiro. System prompt com os campos ricos da persona.
-//   5. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
+//   2. ANTI-RE-ENTREGA: se a inbound mais recente tem wa_timestamp > 10 min de
+//      idade (Meta re-entregou msg velha), EXIT — não se reapresenta.
+//   3. DEBOUNCE/AGREGAÇÃO: se a lead ainda está digitando (última inbound < ~25s),
+//      aguarda e recarrega; se surgiu inbound mais nova, EXIT ('superseded') — a
+//      invocação da mensagem mais nova responde por todas.
+//   4. Idempotência leve: se a última msg é outbound do bot com <5s, não repete.
+//   5. Últimas 30 msgs (is_deleted=false) → histórico.
+//   6. MEMÓRIA DE QUALIFICAÇÃO: carrega o lead da conversa (estado BANT + o que
+//      já sabemos em metadata) e injeta no prompt — a Duda nunca repergunta.
+//   7. PERSONA: platform_crm_product_agents do produto (ativo + whatsapp);
+//      escolhe o SDR/qualificação; system prompt com os campos ricos da persona.
+//   8. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
 //      + escassez REAL da view founder_campaign_status.
-//   6. Regras fixas: nunca desconto; piloto = Piloto Fundadora PAGO (nunca
-//      "teste gratuito"); escassez só a real; pedido de humano/reclamação grave
-//      → tag [HANDOFF_HUMANO] no fim.
-//   7. LLM: mesmo gateway da casa (AI_API_KEY + AI_GATEWAY_URL, default
-//      google/gemini-2.5-flash, override AI_SALES_BRAIN_MODEL).
-//   8. [HANDOFF_HUMANO] → remove a tag, status='waiting_human' + needs_human=true;
-//      senão mantém bot_active.
-//   9. Entrega via Cloud API (mesmo padrão do platform-webchat-inbox:
-//      connection active + decryptSecret + POST {phone_number_id}/messages),
-//      persiste em platform_crm_messages (outbound/bot + metadata),
-//      broadcastPlatformNewMessage, atualiza last_message_at.
+//   9. Regras fixas: nunca desconto; piloto = Piloto Fundadora PAGO; escassez só
+//      a real; humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
+//      p/ pedido de humano/caso sensível — venda NUNCA é rejeitada (diretiva
+//      Marcelo 05/07: "pagou é cliente"; score roteia OFERTA, não aceite/rejeite).
+//  10. LLM: mesmo gateway da casa (AI_API_KEY + AI_GATEWAY_URL).
+//  11. GUARDRAILS DE FORMA (pós-processamento): sanitize de vocabulário, corte na
+//      1ª pergunta, divisão em até 3 bolhas curtas — cada bolha é entregue via
+//      Cloud API com pausa proporcional, persistida (wamid próprio) e broadcast.
+//  12. Handoff/escalada → status='waiting_human' + needs_human=true; última bolha
+//      vira transição calorosa. Senão mantém bot_active.
+//  13. MEMÓRIA (pós-resposta): 2ª chamada LLM barata extrai fatos → atualiza o
+//      lead (bant_*, temperature, name) e grava o estado em leads.metadata.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
@@ -37,8 +44,21 @@ import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts'
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
 const DEDUP_WINDOW_MS = 5000;
-// Tag de escalada — o modelo emite no fim quando o lead pede humano / reclama grave.
-const HANDOFF_TAG = '[HANDOFF_HUMANO]';
+// Debounce: agrega mensagens curtas da lead que chegam em rajada numa só resposta.
+const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '25000');
+// Re-entrega velha do Meta: inbound com timestamp mais velho que isto = ignorar
+// (bug real: Meta re-entregou msg de 13 min atrás e a Duda se reapresentou).
+const STALE_REDELIVERY_MS = 10 * 60 * 1000;
+// Guardrails de forma (reclamação real: textão + várias perguntas juntas).
+const MAX_BUBBLES = 3;
+const MAX_BUBBLE_CHARS = 300;
+const BUBBLE_PAUSE_PER_CHAR_MS = 30;
+const BUBBLE_PAUSE_CAP_MS = 4000;
+// Tags de escalada — o modelo emite no fim.
+const HANDOFF_TAG = '[HANDOFF_HUMANO]';   // lead pediu humano / reclamou grave
+const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível — JAMAIS por perfil (venda nunca é rejeitada)
+// Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
+const WARM_HANDOFF_MSG = 'Vou te conectar com nosso time pra achar o melhor caminho pra você 💚';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -46,6 +66,8 @@ function json(body: unknown, status = 200): Response {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
 
 /**
  * Auth server-to-server: aceita a service-role key (Authorization/apikey) OU o
@@ -160,6 +182,177 @@ function pickSdrPersona(agents: Array<Record<string, any>>): Record<string, any>
   return agents.find(isSdr) ?? agents[0];
 }
 
+// ─── Memória de qualificação ────────────────────────────────────────────────
+
+/**
+ * Injeta no prompt o que a Duda JÁ SABE da lead (estado, não só janela de msgs).
+ * A regra de ouro: nunca repergunte o que já está aqui.
+ */
+function buildLeadMemoryContext(lead: Record<string, any> | null): string {
+  if (!lead) return '';
+  const known: string[] = [];
+  const meta = (lead.metadata && typeof lead.metadata === 'object') ? lead.metadata as Record<string, any> : {};
+  const q = (meta.qualificacao && typeof meta.qualificacao === 'object') ? meta.qualificacao as Record<string, any> : {};
+
+  // Nome só conta como "sabido" se não for um telefone (lead novo entra com o número no name).
+  const nameLooksReal = typeof lead.name === 'string' && lead.name.trim() && !/^\+?\d[\d\s()-]{5,}$/.test(lead.name.trim());
+  if (nameLooksReal) known.push(`Nome: ${lead.name}`);
+  if (q.sub_vertical) known.push(`Área de atuação: ${q.sub_vertical}`);
+  if (q.tempo_atendimento_meses != null) known.push(`Tempo de atendimento: ~${q.tempo_atendimento_meses} meses`);
+  if (q.num_clientes != null) known.push(`Carteira histórica: ~${q.num_clientes} clientes`);
+  if (q.ticket_medio != null) known.push(`Ticket médio: ~R$${q.ticket_medio}`);
+  if (q.recorrencia) known.push(`Recorrência: ${q.recorrencia}`);
+  if (lead.bant_need) known.push(`Necessidade/dor: ${lead.bant_need}`);
+  if (lead.bant_budget) known.push(`Potencial/carteira: ${lead.bant_budget}`);
+  if (lead.bant_timing) known.push(`Tempo de casa: ${lead.bant_timing}`);
+  if (lead.temperature) known.push(`Temperatura atual: ${lead.temperature}`);
+  if (q.score_0_100 != null) known.push(`Score de qualificação atual: ${q.score_0_100}/100`);
+
+  if (!known.length) return '';
+  return `\n═══════════════════════════════════════\nO QUE JÁ SABEMOS DA LEAD (não repergunte)\n═══════════════════════════════════════\n${known.map((k) => `- ${k}`).join('\n')}\n`;
+}
+
+/** Faixa de temperatura a partir do score (hot ≥70 / warm 40-69 / cold <40). */
+function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | null {
+  if (score == null || Number.isNaN(score)) return null;
+  if (score >= 70) return 'hot';
+  if (score >= 40) return 'warm';
+  return 'cold';
+}
+
+// ─── Guardrails de forma ─────────────────────────────────────────────────────
+
+/**
+ * Censura de vocabulário: o piloto é PAGO. Se o modelo escorregar em "teste
+ * grátis / desconto / promoção" em contexto de oferta, reancoramos na garantia.
+ * Retorna { text, sanitized }.
+ */
+function sanitizeReply(input: string): { text: string; sanitized: boolean } {
+  let text = input;
+  let sanitized = false;
+  const pairs: Array<[RegExp, string]> = [
+    // "teste grátis / trial grátis / período grátis" → reancoragem na garantia.
+    [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'Piloto Fundadora com garantia (o risco é nosso)'],
+    [/\bgr[aá]tis\b/gi, 'com garantia de devolução'],
+    // desconto / promoção → reancoragem na garantia, nunca no preço.
+    [/\b(desconto|descontos)\b/gi, 'a garantia (se não recuperar mais que a mensalidade, devolvemos)'],
+    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'a condição de fundadora (preço travado + garantia)'],
+  ];
+  for (const [re, rep] of pairs) {
+    if (re.test(text)) {
+      sanitized = true;
+      text = text.replace(re, rep);
+    }
+  }
+  return { text, sanitized };
+}
+
+/**
+ * EXATAMENTE UMA pergunta por resposta: se o modelo emitiu >1 '?', mantém só até
+ * a primeira interrogação (trunca no fim dessa frase). Melhor perder uma pergunta
+ * que sobrecarregar a lead com um formulário.
+ */
+function keepFirstQuestion(input: string): string {
+  const marks = (input.match(/\?/g) || []).length;
+  if (marks <= 1) return input.trim();
+  const firstQ = input.indexOf('?');
+  return input.slice(0, firstQ + 1).trim();
+}
+
+/**
+ * Divide a resposta em até MAX_BUBBLES bolhas por parágrafo / quebra dupla,
+ * cada uma respeitando o teto de caracteres (quebra longas por sentença). Tom
+ * WhatsApp: cada bolha é uma ideia.
+ */
+function splitIntoBubbles(input: string): string[] {
+  const paras = input
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  const out: string[] = [];
+  for (const para of paras) {
+    if (para.length <= MAX_BUBBLE_CHARS) {
+      out.push(para);
+      continue;
+    }
+    // Parágrafo longo: quebra por sentença acumulando até o teto.
+    const sentences = para.match(/[^.!?]+[.!?]*\s*/g) ?? [para];
+    let buf = '';
+    for (const s of sentences) {
+      if ((buf + s).length > MAX_BUBBLE_CHARS && buf) {
+        out.push(buf.trim());
+        buf = s;
+      } else {
+        buf += s;
+      }
+    }
+    if (buf.trim()) out.push(buf.trim());
+  }
+  // Corte duro: no máximo MAX_BUBBLES bolhas (o excedente vira a última, aparado).
+  if (out.length > MAX_BUBBLES) {
+    const head = out.slice(0, MAX_BUBBLES - 1);
+    const tail = out.slice(MAX_BUBBLES - 1).join(' ').slice(0, MAX_BUBBLE_CHARS).trim();
+    return [...head, tail].filter(Boolean);
+  }
+  return out.filter(Boolean);
+}
+
+// ─── Extração de fatos (2ª chamada LLM, barata) ─────────────────────────────
+
+/**
+ * Pede ao mesmo gateway um JSON estrito com os fatos da conversa. Parse
+ * defensivo — qualquer falha degrada para {} e não derruba o fluxo. Non-fatal.
+ */
+async function extractLeadFacts(
+  gatewayBase: string,
+  apiKey: string,
+  model: string,
+  transcript: string,
+): Promise<Record<string, any>> {
+  try {
+    const sys = 'Você extrai fatos de uma conversa de qualificação de vendas (profissional da beleza) e responde SOMENTE com um objeto JSON válido, sem texto ao redor, sem markdown. Campos (use null quando desconhecido): {"sub_vertical": string|null, "tempo_atendimento_meses": number|null, "num_clientes": number|null, "ticket_medio": number|null, "recorrencia": string|null, "nome_lead": string|null, "score_0_100": number|null}. Regras do score: D1 potencial (carteira×ticket×0,35÷217) 50pts, D2 tempo 20pts, D3 recorrência 15pts, D4 dor 15pts. Se carteira OU ticket desconhecidos, score é provisório — retorne o valor mas ele não decide rota.';
+    const res = await fetch(`${gatewayBase}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        max_tokens: 300,
+        temperature: 0,
+        messages: [
+          { role: 'system', content: sys },
+          { role: 'user', content: `Conversa:\n${transcript}\n\nRetorne o JSON dos fatos.` },
+        ],
+        stream: false,
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[platform-sales-brain] extração de fatos: gateway', res.status);
+      return {};
+    }
+    const data = await res.json().catch(() => null);
+    const raw: string = data?.choices?.[0]?.message?.content ?? '';
+    // Isola o 1º objeto JSON (o modelo às vezes embrulha em cercas).
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) return {};
+    const parsed = JSON.parse(m[0]);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) {
+    console.warn('[platform-sales-brain] extração de fatos falhou (non-fatal):', String(e).slice(0, 200));
+    return {};
+  }
+}
+
+/** Coerção defensiva: number | string numérica → number; senão null. */
+function toNum(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -180,7 +373,7 @@ Deno.serve(async (req) => {
     // 1) Conversa — só age em WhatsApp com bot ativo.
     const { data: conversation, error: convError } = await supabase
       .from('platform_crm_conversations')
-      .select('id, channel, status, product_id, visitor_name, visitor_phone, visitor_whatsapp')
+      .select('id, channel, status, product_id, lead_id, visitor_name, visitor_phone, visitor_whatsapp')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -194,18 +387,79 @@ Deno.serve(async (req) => {
       return json({ skipped: 'bot_not_active', status: conversation.status });
     }
 
-    // 3) Histórico: últimas 30 msgs vivas (desc → reverse pra ordem cronológica).
-    const { data: rawMsgs } = await supabase
-      .from('platform_crm_messages')
-      .select('content, sender_type, direction, is_deleted, created_at')
-      .eq('conversation_id', conversationId)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(30);
+    // Helper: carrega as msgs vivas (desc), com metadata (pro wa_timestamp).
+    const loadMessages = async (): Promise<Array<Record<string, any>>> => {
+      const { data } = await supabase
+        .from('platform_crm_messages')
+        .select('content, sender_type, direction, is_deleted, created_at, metadata')
+        .eq('conversation_id', conversationId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      return (data as Array<Record<string, any>>) || [];
+    };
+    const lastInboundOf = (msgs: Array<Record<string, any>>) =>
+      msgs.find((m) => m.direction === 'inbound' && m.sender_type === 'visitor') ?? null;
+    // wa_timestamp da Meta = string Unix epoch em SEGUNDOS (persistido pelo webhook).
+    // Fallback: created_at. Retorna epoch em ms ou null.
+    const inboundEpochMs = (m: Record<string, any> | null): number | null => {
+      if (!m) return null;
+      const meta = (m.metadata && typeof m.metadata === 'object') ? m.metadata as Record<string, any> : {};
+      const ts = meta.wa_timestamp;
+      const secs = typeof ts === 'number' ? ts : (typeof ts === 'string' ? Number(ts) : NaN);
+      if (Number.isFinite(secs) && secs > 0) return secs * 1000;
+      const created = m.created_at ? new Date(m.created_at).getTime() : NaN;
+      return Number.isFinite(created) ? created : null;
+    };
 
-    const historyDesc = rawMsgs || [];
+    let historyDesc = await loadMessages();
+    const triggerInbound = lastInboundOf(historyDesc);
 
-    // 2) Idempotência leve: última msg = outbound do bot com <5s ⇒ não responde.
+    // 2) ANTI-RE-ENTREGA VELHA: se a inbound-gatilho tem wa_timestamp real (segundos)
+    //    e é mais velha que 10 min, o Meta re-entregou uma msg antiga — não responde
+    //    (senão a Duda se reapresenta 13 min depois, bug real de 2026-07-04). Exige a
+    //    fonte da Meta: o created_at recente de uma re-entrega enganaria o guard.
+    if (triggerInbound) {
+      const meta = (triggerInbound.metadata && typeof triggerInbound.metadata === 'object')
+        ? triggerInbound.metadata as Record<string, any> : {};
+      const tsSecs = typeof meta.wa_timestamp === 'number' ? meta.wa_timestamp
+        : (typeof meta.wa_timestamp === 'string' ? Number(meta.wa_timestamp) : NaN);
+      if (Number.isFinite(tsSecs) && tsSecs > 0) {
+        const ageMs = Date.now() - tsSecs * 1000;
+        if (ageMs > STALE_REDELIVERY_MS) {
+          return json({ skipped: 'stale_redelivery', age_ms: ageMs });
+        }
+      }
+    }
+
+    // 3) DEBOUNCE / AGREGAÇÃO: a lead digita aos poucos. Se a inbound-gatilho é
+    //    mais nova que DEBOUNCE_MS, esperamos o resto da rajada e RECARREGAMOS.
+    //    Se surgiu uma inbound MAIS NOVA, esta invocação é obsoleta — a da msg
+    //    mais nova responde por todas ⇒ EXIT silencioso ('superseded').
+    let debounceWaitedMs = 0;
+    if (triggerInbound && DEBOUNCE_MS > 0) {
+      const triggerMs = inboundEpochMs(triggerInbound);
+      const ageMs = triggerMs != null ? Date.now() - triggerMs : Number.POSITIVE_INFINITY;
+      if (ageMs < DEBOUNCE_MS) {
+        debounceWaitedMs = DEBOUNCE_MS - ageMs;
+        await sleep(debounceWaitedMs);
+        historyDesc = await loadMessages();
+        const freshInbound = lastInboundOf(historyDesc);
+        const freshMs = inboundEpochMs(freshInbound);
+        // Se a última inbound agora é outra/mais nova, quem responde é ela.
+        if (
+          freshInbound &&
+          triggerMs != null &&
+          freshMs != null &&
+          (freshMs > triggerMs ||
+            (freshInbound.content !== triggerInbound.content && freshMs >= triggerMs))
+        ) {
+          return json({ skipped: 'superseded' });
+        }
+      }
+    }
+
+    // 4) Idempotência leve: última msg = outbound do bot com <5s ⇒ não responde.
     const latest = historyDesc[0];
     if (
       latest &&
@@ -216,6 +470,7 @@ Deno.serve(async (req) => {
       return json({ skipped: 'recent_bot_message' });
     }
 
+    // 5) Histórico cronológico + detecção de conversa já iniciada pelo bot.
     const history = historyDesc
       .filter((m: any) => typeof m.content === 'string' && m.content.trim().length > 0)
       .reverse();
@@ -223,12 +478,27 @@ Deno.serve(async (req) => {
       role: m.sender_type === 'visitor' ? 'user' : 'assistant',
       content: m.content,
     }));
-
     if (messages.length === 0) {
       return json({ skipped: 'no_messages' });
     }
+    // Já existe fala do bot? Então CONTINUA — proíbe reapresentação.
+    const botAlreadySpoke = historyDesc.some(
+      (m: any) => m.direction === 'outbound' && m.sender_type === 'bot',
+    );
 
-    // 4) PERSONA — agentes do produto ativos e habilitados no WhatsApp.
+    // 6) MEMÓRIA: estado do lead (BANT + o que já sabemos em metadata).
+    let lead: Record<string, any> | null = null;
+    if (conversation.lead_id) {
+      const { data: leadRow } = await supabase
+        .from('platform_crm_leads')
+        .select('id, name, temperature, bant_budget, bant_authority, bant_need, bant_timing, notes, metadata')
+        .eq('id', conversation.lead_id)
+        .maybeSingle();
+      lead = (leadRow as Record<string, any> | null) ?? null;
+    }
+    const leadMemoryContext = buildLeadMemoryContext(lead);
+
+    // 7) PERSONA — agentes do produto ativos e habilitados no WhatsApp.
     let persona: Record<string, any> | null = null;
     if (conversation.product_id) {
       const { data: agents } = await supabase
@@ -248,7 +518,7 @@ Deno.serve(async (req) => {
       return json({ skipped: 'no_active_persona' });
     }
 
-    // 5) CONHECIMENTO do produto + escassez real da campanha fundadora.
+    // 8) CONHECIMENTO do produto + escassez real da campanha fundadora.
     let product: Record<string, any> | null = null;
     let campaign: Record<string, any> | null = null;
     if (conversation.product_id) {
@@ -284,7 +554,7 @@ Deno.serve(async (req) => {
       ? JSON.stringify(persona.qualification_schema)
       : '';
 
-    // 6) System prompt: persona + conhecimento + REGRAS FIXAS do cérebro.
+    // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
     const systemPrompt = `Você é ${persona.name}, atendente de VENDAS por WhatsApp do produto ${productName}.
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
@@ -292,7 +562,7 @@ ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
 ${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
-${knowledgeContext}
+${leadMemoryContext}${knowledgeContext}
 
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
@@ -301,18 +571,24 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 2. "piloto" = Piloto Fundadora — programa PAGO com acompanhamento 1-a-1 e garantia de devolução. NUNCA descreva como "teste gratuito", "trial" ou "demonstração".
 3. Escassez SÓ a real (o dado da campanha acima, quando presente). NUNCA invente urgência falsa.
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
-5. Se o cliente PEDIR falar com humano, ou fizer uma RECLAMAÇÃO GRAVE, encerre sua resposta com a tag exata ${HANDOFF_TAG} na última linha (o sistema transfere para um atendente humano).
+5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta e convite pro Piloto quando crescer). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
+6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
+${botAlreadySpoke ? '7. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
 ═══════════════════════════════════════
-COMO RESPONDER
+COMO RESPONDER (WhatsApp — regras de forma DURAS)
 ═══════════════════════════════════════
-- Otimizado para WhatsApp: curto, direto, humano. 2-5 linhas.
-- NÃO use emojis. NÃO use markdown (asteriscos, listas). Texto corrido natural.
-- Use o nome do cliente quando souber.
+- Responda em pt-BR, tom de conversa de WhatsApp: curto, humano, direto.
+- MÁXIMO ~300 caracteres. Sem parede de texto.
+- EXATAMENTE UMA pergunta por resposta (ou nenhuma). Nunca faça duas perguntas juntas.
+- Sem listas, sem markdown, sem asteriscos. Texto corrido.
+- No máximo 1 emoji, e só quando couber.
+- Reaja com calor ao que a lead disse antes de perguntar (micro-ack).
+- Use o nome do cliente quando souber. Nunca repergunte o que já está em "O QUE JÁ SABEMOS DA LEAD".
 - Sempre avance a conversa (qualifique ou proponha próximo passo).`;
 
-    // 7) LLM: gateway da casa. Task fixa o modelo (default gemini-2.5-flash,
-    // override AI_SALES_BRAIN_MODEL) — mesmo transporte do platform-sales-copilot.
+    // 10) LLM: gateway da casa. Task fixa o modelo (default gemini-2.5-flash,
+    //     override AI_SALES_BRAIN_MODEL) — mesmo transporte do sales-copilot.
     const apiKey = Deno.env.get('AI_API_KEY') ?? '';
     if (!apiKey) {
       console.error('[platform-sales-brain] AI_API_KEY não configurada.');
@@ -347,58 +623,94 @@ COMO RESPONDER
       return json({ error: 'O modelo não retornou resposta.' }, 502);
     }
 
-    // 8) Handoff: detecta a tag, remove do texto e escala a conversa.
-    const needsHandoff = reply.includes(HANDOFF_TAG);
+    // 11) Escalada/handoff: detecta as tags (mesmo tratamento), remove do texto.
+    const needsHandoff = reply.includes(HANDOFF_TAG) || reply.includes(ESCALATE_TAG);
     if (needsHandoff) {
-      // Remove a tag (e limpa quebras/espaços que sobraram no fim).
-      reply = reply.split(HANDOFF_TAG).join('').replace(/\s+$/, '').trim();
-    }
-    if (!reply) {
-      // Só a tag e nada de texto útil — não manda bolha vazia, mas ainda escala.
-      reply = 'Já vou te transferir para um atendente humano, um instante.';
-    }
-
-    // 9) Persiste a resposta ANTES de entregar (mesmo padrão do webchat-inbox:
-    // a mensagem existe no CRM mesmo se a entrega externa falhar).
-    const { data: message, error: msgError } = await supabase
-      .from('platform_crm_messages')
-      .insert({
-        conversation_id: conversationId,
-        direction: 'outbound',
-        sender_type: 'bot',
-        content: reply,
-        content_type: 'text',
-        metadata: { channel: 'whatsapp_cloud', agent_id: persona.id, delivery_status: 'sent' },
-      })
-      .select('*')
-      .single();
-
-    if (msgError || !message) {
-      console.error('[platform-sales-brain] insert msg error:', msgError);
-      return json({ error: 'Failed to persist reply' }, 500);
+      reply = reply.split(HANDOFF_TAG).join('').split(ESCALATE_TAG).join('').replace(/\s+$/, '').trim();
+      // Última fala ao lead SEMPRE calorosa — nunca "você não se encaixa".
+      reply = reply
+        ? `${reply}\n\n${WARM_HANDOFF_MSG}`
+        : WARM_HANDOFF_MSG;
     }
 
-    // Entrega no WhatsApp Cloud (número de vendas).
+    // GUARDRAILS DE FORMA (pós-processamento, na ordem certa):
+    // (a) censura de vocabulário; (b) 1 pergunta só; (c) divisão em bolhas.
+    const san = sanitizeReply(reply);
+    reply = san.text;
+    const sanitized = san.sanitized;
+    // Corte na 1ª pergunta só quando NÃO é handoff (a msg de handoff não pergunta).
+    if (!needsHandoff) reply = keepFirstQuestion(reply);
+    let bubbles = splitIntoBubbles(reply);
+    if (bubbles.length === 0) {
+      bubbles = [needsHandoff ? WARM_HANDOFF_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?'];
+    }
+
+    // 12) Entrega bolha a bolha: persiste ANTES de entregar (a msg existe no CRM
+    //     mesmo se a entrega externa falhar), depois casa o wamid, broadcast e
+    //     pausa proporcional entre bolhas (só entre bolhas, não após a última).
     const dest = conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '';
-    const { wamid, error: deliveryError } = await deliverViaWhatsAppCloud(supabase, dest, reply);
+    const total = bubbles.length;
+    let anyDelivered = false;
+    let lastDeliveryError: string | null = null;
+    const currentScore = (lead?.metadata as any)?.qualificacao?.score_0_100 ?? null;
 
-    const deliveryMeta = wamid
-      ? { ...(message.metadata ?? {}), wamid, delivery_status: 'sent', channel: 'whatsapp_cloud', agent_id: persona.id }
-      : { ...(message.metadata ?? {}), delivery_status: 'failed', delivery_error: deliveryError, agent_id: persona.id };
+    for (let i = 0; i < total; i++) {
+      const bubbleText = bubbles[i];
+      const baseMeta = {
+        channel: 'whatsapp_cloud',
+        agent_id: persona.id,
+        score: currentScore,
+        debounce_waited_ms: debounceWaitedMs,
+        sanitized,
+        bubble_n: i + 1,
+        bubble_total: total,
+        delivery_status: 'sent',
+      };
 
-    const { data: updated } = await supabase
-      .from('platform_crm_messages')
-      .update({ metadata: deliveryMeta })
-      .eq('id', message.id)
-      .select('*')
-      .single();
-    const finalMessage = updated ?? message;
-    if (!wamid) {
-      console.error('[platform-sales-brain] WhatsApp NÃO entregue:', deliveryError);
+      const { data: message, error: msgError } = await supabase
+        .from('platform_crm_messages')
+        .insert({
+          conversation_id: conversationId,
+          direction: 'outbound',
+          sender_type: 'bot',
+          content: bubbleText,
+          content_type: 'text',
+          metadata: baseMeta,
+        })
+        .select('*')
+        .single();
+
+      if (msgError || !message) {
+        console.error('[platform-sales-brain] insert bolha error:', msgError);
+        continue;
+      }
+
+      const { wamid, error: deliveryError } = await deliverViaWhatsAppCloud(supabase, dest, bubbleText);
+      if (wamid) anyDelivered = true; else lastDeliveryError = deliveryError;
+
+      const deliveryMeta = wamid
+        ? { ...baseMeta, wamid, delivery_status: 'sent' }
+        : { ...baseMeta, delivery_status: 'failed', delivery_error: deliveryError };
+
+      const { data: updated } = await supabase
+        .from('platform_crm_messages')
+        .update({ metadata: deliveryMeta })
+        .eq('id', message.id)
+        .select('*')
+        .single();
+      const finalMessage = updated ?? message;
+      if (!wamid) console.error('[platform-sales-brain] bolha NÃO entregue:', deliveryError);
+
+      await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
+
+      // Pausa proporcional ao tamanho da PRÓXIMA bolha (ritmo humano), só entre bolhas.
+      if (i < total - 1) {
+        const next = bubbles[i + 1] ?? '';
+        await sleep(Math.min(next.length * BUBBLE_PAUSE_PER_CHAR_MS, BUBBLE_PAUSE_CAP_MS));
+      }
     }
 
-    // Status da conversa: handoff → fila humana; senão mantém bot ativo.
-    // last_message_at sempre atualizado (a conversa acabou de receber uma msg).
+    // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     const convUpdate: Record<string, unknown> = { last_message_at: new Date().toISOString() };
     if (needsHandoff) {
       convUpdate.status = 'waiting_human';
@@ -409,15 +721,114 @@ COMO RESPONDER
       .update(convUpdate)
       .eq('id', conversationId);
 
-    // Broadcast no canal da conversa (mesmo canal/evento que o front assina).
-    await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
+    // 13) MEMÓRIA DE QUALIFICAÇÃO (pós-resposta, non-fatal): 2ª chamada LLM barata
+    //     extrai fatos → atualiza o lead (bant_*, temperature, name) + metadata.
+    //     Só roda se a conversa tem lead vinculado.
+    let qualPersisted = false;
+    let newScore: number | null = null;
+    if (conversation.lead_id && lead) {
+      try {
+        const transcript = history
+          .map((m: any) => `${m.sender_type === 'visitor' ? 'Lead' : 'Duda'}: ${m.content}`)
+          .join('\n')
+          .slice(-6000);
+        const facts = await extractLeadFacts(gatewayBase, apiKey, model, transcript);
+
+        const subVertical = typeof facts.sub_vertical === 'string' ? facts.sub_vertical.trim() || null : null;
+        const tempoMeses = toNum(facts.tempo_atendimento_meses);
+        const numClientes = toNum(facts.num_clientes);
+        const ticket = toNum(facts.ticket_medio);
+        const recorrencia = typeof facts.recorrencia === 'string' ? facts.recorrencia.trim() || null : null;
+        const nomeLead = typeof facts.nome_lead === 'string' ? facts.nome_lead.trim() || null : null;
+        newScore = toNum(facts.score_0_100);
+
+        // Estado anterior (para detectar mudança de faixa) e merge conservador.
+        const prevMeta = (lead.metadata && typeof lead.metadata === 'object') ? lead.metadata as Record<string, any> : {};
+        const prevQual = (prevMeta.qualificacao && typeof prevMeta.qualificacao === 'object') ? prevMeta.qualificacao as Record<string, any> : {};
+        const prevScore = toNum(prevQual.score_0_100);
+        const prevTemp = scoreToTemperature(prevScore);
+
+        // Merge: só sobrescreve o que a extração descobriu (não apaga o já sabido).
+        const mergedQual: Record<string, any> = {
+          ...prevQual,
+          ...(subVertical != null ? { sub_vertical: subVertical } : {}),
+          ...(tempoMeses != null ? { tempo_atendimento_meses: tempoMeses } : {}),
+          ...(numClientes != null ? { num_clientes: numClientes } : {}),
+          ...(ticket != null ? { ticket_medio: ticket } : {}),
+          ...(recorrencia != null ? { recorrencia } : {}),
+          ...(nomeLead != null ? { nome_lead: nomeLead } : {}),
+          ...(newScore != null ? { score_0_100: newScore } : {}),
+          updated_at: new Date().toISOString(),
+        };
+        const effScore = newScore ?? prevScore;
+        const newTemp = scoreToTemperature(effScore);
+
+        // bant_* derivados (conforme briefing): budget = carteira+ticket,
+        // need = área+dor, timing = tempo de casa.
+        const carteira = mergedQual.num_clientes;
+        const tkt = mergedQual.ticket_medio;
+        const bantBudget = (carteira != null || tkt != null)
+          ? `~${carteira ?? '?'} clientes · ticket ~R$${tkt ?? '?'}`
+          : lead.bant_budget ?? null;
+        const bantNeed = mergedQual.sub_vertical
+          ? `${mergedQual.sub_vertical}${lead.bant_need ? ` · ${lead.bant_need}` : ''}`
+          : lead.bant_need ?? null;
+        const bantTiming = mergedQual.tempo_atendimento_meses != null
+          ? `~${mergedQual.tempo_atendimento_meses} meses de atendimento`
+          : lead.bant_timing ?? null;
+
+        // name = nome_lead quando descoberto E o atual for um telefone.
+        const currentIsPhone = typeof lead.name === 'string' && /^\+?\d[\d\s()-]{5,}$/.test(lead.name.trim());
+        const nextName = (nomeLead && currentIsPhone) ? nomeLead : lead.name;
+
+        const leadUpdate: Record<string, any> = {
+          metadata: { ...prevMeta, qualificacao: mergedQual },
+        };
+        if (bantBudget != null) leadUpdate.bant_budget = bantBudget;
+        if (bantNeed != null) leadUpdate.bant_need = bantNeed;
+        if (bantTiming != null) leadUpdate.bant_timing = bantTiming;
+        if (newTemp != null) leadUpdate.temperature = newTemp;
+        if (nextName && nextName !== lead.name) leadUpdate.name = nextName;
+
+        await supabase.from('platform_crm_leads').update(leadUpdate).eq('id', conversation.lead_id);
+        qualPersisted = true;
+
+        // Nota de auditoria APENAS quando o score MUDA DE FAIXA. platform_crm_lead_notes
+        // exige author_id NOT NULL → auth.users(id): a IA só grava se houver um user de
+        // sistema em AI_SYSTEM_AUTHOR_ID; sem ele, o estado já vive em leads.metadata
+        // (fonte de verdade) e pulamos a nota sem quebrar (log explícito, nunca silencia).
+        const faixaMudou = prevTemp !== newTemp && newTemp != null;
+        const systemAuthor = Deno.env.get('AI_SYSTEM_AUTHOR_ID') ?? '';
+        if (faixaMudou && systemAuthor) {
+          const resumo = `[Qualificação Duda] Score ${effScore}/100 (${prevTemp ?? 'novo'} → ${newTemp}). ` +
+            `Área: ${mergedQual.sub_vertical ?? '?'} · carteira ~${mergedQual.num_clientes ?? '?'} · ` +
+            `ticket ~R$${mergedQual.ticket_medio ?? '?'} · tempo ~${mergedQual.tempo_atendimento_meses ?? '?'}m.`;
+          const { error: noteErr } = await supabase.from('platform_crm_lead_notes').insert({
+            lead_id: conversation.lead_id,
+            author_id: systemAuthor,
+            content: resumo,
+            role_label: 'Duda (IA)',
+          });
+          if (noteErr) console.warn('[platform-sales-brain] nota de faixa não gravada (non-fatal):', noteErr.message);
+        } else if (faixaMudou && !systemAuthor) {
+          console.info('[platform-sales-brain] faixa mudou mas AI_SYSTEM_AUTHOR_ID ausente — estado persistido só em leads.metadata.');
+        }
+      } catch (e) {
+        console.warn('[platform-sales-brain] persistência de qualificação falhou (non-fatal):', String(e).slice(0, 200));
+      }
+    }
 
     return json({
       success: true,
       handoff: needsHandoff,
       agent_id: persona.id,
       model,
-      ...(wamid ? {} : { delivery_warning: deliveryError ?? 'entrega falhou' }),
+      bubbles: total,
+      debounce_waited_ms: debounceWaitedMs,
+      sanitized,
+      score: newScore,
+      qualification_persisted: qualPersisted,
+      ...(anyDelivered ? {} : { delivery_warning: lastDeliveryError ?? 'entrega falhou' }),
     });
   } catch (error) {
     console.error('[platform-sales-brain] error:', error);
