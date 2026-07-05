@@ -16,20 +16,27 @@
 //   5. Últimas 30 msgs (is_deleted=false) → histórico.
 //   6. MEMÓRIA DE QUALIFICAÇÃO: carrega o lead da conversa (estado BANT + o que
 //      já sabemos em metadata) e injeta no prompt — a Duda nunca repergunta.
-//   7. PERSONA: platform_crm_product_agents do produto (ativo + whatsapp);
-//      escolhe o SDR/qualificação; system prompt com os campos ricos da persona.
+//   7. PERSONA (linha travada Duda→Bia): platform_crm_product_agents do produto
+//      (ativo + whatsapp). ROTEAMENTO POR CONVERSA — se current_agent_id aponta
+//      um agente ativo, é ELE quem fala (a Bia continua o que a Duda passou);
+//      senão a Duda (SDR) abre e persistimos current_agent_id=duda.id.
 //   8. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
 //      + escassez REAL da view founder_campaign_status.
 //   9. Regras fixas: nunca desconto; piloto = Piloto Fundadora PAGO; escassez só
 //      a real; humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
 //      p/ pedido de humano/caso sensível — venda NUNCA é rejeitada (diretiva
 //      Marcelo 05/07: "pagou é cliente"; score roteia OFERTA, não aceite/rejeite).
+//      Só a Duda (SDR): score ≥70 + intenção → [PASSAR_BIA] (passagem interna
+//      pro closer, não humana). A Bia recebe o dossiê e conduz ao fechamento.
 //  10. LLM: mesmo gateway da casa (AI_API_KEY + AI_GATEWAY_URL).
 //  11. GUARDRAILS DE FORMA (pós-processamento): sanitize de vocabulário, corte na
 //      1ª pergunta, divisão em até 3 bolhas curtas — cada bolha é entregue via
 //      Cloud API com pausa proporcional, persistida (wamid próprio) e broadcast.
+//  11b. [PASSAR_BIA] (só Duda): remove a tag, acha o closer (Bia) do produto,
+//      seta current_agent_id=bia.id; a ÚLTIMA bolha da Duda vira transição
+//      calorosa; NÃO gera resposta da Bia agora — a próxima msg da lead a ativa.
 //  12. Handoff/escalada → status='waiting_human' + needs_human=true; última bolha
-//      vira transição calorosa. Senão mantém bot_active.
+//      vira transição calorosa. Passagem Duda→Bia mantém bot_active. Senão idem.
 //  13. MEMÓRIA (pós-resposta): 2ª chamada LLM barata extrai fatos → atualiza o
 //      lead (bant_*, temperature, name) e grava o estado em leads.metadata.
 
@@ -57,6 +64,12 @@ const BUBBLE_PAUSE_CAP_MS = 4000;
 // Tags de escalada — o modelo emite no fim.
 const HANDOFF_TAG = '[HANDOFF_HUMANO]';   // lead pediu humano / reclamou grave
 const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível — JAMAIS por perfil (venda nunca é rejeitada)
+// Passagem interna Duda→Bia: SÓ a Duda (SDR) emite; score ≥70 + intenção. NÃO é
+// escalada humana — troca o agente da conversa (current_agent_id) e a Bia (closer)
+// assume na PRÓXIMA mensagem da lead. A conversa segue bot_active o tempo todo.
+const PASS_BIA_TAG = '[PASSAR_BIA]';
+// Bolha de transição calorosa que a Duda deixa ao passar para a Bia.
+const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';
 // Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
 const WARM_HANDOFF_MSG = 'Vou te conectar com nosso time pra achar o melhor caminho pra você 💚';
 
@@ -172,14 +185,54 @@ function buildKnowledgeContext(
   return ctx;
 }
 
-/** Seleciona a persona SDR/qualificação; senão a primeira ativa (determinístico). */
+/** Links de checkout reais (do banco). É a "maquininha" da Duda: cliente que
+ *  DECIDE recebe o link na hora, sem passar por closer. Vazio se não houver. */
+function buildCheckoutContext(plans: Array<Record<string, any>>): string {
+  if (!plans.length) return '';
+  let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
+  for (const p of plans) {
+    ctx += `- ${p.name} (R$${p.price_monthly}): ${p.checkout_url}\n`;
+  }
+  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. Só passe para a Bia o cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO e precisa entender o valor — nunca o que já quer fechar.\n`;
+  return ctx;
+}
+
+/** É o agente SDR (Duda) — abre/qualifica/recomenda? Base da linha travada. */
+function isSdrAgent(a: Record<string, any> | null): boolean {
+  if (!a) return false;
+  const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
+  return hay.includes('sdr') || hay.includes('qualifica') || hay.includes('duda');
+}
+
+/** É o agente closer (Bia) — recebe o dossiê e FECHA o piloto? */
+function isCloserAgent(a: Record<string, any> | null): boolean {
+  if (!a) return false;
+  const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
+  return hay.includes('closer') || hay.includes('bia');
+}
+
+/** Seleciona a persona SDR/qualificação (Duda); senão a primeira ativa (determinístico). */
 function pickSdrPersona(agents: Array<Record<string, any>>): Record<string, any> | null {
   if (!agents.length) return null;
-  const isSdr = (a: Record<string, any>) => {
-    const hay = `${a.agent_type ?? ''} ${a.role ?? ''} ${a.name ?? ''}`.toLowerCase();
-    return hay.includes('sdr') || hay.includes('qualifica');
-  };
-  return agents.find(isSdr) ?? agents[0];
+  return agents.find(isSdrAgent) ?? agents[0];
+}
+
+/**
+ * ROTEAMENTO POR CONVERSA (linha travada Duda→Bia): se a conversa já aponta um
+ * agente ativo do produto em current_agent_id, é ELE quem fala (a Bia continua a
+ * venda que a Duda passou). Senão, o SDR (Duda) abre. Retorna a persona escolhida
+ * — quem persiste current_agent_id é o handler (precisa do id da Duda + supabase).
+ */
+function pickPersonaForConversation(
+  agents: Array<Record<string, any>>,
+  currentAgentId: string | null,
+): Record<string, any> | null {
+  if (!agents.length) return null;
+  if (currentAgentId) {
+    const pinned = agents.find((a) => a.id === currentAgentId);
+    if (pinned) return pinned; // agente já em curso na conversa (ativo + WhatsApp)
+  }
+  return pickSdrPersona(agents);
 }
 
 // ─── Memória de qualificação ────────────────────────────────────────────────
@@ -373,7 +426,7 @@ Deno.serve(async (req) => {
     // 1) Conversa — só age em WhatsApp com bot ativo.
     const { data: conversation, error: convError } = await supabase
       .from('platform_crm_conversations')
-      .select('id, channel, status, product_id, lead_id, visitor_name, visitor_phone, visitor_whatsapp')
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -499,7 +552,11 @@ Deno.serve(async (req) => {
     const leadMemoryContext = buildLeadMemoryContext(lead);
 
     // 7) PERSONA — agentes do produto ativos e habilitados no WhatsApp.
+    //    ROTEAMENTO POR CONVERSA (linha Duda→Bia): respeita current_agent_id
+    //    (a Bia continua o que a Duda passou); sem ele, a Duda (SDR) abre e
+    //    persistimos current_agent_id=duda.id na conversa (pin determinístico).
     let persona: Record<string, any> | null = null;
+    let sdrAgentId: string | null = null; // id da Duda — alvo do pin inicial
     if (conversation.product_id) {
       const { data: agents } = await supabase
         .from('platform_crm_product_agents')
@@ -509,7 +566,10 @@ Deno.serve(async (req) => {
         .eq('product_id', conversation.product_id)
         .eq('is_active', true)
         .eq('active_in_whatsapp', true);
-      persona = pickSdrPersona((agents as Array<Record<string, any>>) || []);
+      const agentList = (agents as Array<Record<string, any>>) || [];
+      const sdrPersona = pickSdrPersona(agentList);
+      sdrAgentId = sdrPersona?.id ?? null;
+      persona = pickPersonaForConversation(agentList, conversation.current_agent_id ?? null);
     }
 
     if (!persona) {
@@ -518,11 +578,25 @@ Deno.serve(async (req) => {
       return json({ skipped: 'no_active_persona' });
     }
 
+    // Papel do agente que vai falar AGORA (condiciona [PASSAR_BIA] e continuidade).
+    const personaIsSdr = isSdrAgent(persona);
+    const personaIsCloser = isCloserAgent(persona);
+
+    // PIN INICIAL: se a conversa ainda não tem agente fixado e a Duda vai abrir,
+    // grava current_agent_id=duda.id — assim a linha começa ancorada nela.
+    if (!conversation.current_agent_id && sdrAgentId && persona.id === sdrAgentId) {
+      await supabase
+        .from('platform_crm_conversations')
+        .update({ current_agent_id: sdrAgentId })
+        .eq('id', conversationId);
+    }
+
     // 8) CONHECIMENTO do produto + escassez real da campanha fundadora.
     let product: Record<string, any> | null = null;
     let campaign: Record<string, any> | null = null;
+    let plans: Array<Record<string, any>> = [];
     if (conversation.product_id) {
-      const [productRes, campaignRes] = await Promise.all([
+      const [productRes, campaignRes, plansRes] = await Promise.all([
         supabase
           .from('platform_crm_products')
           .select(
@@ -537,12 +611,19 @@ Deno.serve(async (req) => {
           .select('total_vagas, fundadoras_ativas, slots_left, campanha_encerrada')
           .limit(1)
           .maybeSingle(),
+        // Planos + LINK DE CHECKOUT reais (a "maquininha" da Duda): quando o
+        // cliente DECIDE, ela mesma manda o link — não precisa de closer.
+        supabase
+          .from('public_plans')
+          .select('name, slug, price_monthly, checkout_url')
+          .order('price_monthly', { ascending: true }),
       ]);
       product = (productRes.data as Record<string, any> | null) ?? null;
       campaign = (campaignRes.data as Record<string, any> | null) ?? null;
+      plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url);
     }
 
-    const knowledgeContext = buildKnowledgeContext(product, campaign);
+    const knowledgeContext = buildKnowledgeContext(product, campaign) + buildCheckoutContext(plans);
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;
 
@@ -554,12 +635,20 @@ Deno.serve(async (req) => {
       ? JSON.stringify(persona.qualification_schema)
       : '';
 
+    // CONTINUIDADE DA BIA (closer): quando é a Bia que assume, a conversa NÃO
+    // recomeça — a Duda já fez toda a descoberta e a passou. O bloco "O QUE JÁ
+    // SABEMOS DA LEAD" abaixo é o dossiê; a Bia confirma 1 detalhe e conduz ao
+    // fechamento. Só entra quando a persona ativa é o closer.
+    const closerContinuityContext = personaIsCloser
+      ? `\n═══════════════════════════════════════\nVOCÊ ESTÁ ASSUMINDO UMA CONVERSA (HANDOFF DA DUDA)\n═══════════════════════════════════════\nA Duda te passou o dossiê desta lead — tudo que vocês precisam já está em "O QUE JÁ SABEMOS DA LEAD". NUNCA se apresente do zero nem recomece a descoberta. Valide UM detalhe do que ela já disse ("vi aqui que você trabalha com X há Y, certo?") e conduza direto para a demonstração/fechamento do Piloto Fundadora. Você é a especialista que fecha: apresente a oferta com a conta da recuperação, trate a objeção mais provável e vá pro checkout como próximo passo concreto.\n`
+      : '';
+
     // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
     const systemPrompt = `Você é ${persona.name}, atendente de VENDAS por WhatsApp do produto ${productName}.
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
-${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
+${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
 ${leadMemoryContext}${knowledgeContext}
@@ -573,7 +662,9 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta e convite pro Piloto quando crescer). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${botAlreadySpoke ? '7. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
+${personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), mande o LINK DE PAGAMENTO do plano recomendado (da seção LINKS DE PAGAMENTO acima), diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
+8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, use a garantia como transferência de risco ("o risco é meu"), traga a conta personalizada e a escassez real. NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
+${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
 ═══════════════════════════════════════
 COMO RESPONDER (WhatsApp — regras de forma DURAS)
@@ -623,6 +714,42 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
       return json({ error: 'O modelo não retornou resposta.' }, 502);
     }
 
+    // 11a) PASSAGEM DUDA→BIA (interna, NÃO humana): só a Duda (SDR) emite a tag.
+    //   Removemos a tag do texto, localizamos o closer (Bia) do produto e
+    //   fixamos current_agent_id nela — a PRÓXIMA mensagem da lead ativa a Bia
+    //   já com o dossiê (leadMemoryContext). A ÚLTIMA bolha da Duda vira a
+    //   transição calorosa; NÃO geramos resposta da Bia nesta invocação. A
+    //   conversa permanece bot_active (não é fila humana). Ignorada se por
+    //   algum motivo a persona atual não for a SDR (guarda de segurança).
+    let passedToBia = false;
+    let biaAgentId: string | null = null;
+    if (personaIsSdr && reply.includes(PASS_BIA_TAG)) {
+      // Localiza o closer (Bia) entre os agentes ativos+WhatsApp do produto.
+      if (conversation.product_id) {
+        const { data: closerAgents, error: closerErr } = await supabase
+          .from('platform_crm_product_agents')
+          .select('id, name, agent_type')
+          .eq('product_id', conversation.product_id)
+          .eq('is_active', true)
+          .eq('active_in_whatsapp', true);
+        if (closerErr) {
+          console.error('[platform-sales-brain] busca do closer falhou:', closerErr.message);
+        }
+        const closer = ((closerAgents as Array<Record<string, any>>) || []).find(isCloserAgent) ?? null;
+        biaAgentId = closer?.id ?? null;
+      }
+      // Remove a tag do texto (não vaza pro cliente) e sela a transição calorosa.
+      reply = reply.split(PASS_BIA_TAG).join('').replace(/\s+$/, '').trim();
+      reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;
+      // Só consideramos a passagem efetiva se achamos a Bia; senão a Duda segue
+      // (log explícito, nunca engole a intenção nem trava a conversa).
+      if (biaAgentId) {
+        passedToBia = true;
+      } else {
+        console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer (Bia) ativo no WhatsApp — Duda mantém a conversa.');
+      }
+    }
+
     // 11) Escalada/handoff: detecta as tags (mesmo tratamento), remove do texto.
     const needsHandoff = reply.includes(HANDOFF_TAG) || reply.includes(ESCALATE_TAG);
     if (needsHandoff) {
@@ -638,11 +765,12 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     const san = sanitizeReply(reply);
     reply = san.text;
     const sanitized = san.sanitized;
-    // Corte na 1ª pergunta só quando NÃO é handoff (a msg de handoff não pergunta).
-    if (!needsHandoff) reply = keepFirstQuestion(reply);
+    // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
+    // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
+    if (!needsHandoff && !passedToBia) reply = keepFirstQuestion(reply);
     let bubbles = splitIntoBubbles(reply);
     if (bubbles.length === 0) {
-      bubbles = [needsHandoff ? WARM_HANDOFF_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?'];
+      bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
     }
 
     // 12) Entrega bolha a bolha: persiste ANTES de entregar (a msg existe no CRM
@@ -711,10 +839,14 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     }
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
+    // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
+    // ativa) — a conversa continua bot_active, NUNCA vira fila humana.
     const convUpdate: Record<string, unknown> = { last_message_at: new Date().toISOString() };
     if (needsHandoff) {
       convUpdate.status = 'waiting_human';
       convUpdate.needs_human = true;
+    } else if (passedToBia && biaAgentId) {
+      convUpdate.current_agent_id = biaAgentId;
     }
     await supabase
       .from('platform_crm_conversations')
@@ -821,6 +953,8 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     return json({
       success: true,
       handoff: needsHandoff,
+      passed_to_bia: passedToBia,
+      ...(passedToBia && biaAgentId ? { next_agent_id: biaAgentId } : {}),
       agent_id: persona.id,
       model,
       bubbles: total,

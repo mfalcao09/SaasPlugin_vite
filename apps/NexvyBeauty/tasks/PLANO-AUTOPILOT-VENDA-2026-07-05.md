@@ -79,6 +79,33 @@ Número de vendas **+55 11 95502-1205** (WABA NEXVY_VENDAS `976904392005535`, ap
 | 5.2 | Edge cases: desconto / pedir humano / raiva / fora de escopo | respostas nas regras; handoff humano dispara |
 | 5.3 | Monitoramento: cada venda e cada falha chegam no seu Telegram | 2 notificações de teste recebidas |
 
+### FILA — ONDA 5 "Duda 95/100 + Bia Master-Closer" (especificada 2026-07-05; dispara quando a onda 4 drenar — teto 10-12 tarefas paralelas, ≤6 braços/onda)
+> Diretivas Marcelo: (a) SDR ≥95/100, "é o seu melhor?"; (b) transição Duda→Bia = UPGRADE ("seu negócio é tão bom que merece uma atendente especial"); (c) Bia vende VALOR a cliente crítico — onde o PMF se materializa; qualquer erro perde lead qualificado.
+
+| # | Item | Check |
+|---|---|---|
+| 5.1 | **Scoring determinístico em CÓDIGO**: extração LLM → `computeQcrScore()` (D1-D4 em TypeScript, nada de aritmética de LLM) → score/rota injetados no prompt como FATO. | mesmo diálogo → mesmo score, sempre |
+| 5.2 ✅ | **Checkout na boca das agentes** (ANTECIPADO 05/07): brain busca `public_plans.checkout_url` (3 links) e injeta em `buildCheckoutContext`; **modelo corrigido** (diretiva Marcelo): DECIDIU → Duda manda o link direto (nunca demonstra, nunca passa pra Bia); QUALIFICADO+CÉTICO → Bia (value-selling, modelo caro). Onboarding pós-pagamento = cakto-webhook (já existe). | ✅ deployado + migration `modelo_checkout_bia_valor` aplicada |
+| 5.3 | **Transição-upgrade**: reescrever protocolo [PASSAR_BIA] com o feeling "cliente especial" + fala-modelo aprovável. | fala da transição elogia o negócio da lead |
+| 5.4 | **Bia master-closer**: braço Fable pesquisa value-selling (Challenger, SPIN, Gap Selling, Sandler, JOLT/indecisão, Hormozi objeções/closing) → playbook de FECHAMENTO POR VALOR (demonstração dirigida, prova social, garantia como transferência de risco, coerência absoluta com LP/preços) → persona+knowledge da Bia. | doc pareado + persona no banco |
+| 5.5 | **Modelo por papel no harness**: closer roda em modelo mais forte (env AI_SALES_BRAIN_MODEL_CLOSER; default > flash) — cliente crítico não conversa com modelo econômico. | Bia responde no modelo forte (metadata) |
+| 5.6 | **Evals v1**: 8-12 golden conversations (incl. a conversa real de 05/07 como regressão) rodadas contra Duda/Bia antes de qualquer mudança de prompt; gate binário. | script de eval roda e reporta pass/fail |
+| 5.7 | **Calibração com dado real**: taxa de sumidas por sub-vertical medida do próprio Radar (quando houver dados) substitui o benchmark 35%. | parâmetro vira consulta, não constante |
+
+### FILA — ONDA 6 "REVIVAL" (lei do Marcelo 05/07: "toda função do CRM remix Vendus deve ser mantida" — cortes de porte por infra-ausente devem ser REVIVIDOS agora que a infra existe)
+> Auditoria 05/07: onda 4 NÃO removeu função (Wifi=troca de ícone; onNavigate=refatorado e preservado; dropdowns intactos). Os cortes reais são DE PORTE, documentados nos headers — e a infra que faltava HOJE EXISTE:
+
+| # | Função cortada no porte | Motivo da época | Infra hoje | Revival |
+|---|---|---|---|---|
+| 6.1 | `resend` (reenviar msg) — webchat-inbox | "sem provedor de canal" | Cloud API sender PRONTO | religar action |
+| 6.2 | `set-product` — webchat-inbox | "sem produtos" | D3 + produto seedado | religar action |
+| 6.3 | `activate-bot`/`ai-reactivate` — webchat-inbox | "bot = fase futura" | **sales-brain EXISTE** | religar (ativar/desativar IA por conversa na UI) |
+| 6.4 | `trigger-flow` — webchat-inbox | "flows = fase futura" | parcial (chat_flows existe) | avaliar+religar |
+| 6.5 | `notify_whatsapp` — webhook-receiver (no-op) | sem canal | Cloud API sender | religar |
+| 6.6 | `ai_agent_outreach` — webhook-receiver (no-op) | sem motor IA | sales-brain | religar |
+| 6.7 | `send_email` — webhook-receiver (no-op) | sem provedor e-mail | conta Resend existe (falta secret) | religar via Resend |
+| 6.8 | `transfer_sector` — webhook-receiver (skip A3) | leads sem sector_id | decisão de schema pendente | migration coluna OU vínculo via sector_members → religar |
+
 ### F6 — Carteira-do-WhatsApp (decisão do Marcelo; paralelo, não bloqueia a venda)
 Ingestão 180d da instância da DONA no onboarding: ao conectar, edge function puxa chats/contatos da Evolution → deriva clientes (nome+telefone+última interação) → Radar nasce com matéria-prima. **Ingestão INCREMENTAL** (history-sync do WhatsApp desce em camadas e varia por aparelho — contatos/chats vêm logo, profundidade chega progressivamente). Vira a espinha do autopilot de OPERAÇÃO — spec própria depois da venda no ar.
 
