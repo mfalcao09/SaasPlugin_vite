@@ -2,6 +2,7 @@
 
 > 2026-07-06 · slug `nexvypayments` (era `gestao-cobrancas`) · REASSENTADO do repo standalone Vendus Cobranças para o monorepo.
 > Consumidores: **executor do loop de implementação** (lê por caminho absoluto) + Marcelo.
+> **Contexto histórico completo (leia PRIMEIRO):** `apps/NexvyPayments/docs/CONTEXTO-SESSOES.md` — aponta os transcritos JSONL das 2 sessões que geraram este plano (`b58002ed…` esteira + `61748ace…` repivô), com a linha do tempo das decisões. A nova sessão parte com todo o contexto por ali.
 > Fonte de verdade da implementação: `/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyPayments/docs/specs/nexvypayments-spec-auditavel.md` (spec auditável, §3.2 tabela mestre + §5.1 matriz de conformidade).
 > Este documento NÃO inicia o loop — é o contrato de lançamento e a auditoria de loop-readiness.
 >
@@ -265,6 +266,12 @@ Depois: levar os 24 entregáveis (A0–A6, B1–B5, C1–C3, D1–D5, E1–E4) d
 disparar a condição de parada.
 
 ## Documentos (leia nesta ordem, na iteração 1)
+0. CONTEXTO DE SESSÕES (LEIA PRIMEIRO — o fio para todo o histórico: as 2 sessões que
+   geraram este plano, os transcritos JSONL completos, a linha do tempo das decisões e a
+   ordem de leitura). Contém as URLs dos JSONLs das sessões `b58002ed…` (esteira) e
+   `61748ace…` (repivô) para consulta pontual do *porquê* de qualquer decisão:
+   /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyPayments/docs/CONTEXTO-SESSOES.md
+   ⚠️ Os JSONLs têm 15–21M — NUNCA dar Read no arquivo inteiro; usar grep ou subagente (ver §1 do CONTEXTO).
 1. SPEC (fonte de verdade, critérios binários + matriz §5.1):
    /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyPayments/docs/specs/nexvypayments-spec-auditavel.md
 2. ESTE PLANO (PASSO-0-APP §2.0, classes, proxies, paradas, correções §3):

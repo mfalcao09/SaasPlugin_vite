@@ -2,6 +2,7 @@
 
 > Etapa 2 da esteira de produto · reassentado 2026-07-06 · slug `nexvypayments`
 > **Base:** fork gerenciado do **NexvyBeauty** (`apps/NexvyBeauty/`), que *É* o Vendus (linhagem provada byte-a-byte em `.vendus-src-reference/`), só mais maduro e já no monorepo `SaasPlugin_vite`.
+> **Contexto histórico (leia PRIMEIRO):** `../docs/CONTEXTO-SESSOES.md` — transcritos JSONL das 2 sessões (`b58002ed…` esteira + `61748ace…` repivô) + linha do tempo das decisões.
 > Pareado com `nexvypayments-blueprint.md`. Prazo = **ASAP**: sequência semanal indicativa (S0, S1…), sem datas-calendário — manda a **dependência técnica**, não o calendário.
 > Consumidores: planner adversarial da Etapa 3, Marcelo e o loop de implementação. Critério de aceite **binário** por entregável (passou/falhou), gates HITL nomeados, DoD por fase, marcos de valor.
 >

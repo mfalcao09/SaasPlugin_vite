@@ -79,3 +79,4 @@ Quando chega uma versão nova do upstream: (1) diff da versão nova vs a base do
 - Núcleo de cobrança 100% em `migrations_cobranca/` + edge functions próprias (`c6-billing`, `notaas-emit`, `invoice-batch`, …) — zero edição do core.
 - `apps/NexvyPayments/docs/CORE-DELTA.md` criado desde o dia 0; toda exceção registrada.
 - Ver `apps/NexvyPayments/docs/specs/` e `apps/NexvyPayments/tasks/` para o plano completo reassentado.
+- **Histórico completo das decisões:** `apps/NexvyPayments/docs/CONTEXTO-SESSOES.md` aponta os transcritos JSONL das sessões `b58002ed…` (esteira) e `61748ace…` (repivô/esta ADR) — a nova sessão parte com todo o contexto por ali.

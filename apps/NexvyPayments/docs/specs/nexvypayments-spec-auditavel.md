@@ -3,7 +3,8 @@
 > Etapa 3 da esteira de produto · reassentada 2026-07-06 · slug `nexvypayments` (era `gestao-cobrancas`)
 > **Este documento é a fonte única de verdade para a implementação do NexvyPayments.** Consolida o veredito do planner adversarial (Etapa 3a, `planner-veredito-3a.md`) sobre o blueprint + roadmap da Etapa 2, com o adendo autenticado NotaAS (§H do `notaas-report.md`).
 > Consumidores: Marcelo + o loop de implementação do NexvyPayments (leem por caminho absoluto).
-> Insumos travados (não reabrir): `gestao-cobrancas-as-is-to-be.md` (D1..D6, P1..P5), `gestao-cobrancas-blueprint.md`, `gestao-cobrancas-roadmap.md`.
+> **Contexto histórico (leia PRIMEIRO):** `../CONTEXTO-SESSOES.md` — transcritos JSONL das 2 sessões (`b58002ed…` esteira + `61748ace…` repivô) + linha do tempo das decisões, para a nova sessão partir com todo o contexto.
+> Insumos travados (não reabrir): `nexvypayments-as-is-to-be.md` (D1..D6, P1..P5), `nexvypayments-blueprint.md`, `nexvypayments-roadmap.md` (este em `../../tasks/`).
 >
 > **Registro de skills (Passo 0):** `openapi-spec-generation` ✅ carregada e aplicada (§4) · `spec-to-code-compliance` ✅ carregada e aplicada (§5–§6, matriz de alinhamento com evidência exigida, severidade e anti-alucinação: status inicial = PENDENTE para 100% dos itens, sem inferir conformidade).
 
