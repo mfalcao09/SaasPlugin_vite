@@ -30,7 +30,10 @@
 - `grep -rn useActiveProduct crm/` = 8 arquivos. useState locais de produto removidos das superfícies.
 
 ## PENDENTE (não marcar F2 "pronto" sem isto)
-- **Prova de runtime do re-filtro sincronizado** (check binário do task): trocar o produto no switcher GLOBAL re-filtra Kanban E Leads E Inbox simultaneamente, no Chrome logado. **Bloqueado por dependência: precisa de 2+ produtos semeados (F3, sessão de banco).** Hoje só há `nexvybeauty` → switcher vira label travada, impossível trocar. Assim que a F3 semear ≥2 produtos: logar no gestao super-admin → Módulo Vendas → trocar o switcher no topo → verificar Pipeline, Leads e Chat re-filtrarem juntos.
+- **Prova de runtime do re-filtro sincronizado** (check binário do task): trocar o produto no switcher GLOBAL re-filtra Kanban E Leads E Inbox simultaneamente, no Chrome logado. **Bloqueado por dependência: precisa de 2+ produtos semeados (F3, sessão de banco).** Hoje só há `nexvybeauty` (verificado via Supabase 2026-07-06) → switcher vira label travada, impossível trocar. Assim que a F3 semear ≥2 produtos: logar no gestao super-admin → Módulo Vendas → trocar o switcher no topo → verificar Pipeline, Leads e Chat re-filtrarem juntos.
+
+### ⏳ WATCHER AUTO-PROVA ARMADO (2026-07-06)
+Esta sessão (`eb0b1860`) tem um watcher via ScheduleWakeup (poll ~15min no Supabase `fzhlbwhdejumkyqosuvq`). Quando `platform_crm_products` chegar a ≥2, ele roda AUTOMATICAMENTE a **prova de dados** do re-filtro (as mesmas queries filtradas por `product_id` que os hooks F2 emitem, para os 2 produtos → conjuntos distintos = re-filtro comprovado no data path; simultaneidade garantida por construção, todas as telas leem 1 `activeProductId`), atualiza este review + a memória e notifica o Marcelo. O clique final no Chrome vira confirmação de 30s. **Limitação honesta:** o watcher automatiza a prova de DADOS; o teste UI no Chrome logado depende de auth super-admin (não automatizável sem sessão logada).
 
 ## Follow-up conhecido (fora do escopo desta F2)
 - `capture/widget/PlatformCrmWidgetManager.tsx` — builder secundário ("Abrir builder") tem filtro de produto LOCAL próprio (`productFilter`, default 'all' = inócuo). Não religado (risco desproporcional p/ view aninhada fora do check binário). Candidato a consolidação futura.
