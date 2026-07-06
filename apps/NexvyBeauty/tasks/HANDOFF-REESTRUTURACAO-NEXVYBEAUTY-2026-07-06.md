@@ -23,7 +23,22 @@ A reestruturação tem **6 eixos**. O que está **no ar/em prod**: confinamento 
 | **`75021603-…d342a4`** | 06/07 | **ESTA** — aplicou Lux L3 + Rosé + push + estes handoffs |
 | `05dc4b38-…` (nota) | — | sessão/máquina COM Supabase MCP (migrations via `apply_migration`) |
 
-JSONLs locais: `~/.claude/projects/-Users-marcelosilva-Projects-GitHub/<ID>.jsonl`. Evidência de multi-máquina (verbatim em memória): *"Aplicação = Supabase CLI --linked (NÃO há Supabase MCP nesta máquina)"* vs outra sessão com MCP conectado ao `fzhlbwhdejumkyqosuvq`.
+### 📜 Transcrições completas — LER para o contexto integral (tudo que fizemos e falamos)
+
+> A sessão nova **deve ler estes JSONL** para ter o histórico completo (decisões, código, conversas), não só o resumo deste handoff. Base: `~/.claude/projects/-Users-marcelosilva-Projects-GitHub/`
+
+| Sessão | Transcrição (caminho) | Tam. | Ler para |
+|---|---|---|---|
+| **ESTA · `75021603`** | `~/.claude/projects/-Users-marcelosilva-Projects-GitHub/75021603-32bd-46de-8930-fdc4cfd342a4.jsonl` | 72M | **tudo deste turno** (handoffs, push, mapa de escopo, decisões) |
+| **TRONCO · `986d864f`** | `…/986d864f-da53-43a9-b3a9-1aa520721352.jsonl` | 459M | EIXOS 1/2/3 — CRM multiproduto, modular, multi-host |
+| `22085aba` | `…/22085aba-3283-4933-8ff6-77f4dcb7153e.jsonl` | 141M | Lux + preço fonte-única |
+| `0da479d7` | `…/0da479d7-0c89-4455-9d9e-5506e1f46eae.jsonl` | 67M | Beauty Rosé |
+| `b39039b0` | `…/b39039b0-7f97-4a38-a8b8-c4e561106779.jsonl` | 130M | autopilot SDR nunca-rejeita + roteamento Fable |
+| `b58002ed` | `…/b58002ed-d7b0-432d-9ac0-69392b2cb91b.jsonl` | 15M | auxiliar (deploy) |
+
+- **Caveat:** o JSONL desta sessão (`75021603`) é o transcript **ao vivo** — completo até o instante em que a nova sessão o abrir.
+- **`05dc4b38`** (sessão com Supabase MCP, migrations via `apply_migration`) **não está nesta máquina/pasta** — é de outra máquina; evidência verbatim: *"Aplicação = Supabase CLI --linked (NÃO há Supabase MCP nesta máquina)"*.
+- **Arquivamento Notion** (marco 0): `https://notion.so/39519a77ca338116ae5ac525d57498a8` — o anexo `.gz` do transcript é feito no **SessionEnd** (pode ainda não estar lá enquanto esta sessão estiver aberta).
 
 ---
 
@@ -120,6 +135,10 @@ Leia PRIMEIRO, nesta ordem:
 2. apps/NexvyBeauty/tasks/HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md (deep-dive do eixo visual)
 3. Memórias: project_crm_grupo_multiproduto_decisoes_2026-07-02 (EIXO 1 = espinha),
    reference_nexvybeauty_gestao_modular_crm_erp_2026-07-01, project_sdr_nunca_rejeita_venda...
+4. (contexto INTEGRAL — tudo que fizemos e falamos) transcripts JSONL em
+   ~/.claude/projects/-Users-marcelosilva-Projects-GitHub/ :
+   75021603-32bd-46de-8930-fdc4cfd342a4.jsonl (esta sessão) +
+   986d864f-da53-43a9-b3a9-1aa520721352.jsonl (tronco da reestruturação).
 
 Estado no ar: confinamento multi-host (E3), preço fonte-única (E5), módulos-fixos+gating,
 autopilot F0-F2 (número Cloud API respondendo), Beauty Rosé (app), Nexvy Lux L1-L3 (gestao),
