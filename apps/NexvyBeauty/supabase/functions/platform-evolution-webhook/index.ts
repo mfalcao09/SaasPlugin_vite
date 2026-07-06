@@ -15,7 +15,7 @@
 //   INBOX de plataforma (platform_crm_conversations/messages), a "fase central
 //   depois". Este webhook cobre só o que faz o painel Conexões ficar vivo (QR/status).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

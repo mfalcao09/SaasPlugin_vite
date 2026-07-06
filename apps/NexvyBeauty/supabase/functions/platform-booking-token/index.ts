@@ -12,7 +12,7 @@
 //   'get'        { token }                              → { booking }  (booking + event_type + host_profile + calendar_event)
 //   'reschedule' { token, newStartTime, timezone }      → { ok, id, end_time }
 //   'cancel'     { token, reason? }                     → { ok, id }
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.90.1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -1,6 +1,6 @@
 // Hotmart Postback (Webhook) — público, valida hottok por organização
 // Mapeia eventos da Hotmart para nossa engine de tag automations
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

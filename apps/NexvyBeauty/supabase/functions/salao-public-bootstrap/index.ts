@@ -3,7 +3,7 @@
 // profissionais e pacotes ativos pra montar o wizard de agendamento.
 // service_role só aqui dentro (nunca no bundle). Re-home: salao->organizations,
 // preco_base aliasado como `valor`.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

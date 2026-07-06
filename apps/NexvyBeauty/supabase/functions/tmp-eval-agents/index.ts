@@ -29,7 +29,7 @@
 //     entregar), que é de onde lemos a resposta.
 //   Mesmo que exista conexão Cloud API 'active' no ambiente, nada é enviado.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { timingSafeEqual } from '../_shared/meta-graph.ts';
 import { platformCrmCorsHeaders as corsHeaders } from '../_shared/platform-crm-auth.ts';
 import { GOLDENS, GOLDENS_BY_ID, type Golden, type GoldenInbound } from './goldens.ts';

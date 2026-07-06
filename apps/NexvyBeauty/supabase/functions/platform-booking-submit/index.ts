@@ -7,7 +7,7 @@
 //   - envio de e-mail/WhatsApp e sync de calendário externo saem daqui e viram
 //     um motor dedicado: // TODO(edge): platform-booking-dispatcher (igual aos
 //     demais motores da plataforma — a submissão nunca depende do envio).
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.90.1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

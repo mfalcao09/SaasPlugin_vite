@@ -3,7 +3,7 @@
 // Caminho A (fiel ao CBA): grava pacote_clientes status='ativo' (salão confirma
 // pagamento depois). Caminho B (Cakto checkout) = enhancement futuro via flag.
 // Validade: epoch+ms (NÃO new Date(iso)+setDate — bug de TZ, lição MEMORY).
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

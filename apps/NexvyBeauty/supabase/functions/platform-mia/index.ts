@@ -57,7 +57,7 @@
 //   * "equipe" = vendedores DA PLATAFORMA (membros de squads + atribuídos a
 //     leads), mesmo universo do `usePlatformCrmTeam` — não há org-membership.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
   platformCrmCorsHeaders as corsHeaders,
   authenticatePlatformAgent,

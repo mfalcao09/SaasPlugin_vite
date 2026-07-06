@@ -40,7 +40,7 @@
 //  13. MEMÓRIA (pós-resposta): 2ª chamada LLM barata extrai fatos → atualiza o
 //      lead (bant_*, temperature, name) e grava o estado em leads.metadata.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, timingSafeEqual } from '../_shared/meta-graph.ts';
 import {

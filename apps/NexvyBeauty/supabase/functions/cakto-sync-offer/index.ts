@@ -14,7 +14,7 @@
 // cria se faltar (mudar preço gera oferta nova, sem afetar assinantes da antiga).
 // A API Create Offer NÃO devolve URL -> montada como `${BASE}/${slug}`.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
   ensureCaktoToken,
   caktoCreateOffer,

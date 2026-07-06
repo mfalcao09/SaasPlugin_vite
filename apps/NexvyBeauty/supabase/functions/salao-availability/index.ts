@@ -2,7 +2,7 @@
 // Público (verify_jwt=false). Gera horários disponíveis = jornada do profissional
 // − duração do serviço, descontando os já ocupados. STEP=30 fixo (fiel ao CBA).
 // TZ America/Sao_Paulo fixo (Deno roda em UTC) — D7 do spec.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

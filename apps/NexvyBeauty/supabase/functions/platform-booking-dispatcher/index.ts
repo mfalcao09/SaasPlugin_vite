@@ -24,7 +24,7 @@
 // E-mail: a plataforma não tem provedor transacional próprio (o tenant usa
 //   sendPlatformEmail; portar aqui criaria dependência cruzada). Registramos um
 //   // TODO logado por ora — a confirmação por WhatsApp é o canal ativo.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.90.1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, timingSafeEqual } from '../_shared/meta-graph.ts';
 import {

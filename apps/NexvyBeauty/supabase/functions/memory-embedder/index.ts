@@ -2,7 +2,7 @@
 // Recebe um conteúdo + contexto, gera embedding via Lovable AI Gateway
 // e persiste em lead_semantic_memory.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
