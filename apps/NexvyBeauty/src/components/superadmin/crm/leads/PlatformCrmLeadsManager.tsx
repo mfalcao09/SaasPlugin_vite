@@ -31,7 +31,7 @@ import { usePlatformCrmLeadsManager } from '../data/usePlatformCrmLeadsManager';
 import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
 import { usePlatformCrmSquads } from '../data/usePlatformCrmSquads';
 import { usePlatformCrmSellers } from '../data/usePlatformCrmSellers';
-import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
+import { useActiveProduct } from '../products/ProductContext';
 
 import { PlatformCrmLeadsKPICards } from './PlatformCrmLeadsKPICards';
 import { PlatformCrmLeadsTabs } from './PlatformCrmLeadsTabs';
@@ -82,8 +82,15 @@ export function PlatformCrmLeadsManager() {
   const { data: stages = [] } = usePlatformCrmStages();
   const { data: squads = [] } = usePlatformCrmSquads();
   const { data: sellers = [] } = usePlatformCrmSellers();
-  // Catálogo do CRM da plataforma (dimensão D3) — alimenta o filtro "Produto".
-  const { data: products = [] } = usePlatformCrmProducts();
+
+  // Produto ativo GLOBAL (D3 F2): o recorte de produto dos leads segue o switcher
+  // do topo do CRM (não há mais seletor de produto local no painel de filtros).
+  // Sincroniza o filtro sempre que o produto ativo muda.
+  const { activeProductId } = useActiveProduct();
+  useEffect(() => {
+    updateFilter('productId', activeProductId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProductId]);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -147,7 +154,6 @@ export function PlatformCrmLeadsManager() {
     filters.channel.length > 0 ||
     Boolean(filters.stageId) ||
     Boolean(filters.squadId) ||
-    Boolean(filters.productId) ||
     Boolean(filters.dateFrom || filters.dateTo || filters.datePreset) ||
     filters.tagIds.length > 0 ||
     filters.excludeTagIds.length > 0 ||
@@ -370,7 +376,6 @@ export function PlatformCrmLeadsManager() {
         onFilterChange={updateFilter}
         onClearFilters={clearFilters}
         squads={squads.map((s) => ({ id: s.id, name: s.name }))}
-        products={products.map((p) => ({ id: p.id, name: p.name }))}
         stages={stages}
       />
 

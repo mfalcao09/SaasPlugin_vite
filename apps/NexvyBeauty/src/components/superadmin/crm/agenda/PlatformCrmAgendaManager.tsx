@@ -40,8 +40,7 @@ import {
   PlatformCrmCalendarEvent,
 } from '@/components/superadmin/crm/data/usePlatformCrmCalendarEvents';
 import { usePlatformCrmSellers } from '@/components/superadmin/crm/data/usePlatformCrmSellers';
-import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { PlatformCrmProductSelector } from '@/components/superadmin/crm/products/PlatformCrmProductSelector';
+import { useActiveProduct } from '@/components/superadmin/crm/products/ProductContext';
 import { PlatformCrmCalendarMonthView } from './PlatformCrmCalendarMonthView';
 import { PlatformCrmCalendarWeekView } from './PlatformCrmCalendarWeekView';
 import { PlatformCrmCalendarDayView } from './PlatformCrmCalendarDayView';
@@ -81,14 +80,16 @@ function AgendaCalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<PlatformCrmCalendarEvent | null>(null);
   const [clickedDate, setClickedDate] = useState<Date | undefined>();
 
   const { data: sellers } = usePlatformCrmSellers();
-  const { data: products } = usePlatformCrmProducts();
+  // Produto = produto ativo GLOBAL (D3 F2). Agenda tolera "Todos os produtos"
+  // (null → sem filtro), então usa activeProductId cru. O switcher vive no topo
+  // do CRM (PlatformShell) — trocar lá re-filtra esta agenda junto.
+  const { activeProductId } = useActiveProduct();
 
   const dateRange = useMemo(() => {
     switch (viewMode) {
@@ -121,7 +122,7 @@ function AgendaCalendarView() {
   const { data: events, isLoading } = usePlatformCrmCalendarEvents({
     ...dateRange,
     userId: selectedUserId || undefined,
-    productId: selectedProductId || undefined,
+    productId: activeProductId || undefined,
     eventType: selectedEventType || undefined,
   });
 
@@ -267,11 +268,7 @@ function AgendaCalendarView() {
                 </SelectContent>
               </Select>
 
-              <PlatformCrmProductSelector
-                products={products ?? []}
-                selectedProductId={selectedProductId}
-                onChange={setSelectedProductId}
-              />
+              {/* Seletor de Produto agora é GLOBAL (topo do CRM / PlatformShell, D3 F2). */}
 
               <Select
                 value={selectedEventType || 'all'}

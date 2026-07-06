@@ -67,7 +67,7 @@ import {
   PlatformCrmCaptureFunnel,
 } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
-import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { useActiveProduct } from '@/components/superadmin/crm/products/ProductContext';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 import { PlatformCrmFlowTab } from './flowbuilder';
 import { PlatformCrmQuizBuilder } from './quiz';
@@ -115,14 +115,14 @@ export function PlatformCrmCaptureFunnelsTab({
   const [productId, setProductId] = useState('');
 
   const { data: funnels, isLoading } = usePlatformCrmCaptureFunnels();
-  const { data: products = [] } = usePlatformCrmProducts();
+  // Produto ativo GLOBAL (D3 F2): a lista filtra pelo produto ativo e um novo funil
+  // nasce vinculado a ele. O switcher vive no topo do CRM (PlatformShell).
+  const { products, activeProductId, effectiveProductId } = useActiveProduct();
   const createFunnel = useCreatePlatformCrmCaptureFunnel();
   const deleteFunnel = useDeletePlatformCrmCaptureFunnel();
   const duplicateFunnel = useDuplicatePlatformCrmCaptureFunnel();
   const toggleStatus = useTogglePlatformCrmFunnelStatus();
 
-  // 1 produto → auto-seleciona e trava (label estática no campo).
-  const singleProductId = products.length === 1 ? products[0].id : '';
   // Obrigatório quando há produtos; sem produtos o backend aplica o default.
   const productReady = products.length === 0 || !!productId;
 
@@ -130,14 +130,19 @@ export function PlatformCrmCaptureFunnelsTab({
     const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || f.status === statusFilter;
     const matchesChannel = channelFilter === 'all' || f.channel_type === channelFilter;
-    return matchesSearch && matchesStatus && matchesChannel;
+    // Recorte pelo produto ativo GLOBAL (D3 F2): "Todos" (null) mostra tudo; um
+    // produto concreto mostra os funis dele + os ainda sem produto (nunca somem).
+    const matchesProduct =
+      !activeProductId || f.product_id === activeProductId || f.product_id == null;
+    return matchesSearch && matchesStatus && matchesChannel && matchesProduct;
   });
 
   const openCreate = () => {
     setName('');
     setDescription('');
     setChannelType(initialChannel ?? 'chat');
-    setProductId(singleProductId);
+    // Novo funil nasce no produto ativo (concreto). Com 1 produto, é ele mesmo.
+    setProductId(effectiveProductId ?? '');
     setIsCreateOpen(true);
   };
 

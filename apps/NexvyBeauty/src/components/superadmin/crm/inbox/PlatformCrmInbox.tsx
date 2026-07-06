@@ -22,6 +22,7 @@ import {
   type PlatformCrmStatusTab,
 } from '../data/usePlatformCrmConversations';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
+import { useActiveProduct } from '../products/ProductContext';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { usePlatformCrmInboxTabActivity } from '../data/usePlatformCrmInboxActivity';
 import { usePlatformModule } from '@/components/superadmin/platform-shell/usePlatformModule';
@@ -90,9 +91,14 @@ export function PlatformCrmInbox() {
   // Som de notificação (enable/disable + testar) — hook real do app.
   const { isEnabled: soundEnabled, toggleSound, playNotification } = useNotificationSound();
 
+  // Produto ativo GLOBAL (D3 F2) — filtra a caixa pelo produto do switcher no topo
+  // do CRM. Conversas sem produto seguem sempre visíveis (ver hook). NÃO se confunde
+  // com o seletor POR-CONVERSA abaixo (esse vincula o produto de UMA conversa à IA).
+  const { activeProductId } = useActiveProduct();
+
   // Dados
   const { data: allConversations = [], isLoading: loadingConversations } =
-    usePlatformCrmConversations();
+    usePlatformCrmConversations(activeProductId);
   const tabCounts = usePlatformCrmConversationCounts(allConversations);
 
   // U2 — novidade por aba (ponto pulsante) desde a última visualização.

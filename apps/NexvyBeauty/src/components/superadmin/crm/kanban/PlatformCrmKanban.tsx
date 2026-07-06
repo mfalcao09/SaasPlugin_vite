@@ -21,8 +21,7 @@ import {
 } from '../data/usePlatformCrmLeads';
 import { usePlatformCrmKanbanFilters } from '../data/usePlatformCrmKanbanFilters';
 import { usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
-import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
-import { PlatformCrmProductSelector } from '../products/PlatformCrmProductSelector';
+import { useActiveProduct } from '../products/ProductContext';
 
 const UNASSIGNED_ID = 'unassigned';
 
@@ -44,19 +43,15 @@ export function PlatformCrmKanban() {
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  // Produto do pipeline (dimensão D3). Espelho de KanbanBoard.tsx:19 da fonte
-  // (`selectedProductId`). null = ainda não escolhido (auto-seleção abaixo).
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const { filters, updateFilter, clearFilters, hasActiveFilters } =
     usePlatformCrmKanbanFilters();
 
-  // Produtos do CRM da plataforma. Com 1 produto, o seletor vira label estática
-  // (auto-lock) — preserva a UI atual do Beauty como produto único.
-  const { data: products = [] } = usePlatformCrmProducts();
-
-  // Auto-seleciona o 1º produto quando ainda não há escolha (KanbanBoard.tsx:42-44).
-  const effectiveProductId = selectedProductId ?? products[0]?.id ?? null;
+  // Produto do pipeline = produto ativo GLOBAL (D3 F2). O Pipeline exige um
+  // produto concreto (as etapas são por-produto) → usa effectiveProductId
+  // (= produto ativo, ou o 1º como fallback). O switcher agora vive no topo do
+  // CRM (PlatformShell), não mais aqui — trocar lá re-filtra este board junto.
+  const { effectiveProductId } = useActiveProduct();
 
   const {
     data: stages,
@@ -178,16 +173,7 @@ export function PlatformCrmKanban() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/*
-            Seletor de Produto (pipeline-por-produto — dimensão D3). Espelha
-            KanbanBoard.tsx:92-103 da fonte. Com 1 produto vira label estática
-            (auto-lock em PlatformCrmProductSelector, como InboxProductSelector:26-31).
-          */}
-          <PlatformCrmProductSelector
-            products={products}
-            selectedProductId={effectiveProductId}
-            onChange={setSelectedProductId}
-          />
+          {/* Seletor de Produto agora é GLOBAL (topo do CRM / PlatformShell, D3 F2). */}
           <Button variant="outline" size="sm" className="h-9" onClick={() => setStageManagerOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Gerenciar Etapas

@@ -27,8 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
-import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { PlatformCrmProductSelector } from '@/components/superadmin/crm/products/PlatformCrmProductSelector';
+import { useActiveProduct } from '@/components/superadmin/crm/products/ProductContext';
 import {
   usePlatformCrmProductAgents,
   useCreatePlatformCrmProductAgent,
@@ -46,11 +45,10 @@ import { AgentSupervisorPanel } from './AgentSupervisorPanel';
 import { AgentImportModal } from './AgentImportModal';
 
 export function PlatformCrmProductAgentsManager() {
-  const { data: products = [], isLoading: productsLoading } = usePlatformCrmProducts();
-
-  // Produto selecionado. Default = 1o produto (com 1 produto, seletor vira label estatica).
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const effectiveProductId = selectedProductId ?? products[0]?.id ?? null;
+  // Produto = produto ativo GLOBAL (D3 F2). Agentes sao por-produto → exige um
+  // produto concreto (effectiveProductId). products/isLoading vem do mesmo
+  // contexto (fonte unica; react-query dedupa). O switcher vive no topo do CRM.
+  const { products, effectiveProductId, isLoading: productsLoading } = useActiveProduct();
 
   const { data: agents, isLoading: agentsLoading } =
     usePlatformCrmProductAgents(effectiveProductId ?? undefined);
@@ -150,13 +148,7 @@ export function PlatformCrmProductAgentsManager() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {products.length > 0 && (
-            <PlatformCrmProductSelector
-              products={products}
-              selectedProductId={effectiveProductId}
-              onChange={setSelectedProductId}
-            />
-          )}
+          {/* Seletor de Produto agora é GLOBAL (topo do CRM / PlatformShell, D3 F2). */}
           <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
             <button
               type="button"

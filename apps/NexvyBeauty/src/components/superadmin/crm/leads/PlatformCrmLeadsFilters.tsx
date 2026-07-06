@@ -42,8 +42,6 @@ interface PlatformCrmLeadsFiltersProps {
   ) => void;
   onClearFilters: () => void;
   squads: { id: string; name: string }[];
-  /** Catálogo do CRM da plataforma (dimensão D3). Espelho do prop `products` da fonte. */
-  products: { id: string; name: string }[];
   stages: PlatformCrmStage[];
 }
 
@@ -283,7 +281,6 @@ export function PlatformCrmLeadsFilters({
   onFilterChange,
   onClearFilters,
   squads,
-  products,
   stages,
 }: PlatformCrmLeadsFiltersProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -299,7 +296,6 @@ export function PlatformCrmLeadsFilters({
     filters.channel.length > 0,
     filters.stageId,
     filters.squadId,
-    filters.productId,
     filters.dateFrom || filters.dateTo || filters.datePreset,
     filters.tagIds.length > 0,
     filters.excludeTagIds.length > 0,
@@ -782,26 +778,9 @@ export function PlatformCrmLeadsFilters({
                 </Select>
               </div>
 
-              {/* Product — dimensão D3 restaurada (espelho de LeadsFilters.tsx:754-773). */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Produto</label>
-                <Select
-                  value={filters.productId || '__all__'}
-                  onValueChange={(v) => onFilterChange('productId', v === '__all__' ? null : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os produtos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todos os produtos</SelectItem>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Produto: agora é GLOBAL (switcher no topo do CRM / PlatformShell,
+                  D3 F2). O recorte de produto dos leads segue o produto ativo —
+                  sem seletor local aqui para não dessincronizar das outras telas. */}
 
               {/* Stage */}
               <div className="space-y-2">
