@@ -34,7 +34,7 @@ B2 | MODO-B | CONFORME | billing_outbox.sql aplicada (pgmq + RPCs enqueue/read_b
 B3 | AUTO | CONFORME | invoice-batch-generate idempotente (23505 skip) + billing_next_business_day/billing_holidays; deno 12/12; banco: sáb 05-09→seg 05-11 | (commit iter 11)
 B4 | MODO-B | PENDENTE | — | —
 B5 | HITL (G-C6-PROD) | PENDENTE | — | —
-C1 | AUTO-COM-TETO | PENDENTE | — | —
+C1 | AUTO-COM-TETO | PROXY_PRONTO | notaas-emit (payload+core+edge) deno 29/29; migration notaas_batch_id aplicada; notaas-emit DEPLOYADO (verify_jwt=true). E2E homolog aguarda: A1 da SF (PC Marcelo) no projeto NotaAS + project key no cofre | 7ead717
 C2 | AUTO | CONFORME | notaas-webhook + notaas-webhook-verify (HMAC timing-safe) deno test 14/14; ledger notaas_webhook_deliveries (RLS ON, UNIQUE org+delivery); config.toml verify_jwt=false | (commit iter 10)
 C3 | MODO-B | CONFORME | fiscal_imutabilidade.sql aplicada (trigger + invoice_cancelar); DELETE de nota emitida bloqueado; cancelar → status=cancelada + billing_events(cancelada)=1 | (commit iter 10)
 D1 | AUTO | CONFORME | billing-cadence-enroll + billing_cadence_enrollments (invoice_id, RLS ON); msg cita fatura/valor/venc; deno verde | (commit iter 11)
@@ -79,7 +79,7 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 15. docker compose config não validável no Mac (docker ausente); bloco é cópia literal do GYM — validar no 1º deploy VPS.
 
 ## fila_humano  (16/25 CONFORME — os 9 restantes são TODOS gate-dependentes; Marcelo destrava)
-1. [A0/B1/B4/B5 — G-C6-SANDBOX + G-C6-PROD] credenciais C6: C6_CLIENT_ID, C6_CLIENT_SECRET, C6_BASE_URL (https://baas-api-sandbox.c6bank.info) + CERTIFICADO mTLS (cert+key/.pfx). Marcelo PROVIDENCIANDO (06/07). Entrega: `supabase secrets set` (nunca repo/front). Destrava: A0 (PoC mTLS, gate arquitetural — precede todo o trilho C6), depois B1 (c6-billing), B4 (c6-webhook), B5 (fatura prod).
+1. [TESTE E2E com SF (tenant-cobaia) — destrava A0/B1/B4 + C1] Marcelo confirmou 06/07: SF tem AMBOS os elementos. (a) **C6 sandbox** — 4 valores estão no ERP-educacional (Supabase ifdnjieklngcfodmtied, tabela contas_bancarias: client_secret cifrado c/ CRED_ENCRYPTION_KEY que só vive no env do ERP → Claude NÃO decifra; cert/key .pem no bucket privado credenciais-bancarias). Marcelo EXPORTA os 4 (client_id, client_secret decifrado, cert.pem, key.pem) p/ arquivo gitignored. Destrava A0 (PoC mTLS), B1 (boleto sandbox), B4 (webhook). (b) **A1 da SF** — .pfx+senha no PC do Marcelo → sobe no projeto NotaAS (UI + project key) OU Org Token p/ notaas-provision. Destrava C1 (NFS-e homolog). Recomendação: começar por (a) C6, é o gate arquitetural A0.
 2. [DEPLOY DE EDGE FUNCTIONS — gate MODO-B] autorizar o 1º deploy das ~9 EFs novas no Supabase novo (notaas-webhook, billing-cadence-*, invoice-batch-generate, billing-baixa-manual + as de C6 quando existirem). Migrations já aplicadas; falta `supabase functions deploy`. Destrava: A6 (verify-jwt matrix — curl externo prova 401/200) + teste real das EFs. Critério: ok explícito do Marcelo p/ deploy.
 3. [A3 — G-SEC-REV] revisar por escrito a auditoria RLS (`docs/security/rls-audit-2026-07.md`: 112/112 RLS ON, 20 permissivas classificadas, 1 flag help_article_feedback) + o hardening da Fase A. Certifica A1/A3/A7.
 4. [C1 — G-NOTAAS-resid + G-A1] key NotaAS (Org Token/project key) + certificado A1 (.pfx+senha) do CNPJ do tenant → destrava emissão de NFS-e em homologação.
