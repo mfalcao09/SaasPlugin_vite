@@ -197,6 +197,24 @@ function buildCheckoutContext(plans: Array<Record<string, any>>): string {
   return ctx;
 }
 
+/** FONTE-ÚNICA DE PREÇO (INVIOLÁVEL). Injetado logo após a seção LINKS DE
+ *  PAGAMENTO (que vem do banco em runtime). Fixa a REGRA de onde ler o preço
+ *  (que não envelhece), no lugar de fixar o número (que envelhece). Precede
+ *  qualquer instrução de persona. Só é injetado quando há plano(s) com preço. */
+const PRICE_RULE_BLOCK =
+  `\n═══ REGRA DE PREÇO (INVIOLÁVEL — precede qualquer instrução de persona) ═══\n` +
+  `O ÚNICO lugar com preço e link verdadeiros é a seção "LINKS DE PAGAMENTO" acima,\n` +
+  `gerada agora a partir do banco (public_plans). Ela é a verdade.\n` +
+  `- NUNCA diga um valor de mensalidade de memória, de exemplo, do histórico da conversa\n` +
+  `  ou de qualquer texto de treinamento. Se você "lembra" de um preço, IGNORE — pode\n` +
+  `  estar desatualizado. Só vale o que está em LINKS DE PAGAMENTO desta mensagem.\n` +
+  `- Ao citar preço, use exatamente o número que aparece ao lado do nome do plano em\n` +
+  `  LINKS DE PAGAMENTO. Nada de arredondar, "por volta de", "a partir de".\n` +
+  `- Se um plano NÃO está em LINKS DE PAGAMENTO, ele não tem preço público — não invente:\n` +
+  `  diga que confirma o valor e siga, sem chutar.\n` +
+  `- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).\n` +
+  `Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.\n`;
+
 /** É o agente SDR (Duda) — abre/qualifica/recomenda? Base da linha travada. */
 function isSdrAgent(a: Record<string, any> | null): boolean {
   if (!a) return false;
@@ -449,8 +467,32 @@ function toNum(v: unknown): number | null {
 
 // ─── Score QCR-V DETERMINÍSTICO (TypeScript, não o LLM) ─────────────────────
 // O LLM errava a conta; aqui a matemática é fixa e auditável. As faixas são as
-// do briefing Marcelo 05/07 (5.1). Preço-âncora do banco = 217 (NÃO 197).
-const QCRV_PRICE_ANCHOR = 217;
+// do briefing Marcelo 05/07 (5.1).
+//
+// Preço-âncora: FONTE-ÚNICA DE PREÇO. O denominador da razão R = PR ÷ âncora é o
+// price_monthly do plano de ENTRADA (slug 'starter' = Essencial), lido do banco
+// (public_plans) na MESMA request via resolveAnchor(plans) — nada de número
+// hardcoded. Se o preço do Essencial mudar no super-admin, o score recalibra
+// sozinho. Fallback numérico só existe se `plans` vier vazio (ver resolveAnchor).
+const ENTRY_PLAN_SLUG = 'starter'; // Essencial = plano de entrada (menor price_monthly público)
+const QCRV_ANCHOR_FALLBACK = 217; // FALLBACK documentado: preço do Essencial em 2026-07-05 (só se public_plans vier vazio)
+
+/**
+ * resolveAnchor — deriva o preço-âncora do plano de entrada a partir dos `plans`
+ * já buscados de public_plans (mesma request). Preferência: (1) plano por slug
+ * 'starter'; (2) senão o menor preço público pago; (3) senão o fallback numérico
+ * documentado. Nunca retorna 0/NaN (protege o divisor de R = PR ÷ âncora).
+ */
+function resolveAnchor(plans: Array<Record<string, any>>): number {
+  const publicPaid = plans
+    .map((p) => Number(p.price_monthly))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const entry = plans.find((p) => p.slug === ENTRY_PLAN_SLUG);
+  const anchor = entry ? Number(entry.price_monthly)
+               : publicPaid.length ? Math.min(...publicPaid)
+               : QCRV_ANCHOR_FALLBACK;
+  return Number.isFinite(anchor) && anchor > 0 ? anchor : QCRV_ANCHOR_FALLBACK;
+}
 
 /** Resultado do score determinístico — vira FATO no prompt e estado no lead. */
 type QcrRota = 'oferta_piloto' | 'aprofundar' | 'essencial';
@@ -466,7 +508,7 @@ interface QcrScore {
  * computeQcrScore — pontuação determinística a partir dos FATOS CRUS extraídos.
  *
  *   PR (Potencial de Receita) = num_clientes × ticket_medio × 0.35
- *   R                          = PR ÷ 217 (preço-âncora do banco)
+ *   R                          = PR ÷ anchor (preço-âncora do banco, plano de entrada)
  *
  *   D1 Potencial (0-50): R>=5→50 · 3-5→40 · 1.5-3→25 · <1.5→10.
  *       Sem num_clientes OU sem ticket → provisorio=true e D1=10 (parcial, não
@@ -490,7 +532,7 @@ function computeQcrScore(facts: {
   tempo_atendimento_meses?: number | null;
   sub_vertical?: string | null;
   dor_flags?: unknown;
-}): QcrScore {
+}, anchor: number = QCRV_ANCHOR_FALLBACK): QcrScore {
   const numClientes = toNum(facts.num_clientes ?? null);
   const ticket = toNum(facts.ticket_medio ?? null);
   const tempoMeses = toNum(facts.tempo_atendimento_meses ?? null);
@@ -507,7 +549,9 @@ function computeQcrScore(facts: {
   const provisorio = !haveCore;
   if (haveCore) {
     pr = (numClientes as number) * (ticket as number) * 0.35;
-    r = pr / QCRV_PRICE_ANCHOR;
+    // anchor resolvido de public_plans (plano de entrada). Guarda anti-divisor-zero.
+    const safeAnchor = Number.isFinite(anchor) && anchor > 0 ? anchor : QCRV_ANCHOR_FALLBACK;
+    r = pr / safeAnchor;
     if (r >= 5) d1 = 50;
     else if (r >= 3) d1 = 40;
     else if (r >= 1.5) d1 = 25;
@@ -785,7 +829,11 @@ Deno.serve(async (req) => {
       plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url);
     }
 
-    const knowledgeContext = buildKnowledgeContext(product, campaign) + buildCheckoutContext(plans);
+    // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
+    // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
+    const knowledgeContext = buildKnowledgeContext(product, campaign)
+      + buildCheckoutContext(plans)
+      + (plans.length ? PRICE_RULE_BLOCK : '');
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;
 
@@ -824,7 +872,7 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta e convite pro Piloto quando crescer). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), mande o LINK DE PAGAMENTO do plano recomendado (da seção LINKS DE PAGAMENTO acima), diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
+${personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
 8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, use a garantia como transferência de risco ("o risco é meu"), traga a conta personalizada e a escassez real. NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
@@ -1078,7 +1126,8 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
 
         // SCORE QCR-V DETERMINÍSTICO (TS) sobre o estado ACUMULADO — não o chute do
         // LLM. Completa PR mesmo quando carteira e ticket vieram em turnos diferentes.
-        const qcr = computeQcrScore(mergedQual);
+        // Âncora = preço do plano de entrada, lido de public_plans (fonte-única).
+        const qcr = computeQcrScore(mergedQual, resolveAnchor(plans));
         mergedQual.score_0_100 = qcr.score;
         mergedQual.score_provisorio = qcr.provisorio;
         mergedQual.rota = qcr.rota;

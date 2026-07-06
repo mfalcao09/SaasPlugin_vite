@@ -14,9 +14,14 @@ import {
   useDeletePlatformCrmMessage,
   useStarPlatformCrmMessage,
   useEditPlatformCrmMessage,
+  useResendPlatformCrmMessage,
+  useSetPlatformCrmConversationProduct,
+  useActivatePlatformCrmBot,
+  useAiReactivatePlatformCrmConversation,
   type PlatformCrmConversationRow,
   type PlatformCrmStatusTab,
 } from '../data/usePlatformCrmConversations';
+import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { usePlatformCrmInboxTabActivity } from '../data/usePlatformCrmInboxActivity';
 import { usePlatformModule } from '@/components/superadmin/platform-shell/usePlatformModule';
@@ -118,6 +123,18 @@ export function PlatformCrmInbox() {
   const deleteMessage = useDeletePlatformCrmMessage();
   const starMessage = useStarPlatformCrmMessage();
   const editMessage = useEditPlatformCrmMessage();
+  // REVIVAL onda 6 — reenvio, produto e toggle IA.
+  const resendMessage = useResendPlatformCrmMessage();
+  const setProduct = useSetPlatformCrmConversationProduct();
+  const activateBot = useActivatePlatformCrmBot();
+  const aiReactivate = useAiReactivatePlatformCrmConversation();
+
+  // Produtos (D3) para o seletor do header — lista leve {id,name}.
+  const { data: productRows = [] } = usePlatformCrmProducts();
+  const productOptions = useMemo(
+    () => productRows.map((p) => ({ id: p.id, name: p.name })),
+    [productRows],
+  );
 
   // Atalho Ctrl+K → foca a busca da lista (paridade com o SellerInbox).
   useEffect(() => {
@@ -249,6 +266,36 @@ export function PlatformCrmInbox() {
     editMessage.mutate({ messageId, conversationId: selected.id, newContent });
   };
 
+  // REVIVAL onda 6 — reenviar mensagem que falhou.
+  const handleResendMessage = (messageId: string) => {
+    if (!selected) return;
+    resendMessage.mutate({ messageId, conversationId: selected.id });
+  };
+
+  // REVIVAL onda 6 — vincular/limpar o produto da conversa.
+  const handleSetProduct = (productId: string | null) => {
+    if (!selected) return;
+    setProduct.mutate({ conversationId: selected.id, productId });
+  };
+
+  // REVIVAL onda 6 — devolver a conversa à IA (Duda).
+  const handleActivateBot = () => {
+    if (!selected) return;
+    activateBot.mutate(selected.id);
+  };
+
+  // REVIVAL onda 6 — reengajamento manual pela IA (sem trocar de dono).
+  const handleAiReactivate = () => {
+    if (!selected) return;
+    aiReactivate.mutate(selected.id);
+  };
+
+  // Id da mensagem sendo reenviada agora (spinner na bolha correta).
+  const resendingMessageId =
+    resendMessage.isPending && resendMessage.variables
+      ? (resendMessage.variables as { messageId: string }).messageId
+      : null;
+
   return (
     <div className="h-[calc(100dvh-10rem)] flex flex-col rounded-lg border border-border overflow-hidden bg-background">
       <div className="flex-1 flex min-w-0 overflow-hidden">
@@ -300,6 +347,16 @@ export function PlatformCrmInbox() {
             isReopening={reopenConversation.isPending}
             isResuming={acceptConversation.isPending}
             isReturning={returnToQueue.isPending}
+            onResendMessage={handleResendMessage}
+            resendingMessageId={resendingMessageId}
+            onActivateBot={handleActivateBot}
+            isActivatingBot={activateBot.isPending}
+            onAiReactivate={handleAiReactivate}
+            isAiReactivating={aiReactivate.isPending}
+            products={productOptions}
+            selectedProductId={selected?.product_id ?? null}
+            onSetProduct={handleSetProduct}
+            isSettingProduct={setProduct.isPending}
           />
         </div>
 

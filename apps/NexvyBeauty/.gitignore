@@ -25,3 +25,7 @@ dist-ssr
 
 # Referência 1:1 do CRM Vendus (porte super-admin) — nunca commitar
 .vendus-src-reference/
+
+# eval-visual (prova visual do gestao.*) — sessão e prints nunca vão pro repo
+tasks/eval-visual/.auth.json
+tasks/eval-visual/shots/

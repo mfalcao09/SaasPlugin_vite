@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Bot, ArrowRightLeft, StickyNote, BarChart3, UserCircle, MoreVertical, X,
-  RotateCcw, Play, Undo2, Sparkles, Send, Loader2, Smile,
+  RotateCcw, Play, Undo2, Sparkles, Send, Loader2, Smile, Hand, Zap, Package, Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +40,12 @@ import type {
 
 const EMOJIS = ['👍', '❤️', '😊', '🎉', '✅', '👋', '🙏', '💪', '😀', '😂', '🔥', '⭐'];
 
+/** Opção mínima de produto para o seletor do header (id + nome). */
+export interface PlatformCrmProductOption {
+  id: string;
+  name: string;
+}
+
 interface PlatformCrmChatAreaProps {
   conversation: PlatformCrmConversation | null;
   messages: PlatformCrmMessage[];
@@ -64,6 +70,21 @@ interface PlatformCrmChatAreaProps {
   isReopening?: boolean;
   isResuming?: boolean;
   isReturning?: boolean;
+  /** REVIVAL onda 6 — reenviar mensagem outbound que falhou (por id). */
+  onResendMessage?: (messageId: string) => void;
+  /** Id da mensagem sendo reenviada agora (spinner/disable na bolha). */
+  resendingMessageId?: string | null;
+  /** REVIVAL onda 6 — devolver a conversa à IA (Duda): status→bot_active. */
+  onActivateBot?: () => void;
+  isActivatingBot?: boolean;
+  /** REVIVAL onda 6 — acionar a IA para reengajar SEM trocar de dono. */
+  onAiReactivate?: () => void;
+  isAiReactivating?: boolean;
+  /** REVIVAL onda 6 — seletor de produto (D3): lista + selecionado + callback. */
+  products?: PlatformCrmProductOption[];
+  selectedProductId?: string | null;
+  onSetProduct?: (productId: string | null) => void;
+  isSettingProduct?: boolean;
 }
 
 export function PlatformCrmChatArea({
@@ -88,6 +109,16 @@ export function PlatformCrmChatArea({
   isReopening,
   isResuming,
   isReturning,
+  onResendMessage,
+  resendingMessageId,
+  onActivateBot,
+  isActivatingBot,
+  onAiReactivate,
+  isAiReactivating,
+  products,
+  selectedProductId,
+  onSetProduct,
+  isSettingProduct,
 }: PlatformCrmChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -211,6 +242,13 @@ export function PlatformCrmChatArea({
   const headerAccent = 'hsl(var(--primary))';
   const ticketCode = conversation.id.slice(0, 6);
 
+  // REVIVAL onda 6 — IA no comando quando a conversa está com o bot (Duda).
+  const isBotActive = status === 'bot_active';
+  const selectedProduct = selectedProductId
+    ? products?.find((p) => p.id === selectedProductId) ?? null
+    : null;
+  const hasProductSelector = !!products && products.length > 0 && !!onSetProduct;
+
   return (
     <div className="w-full h-full min-w-0 flex flex-col bg-background overflow-hidden">
       {/* ─────────── Header ─────────── */}
@@ -269,6 +307,130 @@ export function PlatformCrmChatArea({
 
         {/* Header Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* REVIVAL onda 6 — seletor de produto (D3). Vincula a conversa a um
+              produto de platform_crm_products; o sales-brain usa isso p/ escolher
+              a persona/playbook da IA. Oculto quando encerrada. */}
+          {!isClosed && hasProductSelector && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5 max-w-[160px]"
+                      disabled={isSettingProduct}
+                    >
+                      {isSettingProduct ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin flex-shrink-0" />
+                      ) : (
+                        <Package className="h-3.5 w-3.5 flex-shrink-0" />
+                      )}
+                      <span className="truncate">
+                        {selectedProduct?.name ?? 'Produto'}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Vincular a um produto</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto">
+                <DropdownMenuItem
+                  onClick={() => onSetProduct?.(null)}
+                  className={cn(!selectedProductId && 'font-medium')}
+                >
+                  {!selectedProductId && <Check className="h-4 w-4 mr-2" />}
+                  <span className={cn(selectedProductId && 'ml-6', 'text-muted-foreground')}>
+                    Sem produto
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {products!.map((p) => {
+                  const isSel = p.id === selectedProductId;
+                  return (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onClick={() => onSetProduct?.(p.id)}
+                      className={cn(isSel && 'font-medium')}
+                    >
+                      {isSel && <Check className="h-4 w-4 mr-2" />}
+                      <span className={cn(!isSel && 'ml-6', 'truncate')}>{p.name}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* REVIVAL onda 6 — toggle IA (assumir/devolver). O lado "assumir
+              manualmente" (→ human_active) já é o botão Retomar (onResume). Aqui
+              fica o lado "devolver pra IA": quando um humano está no comando,
+              oferece devolver a conversa à Duda (status→bot_active). Quando a IA
+              já atende, oferece um reengajamento manual (ai-reactivate). */}
+          {!isClosed && !isBotActive && onActivateBot && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={onActivateBot}
+                  disabled={isActivatingBot}
+                >
+                  {isActivatingBot ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Bot className="h-3.5 w-3.5" />
+                  )}
+                  Devolver à IA
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Devolver o atendimento para a Duda (IA)</TooltipContent>
+            </Tooltip>
+          )}
+
+          {!isClosed && isBotActive && (
+            <>
+              {onResume && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={onResume}
+                      disabled={isResuming}
+                    >
+                      <Hand className="h-3.5 w-3.5" />
+                      Assumir
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Assumir manualmente (tira a IA)</TooltipContent>
+                </Tooltip>
+              )}
+              {onAiReactivate && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onAiReactivate}
+                      disabled={isAiReactivating}
+                    >
+                      {isAiReactivating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Acionar a IA para reengajar</TooltipContent>
+                </Tooltip>
+              )}
+            </>
+          )}
+
           {isClosed && onReopen && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -281,7 +443,10 @@ export function PlatformCrmChatArea({
             </Tooltip>
           )}
 
-          {(status === 'bot_active' || status === 'waiting_human') && onResume && (
+          {/* "Retomar" para a fila humana (waiting_human). O caso bot_active é
+              coberto pelo botão "Assumir" acima (REVIVAL onda 6), evitando dois
+              botões que disparam o mesmo onResume. */}
+          {status === 'waiting_human' && onResume && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onResume} disabled={isResuming}>
@@ -439,6 +604,8 @@ export function PlatformCrmChatArea({
                           onEdit={onEditMessage}
                           onDelete={onDeleteMessage}
                           onStar={onStarMessage}
+                          onResend={onResendMessage}
+                          isResending={resendingMessageId === msg.id}
                         />
                       );
                     })}

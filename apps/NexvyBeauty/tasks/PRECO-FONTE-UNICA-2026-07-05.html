@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preço — Fonte Única no Banco (NexvyBeauty) · 2026-07-05</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2a3240;
+    --code-bg:#0b0f16; --text:#e6edf3; --muted:#8b98a9;
+    --pink:#ec4899; --pink-soft:#f9a8d4; --green:#34d399; --amber:#fbbf24; --blue:#60a5fa; --red:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.65;font-size:15px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 80px}
+  header{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(96,165,250,.08));
+    border:1px solid var(--border);border-radius:16px;padding:28px 30px;margin-bottom:28px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:-.5px}
+  .sub{color:var(--muted);font-size:14px}
+  .badge{display:inline-block;background:rgba(236,72,153,.15);color:var(--pink-soft);
+    border:1px solid rgba(236,72,153,.3);border-radius:999px;padding:2px 12px;font-size:12px;
+    font-weight:600;margin-right:8px}
+  .badge.g{background:rgba(52,211,153,.12);color:var(--green);border-color:rgba(52,211,153,.3)}
+  h2{margin:38px 0 12px;font-size:20px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{margin:26px 0 8px;font-size:16px;color:var(--pink-soft)}
+  p,li{color:var(--text)}
+  .muted{color:var(--muted)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{background:var(--code-bg);border:1px solid var(--border);border-radius:5px;
+    padding:1px 6px;font-size:13px;color:var(--pink-soft);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:18px;
+    overflow-x:auto;font-size:13px;line-height:1.65;color:var(--text)}
+  pre code{background:none;border:none;padding:0;color:inherit}
+  .callout{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--amber);
+    border-radius:8px;padding:14px 18px;margin:18px 0}
+  .callout.rec{border-left-color:var(--green)}
+  .callout.rec strong{color:var(--green)}
+  .callout.warn{border-left-color:var(--red)}
+  .callout.warn strong{color:var(--red)}
+  .callout.info{border-left-color:var(--blue)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 7px;
+    letter-spacing:.3px;vertical-align:middle}
+  .tag.i{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+  .tag.ii{background:rgba(251,191,36,.13);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+  .tag.iii{background:rgba(139,152,169,.13);color:var(--muted);border:1px solid var(--border)}
+  .tag.ok{background:rgba(52,211,153,.13);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+  .tablewrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--pink-soft);font-weight:600;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .diagram{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:18px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.5;
+    color:var(--muted);overflow-x:auto;white-space:pre}
+  .price{font-variant-numeric:tabular-nums;font-weight:700;color:var(--green)}
+  hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+  .foot{color:var(--muted);font-size:13px;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div style="margin-bottom:10px">
+    <span class="badge">Auditoria + Design</span>
+    <span class="badge g">Onda 7 · pronto p/ aplicar</span>
+  </div>
+  <h1>Preço — Fonte Única no Banco</h1>
+  <div class="sub">NexvyBeauty · 2026-07-05 · read-only + 4 patches (não aplicados)</div>
+  <div class="callout" style="margin:16px 0 0;border-left-color:var(--pink)">
+    <strong style="color:var(--pink-soft)">Decisão Marcelo (verbatim):</strong>
+    "preço seguir sempre o que está na UI (que deve ser o mesmo do banco)... uma regra que prevalece o DB, sempre."
+    <br><br>
+    <strong style="color:var(--pink-soft)">Tese do orquestrador:</strong> a cura não é sincronizar duas cópias do número —
+    é <strong>eliminar a duplicação</strong>. Preço vive só no banco (<code>platform_plans</code> → <code>public_plans</code>);
+    persona/playbook nunca citam número; o brain injeta em runtime.
+  </div>
+</header>
+
+<h2>0 · TL;DR — verdade desconfortável primeiro</h2>
+<div class="callout info">
+  <strong>[Certo]</strong> A UI e o motor de venda <strong>já são fonte-única hoje</strong>. A <code>SalesPage</code> lê
+  <code>public_plans</code> (sem preço hardcoded); o <code>platform-sales-brain</code> busca <code>price_monthly</code>/<code>checkout_url</code>
+  de <code>public_plans</code> em runtime e injeta na seção <code>LINKS DE PAGAMENTO</code>. O bug <strong>não está na UI nem no checkout.</strong>
+</div>
+<div class="callout warn">
+  <strong>[Certo]</strong> A divergência vive <strong>só nos textos das personas/knowledge_base</strong> (migrations <code>20260705_*</code>),
+  onde os preços foram <strong>transcritos à mão</strong> no prompt (<code>Essencial R$217 · Premium R$387 · Ultra R$687</code>).
+  Cópias congeladas. Hoje <strong>coincidem</strong> com o banco — mas são frágeis: na próxima mudança de preço, o banco muda e o prompt não.
+  Foi isso que gerou o histórico "347/197/487".
+</div>
+<div class="callout">
+  <strong>[Certo]</strong> Há <strong>um</strong> acoplamento residual legítimo: <code>QCRV_PRICE_ANCHOR = 217</code> no score do brain.
+  Não é preço-de-venda (é denominador de <code>PR ÷ preço</code>), mas é o mesmo número hardcoded. Tratamento no §3(c)/§4.
+</div>
+<div class="callout rec">
+  <strong>Régua de sucesso:</strong> depois dos 4 patches, grep por <code>217|387|687</code> em <code>supabase/functions/</code>
+  e nas migrations de persona retorna <strong>zero preço-de-venda hardcoded</strong>; a única remanescente é o <code>QCRV_PRICE_ANCHOR</code>,
+  que lê do banco no boot (ou está documentada como constante com fallback).
+</div>
+
+<h2>1 · Mapa de divergências (auditoria exaustiva)</h2>
+<p class="muted">Grep <code>\b(197|217|297|347|387|487|687)\b</code>. Classes:
+  <span class="tag i">i PREÇO-DINÂMICO</span> vira dinâmico ·
+  <span class="tag ii">ii ÂNCORA-CÁLCULO</span> documentar ·
+  <span class="tag iii">iii NÃO-PREÇO</span> ignorar.</p>
+
+<h3>1.1 · <code>supabase/functions/</code> — motor</h3>
+<div class="tablewrap"><table>
+  <tr><th>Arquivo:linha</th><th>Trecho</th><th>Classe</th><th>Ação</th></tr>
+  <tr><td><code>platform-sales-brain/index.ts:452</code></td><td>comentário <em>âncora do banco = 217 (NÃO 197)</em></td><td><span class="tag ii">ii</span></td><td>doc → patch (c)</td></tr>
+  <tr><td><code>platform-sales-brain/index.ts:453</code></td><td><code>const QCRV_PRICE_ANCHOR = 217;</code></td><td><span class="tag ii">ii</span></td><td><strong>acoplamento residual</strong> → ler do banco (patch c)</td></tr>
+  <tr><td><code>platform-sales-brain/index.ts:469</code></td><td>comentário <code>R = PR ÷ 217</code></td><td><span class="tag ii">ii</span></td><td>doc — ajustar junto</td></tr>
+  <tr><td><code>platform-sales-brain/index.ts:510</code></td><td><code>r = pr / QCRV_PRICE_ANCHOR;</code></td><td><span class="tag ii">ii</span></td><td>usa a constante — ok se (c) resolver</td></tr>
+  <tr><td><code>_shared/tools/impl/criar_deal.ts:19</code></td><td><em>ex: 297.00</em></td><td><span class="tag iii">iii</span></td><td><strong>manter</strong> (doc de tool)</td></tr>
+</table></div>
+<div class="callout info">
+  <strong>Confirmação-chave:</strong> o brain <strong>já busca</strong> <code>plans</code> do banco (linhas 779-785:
+  <code>.from('public_plans').select('name, slug, price_monthly, checkout_url')</code>) e injeta via
+  <code>buildCheckoutContext</code>. O preço de venda no runtime <strong>já é do banco</strong> — o número no prompt de persona é redundante e perigoso.
+</div>
+
+<h3>1.2 · <code>migrations_platform_crm/</code> — personas &amp; knowledge_base (o foco)</h3>
+<div class="tablewrap"><table>
+  <tr><th>Arquivo:linha</th><th>Trecho (resumo)</th><th>Classe</th><th>Ação</th></tr>
+  <tr><td><code>modelo_checkout_bia_valor.sql:35</code></td><td>Bia: <code>(Essencial 217 · Premium 387 · Ultra 687)</code></td><td><span class="tag i">i</span></td><td><strong>remover número</strong> → LINKS DE PAGAMENTO</td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:23-24</code></td><td>comentário: revisão citou 347; banco diz 387</td><td><span class="tag i">i</span></td><td>evidência viva da divergência</td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:48</code></td><td><code>217; 387; 687</code> + <code>R$217/mês</code></td><td><span class="tag i">i</span></td><td><strong>remover número</strong></td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:58</code></td><td>"tá caro": <code>R$217 é uma fração</code></td><td><span class="tag i">i</span></td><td>→ "o valor do plano recomendado"</td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:65</code></td><td>cardápio: <code>Essencial 217 é o certo</code></td><td><span class="tag i">i</span></td><td><strong>remover número</strong></td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:80</code></td><td><code>Preços oficiais SEMPRE 217·387·687</code></td><td><span class="tag i">i</span></td><td><strong>substituir</strong> por regra dura</td></tr>
+  <tr><td><code>bia_persona_closer_playbook.sql:120</code></td><td>REGRAS COERÊNCIA: <code>217·387·687</code></td><td><span class="tag i">i</span></td><td><strong>substituir</strong> por regra dura</td></tr>
+  <tr><td><code>agents_linha_duda_bia.sql:61</code></td><td><code>Preços oficiais sempre: 217·387·687</code></td><td><span class="tag i">i</span></td><td><strong>substituir</strong> por regra dura</td></tr>
+  <tr><td><code>playbook_qualificacao_v2.sql:25</code></td><td><code>R = PR÷217</code> <strong>e</strong> <code>Essencial (R$217/mês)</code></td><td><span class="tag i">i</span> <span class="tag ii">ii</span></td><td>217-cálculo mantém; 217-preço remove</td></tr>
+  <tr><td><code>playbook_qualificacao_v2.sql:45</code></td><td>objetivo: <code>&lt;40 = Essencial R$217</code></td><td><span class="tag i">i</span></td><td><strong>remover número</strong></td></tr>
+  <tr><td><code>playbook_qualificacao_v2.sql:52</code></td><td><code>recomendar Essencial (R$217)</code></td><td><span class="tag i">i</span></td><td><strong>remover número</strong></td></tr>
+  <tr><td><code>playbook_qualificacao_v2.sql:55</code></td><td><code>Preços oficiais sempre: 217·387·687</code></td><td><span class="tag i">i</span></td><td><strong>substituir</strong> por regra dura</td></tr>
+  <tr><td><code>seed_product_nexvybeauty_playbook.sql:15</code></td><td><code>v_pricing</code> jsonb: <code>preco_mensal:217/387/687</code></td><td><span class="tag i">i</span></td><td><strong>remover números</strong> do jsonb</td></tr>
+  <tr><td><code>seed_product_nexvybeauty_playbook.sql:24</code></td><td><code>v_plans: Essencial R$217/mês … Ultra R$687</code></td><td><span class="tag i">i</span></td><td>→ nomes + público + "preços do banco"</td></tr>
+</table></div>
+
+<h3>1.3 · <code>src/</code> — UI</h3>
+<div class="tablewrap"><table>
+  <tr><th>Arquivo:linha</th><th>Trecho</th><th>Classe</th><th>Ação</th></tr>
+  <tr><td><code>pages/SalesPage.tsx:449</code></td><td><code>{BRL.format(p.price_monthly)}</code></td><td><span class="tag ok">OK</span></td><td><strong>confirmado</strong> — lê public_plans</td></tr>
+  <tr><td><code>hooks/usePlatformPlans.ts</code> (<code>usePublicPlans</code>)</td><td><code>.from('public_plans')</code></td><td><span class="tag ok">OK</span></td><td><strong>confirmado</strong></td></tr>
+  <tr><td><code>PaymentLinkDialog.tsx:119</code></td><td><code>placeholder="297,00"</code></td><td><span class="tag iii">iii</span></td><td>placeholder — <strong>manter</strong></td></tr>
+  <tr><td><code>PlatformTemplateEditor.tsx:24</code></td><td><code>amount: 'R$ 297,00'</code></td><td><span class="tag iii">iii</span></td><td>preview de template — <strong>manter</strong></td></tr>
+  <tr><td><code>**/PricingPlansSection.tsx:190-192</code></td><td><code>placeholder="297,00"</code></td><td><span class="tag iii">iii</span></td><td>placeholder do editor — <strong>manter</strong></td></tr>
+  <tr><td><code>**/PostSaleVariablePicker.tsx</code></td><td><code>ex.: 197,00 / 297,00</code></td><td><span class="tag iii">iii</span></td><td>doc de variável — <strong>manter</strong></td></tr>
+  <tr><td><code>data/mockData.ts:45</code></td><td><code>price: 'R$ 1.297/mês'</code></td><td><span class="tag iii">iii</span></td><td>mock/demo — manter (marcar como MOCK)</td></tr>
+</table></div>
+<div class="callout rec">
+  <strong>Veredito UI:</strong> nenhum componente de produção tem preço de plano hardcoded. A UI já cumpre a decisão do Marcelo.
+  Patch (d) é só <strong>confirmação</strong>, não correção.
+</div>
+
+<h2>2 · Fonte de verdade — como é hoje (verificado)</h2>
+<div class="diagram">platform_plans (tabela, RLS fechada)   ← ÚNICO lugar onde o número existe
+        │  price_monthly, name, slug, checkout_url
+        ├──▶ VIEW public.public_plans (SELECT anônimo, só colunas de vitrine)
+        │        ├──▶ UI:   usePublicPlans() → SalesPage (BRL.format(price_monthly))
+        │        └──▶ BRAIN: platform-sales-brain .from('public_plans')
+        │                     → buildCheckoutContext → "LINKS DE PAGAMENTO"
+        └──▶ (personas/knowledge_base NÃO deveriam tocar aqui — hoje transcrevem à mão)</div>
+
+<h3>2.2 · Preço REAL no banco <span class="muted" style="font-weight:400">(REST, 2026-07-05, projeto <code>fzhlbwhdejumkyqosuvq</code>)</span></h3>
+<div class="tablewrap"><table>
+  <tr><th>name</th><th>slug</th><th>price_monthly</th><th>is_public</th></tr>
+  <tr><td>Trial</td><td><code>trial</code></td><td class="price" style="color:var(--muted)">R$ 0,00</td><td>false</td></tr>
+  <tr><td>Essencial</td><td><code>starter</code></td><td class="price">R$ 217,00</td><td>true</td></tr>
+  <tr><td>Premium</td><td><code>pro</code></td><td class="price">R$ 387,00</td><td>true</td></tr>
+  <tr><td>Ultra</td><td><code>premium</code></td><td class="price">R$ 687,00</td><td>true</td></tr>
+</table></div>
+<div class="callout warn">
+  <strong>Achado importante:</strong> os números das personas (217/387/687) <strong>batem</strong> com o banco hoje.
+  O "347" aparece <strong>só</strong> num comentário de migration relatando revisão anterior errada — já corrigida.
+  O incêndio "347/197/487" foi apagado nos números, mas as <strong>cópias manuais continuam no prompt</strong> —
+  a próxima mudança de preço reacende tudo. A cura tem que ser estrutural, não mais um "acerte o número".
+</div>
+<p class="muted">Comando de verificação (idempotente, sem expor secret):</p>
+<pre><code>ANON=$(grep -E 'VITE_SUPABASE_ANON|ANON_KEY' .env | head -1 | cut -d= -f2-)
+curl -s "https://fzhlbwhdejumkyqosuvq.supabase.co/rest/v1/public_plans?select=name,slug,price_monthly,is_public,display_order&order=display_order" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON"</code></pre>
+
+<h3>2.3 · <code>buildCheckoutContext</code> (brain, 190-196) — confirmado correto</h3>
+<pre><code>function buildCheckoutContext(plans) {
+  if (!plans.length) return '';
+  let ctx = `\n## LINKS DE PAGAMENTO (a maquininha — link DIRETO quando DECIDIR)\n`;
+  for (const p of plans) {
+    ctx += `- ${p.name} (R$${p.price_monthly}): ${p.checkout_url}\n`;  // ← preço do banco, runtime
+  }
+  return ctx;
+}</code></pre>
+<p><code>plans</code> vem de <code>public_plans</code> (779-785), filtrado por <code>checkout_url</code> presente. <strong>Já é fonte única em runtime.</strong>
+O patch (c) só garante que o prompt de persona pare de competir com esta seção e que o ANCHOR também venha daqui.</p>
+
+<h2>3 · Os 4 patches (drafts — não aplicar até Onda 7)</h2>
+
+<h3>(a) Migration de limpeza das personas/knowledge_base</h3>
+<p>Troca todo número de preço nos textos por referência à seção <code>LINKS DE PAGAMENTO</code> (injetada em runtime).
+Idempotente via <code>regexp_replace</code> — não recria a persona, só limpa os números.
+Arquivo novo: <code>supabase/migrations_platform_crm/20260705_precos_fonte_unica_limpeza.sql</code></p>
+<pre><code>DO $$
+DECLARE
+  v_re_lista text := '(?i)Essencial[^.\n]{0,6}R?\$?\s*217[^.\n]{0,40}687[/mês ]*';
+  v_sub_lista text := 'os planos oficiais (nomes e valores SEMPRE da seção LINKS DE PAGAMENTO — nunca de memória)';
+  v_re_solo  text := '(?i)\(?R\$\s*(217|387|687)(/mês)?\)?';
+  v_sub_solo text := 'o valor do plano recomendado (seção LINKS DE PAGAMENTO)';
+BEGIN
+  -- 1) additional_prompt das personas (Duda/Bia)
+  UPDATE public.platform_crm_product_agents
+     SET additional_prompt = regexp_replace(
+           regexp_replace(additional_prompt, v_re_lista, v_sub_lista, 'g'),
+           v_re_solo, v_sub_solo, 'g'),
+         updated_at = now()
+   WHERE additional_prompt ~ '(217|387|687)';
+
+  -- 2) description das personas
+  UPDATE public.platform_crm_product_agents
+     SET description = regexp_replace(description, v_re_lista, v_sub_lista, 'g'),
+         updated_at = now()
+   WHERE description ~ '(217|387|687)';
+
+  -- 3) knowledge_base + plans + pricing do produto nexvybeauty
+  UPDATE public.platform_crm_products
+     SET knowledge_base = regexp_replace(
+           regexp_replace(COALESCE(knowledge_base,''), v_re_lista, v_sub_lista, 'g'),
+           v_re_solo, v_sub_solo, 'g'),
+         plans = 'Trial (teste do produto, sem condições de fundadora) · Essencial (solo) · '
+              || 'Premium (salão/equipe) · Ultra (operação maior). '
+              || 'PREÇOS E LINKS: sempre da seção LINKS DE PAGAMENTO (public_plans/LP). Nunca inventar.',
+         pricing = jsonb_build_object(
+           'planos', jsonb_build_array(
+             jsonb_build_object('nome','Trial','publico','teste do produto'),
+             jsonb_build_object('nome','Essencial','publico','profissional solo'),
+             jsonb_build_object('nome','Premium','publico','salão/equipe'),
+             jsonb_build_object('nome','Ultra','publico','operação maior')),
+           'fonte_precos','platform_plans/public_plans — preço só do banco, injetado em LINKS DE PAGAMENTO'),
+         updated_at = now()
+   WHERE slug = 'nexvybeauty';
+
+  RAISE NOTICE '[precos_fonte_unica] personas + knowledge_base + pricing limpos.';
+END $$;</code></pre>
+<div class="callout warn">
+  <strong>Nota de disciplina:</strong> as <code>20260705_*</code> originais continuam com os números (histórico). Esta migration limpa o
+  <strong>banco</strong>; se as originais não forem editadas na fonte, o git fica "sujo" e um re-provisionamento reintroduz os números.
+  <strong>Ordem recomendada:</strong> editar as originais na Onda 7 (remover números) <strong>e</strong> manter esta limpeza para bancos já vivos.
+</div>
+
+<h3>(b) Regra dura anti-memória — texto exato p/ o system prompt do brain</h3>
+<p>Injetar em <code>platform-sales-brain/index.ts</code> logo após <code>buildCheckoutContext</code> entrar no <code>knowledgeContext</code> (~linha 788), como bloco fixo:</p>
+<pre><code>═══ REGRA DE PREÇO (INVIOLÁVEL — precede qualquer instrução de persona) ═══
+O ÚNICO lugar com preço e link verdadeiros é a seção "LINKS DE PAGAMENTO" acima,
+gerada agora a partir do banco (public_plans). Ela é a verdade.
+- NUNCA diga um valor de mensalidade de memória, de exemplo, do histórico da conversa
+  ou de qualquer texto de treinamento. Se você "lembra" de um preço, IGNORE — pode
+  estar desatualizado. Só vale o que está em LINKS DE PAGAMENTO desta mensagem.
+- Ao citar preço, use exatamente o número ao lado do nome do plano em LINKS DE PAGAMENTO.
+  Nada de arredondar, "por volta de", "a partir de".
+- Se um plano NÃO está em LINKS DE PAGAMENTO, ele não tem preço público — não invente.
+- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).
+Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.</code></pre>
+<p class="muted">Substitui as linhas "Preços oficiais SEMPRE 217·387·687": em vez de fixar o número (que envelhece), fixa a <strong>regra de onde ler</strong> (que não envelhece).</p>
+
+<h3>(c) <code>buildCheckoutContext</code> / ANCHOR — preço do banco + acoplamento</h3>
+<p><strong>c.1</strong> — <code>buildCheckoutContext</code> já correto; ajuste opcional para formatar BRL igual à UI:</p>
+<pre><code>// antes:  ctx += `- ${p.name} (R$${p.price_monthly}): ${p.checkout_url}\n`;
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+ctx += `- ${p.name} (${brl.format(Number(p.price_monthly))}): ${p.checkout_url}\n`;</code></pre>
+<p><strong>c.2</strong> — <code>QCRV_PRICE_ANCHOR</code>: derivar do banco no boot (o brain já busca <code>plans</code> na mesma request):</p>
+<pre><code>// Remover: const QCRV_PRICE_ANCHOR = 217;
+const ENTRY_PLAN_SLUG = 'starter'; // Essencial = plano de entrada
+function resolveAnchor(plans) {
+  const publicPaid = plans.map(p => Number(p.price_monthly)).filter(n => Number.isFinite(n) && n > 0);
+  const entry = plans.find(p => p.slug === ENTRY_PLAN_SLUG);
+  const anchor = entry ? Number(entry.price_monthly)
+               : publicPaid.length ? Math.min(...publicPaid)
+               : 217; // FALLBACK documentado: preço do Essencial em 2026-07-05.
+  return Number.isFinite(anchor) && anchor > 0 ? anchor : 217;
+}
+// computeQcrScore(facts) → computeQcrScore(facts, resolveAnchor(plans)); usar anchor na linha 510.</code></pre>
+<div class="callout">
+  <strong>Trade-off honesto:</strong> +1 parâmetro em <code>computeQcrScore</code>. Ganho: o score deixa de mentir se o preço de entrada mudar.
+  Mínimo aceitável se for over-engineering p/ a Onda 7: manter <code>const 217</code> <strong>com comentário explícito</strong> de que é o preço do <code>starter</code>
+  e precisa ser atualizado à mão — mas isso é dívida consciente, não fonte-única.
+</div>
+
+<h3>(d) UI — confirmação (nada a corrigir)</h3>
+<ul>
+  <li><code>SalesPage.tsx:449</code> → <code>{BRL.format(p.price_monthly)}</code> via <code>usePublicPlans()</code> → <span class="tag ok">OK</span></li>
+  <li><code>usePlatformPlans.ts</code> → <code>usePublicPlans</code> lê <code>public_plans</code> → <span class="tag ok">OK</span></li>
+  <li><code>297/197</code> em <code>src/</code> são placeholders de input e docs de variável — <strong>manter</strong></li>
+  <li><code>mockData.ts:45</code> (<code>R$ 1.297/mês</code>) é mock de demo — manter (sugestão: marcar como MOCK)</li>
+</ul>
+<p><strong>Ação (d):</strong> nenhuma correção. Só registrar no PR que a UI foi auditada e está conforme.</p>
+
+<h2>4 · Auto-avaliação honesta</h2>
+<div class="callout rec">
+  <strong>Elimina a divergência na raiz? SIM, para o preço de venda.</strong> Depois de (a)+(b) não existe mais nenhuma cópia
+  do preço de venda fora de <code>platform_plans</code>. A persona passa a <strong>ler</strong> o preço (via LINKS DE PAGAMENTO)
+  em vez de <strong>carregar</strong>. Mudar preço no super-admin propaga automaticamente para UI, checkout e discurso da IA — sem tocar em migration nem prompt.
+</div>
+<p><strong>Onde ainda "adia" (honestidade):</strong></p>
+<ol>
+  <li><strong><code>QCRV_PRICE_ANCHOR</code>.</strong> Sem (c.2), continua um <code>217</code> congelado — único número que sobrevive.
+  Risco menor (é denominador, não preço-de-venda), mas é o mesmo tipo de dívida. <strong>Recomendação:</strong> aplicar (c.2). Se optar pelo fallback,
+  <em>deixe o comentário explícito</em> — o pior é um <code>217</code> mudo que ninguém sabe que existe.</li>
+  <li><strong>As <code>20260705_*</code> originais no git.</strong> A limpeza (a) corrige o banco; se as originais não forem editadas na fonte,
+  o git segue "sujo" e um re-provisionamento reintroduz o número antes da limpeza rodar. Editar as originais na Onda 7 <strong>e</strong> manter a limpeza para bancos vivos.</li>
+</ol>
+<div class="callout info">
+  <strong>Tratamento recomendado do ANCHOR (resposta direta):</strong> <strong>ler do banco no boot</strong> (c.2), usando o
+  <code>price_monthly</code> do <code>starter</code> que o brain já busca — custo marginal zero de I/O. Fallback <code>217</code> só como último recurso, com comentário.
+  Aceitar como constante documentada é a <strong>segunda melhor</strong> opção — válida só se a proporcionalidade exigir, mas então não venda como "fonte-única": venda como "dívida consciente com data de validade".
+</div>
+
+<h2>5 · Entregáveis &amp; ordem de aplicação</h2>
+<ul>
+  <li><code>tasks/PRECO-FONTE-UNICA-2026-07-05.md</code> · <code>tasks/PRECO-FONTE-UNICA-2026-07-05.html</code> (par canônico)</li>
+  <li><strong>Ordem na Onda 7:</strong> (b) e (c) no brain → (a) limpeza no banco → editar migrations originais na fonte → (d) só confirmar.</li>
+</ul>
+
+<hr>
+<p class="foot">NexvyBeauty · Auditoria + Design de fonte-única de preço · 2026-07-05 · gerado por Claude (orquestrador Opus 4.8).
+Projeto Supabase <code>fzhlbwhdejumkyqosuvq</code>. Documento de entrega — patches não aplicados.</p>
+
+</div>
+</body>
+</html>

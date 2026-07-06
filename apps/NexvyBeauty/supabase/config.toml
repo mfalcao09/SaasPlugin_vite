@@ -16,3 +16,9 @@ verify_jwt = false
 # Auth real = service-role key OU x-brain-secret (BRAIN_INTERNAL_SECRET) na função.
 [functions.platform-sales-brain]
 verify_jwt = false
+
+# EF DESCARTÁVEL de evals (braço EVALS-V1): régua binária do brain de vendas.
+# Sem JWT — auth real = x-brain-secret (BRAIN_INTERNAL_SECRET) na função. NÃO
+# deployar em produção junto com o resto; roda sob demanda e limpa os efêmeros.
+[functions.tmp-eval-agents]
+verify_jwt = false

@@ -582,3 +582,132 @@ export function useEditPlatformCrmMessage() {
     onError: () => toast.error('Erro ao editar mensagem'),
   });
 }
+
+/**
+ * REVIVAL onda 6 — ações que HOJE têm infra (Cloud API sender, produtos D3,
+ * sales-brain). Todas via Edge `platform-webchat-inbox` (persiste, entrega,
+ * broadcast). O realtime de `usePlatformCrmMessages` deduplica por id, então
+ * invalidamos apenas para garantir consistência quando o edge não fizer broadcast.
+ */
+
+/**
+ * Reenvia uma mensagem outbound que falhou (`metadata.delivery_status='failed'`).
+ * Idempotente no servidor: o edge recusa (409) se a mensagem não estiver failed.
+ */
+export function useResendPlatformCrmMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      conversationId,
+    }: {
+      messageId: string;
+      conversationId: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: { action: 'resend', message_id: messageId },
+      });
+      if (error) throw error;
+      void conversationId;
+      return data as { message?: PlatformCrmMessage; delivery_warning?: string } | null;
+    },
+    onSuccess: (data, { conversationId }) => {
+      queryClient.invalidateQueries({
+        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', conversationId],
+      });
+      if (data?.delivery_warning) {
+        toast.warning('Reenvio ainda não entregue', { description: data.delivery_warning });
+      } else {
+        toast.success('Mensagem reenviada');
+      }
+    },
+    onError: (error: any) => {
+      console.error('Error resending platform CRM message:', error);
+      toast.error('Erro ao reenviar mensagem');
+    },
+  });
+}
+
+/**
+ * Vincula (ou limpa, com productId=null) o produto da conversa. O sales-brain usa
+ * `platform_crm_conversations.product_id` para escolher a persona/playbook da IA.
+ */
+export function useSetPlatformCrmConversationProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      productId,
+    }: {
+      conversationId: string;
+      productId: string | null;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: { action: 'set-product', conversation_id: conversationId, product_id: productId },
+      });
+      if (error) throw error;
+      return data as { product_id: string | null } | null;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'] });
+      toast.success('Produto da conversa atualizado');
+    },
+    onError: (error: any) => {
+      console.error('Error setting platform CRM conversation product:', error);
+      toast.error('Erro ao vincular produto');
+    },
+  });
+}
+
+/**
+ * Devolve a conversa à IA (Duda): status→bot_active, limpa o atendente e acorda o
+ * sales-brain. É o lado "devolver pra IA" do toggle assumir/devolver.
+ */
+export function useActivatePlatformCrmBot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: { action: 'activate-bot', conversation_id: conversationId },
+      });
+      if (error) throw error;
+      return data as { status?: string } | null;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'] });
+      toast.success('Atendimento devolvido à IA');
+    },
+    onError: (error: any) => {
+      console.error('Error activating platform CRM bot:', error);
+      toast.error('Erro ao devolver para a IA');
+    },
+  });
+}
+
+/**
+ * Reengajamento contextual pela IA SEM trocar de dono — acorda o sales-brain para
+ * gerar/entregar uma mensagem de reativação. Útil quando a IA já atende e o agente
+ * quer forçar um novo toque.
+ */
+export function useAiReactivatePlatformCrmConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: { action: 'ai-reactivate', conversation_id: conversationId },
+      });
+      if (error) throw error;
+      return data as { triggered?: boolean } | null;
+    },
+    onSuccess: (_data, conversationId) => {
+      queryClient.invalidateQueries({
+        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', conversationId],
+      });
+      toast.success('IA acionada para reengajar');
+    },
+    onError: (error: any) => {
+      console.error('Error reactivating platform CRM AI:', error);
+      toast.error('Erro ao acionar a IA');
+    },
+  });
+}

@@ -70,7 +70,13 @@
 // ============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { Resend } from 'https://esm.sh/resend@4.0.0';
 import { normalizePhoneBR } from '../_shared/phone.ts';
+// REVIVAL onda-6: WhatsApp Cloud API oficial (número de VENDAS) para notify_whatsapp.
+// Mesma infra do platform-webchat-inbox/platform-sales-brain: connection ativa em
+// platform_crm_whatsapp_meta_connections, token AES-GCM decifrado, POST no Graph.
+import { decryptSecret } from '../_shared/meta-crypto.ts';
+import { GRAPH_BASE } from '../_shared/meta-graph.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -219,7 +225,10 @@ function generateWelcomeHtml(leadName: string): string {
   `;
 }
 
-// Generate seller notification email HTML
+// REVIVAL (correção-ressalva): a premissa anterior ("sem `profiles` com e-mail do
+// vendedor") era FALSA — a tabela `profiles` EXISTE na plataforma e tem `email`,
+// `full_name` e `phone` (types.ts). O template do vendedor volta a ser usado por
+// send_email_to_seller. Porte 1:1 do generateSellerNotificationHtml do tenant.
 function generateSellerNotificationHtml(
   leadName: string,
   leadEmail: string,
@@ -232,7 +241,7 @@ function generateSellerNotificationHtml(
         lead_name: leadName,
         lead_email: leadEmail || 'Não informado',
         lead_phone: leadPhone || 'Não informado',
-        lead_url: leadUrl
+        lead_url: leadUrl,
       })
     : `Um novo lead foi recebido via webhook e atribuído a você.`;
 
@@ -274,6 +283,53 @@ function generateSellerNotificationHtml(
     </body>
     </html>
   `;
+}
+
+/**
+ * REVIVAL onda-6 — Entrega uma mensagem outbound no WhatsApp Cloud API (número de
+ * VENDAS oficial da plataforma). Porte 1:1 do deliverViaWhatsAppCloud do
+ * platform-webchat-inbox: mono-connection (a `active` mais recente), decrypt do
+ * token, dígitos do destino, POST no Graph. Retorna o wamid pra casar com os
+ * statuses (sent/delivered/read) do webhook Meta. Non-throwing: erro vira campo.
+ */
+async function deliverViaWhatsAppCloud(
+  supabase: any,
+  toPhone: string,
+  content: string,
+): Promise<{ wamid: string | null; error: string | null }> {
+  try {
+    const { data: conn } = await supabase
+      .from('platform_crm_whatsapp_meta_connections')
+      .select('id, phone_number_id, access_token_encrypted')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
+      return { wamid: null, error: 'no_active_connection' };
+    }
+    const token = await decryptSecret(conn.access_token_encrypted as string);
+    const to = String(toPhone ?? '').replace(/\D/g, '');
+    if (!to) return { wamid: null, error: 'no_destination_phone' };
+
+    const payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body: content } };
+
+    const res = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.error?.message ?? `graph ${res.status}`;
+      console.error('[Webhook/WhatsApp] entrega Cloud API falhou:', msg);
+      return { wamid: null, error: String(msg).slice(0, 300) };
+    }
+    return { wamid: data?.messages?.[0]?.id ?? null, error: null };
+  } catch (e) {
+    console.error('[Webhook/WhatsApp] entrega Cloud API exception:', e);
+    return { wamid: null, error: String(e).slice(0, 300) };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -883,38 +939,26 @@ async function executeAction(
         return { lead_id: existingLeadId, skipped: true, reason: 'Lead has no email' };
       }
 
-      // __NO_EQUIVALENT__: o original resolvia `organizations.name` e usava
-      // `email_templates` + Resend. A plataforma NÃO tem `organizations` nem
-      // `email_templates` (o envio é por _shared/platform-email-send.ts com
-      // template do banco `platform_email_templates` de slug fixo). Como o
-      // contrato do original (template configurável por id + Resend from
-      // onboarding@resend.dev) não existe aqui, o branch é preservado mas
-      // não pode ser executado 1:1.
-      // TODO: sem equivalente platform_crm — send_email (email_templates/organizations/Resend) indisponível.
-      let orgName = 'Notificação';
-      // organizations → __NO_EQUIVALENT__ (plataforma tenant-of-one, sem tabela).
+      // REVIVAL onda-6 — envio real via Resend quando o secret existe.
+      // O original resolvia `organizations.name` + `email_templates` (configurável
+      // por id). Na plataforma NÃO há `organizations` nem `email_templates`, então:
+      //   - `organizationName` cai para um rótulo fixo ('NexvyBeauty');
+      //   - `config.email_template_id` (template do banco) → __NO_EQUIVALENT__:
+      //     ignorado, logado; usamos o welcome HTML padrão + assunto customizável.
+      //   - `config.email_subject` (variáveis {{...}}) → aplicado 1:1.
+      // Envio: Resend inline (mesmo cliente do webhook-receiver tenant). Se o secret
+      // RESEND_API_KEY estiver AUSENTE, no-op logado explícito (não silencioso).
+      const orgName = 'NexvyBeauty';
 
-      // Get email template if configured
       let subject = 'Obrigado pelo seu interesse!';
-      let html = generateWelcomeHtml(lead.name || 'Cliente');
+      const html = generateWelcomeHtml(lead.name || 'Cliente');
 
       if (config.email_template_id) {
-        // email_templates → __NO_EQUIVALENT__ na plataforma.
-        // TODO: sem equivalente platform_crm — email_templates indisponível.
-        const template: any = null;
-
-        if (template) {
-          const vars = buildTemplateVariables(
-            { name: lead.name, email: lead.email, phone: lead.phone },
-            template.variables as Array<{ name: string; description?: string }>,
-            { organizationName: orgName, organization: orgName }
-          );
-          subject = replaceVariables(template.subject, vars);
-          html = replaceVariables(template.html_content, vars);
-        }
+        // email_templates configurável por id → __NO_EQUIVALENT__ na plataforma.
+        console.warn('[Webhook/Email] config.email_template_id ignorado (email_templates sem equivalente platform_crm) — usando template welcome padrão');
       }
 
-      // Also process custom subject if set
+      // Assunto customizável com variáveis {{lead_name}} etc.
       if (config.email_subject) {
         const vars = buildTemplateVariables(
           { name: lead.name, email: lead.email, phone: lead.phone },
@@ -924,24 +968,38 @@ async function executeAction(
         subject = replaceVariables(config.email_subject, vars);
       }
 
-      // Send email via Resend → __NO_EQUIVALENT__ (plataforma usa fila
-      // transacional em platform-email-send.ts, não Resend inline). Branch
-      // preservado como skip explícito.
-      // TODO: sem equivalente platform_crm — envio via Resend indisponível.
+      // Presença do secret: verificada por existência (nunca logar o valor).
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
       if (!resendApiKey) {
-        console.error('[Webhook] RESEND_API_KEY not configured');
-        return { lead_id: existingLeadId, skipped: true, reason: 'Email service not configured' };
+        console.warn('[Webhook/Email] RESEND_API_KEY ausente — envio de e-mail pulado (no-op)');
+        return {
+          lead_id: existingLeadId,
+          skipped: true,
+          reason: 'RESEND_API_KEY ausente',
+          subject_preview: subject,
+          html_len: html.length,
+        };
       }
 
-      // Sem cliente Resend portado — não há como enviar 1:1. Skip explícito.
-      return {
-        lead_id: existingLeadId,
-        skipped: true,
-        reason: 'send_email sem equivalente platform_crm (Resend/email_templates/organizations)',
-        subject_preview: subject,
-        html_len: html.length,
-      };
+      const resend = new Resend(resendApiKey);
+      try {
+        await resend.emails.send({
+          from: `${orgName} <onboarding@resend.dev>`,
+          to: [lead.email],
+          subject,
+          html,
+        });
+        console.log(`[Webhook/Email] e-mail enviado ao lead: ${lead.email}`);
+        return { lead_id: existingLeadId, email_sent_to: lead.email };
+      } catch (emailError: any) {
+        // Non-fatal: falha de envio não derruba as demais ações.
+        console.error('[Webhook/Email] falha ao enviar:', emailError);
+        return {
+          lead_id: existingLeadId,
+          skipped: true,
+          reason: `Falha ao enviar e-mail: ${emailError?.message ?? String(emailError)}`,
+        };
+      }
     }
 
     case 'send_email_to_seller': {
@@ -958,33 +1016,42 @@ async function executeAction(
         return { lead_id: existingLeadId, skipped: true, reason: 'Lead has no assigned seller' };
       }
 
-      // __NO_EQUIVALENT__: o original lia `profiles` (email/full_name do vendedor)
-      // e `organizations` (nome), enviando via Resend. Nenhuma dessas tabelas
-      // existe na plataforma (o "profile" é auth.users; e-mail/nome não estão
-      // num profiles espelhado). Branch preservado como skip explícito.
-      // TODO: sem equivalente platform_crm — send_email_to_seller (profiles/organizations/Resend) indisponível.
-      const seller = null as { email?: string; full_name?: string } | null; // profiles → __NO_EQUIVALENT__
-      const org = null as { name?: string } | null;                          // organizations → __NO_EQUIVALENT__
+      // REVIVAL (correção-ressalva): a premissa "profiles não existe" era FALSA — a
+      // tabela `profiles` EXISTE na plataforma com `email`/`full_name`. O vendedor é
+      // o `lead.assigned_to` (= profiles.id). Resolvemos e-mail/nome dele e enviamos
+      // via Resend (mesmo cliente do send_email). Non-fatal: qualquer dado ausente
+      // (perfil sem e-mail, secret ausente, falha de envio) vira skip/erro-campo
+      // logado — nunca throw (as outras ações do webhook seguem).
+      const { data: seller } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', lead.assigned_to)
+        .maybeSingle();
 
       if (!seller?.email) {
-        return { lead_id: existingLeadId, skipped: true, reason: 'Seller has no email' };
+        console.warn('[Webhook/Email] send_email_to_seller: vendedor sem e-mail em profiles — pulado');
+        return {
+          lead_id: existingLeadId,
+          skipped: true,
+          reason: 'Seller has no email in profiles',
+        };
       }
 
-      const orgName = org?.name || 'CRM';
+      const orgName = 'NexvyBeauty';
 
-      // Build smart variables
+      // Variáveis inteligentes (inclui nome do vendedor).
       const vars = buildTemplateVariables(
         { name: lead.name, email: lead.email, phone: lead.phone },
         undefined,
         {
           organizationName: orgName,
           seller_name: seller.full_name || '',
-          sellerName: seller.full_name || ''
+          sellerName: seller.full_name || '',
         }
       );
 
-      // Build email content
-      const leadUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app')}/leads/${existingLeadId}`;
+      // URL do lead no CRM (host da plataforma; SUPABASE_URL → app host).
+      const leadUrl = `${(Deno.env.get('SUPABASE_URL') ?? '').replace('.supabase.co', '.lovable.app')}/leads/${existingLeadId}`;
 
       const subject = config.email_subject
         ? replaceVariables(config.email_subject, vars)
@@ -998,21 +1065,38 @@ async function executeAction(
         config.email_message ? replaceVariables(config.email_message, vars) : undefined
       );
 
-      // Send email via Resend → __NO_EQUIVALENT__ (ver send_email).
-      // TODO: sem equivalente platform_crm — envio via Resend indisponível.
+      // Presença do secret: verificada por existência (nunca logar o valor).
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
       if (!resendApiKey) {
-        console.error('[Webhook] RESEND_API_KEY not configured');
-        return { lead_id: existingLeadId, skipped: true, reason: 'Email service not configured' };
+        console.warn('[Webhook/Email] RESEND_API_KEY ausente — notificação ao vendedor pulada (no-op)');
+        return {
+          lead_id: existingLeadId,
+          skipped: true,
+          reason: 'RESEND_API_KEY ausente',
+          subject_preview: subject,
+          html_len: html.length,
+        };
       }
 
-      return {
-        lead_id: existingLeadId,
-        skipped: true,
-        reason: 'send_email_to_seller sem equivalente platform_crm (Resend/profiles/organizations)',
-        subject_preview: subject,
-        html_len: html.length,
-      };
+      const resend = new Resend(resendApiKey);
+      try {
+        await resend.emails.send({
+          from: `${orgName} <onboarding@resend.dev>`,
+          to: [seller.email],
+          subject,
+          html,
+        });
+        console.log(`[Webhook/Email] notificação enviada ao vendedor: ${seller.email}`);
+        return { lead_id: existingLeadId, email_sent_to_seller: seller.email };
+      } catch (emailError: any) {
+        // Non-fatal: falha de envio não derruba as demais ações.
+        console.error('[Webhook/Email] falha ao notificar vendedor:', emailError);
+        return {
+          lead_id: existingLeadId,
+          skipped: true,
+          reason: `Falha ao enviar e-mail ao vendedor: ${emailError?.message ?? String(emailError)}`,
+        };
+      }
     }
 
     case 'notify_user': {
@@ -1099,22 +1183,22 @@ async function executeAction(
     case 'notify_whatsapp': {
       if (!existingLeadId) throw new Error('No lead to notify about');
 
-      // __NO_EQUIVALENT__: o original resolvia provedor WhatsApp em
-      // `integration_settings` (whatsapp_provider) e alvos em `profiles`
-      // (phone). A plataforma NÃO tem `integration_settings` nem `profiles`,
-      // e NÃO tem canal WhatsApp conectado. Branch inteiro preservado, mas as
-      // consultas de infra ausente são substituídas por nulos + skip explícito.
-      // TODO: sem equivalente platform_crm — notify_whatsapp (integration_settings/profiles/WhatsApp) indisponível.
-      const wpSetting = null as { settings?: Record<string, unknown> } | null; // integration_settings → __NO_EQUIVALENT__
-
-      const wpSettings = wpSetting?.settings as Record<string, unknown> | null;
-      const wpProvider = (wpSettings?.provider as string) || 'isichat';
-      const bcKey = (wpSettings?.botconversa_api_key as string) || Deno.env.get('BOTCONVERSA_API_KEY');
-      const isichatToken = Deno.env.get('ISICHAT_TOKEN');
-
-      if (wpProvider !== 'botconversa' && !isichatToken) {
-        return { lead_id: existingLeadId, skipped: true, reason: 'No WhatsApp provider configured' };
-      }
+      // REVIVAL onda-6 + correção-ressalva — WhatsApp automático via Cloud API
+      // OFICIAL da plataforma. O original (tenant) resolvia provedor em
+      // `integration_settings` (BotConversa/IsiChat); aqui o canal é o número de
+      // VENDAS Cloud API (mesma infra de platform-webchat-inbox/platform-sales-brain).
+      // Os telefones de destino, porém, VÊM de `profiles.phone` — e a premissa
+      // anterior ("profiles não existe na plataforma") era FALSA: `profiles` EXISTE
+      // com `phone` (types.ts). Portanto os três alvos agora funcionam:
+      //   - specific_number → config.whatsapp_number (número informado na regra).
+      //   - specific_user   → profiles.phone do config.whatsapp_user_id.
+      //   - all_team        → profiles.phone dos membros do squad da regra
+      //                       (platform_crm_squad_members; a plataforma não tem
+      //                       organization_id, então o escopo de "time" é o squad
+      //                       do webhook — webhook.squad_id).
+      // Todos os números passam por normalização de DDI (prefixo 55) ANTES do envio,
+      // porque deliverViaWhatsAppCloud só remove não-dígitos e NÃO prefixa DDI.
+      // Non-fatal: falha de entrega vira campo do resultado, não throw.
 
       // Get lead data for variable substitution
       const { data: lead } = await supabase
@@ -1130,33 +1214,72 @@ async function executeAction(
         lead_email: lead?.email || 'Não informado',
       });
 
-      // Determine target numbers
+      // Determine target numbers. Todos os alvos resolvem telefones e os normalizam
+      // (DDI 55) ANTES de enfileirar — deliverViaWhatsAppCloud só remove não-dígitos.
       const targetNumbers: string[] = [];
       const whatsappTarget = config.whatsapp_target || 'all_team';
 
+      // Normaliza e enfileira: dígitos puros + prefixo 55 se ausente. Descarta vazio.
+      const pushNumber = (raw: unknown) => {
+        let n = String(raw ?? '').replace(/\D/g, '');
+        if (!n) return;
+        if (!n.startsWith('55')) n = '55' + n;
+        targetNumbers.push(n);
+      };
+
       if (whatsappTarget === 'specific_number') {
-        if (config.whatsapp_number) {
-          targetNumbers.push(config.whatsapp_number);
-        }
+        // Ressalva: o número informado na regra pode vir sem DDI ('11987654321') →
+        // pushNumber prefixa 55 (o Graph rejeita sem DDI).
+        if (config.whatsapp_number) pushNumber(config.whatsapp_number);
       } else if (whatsappTarget === 'specific_user') {
-        if (config.whatsapp_user_id) {
-          // profiles → __NO_EQUIVALENT__ (sem phone de usuário na plataforma).
-          // TODO: sem equivalente platform_crm — profiles.phone indisponível.
-          const profile = null as { phone?: string } | null;
-          if (profile?.phone) {
-            targetNumbers.push(profile.phone);
-          }
+        // Telefone do usuário-alvo em profiles.phone (profiles EXISTE na plataforma).
+        if (!config.whatsapp_user_id) {
+          console.warn('[Webhook/WhatsApp] alvo specific_user sem config.whatsapp_user_id — pulado');
+          return {
+            lead_id: existingLeadId,
+            skipped: true,
+            reason: 'notify_whatsapp specific_user sem whatsapp_user_id na regra',
+          };
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', config.whatsapp_user_id)
+          .maybeSingle();
+        if (profile?.phone) {
+          pushNumber(profile.phone);
+        } else {
+          console.warn('[Webhook/WhatsApp] alvo specific_user: profile sem phone — pulado');
         }
       } else {
-        // all_team — o original buscava profiles.phone da organização.
-        // profiles → __NO_EQUIVALENT__ (plataforma sem tabela profiles espelhada).
-        // TODO: sem equivalente platform_crm — profiles (all_team) indisponível.
-        const profiles = null as Array<{ phone?: string }> | null;
-
-        if (profiles) {
-          for (const p of profiles) {
-            if (p.phone) targetNumbers.push(p.phone);
+        // all_team → membros do squad da regra (webhook.squad_id) via
+        // platform_crm_squad_members → profiles.phone. A plataforma não tem
+        // organization_id, então o escopo de "time" é o squad do webhook.
+        if (!webhook.squad_id) {
+          console.warn('[Webhook/WhatsApp] alvo all_team sem webhook.squad_id (sem escopo de time) — pulado');
+          return {
+            lead_id: existingLeadId,
+            skipped: true,
+            reason: 'notify_whatsapp all_team sem squad_id no webhook (escopo de time indefinido)',
+          };
+        }
+        const { data: members } = await supabase
+          .from('platform_crm_squad_members')
+          .select('user_id')
+          .eq('squad_id', webhook.squad_id);
+        const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id).filter(Boolean);
+        if (memberIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('phone')
+            .in('id', memberIds)
+            .not('phone', 'is', null);
+          for (const p of profiles ?? []) {
+            if (p.phone) pushNumber(p.phone);
           }
+        }
+        if (targetNumbers.length === 0) {
+          console.warn('[Webhook/WhatsApp] alvo all_team: nenhum membro do squad com phone em profiles — pulado');
         }
       }
 
@@ -1164,57 +1287,18 @@ async function executeAction(
         return { lead_id: existingLeadId, skipped: true, reason: 'No target phone numbers found' };
       }
 
-      // Send to each number via configured provider
-      const results: { number: string; success: boolean; error?: string }[] = [];
-
+      // Envia a cada número via Cloud API oficial (número de vendas). Sem canal
+      // conectado (connection ativa), o helper devolve error='no_active_connection'
+      // e a regra é marcada como não-entregue (não quebra o webhook).
+      const results: { number: string; success: boolean; error?: string; wamid?: string }[] = [];
       for (const number of targetNumbers) {
-        try {
-          let cleanNumber = number.replace(/\D/g, '');
-          if (!cleanNumber.startsWith('55')) cleanNumber = '55' + cleanNumber;
-
-          if (wpProvider === 'botconversa' && bcKey) {
-            const lookupResp = await fetch(
-              `https://backend.botconversa.com.br/api/v1/webhook/subscriber/get_by_phone/${cleanNumber}/`,
-              { headers: { 'API-KEY': bcKey } }
-            );
-            if (lookupResp.ok) {
-              const sub = await lookupResp.json();
-              const sendResp = await fetch(
-                `https://backend.botconversa.com.br/api/v1/webhook/subscriber/${sub.id}/send_message/`,
-                {
-                  method: 'POST',
-                  headers: { 'API-KEY': bcKey, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ type: 'text', value: message }),
-                }
-              );
-              if (!sendResp.ok) {
-                const errText = await sendResp.text();
-                results.push({ number: cleanNumber, success: false, error: `HTTP ${sendResp.status}` });
-              } else {
-                results.push({ number: cleanNumber, success: true });
-              }
-            } else {
-              results.push({ number: cleanNumber, success: false, error: 'Subscriber not found' });
-            }
-          } else if (isichatToken) {
-            const resp = await fetch('https://api.isichat.com.br/api/messages/send', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${isichatToken}`,
-              },
-              body: JSON.stringify({ number: cleanNumber, body: message }),
-            });
-            if (!resp.ok) {
-              const errText = await resp.text();
-              results.push({ number: cleanNumber, success: false, error: `HTTP ${resp.status}` });
-            } else {
-              results.push({ number: cleanNumber, success: true });
-            }
-          }
-        } catch (e: any) {
-          console.error(`[Webhook/WhatsApp] Error sending to ${number}:`, e);
-          results.push({ number, success: false, error: e.message });
+        const { wamid, error } = await deliverViaWhatsAppCloud(supabase, number, message);
+        const cleanNumber = String(number).replace(/\D/g, '');
+        if (wamid) {
+          results.push({ number: cleanNumber, success: true, wamid });
+        } else {
+          console.error(`[Webhook/WhatsApp] NÃO entregue para ${cleanNumber}:`, error);
+          results.push({ number: cleanNumber, success: false, error: error ?? 'entrega falhou' });
         }
       }
 
@@ -1225,64 +1309,135 @@ async function executeAction(
     case 'ai_agent_outreach': {
       if (!existingLeadId) throw new Error('No lead for AI outreach');
 
-      // __NO_EQUIVALENT__ (parcial): esta ação depende de MUITA infra que a
-      // plataforma não tem:
-      //   - product_agents (campos ricos: agent_type/primary_objective/tone_style/
-      //     message_style/can_do/cannot_do/product_id) → platform_crm_agent_configs
-      //     só tem name + persona_prompt.
-      //   - ai_knowledge_base (brain) → não existe na plataforma.
-      //   - integration_settings / evolution_instances / evolution-send /
-      //     BotConversa / IsiChat → canal WhatsApp inexistente na plataforma.
-      //   - ai_outreach_queue → não existe na plataforma (follow-up tracking).
-      //   - webchat_conversations com colunas widget_id/visitor_email/metadata →
-      //     platform_crm_conversations tem schema REDUZIDO.
-      //   - recordLovableUsage → não portado (gateway env-driven sem recorder).
-      // Branch preservado; execução real indisponível → skip explícito no topo.
-      // TODO: sem equivalente platform_crm — ai_agent_outreach (product_agents rich/ai_knowledge_base/ai_outreach_queue/WhatsApp) indisponível.
-      return {
-        lead_id: existingLeadId,
-        skipped: true,
-        reason: 'ai_agent_outreach sem equivalente platform_crm (agente rico/knowledge/outreach_queue/WhatsApp ausentes)',
-      };
+      // REVIVAL onda-6 — a IA inicia/continua um outreach de WhatsApp.
+      //
+      // O original (tenant) reimplementava TODO o motor aqui (product_agents ricos,
+      // ai_knowledge_base, ai_outreach_queue, envio Evolution). Na plataforma esse
+      // motor JÁ EXISTE e é canônico: platform-sales-brain (F2 "O Cérebro"). Em vez
+      // de duplicar LLM/persona/entrega, DELEGAMOS a ele — exatamente como o
+      // platform-meta-whatsapp-webhook faz (fire-and-forget + x-brain-secret).
+      //
+      // Meu trabalho aqui: garantir que exista uma conversa de canal 'whatsapp' em
+      // status 'bot_active' vinculada ao lead (reuso a aberta; senão crio a mínima
+      // p/ cold outreach por telefone) e disparar o brain nela. O brain REVALIDA
+      // tudo (só age em whatsapp+bot_active, tem dedupe/debounce próprios) e decide
+      // persona/produto/resposta. Non-fatal: qualquer falha vira skip/erro-campo,
+      // nunca derruba as outras ações do webhook.
 
-      /* ---- CORPO ORIGINAL PRESERVADO (não executável na plataforma) ----
-      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-      if (!lovableApiKey) {
-        return { lead_id: existingLeadId, skipped: true, reason: 'LOVABLE_API_KEY not configured' };
-      }
-
-      // 1. Get lead data
+      // 1. Lead precisa de telefone (cold outreach por WhatsApp).
       const { data: lead } = await supabase
         .from('platform_crm_leads')
-        .select('name, email, phone, metadata, temperature, deal_value')
+        .select('id, name, phone')
         .eq('id', existingLeadId)
         .single();
 
-      let leadPhone = lead?.phone?.replace(/\D/g, '');
+      let leadPhone = String(lead?.phone ?? '').replace(/\D/g, '');
       if (!leadPhone) {
         return { lead_id: existingLeadId, skipped: true, reason: 'Lead has no phone/whatsapp' };
       }
-      if (!leadPhone.startsWith('55')) {
-        leadPhone = '55' + leadPhone;
+      if (!leadPhone.startsWith('55')) leadPhone = '55' + leadPhone;
+
+      // 2. Reusa uma conversa WhatsApp ativa do lead (bot_active) se já houver;
+      //    senão cria a conversa mínima com visitor_* / channel / status /
+      //    lead_id / current_agent_id. product_id EXISTE em
+      //    platform_crm_conversations, mas é deixado NULO de propósito aqui: o
+      //    brain (platform-sales-brain) resolve produto/persona por conta própria
+      //    — não precisamos fixar o produto no momento do outreach.
+      const agentId: string | null = config.ai_agent_id || null;
+
+      let conversationId: string | null = null;
+      const { data: existingConv } = await supabase
+        .from('platform_crm_conversations')
+        .select('id, status, current_agent_id')
+        .eq('lead_id', existingLeadId)
+        .eq('channel', 'whatsapp')
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingConv?.id) {
+        conversationId = existingConv.id;
+        // Reativa o bot e (se a regra especificou) fixa o agente-alvo — o brain
+        // respeita current_agent_id (roteamento por conversa Duda→Bia).
+        const convPatch: Record<string, any> = { status: 'bot_active' };
+        if (agentId && !existingConv.current_agent_id) convPatch.current_agent_id = agentId;
+        await supabase.from('platform_crm_conversations').update(convPatch).eq('id', conversationId);
+      } else {
+        const { data: createdConv, error: convErr } = await supabase
+          .from('platform_crm_conversations')
+          .insert({
+            visitor_id: crypto.randomUUID(),
+            visitor_name: lead?.name || 'Lead',
+            visitor_phone: leadPhone,
+            visitor_whatsapp: leadPhone,
+            channel: 'whatsapp',
+            status: 'bot_active',
+            lead_id: existingLeadId,
+            current_agent_id: agentId,
+          })
+          .select('id')
+          .single();
+        if (convErr || !createdConv?.id) {
+          // Non-fatal: registra e devolve erro-campo (não throw) — as demais ações seguem.
+          console.error('[Webhook/AIOutreach] falha ao criar conversa:', convErr?.message);
+          return {
+            lead_id: existingLeadId,
+            skipped: true,
+            reason: `Falha ao criar conversa de outreach: ${convErr?.message ?? 'sem id'}`,
+          };
+        }
+        conversationId = createdConv.id;
       }
 
-      // 2. Get agent config (product_agents → platform_crm_agent_configs, campos ricos ausentes)
-      const agentId = config.ai_agent_id;
-      if (!agentId) throw new Error('No AI agent specified');
+      // 3. Dispara o cérebro (fire-and-forget) com o segredo interno. Se o segredo
+      //    não estiver configurado, a chamada falharia com 401 — logamos e não
+      //    derrubamos o webhook. O brain é idempotente/deduplicado do lado dele.
+      const brainSecret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+      if (!brainSecret) {
+        console.warn('[Webhook/AIOutreach] BRAIN_INTERNAL_SECRET ausente — cérebro não acionado.');
+        return {
+          lead_id: existingLeadId,
+          conversation_id: conversationId,
+          skipped: true,
+          reason: 'BRAIN_INTERNAL_SECRET ausente (cérebro não acionado)',
+        };
+      }
 
-      const { data: agent } = await supabase
-        .from('platform_crm_agent_configs')
-        .select('*')
-        .eq('id', agentId)
-        .single();
-
-      if (!agent) throw new Error('AI agent not found');
-
-      // ai_knowledge_base → __NO_EQUIVALENT__
-      // integration_settings / evolution_instances / evolution-send → __NO_EQUIVALENT__
-      // webchat_conversations (widget_id/visitor_email/metadata) → colunas ausentes
-      // ai_outreach_queue → __NO_EQUIVALENT__
-      ------------------------------------------------------------------- */
+      try {
+        const resp = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/platform-sales-brain`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-brain-secret': brainSecret },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          console.error('[Webhook/AIOutreach] cérebro retornou', resp.status, errText.slice(0, 200));
+          return {
+            lead_id: existingLeadId,
+            conversation_id: conversationId,
+            brain_triggered: false,
+            reason: `platform-sales-brain HTTP ${resp.status}`,
+          };
+        }
+        const brainResult = await resp.json().catch(() => ({}));
+        console.log('[Webhook/AIOutreach] cérebro acionado', JSON.stringify(brainResult).slice(0, 200));
+        return {
+          lead_id: existingLeadId,
+          conversation_id: conversationId,
+          agent_id: agentId,
+          brain_triggered: true,
+          brain_result: brainResult,
+        };
+      } catch (e: any) {
+        // Non-fatal: outreach por IA é best-effort.
+        console.error('[Webhook/AIOutreach] erro ao acionar cérebro:', e);
+        return {
+          lead_id: existingLeadId,
+          conversation_id: conversationId,
+          brain_triggered: false,
+          reason: `Falha ao acionar cérebro: ${e?.message ?? String(e)}`,
+        };
+      }
     }
 
     case 'trigger_flow': {

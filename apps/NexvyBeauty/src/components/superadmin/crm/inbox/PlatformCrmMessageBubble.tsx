@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
 import {
   Bot, User, Check, MoreHorizontal, Pencil, Trash2, Reply, Star, X, Ban,
+  AlertTriangle, RotateCw,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,10 @@ export interface PlatformCrmMessageBubbleProps {
   onEdit?: (messageId: string, newContent: string) => void;
   onDelete?: (messageId: string) => void;
   onStar?: (messageId: string) => void;
+  /** REVIVAL onda 6 — reenviar mensagem outbound que falhou (delivery_status=failed). */
+  onResend?: (messageId: string) => void;
+  /** Sinaliza reenvio em andamento (desabilita o botão + spinner). */
+  isResending?: boolean;
 }
 
 export function PlatformCrmMessageBubble({
@@ -73,6 +78,8 @@ export function PlatformCrmMessageBubble({
   onEdit,
   onDelete,
   onStar,
+  onResend,
+  isResending = false,
 }: PlatformCrmMessageBubbleProps) {
   const isVisitor = senderType === 'visitor';
   const isBot = senderType === 'bot';
@@ -80,7 +87,11 @@ export function PlatformCrmMessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
   const [showActions, setShowActions] = useState(false);
-  void metadata;
+
+  // Estado de entrega (persistido no metadata pelo edge de envio/reenvio).
+  // Só faz sentido em mensagens outbound (agent/bot) e no canal WhatsApp.
+  const deliveryStatus: string | null = metadata?.delivery_status ?? null;
+  const deliveryFailed = deliveryStatus === 'failed' && !isVisitor && !isDeleted;
 
   const handleEditSave = () => {
     if (editContent.trim() && editContent !== content) {
@@ -94,7 +105,7 @@ export function PlatformCrmMessageBubble({
     setIsEditing(false);
   };
 
-  const hasActions = onReply || onEdit || onDelete || onStar;
+  const hasActions = onReply || onEdit || onDelete || onStar || onResend;
 
   return (
     <motion.div
@@ -161,6 +172,15 @@ export function PlatformCrmMessageBubble({
                   <DropdownMenuItem onClick={() => { setIsEditing(true); setEditContent(content); }}>
                     <Pencil className="h-4 w-4 mr-2" />
                     Editar
+                  </DropdownMenuItem>
+                </>
+              )}
+              {deliveryFailed && onResend && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onResend(id)} disabled={isResending}>
+                    <RotateCw className={cn('h-4 w-4 mr-2', isResending && 'animate-spin')} />
+                    Reenviar
                   </DropdownMenuItem>
                 </>
               )}
@@ -293,6 +313,32 @@ export function PlatformCrmMessageBubble({
             <span className="text-[10px] text-muted-foreground/80">
               {formatMessageTime(createdAt, 'bubble')}
             </span>
+          </div>
+        )}
+
+        {/* REVIVAL onda 6 — selo de falha na entrega + reenviar inline.
+            Aparece só em outbound com delivery_status=failed (Cloud API não
+            entregou: janela 24h, sem connection ativa, etc.). */}
+        {deliveryFailed && !isEditing && (
+          <div className="mt-1.5 flex items-center justify-end gap-2">
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              Não entregue
+            </span>
+            {onResend && (
+              <button
+                type="button"
+                onClick={() => onResend(id)}
+                disabled={isResending}
+                className={cn(
+                  'inline-flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5',
+                  'text-primary hover:bg-primary/10 transition-colors disabled:opacity-60',
+                )}
+              >
+                <RotateCw className={cn('h-3 w-3', isResending && 'animate-spin')} />
+                {isResending ? 'Reenviando…' : 'Reenviar'}
+              </button>
+            )}
           </div>
         )}
       </div>

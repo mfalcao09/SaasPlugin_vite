@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EVALS-AGENTES — régua binária do brain (EVALS-V1 · 5.6)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2b3442;
+    --fg:#e6edf3; --muted:#8b98a9; --accent:#3fb950; --accent2:#58a6ff;
+    --warn:#d29922; --danger:#f85149; --code:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  header{background:linear-gradient(135deg,#12261a,#0d1117);border-bottom:1px solid var(--border);
+    padding:38px 0 30px;margin-bottom:8px}
+  header .wrap{padding:0 20px}
+  h1{margin:0 0 8px;font-size:26px;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:14px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:999px;padding:3px 11px;font-size:12px;color:var(--accent);margin-top:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  h2{margin:38px 0 14px;font-size:20px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  h3{margin:26px 0 10px;font-size:16px;color:var(--accent2)}
+  p{margin:12px 0}
+  code{background:var(--code);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;color:#c9d7e6}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+    overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.55}
+  pre code{background:none;border:none;padding:0}
+  .tldr{background:var(--panel);border:1px solid var(--accent);border-left:4px solid var(--accent);
+    border-radius:8px;padding:16px 18px;margin:18px 0}
+  .note{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent2);
+    border-radius:8px;padding:14px 16px;margin:18px 0;font-size:14px}
+  .warn{border-left-color:var(--warn)}
+  .tablewrap{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:8px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--fg);font-weight:600;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .must{color:var(--accent)} .mustnot{color:var(--danger)}
+  ul{margin:12px 0;padding-left:22px} li{margin:6px 0}
+  .kbd{font-family:ui-monospace,Menlo,monospace;background:var(--panel2);border:1px solid var(--border);
+    border-radius:4px;padding:1px 6px;font-size:.85em}
+  footer{color:var(--muted);font-size:12px;margin-top:50px;border-top:1px solid var(--border);padding-top:16px}
+  .gate{font-family:ui-monospace,Menlo,monospace;color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>EVALS-AGENTES — a régua binária do "95/100"</h1>
+    <div class="sub">2026-07-05 · NexvyBeauty · brain de vendas <code>platform-sales-brain</code> (Duda → Bia) · braço EVALS-V1 (5.6)</div>
+    <div class="pill">sem eval, nenhuma nota se afirma</div>
+  </div>
+</header>
+<div class="wrap">
+
+  <div class="tldr">
+    <strong>O gate:</strong> agente aprovado = <span class="gate">≥ 90% das asserções passando</span>
+    (<code>summary.gate_90pct === true</code>). Cada golden só "passa" se <strong>todas</strong> as
+    suas asserções passam. <code>gate_90pct</code> é o sinal binário de release.
+  </div>
+
+  <h2>1. Arquitetura</h2>
+  <div class="tablewrap"><pre><code>POST /functions/v1/tmp-eval-agents   (header: x-brain-secret)
+  body: { golden_id? , only?[] , keep? , cleanup? }
+   │
+   ├─ resolve produto (slug 'nexvybeauty') + closer (Bia) ativo no WhatsApp
+   ├─ cleanup defensivo de resíduos 'wa:eval-%'
+   │
+   └─ para cada GOLDEN:
+        1. cria conversa efêmera  visitor_id = 'wa:eval-&lt;id&gt;-&lt;rand&gt;'
+           + lead efêmero (metadata.eval=true; semeia qualificação se leadSeed)
+        2. injeta inbound[]  (wa_timestamp = agora − 35s → derrota o debounce)
+        3. chama platform-sales-brain  { conversation_id }
+        4. lê as bolhas outbound persistidas → roda as ASSERTIONS binárias
+   │
+   ├─ cleanup final (deleta 'wa:eval-%' + leads eval)  [pula se keep=true]
+   └─ retorna { summary, goldens[] }</code></pre></div>
+
+  <p><strong>Arquivos</strong> (em <code>supabase/functions/tmp-eval-agents/</code>):</p>
+  <ul>
+    <li><code>goldens.ts</code> — as 12 golden conversations (input + asserções + seed).</li>
+    <li><code>assertions.ts</code> — motor binário puro (regex / contagem de '?' / link).</li>
+    <li><code>index.ts</code> — runner: cria efêmeros, injeta, chama o brain, coleta, pontua, limpa.</li>
+    <li><code>../../config.toml</code> — entry <code>[functions.tmp-eval-agents] verify_jwt = false</code>.</li>
+  </ul>
+
+  <h3>1.1 Por que ZERO mensagem real é enviada (defesa em profundidade)</h3>
+  <p>O brain entrega no WhatsApp Cloud API via <code>deliverViaWhatsAppCloud</code>, que faz
+  <code>to = String(toPhone).replace(/\D/g,'')</code> e <strong>aborta com <code>no_destination_phone</code></strong>
+  se <code>to</code> fica vazio. A EF cria a conversa com <code>visitor_whatsapp = 'eval-no-send'</code>
+  (<strong>sem nenhum dígito</strong>) → o Graph nunca é chamado. Mesmo com uma conexão Cloud API
+  <code>active</code> no ambiente, nada sai. As bolhas <strong>ainda são persistidas</strong> no CRM
+  (o brain persiste <em>antes</em> de entregar) — é de lá que o eval lê a resposta.</p>
+
+  <h3>1.2 Por que o debounce não trava o eval</h3>
+  <p>O brain tem <code>DEBOUNCE_MS = 25s</code>: se a última inbound é fresca, ele <strong>dorme</strong>.
+  A EF injeta as inbounds com <code>wa_timestamp = agora − 35s</code> (além do debounce, mas
+  abaixo do <code>STALE_REDELIVERY = 10min</code>) → o brain responde <strong>na hora</strong>.
+  <strong>Exceção proposital:</strong> o golden <code>g_mensagens_picadas_debounce</code> usa timestamps
+  frescos (1–3s) para <strong>provar</strong> que a rajada agrega numa resposta só.</p>
+
+  <h3>1.3 Memória de qualificação (leadSeed)</h3>
+  <p>Goldens que exigem lead já qualificado (decidido, cético, pede desconto) trazem <code>leadSeed</code>
+  → a EF grava <code>platform_crm_leads.metadata.qualificacao</code> + <code>bant_*</code>/<code>temperature</code>
+  <strong>antes</strong> de chamar o brain, reproduzindo o estado real. A Duda não reperguntar o que já sabe.</p>
+
+  <h2>2. Os 12 goldens</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>id</th><th>cenário</th><th>asserções-chave (<span class="must">DEVE</span> / <span class="mustnot">NÃO PODE</span>)</th></tr></thead>
+      <tbody>
+        <tr><td><code>a_falha_50_clientes</code></td><td>(a) A falha real de 05/07: "trabalho com amiga / 50 clientes"</td><td><span class="mustnot">NÃO</span> "não se encaixa" · <span class="mustnot">NÃO</span> "grátis" · <span class="must">DEVE</span> perguntar ticket · máx 1 "?" · sem link</td></tr>
+        <tr><td><code>b_decidido_manda_link</code></td><td>(b) "quero contratar, como pago?" (qualificado)</td><td><span class="must">DEVE</span> ter link · <span class="mustnot">NÃO</span> passar pra Bia · <span class="mustnot">NÃO</span> desconto/grátis</td></tr>
+        <tr><td><code>c_qualificado_cetico_passa_bia</code></td><td>(c) "tá caro, será que funciona pra mim" (score alto, hesitante)</td><td>tag <code>[PASSAR_BIA]</code> <span class="mustnot">não vaza</span> · <span class="mustnot">NÃO</span> desconto/grátis · <span class="mustnot">NÃO</span> desqualifica</td></tr>
+        <tr><td><code>d_ticket_alto_piloto</code></td><td>(d) lash 20×R$1500 → carteira pequena, ticket alto</td><td><span class="mustnot">NÃO</span> desqualifica por carteira pequena · <span class="mustnot">NÃO</span> "grátis" · máx 1 "?"</td></tr>
+        <tr><td><code>e_comecando_essencial_honesto</code></td><td>(e) começou mês passado, 8 clientes</td><td><span class="mustnot">NÃO</span> "não se encaixa" · <span class="mustnot">NÃO</span> "que pena" · <span class="mustnot">NÃO</span> "grátis"</td></tr>
+        <tr><td><code>f_pede_humano_escala</code></td><td>(f) "quero falar com uma pessoa"</td><td>tag escalada <span class="mustnot">não vaza</span> · <span class="must">DEVE</span> transição calorosa</td></tr>
+        <tr><td><code>g_mensagens_picadas_debounce</code></td><td>(g) 3 fragmentos em rajada (frescos)</td><td>máx 1 "?" · sem reapresentação/repetição (debounce agregou)</td></tr>
+        <tr><td><code>h_pede_desconto_reancora_garantia</code></td><td>(h) "faz um precinho? desconto?"</td><td><span class="mustnot">NÃO</span> desconto · <span class="must">DEVE</span> reancorar na garantia</td></tr>
+        <tr><td><code>i_nao_sabe_carteira_fallback</code></td><td>Não sabe a carteira</td><td><span class="mustnot">NÃO</span> travar · <span class="must">DEVE</span> fallback (atendimentos/semana)</td></tr>
+        <tr><td><code>j_bia_nao_reapresenta</code></td><td>Bia assume (current_agent_id=closer)</td><td>Bia <span class="mustnot">não se reapresenta</span> · <span class="mustnot">NÃO</span> desconto/grátis</td></tr>
+        <tr><td><code>k_reclamacao_grave_handoff</code></td><td>Reclamação grave (Procon)</td><td>tag handoff <span class="mustnot">não vaza</span> · <span class="mustnot">NÃO</span> tenta vender · sem link</td></tr>
+        <tr><td><code>l_pergunta_preco_direto</code></td><td>"quanto custa?" de cara</td><td>máx 1 "?" · <span class="mustnot">NÃO</span> "não sei o preço" · <span class="mustnot">NÃO</span> grátis/desconto</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Cobertura do braço: (a)–(h) ✔ — mais 4 extras de robustez (i, j, k, l): fallback de carteira,
+  continuidade da Bia, handoff de reclamação e "não inventar preço".</p>
+
+  <h3>2.1 Vocabulário nunca-permitido (asserção compartilhada, escopo <code>all</code>)</h3>
+  <ul>
+    <li><span class="mustnot"><code>grátis</code>/<code>teste grátis</code></span> → o <code>sanitizeReply</code> deve ter reancorado na garantia.</li>
+    <li><span class="mustnot"><code>desconto</code>/<code>promoção</code></span> → idem.</li>
+    <li><span class="mustnot"><code>não se encaixa</code>/<code>não se qualifica</code></span> → desqualificação: proibida.</li>
+    <li><span class="mustnot">tags de controle</span> (<code>[PASSAR_BIA]</code>, <code>[ESCALAR_HUMANO]</code>, <code>[HANDOFF_HUMANO]</code>) → nunca no texto ao cliente.</li>
+  </ul>
+
+  <h2>3. Tipos de asserção (<code>assertions.ts</code>)</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>kind</th><th>passa quando</th><th>usado para</th></tr></thead>
+      <tbody>
+        <tr><td><code>must_contain</code></td><td>regex casa (flag <code>i</code>)</td><td>DEVE perguntar ticket, citar garantia, transição calorosa</td></tr>
+        <tr><td><code>must_not_contain</code></td><td>regex <strong>não</strong> casa</td><td>vocabulário proibido, tags vazando, desqualificação</td></tr>
+        <tr><td><code>max_questions</code></td><td>nº de <code>?</code> ≤ <code>value</code></td><td>máx 1 pergunta por resposta</td></tr>
+        <tr><td><code>must_link</code></td><td>há URL http(s)</td><td>decidido recebe o link de pagamento</td></tr>
+        <tr><td><code>no_link</code></td><td>não há URL</td><td>descoberta / reclamação não recebem link</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Escopo:</strong> <code>lastTurn</code> (default) = bolhas da última chamada do brain;
+  <code>all</code> = todas as bolhas outbound (usado nas proibições, que valem em qualquer ponto).</p>
+
+  <h2>4. Como rodar</h2>
+  <p>Pré-requisitos: <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>,
+  <code>BRAIN_INTERNAL_SECRET</code>, <code>AI_API_KEY</code>/<code>AI_GATEWAY_URL</code> (os mesmos do brain),
+  e o produto <code>nexvybeauty</code> com Duda/Bia ativos no WhatsApp.</p>
+  <div class="note warn">Este braço <strong>não deploya</strong>. Para rodar contra o ambiente real, a EF
+  precisa estar servida (<code>supabase functions serve tmp-eval-agents</code> local, ou deploy pontual
+  sob demanda — fora do escopo deste braço).</div>
+
+  <p><strong>Todos os goldens:</strong></p>
+  <pre><code>curl -sS -X POST "$SUPABASE_URL/functions/v1/tmp-eval-agents" \
+  -H "x-brain-secret: $BRAIN_INTERNAL_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{}' | jq '.summary'</code></pre>
+
+  <p><strong>1 golden (a falha de 05/07):</strong></p>
+  <pre><code>  -d '{"golden_id":"a_falha_50_clientes"}' | jq '.goldens[0]'</code></pre>
+
+  <p><strong>Subconjunto, mantendo as conversas p/ inspeção:</strong></p>
+  <pre><code>  -d '{"only":["b_decidido_manda_link","c_qualificado_cetico_passa_bia"],"keep":true}'</code></pre>
+
+  <p><strong>Só limpar os efêmeros (idempotente):</strong></p>
+  <pre><code>  -d '{"cleanup":true}'</code></pre>
+
+  <h3>4.1 O que olhar na saída</h3>
+  <ul>
+    <li><code>summary.gate_90pct</code> — <strong>o veredito binário</strong> (true = aprovado).</li>
+    <li><code>summary.assertions_pass_rate</code> — a nota real (0..1).</li>
+    <li><code>summary.goldens_passed / goldens_total</code> — cenários que passaram inteiros.</li>
+    <li><code>goldens[].failures[]</code> — por asserção reprovada: <code>reason</code> (a regra) + <code>detail</code> (o que a régua viu, ex.: <code>PROIBIDO encontrado: "grátis"</code>).</li>
+    <li><code>goldens[].last_turn</code> — o texto real que a Duda/Bia produziu.</li>
+    <li><code>goldens[].brain[]</code> — retorno do brain (<code>skipped</code>, <code>handoff</code>, <code>passed_to_bia</code>, <code>bubbles</code>).</li>
+  </ul>
+
+  <h2>5. O gate (critério de release)</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Métrica</th><th>Regra</th><th>Sinal</th></tr></thead>
+      <tbody>
+        <tr><td>Aprovação do agente</td><td><code>assertions_pass_rate ≥ 0.90</code></td><td><code>summary.gate_90pct</code></td></tr>
+        <tr><td>Cenário íntegro</td><td>todas as asserções do golden passam</td><td><code>goldens[].pass</code></td></tr>
+        <tr><td>Zero regressão do 05/07</td><td><code>a_falha_50_clientes.pass === true</code></td><td>bloqueia release se falhar</td></tr>
+        <tr><td>Zero vazamento de tag</td><td>nenhuma tag de controle no texto</td><td>asserções <code>all</code> de c/f/k</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tldr"><strong>Regra de ouro:</strong> enquanto <code>a_falha_50_clientes</code> não passar 100%,
+  o agente <strong>não sobe</strong> — é a exata falha que motivou este harness.</div>
+
+  <h2>6. Limitações honestas</h2>
+  <ul>
+    <li><strong>LLM real</strong> (gemini-2.5-flash) → eval não-determinístico na margem. Asserções miram o
+    <strong>comportamento</strong> (regex amplo), mas pode haver falso-negativo. Rodar 2× antes de acusar regressão.</li>
+    <li><strong>Custo:</strong> ≥2 chamadas LLM por golden (resposta + extração). 12 goldens ≈ 24–30 chamadas/rodada.</li>
+    <li><strong>Depende do banco real</strong>: sem <code>public_plans</code> com <code>checkout_url</code>, o golden
+    <code>b_decidido_manda_link</code> falha por <em>falta de dado</em>, não por erro do agente.</li>
+    <li><code>max_questions</code> conta <code>?</code> literal — é um piso, não perfeição.</li>
+    <li><strong>A régua é tão boa quanto os goldens.</strong> Toda falha nova de produção deve virar um golden aqui.</li>
+  </ul>
+
+  <h2>7. Divergência de preço a conferir (QCR §5)</h2>
+  <p>A âncora da conta é <strong>R$217</strong> (Essencial); o extrator do brain usa <code>÷217</code> no score.
+  Confirmar no <code>public_plans</code> que o plano de entrada é 217 antes de tratar o <code>score</code> do eval
+  como verdade — o eval mede <strong>comportamento</strong> (rota, vocabulário, forma), não a aritmética do score.</p>
+
+  <footer>
+    Braço EVALS-V1 (5.6) · NexvyBeauty · pareado com <span class="kbd">EVALS-AGENTES-2026-07-05.md</span> ·
+    EF descartável <span class="kbd">supabase/functions/tmp-eval-agents/</span> · NÃO deployado.
+  </footer>
+</div>
+</body>
+</html>

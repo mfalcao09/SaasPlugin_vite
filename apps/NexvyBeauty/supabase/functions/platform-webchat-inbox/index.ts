@@ -13,11 +13,29 @@
 //
 // Actions portadas (nomes verbatim do original):
 //   conversation, assign, send, close, accept, reopen, return-to-queue, resume,
-//   link-lead, edit-message, delete-message, star-message, forward-message.
+//   link-lead, edit-message, delete-message, star-message, forward-message,
+//   resend, set-product, activate-bot, ai-reactivate.
+// REVIVAL onda 6 (infra que "não existia" no porte HOJE existe):
+//   * resend      → reentrega uma mensagem outbound `delivery_status=failed` pelo
+//                   MESMO Cloud API sender (deliverViaWhatsAppCloud), atualiza
+//                   metadata e faz broadcast. Idempotência: só reenvia mensagens
+//                   marcadas como failed (nunca duplica uma já entregue).
+//   * set-product → vincula a conversa a um produto de `platform_crm_products`
+//                   (coluna `product_id` existe na conversa; o sales-brain a usa
+//                   para escolher persona/playbook). Diferença vs. tenant: o CRM da
+//                   plataforma NÃO tem product_id no lead (schema anotado) — o
+//                   vínculo é SÓ na conversa. product_id=null limpa o override.
+//   * activate-bot / ai-reactivate → LIGA a IA (Duda) numa conversa. activate-bot
+//                   alterna status→bot_active (devolve a conversa à IA, limpando o
+//                   atendente) e dispara `platform-sales-brain` (que só roda em
+//                   bot_active) para a IA reconectar. ai-reactivate dispara o
+//                   cérebro SEM mudar de dono (reengajamento contextual). O sentido
+//                   inverso (assumir manualmente → human_active) já mora em
+//                   accept/assign/resume. Invocação do cérebro: x-brain-secret,
+//                   MESMO contrato de platform-meta-whatsapp-webhook.
 // Actions NÃO portadas (dependem de infra de tenant, inexistente na plataforma):
 //   conversations/conversation_counts (RPCs SQL de listagem — a lista da plataforma
-//   é client-side via RLS), resend (sem provedor de canal), set-product (sem
-//   produtos), activate-bot/ai-reactivate/trigger-flow (bot/flows = fase futura).
+//   é client-side via RLS), trigger-flow (chat_flows = fase futura).
 // Adaptações de schema (colunas ausentes em platform_crm_*):
 //   * edited_at/original_content, delivery_status, forwarded_from_message_id →
 //     persistidos dentro de `metadata` jsonb (sem migration).
@@ -125,6 +143,49 @@ async function broadcastToConversation(
     await supabase.removeChannel(channel);
   } catch (broadcastError) {
     console.error('[platform-webchat-inbox] broadcast error (non-fatal):', broadcastError);
+  }
+}
+
+/**
+ * Dispara o cérebro de IA (`platform-sales-brain`) para uma conversa — MESMO
+ * contrato interno de `platform-meta-whatsapp-webhook` (auth por `x-brain-secret`,
+ * config.toml verify_jwt=false). Fire-and-forget via EdgeRuntime.waitUntil quando
+ * disponível, para não bloquear a resposta HTTP ao agente.
+ *
+ * O cérebro tem seus próprios gates (roda só em `status=bot_active`, canal
+ * whatsapp, e ignora redeliveries/mensagens recentes) — aqui apenas o acordamos;
+ * ele decide se e o que gerar. Falha é non-fatal (a ação de UI já persistiu).
+ */
+function triggerSalesBrain(conversationId: string): void {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const brainSecret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+    if (!supabaseUrl || !brainSecret) {
+      console.warn('[platform-webchat-inbox] sales-brain não disparado: URL/secret ausente');
+      return;
+    }
+    const call = fetch(`${supabaseUrl}/functions/v1/platform-sales-brain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-brain-secret': brainSecret },
+      body: JSON.stringify({ conversation_id: conversationId }),
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          console.error(
+            '[platform-webchat-inbox] sales-brain retornou',
+            r.status,
+            (await r.text()).slice(0, 200),
+          );
+        }
+      })
+      .catch((e) => console.error('[platform-webchat-inbox] sales-brain fetch error:', e));
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt?.waitUntil) rt.waitUntil(call);
+    // Sem waitUntil (ex.: dev local), não damos await para não segurar a resposta —
+    // o runtime encerra o request e o fetch já foi despachado.
+  } catch (e) {
+    console.error('[platform-webchat-inbox] triggerSalesBrain exception (non-fatal):', e);
   }
 }
 
@@ -942,6 +1003,250 @@ Deno.serve(async (req) => {
       }
 
       return json({ success: true, message: fwdMsg });
+    }
+
+    // ACTION: Resend — reentrega uma mensagem outbound que falhou.
+    // Só age em mensagens com metadata.delivery_status='failed' (idempotente: uma
+    // mensagem já entregue nunca é reenviada). Reusa o Cloud API sender e atualiza
+    // o metadata in-place (sem criar mensagem nova), depois faz broadcast para a
+    // bolha refletir o novo estado (sent/failed).
+    if (action === 'resend' && req.method === 'POST') {
+      const body = bodyParsed || {};
+      if (!body.message_id) {
+        return json({ error: 'message_id is required' }, 400);
+      }
+
+      const { data: msg, error: msgErr } = await supabase
+        .from('platform_crm_messages')
+        .select('id, conversation_id, direction, content, content_type, metadata')
+        .eq('id', body.message_id)
+        .maybeSingle();
+
+      if (msgErr || !msg) {
+        return json({ error: 'Message not found' }, 404);
+      }
+      if (msg.direction !== 'outbound') {
+        return json({ error: 'Only outbound messages can be resent' }, 400);
+      }
+
+      const meta = (msg.metadata as Record<string, any>) || {};
+      if (meta.delivery_status !== 'failed') {
+        // Não reenvia o que não falhou — evita duplicar entregas.
+        return json(
+          { error: 'Message is not in a failed state', delivery_status: meta.delivery_status ?? null },
+          409,
+        );
+      }
+
+      // Descobre canal/destino pela conversa.
+      const { data: conv, error: convErr } = await supabase
+        .from('platform_crm_conversations')
+        .select('id, channel, visitor_phone, visitor_whatsapp')
+        .eq('id', msg.conversation_id)
+        .maybeSingle();
+
+      if (convErr || !conv) {
+        return json({ error: 'Conversation not found' }, 404);
+      }
+      if (conv.channel !== 'whatsapp') {
+        return json({ error: 'Resend disponível apenas para WhatsApp por ora' }, 400);
+      }
+
+      const dest = conv.visitor_whatsapp ?? conv.visitor_phone ?? '';
+      const media = meta.media && typeof meta.media === 'object' ? meta.media : null;
+      const { wamid, error: deliveryError } = await deliverViaWhatsAppCloud(
+        supabase,
+        dest,
+        String(msg.content ?? ''),
+        media,
+      );
+
+      const newMeta = wamid
+        ? {
+            ...meta,
+            wamid,
+            delivery_status: 'sent',
+            channel: 'whatsapp_cloud',
+            resent_at: new Date().toISOString(),
+            // limpa o erro anterior ao ter sucesso. USAR null (não undefined):
+            // o metadata é persistido via JSON, e JSON.stringify DROPA chaves
+            // undefined — o que deixaria o delivery_error velho (herdado de
+            // ...meta) intacto no banco. null sobrescreve de verdade.
+            delivery_error: null,
+          }
+        : { ...meta, delivery_status: 'failed', delivery_error: deliveryError, resent_at: new Date().toISOString() };
+
+      const { data: updated } = await supabase
+        .from('platform_crm_messages')
+        .update({ metadata: newMeta })
+        .eq('id', msg.id)
+        .select('*')
+        .single();
+
+      const finalMessage = updated ?? { ...msg, metadata: newMeta };
+
+      // Broadcast para a conversa: o front escuta `new_message` e deduplica por id,
+      // então uma re-emissão da MESMA mensagem (id igual) atualiza a bolha existente.
+      await broadcastToConversation(supabase, msg.conversation_id, 'new_message', finalMessage);
+
+      if (!wamid) {
+        console.error('[platform-webchat-inbox] resend NÃO entregue:', deliveryError);
+        return json(
+          { message: finalMessage, delivery_warning: deliveryError ?? 'entrega falhou' },
+          200,
+        );
+      }
+      return json({ success: true, message: finalMessage });
+    }
+
+    // ACTION: Set product — vincula/limpa o produto da conversa.
+    // A coluna `product_id` existe em platform_crm_conversations e é lida pelo
+    // sales-brain para escolher persona/playbook. product_id=null limpa o override.
+    // (No CRM da plataforma o LEAD não tem product_id — vínculo só na conversa.)
+    if (action === 'set-product' && req.method === 'POST') {
+      const body = bodyParsed || {};
+      const conversationId = body.conversation_id;
+      const productId = body.product_id ?? null; // null = limpar
+
+      if (!conversationId) {
+        return json({ error: 'conversation_id is required' }, 400);
+      }
+
+      const { data: conv, error: convErr } = await supabase
+        .from('platform_crm_conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .maybeSingle();
+
+      if (convErr || !conv) {
+        return json({ error: 'Conversation not found' }, 404);
+      }
+
+      // Se um produto foi passado, valida que existe (RLS super_admin já isola).
+      if (productId) {
+        const { data: prod } = await supabase
+          .from('platform_crm_products')
+          .select('id')
+          .eq('id', productId)
+          .maybeSingle();
+        if (!prod) {
+          return json({ error: 'Invalid product' }, 400);
+        }
+      }
+
+      const { error: upErr } = await supabase
+        .from('platform_crm_conversations')
+        .update({ product_id: productId })
+        .eq('id', conversationId);
+
+      if (upErr) {
+        console.error('[platform-webchat-inbox] set-product update error:', upErr);
+        return json({ error: upErr.message }, 500);
+      }
+
+      // Notifica clientes em realtime (mesmo evento que link-lead usa p/ detalhe).
+      await broadcastToConversation(supabase, conversationId, 'conversation_updated', {
+        product_id: productId,
+      });
+
+      return json({ success: true, product_id: productId });
+    }
+
+    // ACTION: Activate bot — DEVOLVE a conversa à IA (Duda).
+    // Alterna status→bot_active, limpa o atendente (assigned_to/current_agent_id) e
+    // acorda o sales-brain (que só age em bot_active) para reconectar com o lead.
+    // É o botão "assumir/devolver" que o Marcelo mais sente falta — este é o lado
+    // "devolver pra IA"; o lado "assumir manualmente" já é accept/assign/resume.
+    if (action === 'activate-bot' && req.method === 'POST') {
+      const body = bodyParsed || {};
+      if (!body.conversation_id) {
+        return json({ error: 'conversation_id is required' }, 400);
+      }
+
+      const { data: conv, error: convErr } = await supabase
+        .from('platform_crm_conversations')
+        .select('id, status, channel')
+        .eq('id', body.conversation_id)
+        .maybeSingle();
+
+      if (convErr || !conv) {
+        return json({ error: 'Conversation not found' }, 404);
+      }
+
+      const { error: upErr } = await supabase
+        .from('platform_crm_conversations')
+        .update({
+          status: 'bot_active',
+          assigned_to: null,
+          current_agent_id: null,
+          needs_human: false,
+        })
+        .eq('id', body.conversation_id);
+
+      if (upErr) {
+        console.error('[platform-webchat-inbox] activate-bot update error:', upErr);
+        return json({ error: 'Failed to activate bot', details: upErr.message }, 500);
+      }
+
+      // System message (nome do agente que devolveu à IA).
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const { data: sysMessage } = await supabase
+        .from('platform_crm_messages')
+        .insert({
+          conversation_id: body.conversation_id,
+          direction: 'outbound',
+          sender_type: 'bot',
+          content: `🤖 IA reativada por ${profileRow?.full_name || 'agente'} — atendimento devolvido à Duda`,
+        })
+        .select('*')
+        .single();
+      if (sysMessage) {
+        await broadcastToConversation(supabase, body.conversation_id, 'new_message', sysMessage);
+      }
+
+      // Notifica a mudança de status/dono no detalhe.
+      await broadcastToConversation(supabase, body.conversation_id, 'conversation_updated', {
+        status: 'bot_active',
+        assigned_to: null,
+      });
+
+      // Acorda o cérebro para (opcionalmente) reengajar. Gates ficam no brain.
+      triggerSalesBrain(body.conversation_id);
+
+      return json({ success: true, status: 'bot_active' });
+    }
+
+    // ACTION: AI reactivate — reengajamento contextual SEM trocar de dono.
+    // Não altera o status (a conversa pode seguir em bot_active); apenas acorda o
+    // sales-brain para gerar/entregar uma mensagem de reativação. Se a conversa
+    // estiver com humano (human_active/waiting_human), o próprio brain faz skip —
+    // por isso, para um reengajamento efetivo, a UI só oferece isto quando a IA
+    // está atendendo (senão o caminho é activate-bot).
+    if (action === 'ai-reactivate' && req.method === 'POST') {
+      const body = bodyParsed || {};
+      if (!body.conversation_id) {
+        return json({ error: 'conversation_id is required' }, 400);
+      }
+
+      const { data: conv, error: convErr } = await supabase
+        .from('platform_crm_conversations')
+        .select('id, status')
+        .eq('id', body.conversation_id)
+        .maybeSingle();
+
+      if (convErr || !conv) {
+        return json({ error: 'Conversation not found' }, 404);
+      }
+
+      // Acorda o cérebro (fire-and-forget). O brain decide se gera algo conforme
+      // seus próprios gates (bot_active, whatsapp, sem mensagem recente do bot).
+      triggerSalesBrain(body.conversation_id);
+
+      return json({ success: true, triggered: true, status: conv.status });
     }
 
     return json({ error: 'Invalid action' }, 400);

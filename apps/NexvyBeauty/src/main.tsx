@@ -2,6 +2,17 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { isGestaoHostname } from "./lib/publicUrl";
+
+// ─── Tema institucional host-aware ──────────────────────────────────────────
+// gestao.* (CRM do GRUPO, multiproduto ~10 SaaS) → azul institucional Nexvy
+// (.theme-nexvy-institucional, --primary 218 91% 43%). app.* / apex → tema-produto
+// rosa (default do :root). Aplicado ANTES do primeiro paint pra não piscar
+// rosa→azul. Cumpre a promessa "mesma lógica host-aware do tema" que estava só no
+// comentário de config/brand.ts (a classe existia no CSS mas nunca era aplicada).
+if (typeof window !== "undefined" && isGestaoHostname()) {
+  document.documentElement.classList.add("theme-nexvy-institucional");
+}
 
 // Bump this whenever we want to force install/PWA clients to drop stale caches.
 const APP_VERSION = "2026.04.25.3";
