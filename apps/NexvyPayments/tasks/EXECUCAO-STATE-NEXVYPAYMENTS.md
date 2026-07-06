@@ -8,22 +8,22 @@ worktree_executor: /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite.claude-wo
 branch_atual: feat/nexvypayments-bootstrap   # de feat/nexvypayments-planning@6650382; main NÃO contém os docs (premissa 3)
 supabase_ref: nbvaglqmcyoogolhzyzm   # projeto "NexvyPayments", ACTIVE_HEALTHY, us-west-2 (criado por Marcelo 2026-07-06 09:22Z)
 dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223.29.96 DNS-only (criados via API nesta sessão)
-iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:17:54Z
+iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:35:00Z
 
 ## contadores
-iteracao: 4 / 40
+iteracao: 5 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: A2 | tentativa: 1/3 | status: EM_ANDAMENTO (despachado a subagente Opus — braço operacional)
+id: A3 | tentativa: 1/3 | status: EM_ANDAMENTO (auditoria RLS read-only via MCP + doc)
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
 PASSO-0-APP | BOOTSTRAP | CONFORME | npm run build exit 0; make -n deploy-payments → "NexvyPayments nexvy-payments nexvypayments.com.br"; app rastreado; banco: 161 tabelas+GRANTs+seeds+12 buckets+realtime 6+10 crons (verificação MCP); 164 edges ACTIVE; DNS 4 hosts→145.223.29.96 | 22170d1+ea09417
 A0 | MODO-B (gate arquitetural) | BLOQUEADO_GATE | P1 (gate humano 1º deploy Fase A) + G-C6-SANDBOX: C6_CLIENT_ID/SECRET + cert/key mTLS sandbox NÃO encontrados (env local erp-educacional sem C6_*; VPS idem) | —
 A1 | AUTO | CONFORME | ls admin-provision-users → No such file or directory; grep src/ = 0 hits; build verde. Cert. revisor → G-SEC-REV (P3) | ea09417
-A2 | AUTO | EM_ANDAMENTO | subagente Opus: _shared/require-caller-org.ts + TA (403/401/org-do-token) | —
+A2 | AUTO | CONFORME | require-caller-org.ts + __tests__/: deno test 11/11 (aferição re-rodada pelo revisor; autor=Opus); org real via profiles.organization_id (webchat-inbox:93); nota: === da service key → timing-safe no consumo | (commit desta iteração) |
 A3 | AUTO + G-SEC-REV | PENDENTE | — | —
 A4 | MODO-B | PENDENTE | — | —
 A5 | MODO-B | PENDENTE | — | —
@@ -89,3 +89,4 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 2 | 2026-07-06T10:17:54Z | PASSO-0-APP | CONFORME | Gates liberados por Marcelo; DNS criado via CF API (4×A DNS-only); rsync+rebrand+integração (22170d1); Fase A verificada no banco (161 tab/GRANTs/seeds/12 buckets/realtime/10 crons); Fase B 164 edges ACTIVE (2 rodadas; bloco órfão removido); build 16s verde; fix rsync-exclude-tasks | 0.00
 3 | 2026-07-06T10:17:54Z | A0 | BLOQUEADO_GATE | P1 não liberado + creds/cert C6 sandbox ausentes (env local e VPS auditados por nome) | 0.00
 4 | 2026-07-06T10:17:54Z | A1 | CONFORME | ls → not found; grep src = 0; build verde; matriz §5.1 atualizada | 0.00
+5 | 2026-07-06T10:35:00Z | A2 | CONFORME | Opus construiu (149k tokens, 24 tools); revisor re-rodou deno test = 11/11; 2 arquivos aditivos + deno.lock (std/assert) | 0.00
