@@ -12,10 +12,12 @@ import { RadarSchedules } from './RadarSchedules';
 import {
   useRunPlatformCrmOpportunityScan,
   usePlatformCrmOpportunityScans,
+  usePlatformCrmOpportunitySchedules,
   type PlatformScanFilters,
   type PlatformActionsConfig,
 } from '../data/usePlatformCrmRadar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 /**
  * RADAR IA do CRM de PLATAFORMA (super_admin) — seção `radar` do InboxManager.
@@ -67,6 +69,12 @@ export function PlatformCrmInboxRadar({
 
   const runScan = useRunPlatformCrmOpportunityScan();
   const { data: scans } = usePlatformCrmOpportunityScans();
+  const { data: schedules } = usePlatformCrmOpportunitySchedules();
+
+  // Contadores SEMPRE visíveis nas abas (§3.4): 0 em muted; agendamentos>0 em
+  // success (automação ligada), scans>0 em muted-forte (histórico, neutro).
+  const schedulesCount = schedules?.length ?? 0;
+  const scansCount = scans?.length ?? 0;
 
   const lastRunning = useMemo(
     () => scans?.find((s) => s.status === 'running' || s.status === 'pending'),
@@ -119,9 +127,29 @@ export function PlatformCrmInboxRadar({
           </TabsTrigger>
           <TabsTrigger value="schedules" className="gap-2">
             <CalendarClock className="h-4 w-4" /> Agendamentos
+            <span
+              className={cn(
+                'h-4 min-w-4 px-1 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums',
+                schedulesCount > 0
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {schedulesCount}
+            </span>
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <History className="h-4 w-4" /> Histórico
+            <span
+              className={cn(
+                'h-4 min-w-4 px-1 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums',
+                scansCount > 0
+                  ? 'bg-muted text-foreground'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {scansCount}
+            </span>
           </TabsTrigger>
         </TabsList>
 
