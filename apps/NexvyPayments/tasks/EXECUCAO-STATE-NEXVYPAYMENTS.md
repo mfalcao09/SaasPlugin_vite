@@ -11,12 +11,12 @@ dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223
 iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:50:00Z
 
 ## contadores
-iteracao: 10 / 40
+iteracao: 11 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: próximo lote D1/D2/D3 (régua por fatura) + B3 (invoice-batch) + E1 (conciliação) + A6 (verify-jwt) | status: lote B2/C2/C3/D5/E2 CONFORME (iter 10)
+id: — (todos os AUTO sem gate CONFORME) | status: 16/25 CONFORME. Restantes dependem de gate: A0/B1/B4/B5 (creds C6 + deploy EF), C1 (G-NOTAAS/G-A1), D4 (G-META-TPL), A6 (deploy EF), E3 (G-INFRA), E4 (G-PILOTO); A3 aguarda G-SEC-REV
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
@@ -31,18 +31,18 @@ A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos veri
 A7 | AUTO (INSP+CI) | CONFORME | grep cobrança fora da esteira = 0; CORE-DELTA 7 entradas; 0 mutação de core em migrations_cobranca (esteira criada c/ README); invariante contínuo re-aferido por fase | (commit desta iteração)
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
 B2 | MODO-B | CONFORME | billing_outbox.sql aplicada (pgmq + RPCs enqueue/read_batch/move_to_dlq + DLQ); aferido enqueue→read→dlq na_dlq=1; GRANT só service_role | (commit iter 10)
-B3 | AUTO | PENDENTE | — | —
+B3 | AUTO | CONFORME | invoice-batch-generate idempotente (23505 skip) + billing_next_business_day/billing_holidays; deno 12/12; banco: sáb 05-09→seg 05-11 | (commit iter 11)
 B4 | MODO-B | PENDENTE | — | —
 B5 | HITL (G-C6-PROD) | PENDENTE | — | —
 C1 | AUTO-COM-TETO | PENDENTE | — | —
 C2 | AUTO | CONFORME | notaas-webhook + notaas-webhook-verify (HMAC timing-safe) deno test 14/14; ledger notaas_webhook_deliveries (RLS ON, UNIQUE org+delivery); config.toml verify_jwt=false | (commit iter 10)
 C3 | MODO-B | CONFORME | fiscal_imutabilidade.sql aplicada (trigger + invoice_cancelar); DELETE de nota emitida bloqueado; cancelar → status=cancelada + billing_events(cancelada)=1 | (commit iter 10)
-D1 | AUTO | PENDENTE | — | —
-D2 | AUTO | PENDENTE | — | —
-D3 | AUTO | PENDENTE | — | —
+D1 | AUTO | CONFORME | billing-cadence-enroll + billing_cadence_enrollments (invoice_id, RLS ON); msg cita fatura/valor/venc; deno verde | (commit iter 11)
+D2 | AUTO | CONFORME | computeScheduledAtByDueDate (D-3/D0/D+7 por vencimento, TZ -03:00, sem new Date()); deno clock-fixo verde | (commit iter 11)
+D3 | AUTO | CONFORME | billing-cadence-stop keyed por invoice_id (não lead); payer 2 faturas paga 1 → outra CONTINUA; deno verde | (commit iter 11)
 D4 | HITL (G-META-TPL) | PENDENTE | — | —
 D5 | AUTO | CONFORME | 4 tools + prompt-guard + registry aditivo; deno test 22/22 (2ª via→substituida; renegociar→agreement+parcelas; desconto>alçada→handoff; injeção→bloqueado); alçada 20% hardcoded (nota) | (commit iter 10)
-E1 | AUTO | PENDENTE | — | —
+E1 | AUTO | CONFORME | billing-baixa + billing-baixa-manual (RPC invoice_baixa_manual respeita C3) + billing-notify (fallback e-mail pgmq); banco: billing_events(paga,manual)=1; deno 11/11 | (commit iter 11)
 E2 | AUTO | CONFORME | lgpd_payers.sql aplicada (trigger audit + payer_erasure + lgpd_legal_basis); erasure → nome=[removido], invoice intacta, audit_logs=2; BUG corrigido (entity_id uuid≠text, 42804) | (commit iter 10)
 E3 | HITL (G-INFRA) | PENDENTE | — | —
 E4 | HITL (G-PILOTO) | PENDENTE | — | —
@@ -95,3 +95,4 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 8 | 2026-07-06T17:25:00Z | A4 | CONFORME | migration cofre aplicada (db query); deno test 8/8; REVOKE anon/auth + RLS ON → SET ROLE anon SELECT=0, has_priv anon/auth=false, svc=true | 0.00
 9 | 2026-07-06T17:35:00Z | A5 | CONFORME | billing_model.sql aplicada; 7 tab RLS ON; invoices 8 cols correção + substituida; 7/7 org; INSERT cross-org → 42501 RLS violation | 0.00
 10 | 2026-07-06T18:10:00Z | B2/C2/C3/D5/E2 | CONFORME (lote, 5 subagentes Opus) | B2 na_dlq=1; C2 14/14+ledger; C3 DELETE-emitida bloqueado+cancelar; D5 22/22; E2 erasure+bug entity_id corrigido. Migrations aplicadas no banco; deno tests verdes | 0.00
+11 | 2026-07-06T18:45:00Z | D1/D2/D3/B3/E1 | CONFORME (lote régua, 3 subagentes Opus) | suíte deno 81/81; D régua por-fatura (enroll+stop keyed invoice_id, correção adversarial); B3 dia-útil banco sáb→seg; E1 baixa manual billing_events(paga,manual)=1. 3 migrations aplicadas | 0.00
