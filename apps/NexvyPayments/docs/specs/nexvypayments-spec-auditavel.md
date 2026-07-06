@@ -740,7 +740,7 @@ Skill `spec-to-code-compliance` aplicada: cada entregável tem evidência exigid
 | Entregável | Evidência exigida (para virar CONFORME) | Status |
 |---|---|---|
 | A0 | Output do curl dentro da EF deployada: HTTP 200 + JSON com `access_token` do sandbox C6; OU relatório de falha + decisão de fallback assinada | **PENDENTE** |
-| A1 | Output de `ls apps/NexvyPayments/supabase/functions/admin-provision-users` = erro; grep no `src/` = 0 hits; CI verde | **PENDENTE** |
+| A1 | Output de `ls apps/NexvyPayments/supabase/functions/admin-provision-users` = erro; grep no `src/` = 0 hits; CI verde | **CONFORME** — 2026-07-06, iteração 4: `ls` → "No such file or directory"; `grep -rn admin-provision-users src/` = 0 hits; `npm run build` exit 0 (commit `ea09417`). Certificação do revisor entra no G-SEC-REV (P3, fim da Fase A) |
 | A2 | Arquivo `_shared/require-caller-org.ts` + suite de teste com os 3 casos (403/401/org-do-token) passando | **PENDENTE** |
 | A3 | `docs/security/rls-audit-2026-07.md` com query + resultado: N tabelas, 100% ON, lista de policies permissivas com justificativa/correção | **PENDENTE** |
 | A4 | Migration aplicada (`migrations_cobranca/*_billing_credentials.sql`) + teste: SELECT anon = 0 linhas + round-trip `v1:` passando (reuso `meta-crypto.ts:25,41`) | **PENDENTE** |

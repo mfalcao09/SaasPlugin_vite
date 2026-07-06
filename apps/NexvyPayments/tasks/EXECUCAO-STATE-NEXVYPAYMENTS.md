@@ -4,29 +4,30 @@
 spec: apps/NexvyPayments/docs/specs/nexvypayments-spec-auditavel.md
 plano: apps/NexvyPayments/tasks/nexvypayments-plano-execucao-loop.md
 repo: /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite   # MONOREPO
-worktree_executor: /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite.claude-worktrees/nexvypayments-bootstrap   # sessão paralela ocupava o working tree principal (checkout cascade/beauty durante a iteração 1)
-branch_atual: feat/nexvypayments-bootstrap   # criado de feat/nexvypayments-planning (6650382) — main NÃO contém os docs do produto (ver premissa 3)
-supabase_ref: PENDENTE-HITL   # projeto NOVO ainda não criado (fila_humano #1); NÃO usar o do Beauty (fzhlbwhdejumkyqosuvq)
-iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T09:36:36Z
+worktree_executor: /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite.claude-worktrees/nexvypayments-bootstrap   # sessão paralela ocupa o working tree principal — executor NUNCA usa o working tree principal
+branch_atual: feat/nexvypayments-bootstrap   # de feat/nexvypayments-planning@6650382; main NÃO contém os docs (premissa 3)
+supabase_ref: nbvaglqmcyoogolhzyzm   # projeto "NexvyPayments", ACTIVE_HEALTHY, us-west-2 (criado por Marcelo 2026-07-06 09:22Z)
+dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223.29.96 DNS-only (criados via API nesta sessão)
+iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:17:54Z
 
 ## contadores
-iteracao: 1 / 40
+iteracao: 4 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: PASSO-0-APP | tentativa: 1/3 | status: BLOQUEADO_GATE
+id: A2 | tentativa: 1/3 | status: EM_ANDAMENTO (despachado a subagente Opus — braço operacional)
 
-## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7; errata do "24" no plano §0)
-# id | classe | status | evidencia (citável: file:line, output curl, teste) | commit
-PASSO-0-APP | BOOTSTRAP | BLOQUEADO_GATE | dig autoritativo @gabriella.ns.cloudflare.com: 0 A-records (zona delegada; domínio registrado 2026-07-06, registro.br #31723126); MCP Supabase list_projects: 12 projetos, nenhum Payments | —
-A0 | MODO-B (gate arquitetural) | PENDENTE | — | —
-A1 | AUTO | PENDENTE | — | —
-A2 | AUTO | PENDENTE | — | —
+## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
+# id | classe | status | evidencia (citável) | commit
+PASSO-0-APP | BOOTSTRAP | CONFORME | npm run build exit 0; make -n deploy-payments → "NexvyPayments nexvy-payments nexvypayments.com.br"; app rastreado; banco: 161 tabelas+GRANTs+seeds+12 buckets+realtime 6+10 crons (verificação MCP); 164 edges ACTIVE; DNS 4 hosts→145.223.29.96 | 22170d1+ea09417
+A0 | MODO-B (gate arquitetural) | BLOQUEADO_GATE | P1 (gate humano 1º deploy Fase A) + G-C6-SANDBOX: C6_CLIENT_ID/SECRET + cert/key mTLS sandbox NÃO encontrados (env local erp-educacional sem C6_*; VPS idem) | —
+A1 | AUTO | CONFORME | ls admin-provision-users → No such file or directory; grep src/ = 0 hits; build verde. Cert. revisor → G-SEC-REV (P3) | ea09417
+A2 | AUTO | EM_ANDAMENTO | subagente Opus: _shared/require-caller-org.ts + TA (403/401/org-do-token) | —
 A3 | AUTO + G-SEC-REV | PENDENTE | — | —
 A4 | MODO-B | PENDENTE | — | —
 A5 | MODO-B | PENDENTE | — | —
-A6 | MODO-B | PENDENTE | — | —
+A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos verify-jwt-false de webhooks) | —
 A7 | AUTO (INSP+CI) | PENDENTE | — | —
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
 B2 | MODO-B | PENDENTE | — | —
@@ -46,29 +47,45 @@ E2 | AUTO | PENDENTE | — | —
 E3 | HITL (G-INFRA) | PENDENTE | — | —
 E4 | HITL (G-PILOTO) | PENDENTE | — | —
 # status ∈ {PENDENTE, EM_ANDAMENTO, PROXY_PRONTO, CONFORME, FALHOU_1, FALHOU_2, FALHOU_3_PARADO, BLOQUEADO_GATE}
-# PROXY_PRONTO nunca conta como CONFORME.
 
 ## gates
-G-SEC-REV: aberto | G-C6-SANDBOX: aberto | G-C6-PROD: aberto | G-NOTAAS-resid: aberto
+G-SEC-REV: aberto | G-C6-SANDBOX: aberto (creds+cert mTLS sandbox ausentes) | G-C6-PROD: aberto | G-NOTAAS-resid: aberto
 G-QUOTA: aberto | G-A1: aberto | G-META-TPL: aberto | G-PILOTO: aberto | G-INFRA: aberto
-gate_deploy_fase: {A: pendente, B: pendente, C: pendente, D: pendente, E: pendente}
+gate_deploy_fase: {BOOTSTRAP: LIBERADO (msg Marcelo 06/07 ~06:34 BRT: "Supabase já existe, domínio já existe. Você pode acessar pelas ferramentas... credenciais no env"), A: pendente (P1 — bloqueia deploy da EF c6-mtls-poc do A0), B: pendente, C: pendente, D: pendente, E: pendente}
 
-## core_deltas                              # regra inviolável do reassentamento
-# nenhum — nenhuma edição de arquivo do core Vendus nesta iteração (só docs do próprio Payments)
+## core_deltas                              # espelho do docs/CORE-DELTA.md
+src/config/brand.ts | identidade Payments (ponto de cascade) | 22170d1
+src/lib/publicUrl.ts | APEX_BASE → nexvypayments.com.br | 22170d1
+src/config/modules.ts | módulo cobranca substitui card erp_salao (union mantém legado até A1-limpeza) | 22170d1
+package.json + index.html + public/manifest.json | identidade npm/PWA | 22170d1
+docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-payments (aditivos) | 22170d1
+# NÃO-edições auditadas: src/main.tsx (host-aware Lux já genérico); usePlatformBranding.ts (check #c54b60 fica até re-skin Fase D)
 
 ## premissas_assumidas
-1. "Entendido?" do prompt de lançamento interpretado como disparo imediato da iteração 1 (o plano já designava esta sessão como executora).
-2. Universo do loop = 25 entregáveis da matriz §5.1 do spec (A0–A7, B1–B5, C1–C3, D1–D5, E1–E4) — não os 24 do prompt §4; A7 foi adicionado no reassentamento (erratas aplicadas no spec:132 e plano §0/§3.11/§4).
-3. Branch da fase bootstrap criado a partir de feat/nexvypayments-planning (tip 6650382), NÃO de main: main (00acf9b) não contém os docs do produto. Rebase de main adiado até o merge do planning (gate humano — fila_humano #3).
-4. Execução em git worktree isolado (SaasPlugin_vite.claude-worktrees/nexvypayments-bootstrap) porque outra sessão ativa fez checkout de cascade/beauty no working tree principal DURANTE esta iteração (reflog HEAD@{0}).
-5. Registros A recomendados como DNS-only (nuvem cinza), espelhando o Beauty (nexvybeauty.com.br resolve direto 145.223.29.96; TLS via Traefik/Let's Encrypt).
-6. Lovable NÃO será via padrão de construção do front (main = verdade; risco de drift no hard fork gerenciado); Opus como braço operacional dos subagentes, decisão do Marcelo na sessão de lançamento.
+1. "Entendido?" = disparo imediato da iteração 1.
+2. Universo = 25 entregáveis da matriz §5.1 (inclui A7); erratas aplicadas (spec:132, plano §0/§3.11/§4).
+3. Branch bootstrap criado do planning@6650382 (main sem os docs); rebase de main adiado ao merge (fila_humano #3).
+4. Executor em git worktree isolado (outra sessão ativa no working tree principal — checkout cascade/beauty flagrado no reflog).
+5. Registros A DNS-only espelhando Beauty; TLS via Traefik/Let's Encrypt.
+6. Lovable fora da via padrão (main=verdade); Opus = braço operacional dos subagentes.
+7. Base do fork = snapshot do Beauty em 6650382; trabalho posterior do cascade/beauty (vertical salão, sales-spark core) entra por diff seletivo se Marcelo pedir.
+8. Região do Supabase novo = us-west-2 (criado assim por Marcelo; demais apps são sa-east-1 — latência BR maior; não reaberto).
+9. Fase B: core Oficinas sobrepôs 116 functions colididas; 49 Beauty-only preservadas (listas no scratchpad + git 22170d1). Tabelas platform_crm_* NÃO estão no baseline → funções Beauty-only podem exigir migrations complementares ou remoção em limpeza futura.
+10. config.toml: preservados os blocos de webhooks públicos sem JWT (desvio consciente do cascade-core.sh, que sobrescreveria) — insumo do A6.
+11. Paleta estática index.css continua Beauty Rosé até re-skin de branding (Fase D/0.5.12); cor de marca Payments = navy Lux #213156 (trocável em brand.ts).
+12. "Tentativa" (regra 9) = ciclo completo de aferição do entregável; incidentes de sub-passo (abort por parser do cascade; ENOENT do rsync-exclude; bloco órfão tmp-eval-agents) foram registrados e corrigidos DENTRO da tentativa 1 do PASSO-0-APP.
+13. supabase/.temp versionado segue precedente do Beauty (9 arquivos); pooler-url sem senha (verificado por padrão, sem imprimir).
+14. deploy-all NÃO inclui deploy-payments até Marco 0 validado.
+15. docker compose config não validável no Mac (docker ausente); bloco é cópia literal do GYM — validar no 1º deploy VPS.
 
-## fila_humano                              # ação EXATA por item; loop nunca polla estes itens
-1. [PASSO-0-APP / P0 — Supabase] Criar projeto Supabase NOVO no dashboard (org tnqsxpwsdwaewufhkyfp), nome sugerido "NexvyPayments", região sa-east-1 (padrão dos apps do monorepo). Informar: SUPABASE_REF + anon key (para .env.production) + senha do banco (para cascade-core.sh Fases A+B). Critério de liberação: projeto visível em list_projects do MCP OU ref registrado neste STATE.
-2. [PASSO-0-APP / P0 — DNS] Criar 4 registros A na zona Cloudflare nexvypayments.com.br (zona JÁ delegada — NS gabriella/coleman.ns.cloudflare.com): "@", "app", "gestao", "www" → 145.223.29.96, modo DNS-only (nuvem cinza, padrão Beauty). Critério de liberação: `dig +short <host> A` retorna 145.223.29.96 nos 4 hosts.
-3. [Governança de branch] Decidir o merge de feat/nexvypayments-planning → main (gate humano, plano §3.6) para a fase bootstrap poder rebasear de main. Critério de liberação: planning mergeado OU instrução explícita para seguir a partir do planning.
+## fila_humano
+1. [A0 / P1+G-C6-SANDBOX] (a) Liberar o gate humano do 1º deploy da Fase A (EF descartável `c6-mtls-poc` no projeto nbvaglqmcyoogolhzyzm); (b) fornecer credenciais SANDBOX C6: C6_CLIENT_ID, C6_CLIENT_SECRET, C6_BASE_URL (https://baas-api-sandbox.c6bank.info) e CERTIFICADO mTLS (cert+key/.pfx do sandbox) — não encontrados no env local nem no VPS. Entrega server-side: `supabase secrets set` (nunca repo/front). Critério de liberação: secrets listados via CLI + ok explícito do deploy.
+2. [Governança de branch] Decidir merge feat/nexvypayments-planning → main (e/ou feat/nexvypayments-bootstrap → main ao fim da fase) — gate humano. Critério: merge feito OU instrução explícita.
+3. [Fase D/0.5.11-12 — quando chegar] Secrets de plataforma (AI_API_KEY, RESEND_API_KEY, SUPER_ADMIN_EMAIL) + Auth Site URL + branding platform_settings + 1º super admin — pós 1º deploy VPS.
 
-## log_iteracoes                            # 1 linha por iteração (requisito J.md)
+## log_iteracoes
 # n | ISO-ts | entregavel | resultado | evidencia_curta | custo_delta_usd
-1 | 2026-07-06T09:36:36Z | PASSO-0-APP | BLOQUEADO_GATE (parada global condição d) | DNS: zona CF delegada, 0 A-records (autoritativo); Supabase: 12 projetos, nenhum Payments; docs seguros em feat/nexvypayments-planning@6650382; worktree executor criado | 0.00
+1 | 2026-07-06T09:36:36Z | PASSO-0-APP | BLOQUEADO_GATE (cond. d) | DNS zona sem A-records; Supabase sem projeto | 0.00
+2 | 2026-07-06T10:17:54Z | PASSO-0-APP | CONFORME | Gates liberados por Marcelo; DNS criado via CF API (4×A DNS-only); rsync+rebrand+integração (22170d1); Fase A verificada no banco (161 tab/GRANTs/seeds/12 buckets/realtime/10 crons); Fase B 164 edges ACTIVE (2 rodadas; bloco órfão removido); build 16s verde; fix rsync-exclude-tasks | 0.00
+3 | 2026-07-06T10:17:54Z | A0 | BLOQUEADO_GATE | P1 não liberado + creds/cert C6 sandbox ausentes (env local e VPS auditados por nome) | 0.00
+4 | 2026-07-06T10:17:54Z | A1 | CONFORME | ls → not found; grep src = 0; build verde; matriz §5.1 atualizada | 0.00
