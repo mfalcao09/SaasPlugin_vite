@@ -17,3 +17,9 @@ verify_jwt = false
 [functions.platform-sales-brain]
 verify_jwt = false
 
+# Webhook público do NotaAS (provedor externo -> cobrança, trilho fiscal NFS-e).
+# Auth real = X-Notaas-Signature (HMAC-SHA256 timing-safe do webhook secret,
+# cofre billing_credentials provider 'notaas') validada na função. Sem JWT.
+[functions.notaas-webhook]
+verify_jwt = false
+

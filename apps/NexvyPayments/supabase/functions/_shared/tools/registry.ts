@@ -7,6 +7,11 @@ import { gerarLinkPagamentoTool } from './impl/gerar_link_pagamento.ts';
 import { aplicarEtiquetaTool } from './impl/aplicar_etiqueta.ts';
 import { agendarFollowupTool } from './impl/agendar_followup.ts';
 import { consultarHistoricoClienteTool } from './impl/consultar_historico_cliente.ts';
+// Tools de COBRANÇA (D5 — NexvyPayments, aditivas ao core Vendus/Beauty).
+import { consultarFaturaTool } from './impl/consultar_fatura.ts';
+import { segundaViaTool } from './impl/segunda_via.ts';
+import { enviarComprovanteTool } from './impl/enviar_comprovante.ts';
+import { renegociarTool } from './impl/renegociar.ts';
 
 const ALL_TOOLS: ToolDefinition[] = [
   criarDealTool,
@@ -14,6 +19,11 @@ const ALL_TOOLS: ToolDefinition[] = [
   aplicarEtiquetaTool,
   agendarFollowupTool,
   consultarHistoricoClienteTool,
+  // Cobrança (D5)
+  consultarFaturaTool,
+  segundaViaTool,
+  enviarComprovanteTool,
+  renegociarTool,
 ];
 
 const TOOLS_BY_NAME = new Map(ALL_TOOLS.map((t) => [t.name, t]));

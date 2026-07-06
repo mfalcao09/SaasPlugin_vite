@@ -11,12 +11,12 @@ dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223
 iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:50:00Z
 
 ## contadores
-iteracao: 9 / 40
+iteracao: 10 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: B2 (próximo AUTO) | status: fundação A4+A5 CONFORME; paralelizando B2/B3/C2/C3/D1-D3/D5/E1/E2 via subagentes Opus (dependem de invoices/billing_events já criados)
+id: próximo lote D1/D2/D3 (régua por fatura) + B3 (invoice-batch) + E1 (conciliação) + A6 (verify-jwt) | status: lote B2/C2/C3/D5/E2 CONFORME (iter 10)
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
@@ -30,20 +30,20 @@ A5 | MODO-B | CONFORME | billing_model.sql aplicada (nbvaglqmcyoogolhzyzm); 7 ta
 A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos verify-jwt-false de webhooks) | —
 A7 | AUTO (INSP+CI) | CONFORME | grep cobrança fora da esteira = 0; CORE-DELTA 7 entradas; 0 mutação de core em migrations_cobranca (esteira criada c/ README); invariante contínuo re-aferido por fase | (commit desta iteração)
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
-B2 | MODO-B | PENDENTE | — | —
+B2 | MODO-B | CONFORME | billing_outbox.sql aplicada (pgmq + RPCs enqueue/read_batch/move_to_dlq + DLQ); aferido enqueue→read→dlq na_dlq=1; GRANT só service_role | (commit iter 10)
 B3 | AUTO | PENDENTE | — | —
 B4 | MODO-B | PENDENTE | — | —
 B5 | HITL (G-C6-PROD) | PENDENTE | — | —
 C1 | AUTO-COM-TETO | PENDENTE | — | —
-C2 | AUTO | PENDENTE | — | —
-C3 | MODO-B | PENDENTE | — | —
+C2 | AUTO | CONFORME | notaas-webhook + notaas-webhook-verify (HMAC timing-safe) deno test 14/14; ledger notaas_webhook_deliveries (RLS ON, UNIQUE org+delivery); config.toml verify_jwt=false | (commit iter 10)
+C3 | MODO-B | CONFORME | fiscal_imutabilidade.sql aplicada (trigger + invoice_cancelar); DELETE de nota emitida bloqueado; cancelar → status=cancelada + billing_events(cancelada)=1 | (commit iter 10)
 D1 | AUTO | PENDENTE | — | —
 D2 | AUTO | PENDENTE | — | —
 D3 | AUTO | PENDENTE | — | —
 D4 | HITL (G-META-TPL) | PENDENTE | — | —
-D5 | AUTO | PENDENTE | — | —
+D5 | AUTO | CONFORME | 4 tools + prompt-guard + registry aditivo; deno test 22/22 (2ª via→substituida; renegociar→agreement+parcelas; desconto>alçada→handoff; injeção→bloqueado); alçada 20% hardcoded (nota) | (commit iter 10)
 E1 | AUTO | PENDENTE | — | —
-E2 | AUTO | PENDENTE | — | —
+E2 | AUTO | CONFORME | lgpd_payers.sql aplicada (trigger audit + payer_erasure + lgpd_legal_basis); erasure → nome=[removido], invoice intacta, audit_logs=2; BUG corrigido (entity_id uuid≠text, 42804) | (commit iter 10)
 E3 | HITL (G-INFRA) | PENDENTE | — | —
 E4 | HITL (G-PILOTO) | PENDENTE | — | —
 # status ∈ {PENDENTE, EM_ANDAMENTO, PROXY_PRONTO, CONFORME, FALHOU_1, FALHOU_2, FALHOU_3_PARADO, BLOQUEADO_GATE}
@@ -94,3 +94,4 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 7 | 2026-07-06T10:50:00Z | A7 | CONFORME | greps de isolamento 0/0; CORE-DELTA 7 entradas; migrations_cobranca/ criada (README disciplina) | 0.00
 8 | 2026-07-06T17:25:00Z | A4 | CONFORME | migration cofre aplicada (db query); deno test 8/8; REVOKE anon/auth + RLS ON → SET ROLE anon SELECT=0, has_priv anon/auth=false, svc=true | 0.00
 9 | 2026-07-06T17:35:00Z | A5 | CONFORME | billing_model.sql aplicada; 7 tab RLS ON; invoices 8 cols correção + substituida; 7/7 org; INSERT cross-org → 42501 RLS violation | 0.00
+10 | 2026-07-06T18:10:00Z | B2/C2/C3/D5/E2 | CONFORME (lote, 5 subagentes Opus) | B2 na_dlq=1; C2 14/14+ledger; C3 DELETE-emitida bloqueado+cancelar; D5 22/22; E2 erasure+bug entity_id corrigido. Migrations aplicadas no banco; deno tests verdes | 0.00
