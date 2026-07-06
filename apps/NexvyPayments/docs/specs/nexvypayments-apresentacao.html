@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexvyPayments — app de cobrança conversacional do ecossistema NexvyTech</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0f141c; --line:#1f2937;
+    --txt:#e5e9f0; --mut:#8b96a5; --lime:#84cc16; --emer:#34d399;
+    --amber:#fbbf24; --red:#f87171; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 96px}
+  header{padding:72px 0 48px;text-align:center;border-bottom:1px solid var(--line)}
+  .kicker{display:inline-block;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--lime);border:1px solid rgba(132,204,22,.35);padding:6px 14px;border-radius:999px;margin-bottom:22px}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.15;font-weight:800}
+  h1 .g{background:linear-gradient(90deg,var(--lime),var(--emer));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--mut);max-width:760px;margin:18px auto 0;font-size:18px}
+  section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .snum{font-size:12px;letter-spacing:.2em;color:var(--lime);text-transform:uppercase;margin-bottom:8px}
+  h2{font-size:28px;margin-bottom:26px;font-weight:700}
+  .grid{display:grid;gap:18px}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .card h3{font-size:17px;margin-bottom:10px}
+  .card p{color:var(--mut);font-size:14.5px}
+  .stat{font-size:30px;font-weight:800;color:var(--txt)}
+  .stat small{display:block;font-size:13px;color:var(--mut);font-weight:400;margin-top:6px}
+  .premissa{font-size:11.5px;color:#5d6875;margin-top:10px;font-style:italic}
+  .steps{counter-reset:s}
+  .step{display:flex;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px}
+  .step::before{counter-increment:s;content:counter(s);flex:0 0 40px;height:40px;border-radius:10px;background:rgba(132,204,22,.12);color:var(--lime);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .step h3{font-size:16px;margin-bottom:6px}
+  .step p{color:var(--mut);font-size:14.5px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 10px;border-radius:999px;margin-left:8px;vertical-align:2px}
+  .b-lime{background:rgba(132,204,22,.14);color:var(--lime)}
+  .b-amber{background:rgba(251,191,36,.14);color:var(--amber)}
+  .b-blue{background:rgba(96,165,250,.14);color:var(--blue)}
+  .callout{background:linear-gradient(135deg,rgba(132,204,22,.08),rgba(52,211,153,.05));border:1px solid rgba(132,204,22,.3);border-radius:14px;padding:26px}
+  .callout h3{color:var(--lime);font-size:16px;margin-bottom:12px;letter-spacing:.04em}
+  ul.clean{list-style:none}
+  ul.clean li{padding:9px 0 9px 30px;position:relative;color:var(--mut);font-size:14.5px;border-bottom:1px dashed rgba(31,41,55,.6)}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean li::before{content:"✓";position:absolute;left:2px;color:var(--emer);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{color:var(--mut);text-transform:uppercase;font-size:11px;letter-spacing:.1em;text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:12px 14px;border-bottom:1px solid rgba(31,41,55,.6);vertical-align:top}
+  td:first-child{white-space:nowrap;font-weight:600}
+  .tbl{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .tl{position:relative;margin-left:14px;padding-left:34px;border-left:2px solid var(--line)}
+  .m{position:relative;padding:0 0 30px}
+  .m::before{content:"";position:absolute;left:-43px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--bg);border:3px solid var(--lime)}
+  .m h3{font-size:16px}
+  .m .f{font-size:12px;color:var(--lime);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  .m p{color:var(--mut);font-size:14.5px;margin-top:4px}
+  .price{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px}
+  .price .card{flex:1;min-width:250px;text-align:center}
+  .price .v{font-size:34px;font-weight:800;color:var(--lime)}
+  .cta{background:linear-gradient(135deg,rgba(132,204,22,.12),rgba(52,211,153,.06));border:1px solid rgba(132,204,22,.4);border-radius:18px;padding:40px;text-align:center;margin-top:56px}
+  .cta h2{margin-bottom:12px}
+  .cta p{color:var(--mut);max-width:680px;margin:0 auto 20px}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 9px;font-size:13px;color:var(--emer);font-family:"SF Mono",Menlo,Consolas,monospace}
+  .path{display:inline-block;margin-top:8px;word-break:break-all}
+  footer{padding:32px 0;color:#4b5563;font-size:12.5px;text-align:center}
+  @media(max-width:640px){.step{flex-direction:column}.step::before{flex:0 0 36px;width:36px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="kicker">NexvyPayments · App do ecossistema NexvyTech · 2026-07-06</span>
+  <h1>O gateway emite. O CRM conversa.<br><span class="g">Este produto faz os dois.</span></h1>
+  <p class="sub">SaaS multi-tenant de gestão de cobranças, embutido no monorepo NexvyTech e forkado da plataforma madura do <strong>NexvyBeauty</strong>: fatura em lote, emite boleto/PIX (C6) e NFS-e (NotaAS), cobra pelo WhatsApp e <strong>dialoga</strong> com o pagador via IA — do lembrete à renegociação.</p>
+</header>
+
+<section>
+  <div class="snum">01 · O problema</div>
+  <h2>Quem fatura mensalidade vive com um processo cortado ao meio</h2>
+  <div class="grid g3">
+    <div class="card">
+      <div class="stat">500–5.000<small>faturas/mês só no cliente nº 1 (medição e individualização de água em condomínios)</small></div>
+      <p class="premissa">Faixa declarada pelo dono da operação; NFR de fila e idempotência dimensionados por ela.</p>
+    </div>
+    <div class="card">
+      <div class="stat">R$1,99–3,49<small>por boleto liquidado que o mercado já paga hoje ao gateway — sem CRM, sem régua conversacional, sem IA</small></div>
+      <p class="premissa">Premissa: tabela pública Asaas vigente a confirmar; usada só como benchmark de disposição a pagar.</p>
+    </div>
+    <div class="card">
+      <div class="stat">2 sistemas<small>emissão num lugar (gateway/fiscal) e cobrança noutro (WhatsApp manual) — retrabalho, inadimplência e atendimento repetitivo</small></div>
+      <p class="premissa">Dor declarada do case nº 1, que paga o Asaas e ainda persegue pagador na mão.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="snum">02 · Como funciona</div>
+  <h2>Quatro passos, um ciclo fechado</h2>
+  <div class="steps">
+    <div class="step"><div><h3>Cadastro &amp; fechamento do mês</h3><p>Pagadores por CPF/CNPJ importados por CSV, organizados em grupos (condomínio → unidades) com contratos recorrentes de valor fixo ou variável por competência (ex.: leitura de água). Um clique gera o lote do mês.</p></div></div>
+    <div class="step"><div><h3>Emissão automática nos trilhos próprios</h3><p><strong>C6 Bank</strong> emite boleto+PIX (Bolepix) e <strong>NotaAS</strong> emite a NFS-e vinculada — tudo por uma fila idempotente: re-rodar o lote nunca duplica boleto nem nota. Controle de emissão por estados (emitida, erro, cancelada, substituída).</p></div></div>
+    <div class="step"><div><h3>Régua que cobra sozinha — e para sozinha</h3><p>WhatsApp oficial (Meta) com opt-in: fatura disponível → lembrete D-3 → vencimento → atraso D+1/D+7. Quando o webhook do banco confirma o pagamento, a régua <em>daquela fatura</em> para na hora. Motor de cadência herdado do Beauty (<code>cadence-tick</code> + <code>salon-automation-run</code>).</p></div></div>
+    <div class="step"><div><h3>IA que atende o pagador</h3><p>2ª via, status, comprovante e renegociação com alçada de desconto — a IA resolve no WhatsApp e transfere para humano quando a conversa sai da alçada. Orquestrador com intenção <code>financeiro</code> já nativa (herdada do Beauty). Acordo aprovado vira parcelas novas, rastreadas.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="snum">03 · Vantagens</div>
+  <h2>Por que este produto — e por que agora</h2>
+  <div class="grid g4">
+    <div class="card"><h3>Vantagem injusta <span class="badge b-lime">já testada</span></h3><p>App do ecossistema NexvyTech: herda a plataforma madura do <strong>NexvyBeauty</strong> — multi-tenant, WhatsApp dual-provider, cadência, IA e LGPD, tudo já em produção. Só o motor bancário/fiscal é novo. Concorrentes teriam de construir a plataforma inteira do zero.</p></div>
+    <div class="card"><h3>Emissão ↔ conversa</h3><p>Gateways emitem mas não conversam; CRMs conversam mas não emitem. Fechar o ciclo num produto só é o posicionamento que o incumbente não copia sem se canibalizar.</p></div>
+    <div class="card"><h3>Trilhos próprios</h3><p>Adapter C6 pronto (10 operações, smoke 19/19 em sandbox) e NotaAS multi-CNPJ 100% programático, com ambiente de homologação nativo. Sem aluguel de motor de terceiro.</p></div>
+    <div class="card"><h3>Horizontal por desenho</h3><p>Água, cowork, escola, qualquer mensalidade: modelo genérico com metadados por vertical. Critério de aceite do plano: 2º tenant entra <em>sem uma linha de código nova</em>.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="snum">03b · Estratégia de base</div>
+  <h2>Hard-fork gerenciado: base-mãe própria, patches seletivos</h2>
+  <div class="grid g3">
+    <div class="card"><h3>Base-mãe própria <span class="badge b-blue">Beauty V3</span></h3><p>NexvyPayments forka do NexvyBeauty (que <em>é</em> o Vendus, provado byte-a-byte em <code>.vendus-src-reference/</code>) mais 12 meses de modificações-Marcelo. Beauty já está no monorepo, com deploy, multi-host e platform-shell prontos — não é um clone a re-integrar.</p></div>
+    <div class="card"><h3>Isolamento aditivo <span class="badge b-lime">3 disciplinas</span></h3><p>Mods de cobrança 100% em arquivos e migrations próprias (<code>migrations_cobranca/</code>), nunca editando o core Vendus. Todo delta inevitável no core registrado em <code>docs/CORE-DELTA.md</code>. O núcleo herdado permanece limpo e atualizável.</p></div>
+    <div class="card"><h3>Upstream = patch, não merge <span class="badge b-amber">V6+</span></h3><p>Versões futuras do Vendus vêm como snapshot Lovable, sem histórico comum — não se mergeiam cegamente. Viram fonte de <strong>diff seletivo</strong>: escolhemos o que portar, não engolimos o pacote. A base-mãe é nossa, e assim permanece.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="snum">04 · Validação</div>
+  <h2>O que este plano já passou antes de você ler esta página</h2>
+  <div class="callout">
+    <h3>CONFRONTO ADVERSARIAL — VEREDITO: SIM, COM 13 CORREÇÕES APLICADAS</h3>
+    <ul class="clean">
+      <li><strong>9 alegações de reuso verificadas contra o código-fonte real do Beauty</strong> (file:line) — todas conferem: cofre de criptografia AES-256-GCM, fila pgmq, motor de cadências (<code>cadence-tick</code>), orquestrador IA com intenção <code>financeiro</code> nativa, meta-crypto do WhatsApp oficial.</li>
+      <li><strong>2 riscos minimizados foram promovidos a bloqueadores</strong>: prova de mTLS no runtime (primeiro entregável do trilho bancário, com plano B arquitetural pronto) e régua por fatura reescrita como construção nova — pagador com 3 faturas que paga 1 não pode ter as outras 2 silenciadas.</li>
+      <li><strong>Segurança auditada antes de existir produto</strong>: 2 vulnerabilidades críticas do core herdado (takeover cross-tenant e IDOR sistêmico) identificadas e colocadas na Fase 0 — nenhum real transita antes do hardening.</li>
+      <li><strong>RLS multi-tenant auditada por amostragem</strong> (9 tabelas críticas: todas isoladas por organização) + varredura de policies permissivas incluída no plano.</li>
+      <li><strong>25 entregáveis com critério binário e método de aferição</strong> (teste automatizado, curl real, inspeção ou validador externo) — nada é "pronto" por opinião.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="snum">05 · Timeline</div>
+  <h2>Marcos de valor (sequência por dependência técnica — ASAP)</h2>
+  <div class="tl">
+    <div class="m"><div class="f">Fases 0–1 · Fundação</div><h3>Hardening + cofre + modelo de dados</h3><p>Remoção das vulnerabilidades herdadas, cofre cifrado para credenciais bancárias/fiscais/A1, DDL completo em <code>migrations_cobranca/</code> (com multa/juros, retenções, multi-CNPJ) e onboarding financeiro do tenant.</p></div>
+    <div class="m"><div class="f">Fase 2–3 · Marco 1</div><h3>1ª fatura E2E em homologação</h3><p>Boleto+PIX (C6 sandbox) e NFS-e (NotaAS homologação) emitidos a partir de um lote real de teste, com webhooks de conciliação validados. Antes disso: PoC de mTLS (gate arquitetural).</p></div>
+    <div class="m"><div class="f">Fase 3 · Marco 2</div><h3>1ª fatura real do cliente nº 1 em produção</h3><p>Conta C6 PJ + tarifa negociada + certificado A1 + "Ativar Produção" no NotaAS — os 4 gates humanos convergem aqui.</p></div>
+    <div class="m"><div class="f">Fase 4–5 · Marco 3</div><h3>1º ciclo mensal 100% automático</h3><p>Lote → emissão → régua → conversa IA → conciliação, com ≥95% das faturas sem intervenção humana. É o teste de desespero do piloto: tirar o sistema e medir o grito.</p></div>
+    <div class="m"><div class="f">Fase 5 · Marco 4</div><h3>2º tenant (cowork) sem código novo</h3><p>Prova da horizontalidade: onboarding de outra vertical sem nenhuma migration específica. Destrava a escada comercial.</p></div>
+  </div>
+
+  <h2 style="margin-top:40px">Modelo de preço proposto</h2>
+  <div class="price">
+    <div class="card"><div class="v">R$297<small style="display:block;color:var(--mut);font-size:13px">por tenant / mês</small></div><p class="premissa">Faixa avaliada: R$197–597. Inclui CRM + régua + IA.</p></div>
+    <div class="card"><div class="v">R$1,49<small style="display:block;color:var(--mut);font-size:13px">por fatura processada</small></div><p class="premissa">Custo variável real: ≈R$1,00–3,50 no boleto · &lt;R$1,00 no PIX. Margem saudável exige PIX como trilho padrão e tarifa C6 ≤ R$1,20 no boleto.</p></div>
+    <div class="card"><div class="v">74–81%<small style="display:block;color:var(--mut);font-size:13px">margem variável no trilho PIX</small></div><p class="premissa">Premissas: PIX ~R$0,40; NFS-e R$0,20–0,60 (preço NotaAS a confirmar); WhatsApp utility ~US$0,008/msg; câmbio R$5,40/US$.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="snum">06 · Gates humanos</div>
+  <h2>O que depende de você — e só isso</h2>
+  <div class="tbl"><table>
+    <tr><th>Gate</th><th>O que você faz</th><th>Destrava</th></tr>
+    <tr><td>G-C6-SANDBOX</td><td>Credenciais sandbox C6 (client id/secret + certificado mTLS)</td><td>Trilho bancário em dev</td></tr>
+    <tr><td>G-C6-PROD</td><td>Conta PJ C6 do tenant + tarifa de boleto negociada (alvo ≤ R$1,20)</td><td>Marco 2 (produção)</td></tr>
+    <tr><td>G-NOTAAS</td><td>Confirmar preço por nota, prazo de cancelamento e cobertura do município do cliente nº 1</td><td>Unit economics final + Fase 3</td></tr>
+    <tr><td>G-QUOTA</td><td>Plano NotaAS ≥ volume (SaaS Pro = 2.000 notas/mês &lt; teto de 5.000 do case nº 1)</td><td>Go-live cheio do case nº 1</td></tr>
+    <tr><td>G-A1</td><td>Certificado digital A1 (.pfx + senha) do CNPJ do cliente nº 1</td><td>Emissão de NFS-e</td></tr>
+    <tr><td>G-META-TPL</td><td>Aprovar submissão dos templates utility de cobrança (lead-time Meta)</td><td>Régua em produção</td></tr>
+    <tr><td>G-PILOTO</td><td><strong>Compromisso pago do cliente nº 1</strong> (contrato de piloto ou carta com valor) — o gate de negócio nº 1 do parecer de PMF</td><td>Go-live com prova de desespero</td></tr>
+    <tr><td>G-SEC-REV / G-INFRA</td><td>Revisar o hardening da Fase 0 · confirmar deploy no monorepo (Traefik + Supabase novo)</td><td>Produção com dinheiro</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="snum">07 · Transparência</div>
+  <h2>Riscos assumidos — e a blindagem de cada um</h2>
+  <div class="tbl"><table>
+    <tr><th>Risco</th><th>Blindagem no plano</th></tr>
+    <tr><td>mTLS no runtime edge <span class="badge b-amber">técnico nº 1</span></td><td>PoC é o 1º entregável do trilho C6 (gate binário). Plano B pronto: micro-serviço bancário fora do edge, decidido antes de construir — nunca no meio.</td></tr>
+    <tr><td>Margem negativa no boleto</td><td>PIX como trilho padrão do produto; boleto condicionado à tarifa negociada; custo real por fatura medido em produção (não estimado).</td></tr>
+    <tr><td>NotaAS sem chave de idempotência</td><td>Outbox próprio com referência única por fatura×competência×trilho — retry jamais duplica nota; campo <code>referencia</code> da API carrega nosso ID.</td></tr>
+    <tr><td>Custódia de certificado A1</td><td>Cofre AES-256-GCM só server-side; pendência registrada: derivação de chave por tenant antes de escalar além dos primeiros clientes.</td></tr>
+    <tr><td>Ban de WhatsApp em cobrança</td><td>Canal oficial Meta com template utility + opt-in garantido por guard já existente no Beauty; canal não-oficial restrito a desenvolvimento.</td></tr>
+    <tr><td>LGPD (CPF/CNPJ + dívida)</td><td>Base já resolvida no Beauty (<code>migrations_salao/20260619_lgpd_consents.sql</code>): base legal de execução de contrato, trilha de auditoria de PII, expurgo e anonimização preservando o fiscal — herdada, não recriada.</td></tr>
+    <tr><td>Régua parar a fatura errada</td><td>Correção estrutural aplicada: enrollment, contexto e stop por <em>fatura</em> (não por contato) — com teste automatizado do caso que quebra.</td></tr>
+    <tr><td>Drift do upstream Vendus</td><td>Hard-fork gerenciado: cobrança isolada em arquivos aditivos, deltas no core registrados em <code>docs/CORE-DELTA.md</code>, atualizações futuras entram por diff seletivo — nunca merge cego.</td></tr>
+  </table></div>
+</section>
+
+<div class="cta">
+  <h2>Pronto para construir</h2>
+  <p>Todo o plano está auditado e versionado dentro do app, no monorepo NexvyTech. O loop de implementação é lançado com um único prompt self-contained — com estado persistente, teto de custo, condição de parada e os gates humanos respeitados.</p>
+  <code class="path">/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyPayments/tasks/nexvypayments-plano-execucao-loop.md → seção "PROMPT DE LANÇAMENTO"</code>
+  <p style="margin-top:18px;font-size:13.5px">Artefatos da esteira (em <code>apps/NexvyPayments/docs/specs/</code> e <code>tasks/</code>): <code>nexvypayments-as-is-to-be.md</code> · <code>nexvypayments-blueprint.md</code> · <code>nexvypayments-roadmap.md</code> · <code>nexvypayments-spec-auditavel.md</code> · <code>nexvypayments-plano-execucao-loop.md</code></p>
+</div>
+
+<footer>NexvyPayments · App embutido do ecossistema NexvyTech · forkado do NexvyBeauty (hard-fork gerenciado) · 2026-07-06 · Números financeiros em faixas com premissas declaradas; valores definitivos dependem dos gates G-C6-PROD e G-NOTAAS.</footer>
+</div>
+</body>
+</html>

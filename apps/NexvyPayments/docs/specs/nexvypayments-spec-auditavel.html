@@ -1,0 +1,726 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexvyPayments — Spec Auditável (reassentada)</title>
+<style>
+:root{--bg:#0d1117;--fg:#e6edf3;--mut:#8b949e;--acc:#d4a017;--nav:#1f6feb;--card:#161b22;--bd:#30363d;--code:#1c2128}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,'SF Pro Text',Segoe UI,Roboto,sans-serif;padding:2.2rem 1.2rem}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:1.9rem;color:var(--acc);border-bottom:2px solid var(--acc);padding-bottom:.5rem;margin-top:2rem}
+h2{font-size:1.4rem;color:#fff;margin-top:2.4rem;border-left:4px solid var(--nav);padding-left:.7rem}
+h3{font-size:1.12rem;color:var(--acc);margin-top:1.6rem}
+p{margin:.5rem 0}.li{margin:.3rem 0 .3rem .3rem}
+code{background:var(--code);color:#79c0ff;padding:.1rem .35rem;border-radius:5px;font:.85em ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:var(--code);border:1px solid var(--bd);border-radius:9px;padding:1rem;overflow-x:auto}
+pre code{background:none;color:#adbac7;padding:0}
+blockquote{border-left:3px solid var(--acc);background:var(--card);margin:.8rem 0;padding:.6rem 1rem;color:var(--mut);border-radius:0 7px 7px 0}
+hr{border:none;border-top:1px solid var(--bd);margin:2rem 0}
+.tw{overflow-x:auto;margin:1rem 0;border:1px solid var(--bd);border-radius:9px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{background:#21262d;color:var(--acc);text-align:left;padding:.6rem .7rem;border-bottom:2px solid var(--bd);white-space:nowrap}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--bd);vertical-align:top}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+a{color:var(--nav)}strong{color:#fff}
+</style></head><body><div class="wrap">
+<h1>SPEC AUDITÁVEL — NexvyPayments (ETAPA 3 consolidada, REASSENTADA sobre NexvyBeauty)</h1>
+
+<blockquote>Etapa 3 da esteira de produto · reassentada 2026-07-06 · slug <code>nexvypayments</code> (era <code>gestao-cobrancas</code>)</blockquote>
+<blockquote><strong>Este documento é a fonte única de verdade para a implementação do NexvyPayments.</strong> Consolida o veredito do planner adversarial (Etapa 3a, <code>planner-veredito-3a.md</code>) sobre o blueprint + roadmap da Etapa 2, com o adendo autenticado NotaAS (§H do <code>notaas-report.md</code>).</blockquote>
+<blockquote>Consumidores: Marcelo + o loop de implementação do NexvyPayments (leem por caminho absoluto).</blockquote>
+<blockquote>Insumos travados (não reabrir): <code>gestao-cobrancas-as-is-to-be.md</code> (D1..D6, P1..P5), <code>gestao-cobrancas-blueprint.md</code>, <code>gestao-cobrancas-roadmap.md</code>.</blockquote>
+<p>&gt;</p>
+<blockquote><strong>Registro de skills (Passo 0):</strong> <code>openapi-spec-generation</code> ✅ carregada e aplicada (§4) · <code>spec-to-code-compliance</code> ✅ carregada e aplicada (§5–§6, matriz de alinhamento com evidência exigida, severidade e anti-alucinação: status inicial = PENDENTE para 100% dos itens, sem inferir conformidade).</blockquote>
+
+<hr>
+
+<h2>0. NOTA DE REASSENTAMENTO (por que este spec mudou de base)</h2>
+
+<p>Este spec era <code>gestao-cobrancas-spec-auditavel.md</code>, escrito assumindo um <strong>clone do CRM Vendus</strong> em repo separado. <strong>Decisão travada (D1′):</strong> o NexvyPayments <strong>forka do NexvyBeauty</strong> (<code>apps/NexvyBeauty</code> no monorepo <code>SaasPlugin_vite</code>), não de um Vendus clonado. Beauty *É* Vendus (mesma linhagem Lovable, provado byte-a-byte em <code>.vendus-src-reference/</code>), só que mais maduro e já embutido no monorepo com deploy pronto.</p>
+
+<p><strong>O que o reassentamento aplicou (mapa §6, linha &quot;spec REASSENTA&quot;):</strong></p>
+
+<p class='li'>1. <strong>Re-mapeamento de coordenadas.</strong> Todo <code>file:line</code> que apontava para <code>supabase/functions/*</code> / <code>supabase/migrations/</code> do Vendus foi re-ancorado em <code>apps/NexvyBeauty/supabase/...</code> (verificado por leitura direta — ver §0.1). Nomes de tabela/função/tool batem; os paths mudaram.</p>
+<p class='li'>2. <strong>Esteira do núcleo de cobrança.</strong> Os schemas de fatura/pagador/item/contrato/acordo vão para uma esteira <strong>NOVA</strong> <code>apps/NexvyPayments/supabase/migrations_cobranca/</code>, que <strong>espelha <code>migrations_salao/</code></strong> do Beauty (multi-tenant, <code>organization_id</code> preservado, RLS <code>organization_id = get_user_organization(auth.uid())</code>), <strong>NÃO</strong> <code>migrations_platform_crm/</code> (tenant-of-one, &quot;SEM organization_id&quot;). O NexvyPayments cobra clientes-finais de <strong>vários tenants</strong> → precisa de <code>organization_id</code>.</p>
+<p class='li'>3. <strong><code>billing_history</code> da plataforma = molde de schema, não lógica.</strong> As tabelas <code>platform_crm_*</code> (tenant-of-one, RLS via <code>has_role</code>) servem como <strong>exemplo de estilo DDL/RLS</strong>, não como fonte de comportamento de cobrança. O comportamento (pagador/fatura/boleto/PIX/NFS-e/conciliação) permanece <strong>100% greenfield e válido</strong> — nunca existiu no Vendus nem no Beauty.</p>
+<p class='li'>4. <strong>Gaps já fechados no Beauty.</strong> LGPD-consents (<code>migrations_salao/20260619_lgpd_consents.sql</code>) e automação (<code>migrations_salao/20260626_salon_automation_foundation.sql</code>) <strong>existem</strong> → E2 parte deles, não recria do zero.</p>
+<p class='li'>5. <strong>Novo entregável de isolamento (A7).</strong> Fork gerenciado exige que as mods de cobrança fiquem 100% ISOLADAS (arquivos/migrations próprios e aditivos) e que todo delta inevitável no core Vendus seja registrado em <code>docs/CORE-DELTA.md</code>. Entregável e critério binário em §3.2.</p>
+
+<p>O núcleo de cobrança (C6/NotaAS/entidade Fatura/Pagador/lote/conciliação) <strong>não muda de conteúdo</strong> — muda apenas de *lar* (esteira <code>migrations_cobranca/</code>) e de *coordenadas de reuso* (Beauty em vez de Vendus). Os 25 entregáveis, os critérios binários, o OpenAPI 3.1, a matriz de conformidade (status PENDENTE) e os 9 gates permanecem.</p>
+
+<h3>0.1 Coordenadas de reuso RE-VERIFICADAS no Beauty (grep/read diretos, 2026-07-06)</h3>
+
+<div class='tw'><table><thead><tr><th>Motor / recurso</th><th>Coordenada Vendus (as-is)</th><th><strong>Coordenada Beauty (RE-VERIFICADA)</strong></th><th>Uso no spec</th></tr></thead><tbody><tr><td>Cofre AES-256-GCM (chave-mestra + cifra <code>v1:</code>)</td><td><code>meta-crypto.ts:25-51</code></td><td><code>apps/NexvyBeauty/supabase/functions/_shared/meta-crypto.ts:9</code> (<code>getMasterKey</code> via <code>get_or_create_meta_master_key</code>), <code>:25</code> (<code>encryptSecret</code>), <code>:38</code> (<code>&#x27;v1:&#x27;</code>), <code>:41-48</code> (<code>decryptSecret</code>)</td><td>A4 (cofre <code>billing_credentials</code>)</td></tr><tr><td>Chave-mestra GLOBAL única (risco A1/P-COBR-001)</td><td><code>meta-crypto.ts:11</code></td><td><code>apps/NexvyBeauty/supabase/functions/_shared/meta-crypto.ts:11</code> (<code>rpc(&#x27;get_or_create_meta_master_key&#x27;)</code> — uma chave p/ todos os tenants)</td><td>P-COBR-001 (HKDF por-org)</td></tr><tr><td>RLS canônica multi-tenant</td><td><code>supabase/migrations/*</code> (<code>get_user_organization</code>)</td><td><code>apps/NexvyBeauty/supabase/migrations_salao/20260618_erp_salao.sql:28-63</code> (<code>organization_id = get_user_organization(auth.uid())</code>, 4 policies + índice <code>_org</code>)</td><td>A5 (padrão RLS de <code>migrations_cobranca/</code>)</td></tr><tr><td>Molde tenant-of-one (billing_history)</td><td><code>billing_history</code> platform</td><td><code>apps/NexvyBeauty/supabase/migrations_platform_crm/20260701_platform_crm_schema.sql:7</code> (&quot;Dado GLOBAL da plataforma (tenant-of-one) =&gt; SEM organization_id&quot;), <code>:16</code> (RLS via <code>has_role</code>)</td><td>molde de schema <strong>apenas</strong></td></tr><tr><td>Registry de tools IA (extensão trivial)</td><td><code>registry.ts:5-17</code></td><td><code>apps/NexvyBeauty/supabase/functions/_shared/tools/registry.ts:5-16</code> (<code>ALL_TOOLS</code>; <code>gerarLinkPagamentoTool</code> = esqueleto), <code>impl/</code> presente</td><td>D5 (4 tools novas + registro)</td></tr><tr><td>Orchestrator intent <code>financeiro</code> nativa</td><td><code>orchestrator.ts:6,51</code></td><td><code>apps/NexvyBeauty/supabase/functions/_shared/orchestrator.ts:7</code> (<code>Intent</code> inclui <code>financeiro</code>), <code>:50</code> (<code>financeiro → boleto, reembolso, cobrança, nota fiscal</code>)</td><td>D5 (roteamento IA já reconhece cobrança)</td></tr><tr><td>Executor de step_runs lead-cêntrico</td><td><code>cadence-tick:298-312</code>, <code>computeScheduledAt:35-41</code></td><td><code>apps/NexvyBeauty/supabase/functions/cadence-tick/index.ts:12</code> (<code>MAX_PER_TICK=50</code>), <code>:34-37</code> (<code>computeScheduledAt</code> por <code>delay_value</code>/<code>delay_unit</code>), <code>:42-50</code> (condições por <code>lead_id</code>)</td><td>D1/D2/D3 (reuso limitado ao executor; trigger/contexto/stop por fatura = novo)</td></tr><tr><td>Régua-lite por evento (análogo &quot;fatura vencendo&quot;)</td><td>—</td><td><code>apps/NexvyBeauty/supabase/functions/salon-automation-run/index.ts:7</code> (<code>dry_run</code> default), <code>:25</code> (TZ <code>America/Sao_Paulo</code>), <code>:46</code> (<code>pacote_vencendo</code>), <code>:59</code> (idempotência por insert duplicado)</td><td>referência de padrão p/ D2</td></tr><tr><td>Fila pgmq de e-mail (fallback E1)</td><td><code>email_infra.sql:131-175</code></td><td><code>apps/NexvyBeauty/supabase/functions/process-email-queue/index.ts</code> + <code>_shared/platform-email-send.ts</code> (fila transacional pgmq no Beauty; o <code>email_infra.sql:131-175</code> do Vendus <strong>não existe com esse nome</strong> — o análogo é <code>process-email-queue</code>)</td><td>E1 (fallback e-mail p/ payer sem WhatsApp)</td></tr><tr><td>WhatsApp dual-provider</td><td><code>evolution-send</code>, <code>meta-crypto.ts</code></td><td><code>apps/NexvyBeauty/supabase/functions/evolution-send/index.ts</code>, <code>_shared/meta-crypto.ts</code>, <code>platform-meta-whatsapp-webhook/</code></td><td>D4 (régua Meta prod)</td></tr></tbody></table></div>
+
+<blockquote><strong>VERIFICAR na implementação (contradições marcadas pelo mapa §6, ainda abertas):</strong></blockquote>
+<blockquote>- <code>_shared/ai-router.ts</code> existe no Beauty mas divergiu do vendus-ref — validar contrato <code>resolveAIConfig(org, capability)</code> antes de assumir comportamento do as-is §4.4.</blockquote>
+<blockquote>- <code>_shared/whatsapp-router.ts</code> <strong>NÃO está</strong> em <code>apps/NexvyBeauty/supabase/functions/_shared/</code> (presente no vendus-ref, ausente no Beauty) — descobrir ONDE o Beauty roteia Meta-vs-Evolution antes de assumir <code>whatsapp-router.ts:90-92</code> do as-is. D4 depende disso.</blockquote>
+<blockquote>- Fonte da cascata (Oficinas vs <code>cp -r Beauty</code>): decidir antes de rodar (mapa §1/§4). A Fase C do <code>cascade-core.sh</code> copia src de Oficinas e conflita com <code>cp -r apps/NexvyBeauty</code> — usar cascade só p/ Fases A+B (schema+edges) e manter <code>src/</code> do Beauty.</blockquote>
+
+<hr>
+
+<h2>1. Sumário e veredito</h2>
+
+<p><strong>Veredito do planner adversarial: SIM-COM-CORREÇÕES — aplicadas integralmente neste spec.</strong></p>
+
+<p>O confronto de 9 alegações do blueprint contra código real confirmou as citações de reuso (agora re-ancoradas no Beauty, §0.1). A premissa falsa era de <strong>esforço</strong>: &quot;portar é fácil / adapter é fino&quot;. Resultado: 5 pontos de quebra, 11 lacunas de escopo e 13 correções — todas incorporadas nas §2–§8 abaixo.</p>
+
+<p><strong>Nota de reconciliação da sessão:</strong> a quebra <strong>#3</strong> (sandbox NotaAS não documentado) foi <strong>superada pelo adendo §H</strong> do <code>notaas-report.md</code> — homologação EXISTE (&quot;notas emitidas não têm valor fiscal&quot;, toggle &quot;Ativar Produção&quot; por organização/projeto). A correção 3 muda de &quot;descobrir se há sandbox&quot; para &quot;critérios de F3 rodam em homologação; cutover de produção é gate humano&quot;. O adendo também trouxe: <strong>cota SaaS Pro = 2.000 notas/mês &lt; teto D5 (5.000)</strong> → gate <strong>G-QUOTA</strong> criado; campo <strong><code>referencia</code></strong> confirmado como chave de idempotência/correlação do outbox; endpoints canônicos confirmados (§H.2, refletidos no OpenAPI §4).</p>
+
+<p><strong>O que muda vs roadmap original (resumo executivo):</strong></p>
+<p class='li'>1. <strong>A0 (PoC mTLS edge→C6)</strong> entra como PRIMEIRO entregável do trilho C6 — gate binário com fallback arquitetural nomeado (micro-serviço C6 fora do edge, colide com P4 → decisão do Marcelo).</p>
+<p class='li'>2. <strong>F4 (régua) redimensionada como construção nova</strong> — trigger por fatura + contexto de fatura na mensagem + stop por fatura são novos; só o executor de <code>step_runs</code> (<code>apps/NexvyBeauty/supabase/functions/cadence-tick/index.ts</code>) é reuso.</p>
+<p class='li'>3. <strong>G-C6 dividido</strong> em G-C6-SANDBOX e G-C6-PROD; <strong>G-QUOTA criado</strong>; G-NOTAAS reduzido a residual.</p>
+<p class='li'>4. <strong>DDL enriquecida</strong>: multa/juros, retenções fiscais, <code>cnpj</code> no cofre, estado <code>substituida</code> na máquina de estados.</p>
+<p class='li'>5. <strong><code>renegociar</code> especificada</strong> (§2, correção 7): acordo gera N faturas-parcela vinculadas a <code>agreement_id</code>; fatura original → <code>substituida</code>.</p>
+<p class='li'>6. <strong>4 marcos de valor</strong> reordenados com homologação E2E antes de qualquer produção (§3.3).</p>
+<p class='li'>7. <strong>[REASSENTAMENTO] A7 — isolamento do fork</strong> entra na Fase A: mods de cobrança em <code>migrations_cobranca/</code> (aditivo) + <code>CORE-DELTA.md</code> mantido (mapa §0.1).</p>
+
+<hr>
+
+<h2>2. As 13 correções aplicadas</h2>
+
+<div class='tw'><table><thead><tr><th>#</th><th>Correção (veredito 3a)</th><th>O que mudou no plano (neste spec)</th></tr></thead><tbody><tr><td>1</td><td><strong>[BLOQUEADOR] PoC mTLS edge→C6 antes de tudo no trilho C6</strong></td><td><strong>A0 inserido como primeiro entregável do trilho C6</strong> (antes de B1). Critério binário: <code>POST /v1/auth</code> sandbox C6, com client cert, de DENTRO de edge function deployada → 200 + <code>access_token</code>. <strong>Fallback arquitetural nomeado:</strong> se <code>Deno.createHttpClient({cert,key})</code> indisponível no runtime gerenciado Supabase → micro-serviço C6 fora do edge (container leve no VPS existente), o que colide com P4 e exige decisão HITL do Marcelo ANTES de F2. O GET de confirmação do c6-webhook depende do mesmo mTLS (encadeado com quebra #5).</td></tr><tr><td>2</td><td><strong>[BLOQUEADOR] Régua por fatura = construção nova</strong></td><td>Decisão 7 do blueprint reescrita: <code>cadence-*</code> do Beauty é lead-cêntrico (condições por <code>lead_id</code> em <code>apps/NexvyBeauty/supabase/functions/cadence-tick/index.ts:42-50</code>; agenda por delay em <code>computeScheduledAt</code> <code>:34-37</code>, não por due_date). F4 redimensionada: <strong>reusa-se apenas o EXECUTOR de <code>step_runs</code></strong>; são construção nova: (a) <code>invoice_id</code> no enrollment (<code>source_ref</code> estruturado), (b) tick passa fatura/valor/vencimento ao outreach, (c) stop POR FATURA (pagar 1 de 3 não para as outras 2 réguas), (d) agendamento por <code>due_date</code> (D-3 = vencimento−3d). Entregáveis D1–D3.</td></tr><tr><td>3</td><td><strong>G-NOTAAS superado pelo adendo §H</strong></td><td>Sandbox/homologação EXISTE. Critérios de C1–C3 rodam em <strong>homologação</strong>; toggle &quot;Ativar Produção&quot; = gate humano (dentro de G-NOTAAS-resid). G-NOTAAS reduzido ao residual §H.3: preço R$/nota, prazo de cancelamento por município, cobertura do município do case #1.</td></tr><tr><td>4</td><td><strong>verify_jwt dos webhooks com dono (A6)</strong></td><td>Entregável explícito A6: <code>curl</code> externo SEM JWT em <code>c6-webhook</code>/<code>notaas-webhook</code> → 200; funções de dinheiro (<code>c6-billing</code>, <code>invoice-batch-generate</code>, <code>notaas-emit</code>) → 401. Corrigido o registro: <code>config.toml</code> do app tem 1 linha (<code>project_id</code>), NÃO &quot;0 linhas&quot;; o mecanismo <code>verify_jwt=false</code> por função vive no deploy Lovable/dashboard, não versionado — A6 documenta e prova por curl.</td></tr><tr><td>5</td><td><strong>Split G-C6</strong></td><td>G-C6 dividido: <strong>G-C6-SANDBOX</strong> (credenciais sandbox para desenvolver F2 — destrava B1) e <strong>G-C6-PROD</strong> (conta PJ do case #1 + tarifa de boleto negociada ≤R$1,20 — gate do Marco 2). Tarifa é gate de viabilidade da margem (§8.2 do blueprint), não detalhe.</td></tr><tr><td>6</td><td><strong>DDL invoices += multa/juros + estado <code>substituida</code></strong></td><td><code>invoices</code> ganha: <code>valor_original numeric(12,2)</code>, <code>multa_pct numeric(5,2)</code>, <code>juros_pct numeric(5,2)</code>, <code>valor_multa numeric(12,2)</code>, <code>valor_juros numeric(12,2)</code>. Máquina de estados ganha <strong><code>substituida</code></strong> (terminal): 2ª via de boleto vencido = NOVA emissão com nova <code>referencia</code>/<code>nosso_numero</code>, fatura antiga → <code>substituida</code> com <code>metadata.substituted_by = &lt;invoice_id novo&gt;</code>. Transições novas: <code>vencida → substituida</code>, <code>emitida → substituida</code> (renegociação). Entregável A5.</td></tr><tr><td>7</td><td><strong><code>renegociar</code> especificada ANTES de F4</strong></td><td><strong>Materialização definida (recomendação deste spec, adotada):</strong> acordo de renegociação cria registro em <code>billing_agreements</code> (nova tabela: <code>id, organization_id, payer_id, invoice_id_original, n_parcelas, desconto_pct, status, aprovado_por</code>) e <strong>gera N novas faturas-parcela vinculadas por <code>agreement_id</code></strong> (coluna nova em <code>invoices</code>); a fatura original vai a <strong><code>substituida</code></strong>. Critérios: acordo de 3 parcelas → 3 invoices novas com <code>agreement_id</code> preenchido + original <code>substituida</code>; desconto &gt; alçada do tenant → handoff humano (nenhuma fatura criada); acordo é idempotente por <code>(invoice_id_original)</code> ativo. Entregável D5.</td></tr><tr><td>8</td><td><strong>Multi-CNPJ: coluna <code>cnpj</code> no cofre</strong></td><td><code>billing_credentials</code> muda <code>UNIQUE(organization_id, provider)</code> → <strong><code>UNIQUE(organization_id, provider, cnpj)</code></strong> (custo: 1 coluna). Nota: multi-CNPJ NotaAS é serviço contratado (limite de projetos por plano, §H.1.5) → <strong>v1 opera com 1 CNPJ por tenant, limitação declarada</strong> (P-COBR-004), mas o schema não trava a evolução. Entregável A5.</td></tr><tr><td>9</td><td><strong>Fallback e-mail para pagador sem WhatsApp</strong></td><td>Incluído (não subtraído): pagador sem <code>whatsapp</code> → régua degrada para e-mail reusando a fila pgmq de e-mail existente (<code>apps/NexvyBeauty/supabase/functions/process-email-queue/index.ts</code> + <code>_shared/platform-email-send.ts</code>). Entregável E1.</td></tr><tr><td>10</td><td><strong>Dia útil no vencimento</strong></td><td><code>invoice-batch-generate</code> conecta <code>business_hours</code>/<code>holidays</code> existentes no CRM Beauty: vencimento em feriado/fim de semana → rola para dia útil seguinte. Critério dentro de B3.</td></tr><tr><td>11</td><td><strong>Retenções fiscais no modelo</strong></td><td><code>contracts</code> e <code>invoices</code> ganham <code>iss_retido boolean DEFAULT false</code> e <code>retencoes jsonb DEFAULT &#x27;{}&#x27;</code> (<code>{pis, cofins, irrf, csll, cp}</code> em R$ — espelha payload NotaAS §A/H.2). Case #2 (cowork B2B) precisa. Entregável A5; <code>notaas-emit</code> propaga (C1).</td></tr><tr><td>12</td><td><strong>Admin burden na unit economics</strong></td><td>Instrumentação E3 ganha contador de eventos operacionais (nota em erro, cancelamento, renovação A1, município não coberto) → h/mês estimadas no piloto e incorporadas à unit economics. Medição no piloto = P-COBR-002.</td></tr><tr><td>13</td><td><strong>Item 0.3 vira caça a policies permissivas</strong></td><td>Auditoria RLS (A3) reescopada: hipótese &quot;RLS ausente em massa&quot; NÃO se sustentou (amostra pós-baseline: todas ON e org-scoped). Risco real: <strong>policies permissivas</strong> — ex.: <code>webchat_conversations</code> INSERT <code>WITH CHECK (true)</code>. A3 = 100% ON <strong>+ varredura de <code>WITH CHECK (true)</code>/<code>USING (true)</code></strong> nas tabelas pós-baseline, com lista justificada das exceções.</td></tr></tbody></table></div>
+
+<hr>
+
+<h2>3. Fases e entregáveis auditáveis</h2>
+
+<h3>3.1 Legenda de MÉTODO DE AFERIÇÃO</h3>
+
+<div class='tw'><table><thead><tr><th>Código</th><th>Método</th><th>Quem executa</th></tr></thead><tbody><tr><td>TA</td><td>Teste automatizado (Deno test / SQL de asserção versionado no repo)</td><td>CI / Claude</td></tr><tr><td>CURL</td><td>curl real contra ambiente deployado (sandbox/homolog/prod)</td><td>Claude + humano observa</td></tr><tr><td>INSP</td><td>Inspeção manual verificável (ls, grep, painel, screenshot)</td><td>Claude / humano</td></tr><tr><td>VEXT</td><td>Validador externo (query de auditoria SQL, scanner, revisor)</td><td>Claude + revisor</td></tr><tr><td>CI</td><td>Gate de pipeline (grep/lint bloqueante)</td><td>CI</td></tr></tbody></table></div>
+
+<h3>3.2 Tabela mestre de entregáveis (A0..E4 do veredito + A7 de isolamento, enriquecida)</h3>
+
+<blockquote><strong>Convenção de paths (REASSENTADA):</strong> onde a coluna &quot;Artefatos concretos&quot; diz <code>supabase/functions/...</code> ou <code>supabase/migrations_cobranca/...</code>, o caminho absoluto no fork é <code>apps/NexvyPayments/supabase/...</code>. Novos schemas de cobrança vão em <code>apps/NexvyPayments/supabase/migrations_cobranca/</code> (esteira nova, aditiva, espelhando <code>migrations_salao/</code>); reuso de <code>_shared/*</code> vem de <code>apps/NexvyBeauty/supabase/functions/_shared/</code> (copiado no fork, editado só quando aditivo).</blockquote>
+
+<div class='tw'><table><thead><tr><th>ID</th><th>Descrição</th><th>Artefatos concretos</th><th>Critério binário</th><th>Aferição</th><th>Gate HITL</th></tr></thead><tbody><tr><td><strong>A0</strong></td><td>PoC mTLS edge→C6 (PRIMEIRO do trilho C6)</td><td><code>supabase/functions/c6-mtls-poc/index.ts</code> (descartável); relatório de resultado no PR</td><td><code>POST /v1/auth</code> sandbox C6 de dentro de EF deployada → 200 + <code>access_token</code>. FALHOU → fallback micro-serviço fora do edge, decisão registrada</td><td>CURL</td><td><strong>Marcelo decide arquitetura se falhar</strong> (colisão com P4)</td></tr><tr><td><strong>A1</strong></td><td>Remover <code>admin-provision-users</code> (se presente no fork)</td><td>delete de <code>supabase/functions/admin-provision-users/</code>; grep no front</td><td><code>ls</code> → não existe; grep por chamadas no front → 0 hits</td><td>INSP+CI</td><td>Revisor (G-SEC-REV)</td></tr><tr><td><strong>A2</strong></td><td>Helper <code>_shared/require-caller-org.ts</code></td><td><code>supabase/functions/_shared/require-caller-org.ts</code> + testes</td><td>org do body ignorada → 403 se cross-org; sem JWT → 401; JWT válido → org do token</td><td>TA</td><td>—</td></tr><tr><td><strong>A3</strong></td><td>Auditoria RLS tabelas pós-baseline (ON + permissividade)</td><td><code>docs/security/rls-audit-2026-07.md</code> + query SQL versionada</td><td>100% das tabelas com <code>organization_id</code> → RLS ON; policies <code>WITH CHECK (true)</code>/<code>USING (true)</code> listadas e justificadas ou corrigidas</td><td>VEXT</td><td>Revisor (G-SEC-REV)</td></tr><tr><td><strong>A4</strong></td><td>Cofre <code>billing_credentials</code> cifrado</td><td>migration <code>migrations_cobranca/*_billing_credentials.sql</code>; <code>_shared/billing-crypto.ts</code> (reusa <code>apps/NexvyBeauty/supabase/functions/_shared/meta-crypto.ts:9,25,41</code>)</td><td><code>SELECT</code> como anon/authenticated → 0 linhas; round-trip <code>v1:</code> → decifra = plaintext; nada legível no banco</td><td>TA</td><td>—</td></tr><tr><td><strong>A5</strong></td><td>DDL modelo completo (com correções 6/8/11) na esteira <code>migrations_cobranca/</code></td><td>migrations em <code>migrations_cobranca/</code>: <code>payers</code>, <code>billing_groups</code>, <code>contracts</code>, <code>invoices</code> (+multa/juros/valor_original/<code>agreement_id</code>/retenções/estado <code>substituida</code>), <code>invoice_items</code>, <code>billing_events</code>, <code>billing_agreements</code>; <code>cnpj</code> em <code>billing_credentials</code> + <code>UNIQUE(org,provider,cnpj)</code>; RLS canônica <code>organization_id = get_user_organization(auth.uid())</code> (padrão <code>migrations_salao/20260618_erp_salao.sql:28-63</code>)</td><td>INSERT cross-org via client → rejeitado; <code>\d invoices</code> mostra multa_pct/juros_pct/valor_multa/valor_juros/valor_original/agreement_id/iss_retido/retencoes; CHECK de status inclui <code>substituida</code>; toda tabela tem <code>organization_id</code> + índice <code>_org</code></td><td>TA+INSP</td><td>—</td></tr><tr><td><strong>A6</strong></td><td>verify_jwt=false só nos webhooks</td><td>doc de deploy + prova curl versionada em <code>docs/security/verify-jwt-matrix.md</code></td><td>curl externo SEM JWT: <code>c6-webhook</code>/<code>notaas-webhook</code> → 200 (ou 4xx de validação, nunca 401 JWT); <code>c6-billing</code>/<code>invoice-batch-generate</code>/<code>notaas-emit</code> → 401</td><td>CURL</td><td>—</td></tr><tr><td><strong>A7</strong></td><td><strong>[REASSENTAMENTO] Isolamento do fork (fork gerenciado)</strong></td><td><code>docs/CORE-DELTA.md</code> (registro de todo delta inevitável no core Vendus); confirmação de que schemas de cobrança vivem só em <code>migrations_cobranca/</code></td><td>grep: nenhuma tabela de cobrança (<code>payers</code>/<code>invoices</code>/<code>contracts</code>/<code>billing_*</code>) definida fora de <code>migrations_cobranca/</code>; <strong>toda</strong> edição a arquivo do core (ex. <code>src/main.tsx</code>, <code>src/config/brand.ts</code> p/ branding) está listada em <code>CORE-DELTA.md</code> com justificativa; migrations de cobrança são <strong>aditivas</strong> (nenhum <code>ALTER</code>/<code>DROP</code> em tabela do core sem entrada em CORE-DELTA)</td><td>INSP+CI</td><td>Revisor (G-SEC-REV)</td></tr><tr><td><strong>B1</strong></td><td><code>c6-billing</code> (porta de <code>c6.py:217-515</code> + parser <code>:917-1069</code>, pós-A0)</td><td><code>supabase/functions/c6-billing/index.ts</code> + <code>_shared/c6-payloads.ts</code> (puro) + testes do parser</td><td>Sandbox: Bolepix emitido → <code>nosso_numero</code>+linha digitável+QR; consulta idempotente; cancelamento OK</td><td>CURL</td><td>G-C6-SANDBOX</td></tr><tr><td><strong>B2</strong></td><td>Outbox <code>billing_outbox</code> (pgmq)</td><td>migration <code>migrations_cobranca/*_billing_outbox.sql</code> (<code>pgmq.create(&#x27;billing_outbox&#x27;)</code>) + wrappers RPC (molde da fila pgmq do Beauty, <code>process-email-queue</code>) + DLQ</td><td><code>enqueue</code>/<code>read_batch</code>/<code>move_to_dlq</code> funcionam via RPC; msg com <code>referencia</code> gravada ANTES do POST</td><td>TA</td><td>—</td></tr><tr><td><strong>B3</strong></td><td><code>invoice-batch-generate</code> idempotente + dia útil</td><td><code>supabase/functions/invoice-batch-generate/index.ts</code></td><td>2× mesma competência → 0 faturas duplicadas (UNIQUE segura); vencimento em feriado/fds → dia útil seguinte (<code>business_hours</code>/<code>holidays</code>)</td><td>TA</td><td>—</td></tr><tr><td><strong>B4</strong></td><td><code>c6-webhook</code> + GET de confirmação (mTLS)</td><td><code>supabase/functions/c6-webhook/index.ts</code> (parser 100% reuso <code>c6.py:917-1069</code>)</td><td>webhook pago → fatura <code>paga</code> + <code>billing_events(paga)</code>; webhook repetido → idempotente (1 evento); payload não confirmado pelo GET → rejeitado</td><td>TA+CURL</td><td>—</td></tr><tr><td><strong>B5</strong></td><td>1ª fatura boleto+PIX em PRODUÇÃO (case #1)</td><td>credencial prod no cofre; execução real</td><td>boleto real registrado no C6 com <code>nosso_numero</code> de produção</td><td>INSP</td><td><strong>G-C6-PROD</strong></td></tr><tr><td><strong>C1</strong></td><td><code>notaas-emit</code> lote (homologação)</td><td><code>supabase/functions/notaas-emit/index.ts</code> (<code>POST /api/v1/emitir/batch</code>, ≤100/lote, <code>referencia</code>=invoice_id, retenções propagadas)</td><td>lote 100 → 202 <code>{batchId}</code>; 101 itens → split em 2 chamadas; <code>notaas_invoice_id</code> gravado por fatura; NUNCA reenvia sem consultar status por <code>referencia</code></td><td>TA + CURL homolog</td><td>G-NOTAAS-resid + G-A1</td></tr><tr><td><strong>C2</strong></td><td><code>notaas-webhook</code> HMAC + dedup</td><td><code>supabase/functions/notaas-webhook/index.ts</code> (HMAC-SHA256 timing-safe de <code>X-Notaas-Signature</code>; dedup por <code>X-Notaas-Delivery</code>)</td><td>assinatura inválida → rejeitado (401/403); <code>deliveryId</code> repetido → processado 1×; <code>nfse.issued</code> → <code>nfse_status=&#x27;emitida&#x27;</code>; <code>documents_ready</code> 2× (partial→complete) tolerado</td><td>TA</td><td>—</td></tr><tr><td><strong>C3</strong></td><td>Imutabilidade fiscal</td><td>trigger/guard SQL (em <code>migrations_cobranca/</code>) + fluxo formal de cancelamento</td><td><code>DELETE</code> de nota emitida → rejeitado; cancelar = <code>POST /cancelar</code> + <code>billing_events(cancelada)</code> + trilha</td><td>TA</td><td>—</td></tr><tr><td><strong>D1</strong></td><td>Trigger da régua POR FATURA</td><td><code>supabase/functions/billing-cadence-enroll/index.ts</code>; coluna/uso de <code>invoice_id</code> no enrollment (<code>source_ref</code> estruturado); tick passa contexto</td><td><code>billing_events(emitida)</code> → enrollment com <code>invoice_id</code>; mensagem cita fatura/valor/vencimento (não genérica)</td><td>TA</td><td>—</td></tr><tr><td><strong>D2</strong></td><td>Agendamento por due_date</td><td>extensão do agendador (D-3/D0/D+1/D+7 relativos a <code>vencimento</code>, não <code>now+delay</code>; contraste <code>cadence-tick:34-37</code>); TZ America/Sao_Paulo (padrão <code>salon-automation-run:25</code>)</td><td>fatura vencendo em D+3 → step D-3 agendado HOJE; D+7 agendado para vencimento+7</td><td>TA</td><td>—</td></tr><tr><td><strong>D3</strong></td><td>Stop POR FATURA</td><td>stop keyed por <code>(enrollment, invoice_id)</code>, não por <code>lead_id</code> (contraste <code>cadence-tick:42-50</code>)</td><td>payer com 2 faturas abertas paga 1 → régua da paga PARA, régua da outra CONTINUA; nenhuma msg pós-pagamento da paga</td><td>TA</td><td>—</td></tr><tr><td><strong>D4</strong></td><td>Régua Meta prod + opt-in</td><td>templates utility (fatura/lembrete/atraso/2ª via) aprovados; <code>optin-guard.ts</code> no caminho; Evolution só dev/inbound. <strong>VERIFICAR roteamento Meta-vs-Evolution</strong> (<code>whatsapp-router.ts</code> ausente no Beauty, §0.1)</td><td>régua prod usa template aprovado; sem opt-in → NÃO envia; log do envio com template_id</td><td>CURL+INSP</td><td><strong>G-META-TPL</strong></td></tr><tr><td><strong>D5</strong></td><td>4 tools IA + <code>renegociar</code> materializada</td><td><code>_shared/tools/impl/{consultar_fatura,segunda_via,enviar_comprovante,renegociar}.ts</code> + registro no <code>registry.ts</code> (padrão <code>apps/NexvyBeauty/supabase/functions/_shared/tools/registry.ts:5-16</code>); prompt-injection shield §11.3</td><td>2ª via → NOVA emissão (nova <code>referencia</code>/<code>nosso_numero</code>) + original <code>substituida</code>; <code>renegociar</code> → <code>billing_agreements</code> + N faturas-parcela com <code>agreement_id</code> + original <code>substituida</code>; desconto&gt;alçada → handoff (0 faturas); input &gt;8k chars/padrão de injeção → bloqueado+logado</td><td>TA</td><td>—</td></tr><tr><td><strong>E1</strong></td><td>Conciliação + baixa manual + fallback e-mail</td><td>painel de inadimplência; ação de baixa manual; rota e-mail via pgmq p/ payer sem WhatsApp (<code>process-email-queue</code>)</td><td>baixa manual grava <code>billing_events(paga){origem:&#x27;manual&#x27;}</code>; payer sem WhatsApp → régua envia e-mail</td><td>TA</td><td>—</td></tr><tr><td><strong>E2</strong></td><td>LGPD mínimo + audit PII</td><td>audit CRUD <code>payers</code> → <code>platform_audit_logs</code>; endpoint de erasure; registro de base legal por tenant; retenção por tabela. <strong>Parte de</strong> <code>migrations_salao/20260619_lgpd_consents.sql</code> (já existe no Beauty)</td><td>CRUD em <code>payers</code> gera linha de audit; erasure anonimiza contato MANTENDO fatura/nota (obrigação fiscal 5 anos)</td><td>TA</td><td>—</td></tr><tr><td><strong>E3</strong></td><td>Instrumentação custo real + limites Lovable + admin burden</td><td>métricas: custo/fatura medido, % sem humano, invocations/mês por tenant, contador de eventos operacionais (correção 12)</td><td>custo/fatura MEDIDO (não estimado) visível; invocations/mês visível; gatilho quantificado de migração VPS registrado</td><td>INSP</td><td><strong>G-INFRA</strong></td></tr><tr><td><strong>E4</strong></td><td>Prova de horizontalidade (case #2 cowork)</td><td>onboarding do cowork usando só <code>metadata</code></td><td>cowork onboarded com <strong>0 migrations novas de vertical</strong> e 0 código novo</td><td>INSP</td><td><strong>G-PILOTO</strong></td></tr></tbody></table></div>
+
+<p><strong>Total: 26 entregáveis</strong> (A0–A7: 8 · B1–B5: 5 · C1–C3: 3 · D1–D5: 5 · E1–E4: 4). *(Era 25; A7 de isolamento do fork adicionado no reassentamento.)*</p>
+
+<h3>3.3 Ordem topológica e marcos de valor</h3>
+
+<pre><code>A0 (PoC mTLS — decide arquitetura do trilho C6)
+ └─► A1 → A2 → A3 → A4 → A5 → A6 → A7        [Fase A: hardening+dados+isolamento — G-SEC-REV]
+        └─► B2 → B3 ─┬─► B1 → B4             [Fase B: emissão C6 — G-C6-SANDBOX]
+                     └─► C1 → C2 → C3        [Fase C: NFS-e homologação — G-A1, G-NOTAAS-resid]
+                              │
+        ══ MARCO 1 ══ 1ª fatura em HOMOLOGAÇÃO com boleto+PIX (sandbox C6) + NFS-e
+                      (homolog NotaAS) E2E, vinculados à MESMA fatura
+                              │
+                     B5 [G-C6-PROD] + toggle &quot;Ativar Produção&quot; NotaAS [G-NOTAAS-resid] + G-QUOTA
+        ══ MARCO 2 ══ 1ª fatura PROD do case #1 (boleto real + nota real)
+                              │
+                     D1 → D2 → D3 → D4 [G-META-TPL] → D5
+                              │
+                     E1 → E2 → E3 [G-INFRA]
+        ══ MARCO 3 ══ 1º ciclo mensal 100% automático do case #1
+                      (lote→emissão→régua→conversa→conciliação, ≥95% sem toque humano)
+                              │
+                     E4 [G-PILOTO]
+        ══ MARCO 4 ══ case #2 (cowork) onboarded SEM código novo (prova D2 horizontal)</code></pre>
+
+<p>Gargalos externos disparados CEDO (na Fase A/B, consumidos depois): G-C6-PROD (relacionamento bancário), G-A1 (cert do tenant), G-META-TPL (submissão Meta), G-NOTAAS-resid (perguntas ao dono), G-QUOTA (upgrade de plano NotaAS).</p>
+
+<hr>
+
+<h2>4. OpenAPI 3.1 — superfície de API do produto</h2>
+
+<p>Skill <code>openapi-spec-generation</code> aplicada. Convenções: rotas reais são <code>POST {SUPABASE_URL}/functions/v1/&lt;nome&gt;</code>; auth de usuário = JWT Supabase (Bearer); webhooks inbound são públicos (<code>verify_jwt=false</code>) com validação própria (HMAC NotaAS / GET de confirmação C6) e aparecem tanto como <code>paths</code> (nossos receptores) quanto na seção <code>webhooks</code> (contrato do emissor terceiro). Tools do agente IA não são HTTP público — documentadas com <code>x-internal: true</code>. <strong>Todos os exemplos são sintéticos (CNPJs/CPFs fictícios).</strong></p>
+
+<pre><code>openapi: 3.1.0
+info:
+  title: NexvyPayments — API do produto (edge functions)
+  version: 0.1.0
+  description: &gt;
+    Superfície de API do módulo de cobranças do NexvyPayments (fork gerenciado
+    do NexvyBeauty/Vendus, embutido no monorepo SaasPlugin). Edge functions
+    Supabase (Deno). Multi-tenant por organization_id (RLS canônica
+    get_user_organization). A org do caller vem SEMPRE do JWT
+    (require-caller-org); organization_id em body é ignorado (correção D-3).
+    Núcleo de cobrança em migrations_cobranca/ (esteira nova, aditiva).
+servers:
+  - url: https://SUPABASE_REF.supabase.co/functions/v1
+    description: Projeto Supabase NOVO do NexvyPayments (SUPABASE_REF resolvido no provisionamento)
+
+security:
+  - supabaseJwt: []
+
+paths:
+  /invoice-batch-generate:
+    post:
+      operationId: invoiceBatchGenerate
+      summary: Gera o lote de faturas da competência (idempotente)
+      description: &gt;
+        Materializa invoices+invoice_items dos contratos ativos da competência.
+        Idempotente por UNIQUE(organization_id, contract_id, competencia).
+        Vencimento em feriado/fim de semana rola para dia útil seguinte.
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [competencia]
+              properties:
+                competencia: { type: string, pattern: &#x27;^\d{4}-\d{2}$&#x27;, examples: [&#x27;2026-08&#x27;] }
+                contract_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                readings:
+                  type: array
+                  description: Leituras do mês para contratos modo_valor=variavel
+                  items:
+                    type: object
+                    required: [contract_id, valor]
+                    properties:
+                      contract_id: { type: string, format: uuid }
+                      valor: { type: number, examples: [187.50] }
+            example:
+              competencia: &#x27;2026-08&#x27;
+              readings:
+                - contract_id: &#x27;11111111-1111-4111-8111-111111111111&#x27;
+                  valor: 187.50
+      responses:
+        &#x27;200&#x27;:
+          description: Lote gerado (ou já existente — idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created: { type: integer, examples: [42] }
+                  skipped_existing: { type: integer, examples: [3] }
+                  invoice_ids: { type: array, items: { type: string, format: uuid } }
+        &#x27;401&#x27;: { $ref: &#x27;#/components/responses/Unauthorized&#x27; }
+        &#x27;403&#x27;: { $ref: &#x27;#/components/responses/Forbidden&#x27; }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /c6-billing:
+    post:
+      operationId: c6Billing
+      summary: Operações C6 (emitir/consultar/cancelar) — INTERNA
+      description: &gt;
+        Chamada pelo billing-outbox-worker (service_role), não pelo front.
+        Porta Deno de c6.py. Exige mTLS com o C6 (pré-condição A0).
+        referencia é gravada ANTES do POST (idempotência de outbox).
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action, invoice_id, tipo]
+                  properties:
+                    action: { const: emitir }
+                    invoice_id: { type: string, format: uuid }
+                    tipo: { type: string, enum: [bolepix, pix] }
+                - type: object
+                  required: [action, nosso_numero]
+                  properties:
+                    action: { type: string, enum: [consultar, cancelar] }
+                    nosso_numero: { type: string, examples: [&#x27;0009876543&#x27;] }
+            example:
+              action: emitir
+              invoice_id: &#x27;22222222-2222-4222-8222-222222222222&#x27;
+              tipo: bolepix
+      responses:
+        &#x27;200&#x27;:
+          description: Resultado da operação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nosso_numero: { type: string, examples: [&#x27;0009876543&#x27;] }
+                  linha_digitavel: { type: string, examples: [&#x27;33690.00012 34567.890123 45678.901234 5 99990000018750&#x27;] }
+                  pix_copia_cola: { type: string }
+                  qr_base64: { type: string, contentEncoding: base64 }
+                  status: { type: string, enum: [registrado, liquidado, cancelado] }
+        &#x27;401&#x27;: { $ref: &#x27;#/components/responses/Unauthorized&#x27; }
+        &#x27;403&#x27;: { $ref: &#x27;#/components/responses/Forbidden&#x27; }
+        &#x27;409&#x27;:
+          description: Cobrança já emitida para esta referencia (dedup outbox)
+          content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /c6-webhook:
+    post:
+      operationId: c6Webhook
+      summary: Webhook INBOUND do C6 (liquidação) — público
+      description: &gt;
+        verify_jwt=false. C6 NÃO assina o webhook; validação = GET de
+        confirmação na API C6 (mTLS) antes de dar baixa. Idempotente por
+        (nosso_numero, evento). Payload chega como JSON duplo-escapado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Envelope C6 (string JSON duplo-escape; parser reuso c6.py:917-1069)
+            example: &#x27;{&quot;evento&quot;:&quot;liquidacao&quot;,&quot;nosso_numero&quot;:&quot;0009876543&quot;,&quot;valor_pago&quot;:187.50,&quot;pago_em&quot;:&quot;2026-08-12T14:03:00-03:00&quot;}&#x27;
+      responses:
+        &#x27;200&#x27;: { description: Recebido (processado ou descartado idempotente) }
+        &#x27;403&#x27;: { description: GET de confirmação C6 não confirmou o pagamento }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /notaas-emit:
+    post:
+      operationId: notaasEmit
+      summary: Emite NFS-e em lote via NotaAS — INTERNA
+      description: &gt;
+        Chamada pelo billing-outbox-worker. Monta payload por fatura
+        (referencia = invoice_id, ÚNICO gancho de correlação/dedup — §H.2),
+        POST /api/v1/emitir/batch (≤100/lote; &gt;100 → split). NotaAS NÃO tem
+        idempotência: NUNCA reenviar sem consultar status por referencia.
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice_ids]
+              properties:
+                invoice_ids:
+                  type: array
+                  maxItems: 100
+                  items: { type: string, format: uuid }
+            example:
+              invoice_ids: [&#x27;22222222-2222-4222-8222-222222222222&#x27;]
+      responses:
+        &#x27;202&#x27;:
+          description: Lote aceito pela NotaAS (assíncrono)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id: { type: string, examples: [&#x27;bat_xyz456&#x27;] }
+                  queued: { type: integer, examples: [1] }
+        &#x27;401&#x27;: { $ref: &#x27;#/components/responses/Unauthorized&#x27; }
+        &#x27;403&#x27;: { $ref: &#x27;#/components/responses/Forbidden&#x27; }
+        &#x27;409&#x27;:
+          description: Fatura já tem notaas_invoice_id (dedup por referencia)
+          content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /notaas-webhook:
+    post:
+      operationId: notaasWebhook
+      summary: Webhook INBOUND da NotaAS — público
+      description: &gt;
+        verify_jwt=false. Valida HMAC-SHA256 do body raw (X-Notaas-Signature,
+        comparação timing-safe) + dedup por X-Notaas-Delivery. Tolera
+        nfse.documents_ready 2× (partial→complete). Atualiza nfse_status.
+        Endpoint de cadastro do webhook: POST /api/v1/webhooks/endpoints (§H.2).
+      security: []
+      parameters:
+        - in: header
+          name: X-Notaas-Signature
+          required: true
+          schema: { type: string, examples: [&#x27;sha256=9f2c1a...&#x27;] }
+        - in: header
+          name: X-Notaas-Delivery
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: X-Notaas-Event
+          required: true
+          schema: { type: string, enum: [nfse.issued, nfse.error, nfse.cancelled, nfse.documents_ready, batch.completed] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: &#x27;#/components/schemas/NotaasWebhookEnvelope&#x27; }
+      responses:
+        &#x27;200&#x27;: { description: Processado (ou dedup — 1× por deliveryId) }
+        &#x27;401&#x27;: { description: Assinatura HMAC inválida }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /billing-cadence-enroll:
+    post:
+      operationId: billingCadenceEnroll
+      summary: Traduz evento de fatura → régua (enrollment POR FATURA)
+      description: &gt;
+        Construção nova (correção 2): enrollment carrega invoice_id
+        (source_ref estruturado); agendamento por due_date (D-3/D0/D+1/D+7,
+        TZ America/Sao_Paulo); stop por fatura, não por lead. Reusa apenas o
+        executor de step_runs (apps/NexvyBeauty/.../cadence-tick).
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice_id, event]
+              properties:
+                invoice_id: { type: string, format: uuid }
+                event: { type: string, enum: [emitida, vencendo, vencida, paga, substituida] }
+            example: { invoice_id: &#x27;22222222-2222-4222-8222-222222222222&#x27;, event: emitida }
+      responses:
+        &#x27;200&#x27;:
+          description: Enrollment criado/atualizado ou régua parada (event=paga|substituida)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollment_id: { type: string, format: uuid }
+                  action: { type: string, enum: [enrolled, rescheduled, stopped] }
+        &#x27;401&#x27;: { $ref: &#x27;#/components/responses/Unauthorized&#x27; }
+        &#x27;403&#x27;: { $ref: &#x27;#/components/responses/Forbidden&#x27; }
+        &#x27;409&#x27;: { description: Enrollment ativo já existe para esta fatura (idempotente) }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+        &#x27;429&#x27;: { $ref: &#x27;#/components/responses/TooManyRequests&#x27; }
+
+  /tools/consultar_fatura:
+    post:
+      operationId: toolConsultarFatura
+      summary: &#x27;Tool IA: consulta faturas do pagador (x-internal)&#x27;
+      x-internal: true
+      description: Invocada pelo runtime de agentes (registry.ts), nunca exposta ao público. Shield §11.3 aplicado ao input.
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payer_documento]
+              properties:
+                payer_documento: { type: string, examples: [&#x27;12345678000190&#x27;] }
+                competencia: { type: string, examples: [&#x27;2026-08&#x27;] }
+      responses:
+        &#x27;200&#x27;:
+          description: Faturas do pagador (resumo seguro p/ conversa)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: &#x27;#/components/schemas/Invoice&#x27; }
+        &#x27;401&#x27;: { $ref: &#x27;#/components/responses/Unauthorized&#x27; }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+
+  /tools/segunda_via:
+    post:
+      operationId: toolSegundaVia
+      summary: &#x27;Tool IA: 2ª via = NOVA emissão; original → substituida (x-internal)&#x27;
+      x-internal: true
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice_id]
+              properties:
+                invoice_id: { type: string, format: uuid }
+                novo_vencimento: { type: string, format: date, examples: [&#x27;2026-08-20&#x27;] }
+      responses:
+        &#x27;200&#x27;:
+          description: Nova fatura emitida (nova referencia/nosso_numero); original marcada substituida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_invoice_id: { type: string, format: uuid }
+                  linha_digitavel: { type: string }
+                  pix_copia_cola: { type: string }
+        &#x27;409&#x27;: { description: Fatura original já substituida/paga }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+
+  /tools/enviar_comprovante:
+    post:
+      operationId: toolEnviarComprovante
+      summary: &#x27;Tool IA: registra comprovante enviado pelo pagador (x-internal)&#x27;
+      x-internal: true
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice_id, media_url]
+              properties:
+                invoice_id: { type: string, format: uuid }
+                media_url: { type: string, format: uri }
+      responses:
+        &#x27;200&#x27;: { description: Comprovante anexado; fatura vai à fila de conciliação manual }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+
+  /tools/renegociar:
+    post:
+      operationId: toolRenegociar
+      summary: &#x27;Tool IA: renegociação — acordo → N faturas-parcela (x-internal)&#x27;
+      x-internal: true
+      description: &gt;
+        Materialização (correção 7): cria billing_agreements + N novas
+        faturas-parcela vinculadas por agreement_id; fatura original →
+        substituida. Desconto acima da alçada do tenant → handoff humano
+        (nenhuma fatura criada). Idempotente por acordo ativo na fatura.
+      security: [{ supabaseJwt: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoice_id, n_parcelas]
+              properties:
+                invoice_id: { type: string, format: uuid }
+                n_parcelas: { type: integer, minimum: 1, maximum: 12, examples: [3] }
+                desconto_pct: { type: number, minimum: 0, maximum: 100, examples: [5] }
+      responses:
+        &#x27;200&#x27;:
+          description: Acordo criado com faturas-parcela
+          content:
+            application/json:
+              schema: { $ref: &#x27;#/components/schemas/Agreement&#x27; }
+        &#x27;403&#x27;: { description: Desconto acima da alçada → handoff humano (acordo NÃO criado) }
+        &#x27;409&#x27;: { description: Já existe acordo ativo para esta fatura }
+        &#x27;422&#x27;: { $ref: &#x27;#/components/responses/UnprocessableEntity&#x27; }
+
+webhooks:
+  c6PaymentNotification:
+    post:
+      summary: &#x27;Callback do C6 Bank → nosso /c6-webhook&#x27;
+      description: &gt;
+        Sem assinatura documentada pelo C6 → o receptor SEMPRE confirma via
+        GET (mTLS) antes de dar baixa. Ver path /c6-webhook.
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, description: &#x27;Envelope C6 (JSON duplo-escape)&#x27; }
+      responses:
+        &#x27;200&#x27;: { description: ACK }
+  notaasEvent:
+    post:
+      summary: &#x27;Callback da NotaAS → nosso /notaas-webhook&#x27;
+      description: &gt;
+        HMAC-SHA256 (X-Notaas-Signature) + dedup (X-Notaas-Delivery).
+        5 retentativas com backoff (imediato,1m,5m,30m,2h); timeout 10s.
+        Endpoint cadastrado via POST /api/v1/webhooks/endpoints (§H.2).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: &#x27;#/components/schemas/NotaasWebhookEnvelope&#x27; }
+      responses:
+        &#x27;200&#x27;: { description: ACK (responder &lt;10s para não gerar retry) }
+
+components:
+  securitySchemes:
+    supabaseJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: &gt;
+        JWT Supabase do usuário do tenant. organization_id extraído do token
+        via get_user_organization (require-caller-org); body é ignorado.
+        Webhooks públicos usam security:[] + validação HMAC/GET.
+
+  responses:
+    Unauthorized:
+      description: Sem JWT válido (401)
+      content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+    Forbidden:
+      description: Org do caller não confere / sem role exigida (403)
+      content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+    UnprocessableEntity:
+      description: Payload inválido (422)
+      content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+    TooManyRequests:
+      description: Rate limit (429) — respeitar Retry-After
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/json: { schema: { $ref: &#x27;#/components/schemas/Error&#x27; } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, examples: [&#x27;cross_org_forbidden&#x27;] }
+        message: { type: string }
+        correlation_id: { type: string }
+
+    Payer:
+      type: object
+      required: [id, organization_id, tipo_documento, documento, nome]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        lead_id: { type: [string, &#x27;null&#x27;], format: uuid }
+        tipo_documento: { type: string, enum: [cpf, cnpj] }
+        documento: { type: string, description: &#x27;Só dígitos&#x27;, examples: [&#x27;12345678000190&#x27;] }
+        nome: { type: string, examples: [&#x27;Condominio Exemplo Ltda&#x27;] }
+        email: { type: [string, &#x27;null&#x27;], examples: [&#x27;financeiro@exemplo.test&#x27;] }
+        whatsapp: { type: [string, &#x27;null&#x27;], examples: [&#x27;+5567999990000&#x27;] }
+        endereco:
+          type: object
+          description: &#x27;{logradouro,numero,bairro,cidade,uf,cep,ibge} p/ NFS-e&#x27;
+        status: { type: string, enum: [ativo, inativo] }
+        metadata: { type: object }
+
+    Contract:
+      type: object
+      required: [id, organization_id, payer_id, descricao, modo_valor, dia_vencimento]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        payer_id: { type: string, format: uuid }
+        group_id: { type: [string, &#x27;null&#x27;], format: uuid }
+        descricao: { type: string, examples: [&#x27;Medição individualizada de água — unidade 101&#x27;] }
+        modo_valor: { type: string, enum: [fixo, variavel] }
+        valor_fixo: { type: [number, &#x27;null&#x27;] }
+        dia_vencimento: { type: integer, minimum: 1, maximum: 28 }
+        codigo_servico_nfse: { type: [string, &#x27;null&#x27;], examples: [&#x27;010700&#x27;] }
+        aliquota_iss: { type: [number, &#x27;null&#x27;], examples: [2.0] }
+        iss_retido: { type: boolean, default: false }
+        retencoes:
+          type: object
+          description: &#x27;Correção 11: {pis, cofins, irrf, csll, cp} em R$ (payload NotaAS)&#x27;
+        status: { type: string, enum: [ativo, pausado, encerrado] }
+        metadata: { type: object, description: &#x27;Vertical vive aqui: {unidade, hidrometro, sala…}&#x27; }
+
+    Invoice:
+      type: object
+      required: [id, organization_id, contract_id, payer_id, competencia, valor_total, vencimento, status]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        contract_id: { type: string, format: uuid }
+        payer_id: { type: string, format: uuid }
+        agreement_id:
+          type: [string, &#x27;null&#x27;]
+          format: uuid
+          description: &#x27;Correção 7: preenchido em faturas-parcela de renegociação&#x27;
+        competencia: { type: string, pattern: &#x27;^\d{4}-\d{2}$&#x27;, examples: [&#x27;2026-08&#x27;] }
+        valor_original: { type: [number, &#x27;null&#x27;], description: &#x27;Correção 6: valor antes de multa/juros/desconto&#x27; }
+        valor_total: { type: number, examples: [187.50] }
+        multa_pct: { type: [number, &#x27;null&#x27;], examples: [2.0] }
+        juros_pct: { type: [number, &#x27;null&#x27;], description: &#x27;% a.m.&#x27;, examples: [1.0] }
+        valor_multa: { type: [number, &#x27;null&#x27;] }
+        valor_juros: { type: [number, &#x27;null&#x27;] }
+        iss_retido: { type: boolean, default: false }
+        retencoes: { type: object }
+        vencimento: { type: string, format: date, examples: [&#x27;2026-08-10&#x27;] }
+        status:
+          type: string
+          description: Máquina de estados única (blueprint §5 + correção 6)
+          enum: [rascunho, aprovada, emitindo, emitida, erro, vencida, paga, cancelada, substituida]
+        c6_nosso_numero: { type: [string, &#x27;null&#x27;] }
+        c6_linha_digitavel: { type: [string, &#x27;null&#x27;] }
+        c6_pix_copia_cola: { type: [string, &#x27;null&#x27;] }
+        c6_status: { type: [string, &#x27;null&#x27;], enum: [registrado, liquidado, cancelado, null] }
+        notaas_invoice_id: { type: [string, &#x27;null&#x27;], examples: [&#x27;inv_abc123&#x27;] }
+        notaas_ch_nfse: { type: [string, &#x27;null&#x27;] }
+        nfse_status: { type: [string, &#x27;null&#x27;], enum: [pendente, emitida, erro, cancelada, null] }
+        pago_em: { type: [string, &#x27;null&#x27;], format: date-time }
+        valor_pago: { type: [number, &#x27;null&#x27;] }
+        metadata:
+          type: object
+          description: &#x27;Em substituida: {substituted_by: &lt;invoice_id&gt;}&#x27;
+
+    Agreement:
+      type: object
+      required: [id, organization_id, payer_id, invoice_id_original, n_parcelas, status]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        payer_id: { type: string, format: uuid }
+        invoice_id_original: { type: string, format: uuid }
+        n_parcelas: { type: integer, examples: [3] }
+        desconto_pct: { type: number, examples: [5] }
+        status: { type: string, enum: [ativo, quitado, quebrado, cancelado] }
+        aprovado_por: { type: string, description: &#x27;ia_dentro_alcada | humano:&lt;user_id&gt;&#x27; }
+        parcela_invoice_ids: { type: array, items: { type: string, format: uuid } }
+
+    BillingEvent:
+      type: object
+      required: [id, organization_id, invoice_id, tipo, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        invoice_id: { type: string, format: uuid }
+        tipo:
+          type: string
+          enum: [emitida, vencendo, vencida, paga, nfse_emitida, nfse_erro, cancelada, substituida, renegociada]
+        payload: { type: object, examples: [{ origem: &#x27;c6-webhook&#x27;, nosso_numero: &#x27;0009876543&#x27; }] }
+        created_at: { type: string, format: date-time }
+
+    NotaasWebhookEnvelope:
+      type: object
+      required: [event, deliveryId, timestamp, data]
+      properties:
+        event: { type: string, examples: [&#x27;nfse.issued&#x27;] }
+        deliveryId: { type: string, examples: [&#x27;del_xyz789&#x27;] }
+        timestamp: { type: string, format: date-time }
+        data:
+          type: object
+          examples:
+            - invoiceId: &#x27;inv_abc123&#x27;
+              chNFSe: &#x27;4321000001234&#x27;
+              nNFSe: &#x27;00001&#x27;</code></pre>
+
+<hr>
+
+<h2>4.1 Adendo NotaAS (§H autenticado — endpoints canônicos)</h2>
+
+<p>Confirmado no <code>notaas-report.md</code> §H.2 (refletido no OpenAPI acima). O adapter <code>notaas-emit</code> consome estes endpoints da NotaAS (terceiro):</p>
+
+<div class='tw'><table><thead><tr><th>Endpoint NotaAS</th><th>Uso no NexvyPayments</th><th>Entregável</th></tr></thead><tbody><tr><td><code>POST /api/v1/emitir</code></td><td>Emissão unitária (fallback / retry pontual por <code>referencia</code>)</td><td>C1</td></tr><tr><td><code>POST /api/v1/emitir/batch</code></td><td>Emissão em lote (≤100/lote; &gt;100 → split); caminho principal do <code>notaas-emit</code></td><td>C1</td></tr><tr><td><code>GET /api/v1/invoices/:id/status</code></td><td>Consulta status ANTES de reenviar (NotaAS não tem idempotência nativa)</td><td>C1</td></tr><tr><td><code>POST /api/v1/cancelar</code></td><td>Cancelamento fiscal formal (NotaAS não faz substituição; runbook cancelar+reemitir)</td><td>C3, P-COBR-005</td></tr><tr><td><code>POST /api/v1/webhooks/endpoints</code></td><td>Cadastro do endpoint do <code>notaas-webhook</code> (HMAC + dedup)</td><td>C2</td></tr></tbody></table></div>
+
+<p><strong>Invariantes do adendo:</strong></p>
+<p>- <strong>Sandbox = homologação</strong> (&quot;notas emitidas não têm valor fiscal&quot;); toggle &quot;Ativar Produção&quot; por organização/projeto = gate humano (G-NOTAAS-resid).</p>
+<p>- <strong>Cota SaaS Pro = 2.000 notas/mês &lt; teto D5 (5.000)</strong> → gate <strong>G-QUOTA</strong> antes do go-live full do case #1.</p>
+<p>- <strong><code>referencia</code> = <code>invoice_id</code></strong> = chave de idempotência/correlação do outbox (NUNCA reenviar sem consultar status por <code>referencia</code>).</p>
+
+<hr>
+
+<h2>5. Matriz de conformidade spec↔código</h2>
+
+<p>Skill <code>spec-to-code-compliance</code> aplicada: cada entregável tem evidência exigida e status. <strong>Regra anti-alucinação: status nasce PENDENTE para 100% dos itens; só muda com evidência citável (file:line, output de curl, resultado de teste). Nunca inferir conformidade.</strong> Match types na atualização: <code>full_match | partial_match | mismatch | missing_in_code</code>.</p>
+
+<h3>5.1 Matriz (estado inicial — 2026-07-06)</h3>
+
+<div class='tw'><table><thead><tr><th>Entregável</th><th>Evidência exigida (para virar CONFORME)</th><th>Status</th></tr></thead><tbody><tr><td>A0</td><td>Output do curl dentro da EF deployada: HTTP 200 + JSON com <code>access_token</code> do sandbox C6; OU relatório de falha + decisão de fallback assinada</td><td><strong>PENDENTE</strong></td></tr><tr><td>A1</td><td>Output de <code>ls apps/NexvyPayments/supabase/functions/admin-provision-users</code> = erro; grep no <code>src/</code> = 0 hits; CI verde</td><td><strong>PENDENTE</strong></td></tr><tr><td>A2</td><td>Arquivo <code>_shared/require-caller-org.ts</code> + suite de teste com os 3 casos (403/401/org-do-token) passando</td><td><strong>PENDENTE</strong></td></tr><tr><td>A3</td><td><code>docs/security/rls-audit-2026-07.md</code> com query + resultado: N tabelas, 100% ON, lista de policies permissivas com justificativa/correção</td><td><strong>PENDENTE</strong></td></tr><tr><td>A4</td><td>Migration aplicada (<code>migrations_cobranca/*_billing_credentials.sql</code>) + teste: SELECT anon = 0 linhas + round-trip <code>v1:</code> passando (reuso <code>meta-crypto.ts:25,41</code>)</td><td><strong>PENDENTE</strong></td></tr><tr><td>A5</td><td>Migrations <code>migrations_cobranca/</code> aplicadas; <code>\d invoices</code> com as 9 colunas novas; CHECK de status com <code>substituida</code>; <code>\d billing_credentials</code> com <code>cnpj</code> + UNIQUE triplo; <code>\d billing_agreements</code> existe; toda tabela org-scoped; teste INSERT cross-org rejeitado</td><td><strong>PENDENTE</strong></td></tr><tr><td>A6</td><td><code>docs/security/verify-jwt-matrix.md</code> com outputs de curl: 2 webhooks sem JWT ≠ 401; 3 funções de dinheiro sem JWT = 401</td><td><strong>PENDENTE</strong></td></tr><tr><td>A7</td><td>grep: 0 tabelas de cobrança fora de <code>migrations_cobranca/</code>; <code>docs/CORE-DELTA.md</code> existe e lista toda edição a arquivo do core (com justificativa); nenhuma migration de cobrança faz <code>ALTER</code>/<code>DROP</code> em tabela do core sem entrada em CORE-DELTA</td><td><strong>PENDENTE</strong></td></tr><tr><td>B1</td><td>Output de curl sandbox: Bolepix com <code>nosso_numero</code>+linha+QR; consulta 2× = mesmo resultado; testes do parser (fixtures de <code>c6.py</code>) verdes</td><td><strong>PENDENTE</strong></td></tr><tr><td>B2</td><td><code>SELECT pgmq.metrics(&#x27;billing_outbox&#x27;)</code> OK; testes das RPCs enqueue/read/dlq verdes</td><td><strong>PENDENTE</strong></td></tr><tr><td>B3</td><td>Teste: 2 execuções mesma competência → count igual; teste dia útil (vencimento cai sábado → segunda)</td><td><strong>PENDENTE</strong></td></tr><tr><td>B4</td><td>Teste: webhook fixture → status <code>paga</code> + 1 <code>billing_events</code>; replay → sem 2º evento; fixture não confirmada pelo GET → rejeitada</td><td><strong>PENDENTE</strong></td></tr><tr><td>B5</td><td>Screenshot/JSON do boleto PROD com <code>nosso_numero</code> real + registro do gate G-C6-PROD aprovado</td><td><strong>PENDENTE</strong></td></tr><tr><td>C1</td><td>Curl homologação: lote 100 → 202 com <code>batchId</code>; teste split 101→2 chamadas; teste &quot;nunca reenvia sem consultar&quot; (mock)</td><td><strong>PENDENTE</strong></td></tr><tr><td>C2</td><td>Testes: HMAC inválido → 401; deliveryId repetido → 1 processamento; <code>documents_ready</code> partial+complete → estado final correto</td><td><strong>PENDENTE</strong></td></tr><tr><td>C3</td><td>Teste: DELETE em nota <code>issued</code> → exceção do guard; fluxo de cancelamento gera evento com trilha</td><td><strong>PENDENTE</strong></td></tr><tr><td>D1</td><td>Teste: <code>billing_events(emitida)</code> → enrollment com <code>invoice_id</code>; render da 1ª msg contém valor+vencimento da fatura</td><td><strong>PENDENTE</strong></td></tr><tr><td>D2</td><td>Teste com clock fixo (TZ São Paulo): fatura venc D+3 → step D-3 hoje; D0 e D+7 nas datas certas</td><td><strong>PENDENTE</strong></td></tr><tr><td>D3</td><td>Teste: payer com 2 faturas, paga a 1ª → step_runs da 1ª cancelados, da 2ª intactos</td><td><strong>PENDENTE</strong></td></tr><tr><td>D4</td><td>IDs dos 4 templates aprovados na Meta; teste opt-in ausente → 0 envios; log de envio prod com template_id; roteador Meta-vs-Evolution localizado (§0.1)</td><td><strong>PENDENTE</strong></td></tr><tr><td>D5</td><td>Testes das 4 tools: 2ª via cria nova invoice + original <code>substituida</code>; renegociar 3× → 1 agreement + 3 parcelas; desconto&gt;alçada → handoff + 0 faturas; injeção &gt;8k → bloqueado</td><td><strong>PENDENTE</strong></td></tr><tr><td>E1</td><td>Teste: baixa manual grava evento <code>{origem:&#x27;manual&#x27;}</code>; payer sem whatsapp → mensagem na fila pgmq de e-mail (<code>process-email-queue</code>)</td><td><strong>PENDENTE</strong></td></tr><tr><td>E2</td><td>Teste: CRUD payers → linhas em <code>platform_audit_logs</code>; erasure → contato anonimizado E fatura/nota intactas</td><td><strong>PENDENTE</strong></td></tr><tr><td>E3</td><td>Painel com custo/fatura medido + invocations/mês; doc do gatilho VPS quantificado; contador de eventos operacionais ativo</td><td><strong>PENDENTE</strong></td></tr><tr><td>E4</td><td>Diff de migrations entre onboarding do cowork e o estado anterior = vazio; org do cowork operando</td><td><strong>PENDENTE</strong></td></tr></tbody></table></div>
+
+<h3>5.2 Quebras do planner classificadas por severidade</h3>
+
+<div class='tw'><table><thead><tr><th>Quebra</th><th>Severidade</th><th>Estado</th><th>Tratamento no spec</th></tr></thead><tbody><tr><td>#1 mTLS em edge function não provado (<code>c6.py:160-162,184-194</code>; TODA chamada C6 exige client cert; fetch Deno padrão não expõe; <code>Deno.createHttpClient</code> unstable)</td><td><strong>CRÍTICA</strong> (bloqueia trilho C6 inteiro, incl. GET de confirmação do B4)</td><td>ABERTA</td><td>A0 primeiro entregável; fallback nomeado; gate HITL de arquitetura</td></tr><tr><td>#2 Motor cadence-* lead-cêntrico; régua por fatura é construção nova (stop errado, msg sem contexto, agenda por delay) — RE-VERIFICADO no Beauty (<code>apps/NexvyBeauty/supabase/functions/cadence-tick/index.ts:34-37,42-50</code>)</td><td><strong>ALTA</strong> (v1 enviaria msg errada e pararia régua errada)</td><td>ABERTA</td><td>D1/D2/D3 redimensionados como construção nova; reuso limitado ao executor</td></tr><tr><td>#3 Sandbox NotaAS não documentado</td><td>—</td><td><strong>SUPERADA</strong> (adendo §H: homologação existe)</td><td>Critérios C1–C3 em homologação; &quot;Ativar Produção&quot; = gate</td></tr><tr><td>#4 verify_jwt dos webhooks sem dono (mecanismo não versionado no repo)</td><td><strong>MÉDIA</strong></td><td>ABERTA</td><td>A6 com matriz curl provada e documentada</td></tr><tr><td>#5 Idempotência &quot;nativa&quot; C6 superestimada (retry é do CLIENTE, <code>c6.py:288-323</code>; dedup server-side nunca testada em prod; webhook sem assinatura)</td><td><strong>BAIXA-MÉDIA</strong></td><td>ABERTA</td><td>B4 valida por GET sempre; outbox nunca confia em dedup do C6; teste de replay obrigatório</td></tr></tbody></table></div>
+
+<hr>
+
+<h2>6. Certificação por fase (quem afere o quê)</h2>
+
+<div class='tw'><table><thead><tr><th>Fase</th><th>Entregáveis</th><th>Aferidor primário</th><th>Aferidor de gate</th><th>Prova mínima para fechar a fase</th></tr></thead><tbody><tr><td><strong>A — Hardening + dados + isolamento</strong></td><td>A0–A7</td><td>Claude (TA/INSP) + CI (grep A1/A7) + VEXT (query RLS A3)</td><td><strong>Humano</strong> (revisor sênior: G-SEC-REV; Marcelo: arquitetura se A0 falhar)</td><td>A0 curl real; suite A2/A4/A5 verde; A3 doc revisado; A6 matriz curl; A7 CORE-DELTA.md + grep de isolamento limpo</td></tr><tr><td><strong>B — Emissão C6</strong></td><td>B1–B5</td><td>Claude (TA) + <strong>curl real sandbox</strong> (B1/B4)</td><td><strong>Humano</strong>: G-C6-SANDBOX (credenciais), G-C6-PROD (conta PJ + tarifa ≤R$1,20)</td><td>Bolepix sandbox E2E; replay de webhook idempotente; B5 só após gate</td></tr><tr><td><strong>C — NFS-e homologação</strong></td><td>C1–C3</td><td>Claude (TA) + <strong>curl real homologação NotaAS</strong></td><td><strong>Validador externo</strong> (dono da conta NotaAS: G-NOTAAS-resid) + humano (G-A1 cert; toggle produção)</td><td>lote 100 em homolog; HMAC+dedup testados; guard fiscal ativo</td></tr><tr><td><strong>D — Régua + IA</strong></td><td>D1–D5</td><td>Claude (TA com clock fixo)</td><td><strong>Validador externo</strong> (Meta aprova templates: G-META-TPL)</td><td>stop-por-fatura provado; msg com contexto; 4 tools com testes; shield ativo</td></tr><tr><td><strong>E — Conciliação/LGPD/prova</strong></td><td>E1–E4</td><td>Claude (TA/INSP)</td><td><strong>Humano/negócio</strong>: G-INFRA (Marcelo), G-PILOTO (case #1 assina), G-QUOTA (upgrade NotaAS antes do full)</td><td>ciclo mensal ≥95% sem humano (Marco 3); cowork sem migration (Marco 4)</td></tr></tbody></table></div>
+
+<p>Regra transversal (CLAUDE.md §1.4 + §10): <strong>nada fecha com &quot;writer side green&quot;</strong> — todo entregável com integração externa exige outcome verificável externo (curl real, entrega do webhook no histórico da NotaAS, template aprovado no painel Meta).</p>
+
+<hr>
+
+<h2>7. Gates HITL consolidados</h2>
+
+<div class='tw'><table><thead><tr><th>Gate</th><th>O que trava</th><th>Critério de liberação (binário)</th><th>Quem resolve</th><th>Bloqueia</th></tr></thead><tbody><tr><td><strong>G-SEC-REV</strong></td><td>Hardening Fase A (A1/A3/A6/A7 + §11.2)</td><td>Revisão de segurança aprovada por escrito</td><td>Marcelo + revisor sênior</td><td>Qualquer fase com dinheiro</td></tr><tr><td><strong>G-C6-SANDBOX</strong></td><td>Credenciais sandbox C6 disponíveis p/ dev</td><td>curl A0/B1 executável com as credenciais</td><td>Marcelo</td><td>B1 (dev do trilho C6)</td></tr><tr><td><strong>G-C6-PROD</strong></td><td>Conta PJ do case #1 + <strong>tarifa de boleto negociada</strong></td><td>Credencial prod no cofre + tarifa documentada ≤R$1,20 (senão: boleto pass-through, PIX default)</td><td>Marcelo (relacionamento bancário)</td><td>B5 / <strong>Marco 2</strong></td></tr><tr><td><strong>G-NOTAAS-resid</strong></td><td>Residual §H.3: <strong>preço R$/nota</strong>, <strong>prazo de cancelamento</strong> por município, <strong>cobertura do município do case #1</strong></td><td>3 respostas documentadas + toggle &quot;Ativar Produção&quot; acionado conscientemente</td><td>Dono da conta NotaAS (Marcelo)</td><td>C1 em produção / Marco 2</td></tr><tr><td><strong>G-QUOTA</strong></td><td>Cota do plano NotaAS ≥ volume do case #1 (<strong>SaaS Pro 2.000/mês &lt; teto D5 5.000</strong>)</td><td><code>GET /org/settings</code> → <code>creditsLimit ≥ volume mensal contratado do case #1</code></td><td>Marcelo (upgrade do plano)</td><td>Go-live FULL do case #1 (Marco 3 em volume pleno)</td></tr><tr><td><strong>G-A1</strong></td><td>Certificado A1 (.pfx+senha) do CNPJ case #1</td><td>Upload aceito: 201 com <code>subjectCN</code> + <code>daysUntilExpiration &gt; 90</code></td><td>Tenant case #1</td><td>C1 (emissão homolog/prod)</td></tr><tr><td><strong>G-META-TPL</strong></td><td>4 templates utility aprovados (fatura, lembrete, atraso, 2ª via)</td><td>Status &quot;approved&quot; no painel Meta p/ os 4</td><td>Meta (submeter na Fase A/B)</td><td>D4 (régua em produção)</td></tr><tr><td><strong>G-PILOTO</strong></td><td>Compromisso pago do case #1 (teste de desespero — parecer PMF §8)</td><td>Contrato de piloto pago OU carta de intenção com valor, assinado ANTES do go-live definitivo</td><td>Marcelo + case #1</td><td>Marco 4 / go-live definitivo</td></tr><tr><td><strong>G-INFRA</strong></td><td>Limites Lovable Cloud medidos</td><td>Invocations/pgmq/storage por tenant medidos + gatilho de migração VPS <strong>quantificado</strong> (nº, não &quot;futuro&quot;)</td><td>Marcelo</td><td>Escala pós-piloto (N tenants)</td></tr></tbody></table></div>
+
+<hr>
+
+<h2>8. Pendências para PENDENCIAS.md</h2>
+
+<div class='tw'><table><thead><tr><th>ID</th><th>Pendência</th><th>Trigger de resolução</th></tr></thead><tbody><tr><td>P-COBR-001</td><td><strong>Derivação de chave por-org no cofre</strong> (hoje: chave-mestra global <code>apps/NexvyBeauty/supabase/functions/_shared/meta-crypto.ts:11</code> via <code>get_or_create_meta_master_key</code> custodiando A1 de todos os tenants — blast radius total). Implementar HKDF com salt por tenant</td><td>ANTES de onboardar o tenant nº 3 (N&gt;2). Dívida de segurança nomeada, não backlog</td></tr><tr><td>P-COBR-002</td><td><strong>Admin burden medido no piloto</strong> (renovação anual A1, notas em erro, cancelamentos, municípios não cobertos) → h/mês na unit economics</td><td>Fim do 1º ciclo mensal do case #1 (Marco 3) — E3 coleta os contadores</td></tr><tr><td>P-COBR-003</td><td><strong>Preço NotaAS em R$ por nota/plano</strong> ainda não capturado (adendo §H.3) — a margem da linha &quot;NFS-e R$0,20–0,60&quot; do blueprint é premissa</td><td>Resposta do G-NOTAAS-resid; recalcular §8.2 do blueprint se sair da faixa</td></tr><tr><td>P-COBR-004</td><td><strong>Multi-CNPJ por tenant = limitação declarada do v1</strong> (schema já suporta via <code>UNIQUE(org,provider,cnpj)</code>; NotaAS cobra multi-projeto como serviço contratado)</td><td>Primeiro tenant real com 2+ CNPJs emissores → contratar upgrade NotaAS + habilitar fluxo</td></tr><tr><td>P-COBR-005</td><td><strong>Prazo de cancelamento de NFS-e por município</strong> não documentado (varia na prática); runbook de &quot;cancelar+reemitir&quot; (NotaAS não tem substituição)</td><td>G-NOTAAS-resid + 1º cancelamento real em produção</td></tr><tr><td>P-COBR-006</td><td><strong>URLs de CDN NotaAS públicas e imutáveis</strong> (pdfUrl/xmlUrl sem auth — LGPD): proxy assinado obrigatório no v1 (entregável dentro da UI de Notas); avaliar <code>storageBaseUrl</code> white-label</td><td>Antes do Marco 2 (nenhuma URL crua chega ao pagador)</td></tr><tr><td>P-COBR-007</td><td><strong>Convergência dos adapters C6/NotaAS com o ERP-Educacional (FIC)</strong> — manutenção dupla Python/Deno (R8); contrato §2.3 do blueprint publicado, extração p/ pacote compartilhado adiada</td><td>Quando o FIC iniciar o trilho NFS-e Cassilândia-MS</td></tr><tr><td>P-COBR-008</td><td><strong>Rate limit numérico da project key NotaAS</strong> não documentado — dimensionar rajada de 50×100 notas com margem</td><td>G-NOTAAS-resid; teste de carga em homologação antes do Marco 3 em volume pleno</td></tr><tr><td>P-COBR-009</td><td><strong>[REASSENTAMENTO] Roteamento Meta-vs-Evolution não localizado no Beauty</strong> (<code>_shared/whatsapp-router.ts</code> presente no vendus-ref, ausente em <code>apps/NexvyBeauty/supabase/functions/_shared/</code>) — D4 depende de saber onde o Beauty decide provider</td><td>Início da Fase D (antes de D4)</td></tr><tr><td>P-COBR-010</td><td><strong>[REASSENTAMENTO] Fonte da cascata (Oficinas vs <code>cp -r Beauty</code>)</strong> — a Fase C do <code>cascade-core.sh</code> copia src de Oficinas e conflita com <code>cp -r apps/NexvyBeauty</code>. Decisão: cascade só Fases A+B (schema+edges), <code>src/</code> do Beauty</td><td>Antes de rodar <code>cascade-core.sh</code> no provisionamento (mapa §4)</td></tr></tbody></table></div>
+
+<hr>
+
+<p>*Fim do spec auditável reassentado. Base: NexvyBeauty (fork gerenciado). Núcleo de cobrança em <code>apps/NexvyPayments/supabase/migrations_cobranca/</code> (esteira nova, aditiva, espelha <code>migrations_salao/</code>). Próximo consumidor: Etapa 4 (loop-readiness) — este arquivo + a matriz §5.1 são o contrato; o loop de implementação atualiza os status PENDENTE→CONFORME com evidência citável, nunca por inferência. Disciplinas de fork gerenciado (A7): mods 100% isoladas, CORE-DELTA.md mantido, atualizações futuras = diff seletivo.*</p>
+
+</div></body></html>
