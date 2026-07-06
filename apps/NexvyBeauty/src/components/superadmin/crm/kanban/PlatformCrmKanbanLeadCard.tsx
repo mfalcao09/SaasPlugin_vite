@@ -1,5 +1,13 @@
-import type { ReactNode } from 'react';
-import { Globe, Phone, Instagram, MessageCircle } from 'lucide-react';
+import type { CSSProperties, ReactNode } from 'react';
+import {
+  Globe,
+  Phone,
+  Instagram,
+  MessageCircle,
+  Flame,
+  Thermometer,
+  Snowflake,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { isToday, isYesterday, differenceInDays, format } from 'date-fns';
@@ -27,11 +35,12 @@ interface PlatformCrmKanbanLeadCardProps {
   onDragStart?: () => void;
 }
 
-// ── Temperatura (§1.3): literais de SIGNIFICADO permitidos (não são marca). ──
+// ── Temperatura (§1.3): ícone + var de cor do tema lux (--hot/--warm/--cold).
+// Pílula = color-mix 12% do token + inset ring 30% (anatomia do REF Lovable). ──
 const temperatureConfig = {
-  hot: { label: 'Quente', badge: 'bg-red-500/10 text-red-600 border-red-500/30' },
-  warm: { label: 'Morno', badge: 'bg-orange-500/10 text-orange-600 border-orange-500/30' },
-  cold: { label: 'Frio', badge: 'bg-sky-500/10 text-sky-600 border-sky-500/30' },
+  hot: { label: 'Quente', icon: Flame, colorVar: 'var(--hot)' },
+  warm: { label: 'Morno', icon: Thermometer, colorVar: 'var(--warm)' },
+  cold: { label: 'Frio', icon: Snowflake, colorVar: 'var(--cold)' },
 } as const;
 
 // ── Canal do lead (§3.2 + §1.3). Leads não são conversas: o canal vem de texto
@@ -61,8 +70,8 @@ const channelIcon: Record<LeadChannel, ReactNode> = {
   unknown: <MessageCircle className="h-2.5 w-2.5" />,
 };
 
-// Cores por canal (§1.3): whatsapp=verde, webchat=azul institucional (token
-// primary — troca sozinho por tenant), instagram=rosa.
+// Cores por canal (§1.3): whatsapp=verde (padrão do REF), webchat=primary
+// (troca sozinho por tema), instagram=rosa.
 const channelBadgeClass: Record<LeadChannel, string> = {
   whatsapp: 'bg-emerald-500 text-white',
   instagram: 'bg-pink-500 text-white',
@@ -128,6 +137,17 @@ export function PlatformCrmKanbanLeadCard({
 
   const contactDate = formatRelative(lead.last_contact_at ?? lead.created_at);
 
+  // Pílula de temperatura (REF): color-mix 12% do token + inset ring 30%.
+  const tempStyle: CSSProperties | undefined = tempConfig
+    ? {
+        color: tempConfig.colorVar,
+        backgroundColor: `color-mix(in oklab, ${tempConfig.colorVar} 12%, transparent)`,
+        boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${tempConfig.colorVar} 30%, transparent)`,
+      }
+    : undefined;
+
+  const TempIcon = tempConfig?.icon;
+
   return (
     <div
       draggable
@@ -138,27 +158,26 @@ export function PlatformCrmKanbanLeadCard({
       }}
       onClick={onViewDetails}
       className={cn(
-        'group bg-card border rounded-lg p-3 shadow-sm space-y-2.5 cursor-grab active:cursor-grabbing',
-        'transition-shadow duration-150 hover:shadow-md',
+        // surface-card lux + hover eleva (translateY -2px + sombra), cursor grab (REF)
+        'group surface-card surface-card-hover p-4 space-y-3 cursor-grab active:cursor-grabbing',
         isStale && !isDragging && 'ring-1 ring-amber-500/40',
         isDragging && 'opacity-50',
       )}
       // Cor de estágio no banco (dado) — barra lateral do card.
       style={{ borderLeftWidth: 3, borderLeftColor: stageColor }}
     >
-      {/* Linha 1 — identidade (avatar + badge de canal §3.2) */}
-      <div className="flex items-start gap-2.5 min-w-0">
+      {/* Linha 1 — identidade (avatar navy-gradient + badge de canal §3.2) */}
+      <div className="flex items-start gap-3 min-w-0">
         <div className="relative flex-shrink-0">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="text-[11px] font-semibold bg-muted">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          {/* Avatar h-10 w-10 rounded-xl navy-gradient com iniciais (REF) */}
+          <div className="navy-gradient h-10 w-10 rounded-xl flex items-center justify-center text-[13px] font-semibold text-white shadow-sm">
+            {initials}
+          </div>
           <Tooltip>
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  'absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full flex items-center justify-center border-2 border-background',
+                  'absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full flex items-center justify-center border-2 border-card',
                   channelBadgeClass[channel],
                 )}
                 aria-label={channelLabel}
@@ -172,43 +191,67 @@ export function PlatformCrmKanbanLeadCard({
 
         <div className="min-w-0 flex-1">
           <p
-            className="text-[14px] font-semibold leading-tight truncate"
+            className="text-[13.5px] font-semibold leading-tight truncate"
             title={identity.primary}
           >
             {identity.primary}
           </p>
           {secondary && (
-            <p className="text-[11px] text-muted-foreground truncate" title={secondary}>
+            <p className="text-[11.5px] text-muted-foreground truncate" title={secondary}>
               {secondary}
             </p>
           )}
         </div>
       </div>
 
-      {/* Linha 2 — valor BRL */}
+      {/* Linha 2 — valor BRL DOURADO (.text-value 19px §REF) */}
       {dealValue > 0 && (
-        <p className="text-sm font-semibold tabular-nums">{brl.format(dealValue)}</p>
+        <p className="text-value text-[19px] font-semibold tracking-[-0.02em] tabular-nums leading-none">
+          {brl.format(dealValue)}
+        </p>
       )}
 
-      {/* Linha 3 — badges (temperatura §1.3) */}
-      {tempConfig && (
+      {/* Linha 3 — badges (temperatura §1.3: ícone + pílula color-mix do token) */}
+      {tempConfig && TempIcon && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span
-            className={cn(
-              'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-              tempConfig.badge,
-            )}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium"
+            style={tempStyle}
           >
+            <TempIcon className="h-3 w-3" />
             {tempConfig.label}
           </span>
         </div>
       )}
 
-      {/* Rodapé — data relativa + mini-avatar do responsável */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/30">
+      {/* Rodapé — border-t hairline · mini-avatar navy-gradient + nome + data à direita */}
+      <div className="flex items-center justify-between gap-2 pt-2.5 border-t hairline">
+        {sellerName ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 min-w-0" aria-label={sellerName}>
+                <Avatar className="h-6 w-6 flex-shrink-0">
+                  <AvatarImage src={sellerAvatar || undefined} />
+                  <AvatarFallback className="navy-gradient text-[9px] font-semibold text-white">
+                    {sellerInitials(sellerName)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-[11px] text-muted-foreground truncate">
+                  {sellerName}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">{sellerName}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-[10.5px] text-muted-foreground/70 flex-shrink-0">
+            Sem responsável
+          </span>
+        )}
+
         <span
           className={cn(
-            'text-[11px] tabular-nums truncate',
+            'text-[11px] tabular-nums truncate flex-shrink-0',
             isStale ? 'text-amber-600' : 'text-muted-foreground',
           )}
           title={
@@ -219,24 +262,6 @@ export function PlatformCrmKanbanLeadCard({
         >
           {isStale && daysSinceContact !== null ? `${daysSinceContact}d sem contato` : contactDate}
         </span>
-
-        {sellerName ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Avatar className="h-5 w-5 flex-shrink-0" aria-label={sellerName}>
-                <AvatarImage src={sellerAvatar || undefined} />
-                <AvatarFallback className="text-[9px] bg-muted">
-                  {sellerInitials(sellerName)}
-                </AvatarFallback>
-              </Avatar>
-            </TooltipTrigger>
-            <TooltipContent side="top">{sellerName}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-[10px] text-muted-foreground/70 flex-shrink-0">
-            Sem responsável
-          </span>
-        )}
       </div>
     </div>
   );

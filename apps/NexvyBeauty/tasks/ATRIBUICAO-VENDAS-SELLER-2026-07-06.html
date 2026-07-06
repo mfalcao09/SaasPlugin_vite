@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atribuição de vendas por seller — ponta a ponta (2026-07-06)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2b3442;
+    --fg:#e6edf3; --muted:#8b98a9; --accent:#3fb950; --accent2:#58a6ff;
+    --warn:#d29922; --danger:#f85149; --code:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  header{background:linear-gradient(135deg,#12261a,#0d1117);border-bottom:1px solid var(--border);
+    padding:38px 0 30px;margin-bottom:8px}
+  header .wrap{padding:0 20px}
+  h1{margin:0 0 8px;font-size:26px;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:14px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:999px;padding:3px 11px;font-size:12px;color:var(--accent);margin-top:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  h2{margin:38px 0 14px;font-size:20px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  h3{margin:26px 0 10px;font-size:16px;color:var(--accent2)}
+  p{margin:12px 0}
+  code{background:var(--code);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;color:#c9d7e6}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+    overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.55}
+  pre code{background:none;border:none;padding:0;color:#c9d7e6}
+  .tldr{background:var(--panel);border:1px solid var(--accent);border-left:4px solid var(--accent);
+    border-radius:8px;padding:16px 18px;margin:18px 0}
+  .note{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent2);
+    border-radius:8px;padding:14px 16px;margin:18px 0;font-size:14px}
+  .warn{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--warn);
+    border-radius:8px;padding:14px 16px;margin:18px 0}
+  .tablewrap{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:8px}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--fg);font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .ok{color:var(--accent);font-weight:700} .nul{color:var(--muted)}
+  ul{margin:12px 0;padding-left:22px} li{margin:6px 0}
+  ol{margin:12px 0;padding-left:22px} ol li{margin:8px 0}
+  footer{color:var(--muted);font-size:12px;margin-top:50px;border-top:1px solid var(--border);padding-top:16px}
+  .flow{white-space:pre;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.5;
+    background:var(--code);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;color:#c9d7e6}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Atribuição de vendas por seller — ponta a ponta</h1>
+    <div class="sub">2026-07-06 · NexvyBeauty (CRM do grupo) · braço <code>SELLERS-RELATORIO</code></div>
+    <div class="pill">1 link ?src → webhook grava seller_ref → relatório</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="tldr">
+    <strong>TL;DR.</strong> Um <strong>seller</strong> é um <code>affiliate</code>. Cada seller —
+    agente IA (Duda, Bia), vendedor humano ou afiliado externo — tem 1 linha em
+    <code>affiliates</code> e 1 <code>ref_code</code> em <code>affiliate_links</code>. O checkout Cakto
+    carrega <code>?src=&lt;ref_code&gt;</code>; o webhook grava a atribuição no pedido; a view
+    <code>platform_vendas_por_seller</code> soma as <strong>vendas pagas</strong> por seller.
+    <br><br>
+    <strong>Nada de tabela nova</strong> — reusamos a camada de afiliados de
+    <code>20260619_affiliates_tracking.sql</code>. Única coluna nova: <code>affiliates.kind</code>
+    (<code>agente_ia</code> | <code>humano</code> | <code>externo</code>).
+  </div>
+
+  <p style="color:var(--muted);font-size:13px">
+    Migration: <code>supabase/migrations_salao/20260706_sellers_e_relatorio_vendas.sql</code> ·
+    Irmã (braço ATRIBUICAO): <code>20260706_cakto_seller_attribution.sql</code>
+  </p>
+
+  <h2>O fluxo ponta a ponta</h2>
+  <div class="flow">1. LINK       https://pay.cakto.com.br/&lt;slug&gt;?src=duda
+             (o ref_code do seller entra como ?src=)
+                   │
+                   ▼
+2. CHECKOUT  Cliente paga na Cakto. A Cakto repassa o src no corpo do pedido.
+                   │
+                   ▼
+3. WEBHOOK   supabase/functions/cakto-webhook/index.ts
+             • grava o corpo inteiro em cakto_orders.raw_payload  (L60)
+             • [braço ATRIBUICAO] extrai o src → cakto_orders.seller_ref
+             • resolve_affiliate_ref(ref_code) → cakto_orders.affiliate_id
+             • upsert em cakto_orders                              (L96)
+                   │
+                   ▼
+4. RELATÓRIO SELECT * FROM public.platform_vendas_por_seller;
+             • filtra status IN ('paid','approved')  (só venda paga)
+             • agrupa por seller → count, receita, ticket médio
+             • LEFT JOIN affiliates → nome + kind do seller</div>
+
+  <h3>Onde cada peça mora</h3>
+  <div class="tablewrap">
+    <table>
+      <tr><th>Peça</th><th>Arquivo</th><th>Papel</th></tr>
+      <tr><td>Camada de sellers</td><td><code>20260619_affiliates_tracking.sql</code></td><td><code>affiliates</code>, <code>affiliate_links</code>, <code>resolve_affiliate_ref()</code></td></tr>
+      <tr><td>Colunas de atribuição no pedido</td><td><code>20260706_cakto_seller_attribution.sql</code> (irmã)</td><td><code>cakto_orders.seller_ref</code> + <code>.affiliate_id</code> (+ FK + índice)</td></tr>
+      <tr><td>Sellers IA + <code>kind</code> + relatório</td><td><code>20260706_sellers_e_relatorio_vendas.sql</code> (este braço)</td><td>registra Duda/Bia, <code>affiliates.kind</code>, <code>register_human_seller()</code>, view</td></tr>
+      <tr><td>Escrita do pedido</td><td><code>supabase/functions/cakto-webhook/index.ts</code></td><td>grava <code>raw_payload</code>, <code>seller_ref</code>, <code>affiliate_id</code></td></tr>
+    </table>
+  </div>
+
+  <h2>O que esta migration faz (4 blocos)</h2>
+  <ol>
+    <li><strong><code>affiliates.kind</code></strong> — coluna nova (<code>ADD COLUMN IF NOT EXISTS</code>, default <code>externo</code>) com <code>CHECK (kind IN ('agente_ia','humano','externo'))</code>.</li>
+    <li><strong>Registra Duda e Bia como sellers</strong> — <code>INSERT ... ON CONFLICT (lower(email)) DO UPDATE</code> em <code>affiliates</code>, <code>kind='agente_ia'</code>, <code>commission_pct=0</code>, emails sintéticos <code>@agent.nexvy.tech</code>.</li>
+    <li><strong><code>ref_code</code> 'duda' e 'bia'</strong> em <code>affiliate_links</code> (<code>INSERT ... WHERE NOT EXISTS</code>, idempotente — a única é sobre expressão funcional). É o que o webhook casa via <code>resolve_affiliate_ref()</code>.</li>
+    <li><strong>View <code>platform_vendas_por_seller</code></strong> — lê <code>seller_ref</code>/<code>affiliate_id</code>, filtra <code>status IN ('paid','approved')</code>, agrupa por seller.</li>
+  </ol>
+
+  <h3>A query do relatório (comentada)</h3>
+  <pre><code>CREATE VIEW public.platform_vendas_por_seller AS
+WITH pedidos_pagos AS (
+  SELECT o.id, o.amount, o.paid_at, o.affiliate_id,
+         lower(NULLIF(o.seller_ref,'')) AS seller_ref
+  FROM public.cakto_orders o
+  WHERE o.status IN ('paid','approved')          -- só venda paga
+),
+atribuido AS (
+  SELECT p.id, p.amount, p.paid_at,
+         COALESCE(p.affiliate_id, l.affiliate_id)   AS affiliate_id, -- primária OU tardia
+         COALESCE(p.seller_ref, lower(l2.ref_code)) AS seller_ref
+  FROM pedidos_pagos p
+  LEFT JOIN public.affiliate_links l  ON lower(l.ref_code) = p.seller_ref
+  LEFT JOIN public.affiliate_links l2 ON l2.affiliate_id  = p.affiliate_id
+)
+SELECT
+  COALESCE(a.id::text, t.seller_ref, 'sem_atribuicao') AS seller_key,
+  t.seller_ref, a.id AS affiliate_id, a.name AS seller_name, a.kind AS seller_kind,
+  count(*)                                    AS vendas,
+  COALESCE(sum(t.amount),0)::numeric          AS receita_total,
+  round(COALESCE(avg(t.amount),0)::numeric,2) AS ticket_medio,
+  min(t.paid_at) AS primeira_venda, max(t.paid_at) AS ultima_venda
+FROM atribuido t
+LEFT JOIN public.affiliates a ON a.id = t.affiliate_id
+GROUP BY COALESCE(a.id::text, t.seller_ref,'sem_atribuicao'),
+         t.seller_ref, a.id, a.name, a.kind
+ORDER BY receita_total DESC;</code></pre>
+
+  <div class="note">
+    <strong>Por que a dupla <code>LEFT JOIN</code>:</strong> <code>l</code> resolve o afiliado pelo
+    <code>ref_code</code> cru (webhook ainda não preencheu <code>affiliate_id</code>); <code>l2</code>
+    recupera o <code>ref_code</code> a partir do <code>affiliate_id</code> já resolvido. <code>COALESCE</code>
+    prioriza o <code>affiliate_id</code> do pedido; cai no <code>ref_code</code> como fallback. Venda sem
+    atribuição nenhuma cai em <code>sem_atribuicao</code> — <strong>nunca é descartada</strong>.
+    <br><br>
+    <strong><code>paid</code> vs <code>approved</code>:</strong> ambos contam como pago — não é chute.
+    <code>cakto-plan-provisioning.ts:141</code> trata os dois como venda paga; a view usa os dois
+    para não perder venda <code>approved</code>.
+  </div>
+
+  <h2>Prova de funcionamento (Postgres 18 efêmero)</h2>
+  <p>Ordem aplicada: dep real (<code>20260619_affiliates_tracking</code>) → irmã
+  (<code>cakto_seller_attribution</code>) → esta migration. Seed sintético, view conferida:</p>
+  <div class="tablewrap">
+    <table>
+      <tr><th>seller_ref</th><th>seller_name</th><th>kind</th><th>vendas</th><th>receita_total</th><th>ticket_medio</th></tr>
+      <tr><td class="nul">(null)</td><td class="nul">(null)</td><td class="nul">(null)</td><td>1</td><td>999</td><td>999.00</td></tr>
+      <tr><td><code>duda</code></td><td>Duda (SDR IA)</td><td><code>agente_ia</code></td><td>2</td><td>400</td><td>200.00</td></tr>
+      <tr><td><code>bia</code></td><td>Bia (Closer IA)</td><td><code>agente_ia</code></td><td>1</td><td>250</td><td>250.00</td></tr>
+      <tr><td><code>ana</code></td><td>Ana Vendas</td><td><code>humano</code></td><td>1</td><td>150</td><td>150.00</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>Asserts (todos <span class="ok">t</span>):</strong>
+    <code>duda_ok</code>, <code>bia_ok</code>, <code>ana_ok</code>, <code>sem_ok</code>, <code>total_pagas_ok</code>.
+  </p>
+  <ul>
+    <li><code>pending</code> e <code>refunded</code> <strong>não entram</strong> (total de vendas pagas = 5, não 7).</li>
+    <li><code>approved</code> (bia) conta como pago.</li>
+    <li><code>ana</code> resolvida pelo <code>ref_code</code> mesmo com <code>affiliate_id</code> NULL no pedido.</li>
+  </ul>
+  <p><strong>Idempotência:</strong> reapliquei a migration 3× → continuam 2 sellers IA, 1
+  <code>ref_code</code> cada, view idêntica (5 vendas / R$1799). Só avisos <code>IF NOT EXISTS</code>,
+  nenhum erro.</p>
+
+  <h2>⚠️ O passo de verificação que FALTA (não é opcional)</h2>
+  <div class="warn">
+    O elo frágil é o <strong>passo 3</strong>: só sabemos que a Cakto <strong>de fato ecoa</strong>
+    o <code>?src=</code> no corpo do pedido testando com dinheiro real. Enquanto isso não for
+    confirmado, <code>cakto_orders.seller_ref</code> pode vir NULL e tudo cai em <code>sem_atribuicao</code>.
+  </div>
+  <p><strong>Teste ponta a ponta (1 pagamento real):</strong></p>
+  <ol>
+    <li>Gere um link com src de teste: <code>https://pay.cakto.com.br/&lt;slug&gt;?src=teste123</code></li>
+    <li>Faça <strong>1 pagamento de teste</strong> (menor valor / cupom 100%).</li>
+    <li>Inspecione o <code>raw_payload</code> do pedido:
+      <pre><code>SELECT jsonb_pretty(raw_payload)
+FROM public.cakto_orders
+WHERE customer_email = '&lt;email-do-teste&gt;'
+ORDER BY created_at DESC LIMIT 1;</code></pre></li>
+    <li><strong>Ache onde <code>teste123</code> aparece</strong> no JSON. É o campo que a irmã extrai
+      no mapper <code>mapCaktoOrderForUpsert</code> (<code>_shared/cakto-client.ts</code>).
+      Candidatos: <code>src</code>, <code>trackingParameters.src</code>, <code>checkout.src</code>, <code>utm_source</code>.</li>
+    <li>Confirme a materialização:
+      <pre><code>SELECT seller_ref, affiliate_id FROM public.cakto_orders
+WHERE raw_payload::text ILIKE '%teste123%' ORDER BY created_at DESC LIMIT 1;</code></pre></li>
+    <li>Se <code>seller_ref</code> preenchido → pipeline fechado. Se NULL → ajuste o caminho de
+      extração no mapper da irmã e reprocesse (<code>cakto-reprocess-order</code>).</li>
+  </ol>
+  <p style="color:var(--muted)">Enquanto o teste não roda, o relatório funciona mas fica cego à
+  origem — as vendas aparecem em <code>sem_atribuicao</code>. A view já está correta; falta o dado chegar.</p>
+
+  <h2>Como estender</h2>
+
+  <h3>Vendedor humano (cada user vira um ref_code)</h3>
+  <p>Helper pronto e idempotente:</p>
+  <pre><code>SELECT public.register_human_seller(
+  'ana',              -- ref_code (vira ?src=ana no checkout)
+  'Ana Vendas',       -- nome
+  'ana@nexvy.tech',   -- email
+  '&lt;auth_uid&gt;'        -- opcional: vincula ao user do painel
+);</code></pre>
+  <p>Cria/atualiza o <code>affiliate</code> (<code>kind='humano'</code>) e garante o <code>ref_code</code>.
+  Todo checkout com <code>?src=ana</code> passa a ser atribuído a ela. Para comissão, setar
+  <code>affiliates.commission_pct</code> (a estrutura <code>affiliate_commissions</code> já existe em
+  <code>20260619</code> §3).</p>
+
+  <h3>Afiliado externo (parceiro)</h3>
+  <p>Mesmo mecanismo, <code>kind='externo'</code> (o default). Cadastre o <code>affiliate</code> com seu
+  <code>pix_key</code> e <code>commission_pct</code>, crie o <code>ref_code</code> em <code>affiliate_links</code>,
+  entregue o link <code>?src=&lt;ref_code&gt;</code>. O relatório já o inclui automaticamente.</p>
+
+  <h3>Comissão por venda</h3>
+  <p>A camada <code>affiliate_commissions</code> (idempotente por <code>idempotency_key = order_ref</code>)
+  já está pronta desde <code>20260619</code>. Próximo passo natural: o webhook gravar 1 comissão por
+  venda paga atribuída — fora do escopo deste braço, mas o alicerce existe.</p>
+
+  <h2>Decisões e por quês</h2>
+  <ul>
+    <li><strong>Reuso, não tabela nova:</strong> <code>affiliates</code>/<code>affiliate_links</code>/<code>resolve_affiliate_ref</code> já cobrem "quem vende + código de rastreamento". Um seller é um caso de affiliate.</li>
+    <li><strong><code>kind</code> em vez de tabela <code>sellers</code>:</strong> a diferença entre agente IA, humano e externo é um atributo, não uma entidade. <code>CHECK</code> fecha o domínio.</li>
+    <li><strong>View lê colunas materializadas, não <code>raw_payload</code>:</strong> a irmã já materializa <code>seller_ref</code>/<code>affiliate_id</code>; parsear JSON na view seria frágil e lento.</li>
+    <li><strong><code>sem_atribuicao</code> explícito:</strong> venda sem origem é informação (quanto do faturamento não está atribuído), não algo a esconder.</li>
+  </ul>
+
+  <footer>
+    NexvyBeauty · braço SELLERS-RELATORIO · 2026-07-06 · par de
+    <code>ATRIBUICAO-VENDAS-SELLER-2026-07-06.md</code>. Migration não aplicada aqui — o
+    orquestrador aplica via MCP <code>apply_migration</code>.
+  </footer>
+
+</div>
+</body>
+</html>

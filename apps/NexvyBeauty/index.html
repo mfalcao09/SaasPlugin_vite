@@ -63,26 +63,27 @@
       }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
       .app-mounted #boot-loader { display: none; }
-      /* Gestão (gestao.*): boot em azul institucional Nexvy (#0A52D1) */
+      /* Gestão (gestao.*): boot em DOURADO lux (#dba341 = --primary do tema lux) */
       html.theme-nexvy-institucional #boot-loader .spinner {
-        border-color: rgba(10, 82, 209, 0.18);
-        border-top-color: #0A52D1;
+        border-color: rgba(219, 163, 65, 0.18);
+        border-top-color: #dba341;
       }
     </style>
     <meta property="og:title" content="NexvyBeauty — Beleza com gestão inteligente">
   <meta name="twitter:title" content="NexvyBeauty — Beleza com gestão inteligente">
   <meta property="og:description" content="NexvyBeauty — ERP e CRM com IA para profissionais da beleza">
   <meta name="twitter:description" content="NexvyBeauty — ERP e CRM com IA para profissionais da beleza">
-  <!-- Shell de gestão (gestao.*): tema institucional Nexvy (azul), aplicado
-       ANTES do React montar p/ evitar flash. app.*/apex seguem no tema Beauty. -->
+  <!-- Shell de gestão (gestao.*): tema "Nexvy Lux" (navy + dourado, fundo claro),
+       aplicado ANTES do React montar p/ evitar flash. app.*/apex seguem no tema Beauty. -->
   <script>
     (function () {
       try {
         if (location.hostname.indexOf('gestao.') === 0) {
           document.documentElement.classList.add('theme-nexvy-institucional');
           document.title = 'Nexvy · Gestão';
+          // theme-color = fundo lux claro (--background oklch(0.982 0.005 250) = #f7f9fc).
           var tc = document.querySelector('meta[name="theme-color"]');
-          if (tc) tc.setAttribute('content', '#0A52D1');
+          if (tc) tc.setAttribute('content', '#f7f9fc');
         }
       } catch (e) {}
     })();

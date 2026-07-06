@@ -5,11 +5,11 @@ import "./index.css";
 import { isGestaoHostname } from "./lib/publicUrl";
 
 // ─── Tema institucional host-aware ──────────────────────────────────────────
-// gestao.* (CRM do GRUPO, multiproduto ~10 SaaS) → azul institucional Nexvy
-// (.theme-nexvy-institucional, --primary 218 91% 43%). app.* / apex → tema-produto
-// rosa (default do :root). Aplicado ANTES do primeiro paint pra não piscar
-// rosa→azul. Cumpre a promessa "mesma lógica host-aware do tema" que estava só no
-// comentário de config/brand.ts (a classe existia no CSS mas nunca era aplicada).
+// gestao.* (CRM do GRUPO, multiproduto ~10 SaaS) → tema "Nexvy Lux" navy + dourado
+// (.theme-nexvy-institucional, --primary navy 221.8 44.7% 23.4%). app.* / apex →
+// tema-produto rosa (default do :root). Aplicado ANTES do primeiro paint pra não
+// piscar rosa→lux. Cumpre a promessa "mesma lógica host-aware do tema" que estava só
+// no comentário de config/brand.ts (a classe existia no CSS mas nunca era aplicada).
 if (typeof window !== "undefined" && isGestaoHostname()) {
   document.documentElement.classList.add("theme-nexvy-institucional");
 }

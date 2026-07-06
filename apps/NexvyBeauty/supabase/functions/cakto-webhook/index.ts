@@ -59,6 +59,25 @@ Deno.serve(async (req) => {
     row.cakto_offer_slug = extractOfferSlug(order, row.cakto_offer_slug ?? null);
     row.raw_payload = order;
 
+    // Atribuição de afiliado: resolve seller_ref (?src=) -> affiliate_id via RPC
+    // resolve_affiliate_ref (ver 20260619_affiliates_tracking.sql §5). Non-fatal:
+    // se não houver ref, a RPC não existir, ou o ref não casar, segue sem atribuir.
+    row.affiliate_id = null;
+    if (row.seller_ref) {
+      try {
+        const { data: affId, error: affErr } = await admin.rpc('resolve_affiliate_ref', {
+          p_ref: row.seller_ref,
+        });
+        if (affErr) {
+          console.error('[cakto-webhook] resolve_affiliate_ref error', affErr.message ?? affErr);
+        } else if (affId) {
+          row.affiliate_id = affId;
+        }
+      } catch (e) {
+        console.error('[cakto-webhook] resolve_affiliate_ref threw', e);
+      }
+    }
+
     // Resolve product_id + offer_id a partir do product_cakto_id (mapeamento manual em product_offers)
     if (row.organization_id && row.product_cakto_id) {
       const { data: offer } = await admin

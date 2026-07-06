@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { Trophy, XCircle, MousePointerClick, AlertCircle } from 'lucide-react';
+import {
+  Trophy,
+  XCircle,
+  MousePointerClick,
+  AlertCircle,
+  MoreHorizontal,
+} from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PlatformCrmKanbanLeadCard } from './PlatformCrmKanbanLeadCard';
@@ -35,6 +41,11 @@ interface PlatformCrmKanbanColumnProps {
   isError?: boolean;
   /** Retry do carregamento (refetch do board). */
   onRetry?: () => void;
+  /**
+   * Abre o gerenciador de etapas (ação real existente — mesma do botão
+   * "Gerenciar Etapas" no header do board). Ligada ao ícone "Opções da etapa".
+   */
+  onManageStage?: () => void;
 }
 
 // Soma da coluna: BRL compacto (R$ 12k / R$ 1,2M) — cabe no header estreito.
@@ -58,6 +69,7 @@ export function PlatformCrmKanbanColumn({
   sellersMap,
   isError,
   onRetry,
+  onManageStage,
 }: PlatformCrmKanbanColumnProps) {
   // Cor de estágio no banco (dado). Fallback = token muted (nunca hex de marca).
   const stageColor = column.color || 'hsl(var(--muted-foreground))';
@@ -83,47 +95,64 @@ export function PlatformCrmKanbanColumn({
   return (
     <div
       className={cn(
-        'flex flex-col h-full w-[300px] shrink-0 bg-muted/20 rounded-lg border border-border/60 overflow-hidden transition-colors',
-        isOver && 'ring-2 ring-primary/40 border-primary/40',
+        // Coluna transparente (REF): header FORA do box, cards flutuam. Sem
+        // fundo/borda de container — só o ring de drop-over como feedback.
+        'flex flex-col h-full w-[320px] shrink-0 rounded-2xl transition-colors',
+        isOver && 'ring-2 ring-[color:var(--hairline-gold)] bg-muted/30',
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header sticky — dot da cor do banco + nome + contagem + soma R$ (F2 §2) */}
-      <div className="sticky top-0 z-10 px-3 py-2.5 border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+      {/* Header FORA do box (px-1 pb-3): dot ring-glow + nome uppercase + pílula count + MoreHorizontal */}
+      <div className="px-1 pb-3">
         <div className="flex items-center gap-2 min-w-0">
-          {/* Cor de estágio no banco (dado) — único literal permitido no header. */}
+          {/* dot com halo box-shadow 0 0 0 3px <cor>22 (cor do estágio no banco) */}
           <span
             className="h-2 w-2 rounded-full shrink-0"
-            style={{ backgroundColor: stageColor }}
+            style={{ backgroundColor: stageColor, boxShadow: `0 0 0 3px ${stageColor}22` }}
             aria-hidden
           />
           {column.is_won && <Trophy className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
           {column.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
           <h3
-            className="text-[11px] font-semibold uppercase tracking-wide truncate text-foreground/80"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] truncate text-foreground/80"
             title={column.name}
           >
             {column.name}
           </h3>
-          <span className="ml-auto shrink-0 inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-full bg-muted text-muted-foreground text-[11px] font-semibold tabular-nums">
+          <span className="ml-auto shrink-0 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-muted border hairline text-muted-foreground text-[11px] font-semibold tabular-nums">
             {column.leadCount}
           </span>
+          {/* "Opções da etapa" → abre o gerenciador de etapas (ação real existente,
+             mesma do botão "Gerenciar Etapas" no header). Só em etapas reais. */}
+          {!isUnassigned && onManageStage && (
+            <button
+              type="button"
+              onClick={onManageStage}
+              className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Gerenciar etapas"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {column.totalValue > 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-            {formatCompactBRL(column.totalValue)}
+          <p className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">
+            <span className="font-semibold" style={{ color: 'var(--gold)' }}>
+              {formatCompactBRL(column.totalValue)}
+            </span>{' '}
+            em pipeline
           </p>
         )}
       </div>
 
       {/* Cards */}
-      <ScrollArea className="flex-1">
-        <div className="p-2.5 space-y-2.5">
+      <ScrollArea className="flex-1 -mx-1 px-1">
+        <div className="space-y-2.5 pb-2">
           {isError ? (
             // Estado de erro por coluna (§3.1) — banner com retry, nunca silenciar.
-            <div className="flex flex-col items-center justify-center gap-2 py-8 px-3 text-center">
+            <div className="surface-card flex flex-col items-center justify-center gap-2 py-8 px-3 text-center">
               <AlertCircle className="h-8 w-8 text-destructive/60" />
               <p className="text-xs text-muted-foreground">Falha ao carregar os leads.</p>
               {onRetry && (
@@ -137,8 +166,8 @@ export function PlatformCrmKanbanColumn({
               )}
             </div>
           ) : column.leads.length === 0 ? (
-            // Vazio (§2 F2) — mini empty com dica de ação.
-            <div className="flex flex-col items-center justify-center gap-2 py-8 px-3 text-center">
+            // Vazio (§2 F2) — mini empty com anatomia nova (dashed hairline).
+            <div className="flex flex-col items-center justify-center gap-2 py-8 px-3 text-center rounded-2xl border border-dashed hairline">
               <MousePointerClick className="h-8 w-8 text-muted-foreground opacity-30" />
               <p className="text-xs text-muted-foreground">
                 {isUnassigned ? 'Nenhum lead sem etapa' : 'Arraste um lead para cá'}
@@ -159,6 +188,8 @@ export function PlatformCrmKanbanColumn({
               />
             ))
           )}
+          {/* (Sem botão "Adicionar" por coluna: o board não expõe fluxo de criar-lead-
+             por-etapa; criar lead acontece via LeadsManager. Evita afordância morta.) */}
         </div>
       </ScrollArea>
     </div>

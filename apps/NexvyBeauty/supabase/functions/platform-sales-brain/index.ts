@@ -185,13 +185,46 @@ function buildKnowledgeContext(
   return ctx;
 }
 
+/**
+ * slugify — normaliza o nome da persona para o valor de ?src=. Lowercase, sem
+ * acento, espaços/pontuação → '-', colapsa hifens repetidos e apara as pontas.
+ * Ex.: 'Duda — SDR' → 'duda-sdr'; 'Bia' → 'bia'. Vazio se nada sobrar.
+ */
+function slugify(name: string): string {
+  return String(name ?? '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // tira acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-') // não-alfanumérico vira hífen
+    .replace(/-+/g, '-')         // colapsa hifens repetidos
+    .replace(/^-+|-+$/g, '');    // apara hifens das pontas
+}
+
+/**
+ * appendSellerRef — carimba ?src=<slug-do-agente> no checkout_url pra atribuir a
+ * venda a quem fechou (Duda/Bia). DEFENSIVO: usa new URL()/searchParams (preserva
+ * query existente, sobrescreve src anterior); se a URL for inválida ou o slug
+ * vazio, devolve a url original SEM quebrar.
+ */
+function appendSellerRef(url: string, personaName: string): string {
+  const src = slugify(personaName);
+  if (!url || !src) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('src', src);
+    return u.toString();
+  } catch {
+    return url; // url malformada (sem protocolo, etc.) — não quebra o fluxo
+  }
+}
+
 /** Links de checkout reais (do banco). É a "maquininha" da Duda: cliente que
- *  DECIDE recebe o link na hora, sem passar por closer. Vazio se não houver. */
-function buildCheckoutContext(plans: Array<Record<string, any>>): string {
+ *  DECIDE recebe o link na hora, sem passar por closer. Cada link carrega
+ *  ?src=<slug-do-agente> pra atribuir a venda a quem fechou. Vazio se não houver. */
+function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: string): string {
   if (!plans.length) return '';
   let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
   for (const p of plans) {
-    ctx += `- ${p.name} (R$${p.price_monthly}): ${p.checkout_url}\n`;
+    ctx += `- ${p.name} (R$${p.price_monthly}): ${appendSellerRef(p.checkout_url, personaName)}\n`;
   }
   ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. Só passe para a Bia o cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO e precisa entender o valor — nunca o que já quer fechar.\n`;
   return ctx;
@@ -831,8 +864,10 @@ Deno.serve(async (req) => {
 
     // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
+    // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
+    // persona já é não-nula aqui (guard acima); fallback 'duda' se o nome vier vazio.
     const knowledgeContext = buildKnowledgeContext(product, campaign)
-      + buildCheckoutContext(plans)
+      + buildCheckoutContext(plans, persona.name ?? 'duda')
       + (plans.length ? PRICE_RULE_BLOCK : '');
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;

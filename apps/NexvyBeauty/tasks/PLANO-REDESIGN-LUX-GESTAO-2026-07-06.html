@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLANO — Redesign "Nexvy Lux" do gestao.*</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --fg:#e6edf3; --muted:#8b98a9; --accent:#d4af37; --accent2:#58a6ff;
+    --warn:#d29922; --danger:#f85149; --code:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  header{background:linear-gradient(135deg,#24201a,#0d1117);border-bottom:1px solid var(--border);
+    padding:38px 0 30px;margin-bottom:8px}
+  header .wrap{padding:0 20px}
+  h1{margin:0 0 8px;font-size:26px;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:14px}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:999px;padding:3px 11px;font-size:12px;color:var(--accent);margin-top:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  h2{margin:38px 0 14px;font-size:20px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  h3{margin:26px 0 10px;font-size:16px;color:var(--accent2)}
+  p{margin:12px 0}
+  a{color:var(--accent2)}
+  code{background:var(--code);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;color:#c9d7e6}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+    overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.55}
+  pre code{background:none;border:none;padding:0}
+  .tldr{background:var(--panel);border:1px solid var(--accent);border-left:4px solid var(--accent);
+    border-radius:8px;padding:16px 18px;margin:18px 0}
+  .note{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent2);
+    border-radius:8px;padding:14px 16px;margin:18px 0;font-size:14px}
+  .warn{border-left-color:var(--warn)}
+  .tablewrap{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:8px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:var(--fg);font-weight:600;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .must{color:var(--accent2)} .mustnot{color:var(--danger)}
+  ul{margin:12px 0;padding-left:22px} li{margin:6px 0}
+  ol{margin:12px 0;padding-left:22px} ol li{margin:6px 0}
+  .kbd{font-family:ui-monospace,Menlo,monospace;background:var(--panel2);border:1px solid var(--border);
+    border-radius:4px;padding:1px 6px;font-size:.85em}
+  footer{color:var(--muted);font-size:12px;margin-top:50px;border-top:1px solid var(--border);padding-top:16px}
+  .gate{font-family:ui-monospace,Menlo,monospace;color:var(--accent);font-weight:700}
+  .badge-onda{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:12px;
+    background:var(--panel2);border:1px solid var(--accent);color:var(--accent);
+    border-radius:4px;padding:1px 6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>PLANO — Redesign "Nexvy Lux" do gestao.*</h1>
+    <div class="sub">navy + dourado, claro default + dark cinza-automotivo · NexvyBeauty</div>
+    <div class="pill">2026-07-06 · APROVADO pelo Marcelo</div>
+  </div>
+</header>
+<div class="wrap">
+
+  <div class="tldr">
+    <strong>Aprovação (verbatim, Marcelo):</strong> "Essa última versão está aprovada, planeje a implementação
+    a partir dela. Deve ficar igual!"<br><br>
+    <strong>Fonte da verdade:</strong> projeto Lovable <code>b703093e</code> commit <code>86d61a7</code> —
+    tokens verbatim em <code>tasks/lux-reference/lovable-styles-aprovado.css</code>.<br>
+    <strong>Preview aprovado:</strong>
+    <a href="https://id-preview--b703093e-3fd3-4aea-9ca9-5ec326aca1a8.lovable.app" target="_blank" rel="noopener">
+      id-preview--b703093e-3fd3-4aea-9ca9-5ec326aca1a8.lovable.app</a>
+  </div>
+
+  <h2>0 · O padrão aprovado (resumo)</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Tema</th><th>Base</th><th>Assinatura</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>CLARO (default)</strong></td>
+          <td>off-white frio <code>oklch(0.982 0.005 250)</code> + superfícies brancas c/ gradiente sutil</td>
+          <td>navy <code>#233059/#101D3D</code> estrutural (texto, primary, sidebar) + <strong>DOURADO ocre <code>#A67E33</code></strong>
+            em valores R$, botão primário-lux, acentos (calibrado p/ não estourar; <code>#D9A84E</code> só em micro-highlights)</td>
+        </tr>
+        <tr>
+          <td><strong>DARK</strong></td>
+          <td>cinza automotivo FOSCO <code>#1A1B1D</code>→<code>#26282B</code>→<code>#2F3236</code> (zero azul, zero preto puro)</td>
+          <td><strong>DOURADO brilhante <code>#D9A84E</code></strong> como primary/valores/glow · texto off-white quente
+            <code>#F4F2EC</code> · secundário Nardo <code>#8E9492</code></td>
+        </tr>
+        <tr>
+          <td><strong>Fundação</strong></td>
+          <td colspan="2">Tipografia Apple (<code>-apple-system, SF Pro…</code>) + letter-spacing −0.022em em headings
+            + tabular-nums · sombras SEMPRE multicamada (2-4 camadas + inset highlight no claro) · easing
+            <code>cubic-bezier(.16,1,.3,1)</code> 200-280ms · hover = eleva sombra + translateY(-2px) · radius
+            0.875rem · hairlines translúcidas</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>1 · O desafio técnico central (por que não é copiar)</h2>
+  <p>O Lovable é <strong>Tailwind 4</strong> (<code>@theme inline</code>, <code>@utility</code>, oklch).
+  O gestao é <strong>Tailwind 3 + shadcn</strong> com tokens <strong>HSL</strong>
+  (<code>hsl(var(--primary))</code> no <code>tailwind.config.ts</code>). Tradução com fidelidade total:</p>
+
+  <ol>
+    <li><strong>Tokens shadcn</strong> (<code>--primary</code>, <code>--background</code>, <code>--card</code>…):
+      converter oklch→<strong>HSL triplet</strong> com precisão (via culori/conversão exata, nunca "de olho").
+      Vivem em <code>.theme-nexvy-institucional</code> (claro) e <code>.theme-nexvy-institucional.dark</code>
+      — <strong>substituindo o azul institucional</strong> que está lá (o azul de 05/07 fica obsoleto; a infra
+      host-aware de ontem — <code>main.tsx</code> classList + guard do <code>usePlatformBranding</code> —
+      é REUSADA intacta).</li>
+    <li><strong>Tokens custom</strong> (<code>--gold*</code>, <code>--hairline*</code>, <code>--shadow-*</code>,
+      <code>--gradient-*</code>, <code>--value-color</code>): consumidos via <code>var()</code> direto →
+      <strong>manter oklch VERBATIM</strong> (zero erro de conversão; suporte de browser ok p/ dashboard).</li>
+    <li><strong>Utilities</strong> (<code>.surface-card</code>, <code>.brand-gradient</code>,
+      <code>.gold-gradient</code>, <code>.navy-gradient</code>, <code>.text-value</code>, <code>.text-gradient</code>,
+      <code>.hairline</code>, <code>.hairline-gold</code>, <code>.brand-glow</code>, <code>.surface-card-hover</code>):
+      reescrever como classes CSS normais em <code>@layer components</code> no <code>index.css</code> — funcionam
+      nos 2 temas automaticamente (as vars trocam).</li>
+    <li><strong>Tipografia</strong>: aplicar o stack Apple <strong>dentro do escopo</strong>
+      <code>.theme-nexvy-institucional</code> (gestao vira SF Pro; app.* continua Inter/rosa, intocado).</li>
+    <li><strong>Radius</strong>: 0.75rem→0.875rem no escopo do tema.</li>
+    <li><strong>Mapa automático shadcn</strong>: no claro <code>--primary</code>=navy, no dark
+      <code>--primary</code>=gold-bright — igual ao Lovable. Botões/inputs/rings shadcn herdam o design sem
+      tocar componente.</li>
+  </ol>
+
+  <h2>2 · Ondas</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Onda</th><th>Entrega</th><th>Gate binário</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge-onda">L1 — FUNDAÇÃO</span></td>
+          <td>Tokens traduzidos nos 2 temas + utilities + fonte + radius + dark automotivo + default CLARO no
+            gestao (toggle já existe no shell). 1 arquivo-alvo: <code>src/index.css</code> (+
+            <code>tailwind.config.ts</code> se precisar de shadow/font extend)</td>
+          <td>tsc verde · deploy anti-phantom · inspeção computed-styles no browser: <code>--primary</code>
+            claro = navy convertido, <code>--gold</code> = oklch verbatim, dark = <code>#1A1B1D</code></td>
+        </tr>
+        <tr>
+          <td><span class="badge-onda">L2 — EXEMPLAR Pipeline</span></td>
+          <td>Anatomia FIEL do Lovable na tela Pipeline: KPI cards (pílula-ícone, label uppercase 12px, valor
+            30px, chip delta), filter-bar chips "label: valor", colunas kanban (header FORA do box: dot c/
+            ring-glow + nome uppercase + pílula count; "R$ X em pipeline" dourado), deal cards (avatar
+            navy-gradient, valor 19px DOURADO <code>.text-value</code>, badges temp c/ ícone Flame/Thermometer/Snowflake,
+            badge WhatsApp, footer hairline c/ mini-avatar + quando, hover eleva)</td>
+          <td><strong>side-by-side</strong> gestao vs Lovable preview (eval-visual + inspeção de cor computada)
+            — "igual"</td>
+        </tr>
+        <tr>
+          <td><span class="badge-onda">L3 — P1 restantes</span></td>
+          <td>Leads, Painel, Radar IA, Follow-Up, Dashboard, Chat na anatomia lux (famílias F1-F5 do
+            TEMPLATE-UI reescritas c/ tokens lux)</td>
+          <td>eval-visual por tela ≥85 na rubric v2 (lux)</td>
+        </tr>
+        <tr>
+          <td><span class="badge-onda">L4 — Varredura</span></td>
+          <td>P2 (18 telas) + P3 (29) por família · limpeza <code>text-pink-500</code> hardcoded no superadmin ·
+            TEMPLATE-UI-GESTAO_v2 (lux substitui azul) · rubric-visual v2</td>
+          <td>grep sem rosa hardcode no gestao · evals visuais</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Execução: Opus executa, Fable revisa adversarialmente (valores de token conferidos contra a referência),
+  deploy com anti-phantom + prova visual. ≤6 braços, 1 workflow/vez.</p>
+
+  <h2>3 · Decisões travadas</h2>
+  <ul>
+    <li><strong>Azul institucional (05/07) → SUBSTITUÍDO</strong> pelo lux navy+gold. A classe
+      <code>.theme-nexvy-institucional</code> permanece (infra host-aware reusada); só os VALORES mudam.</li>
+    <li><strong>Default = CLARO</strong> no gestao; dark opt-in via toggle existente.</li>
+    <li><strong>app.*/apex intocados</strong> (rosa Beauty + Inter).</li>
+    <li>Nome interno do design system: <strong>"Nexvy Lux"</strong>. Branding "Lumière/CRM Suite" do Lovable
+      = placeholder, NÃO portar (fica "Nexvy · CRM da plataforma").</li>
+    <li>Dados/urls do mockup Lovable NÃO portar — apenas forma/estilo.</li>
+  </ul>
+
+  <h2>4 · Riscos honestos</h2>
+  <ol>
+    <li><span class="pill" style="margin:0">Provável</span> Conversão oklch→HSL tem arredondamento;
+      mitigação: converter com culori (não à mão) + comparar computed-color no browser contra o preview
+      Lovable.</li>
+    <li><span class="pill" style="margin:0">Certo</span> shadcn <code>--primary</code>=gold no dark pinta
+      TODOS os botões primários de dourado no dark — comportamento aprovado no mockup, mas telas P2/P3
+      não-redesenhadas podem ter combinações estranhas até a L4. Aceito (o mesmo aconteceu no azul).</li>
+    <li><strong>PWA/SW</strong>: rede-only, sem risco de cache (provado em 05/07).</li>
+    <li><strong>Fonte SF Pro</strong> só existe em Apple; em Windows cai pro <code>Segoe UI</code> (fallback
+      do próprio stack aprovado) — fidelidade total em Mac (onde o Marcelo avalia).</li>
+  </ol>
+
+  <h2>Review</h2>
+  <div class="note warn">(preencher ao fim de cada onda com provas: hash bundle, screenshots claro/dark, computed styles)</div>
+
+  <footer>
+    Gerado a partir de <code>tasks/PLANO-REDESIGN-LUX-GESTAO-2026-07-06.md</code> · par canônico .md + .html ·
+    NexvyBeauty
+  </footer>
+</div>
+</body>
+</html>

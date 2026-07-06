@@ -288,6 +288,27 @@ export function extractCaktoItems(order: any): CaktoOrderItem[] {
   return items;
 }
 
+/**
+ * Extrai o ref de vendedor/afiliado (?src=<seller>) do payload Cakto de forma
+ * DEFENSIVA. O campo exato no webhook ainda não é confirmado — cobrimos todos os
+ * candidatos plausíveis. Puro/síncrono (sem I/O): a resolução de affiliate_id a
+ * partir deste ref acontece no webhook via RPC resolve_affiliate_ref.
+ * Retorna null se nenhum candidato existir.
+ */
+export function extractSellerRef(order: any): string | null {
+  const raw = order?.raw ?? order?.raw_payload ?? {};
+  const cand =
+    order?.src ??
+    order?.trackingParameters?.src ??
+    order?.tracking?.src ??
+    raw?.src ??
+    raw?.trackingParameters?.src ??
+    null;
+  if (cand == null) return null;
+  const s = String(cand).trim();
+  return s.length > 0 ? s : null;
+}
+
 export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organization', orgId: string | null) {
   const product = order.product ?? {};
   const customer = order.customer ?? order.user ?? {};
@@ -296,6 +317,7 @@ export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organiza
     scope,
     organization_id: orgId,
     cakto_id: String(order.id),
+    seller_ref: extractSellerRef(order),
     cakto_ref_id: order.refId ?? order.ref_id ?? null,
     status: order.status ?? 'unknown',
     type: order.type ?? null,

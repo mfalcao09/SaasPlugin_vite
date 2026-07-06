@@ -195,7 +195,8 @@ export function PlatformCrmKanban() {
         </div>
       </div>
 
-      {/* Stats KPI (§F3-lite) — ícone em chip + label uppercase + valor tabular */}
+      {/* KPI cards (§L2 REF) — pílula-ícone (destaque brand-gradient+glow), label
+         uppercase 12px, valor 30px tabular. Chip delta só quando houver dado real. */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
           {
@@ -212,20 +213,26 @@ export function PlatformCrmKanban() {
             icon: TrendingUp,
           },
         ].map((kpi) => (
-          <div key={kpi.label} className="bg-card border rounded-lg p-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-              <kpi.icon className="h-4 w-4" />
+          <div
+            key={kpi.label}
+            className="surface-card surface-card-hover p-5 flex items-start gap-3.5"
+          >
+            {/* pílula ícone: destaque = brand-gradient + brand-glow; demais = bg-muted + hairline */}
+            <div
+              className={cn(
+                'h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                kpi.accent
+                  ? 'brand-gradient brand-glow text-white'
+                  : 'bg-muted border hairline text-muted-foreground',
+              )}
+            >
+              <kpi.icon className="h-[18px] w-[18px]" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground truncate">
                 {kpi.label}
               </p>
-              <p
-                className={cn(
-                  'text-2xl font-bold tabular-nums leading-tight truncate',
-                  kpi.accent && 'text-primary',
-                )}
-              >
+              <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none truncate">
                 {kpi.value}
               </p>
             </div>
@@ -244,36 +251,34 @@ export function PlatformCrmKanban() {
 
       {/* Kanban Board */}
       {isLoading ? (
-        // Skeleton anatômico (§3.1): mesmas colunas/cards do board real, sem spinner central.
+        // Skeleton anatômico (§3.1): anatomia LUX nova — colunas sem box (header
+        // solto px-1) + cards surface-card p-4, largura w-[320px], sem spinner.
         <ScrollArea className="flex-1 min-h-0">
           <div className="flex gap-3 h-full min-h-[400px]">
             {Array.from({ length: 4 }).map((_, ci) => (
-              <div
-                key={ci}
-                className="flex flex-col h-full w-[300px] shrink-0 bg-muted/20 rounded-lg border border-border/60 overflow-hidden"
-              >
-                <div className="px-3 py-2.5 border-b border-border/60 bg-muted/40">
+              <div key={ci} className="flex flex-col h-full w-[320px] shrink-0">
+                <div className="px-1 pb-3">
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-2 w-2 rounded-full" />
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="ml-auto h-5 w-6 rounded-full" />
                   </div>
-                  <Skeleton className="mt-1.5 h-3 w-16" />
+                  <Skeleton className="mt-1.5 h-3 w-20" />
                 </div>
-                <div className="p-2.5 space-y-2.5">
+                <div className="space-y-2.5">
                   {Array.from({ length: 3 }).map((_, li) => (
-                    <div key={li} className="bg-card border rounded-lg p-3 space-y-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <Skeleton className="h-9 w-9 rounded-full" />
+                    <div key={li} className="surface-card p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-xl" />
                         <div className="flex-1 space-y-1.5">
                           <Skeleton className="h-3.5 w-28" />
                           <Skeleton className="h-2.5 w-20" />
                         </div>
                       </div>
-                      <Skeleton className="h-4 w-20" />
-                      <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                        <Skeleton className="h-2.5 w-16" />
-                        <Skeleton className="h-5 w-5 rounded-full" />
+                      <Skeleton className="h-5 w-24" />
+                      <div className="flex items-center justify-between pt-2.5 border-t hairline">
+                        <Skeleton className="h-3.5 w-20 rounded-full" />
+                        <Skeleton className="h-2.5 w-14" />
                       </div>
                     </div>
                   ))}
@@ -310,6 +315,7 @@ export function PlatformCrmKanban() {
                   sellersMap={sellersMap}
                   isError={leadsFailed}
                   onRetry={retryBoard}
+                  onManageStage={() => setStageManagerOpen(true)}
                 />
               </div>
             ))}
