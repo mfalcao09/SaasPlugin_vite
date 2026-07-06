@@ -1,15 +1,17 @@
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, Clock, Send, MessageCircle, Percent, Flag } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { PlatformFollowupPanelStats } from '../data/usePlatformCrmFollowup';
 
 /**
- * KPIs da seção Follow-Up (família F3 do TEMPLATE-UI-GESTAO). Restyle de FORMA
- * sobre o porte 1:1 do CRM Vendus: contrato (`PlatformFollowupPanelStats`)
- * intacto; ícone padronizado em `bg-primary/10 text-primary` (§F3 — sem cores
- * decorativas fora dos tokens/§1.3), valor `text-2xl font-bold tabular-nums`,
- * label `text-[11px] uppercase`. Cor de SIGNIFICADO (§1.3) só na "Taxa de
- * Recuperação", que é um KPI de sucesso semântico (verde).
+ * KPIs da seção Follow-Up (família F5) na anatomia LUX do exemplar Kanban.
+ * Restyle de FORMA sobre o porte 1:1 do CRM Vendus: contrato
+ * (`PlatformFollowupPanelStats`) intacto. Cada KPI = `.surface-card` pílula-ícone
+ * (`h-10 w-10 rounded-xl`) + label uppercase 12px + valor 30px tabular. O KPI de
+ * DESTAQUE é a "Taxa de Recuperação" (sucesso semântico) → pílula `.brand-gradient
+ * .brand-glow` (dourado nobre no tema lux). Demais ícones = `bg-muted hairline`.
+ * Sem chip de delta: o contrato de stats não expõe variação período-a-período —
+ * não fabricamos delta (§5 anti-alucinação). Skeleton reproduz a mesma anatomia.
  */
 
 interface Props {
@@ -26,33 +28,33 @@ export function FollowupKpiCards({ stats, loading }: Props) {
     {
       icon: Users,
       title: 'Leads em Follow-up',
-      value: k?.leads_in_followup ?? 0,
+      value: String(k?.leads_in_followup ?? 0),
       sub: 'Em réguas ativas',
       accent: false,
     },
     {
       icon: Clock,
       title: 'Aguardando Próxima Tentativa',
-      value: k?.waiting_next ?? 0,
+      value: String(k?.waiting_next ?? 0),
       sub: 'Leads',
       accent: false,
     },
     {
       icon: Send,
       title: 'Follow-ups Enviados Hoje',
-      value: k?.sent_today ?? 0,
+      value: String(k?.sent_today ?? 0),
       sub: 'Total de envios',
       accent: false,
     },
     {
       icon: MessageCircle,
       title: 'Respostas Recuperadas',
-      value: k?.recovered ?? 0,
+      value: String(k?.recovered ?? 0),
       sub: 'Após follow-up',
       accent: false,
     },
     {
-      // Sucesso semântico (§1.3): destaque verde no ícone e no valor.
+      // KPI de destaque (§L2 REF): pílula brand-gradient + brand-glow.
       icon: Percent,
       title: 'Taxa de Recuperação',
       value: recoveryRate,
@@ -62,7 +64,7 @@ export function FollowupKpiCards({ stats, loading }: Props) {
     {
       icon: Flag,
       title: 'Réguas Encerradas',
-      value: k?.rulers_closed ?? 0,
+      value: String(k?.rulers_closed ?? 0),
       sub: 'Esgotaram tentativas',
       accent: false,
     },
@@ -73,32 +75,35 @@ export function FollowupKpiCards({ stats, loading }: Props) {
       {items.map((it) => {
         const Icon = it.icon;
         return (
-          <Card key={it.title}>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex items-start gap-3">
-                <div
-                  className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    it.accent
-                      ? 'bg-emerald-500/10 text-emerald-600'
-                      : 'bg-primary/10 text-primary'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground leading-snug">
-                  {it.title}
-                </div>
-              </div>
-              <div
-                className={`text-2xl font-bold tracking-tight tabular-nums ${
-                  it.accent ? 'text-emerald-600' : ''
-                }`}
-              >
-                {loading ? <Skeleton className="h-8 w-16" /> : it.value}
-              </div>
-              <div className="text-[11px] text-muted-foreground">{it.sub}</div>
-            </CardContent>
-          </Card>
+          <div
+            key={it.title}
+            className="surface-card surface-card-hover p-5 flex items-start gap-3.5"
+          >
+            {/* pílula ícone: destaque = brand-gradient + brand-glow; demais = bg-muted + hairline */}
+            <div
+              className={cn(
+                'h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                it.accent
+                  ? 'brand-gradient brand-glow text-white'
+                  : 'bg-muted border hairline text-muted-foreground',
+              )}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground leading-snug">
+                {it.title}
+              </p>
+              {loading ? (
+                <Skeleton className="mt-1.5 h-[30px] w-16" />
+              ) : (
+                <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none truncate">
+                  {it.value}
+                </p>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground truncate">{it.sub}</p>
+            </div>
+          </div>
         );
       })}
     </div>

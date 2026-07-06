@@ -26,7 +26,7 @@ import { useOrganizationId, formatCurrency, NoOrg } from '@/pages/salao/_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 // Paleta de gráficos em HSL (nossos tokens são tripletas → hsl(...) explícito).
-const CHART_COLORS = ['hsl(330 81% 60%)', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)']
+const CHART_COLORS = ['hsl(var(--primary))', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)']
 
 const TOOLTIP_STYLE = {
   background: 'hsl(var(--popover))',
@@ -599,7 +599,7 @@ export default function Relatorios({ demo }: { demo?: RelatoriosData } = {}) {
               <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis type="category" dataKey="nome" stroke="hsl(var(--muted-foreground))" width={110} fontSize={11} />
               <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
-              <Bar dataKey="valor" name="Total gasto" fill="hsl(330 81% 60%)" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="valor" name="Total gasto" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

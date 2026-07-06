@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -94,25 +93,25 @@ export function RadarFilters({ value, onChange }: Props) {
     (value.min_deal_value ? 1 : 0);
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Filtros da análise</CardTitle>
-          <div className="flex items-center gap-2">
-            {activeCount > 0 && (
-              <Badge variant="secondary" className="h-5 text-[10px]">
-                {activeCount} {activeCount === 1 ? 'filtro' : 'filtros'}
-              </Badge>
-            )}
-            {activeCount > 0 && (
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearAll}>
-                <X className="h-3 w-3 mr-1" /> Limpar
-              </Button>
-            )}
-          </div>
+    // Painel de filtros = surface-card lux (§ instrução). Header + corpo dentro do
+    // mesmo card; sliders/chips de status/temperatura preservados 1:1.
+    <div className="surface-card p-4">
+      <div className="flex items-center justify-between gap-2 pb-3">
+        <h3 className="text-base font-semibold">Filtros da análise</h3>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && (
+            <Badge variant="secondary" className="h-5 text-[10px]">
+              {activeCount} {activeCount === 1 ? 'filtro' : 'filtros'}
+            </Badge>
+          )}
+          {activeCount > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearAll}>
+              <X className="h-3 w-3 mr-1" /> Limpar
+            </Button>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
+      </div>
+      <div className="space-y-5">
         {/* Janela de inatividade */}
         <div>
           <Label className="text-xs text-muted-foreground">Período de inatividade (dias)</Label>
@@ -298,7 +297,7 @@ export function RadarFilters({ value, onChange }: Props) {
               onCheckedChange={(v) => onChange({ ...value, require_no_assigned: v })}
             />
           </div>
-          <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center justify-between pt-2 border-t hairline">
             <Label className="text-sm">Incluir conversas com IA ativa</Label>
             <Switch
               checked={!!value.include_ai_active}
@@ -306,7 +305,7 @@ export function RadarFilters({ value, onChange }: Props) {
             />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,16 +1,20 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Globe, Phone, Instagram, Mail, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+// Identidade nome→telefone (§3.3): IMPORTAR do exemplar calibrado, NUNCA reimplementar.
+import {
+  resolveVisitorIdentity,
+  visitorInitials,
+} from '../inbox/platformCrmIdentity';
 import type { PlatformPanelConversation } from '../data/usePlatformCrmAttendancePanel';
 
 /**
- * Mini-card de conversa do Painel de Atendimentos.
- * PORTE 1:1 de `admin/webchat/panel/ConversationMiniCard.tsx` do CRM Vendus.
- * Única troca: o `ChannelBadge` do seller (import proibido) virou um badge
- * local equivalente (ícone + cor por canal), zero import tenant/seller.
+ * Mini-card de conversa do Painel de Atendimentos (família F3 tempo real).
+ * CASCA LUX: `.surface-card-hover` (eleva no hover) + avatar `navy-gradient`
+ * com badge de canal §3.2 no canto + identidade via `platformCrmIdentity`
+ * (§3.3) + pílula de recência tokenizada. Dados/handler intocados: `onClick(c.id)`
+ * e o contrato `PlatformPanelConversation`.
  */
 
 interface Props {
@@ -18,89 +22,106 @@ interface Props {
   onClick: (id: string) => void;
 }
 
-function timeAgoColor(iso: string | null): string {
+// Recência da última mensagem (§1.3 SIGNIFICADO): atividade viva (<5min) = verde;
+// esfriando (<30min) = warning (ocre lux, token que troca com o tema); parada =
+// destructive. Só tokens semânticos — sem override `dark:` por card.
+function timeAgoClass(iso: string | null): string {
   if (!iso) return 'bg-muted text-muted-foreground';
   const diffMin = (Date.now() - new Date(iso).getTime()) / 60000;
-  if (diffMin < 5) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
-  if (diffMin < 30) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
+  if (diffMin < 5) return 'bg-emerald-500/15 text-emerald-600';
+  if (diffMin < 30) return 'bg-warning/15 text-warning';
   return 'bg-destructive/15 text-destructive';
 }
 
-/** Badge local de canal — substitui o ChannelBadge do seller (import proibido). */
-function LocalChannelBadge({ channel }: { channel: string }) {
+// Canal (§3.2 + §1.3): mesmo mapa visual do exemplar — whatsapp verde,
+// instagram rosa, site/webchat/email primary, sms violeta.
+function channelMeta(channel: string): { icon: typeof Globe; cls: string; label: string } {
   const ch = (channel || 'webchat').toLowerCase();
-  const meta = ch.includes('whatsapp')
-    ? { icon: Phone, cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' }
-    : ch === 'instagram'
-      ? { icon: Instagram, cls: 'bg-pink-500/15 text-pink-700 dark:text-pink-400' }
-      : ch === 'email'
-        ? { icon: Mail, cls: 'bg-blue-500/15 text-blue-700 dark:text-blue-400' }
-        : ch === 'sms'
-          ? { icon: MessageSquare, cls: 'bg-violet-500/15 text-violet-700 dark:text-violet-400' }
-          : { icon: Globe, cls: 'bg-primary/10 text-primary' };
-  const Icon = meta.icon;
-  return (
-    <span
-      className={cn(
-        'inline-flex h-4 w-4 items-center justify-center rounded-full shrink-0',
-        meta.cls,
-      )}
-      title={channel}
-    >
-      <Icon className="h-2.5 w-2.5" />
-    </span>
-  );
+  if (ch.includes('whatsapp')) return { icon: Phone, cls: 'bg-emerald-500 text-white', label: 'WhatsApp' };
+  if (ch === 'instagram') return { icon: Instagram, cls: 'bg-pink-500 text-white', label: 'Instagram' };
+  if (ch === 'email') return { icon: Mail, cls: 'bg-primary text-primary-foreground', label: 'E-mail' };
+  if (ch === 'sms') return { icon: MessageSquare, cls: 'bg-violet-500 text-white', label: 'SMS' };
+  return { icon: Globe, cls: 'bg-primary text-primary-foreground', label: 'Site' };
 }
 
 export function ConversationMiniCard({ conversation: c, onClick }: Props) {
-  const name = c.lead_name || c.visitor_name || c.visitor_phone || 'Sem nome';
-  const initials = name
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  // Identidade §3.3: nome inútil ("~"/1-2 chars) → telefone formatado vira primário.
+  const rawName = c.lead_name || c.visitor_name || null;
+  const identity = resolveVisitorIdentity(rawName, c.visitor_phone);
+  const initials = visitorInitials(rawName, c.visitor_phone);
+
   const timeLabel = c.last_message_at
     ? formatDistanceToNowStrict(new Date(c.last_message_at), { locale: ptBR, addSuffix: false })
     : '—';
   const unread = c.unread_count_agents || 0;
 
+  const ch = channelMeta(c.channel || 'webchat');
+  const ChannelIcon = ch.icon;
+
+  // Secundário: nome cru "inútil" (quando o telefone virou primário) OU o setor.
+  const secondary = identity.secondary ?? c.sector_name;
+
   return (
     <button
       type="button"
       onClick={() => onClick(c.id)}
+      title={identity.primary}
       className={cn(
-        'w-full text-left p-2.5 rounded-lg border border-border bg-card',
-        'hover:bg-accent/50 hover:border-primary/30 transition-colors',
-        'flex items-center gap-2.5 group',
+        // surface-card lux + hover eleva (translateY -2px + sombra). p-2.5, densidade F3.
+        'group surface-card surface-card-hover w-full text-left p-2.5',
+        'flex items-center gap-2.5',
       )}
     >
-      <Avatar className="h-8 w-8 shrink-0">
-        <AvatarImage src={c.visitor_avatar_url || undefined} />
-        <AvatarFallback className="text-xs">{initials || '?'}</AvatarFallback>
-      </Avatar>
+      {/* Avatar navy-gradient com iniciais + badge de canal §3.2 no canto */}
+      <div className="relative shrink-0">
+        {c.visitor_avatar_url ? (
+          <img
+            src={c.visitor_avatar_url}
+            alt=""
+            className="h-9 w-9 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="navy-gradient flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-semibold text-white shadow-sm">
+            {initials}
+          </div>
+        )}
+        <span
+          className={cn(
+            'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-card',
+            ch.cls,
+          )}
+          title={ch.label}
+          aria-label={ch.label}
+        >
+          <ChannelIcon className="h-2 w-2" />
+        </span>
+      </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <LocalChannelBadge channel={c.channel || 'webchat'} />
-          <span className="text-sm font-medium truncate flex-1">{name}</span>
+          <span className="flex-1 truncate text-[13px] font-semibold leading-tight">
+            {identity.primary}
+          </span>
+          {/* Não-lidas = atividade viva (§1.3): badge emerald, tabular. */}
           {unread > 0 && (
-            <Badge variant="default" className="h-4 px-1.5 text-[10px] shrink-0">
+            <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold tabular-nums text-white">
               {unread}
-            </Badge>
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <div className="mt-0.5 flex items-center gap-1.5">
           <span
             className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-              timeAgoColor(c.last_message_at),
+              'rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums',
+              timeAgoClass(c.last_message_at),
             )}
           >
             {timeLabel}
           </span>
-          {c.sector_name && (
-            <span className="text-[10px] text-muted-foreground truncate">{c.sector_name}</span>
+          {secondary && (
+            <span className="truncate text-[10px] text-muted-foreground" title={secondary}>
+              {secondary}
+            </span>
           )}
         </div>
       </div>

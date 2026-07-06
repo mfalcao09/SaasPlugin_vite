@@ -143,8 +143,22 @@ export function usePlatformBranding() {
       ].forEach((v) => root.style.removeProperty(v));
     }
     const primary = settings.primary_color || '#F97316';
+    // Marca-padrão do produto (rosé #C54B60): o CSS :root já tem a paleta "Beauty
+    // Rosé" completa e EXATA (inclusive sidebar VINHO #8c041d, terracota, etc.). O
+    // generateColorScale só APROXIMA o rosé e ainda apagaria o vinho da sidebar —
+    // então NÃO sobrescrevemos inline quando o tenant usa a cor de marca. O inline
+    // fica reservado a tenant que de fato customiza a cor primária.
+    const isBrandDefault = !isGestao && primary.toLowerCase() === '#c54b60';
+    if (isBrandDefault) {
+      [
+        '--primary', '--primary-foreground', '--ring',
+        '--sidebar-primary', '--sidebar-primary-foreground', '--sidebar-ring',
+        '--gradient-primary', '--gradient-accent', '--gradient-hero', '--shadow-glow',
+        '--accent', '--accent-foreground',
+      ].forEach((v) => root.style.removeProperty(v));
+    }
     const scale = generateColorScale(primary);
-    if (scale && !isGestao) {
+    if (scale && !isGestao && !isBrandDefault) {
       root.style.setProperty('--primary', scale.baseStr);
       root.style.setProperty('--primary-foreground', scale.foreground);
       root.style.setProperty('--ring', scale.baseStr);
@@ -166,7 +180,7 @@ export function usePlatformBranding() {
       root.style.setProperty('--shadow-glow', `0 0 20px hsl(${scale.baseStr} / 0.30)`);
     }
 
-    if (settings.accent_color && !isGestao) {
+    if (settings.accent_color && !isGestao && !isBrandDefault) {
       const accentHsl = hexToHsl(settings.accent_color);
       if (accentHsl) {
         const accentStr = hslToString(accentHsl);

@@ -290,11 +290,12 @@ export function PlatformCrmLeadsManager() {
 
   return (
     <div className="space-y-4">
-      {/* Header de página — escala §1.4 (título text-lg + subtítulo) */}
+      {/* Header de página — escala §1.4 (título text-lg + subtítulo). Casca Lux:
+         pílula-ícone navy-gradient; ações secundárias outline hairline; primária brand-gradient. */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-            <Target className="h-4 w-4 text-primary" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl navy-gradient shrink-0 shadow-sm">
+            <Target className="h-4 w-4 text-white" />
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-foreground leading-tight">Gestão de Leads</h1>
@@ -308,7 +309,7 @@ export function PlatformCrmLeadsManager() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-10 border hairline hover:border-[color:var(--hairline-gold)]"
             onClick={() => handleExport(false)}
             disabled={exporting}
           >
@@ -322,16 +323,21 @@ export function PlatformCrmLeadsManager() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-10 border hairline hover:border-[color:var(--hairline-gold)]"
             onClick={() => setImportDialogOpen(true)}
           >
             <Upload className="h-4 w-4 mr-1.5" />
             Importar
           </Button>
-          <Button size="sm" className="h-9" onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />
+          {/* Ação primária Lux — brand-gradient + brand-glow + hover eleva */}
+          <button
+            type="button"
+            onClick={() => setCreateDialogOpen(true)}
+            className="h-10 px-4 rounded-lg brand-gradient brand-glow text-white text-[13px] font-semibold inline-flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5"
+          >
+            <Plus className="h-4 w-4" />
             Novo Lead
-          </Button>
+          </button>
         </div>
       </div>
 

@@ -1,10 +1,18 @@
-import { Card, CardContent } from '@/components/ui/card';
+import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
-import { Users, Flame, Thermometer, Snowflake, DollarSign } from 'lucide-react';
+import { Users, Flame, Thermometer, Snowflake, TrendingUp } from 'lucide-react';
 
 /**
  * KPIs do CRM de PLATAFORMA (super_admin) — pipeline único, desacoplado do tenant.
  * Zero campo de salão / organization. Números derivados de `platform_crm_leads`.
+ *
+ * Casca "Nexvy Lux" (L3 / F3): cards `surface-card surface-card-hover` com pílula-ícone
+ * `h-10 w-10 rounded-xl`, label uppercase 12px tracking, valor 30px tabular. Anatomia
+ * FIEL ao exemplar (bloco KPI de `PlatformCrmKanban.tsx`):
+ *  - KPI de VALOR (Pipeline R$) = destaque: pílula `brand-gradient brand-glow` + valor `.text-value` (dourado).
+ *  - KPIs de temperatura = pílula color-mix do token semântico (--hot/--warm/--cold), mesma
+ *    receita da pílula de temperatura do lead card do kanban.
+ * Estrutura/dados INTOCADOS — só forma.
  */
 export interface PlatformCrmLeadsStats {
   total: number;
@@ -27,44 +35,24 @@ const brl = (v: number) =>
     maximumFractionDigits: 0,
   });
 
-// Cores de temperatura = literais SÓ da tabela §1.3 (semântica de domínio). Total/Pipeline
-// via token de marca (primary). Sem gradiente de fundo (§1.2 pto 2/3).
-const cards = [
-  {
-    key: 'total' as const,
-    label: 'Total de Leads',
-    icon: Users,
-    iconColor: 'text-primary',
-    bgColor: 'bg-primary/10',
-  },
-  {
-    key: 'hot' as const,
-    label: 'Quentes',
-    icon: Flame,
-    iconColor: 'text-red-600',
-    bgColor: 'bg-red-500/10',
-  },
-  {
-    key: 'warm' as const,
-    label: 'Mornos',
-    icon: Thermometer,
-    iconColor: 'text-orange-600',
-    bgColor: 'bg-orange-500/10',
-  },
-  {
-    key: 'cold' as const,
-    label: 'Frios',
-    icon: Snowflake,
-    iconColor: 'text-sky-600',
-    bgColor: 'bg-sky-500/10',
-  },
-  {
-    key: 'pipelineValue' as const,
-    label: 'Pipeline (R$)',
-    icon: DollarSign,
-    iconColor: 'text-primary',
-    bgColor: 'bg-primary/10',
-  },
+// ── Config dos cards (Lux) ─────────────────────────────────────────────────
+// `accent` = destaque brand (pílula brand-gradient + valor dourado .text-value).
+// `tempVar` = token semântico de temperatura (§1.3 lux) → pílula color-mix 14% + ring 30%
+// (mesma anatomia da pílula de temperatura do exemplar kanban lead card).
+type KpiCard = {
+  key: keyof PlatformCrmLeadsStats;
+  label: string;
+  icon: typeof Users;
+  accent?: boolean;
+  tempVar?: 'var(--hot)' | 'var(--warm)' | 'var(--cold)';
+};
+
+const cards: KpiCard[] = [
+  { key: 'total', label: 'Total de Leads', icon: Users },
+  { key: 'hot', label: 'Quentes', icon: Flame, tempVar: 'var(--hot)' },
+  { key: 'warm', label: 'Mornos', icon: Thermometer, tempVar: 'var(--warm)' },
+  { key: 'cold', label: 'Frios', icon: Snowflake, tempVar: 'var(--cold)' },
+  { key: 'pipelineValue', label: 'Pipeline (R$)', icon: TrendingUp, accent: true },
 ];
 
 export function PlatformCrmLeadsKPICards({ stats, isLoading }: PlatformCrmLeadsKPICardsProps) {
@@ -73,41 +61,59 @@ export function PlatformCrmLeadsKPICards({ stats, isLoading }: PlatformCrmLeadsK
       {cards.map((card) => {
         const Icon = card.icon;
         const raw = stats?.[card.key] ?? 0;
-        const display = card.key === 'pipelineValue' ? brl(raw) : raw.toLocaleString('pt-BR');
+        const isValue = card.key === 'pipelineValue';
+        const display = isValue ? brl(raw) : raw.toLocaleString('pt-BR');
+
+        // Pílula de temperatura: color-mix 14% do token + inset ring 30% (REF kanban).
+        const tempPill: CSSProperties | undefined = card.tempVar
+          ? {
+              color: card.tempVar,
+              backgroundColor: `color-mix(in oklab, ${card.tempVar} 14%, transparent)`,
+              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${card.tempVar} 30%, transparent)`,
+            }
+          : undefined;
 
         return (
-          <Card
+          <div
             key={card.key}
             className={cn(
-              'transition-shadow hover:shadow-md',
+              'surface-card surface-card-hover p-5 flex items-start gap-3.5',
+              // Total ocupa 2 colunas no grid mais estreito (preserva o layout original).
               card.key === 'total' && 'col-span-2 md:col-span-1',
             )}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1 min-w-0">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                    {card.label}
-                  </p>
-                  {isLoading ? (
-                    <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-                  ) : (
-                    <p className="text-2xl font-bold tabular-nums text-foreground truncate">
-                      {display}
-                    </p>
-                  )}
-                </div>
-                <div
+            {/* pílula ícone: destaque (valor) = brand-gradient + brand-glow;
+               temperatura = color-mix do token; neutro = bg-muted + hairline */}
+            <div
+              className={cn(
+                'h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                card.accent
+                  ? 'brand-gradient brand-glow text-white'
+                  : !card.tempVar && 'bg-muted border hairline text-muted-foreground',
+              )}
+              style={tempPill}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground truncate">
+                {card.label}
+              </p>
+              {isLoading ? (
+                <div className="mt-1 h-[30px] w-20 bg-muted animate-pulse rounded" />
+              ) : (
+                <p
                   className={cn(
-                    'flex h-9 w-9 items-center justify-center rounded-lg shrink-0',
-                    card.bgColor,
+                    'mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none truncate',
+                    // Valor R$ em dourado (.text-value); demais no foreground padrão.
+                    isValue && 'text-value',
                   )}
                 >
-                  <Icon className={cn('h-4 w-4', card.iconColor)} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  {display}
+                </p>
+              )}
+            </div>
+          </div>
         );
       })}
     </div>

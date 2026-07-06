@@ -65,7 +65,7 @@ const FORMAS = ['PIX', 'Dinheiro', 'Cartão de crédito', 'Cartão de débito', 
 
 // Paleta de gráficos em HSL (tokens são tripletas → hsl(...) explícito), mesma
 // do Cockpit/Relatorios para coerência visual dark/pink.
-const CHART_COLORS = ['hsl(330 81% 60%)', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)', 'hsl(0 72% 58%)']
+const CHART_COLORS = ['hsl(var(--primary))', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)', 'hsl(0 72% 58%)']
 const COLOR_ENTRADA = 'hsl(160 60% 45%)'
 const COLOR_SAIDA = 'hsl(0 72% 58%)'
 

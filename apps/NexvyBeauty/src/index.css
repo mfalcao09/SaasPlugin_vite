@@ -5,146 +5,223 @@
 @tailwind utilities;
 
 @layer base {
-  /* TEMA LIGHT - Elegante e Premium */
+  /* ═══════════════════════════════════════════════════════════════════════
+     TEMA LIGHT — "Beauty Rosé" (app.* do tenant). Paleta APROVADA pelo Marcelo
+     (2026-07-06). Fonte da verdade: tasks/rose-reference/lovable-styles-aprovado.css
+     (Lovable 46463c3b, commit 623c35f). Sai o rosa chapado #EC4899 → entra o
+     mesclado rosé/terracota/creme com âncora vinho.
+     Máxima: rosé #C54B60 (primary) · vinho #8C041D/#570C15 (âncora) ·
+     terracota #C4755B (acento) · creme #FAF7F2 (fundo).
+     Conversão hex→HSL determinística (1 casa), roundtrip HSL→hex Δ=0 provado.
+     Estrutura (menus/telas/fluxos) INTOCADA — só cor/acabamento mudam.
+     ═══════════════════════════════════════════════════════════════════════ */
   :root {
-    --background: 0 0% 99%;
-    --foreground: 222 47% 11%;
+    --background: 37.5 44.4% 96.5%;      /* #faf7f2 creme quente */
+    --foreground: 340 12% 14.7%;         /* #2a2124 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 0 0% 100%;                   /* #ffffff */
+    --card-foreground: 340 12% 14.7%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;                /* #ffffff */
+    --popover-foreground: 340 12% 14.7%;
 
-    --primary: 330 81% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 349.7 51.3% 53.3%;        /* #c54b60 rosé profundo */
+    --primary-foreground: 0 0% 100%;     /* #ffffff */
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 34.3 41.2% 93.3%;       /* #f5efe7 */
+    --secondary-foreground: 340 12% 14.7%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 34.3 41.2% 93.3%;           /* #f5efe7 */
+    --muted-foreground: 332.7 5.2% 58.2%; /* #9a8f94 */
 
-    --accent: 330 81% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 20.7 52.7% 89.2%;          /* #f2dfd5 terracota-soft */
+    --accent-foreground: 349 94.4% 28.2%; /* #8c041d vinho */
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 63.9% 55.5%;        /* #d64545 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
 
-    --success: 142 71% 40%;
+    --success: 141.3 29% 42%;            /* #4c8a62 */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 11%;
+    --warning: 38 62% 46.5%;             /* #c08a2d */
+    --warning-foreground: 340 12% 14.7%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 330 81% 60%;
+    --border: 30 28.1% 87.5%;            /* #e8dfd6 */
+    --input: 240 14.6% 82.5%;            /* #ccccd9 */
+    --ring: 349.7 51.3% 53.3%;           /* #c54b60 */
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;                  /* REF */
 
-    /* Sidebar Light */
-    --sidebar-background: 220 14% 98%;
-    --sidebar-foreground: 222 47% 20%;
-    --sidebar-primary: 330 81% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 94%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 330 81% 60%;
+    /* Sidebar Light — sidebar-primary = VINHO #8c041d (não o rosé) */
+    --sidebar-background: 0 0% 100%;     /* #ffffff */
+    --sidebar-foreground: 340 12% 14.7%; /* #2a2124 */
+    --sidebar-primary: 349 94.4% 28.2%;  /* #8c041d VINHO (âncora) */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 34.3 41.2% 93.3%;  /* #f5efe7 */
+    --sidebar-accent-foreground: 349 94.4% 28.2%; /* #8c041d */
+    --sidebar-border: 31.8 30.9% 89.2%;  /* #ece4db */
+    --sidebar-ring: 349.7 51.3% 53.3%;   /* #c54b60 */
 
-    /* Beauty Gradients - Laranja escuro → Laranja → Laranja claro */
-    --gradient-primary: linear-gradient(135deg, hsl(330 75% 42%), hsl(330 81% 60%), hsl(320 85% 72%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 14% 98%));
-    --gradient-hero: linear-gradient(135deg, hsl(320 85% 72% / 0.08), hsl(330 81% 60% / 0.04));
-    --gradient-accent: linear-gradient(135deg, hsl(330 81% 60% / 0.10), hsl(320 85% 72% / 0.04));
+    /* ── Tokens custom Beauty Rosé — valores RAW hex/rgba VERBATIM do REF ──
+       (consumidos via var() direto — não passam pelo hsl() do tailwind) */
+    --wine: #8c041d;
+    --wine-deep: #570c15;
+    --rose: #c54b60;
+    --terracotta: #c4755b;
+    --terracotta-soft: #f2dfd5;
+    --cream: #faf7f2;
+    --cream-2: #f5efe7;
+    --surface-2: #f5efe7;
+    --hairline: rgba(87, 12, 21, 0.08);
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
 
-    /* Sombras Light - Suaves e naturais */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.06), 0 2px 4px -2px hsl(222 47% 11% / 0.04);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.08), 0 4px 6px -4px hsl(222 47% 11% / 0.04);
-    --shadow-glow: 0 0 20px hsl(330 81% 60% / 0.20);
+    /* Gradiente-assinatura — a alma do redesign (135deg vinho→rosé→terracota) */
+    --gradient-signature: linear-gradient(135deg, #8c041d 0%, #c54b60 55%, #c4755b 100%);
+    --gradient-signature-soft: linear-gradient(
+      135deg,
+      rgba(140, 4, 29, 0.08) 0%,
+      rgba(197, 75, 96, 0.08) 55%,
+      rgba(196, 117, 91, 0.08) 100%
+    );
 
-    /* CBA port — brand/surface/chart tokens (Onda 0) */
-    --brand: 330 81% 60%;            /* = primary: mantém o rosa do NX */
+    /* Gradientes legados NX reapontados ao rosé/creme (mesmos nomes) */
+    --gradient-primary: var(--gradient-signature);
+    --gradient-card: linear-gradient(180deg, #ffffff, #faf7f2);
+    --gradient-hero: radial-gradient(
+        1200px 500px at 100% -10%,
+        rgba(196, 117, 91, 0.18),
+        transparent 60%
+      ),
+      radial-gradient(800px 400px at 0% 10%, rgba(197, 75, 96, 0.12), transparent 60%);
+    --gradient-accent: linear-gradient(135deg, rgba(197, 75, 96, 0.10), rgba(196, 117, 91, 0.04));
+
+    /* Sombras multicamada premium — do REF */
+    --shadow-xs: 0 1px 2px rgba(42, 33, 36, 0.06);
+    --shadow-sm: 0 1px 2px rgba(42, 33, 36, 0.05), 0 2px 6px -2px rgba(42, 33, 36, 0.06);
+    --shadow-md: 0 1px 2px rgba(42, 33, 36, 0.06), 0 8px 20px -8px rgba(42, 33, 36, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --shadow-lg: 0 1px 2px rgba(42, 33, 36, 0.06), 0 16px 32px -14px rgba(42, 33, 36, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow-xl: 0 2px 4px rgba(42, 33, 36, 0.05), 0 30px 60px -20px rgba(87, 12, 21, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow-glow: 0 0 0 1px rgba(197, 75, 96, 0.18),
+      0 12px 32px -10px rgba(140, 4, 29, 0.35);
+
+    /* CBA port — brand/surface/chart tokens (harmonia rosé/terracota/vinho/âmbar/sálvia) */
+    --brand: 349.7 51.3% 53.3%;      /* = primary: rosé #c54b60 */
     --brand-foreground: 0 0% 100%;
     --brand-master: 0 70% 35%;        /* área super-admin/master (vermelho) */
-    --surface: 40 23% 96%;            /* off-white quente (#F8F7F3) */
-    --chart-1: 330 81% 60%;
-    --chart-2: 320 70% 58%;
-    --chart-3: 250 60% 58%;
-    --chart-4: 38 92% 55%;
-    --chart-5: 145 55% 45%;
+    --surface: 37.5 44.4% 96.5%;      /* creme #faf7f2 */
+    --chart-1: 349.7 51.3% 53.3%;     /* rosé #c54b60 */
+    --chart-2: 14.9 47.1% 56.3%;      /* terracota #c4755b */
+    --chart-3: 349 94.4% 28.2%;       /* vinho #8c041d */
+    --chart-4: 38 62% 46.5%;          /* âmbar #c08a2d (warning) */
+    --chart-5: 141.3 29% 42%;         /* sálvia #4c8a62 (success) */
   }
 
-  /* TEMA DARK - Premium */
+  /* ═══════════════════════════════════════════════════════════════════════
+     TEMA DARK — "vinho-noir" (app.* do tenant). Do REF aprovado. Fundo #1b1315,
+     primary rosé-claro #d9718a. Conversão hex→HSL determinística, roundtrip Δ=0.
+     ═══════════════════════════════════════════════════════════════════════ */
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 345 17.4% 9%;          /* #1b1315 vinho-noir */
+    --foreground: 27.7 41.9% 93.9%;      /* #f6efe9 */
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 343.6 17.5% 12.4%;           /* #251a1d */
+    --card-foreground: 27.7 41.9% 93.9%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 341.5 16.5% 15.5%;        /* #2e2125 */
+    --popover-foreground: 27.7 41.9% 93.9%;
 
-    --primary: 330 81% 62%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 345.6 57.8% 64.7%;        /* #d9718a rosé-claro */
+    --primary-foreground: 345 17.4% 9%;  /* #1b1315 */
 
-    --secondary: 222 30% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 341.5 16.5% 15.5%;      /* #2e2125 */
+    --secondary-foreground: 27.7 41.9% 93.9%;
 
-    --muted: 222 30% 12%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 341.5 16.5% 15.5%;          /* #2e2125 */
+    --muted-foreground: 341.5 5.5% 53.5%; /* #8f8286 */
 
-    --accent: 330 81% 62%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 330 14.6% 18.8%;           /* #372930 */
+    --accent-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65.6% 64.7%;        /* #e06a6a */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
 
-    --success: 142 71% 45%;
-    --success-foreground: 222 47% 6%;
+    --success: 142.9 28% 55.9%;          /* #6fae87 */
+    --success-foreground: 345 17.4% 9%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 6%;
+    --warning: 38.4 64.2% 58.4%;         /* #d9a851 */
+    --warning-foreground: 345 17.4% 9%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 14%;
-    --ring: 330 81% 62%;
+    --border: 330 14.6% 18.8%;           /* #372930 */
+    --input: 330 14.6% 18.8%;            /* #372930 */
+    --ring: 345.6 57.8% 64.7%;           /* #d9718a */
 
-    /* Sidebar Dark */
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 210 40% 85%;
-    --sidebar-primary: 330 81% 62%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 30% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 15%;
-    --sidebar-ring: 330 81% 62%;
+    /* Sidebar Dark (vinho-noir) */
+    --sidebar-background: 346.7 17% 10.4%; /* #1f1618 */
+    --sidebar-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
+    --sidebar-primary: 345.6 57.8% 64.7%;  /* #d9718a */
+    --sidebar-primary-foreground: 345 17.4% 9%; /* #1b1315 */
+    --sidebar-accent: 341.5 16.5% 15.5%;   /* #2e2125 */
+    --sidebar-accent-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
+    --sidebar-border: 341.5 16.5% 15.5%;   /* #2e2125 */
+    --sidebar-ring: 345.6 57.8% 64.7%;     /* #d9718a */
 
-    /* Beauty Gradients - Dark */
-    --gradient-primary: linear-gradient(135deg, hsl(330 75% 42%), hsl(330 81% 62%), hsl(320 85% 72%));
-    --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
-    --gradient-hero: linear-gradient(135deg, hsl(222 47% 8%), hsl(222 47% 4%));
-    --gradient-accent: linear-gradient(135deg, hsl(330 81% 62% / 0.18), hsl(320 85% 72% / 0.06));
+    /* ── Tokens custom Beauty Rosé (dark) — RAW hex/rgba VERBATIM do REF ── */
+    --wine: #8c041d;
+    --wine-deep: #570c15;
+    --rose: #d9718a;
+    --terracotta: #d98e6b;
+    --terracotta-soft: rgba(217, 142, 107, 0.12);
+    --cream: #f6efe9;
+    --cream-2: #c9bdb6;
+    --surface-2: #2e2125;
+    --hairline: rgba(255, 255, 255, 0.07);
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
 
-    /* Shadows - Dark */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 4% / 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 4% / 0.4), 0 2px 4px -2px hsl(222 47% 4% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 4% / 0.5), 0 4px 6px -4px hsl(222 47% 4% / 0.4);
-    --shadow-glow: 0 0 20px hsl(330 81% 62% / 0.35);
+    /* Gradiente-assinatura (dark) */
+    --gradient-signature: linear-gradient(135deg, #c54b60 0%, #d9718a 55%, #d98e6b 100%);
+    --gradient-signature-soft: linear-gradient(
+      135deg,
+      rgba(197, 75, 96, 0.18) 0%,
+      rgba(217, 113, 138, 0.14) 55%,
+      rgba(217, 142, 107, 0.14) 100%
+    );
 
-    /* CBA port — brand/surface/chart tokens (dark) — Onda 0 */
-    --brand: 330 81% 62%;
+    /* Gradientes legados NX reapontados (dark) */
+    --gradient-primary: var(--gradient-signature);
+    --gradient-card: linear-gradient(180deg, #251a1d, #1b1315);
+    --gradient-hero: radial-gradient(
+        1200px 500px at 100% -10%,
+        rgba(217, 142, 107, 0.14),
+        transparent 60%
+      ),
+      radial-gradient(800px 400px at 0% 10%, rgba(217, 113, 138, 0.12), transparent 60%);
+    --gradient-accent: linear-gradient(135deg, rgba(197, 75, 96, 0.18), rgba(217, 142, 107, 0.06));
+
+    /* Sombras multicamada premium (dark) — do REF */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 32px -14px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-xl: 0 2px 4px rgba(0, 0, 0, 0.4), 0 30px 60px -20px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-glow: 0 0 0 1px rgba(217, 113, 138, 0.28),
+      0 12px 32px -10px rgba(217, 113, 138, 0.45);
+
+    /* CBA port — brand/surface/chart tokens (dark, harmonia rosé) */
+    --brand: 345.6 57.8% 64.7%;      /* rosé-claro #d9718a */
     --brand-foreground: 0 0% 100%;
     --brand-master: 0 65% 45%;
-    --surface: 222 47% 10%;
-    --chart-1: 330 81% 62%;
-    --chart-2: 320 70% 62%;
-    --chart-3: 250 60% 64%;
-    --chart-4: 38 92% 55%;
-    --chart-5: 145 55% 50%;
+    --surface: 343.6 17.5% 12.4%;    /* #251a1d */
+    --chart-1: 345.6 57.8% 64.7%;    /* rosé #d9718a */
+    --chart-2: 19.1 59.1% 63.5%;     /* terracota #d98e6b */
+    --chart-3: 349 94.4% 28.2%;      /* vinho #8c041d */
+    --chart-4: 38.4 64.2% 58.4%;     /* âmbar #d9a851 (warning) */
+    --chart-5: 142.9 28% 55.9%;      /* sálvia #6fae87 (success) */
   }
 
   /* CBA port — área master/super-admin: sidebar vermelha (naming NX) — Onda 0 */
@@ -426,6 +503,14 @@
     overscroll-behavior: none;
   }
 
+  /* Headings do app (Beauty Rosé) — tracking premium do REF. Escopado ao app:
+     o tema lux (.theme-nexvy-institucional h1..h4) mantém seu -0.022em intocado. */
+  :root:not(.theme-nexvy-institucional) h1,
+  :root:not(.theme-nexvy-institucional) h2,
+  :root:not(.theme-nexvy-institucional) h3 {
+    letter-spacing: -0.015em;
+  }
+
   /* Prevent zoom on inputs in iOS */
   input, select, textarea {
     font-size: 16px !important;
@@ -484,6 +569,25 @@
    automaticamente entre claro/dark quando as vars mudam.
    ═════════════════════════════════════════════════════════════════════════ */
 @layer components {
+  /* ── Utilities "Beauty Rosé" (app.*) — tradução das @utility do REF aprovado.
+     Nomes distintos das lux (.surface-card/.brand-gradient/…) → sem colisão.
+     Consomem os tokens custom do :root/.dark do app (--gradient-signature,
+     --shadow-*, --hairline) → trocam claro/dark automaticamente. ────────────── */
+  .bg-signature { background-image: var(--gradient-signature); }
+  .bg-signature-soft { background-image: var(--gradient-signature-soft); }
+  .bg-hero-rose { background-image: var(--gradient-hero); }
+  .text-signature {
+    background-image: var(--gradient-signature);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-premium { box-shadow: var(--shadow-lg); }
+  .shadow-premium-sm { box-shadow: var(--shadow-sm); }
+  .shadow-premium-xl { box-shadow: var(--shadow-xl); }
+  .shadow-glow-rose { box-shadow: var(--shadow-glow); }
+  .ring-hairline { box-shadow: inset 0 0 0 1px var(--hairline); }
+
   .surface-card {
     background: var(--gradient-surface);
     border: 1px solid var(--hairline);
@@ -667,7 +771,9 @@
       box-shadow: var(--shadow-glow);
     }
     50% {
-      box-shadow: 0 0 30px hsl(330 81% 62% / 0.45);
+      /* rosé glow (era hsl(330 81% 62%) rosa chapado); usa o token do tema →
+         acompanha claro/dark e a paleta Beauty Rosé aprovada */
+      box-shadow: 0 0 30px hsl(var(--primary) / 0.45);
     }
   }
 

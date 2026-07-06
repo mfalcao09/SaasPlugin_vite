@@ -1,8 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageCircle, Sparkles, Calendar, AlertCircle } from 'lucide-react';
 import type { RealtimeOps } from '@/components/superadmin/crm/data/usePlatformCrmOperationCenter';
+
+// Micro-label de seção (§REF) + dot pulsante de tempo real (§3.4).
+const RealtimeLabel = () => (
+  <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <span className="relative flex h-2 w-2" aria-hidden="true">
+      <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/60 animate-ping" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+    </span>
+    Operação em Tempo Real
+  </p>
+);
 
 interface Props {
   data?: RealtimeOps;
@@ -41,11 +51,9 @@ export function RealtimeOpsCard({ data, isLoading, isError, onRetry }: Props) {
   // zeradas (barras em 0 mentem que a operação está parada).
   if (isError) {
     return (
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Operação em Tempo Real</CardTitle>
-        </CardHeader>
-        <CardContent className="py-8 flex flex-col items-center text-center gap-2">
+      <div className="surface-card p-4">
+        <RealtimeLabel />
+        <div className="py-8 flex flex-col items-center text-center gap-2">
           <AlertCircle className="h-8 w-8 text-destructive/70" />
           <p className="text-sm text-muted-foreground">Não foi possível carregar a operação em tempo real.</p>
           {onRetry && (
@@ -53,19 +61,17 @@ export function RealtimeOpsCard({ data, isLoading, isError, onRetry }: Props) {
               Tentar novamente
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // Skeleton anatômico (§3.1): 3 colunas × (título + 3–4 barras).
   if (isLoading) {
     return (
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Operação em Tempo Real</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="surface-card p-4">
+        <RealtimeLabel />
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, col) => (
             <div key={col} className="space-y-3">
               <Skeleton className="h-4 w-28" />
@@ -78,8 +84,8 @@ export function RealtimeOpsCard({ data, isLoading, isError, onRetry }: Props) {
               ))}
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -92,11 +98,9 @@ export function RealtimeOpsCard({ data, isLoading, isError, onRetry }: Props) {
   const agMax = Math.max(ag?.todayMeetings ?? 0, ag?.confirmed ?? 0, ag?.pending ?? 0, 1);
 
   return (
-    <Card className="border-border">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Operação em Tempo Real</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="surface-card p-4">
+      <RealtimeLabel />
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium">
             <MessageCircle className="h-4 w-4 text-primary" /> Conversas
@@ -125,7 +129,7 @@ export function RealtimeOpsCard({ data, isLoading, isError, onRetry }: Props) {
           <Bar label="Confirmadas" value={ag?.confirmed ?? 0} max={agMax} tone="chart-5" />
           <Bar label="Pendentes" value={ag?.pending ?? 0} max={agMax} tone="chart-4" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,8 @@
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageCircle, Flame, Calendar, AlertTriangle, Send, Users, AlertCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { HealthKpis } from '@/components/superadmin/crm/data/usePlatformCrmOperationCenter';
 
 interface Props {
@@ -29,45 +29,47 @@ interface KpiCard {
   hintTone: HintTone;
   icon: LucideIcon;
   section: string;
+  /**
+   * KPI de destaque da operação (pílula brand-gradient + brand-glow), espelho do
+   * KPI de receita do exemplar Kanban. Como esta tela não tem valor R$, o destaque
+   * vai no proxy de atenção (Conversas Abertas) — os demais em bg-muted + hairline.
+   */
+  accent?: boolean;
 }
 
 export function HealthKpiRow({ kpis, isLoading, isError, onRetry, onNavigate }: Props) {
-  // Estado de erro (§3.1): banner com retry — nunca silenciar.
+  // Estado de erro (§3.1): banner com retry — nunca silenciar. Anatomia lux:
+  // surface-card + hairline destrutiva, mesma anatomia dos demais estados.
   if (isError) {
     return (
-      <Card className="border-destructive/30">
-        <CardContent className="p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-            Não foi possível carregar os indicadores.
-          </div>
-          {onRetry && (
-            <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs">
-              Tentar novamente
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <div className="surface-card p-4 flex items-center justify-between gap-3 border-[color:hsl(var(--destructive)/0.3)]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+          Não foi possível carregar os indicadores.
+        </div>
+        {onRetry && (
+          <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs">
+            Tentar novamente
+          </Button>
+        )}
+      </div>
     );
   }
 
-  // Skeleton anatômico (§3.1): mesma grade e anatomia dos KPIs reais.
+  // Skeleton anatômico (§3.1): mesma grade e anatomia lux dos KPIs reais
+  // (surface-card + pílula-ícone h-10 rounded-xl + micro-label + valor 30px).
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="border-border">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-2">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-6 w-10" />
-                  <Skeleton className="h-2.5 w-16" />
-                </div>
-                <Skeleton className="h-9 w-9 rounded-lg flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
+          <div key={i} className="surface-card p-5 flex items-start gap-3.5">
+            <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-10" />
+              <Skeleton className="h-2.5 w-16" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -81,6 +83,7 @@ export function HealthKpiRow({ kpis, isLoading, isError, onRetry, onNavigate }: 
       hintTone: kpis?.unanswered ? 'danger' : 'muted',
       icon: MessageCircle,
       section: 'inbox-chat',
+      accent: true,
     },
     {
       label: 'Leads Quentes',
@@ -129,7 +132,7 @@ export function HealthKpiRow({ kpis, isLoading, isError, onRetry, onNavigate }: 
       {cards.map((c) => {
         const Icon = c.icon;
         return (
-          <Card
+          <div
             key={c.label}
             role="button"
             tabIndex={0}
@@ -141,26 +144,32 @@ export function HealthKpiRow({ kpis, isLoading, isError, onRetry, onNavigate }: 
               }
             }}
             aria-label={`${c.label}: ${c.value}`}
-            className="cursor-pointer hover:shadow-md transition-shadow border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="surface-card surface-card-hover p-5 flex items-start gap-3.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground truncate">
-                    {c.label}
-                  </p>
-                  <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{c.value}</p>
-                  <p className={`text-[11px] mt-1 truncate ${hintClass[c.hintTone]}`} title={c.hint}>
-                    {c.hint}
-                  </p>
-                </div>
-                {/* Ícone de KPI via token de marca (F3): bg-primary/10 text-primary */}
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
-                  <Icon className="h-4 w-4" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            {/* pílula-ícone (§L2 REF): destaque = brand-gradient + brand-glow;
+               demais = bg-muted + hairline text-muted-foreground */}
+            <div
+              className={cn(
+                'h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                c.accent
+                  ? 'brand-gradient brand-glow text-white'
+                  : 'bg-muted border hairline text-muted-foreground',
+              )}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground truncate" title={c.label}>
+                {c.label}
+              </p>
+              <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none">
+                {c.value}
+              </p>
+              <p className={cn('text-[11px] mt-1.5 truncate', hintClass[c.hintTone])} title={c.hint}>
+                {c.hint}
+              </p>
+            </div>
+          </div>
         );
       })}
     </div>

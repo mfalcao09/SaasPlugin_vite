@@ -112,7 +112,7 @@ export function PlatformCrmInboxFollowup({
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-            <SelectTrigger className="w-[160px] h-9" aria-label="Selecionar período">
+            <SelectTrigger className="w-[160px] h-9 border hairline bg-card" aria-label="Selecionar período">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -122,7 +122,7 @@ export function PlatformCrmInboxFollowup({
             </SelectContent>
           </Select>
           <Select value={agentId} onValueChange={setAgentId}>
-            <SelectTrigger className="w-[200px] h-9" aria-label="Filtrar por agente">
+            <SelectTrigger className="w-[200px] h-9 border hairline bg-card" aria-label="Filtrar por agente">
               <SelectValue placeholder="Todos os agentes" />
             </SelectTrigger>
             <SelectContent>

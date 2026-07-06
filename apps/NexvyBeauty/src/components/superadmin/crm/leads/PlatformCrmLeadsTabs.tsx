@@ -34,30 +34,41 @@ export function PlatformCrmLeadsTabs({ activeTab, onTabChange, stats }: Platform
       onValueChange={(v) => onTabChange(v as PlatformCrmLeadsTabId)}
       className="w-full"
     >
-      <TabsList className="w-full h-auto flex-wrap justify-start bg-muted/40 rounded-lg p-1 gap-1">
+      {/* Trilho de abas Lux — surface-card sutil com hairline; ativo eleva com
+         bg-background + shadow (mesma pílula do exemplar). */}
+      <TabsList className="w-full h-auto flex-wrap justify-start surface-card rounded-lg p-1 gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          // Contador SEMPRE visível na aba "Sem Atendimento" (§3.4): 0 em muted, >0 em danger.
-          const unassignedCount = tab.id === 'unassigned' ? stats?.unassigned ?? 0 : null;
+          // Contadores SEMPRE visíveis (§3.4): "Todos" = total, "Sem Atendimento" = unassigned.
+          // 0 em muted+hairline; >0 na variante da aba (danger p/ sem-atendimento; neutro p/ total).
+          const count =
+            tab.id === 'all'
+              ? stats?.total ?? 0
+              : tab.id === 'unassigned'
+                ? stats?.unassigned ?? 0
+                : null;
+          const isDanger = tab.id === 'unassigned';
 
           return (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-colors"
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{tab.label}</span>
-              {unassignedCount !== null ? (
+              {count !== null ? (
                 <span
                   className={cn(
-                    'h-4 min-w-4 px-1 rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums',
-                    unassignedCount > 0
-                      ? 'bg-red-500 text-white'
-                      : 'bg-muted text-muted-foreground',
+                    'h-4 min-w-4 px-1 rounded-full inline-flex items-center justify-center text-[10px] font-semibold tabular-nums border',
+                    count > 0
+                      ? isDanger
+                        ? 'bg-red-500 text-white border-transparent'
+                        : 'bg-muted text-foreground hairline'
+                      : 'bg-muted text-muted-foreground hairline',
                   )}
                 >
-                  {unassignedCount}
+                  {count}
                 </span>
               ) : null}
             </TabsTrigger>

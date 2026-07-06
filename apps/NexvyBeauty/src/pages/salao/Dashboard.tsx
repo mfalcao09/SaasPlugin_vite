@@ -32,7 +32,7 @@ export interface DashboardData {
 }
 
 // Paleta de gráficos em HSL (nossos tokens são tripletas → hsl(...) explícito).
-const CHART_COLORS = ['hsl(330 81% 60%)', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)']
+const CHART_COLORS = ['hsl(var(--primary))', 'hsl(280 65% 62%)', 'hsl(250 70% 62%)', 'hsl(45 90% 55%)', 'hsl(160 60% 45%)']
 
 const STATUS_BADGE: Record<string, string> = {
   agendado: 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/30',

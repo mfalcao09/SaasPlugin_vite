@@ -22,8 +22,11 @@ import { captureTrackingFromUrl } from '@/lib/tracking';
 // (afiliado + UTM → cookie 1st-party que sobrevive ao hop LP→checkout) e o
 // LeadCaptureModal (funil de compra). Marca via platformName — sem hardcode.
 
-const GRADIENT = 'bg-gradient-to-r from-rose-500 to-pink-500';
-const GRADIENT_TEXT = 'bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent';
+// Gradiente-assinatura aprovado (vinho→rosé→terracota). A LP força tema claro
+// próprio (LIGHT_THEME) e não herda a util .bg-signature do app, então o
+// gradiente entra via arbitrary values com os HEX da paleta canônica.
+const GRADIENT = 'bg-gradient-to-r from-[#8c041d] via-[#c54b60] to-[#c4755b]';
+const GRADIENT_TEXT = 'bg-gradient-to-r from-[#8c041d] via-[#c54b60] to-[#c4755b] bg-clip-text text-transparent';
 
 // Número de vendas (WhatsApp) — FONTE ÚNICA. Nunca hardcodar solto na página:
 // qualquer CTA que abra o WhatsApp deriva daqui. Formato E.164 sem '+' (padrão wa.me).
@@ -64,17 +67,17 @@ const LIGHT_THEME = {
   '--card-foreground': '222 47% 11%',
   '--popover': '0 0% 100%',
   '--popover-foreground': '222 47% 11%',
-  '--primary': '330 81% 60%',
+  '--primary': '350 51% 53%',
   '--primary-foreground': '0 0% 100%',
   '--secondary': '220 14% 96%',
   '--secondary-foreground': '222 47% 11%',
   '--muted': '220 14% 96%',
   '--muted-foreground': '220 8% 46%',
-  '--accent': '330 81% 60%',
+  '--accent': '350 51% 53%',
   '--accent-foreground': '0 0% 100%',
   '--border': '220 13% 91%',
   '--input': '220 13% 91%',
-  '--ring': '330 81% 60%',
+  '--ring': '350 51% 53%',
 } as CSSProperties;
 
 const modulos = [
@@ -208,7 +211,7 @@ export default function SalesPage() {
       <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <a href="#top" className="flex items-center gap-2">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${GRADIENT} text-white shadow-lg shadow-rose-500/30`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${GRADIENT} text-white shadow-lg shadow-[#c54b60]/30`}>
               <Sparkles className="h-5 w-5" />
             </div>
             <span className="text-lg font-bold tracking-tight">{platformName || 'Nexvy Beauty'}</span>
@@ -228,9 +231,9 @@ export default function SalesPage() {
 
       {/* HERO */}
       <section id="top" className="relative overflow-hidden px-6 py-24 text-center md:py-32">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(244,63,94,0.12),transparent_60%)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(197,75,96,0.12),transparent_60%)]" />
         <div className="mx-auto max-w-5xl">
-          <Badge className={`mb-6 ${GRADIENT} px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white shadow-lg shadow-rose-500/30 hover:opacity-90`}>
+          <Badge className={`mb-6 ${GRADIENT} px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white shadow-lg shadow-[#c54b60]/30 hover:opacity-90`}>
             <Sparkles className="mr-1.5 h-3 w-3" /> Inteligência artificial para negócios premium
           </Badge>
           <h1 className="text-5xl font-black tracking-tight md:text-7xl">
@@ -241,7 +244,7 @@ export default function SalesPage() {
             Agenda inteligente, CRM premium, pacotes, IA de crescimento — tudo em um sistema que entende o seu negócio.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" onClick={openBuy} className={`h-14 px-8 text-base font-semibold ${GRADIENT} text-white shadow-xl shadow-rose-500/30 hover:opacity-90`}>
+            <Button size="lg" onClick={openBuy} className={`h-14 px-8 text-base font-semibold ${GRADIENT} text-white shadow-xl shadow-[#c54b60]/30 hover:opacity-90`}>
               Começar agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Link to="/demo/cockpit">
@@ -281,9 +284,9 @@ export default function SalesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {modulos.map((m) => (
-              <Card key={m.title} className="group border-zinc-200/80 bg-white transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-500/10">
+              <Card key={m.title} className="group border-zinc-200/80 bg-white transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#c54b60]/10">
                 <CardContent className="p-7">
-                  <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${GRADIENT} text-white shadow-lg shadow-rose-500/25`}>
+                  <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${GRADIENT} text-white shadow-lg shadow-[#c54b60]/25`}>
                     <m.icon className="h-6 w-6" />
                   </div>
                   <Badge variant="secondary" className="mb-3 text-[10px] font-bold uppercase tracking-wider">{m.tag}</Badge>
@@ -300,15 +303,15 @@ export default function SalesPage() {
       <section className="px-6 py-24">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
-            <Badge variant="outline" className="mb-3 border-rose-300 text-rose-600">Pra quem é</Badge>
+            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">Pra quem é</Badge>
             <h2 className="text-4xl font-black tracking-tight md:text-5xl">Reconhece alguma dessas dores?</h2>
             <p className="mt-4 text-lg text-zinc-600">Se sim, este sistema foi feito para você.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {dores.map((d) => (
-              <div key={d} className="flex items-start gap-4 rounded-2xl border border-rose-100 bg-rose-50/50 p-6">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                  <AlertCircle className="h-5 w-5 text-rose-600" />
+              <div key={d} className="flex items-start gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-6">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <AlertCircle className="h-5 w-5 text-primary" />
                 </div>
                 <p className="text-sm font-medium leading-relaxed text-zinc-700">{d}</p>
               </div>
@@ -437,7 +440,7 @@ export default function SalesPage() {
                 const featured = !!p.highlight_label;
                 const features = planFeatures(p);
                 return (
-                  <Card key={p.id} className={featured ? 'relative scale-105 border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20' : 'border-zinc-200 bg-white'}>
+                  <Card key={p.id} className={featured ? 'relative scale-105 border-0 bg-zinc-900 text-white shadow-2xl shadow-[#c54b60]/20' : 'border-zinc-200 bg-white'}>
                     {featured && (
                       <Badge className={`absolute -top-3 left-1/2 -translate-x-1/2 ${GRADIENT} text-white shadow-lg`}>
                         <Crown className="mr-1 h-3 w-3" /> {p.highlight_label}
@@ -455,7 +458,7 @@ export default function SalesPage() {
                       <ul className="mt-7 space-y-3">
                         {features.map((f) => (
                           <li key={f} className="flex items-start gap-2 text-sm">
-                            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${featured ? 'text-rose-400' : 'text-rose-500'}`} />
+                            <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${featured ? 'text-[#d9718a]' : 'text-primary'}`} />
                             <span>{f}</span>
                           </li>
                         ))}
@@ -477,7 +480,7 @@ export default function SalesPage() {
           secundário ("prefiro deixar meu contato"). */}
       <section id="piloto" className="px-6 py-24">
         <div className="mx-auto max-w-4xl">
-          <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-rose-500/20">
+          <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-[#c54b60]/20">
             <CardContent className="p-10 md:p-12">
               <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 30 vagas em 30 dias</Badge>
               <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
@@ -497,13 +500,13 @@ export default function SalesPage() {
                   'Linha direta com o fundador durante o piloto',
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2 text-sm text-zinc-200">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#d9718a]" />
                     <span>{t}</span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-8 rounded-xl border border-rose-400/30 bg-rose-500/10 p-5">
-                <p className="text-sm font-semibold text-rose-200">Garantia do piloto</p>
+              <div className="mt-8 rounded-xl border border-[#d9718a]/30 bg-[#c54b60]/10 p-5">
+                <p className="text-sm font-semibold text-[#e6a2b3]">Garantia do piloto</p>
                 <p className="mt-1 text-zinc-200">
                   Se em 30 dias corridos <strong>a partir do seu setup</strong> o painel não mostrar
                   clientes recuperadas somando mais que a sua mensalidade,
@@ -565,7 +568,7 @@ export default function SalesPage() {
           <h2 className="text-4xl font-black tracking-tight md:text-5xl">Pronto para crescer no automático?</h2>
           <p className="mt-4 text-lg text-white/90">Transforme a gestão do seu negócio com inteligência artificial.</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button size="lg" onClick={openBuy} className="h-14 bg-white px-8 text-base font-bold text-rose-600 hover:bg-zinc-100">
+            <Button size="lg" onClick={openBuy} className="h-14 bg-white px-8 text-base font-bold text-primary hover:bg-zinc-100">
               Começar agora <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Link to="/demo/cockpit">

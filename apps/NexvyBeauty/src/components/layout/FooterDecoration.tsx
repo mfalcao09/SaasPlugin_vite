@@ -6,6 +6,7 @@
 // páginas públicas (que têm visual próprio).
 
 import { useLocation } from 'react-router-dom';
+import { isGestaoHostname } from '@/lib/publicUrl';
 
 const DECORS = [
   '/decor/decor-1.webp',
@@ -23,6 +24,10 @@ const HIDE_PREFIXES = [
 
 export function FooterDecoration() {
   const { pathname } = useLocation();
+  // gestao.* (Nexvy Lux corporativo) NÃO leva ornamento de beleza — pedido
+  // do Marcelo 2026-07-06. app.*/apex mantêm (marca do produto; recolore
+  // via --primary automaticamente, ex.: rosé).
+  if (isGestaoHostname()) return null;
   if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
 
   // escolha estável da ilustração por rota

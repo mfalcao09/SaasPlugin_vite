@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -39,18 +38,19 @@ export function RadarActionsConfig({ value, onChange }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Ações automáticas</CardTitle>
-        <CardDescription className="text-xs">
+    // Ações do Radar = surface-card lux (mesma anatomia do painel de filtros).
+    <div className="surface-card p-4">
+      <div className="pb-3">
+        <h3 className="text-base font-semibold">Ações automáticas</h3>
+        <p className="text-xs text-muted-foreground">
           O que fazer quando o radar classificar cada lead
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </div>
+      <div className="space-y-4">
         {CLASSES.map(({ key, label, emoji, color }) => {
           const cfg = value[key] || {};
           return (
-            <div key={key} className="rounded-md border p-3 space-y-2">
+            <div key={key} className="rounded-md border hairline p-3 space-y-2">
               <div className={`text-sm font-medium ${color}`}>
                 {emoji} {label}
               </div>
@@ -118,7 +118,7 @@ export function RadarActionsConfig({ value, onChange }: Props) {
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

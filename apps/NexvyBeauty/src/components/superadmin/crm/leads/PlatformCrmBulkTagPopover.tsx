@@ -59,7 +59,7 @@ export function PlatformCrmBulkTagPopover({
           <Button
             size="sm"
             variant="ghost"
-            className="text-background hover:text-background hover:bg-background/10"
+            className="text-white hover:text-white hover:bg-white/10"
           >
             <Tag className="h-4 w-4 mr-1" />
             Etiquetar

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,11 +32,13 @@ import { resolveVisitorIdentity, visitorInitials } from '../inbox/platformCrmIde
 
 /**
  * Tabela "Fila de follow-ups" da seção Follow-Up do CRM de PLATAFORMA (família
- * F5 do TEMPLATE-UI-GESTAO). Restyle de FORMA sobre o porte 1:1 de
+ * F5) na anatomia LUX. Restyle de FORMA sobre o porte 1:1 de
  * `admin/followup/FollowupActiveLeadsTable.tsx`: contrato de dados e lógica de
  * negócio (ações pause/resume/cancel via `usePlatformCrmFollowup`) INTACTOS —
- * mudam identidade (§3.3), tokens (§1.3), estados (vazio/skeleton/erro §3.1) e
- * a11y (§3.7). Sem drill-down de conversa (a fila é de cadência, não conversa).
+ * mudam a casca (`.surface-card`), identidade lux (avatar `navy-gradient`, §3.3),
+ * hairlines nas divisórias, tokens de status (§1.3) e estados (§3.1). `th`
+ * uppercase + dropdown por linha (padrão F5 do braço leads). Sem drill-down de
+ * conversa (a fila é de cadência, não conversa).
  */
 
 interface Props {
@@ -125,11 +126,11 @@ export function FollowupActiveLeadsTable({
   const showEmpty = !loading && !isError && visibleRows.length === 0;
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2 gap-3">
+    <div className="surface-card h-full flex flex-col overflow-hidden">
+      <div className="p-5 pb-3 flex flex-col gap-3">
         <div className="flex flex-row items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-sm font-semibold">Fila de follow-ups</CardTitle>
+            <h3 className="text-sm font-semibold">Fila de follow-ups</h3>
             <p className="text-[11px] text-muted-foreground">Leads aguardando as próximas tentativas</p>
           </div>
           <Select
@@ -157,21 +158,21 @@ export function FollowupActiveLeadsTable({
             placeholder="Buscar lead ou agente..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9 bg-muted/40 border-0"
+            className="pl-8 h-9 border hairline bg-card"
             data-followup-search
             aria-label="Buscar na fila de follow-ups"
           />
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-0 flex-1 min-h-0">
+      <div className="flex-1 min-h-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               {/* Mobile (§3.6/§F5): só colunas essenciais — Lead (com métrica
                   embutida) + Status + ações. As demais entram a partir de md;
                   elimina o scroll horizontal acidental (rubric §4 crit. 6). */}
-              <tr className="text-[11px] uppercase tracking-wide text-muted-foreground border-b">
+              <tr className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground border-b hairline">
                 <th className="text-left font-medium px-4 py-2.5">Lead</th>
                 <th className="hidden md:table-cell text-left font-medium px-4 py-2.5">Agente</th>
                 <th className="hidden lg:table-cell text-left font-medium px-4 py-2.5">Tentativa</th>
@@ -263,11 +264,11 @@ export function FollowupActiveLeadsTable({
                       : null;
 
                   return (
-                    <tr key={r.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/40">
+                    <tr key={r.id} className="border-b hairline last:border-b-0 hover:bg-muted/40">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar className="h-9 w-9 flex-shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-semibold">
+                            <AvatarFallback className="navy-gradient text-white text-[11px] font-semibold">
                               {visitorInitials(r.lead?.name, r.lead?.phone)}
                             </AvatarFallback>
                           </Avatar>
@@ -375,7 +376,7 @@ export function FollowupActiveLeadsTable({
             </tbody>
           </table>
         </div>
-      </CardContent>
+      </div>
 
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent>
@@ -411,6 +412,6 @@ export function FollowupActiveLeadsTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 }

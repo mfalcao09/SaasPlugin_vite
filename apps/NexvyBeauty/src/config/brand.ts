@@ -49,8 +49,8 @@ export const BRAND_CONFIG = {
     verb: 'gerir seu negócio',
     clientNoun: 'cliente',
   },
-  primaryColor: '#EC4899',
-  primaryHsl: '330 81% 60%',
+  primaryColor: '#C54B60',
+  primaryHsl: '349.7 51.3% 53.3%',
   defaultModules: ['erp_salao', 'crm_vendas', 'atendimento', 'administracao'],
   loginHero: {
     backgroundVideo: null,

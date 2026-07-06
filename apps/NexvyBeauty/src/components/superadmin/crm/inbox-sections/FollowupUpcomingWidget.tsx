@@ -1,13 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Widget "Próximos disparos" da seção Follow-Up (família F3). Restyle de FORMA
- * sobre o porte 1:1 do CRM Vendus: contrato intacto; tons de urgência agora por
- * TOKEN/§1.3 (proibido violet decorativo) — iminente=emerald (atividade viva),
- * próximo=primary (azul), 1h=warning (âmbar), tardio=muted. Cada linha é uma
- * ação rápida (filtra a fila por "aguardando próxima").
+ * Widget "Próximos disparos" da seção Follow-Up na anatomia LUX. Restyle de
+ * FORMA sobre o porte 1:1 do CRM Vendus: contrato intacto; casca `.surface-card`;
+ * cada linha é um card-ação `.surface-card-hover` (hover eleva -2px) que filtra a
+ * fila por "aguardando próxima". Tons de urgência = cores de SIGNIFICADO (§1.3):
+ * iminente=emerald (atividade viva), 1h=âmbar (atenção), tardio=muted; próximo
+ * segue o `text-primary` (dourado no tema lux).
  */
 
 interface Props {
@@ -25,12 +25,12 @@ export function FollowupUpcomingWidget({ data, onBucketClick }: Props) {
     { label: 'Após 24 horas', value: data?.after_24h ?? 0, tone: 'text-muted-foreground', icon: AlertTriangle },
   ];
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Próximos disparos</CardTitle>
+    <div className="surface-card p-5 h-full flex flex-col">
+      <div className="pb-3">
+        <h3 className="text-sm font-semibold">Próximos disparos</h3>
         <p className="text-[11px] text-muted-foreground">Acompanhe os próximos envios programados</p>
-      </CardHeader>
-      <CardContent className="space-y-1">
+      </div>
+      <div className="space-y-2 flex-1">
         {rows.map((r) => {
           const Icon = r.icon;
           return (
@@ -38,9 +38,9 @@ export function FollowupUpcomingWidget({ data, onBucketClick }: Props) {
               key={r.label}
               onClick={onBucketClick}
               aria-label={`${r.label}: ${r.value} leads — filtrar fila`}
-              className="w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-muted transition-colors text-left"
+              className="surface-card surface-card-hover w-full flex items-center justify-between px-3.5 py-2.5 text-left"
             >
-              <span className="flex items-center gap-2 text-sm">
+              <span className="flex items-center gap-2.5 text-sm">
                 <Icon className={cn('h-4 w-4 flex-shrink-0', r.tone)} />
                 {r.label}
               </span>
@@ -51,7 +51,7 @@ export function FollowupUpcomingWidget({ data, onBucketClick }: Props) {
             </button>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

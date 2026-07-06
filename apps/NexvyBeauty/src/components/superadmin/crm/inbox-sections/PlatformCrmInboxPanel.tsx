@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Toggle } from '@/components/ui/toggle';
@@ -18,6 +16,7 @@ import {
   RefreshCw,
   Activity,
   AlertTriangle,
+  ChevronDown,
 } from 'lucide-react';
 import {
   usePlatformCrmAttendancePanel,
@@ -48,6 +47,13 @@ const CHANNELS = [
   { value: 'sms', label: 'SMS' },
 ];
 
+// Anatomia de chip do exemplar (PlatformCrmKanbanFilters): h-10 px-3.5 rounded-lg
+// border hairline + hover dourado. Aplicada aos Popover triggers dos filtros.
+const CHIP =
+  'h-10 px-3.5 rounded-lg border hairline bg-card text-[13px] font-medium ' +
+  'inline-flex items-center gap-2 whitespace-nowrap transition-colors ' +
+  'hover:border-[color:var(--hairline-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
 interface Props {
   onOpenConversation?: (id: string) => void;
 }
@@ -63,8 +69,8 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
   };
 
   // FORMA F3 (§2): faixa de KPIs derivada de `sections.totals` (dado que o hook
-  // já entrega — SEM tocar contrato). Cada card mapeia para o accent semântico
-  // da seção correspondente (§1.3). "Total ativos" = soma das 3 frentes.
+  // já entrega — SEM tocar contrato). Cada card = `.surface-card` com pílula-ícone;
+  // o card de DESTAQUE (Total) usa `.brand-gradient .brand-glow` (§L2 REF).
   const totalActive = sections.totals.queue + sections.totals.ai + sections.totals.humans;
   const kpis = [
     {
@@ -74,6 +80,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
       hint: 'Aguardando atendimento humano',
       icon: InboxIcon,
       iconClass: 'bg-warning/10 text-warning',
+      accent: false,
     },
     {
       key: 'ai',
@@ -82,6 +89,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
       hint: 'Atendidas por agentes de IA',
       icon: Bot,
       iconClass: 'bg-primary/10 text-primary',
+      accent: false,
     },
     {
       key: 'humans',
@@ -90,6 +98,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
       hint: 'Em atendimento humano ativo',
       icon: Users,
       iconClass: 'bg-emerald-500/10 text-emerald-600',
+      accent: false,
     },
     {
       key: 'total',
@@ -97,7 +106,9 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
       value: totalActive,
       hint: 'Conversas abertas no momento',
       icon: Activity,
-      iconClass: 'bg-muted text-muted-foreground',
+      // Destaque F3 (§L2 REF): pílula-ícone em brand-gradient + brand-glow.
+      iconClass: 'brand-gradient brand-glow text-white',
+      accent: true,
     },
   ] as const;
 
@@ -122,12 +133,15 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
 
   return (
     <div className="space-y-4">
-      {/* Header de página F3 (§2): título + subtítulo com dot pulsante de tempo
-          real + timestamp; ação (refresh) à direita, acessível. */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="space-y-0.5">
-          <h2 className="text-lg font-semibold">Painel de Atendimentos</h2>
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      {/* Header de página F3 (§2): título com ícone (escala §1.4) + sublinha com
+          dot pulsante de tempo real + timestamp; ação (refresh) à direita. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-lg font-semibold">
+            <Activity className="h-5 w-5 text-primary" />
+            Painel de Atendimentos
+          </h1>
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
             {/* §3.4: dot pulsante de atividade viva (tempo real). */}
             <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -141,29 +155,30 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={refetch}
               disabled={isFetching}
               aria-label="Atualizar painel"
-              className="h-9 w-9 p-0"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border hairline bg-card text-muted-foreground transition-colors hover:border-[color:var(--hairline-gold)] hover:text-foreground disabled:opacity-50"
             >
               <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
-            </Button>
+            </button>
           </TooltipTrigger>
           <TooltipContent>Atualizar agora</TooltipContent>
         </Tooltip>
       </div>
 
-      {/* Erro (§3.1): banner com retry — NUNCA silenciar. Aparece no topo do
-          conteúdo preservando os filtros; token `destructive` (§1.1), sem hex. */}
+      {/* Erro (§3.1): banner com retry — NUNCA silenciar. surface-card com
+          hairline destructive; preserva os filtros. Token `destructive`, sem hex. */}
       {isError && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive"
+          className="surface-card flex items-start gap-3 border-destructive/30 p-3 text-destructive"
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          </span>
           <div className="min-w-0 flex-1 space-y-0.5">
             <p className="text-sm font-medium">Não foi possível carregar o painel</p>
             <p className="text-xs text-destructive/80">
@@ -185,86 +200,89 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
         </div>
       )}
 
-      {/* Faixa de KPIs F3 (§2): grid responsivo; valor grande tabular, label
-          micro, ícone tokenizado. Skeleton anatômico espelha esta anatomia. */}
+      {/* Faixa de KPIs F3 (§L2 REF): surface-card com pílula-ícone (h-10 rounded-xl),
+          label uppercase 12px, valor 30px tabular. Destaque (Total) = brand-gradient
+          + brand-glow. Skeleton anatômico espelha esta anatomia. */}
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <Card key={i} className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                  <div className="h-7 w-10 animate-pulse rounded bg-muted" />
-                </div>
-                <div className="h-9 w-9 animate-pulse rounded-lg bg-muted" />
+            <div key={i} className="surface-card flex items-start gap-3.5 p-5">
+              <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-muted" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                <div className="h-7 w-12 animate-pulse rounded bg-muted" />
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {kpis.map((kpi) => {
             const Icon = kpi.icon;
             return (
-              <Card key={kpi.key} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {kpi.label}
-                    </p>
-                    <p className="mt-1 text-2xl font-bold tabular-nums leading-none">
-                      {kpi.value}
-                    </p>
-                    <p className="mt-1.5 truncate text-[11px] text-muted-foreground" title={kpi.hint}>
-                      {kpi.hint}
-                    </p>
-                  </div>
-                  <span
-                    className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-                      kpi.iconClass,
-                    )}
-                    aria-hidden="true"
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
+              <div
+                key={kpi.key}
+                className="surface-card surface-card-hover flex items-start gap-3.5 p-5"
+              >
+                <div
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    kpi.accent ? kpi.iconClass : cn('border hairline', kpi.iconClass),
+                  )}
+                  aria-hidden="true"
+                >
+                  <Icon className="h-[18px] w-[18px]" />
                 </div>
-              </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {kpi.label}
+                  </p>
+                  <p className="mt-1 truncate text-[30px] font-semibold leading-none tracking-[-0.03em] tabular-nums">
+                    {kpi.value}
+                  </p>
+                  <p className="mt-1.5 truncate text-[11px] text-muted-foreground" title={kpi.hint}>
+                    {kpi.hint}
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-muted/40 border border-border">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Filtros (§L2 REF): UMA surface-card p-3 — busca inline + chips
+          "Label: Valor" (Canal/Setor via Popover) + toggles pílula (Fila/IA/
+          Humanos) à direita. Anatomia idêntica ao PlatformCrmKanbanFilters. */}
+      <div className="surface-card flex flex-wrap items-center gap-2.5 p-3">
+        <div className="relative min-w-[200px] max-w-xs flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filters.search}
             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
             placeholder="Buscar por lead, nome ou telefone…"
-            className="pl-8 h-9"
+            className="h-10 border hairline bg-card pl-9"
           />
         </div>
 
-        {/* Channel filter */}
+        {/* Chip "Canal" (§L2 REF) */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Hash className="h-3.5 w-3.5" />
-              Canal
+            <button type="button" className={CHIP}>
+              <Hash className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Canal</span>
               {filters.channels.length > 0 && (
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-semibold tabular-nums text-primary">
                   {filters.channels.length}
-                </Badge>
+                </span>
               )}
-            </Button>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" />
+            </button>
           </PopoverTrigger>
           <PopoverContent className="w-52 p-2" align="start">
             {CHANNELS.map((c) => (
               <label
                 key={c.value}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
               >
                 <Checkbox
                   checked={filters.channels.includes(c.value)}
@@ -278,24 +296,25 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
           </PopoverContent>
         </Popover>
 
-        {/* Sector filter */}
+        {/* Chip "Setor" (§L2 REF) */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Filter className="h-3.5 w-3.5" />
-              Setor
+            <button type="button" className={CHIP}>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Setor</span>
               {filters.sectorIds.length > 0 && (
-                <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-semibold tabular-nums text-primary">
                   {filters.sectorIds.length}
-                </Badge>
+                </span>
               )}
-            </Button>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" />
+            </button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2 max-h-72 overflow-auto" align="start">
+          <PopoverContent className="max-h-72 w-56 overflow-auto p-2" align="start">
             {sectorOptions.map((s) => (
               <label
                 key={s.id}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
               >
                 <Checkbox
                   checked={filters.sectorIds.includes(s.id)}
@@ -312,17 +331,26 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
           </PopoverContent>
         </Popover>
 
-        <div className="flex-1" />
+        {activeFiltersCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilters((f) => ({ ...f, channels: [], sectorIds: [], search: '' }))}
+            className="h-10 text-xs text-muted-foreground"
+          >
+            Limpar
+          </Button>
+        )}
 
-        {/* Status toggles — §1.2/§1.3: estados via TOKEN semântico, sem `dark:`
-            por tela. warning=fila em espera, primary=IA ativa, emerald=humano. */}
-        <div className="flex items-center gap-1 bg-background rounded-md border border-border p-0.5">
+        {/* Toggles pílula (§3.4) à direita — §1.2/§1.3: estados via TOKEN
+            semântico. warning=fila em espera, primary=IA ativa, emerald=humano. */}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border hairline bg-card p-0.5">
           <Toggle
             size="sm"
             pressed={filters.showQueue}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showQueue: v }))}
             aria-label="Mostrar conversas na fila"
-            className="data-[state=on]:bg-warning/15 data-[state=on]:text-warning h-7 text-xs gap-1"
+            className="h-8 gap-1 rounded-md text-xs data-[state=on]:bg-warning/15 data-[state=on]:text-warning"
           >
             <InboxIcon className="h-3.5 w-3.5" /> Fila
           </Toggle>
@@ -331,7 +359,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
             pressed={filters.showAI}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showAI: v }))}
             aria-label="Mostrar conversas com IA"
-            className="data-[state=on]:bg-primary/15 data-[state=on]:text-primary h-7 text-xs gap-1"
+            className="h-8 gap-1 rounded-md text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary"
           >
             <Bot className="h-3.5 w-3.5" /> IA
           </Toggle>
@@ -340,41 +368,41 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
             pressed={filters.showHumans}
             onPressedChange={(v) => setFilters((f) => ({ ...f, showHumans: v }))}
             aria-label="Mostrar conversas com atendentes humanos"
-            className="data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-600 h-7 text-xs gap-1"
+            className="h-8 gap-1 rounded-md text-xs data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-600"
           >
             <Users className="h-3.5 w-3.5" /> Humanos
           </Toggle>
         </div>
-
-        {activeFiltersCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFilters((f) => ({ ...f, channels: [], sectorIds: [], search: '' }))}
-            className="text-xs"
-          >
-            Limpar
-          </Button>
-        )}
       </div>
 
-      {/* Carregando (§3.1): skeleton ANATÔMICO — espelha seções + colunas do
-          conteúdo real, não um bloco genérico. */}
+      {/* Carregando (§3.1): skeleton ANATÔMICO — espelha seções + colunas
+          surface-card do conteúdo real, não um bloco genérico. */}
       {isLoading && (
         <div className="space-y-6" aria-hidden="true">
           {[0, 1].map((s) => (
             <section key={s} className="space-y-3">
               <div className="flex items-center gap-2.5">
                 <span className="h-2 w-2 rounded-full bg-muted" />
-                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                <span className="h-5 w-6 animate-pulse rounded-full bg-muted" />
                 <div className="h-px flex-1 bg-border" />
               </div>
               <div className="flex gap-3">
                 {[0, 1, 2].map((c) => (
-                  <div
-                    key={c}
-                    className="h-64 w-72 shrink-0 animate-pulse rounded-xl border border-border bg-muted/40"
-                  />
+                  <div key={c} className="surface-card w-72 shrink-0 overflow-hidden">
+                    <div className="flex items-center gap-2.5 border-b hairline p-3">
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                        <div className="h-2.5 w-14 animate-pulse rounded bg-muted" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 p-2">
+                      {[0, 1, 2].map((r) => (
+                        <div key={r} className="h-14 animate-pulse rounded-xl bg-muted/60" />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -390,7 +418,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
         filters.showQueue &&
         filters.showAI &&
         filters.showHumans && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 py-16 text-center">
+          <div className="surface-card flex flex-col items-center justify-center gap-3 border-dashed py-16 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
               <Activity className="h-9 w-9 text-primary opacity-70" />
             </div>
@@ -502,7 +530,8 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
   );
 }
 
-/** Empty de seção (§3.1): ícone esmaecido + dica, no lugar de emoji cru. */
+/** Empty de seção (§3.1): surface-card dashed com ícone esmaecido + dica —
+ *  mesma anatomia lux do empty de coluna/tela, no lugar de emoji cru. */
 function SectionEmpty({
   icon: Icon,
   label,
@@ -511,7 +540,7 @@ function SectionEmpty({
   label: string;
 }) {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-2 py-8 text-center">
+    <div className="surface-card flex w-full flex-col items-center justify-center gap-2 border-dashed py-10 text-center">
       <Icon className="h-8 w-8 text-muted-foreground opacity-30" />
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>

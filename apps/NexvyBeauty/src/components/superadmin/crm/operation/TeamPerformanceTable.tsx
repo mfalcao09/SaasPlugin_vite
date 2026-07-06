@@ -1,9 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, AlertCircle } from 'lucide-react';
 import type { SellerPerformance } from '@/components/superadmin/crm/data/usePlatformCrmOperationCenter';
+
+// Micro-label de seção (§REF): uppercase 11px tracking largo — padrão do exemplar.
+const SECTION_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground';
 
 interface Props {
   rows?: SellerPerformance[];
@@ -30,11 +32,11 @@ const thBase = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreg
 
 export function TeamPerformanceTable({ rows, isLoading, isError, onRetry, onNavigate }: Props) {
   return (
-    <Card className="border-border h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Performance da Equipe</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+    <div className="surface-card h-full overflow-hidden flex flex-col">
+      <div className="px-4 pt-4 pb-3">
+        <p className={SECTION_LABEL}>Performance da Equipe</p>
+      </div>
+      <div className="flex-1">
         {isError ? (
           // Estado de erro (§3.1): retry, nunca silenciar.
           <div className="py-8 px-4 flex flex-col items-center text-center gap-2">
@@ -69,7 +71,7 @@ export function TeamPerformanceTable({ rows, isLoading, isError, onRetry, onNavi
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
+                <tr className="border-b hairline">
                   <th className={`${thBase} text-left px-4`}>Vendedor</th>
                   <th className={`${thBase} text-right`}>Conversas</th>
                   <th className={`${thBase} text-right`}>Leads</th>
@@ -82,7 +84,7 @@ export function TeamPerformanceTable({ rows, isLoading, isError, onRetry, onNavi
                 {(rows ?? []).slice(0, 6).map((r) => {
                   const s = statusLabel[r.status];
                   return (
-                    <tr key={r.userId} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr key={r.userId} className="border-b hairline last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2 min-w-0">
                           <Avatar className="h-7 w-7">
@@ -114,12 +116,12 @@ export function TeamPerformanceTable({ rows, isLoading, isError, onRetry, onNavi
         {!isLoading && !isError && (rows ?? []).length > 6 && (
           <button
             onClick={() => onNavigate('team')}
-            className="w-full px-4 py-2.5 border-t text-sm text-muted-foreground hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full px-4 py-2.5 border-t hairline text-sm text-muted-foreground hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Ver todos os vendedores →
           </button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

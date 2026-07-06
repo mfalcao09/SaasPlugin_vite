@@ -44,8 +44,8 @@ export function PanelSection({ title, icon, count, accent, children }: Props) {
         <span className={cn('h-2 w-2 rounded-full', accentDot[accent])} />
         <div className={cn('flex items-center gap-2', accentTitle[accent])}>
           {icon}
-          {/* §1.4: micro-label de seção — semibold, não bold. */}
-          <h2 className="text-[13px] font-semibold uppercase tracking-wider">{title}</h2>
+          {/* §1.4/§3.4: micro-label de seção — 10px uppercase tracking-wider, semibold. */}
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider">{title}</h2>
         </div>
         {/* §3.4: contador SEMPRE visível (pílula tokenizada, inclusive em 0). */}
         <span

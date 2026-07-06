@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   REFERÊNCIA CANÔNICA — paleta "Beauty Rosé" APROVADA pelo Marcelo (2026-07-06)
+   p/ o app.* do tenant (salão). Fonte: projeto Lovable 46463c3b-a6ea-4eb3-90a7-1a449cd3d7b0
+   commit 623c35fbfc6536d3a5db72a1e9007058342b99fb.
+   Preview: https://id-preview--46463c3b-a6ea-4eb3-90a7-1a449cd3d7b0.lovable.app
+
+   Diretiva (verbatim): "Gostei da versão para o app.*. Está aprovado. Quero
+   igual, respeitada a estrutura de organização" — PALETA/acabamento aplicados;
+   estrutura real do app (menus/telas/fluxos) INTOCADA. Sai o rosa chapado
+   #EC4899 → entra o mesclado rosé/terracota/creme com âncora vinho.
+   Máxima: rosé #C54B60 (primary) · vinho #8C041D/#570C15 (âncora) ·
+   terracota #C4755B (acento) · creme #FAF7F2 (fundo) · gradiente-assinatura
+   135deg vinho→rosé→terracota. Dark = "vinho-noir" #1B1315.
+   ⚠️ Este arquivo é Tailwind 4 (@theme/@utility) com HEX — o app usa
+   Tailwind 3 + HSL triplets: converter hex→HSL exato (determinístico).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --radius: 0.875rem;
+
+  /* Base — creme quente */
+  --background: #faf7f2;
+  --foreground: #2a2124;
+  --surface: #ffffff;
+  --surface-2: #f5efe7;
+  --cream: #faf7f2;
+  --cream-2: #f5efe7;
+
+  --card: #ffffff;
+  --card-foreground: #2a2124;
+  --popover: #ffffff;
+  --popover-foreground: #2a2124;
+
+  /* Rosé profundo — primary */
+  --primary: #c54b60;
+  --primary-foreground: #ffffff;
+  --rose: #c54b60;
+
+  /* Vinho — âncora */
+  --wine: #8c041d;
+  --wine-deep: #570c15;
+
+  /* Terracota — acento quente */
+  --terracotta: #c4755b;
+  --terracotta-soft: #f2dfd5;
+
+  --secondary: #f5efe7;
+  --secondary-foreground: #2a2124;
+  --muted: #f5efe7;
+  --muted-foreground: #9a8f94;
+  --accent: #f2dfd5;
+  --accent-foreground: #8c041d;
+
+  --success: #4c8a62;
+  --warning: #c08a2d;
+  --destructive: #d64545;
+  --destructive-foreground: #ffffff;
+
+  --border: #e8dfd6;
+  --hairline: rgba(87, 12, 21, 0.08);
+  --input: #ccccd9;
+  --ring: #c54b60;
+
+  /* Gradiente-assinatura — a alma do redesign */
+  --gradient-signature: linear-gradient(135deg, #8c041d 0%, #c54b60 55%, #c4755b 100%);
+  --gradient-signature-soft: linear-gradient(
+    135deg,
+    rgba(140, 4, 29, 0.08) 0%,
+    rgba(197, 75, 96, 0.08) 55%,
+    rgba(196, 117, 91, 0.08) 100%
+  );
+  --gradient-hero: radial-gradient(
+      1200px 500px at 100% -10%,
+      rgba(196, 117, 91, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(800px 400px at 0% 10%, rgba(197, 75, 96, 0.12), transparent 60%);
+
+  /* Sombras multicamada premium */
+  --shadow-xs: 0 1px 2px rgba(42, 33, 36, 0.06);
+  --shadow-sm: 0 1px 2px rgba(42, 33, 36, 0.05), 0 2px 6px -2px rgba(42, 33, 36, 0.06);
+  --shadow-md: 0 1px 2px rgba(42, 33, 36, 0.06), 0 8px 20px -8px rgba(42, 33, 36, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-lg: 0 1px 2px rgba(42, 33, 36, 0.06), 0 16px 32px -14px rgba(42, 33, 36, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-xl: 0 2px 4px rgba(42, 33, 36, 0.05), 0 30px 60px -20px rgba(87, 12, 21, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-glow: 0 0 0 1px rgba(197, 75, 96, 0.18),
+    0 12px 32px -10px rgba(140, 4, 29, 0.35);
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2a2124;
+  --sidebar-primary: #8c041d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5efe7;
+  --sidebar-accent-foreground: #8c041d;
+  --sidebar-border: #ece4db;
+  --sidebar-ring: #c54b60;
+
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  /* Vinho-noir */
+  --background: #1b1315;
+  --foreground: #f6efe9;
+  --surface: #251a1d;
+  --surface-2: #2e2125;
+  --cream: #f6efe9;
+  --cream-2: #c9bdb6;
+
+  --card: #251a1d;
+  --card-foreground: #f6efe9;
+  --popover: #2e2125;
+  --popover-foreground: #f6efe9;
+
+  --primary: #d9718a;
+  --primary-foreground: #1b1315;
+  --rose: #d9718a;
+
+  --wine: #8c041d;
+  --wine-deep: #570c15;
+
+  --terracotta: #d98e6b;
+  --terracotta-soft: rgba(217, 142, 107, 0.12);
+
+  --secondary: #2e2125;
+  --secondary-foreground: #f6efe9;
+  --muted: #2e2125;
+  --muted-foreground: #8f8286;
+  --accent: #372930;
+  --accent-foreground: #f6efe9;
+
+  --success: #6fae87;
+  --warning: #d9a851;
+  --destructive: #e06a6a;
+  --destructive-foreground: #ffffff;
+
+  --border: #372930;
+  --hairline: rgba(255, 255, 255, 0.07);
+  --input: #372930;
+  --ring: #d9718a;
+
+  --gradient-signature: linear-gradient(135deg, #c54b60 0%, #d9718a 55%, #d98e6b 100%);
+  --gradient-signature-soft: linear-gradient(
+    135deg,
+    rgba(197, 75, 96, 0.18) 0%,
+    rgba(217, 113, 138, 0.14) 55%,
+    rgba(217, 142, 107, 0.14) 100%
+  );
+  --gradient-hero: radial-gradient(
+      1200px 500px at 100% -10%,
+      rgba(217, 142, 107, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(800px 400px at 0% 10%, rgba(217, 113, 138, 0.12), transparent 60%);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 32px -14px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-xl: 0 2px 4px rgba(0, 0, 0, 0.4), 0 30px 60px -20px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-glow: 0 0 0 1px rgba(217, 113, 138, 0.28),
+    0 12px 32px -10px rgba(217, 113, 138, 0.45);
+
+  --sidebar: #1f1618;
+  --sidebar-foreground: #f6efe9;
+  --sidebar-primary: #d9718a;
+  --sidebar-primary-foreground: #1b1315;
+  --sidebar-accent: #2e2125;
+  --sidebar-accent-foreground: #f6efe9;
+  --sidebar-border: #2e2125;
+  --sidebar-ring: #d9718a;
+}
+
+/* Utilities do mockup aprovado (traduzir p/ @layer components no app):
+   .bg-signature { background-image: var(--gradient-signature); }
+   .bg-signature-soft { background-image: var(--gradient-signature-soft); }
+   .bg-hero { background-image: var(--gradient-hero); }
+   .text-signature { gradient clip text }
+   .shadow-premium(-sm/-xl) { var(--shadow-lg/-sm/-xl) }
+   .shadow-glow-rose { var(--shadow-glow) }
+   .ring-hairline { inset 0 0 0 1px var(--hairline) }
+   Fonte: Inter (mantida — identidade do app). letter-spacing -0.015em em h1-h3. */

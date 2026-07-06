@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -98,27 +97,28 @@ export function RadarSchedules({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">Agendamentos automáticos</CardTitle>
-            <CardDescription>Configure o radar para rodar automaticamente</CardDescription>
-          </div>
-          <Button onClick={openNew} size="sm" className="gap-1">
-            <Plus className="h-4 w-4" />
-            Novo
-          </Button>
+    // Agendamentos = surface-card lux; linhas de agendamento com hairline + hover.
+    <div className="surface-card p-4">
+      <div className="flex items-center justify-between pb-3">
+        <div>
+          <h3 className="text-base font-semibold">Agendamentos automáticos</h3>
+          <p className="text-sm text-muted-foreground">
+            Configure o radar para rodar automaticamente
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
+        <Button onClick={openNew} size="sm" className="gap-1">
+          <Plus className="h-4 w-4" />
+          Novo
+        </Button>
+      </div>
+      <div className="space-y-2">
         {/* Carregando (§3.1): skeleton anatômico (linha de agendamento), nunca
             spinner central. */}
         {isLoading &&
           Array.from({ length: 2 }).map((_, i) => (
             <div
               key={i}
-              className="border rounded-lg p-3 flex items-center justify-between gap-3"
+              className="border hairline rounded-lg p-3 flex items-center justify-between gap-3"
             >
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export function RadarSchedules({
           schedules?.map((s) => (
             <div
               key={s.id}
-              className="border rounded-lg p-3 flex items-center justify-between gap-3"
+              className="surface-card surface-card-hover p-3 flex items-center justify-between gap-3"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -212,7 +212,7 @@ export function RadarSchedules({
               </div>
             </div>
           ))}
-      </CardContent>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -291,6 +291,6 @@ export function RadarSchedules({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 }

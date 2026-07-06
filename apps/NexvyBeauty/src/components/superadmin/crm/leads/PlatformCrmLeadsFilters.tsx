@@ -355,30 +355,35 @@ export function PlatformCrmLeadsFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      {/* Toolbar Lux — UMA surface-card p-3: busca inline (ícone) + botão Filtros com
+         pílula de contagem. Mesma anatomia da toolbar do exemplar (kanban filters). */}
+      <div className="surface-card p-3 flex flex-col sm:flex-row gap-2.5">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           {/* data-leads-search: alvo de foco por atalho (padrão Ctrl+K do exemplar) */}
           <Input
             data-leads-search
             placeholder="Buscar por nome, email, telefone..."
             value={filters.search}
             onChange={(e) => onFilterChange('search', e.target.value)}
-            className="h-9 pl-8 bg-muted/40 border-0"
+            className="h-10 pl-9 border hairline bg-card"
           />
         </div>
 
         <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-9 gap-2 shrink-0">
-              <SlidersHorizontal className="h-4 w-4" />
+            <button
+              type="button"
+              className="h-10 px-3.5 rounded-lg border hairline bg-card text-[13px] font-medium inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors hover:border-[color:var(--hairline-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               Filtros
               {activeFiltersCount > 0 && (
-                <Badge className="h-5 min-w-5 p-0 flex items-center justify-center">
+                <span className="h-5 min-w-5 px-1 rounded-full brand-gradient text-white text-[11px] font-semibold tabular-nums inline-flex items-center justify-center">
                   {activeFiltersCount}
-                </Badge>
+                </span>
               )}
-            </Button>
+            </button>
           </PopoverTrigger>
           <PopoverContent className="w-96 p-0" align="end">
             <div className="flex items-center justify-between p-4 border-b">

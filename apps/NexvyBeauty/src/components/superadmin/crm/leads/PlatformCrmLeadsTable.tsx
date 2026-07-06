@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   Table,
   TableBody,
@@ -9,7 +10,6 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -71,19 +71,12 @@ interface PlatformCrmLeadsTableProps {
   hasActiveFilters?: boolean;
 }
 
-// Temperatura — literais SÓ da tabela §1.3 (semântica de domínio, não marca).
+// Temperatura — token semântico de domínio do tema Lux (§1.3 lux: --hot/--warm/--cold).
+// A pílula usa color-mix do token (mesma receita do exemplar kanban lead card), não hex.
 const temperatureMeta = {
-  hot: { icon: Flame, label: 'Quente', badge: 'bg-red-500/10 text-red-600 border-red-500/30' },
-  warm: {
-    icon: Thermometer,
-    label: 'Morno',
-    badge: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
-  },
-  cold: {
-    icon: Snowflake,
-    label: 'Frio',
-    badge: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
-  },
+  hot: { icon: Flame, label: 'Quente', colorVar: 'var(--hot)' },
+  warm: { icon: Thermometer, label: 'Morno', colorVar: 'var(--warm)' },
+  cold: { icon: Snowflake, label: 'Frio', colorVar: 'var(--cold)' },
 } as const;
 
 const brl = (v: number) =>
@@ -137,17 +130,18 @@ export function PlatformCrmLeadsTable({
   const someSelected = selectedLeads.length > 0 && selectedLeads.length < leads.length;
 
   // Skeleton anatômico §3.1 — reproduz avatar + 2 linhas por registro (não spinner central).
+  // Casca Lux: container surface-card + linhas separadas por hairline.
   if (isLoading) {
     return (
-      <div className="rounded-lg border overflow-hidden">
+      <div className="surface-card overflow-hidden">
         <div className="animate-pulse">
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-4 px-3 py-3 border-b border-border/30 last:border-b-0"
+              className="flex items-center gap-4 px-3 py-3 border-b hairline last:border-b-0"
             >
               <div className="h-4 w-4 bg-muted rounded" />
-              <div className="h-8 w-8 bg-muted rounded-full shrink-0" />
+              <div className="h-8 w-8 bg-muted rounded-lg shrink-0" />
               <div className="flex-1 space-y-1.5">
                 <div className="h-3.5 bg-muted rounded w-1/4" />
                 <div className="h-2.5 bg-muted rounded w-1/3" />
@@ -164,11 +158,12 @@ export function PlatformCrmLeadsTable({
   }
 
   // Estado vazio §3.1 — ícone + título + dica contextual à busca/filtro + CTA acionável.
+  // Casca Lux: container surface-card; pílula-ícone navy-gradient; CTA brand-gradient.
   if (leads.length === 0) {
     return (
-      <div className="rounded-lg border p-12 text-center">
-        <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <UserCircle className="h-6 w-6 text-primary" />
+      <div className="surface-card p-12 text-center">
+        <div className="mx-auto w-12 h-12 rounded-xl navy-gradient flex items-center justify-center mb-4 shadow-sm">
+          <UserCircle className="h-6 w-6 text-white" />
         </div>
         <h3 className="text-sm font-medium text-foreground mb-1">
           {hasActiveFilters ? 'Nenhum lead para estes filtros' : 'Nenhum lead ainda'}
@@ -179,19 +174,23 @@ export function PlatformCrmLeadsTable({
             : 'Crie o primeiro lead ou importe uma base para começar a operar o pipeline.'}
         </p>
         {onCreateLead && !hasActiveFilters && (
-          <Button size="sm" onClick={onCreateLead}>
+          <button
+            type="button"
+            onClick={onCreateLead}
+            className="h-9 px-4 rounded-lg brand-gradient brand-glow text-white text-[13px] font-semibold inline-flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5"
+          >
             Novo lead
-          </Button>
+          </button>
         )}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border overflow-x-auto">
+    <div className="surface-card overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/40 hover:bg-muted/40 border-b">
+          <TableRow className="border-b hairline hover:bg-transparent">
             <TableHead className="w-10">
               <Checkbox
                 aria-label="Selecionar todos os leads"
@@ -251,11 +250,18 @@ export function PlatformCrmLeadsTable({
             const initials = visitorInitials(lead.name, lead.phone);
             const dealValue = typeof lead.deal_value === 'number' ? lead.deal_value : 0;
 
+            // Pílula de temperatura (REF kanban): color-mix 14% do token + inset ring 30%.
+            const tempStyle: CSSProperties = {
+              color: tMeta.colorVar,
+              backgroundColor: `color-mix(in oklab, ${tMeta.colorVar} 14%, transparent)`,
+              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${tMeta.colorVar} 30%, transparent)`,
+            };
+
             return (
               <TableRow
                 key={lead.id}
                 className={cn(
-                  'group cursor-pointer border-b border-border/30 transition-colors',
+                  'group cursor-pointer border-b hairline transition-colors hover:bg-muted/40',
                   isSelected && 'bg-primary/5',
                 )}
                 onClick={() => onViewLead(lead.id)}
@@ -272,19 +278,16 @@ export function PlatformCrmLeadsTable({
                 <TableCell className="py-2.5">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-muted text-[11px] font-medium text-muted-foreground">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      {/* Temperatura no canto do avatar — badge semântico §1.3 */}
+                      {/* Avatar navy-gradient h-8 (REF): iniciais brancas, rounded-lg */}
+                      <div className="navy-gradient h-8 w-8 rounded-lg flex items-center justify-center text-[11px] font-semibold text-white shadow-sm">
+                        {initials}
+                      </div>
+                      {/* Temperatura no canto do avatar — pílula color-mix do token Lux §1.3 */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className={cn(
-                              'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-background flex items-center justify-center',
-                              tMeta.badge,
-                            )}
+                            className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-card flex items-center justify-center"
+                            style={tempStyle}
                           >
                             <TempIcon className="h-2.5 w-2.5" />
                           </span>
@@ -394,10 +397,10 @@ export function PlatformCrmLeadsTable({
                   )}
                 </TableCell>
 
-                {/* Valor (deal_value) */}
+                {/* Valor (deal_value) — DOURADO via .text-value (§Lux valores R$) */}
                 <TableCell className="hidden xl:table-cell py-2.5 text-right">
                   {dealValue > 0 ? (
-                    <span className="text-sm font-semibold tabular-nums text-foreground">
+                    <span className="text-value text-sm font-semibold tabular-nums">
                       {brl(dealValue)}
                     </span>
                   ) : (

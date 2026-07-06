@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShieldCheck, AlertCircle } from 'lucide-react';
@@ -18,11 +17,13 @@ interface Props {
 
 export function LeadsAtRiskTable({ rows, isLoading, isError, onRetry, onResolve }: Props) {
   return (
-    <Card className="border-border">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Leads em Risco</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
+    <div className="surface-card overflow-hidden">
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Leads em Risco
+        </p>
+      </div>
+      <div>
         {isError ? (
           // Estado de erro (§3.1): retry, nunca silenciar.
           <div className="py-8 px-4 flex flex-col items-center text-center gap-2">
@@ -56,7 +57,7 @@ export function LeadsAtRiskTable({ rows, isLoading, isError, onRetry, onResolve 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
+                <tr className="border-b hairline">
                   <th className="text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground px-4 py-2">Lead</th>
                   <th className="text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground px-2 py-2">Responsável</th>
                   <th className="text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground px-2 py-2">Motivo</th>
@@ -70,7 +71,7 @@ export function LeadsAtRiskTable({ rows, isLoading, isError, onRetry, onResolve 
                   // corretamente (nome útil → primary) e trata "~"/nomes crus.
                   const identity = resolveVisitorIdentity(r.name, null);
                   return (
-                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr key={r.id} className="border-b hairline last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-2.5 font-medium truncate max-w-[220px]" title={identity.primary}>
                         {identity.primary}
                       </td>
@@ -99,7 +100,7 @@ export function LeadsAtRiskTable({ rows, isLoading, isError, onRetry, onResolve 
             </table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

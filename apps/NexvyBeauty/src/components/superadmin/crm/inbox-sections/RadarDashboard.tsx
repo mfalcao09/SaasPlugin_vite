@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
   usePlatformCrmOpportunityScan,
   usePlatformCrmScanItems,
@@ -153,28 +153,26 @@ export function RadarDashboard({
   // falha do scan quanto a dos items (ambos alimentam esta tela).
   if (scanError || itemsError) {
     return (
-      <Card className="border-destructive/30 bg-destructive/5">
-        <CardContent className="py-8 flex flex-col items-center text-center gap-3">
-          <AlertTriangle className="h-10 w-10 text-destructive opacity-80" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Não foi possível carregar a análise</p>
-            <p className="text-xs text-muted-foreground">
-              Verifique sua conexão e tente novamente.
-            </p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => {
-              if (scanError) refetchScan();
-              if (itemsError) refetchItems();
-            }}
-          >
-            <RotateCw className="h-3.5 w-3.5" /> Tentar novamente
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="surface-card border-destructive/30 bg-destructive/5 py-8 flex flex-col items-center text-center gap-3">
+        <AlertTriangle className="h-10 w-10 text-destructive opacity-80" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Não foi possível carregar a análise</p>
+          <p className="text-xs text-muted-foreground">
+            Verifique sua conexão e tente novamente.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => {
+            if (scanError) refetchScan();
+            if (itemsError) refetchItems();
+          }}
+        >
+          <RotateCw className="h-3.5 w-3.5" /> Tentar novamente
+        </Button>
+      </div>
     );
   }
 
@@ -185,45 +183,37 @@ export function RadarDashboard({
       <div className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-9 w-9 rounded-lg" />
-                  <Skeleton className="h-7 w-8" />
-                </div>
-                <Skeleton className="h-3 w-10" />
-              </CardContent>
-            </Card>
+            <div key={i} className="surface-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <Skeleton className="h-7 w-8" />
+              </div>
+              <Skeleton className="h-3 w-10" />
+            </div>
           ))}
         </div>
         <div className="grid md:grid-cols-3 gap-3">
-          <Card className="md:col-span-1">
-            <CardContent className="p-4">
-              <Skeleton className="h-[200px] w-full rounded-lg" />
-            </CardContent>
-          </Card>
-          <Card className="md:col-span-2">
-            <CardContent className="p-4">
-              <Skeleton className="h-[200px] w-full rounded-lg" />
-            </CardContent>
-          </Card>
+          <div className="surface-card md:col-span-1 p-4">
+            <Skeleton className="h-[200px] w-full rounded-lg" />
+          </div>
+          <div className="surface-card md:col-span-2 p-4">
+            <Skeleton className="h-[200px] w-full rounded-lg" />
+          </div>
         </div>
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                  <div className="space-y-1.5 flex-1">
-                    <Skeleton className="h-3.5 w-32" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
+        <div className="surface-card p-4 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="border hairline rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-3.5 w-32" />
+                  <Skeleton className="h-3 w-24" />
                 </div>
-                <Skeleton className="h-3 w-full" />
               </div>
-            ))}
-          </CardContent>
-        </Card>
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -241,58 +231,55 @@ export function RadarDashboard({
   return (
     <div className="space-y-4">
       {isHistorical && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="py-3 flex items-center justify-between gap-2">
-            <div className="text-sm">
-              <span className="font-medium">Visualizando análise de </span>
-              <span className="text-muted-foreground">
-                {formatDistanceToNow(new Date(scan.created_at), { addSuffix: true, locale: ptBR })}
-              </span>
-            </div>
-            {onBackToLatest && (
-              <Button size="sm" variant="ghost" className="gap-1" onClick={onBackToLatest}>
-                <ArrowLeft className="h-3 w-3" /> Voltar à atual
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="surface-card border-amber-500/30 bg-amber-500/5 py-3 px-4 flex items-center justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-medium">Visualizando análise de </span>
+            <span className="text-muted-foreground">
+              {formatDistanceToNow(new Date(scan.created_at), { addSuffix: true, locale: ptBR })}
+            </span>
+          </div>
+          {onBackToLatest && (
+            <Button size="sm" variant="ghost" className="gap-1" onClick={onBackToLatest}>
+              <ArrowLeft className="h-3 w-3" /> Voltar à atual
+            </Button>
+          )}
+        </div>
       )}
 
       {isRunning && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="py-4 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 font-medium">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Analisando conversas com IA...
-              </span>
-              <span className="text-muted-foreground">
-                {scan.total_analyzed} / {scan.total_candidates}
-              </span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </CardContent>
-        </Card>
+        <div className="surface-card border-primary/30 bg-primary/5 py-4 px-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2 font-medium">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Analisando conversas com IA...
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {scan.total_analyzed} / {scan.total_candidates}
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
       )}
 
-      {/* KPIs (receita F3): ícone em badge h-9 w-9 rounded-lg tintado com a cor
-          da TEMPERATURA (dado semântico §1.3), label uppercase, valor tabular-nums.
-          Card clicável = filtro da lista → aria-pressed/label p/ a11y (§3.7). */}
+      {/* KPIs (receita F3 lux): surface-card(-hover) clicável = filtro da lista.
+          Ícone em badge tintado com a cor da TEMPERATURA (dado semântico §1.3),
+          label uppercase, valor tabular-nums. aria-pressed/label p/ a11y (§3.7). */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(['hot', 'warm', 'cold', 'lost'] as const).map((k) => {
           const Icon = ICONS[k];
           const count = scan[`${k}_count` as keyof typeof scan] as number;
           const isActive = filter === k;
           return (
-            <Card
+            <div
               key={k}
               role="button"
               tabIndex={0}
               aria-pressed={isActive}
               aria-label={`Filtrar leads ${LABELS[k]} (${count})`}
-              className={`cursor-pointer transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                isActive ? 'ring-2 ring-primary' : 'hover:border-primary/40'
-              }`}
+              className={cn(
+                'surface-card surface-card-hover p-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isActive && 'ring-2 ring-primary',
+              )}
               onClick={() => setFilter(isActive ? null : k)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -301,30 +288,26 @@ export function RadarDashboard({
                 }
               }}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div
-                    className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border ${TEMP_CLASSES[k]}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-2xl font-bold tabular-nums">{count}</span>
+              <div className="flex items-center justify-between">
+                <div
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border ${TEMP_CLASSES[k]}`}
+                >
+                  <Icon className="h-5 w-5" />
                 </div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
-                  {LABELS[k]}
-                </div>
-              </CardContent>
-            </Card>
+                <span className="text-2xl font-bold tabular-nums">{count}</span>
+              </div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                {LABELS[k]}
+              </div>
+            </div>
           );
         })}
       </div>
 
       <div className="grid md:grid-cols-3 gap-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-sm">Distribuição</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="surface-card md:col-span-1 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Distribuição</h3>
+          <div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
@@ -350,14 +333,12 @@ export function RadarDashboard({
                 <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm">Distribuição de score</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="surface-card md:col-span-2 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Distribuição de score</h3>
+          <div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={scoreDistribution}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -376,44 +357,41 @@ export function RadarDashboard({
                 <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="py-4 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Receita potencial:</span>
-            <span className="font-bold text-lg tabular-nums">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                Number(scan.potential_revenue || 0),
-              )}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground tabular-nums">
-            {scan.total_analyzed} análises
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de leads */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">
-              {filter
-                ? `Leads ${LABELS[filter as keyof typeof LABELS]}`
-                : 'Todos os leads classificados'}
-            </CardTitle>
-            {filter && (
-              <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>
-                Ver todos
-              </Button>
+      <div className="surface-card py-4 px-4 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 text-sm">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Receita potencial:</span>
+          {/* Valor R$ = assinatura dourada .text-value (Lei 4). */}
+          <span className="text-value font-bold text-lg tabular-nums">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              Number(scan.potential_revenue || 0),
             )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {scan.total_analyzed} análises
+        </div>
+      </div>
+
+      {/* Lista de leads — surface-card lux; itens = cards de risco/oportunidade. */}
+      <div className="surface-card p-4">
+        <div className="flex items-center justify-between pb-3">
+          <h3 className="text-base font-semibold">
+            {filter
+              ? `Leads ${LABELS[filter as keyof typeof LABELS]}`
+              : 'Todos os leads classificados'}
+          </h3>
+          {filter && (
+            <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>
+              Ver todos
+            </Button>
+          )}
+        </div>
+        <div className="space-y-3 max-h-[600px] overflow-y-auto">
           {filteredItems.length === 0 && (
             <div className="text-center py-8 text-sm text-muted-foreground">
               {isRunning ? 'Aguardando resultados...' : 'Nenhum lead nesta categoria'}
@@ -432,7 +410,7 @@ export function RadarDashboard({
             return (
               <div
                 key={item.id}
-                className="border rounded-lg p-3 space-y-2 hover:bg-muted/30 transition-colors"
+                className="surface-card surface-card-hover p-3 space-y-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
@@ -515,8 +493,8 @@ export function RadarDashboard({
               </div>
             );
           })}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <RadarLeadDetailSheet
         item={detailItem}

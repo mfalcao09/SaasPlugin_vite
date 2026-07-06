@@ -1,25 +1,23 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 /**
- * Donut "Status das réguas ativas" da seção Follow-Up (família F3). Restyle de
- * FORMA sobre o porte 1:1 do CRM Vendus: contrato intacto; cores das fatias
- * agora por TOKEN semântico (§1.3/§1.2 — proibido hsl() de marca hardcoded).
- * As fatias codificam SIGNIFICADO de status: aguardando=success (verde),
- * aguardando-resposta=primary (azul institucional), pausa=warning (âmbar),
- * outros=muted-foreground.
+ * Donut "Status das réguas ativas" da seção Follow-Up na anatomia LUX. Restyle
+ * de FORMA sobre o porte 1:1 do CRM Vendus: contrato intacto; casca
+ * `.surface-card`; fatias SEMPRE por token de chart (`--chart-1..4` = navy / gold
+ * / bronze / warm no tema lux — §L2). A ordem preserva a leitura do status
+ * (aguardando · aguardando-resposta · pausa · outros).
  */
 
 interface Props {
   data?: { waiting_next: number; waiting_reply: number; paused: number; others: number };
 }
 
-// Sempre via token — o hue troca sozinho com o tema (azul no gestao, rosa no app).
+// Sempre via token de chart — o hue troca sozinho com o tema (lux: navy/gold/bronze/warm).
 const COLORS = [
-  'hsl(var(--success))',
-  'hsl(var(--primary))',
-  'hsl(var(--warning))',
-  'hsl(var(--muted-foreground))',
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
 ];
 
 export function FollowupActiveStatusDonut({ data }: Props) {
@@ -32,11 +30,11 @@ export function FollowupActiveStatusDonut({ data }: Props) {
   const total = slices.reduce((a, b) => a + b.value, 0);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Status das réguas ativas</CardTitle>
-      </CardHeader>
-      <CardContent className="h-[260px]">
+    <div className="surface-card p-5">
+      <div className="pb-2">
+        <h3 className="text-sm font-semibold">Status das réguas ativas</h3>
+      </div>
+      <div className="h-[260px]">
         <div className="flex items-center h-full gap-4">
           <div className="relative h-full flex-shrink-0" style={{ width: 160 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -68,7 +66,7 @@ export function FollowupActiveStatusDonut({ data }: Props) {
             })}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
