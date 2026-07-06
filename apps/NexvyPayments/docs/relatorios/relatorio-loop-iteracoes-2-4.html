@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkpoint — Loop NexvyPayments · Iterações 2–4</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--txt:#e6edf3;--muted:#8b949e;--gold:#d4a843;--navy:#4d7cc7;--green:#3fb950;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:1.5rem;color:var(--gold);border-bottom:2px solid var(--border);padding-bottom:12px}
+  h2{font-size:1.15rem;color:var(--navy);margin-top:32px}
+  .meta{color:var(--muted);font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:var(--gold)}
+  code{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:.85em}
+  .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:600}
+  .ok{background:rgba(63,185,80,.15);color:var(--green);border:1px solid var(--green)}
+  .blocked{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid var(--amber)}
+  .run{background:rgba(77,124,199,.15);color:var(--navy);border:1px solid var(--navy)}
+  .pending{background:rgba(139,148,158,.12);color:var(--muted);border:1px solid var(--border)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:12px 0}
+  ol li,ul li{margin-bottom:8px}
+  .kpi{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+  .kpi div{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 18px;text-align:center}
+  .kpi b{display:block;font-size:1.4rem;color:var(--gold)}
+  .footer{margin-top:40px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);padding-top:12px}
+</style>
+</head>
+<body><div class="wrap">
+<h1>🔁 Checkpoint — Loop NexvyPayments · Iterações 2–4</h1>
+<div class="meta">2026-07-06 · sessão <code>a690757a</code> · branch <code>feat/nexvypayments-bootstrap</code> · commits <code>22170d1</code> → <code>ea09417</code> → <code>b12ceb1</code> · pareado com <code>relatorio-loop-iteracoes-2-4.md</code></div>
+
+<div class="kpi">
+  <div><b>2</b>CONFORME</div>
+  <div><b>1</b>em andamento</div>
+  <div><b>1</b>bloqueado (gate)</div>
+  <div><b>161</b>tabelas</div>
+  <div><b>164</b>edges ACTIVE</div>
+  <div><b>US$ 0,00</b>custo</div>
+</div>
+
+<h2>Placar</h2>
+<table>
+<tr><th>Status</th><th>N</th><th>IDs</th></tr>
+<tr><td><span class="badge ok">CONFORME</span></td><td>2</td><td><b>PASSO-0-APP</b> · <b>A1</b></td></tr>
+<tr><td><span class="badge run">EM_ANDAMENTO</span></td><td>1</td><td>A2 (subagente Opus — <code>require-caller-org</code> + TA)</td></tr>
+<tr><td><span class="badge blocked">BLOQUEADO_GATE</span></td><td>1</td><td>A0 (P1 + G-C6-SANDBOX)</td></tr>
+<tr><td><span class="badge pending">PENDENTE</span></td><td>22</td><td>A3–A7 · B1–B5 · C1–C3 · D1–D5 · E1–E4</td></tr>
+</table>
+
+<h2>Iteração 2 — PASSO-0-APP <span class="badge ok">CONFORME</span></h2>
+<div class="card"><ol>
+<li><b>DNS:</b> 4 registros A via API Cloudflare (<code>@</code>, <code>app</code>, <code>gestao</code>, <code>www</code> → <code>145.223.29.96</code>, DNS-only), verificados no NS autoritativo.</li>
+<li><b>Fork:</b> rsync Beauty→Payments em worktree isolado. Bug corrigido: <code>--exclude=tasks</code> exclui por basename em qualquer nível — <code>src/components/tasks|docs</code> e <code>src/docs</code> recopiados.</li>
+<li><b>Rebrand:</b> brand.ts (navy Lux <code>#213156</code>), publicUrl, modules (módulo <code>cobranca</code>), package/index/manifest. 5 entradas CORE-DELTA + 2 não-edições auditadas.</li>
+<li><b>Fase A:</b> abort do script era falso negativo (parser × banner do CLI); ground-truth MCP: <b>161 tabelas</b>. Complementos manuais verificados: GRANTs, seeds, <b>12 buckets</b>, realtime 6, <b>10 crons</b>.</li>
+<li><b>Fase B:</b> rodada 1 morreu no bloco órfão <code>tmp-eval-agents</code>; removido → rodada 2 exit 0, <b>164 edges ACTIVE</b>. config.toml preservou os 4 webhooks públicos sem JWT (insumo do A6). Snapshot <code>22170d1</code> preserva as 116 versões Beauty sobrepostas (+49 Beauty-only intactas).</li>
+<li><b>Critérios:</b> build exit 0 (16s) · app rastreado · dry-run do make expande correto.</li>
+</ol></div>
+
+<h2>Iteração 3 — A0 <span class="badge blocked">BLOQUEADO_GATE</span></h2>
+<div class="card">PoC mTLS exige EF <code>c6-mtls-poc</code> deployada + credenciais sandbox. Bloqueios: <b>P1</b> (gate humano do 1º deploy da Fase A) e <b>G-C6-SANDBOX</b> (<code>C6_CLIENT_ID/SECRET</code> + cert/key mTLS não encontrados no env local nem no VPS).</div>
+
+<h2>Iteração 4 — A1 <span class="badge ok">CONFORME</span></h2>
+<div class="card"><code>ls …/admin-provision-users</code> → <i>No such file or directory</i> · grep no <code>src/</code> = 0 hits · build verde. Matriz §5.1 atualizada; certificação do revisor → G-SEC-REV (P3).</div>
+
+<h2>fila_humano</h2>
+<ol>
+<li><b>[A0]</b> (a) liberar o 1º deploy da Fase A (EF descartável <code>c6-mtls-poc</code>); (b) credenciais <b>sandbox</b> C6 (<code>C6_CLIENT_ID</code>, <code>C6_CLIENT_SECRET</code>, cert+key mTLS) via <code>supabase secrets set</code>. <b>Libera:</b> secrets no CLI + ok explícito.</li>
+<li><b>[Branch]</b> merge <code>feat/nexvypayments-planning → main</code> + destino do bootstrap ao fim da fase.</li>
+<li><b>[Fase D]</b> AI_API_KEY/RESEND/SUPER_ADMIN_EMAIL + Auth Site URL + branding + 1º super admin (pós 1º deploy VPS).</li>
+</ol>
+
+<h2>Próxima ação</h2>
+<div class="card">A2 fecha via Opus (aferição <code>deno test</code>). Elegíveis na sequência: A3 (auditoria RLS, read-only) e A7 (isolamento). Para destravar o trilho bancário: <b>item 1 da fila_humano</b>.</div>
+
+<div class="footer">Gerado pelo loop executor NexvyPayments · 2026-07-06T10:18Z · custo US$ 0,00</div>
+</div></body>
+</html>
