@@ -1,0 +1,293 @@
+import { useState, Suspense, useEffect, useRef, useTransition, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { MobileAdminLayout } from '@/components/admin/MobileAdminLayout';
+import { ComingSoonSection } from '@/components/admin/ComingSoonSection';
+import { SectionErrorBoundary } from '@/components/admin/SectionErrorBoundary';
+import { lazyWithRetry, prefetch, onIdle } from '@/lib/lazyWithRetry';
+import { allMenuItems } from '@/config/adminMenu';
+import { AppTopBar } from '@/components/layout/AppTopBar';
+import { FeatureGate } from '@/components/plan/FeatureGate';
+
+// Factories nomeadas para podermos reutilizá-las no prefetch on-hover.
+const f = {
+  OperationCenter: () => import('@/components/admin/operation/OperationCenter').then(m => ({ default: m.OperationCenter })),
+  TeamManager: () => import('@/components/admin/TeamManager').then(m => ({ default: m.TeamManager })),
+  FinancialDashboard: () => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })),
+  IntegrationsManager: () => import('@/components/admin/integrations/IntegrationsManager').then(m => ({ default: m.IntegrationsManager })),
+  NotificationManager: () => import('@/components/admin/NotificationManager').then(m => ({ default: m.NotificationManager })),
+  ProductListPage: () => import('@/components/admin/products/ProductListPage').then(m => ({ default: m.ProductListPage })),
+  ProductDetailPage: () => import('@/components/admin/products/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })),
+  LeadsManager: () => import('@/components/admin/leads/LeadsManager').then(m => ({ default: m.LeadsManager })),
+  KanbanBoard: () => import('@/components/admin/kanban/KanbanBoard').then(m => ({ default: m.KanbanBoard })),
+  InboxManager: () => import('@/components/admin/InboxManager').then(m => ({ default: m.InboxManager })),
+  ReportsManager: () => import('@/components/admin/reports/ReportsManager').then(m => ({ default: m.ReportsManager })),
+  
+  WebhooksManager: () => import('@/components/admin/webhooks/WebhooksManager').then(m => ({ default: m.WebhooksManager })),
+  CustomFieldsManager: () => import('@/components/admin/CustomFieldsManager').then(m => ({ default: m.CustomFieldsManager })),
+  AgentsManager: () => import('@/components/admin/agents/AgentsManager').then(m => ({ default: m.AgentsManager })),
+  SectorsManager: () => import('@/components/admin/sectors/SectorsManager').then(m => ({ default: m.SectorsManager })),
+  PlanSelector: () => import('@/components/admin/plan/PlanSelector').then(m => ({ default: m.PlanSelector })),
+  CaktoAdminPanel: () => import('@/components/admin/payments/CaktoAdminPanel').then(m => ({ default: m.CaktoAdminPanel })),
+  EvolutionInstancesPanel: () => import('@/components/admin/integrations/EvolutionInstancesPanel').then(m => ({ default: m.EvolutionInstancesPanel })),
+  TagsManager: () => import('@/components/admin/tags/TagsManager').then(m => ({ default: m.TagsManager })),
+  BusinessHoursManager: () => import('@/components/admin/schedules/BusinessHoursManager').then(m => ({ default: m.BusinessHoursManager })),
+  CompanySettings: () => import('@/components/admin/company/CompanySettings').then(m => ({ default: m.CompanySettings })),
+  SupportTickets: () => import('@/components/admin/support/SupportTickets').then(m => ({ default: m.SupportTickets })),
+  QuickRepliesManager: () => import('@/components/admin/QuickRepliesManager').then(m => ({ default: m.QuickRepliesManager })),
+  CampaignsManager: () => import('@/components/admin/campaigns/CampaignsManager').then(m => ({ default: m.CampaignsManager })),
+  CadencesManager: () => import('@/components/admin/cadences/CadencesManager').then(m => ({ default: m.CadencesManager })),
+  // capture-reports: id legado fora do menu (renderiza direto). Captação migrou
+  // para o cockpit (Atrair Clientes / Relatórios) — demais seções redirecionam.
+  CaptureReportsSection: () => import('@/components/admin/capture/channels/CaptureReportsSection').then(m => ({ default: m.CaptureReportsSection })),
+};
+
+// Lazy components (com retry + cache compartilhado para prefetch).
+const OperationCenter = lazyWithRetry(f.OperationCenter);
+const TeamManager = lazyWithRetry(f.TeamManager);
+const FinancialDashboard = lazyWithRetry(f.FinancialDashboard);
+const IntegrationsManager = lazyWithRetry(f.IntegrationsManager);
+const NotificationManager = lazyWithRetry(f.NotificationManager);
+const ProductListPage = lazyWithRetry(f.ProductListPage);
+const ProductDetailPage = lazyWithRetry(f.ProductDetailPage);
+const LeadsManager = lazyWithRetry(f.LeadsManager);
+const KanbanBoard = lazyWithRetry(f.KanbanBoard);
+const InboxManager = lazyWithRetry(f.InboxManager);
+const ReportsManager = lazyWithRetry(f.ReportsManager);
+
+const WebhooksManager = lazyWithRetry(f.WebhooksManager);
+const CustomFieldsManager = lazyWithRetry(f.CustomFieldsManager);
+const AgentsManager = lazyWithRetry(f.AgentsManager);
+const SectorsManager = lazyWithRetry(f.SectorsManager);
+const PlanSelector = lazyWithRetry(f.PlanSelector);
+const CaktoAdminPanel = lazyWithRetry(f.CaktoAdminPanel);
+const EvolutionInstancesPanel = lazyWithRetry(f.EvolutionInstancesPanel);
+const TagsManager = lazyWithRetry(f.TagsManager);
+const BusinessHoursManager = lazyWithRetry(f.BusinessHoursManager);
+const CompanySettings = lazyWithRetry(f.CompanySettings);
+const SupportTickets = lazyWithRetry(f.SupportTickets);
+const QuickRepliesManager = lazyWithRetry(f.QuickRepliesManager);
+const CampaignsManager = lazyWithRetry(f.CampaignsManager);
+const CadencesManager = lazyWithRetry(f.CadencesManager);
+const CaptureReportsSection = lazyWithRetry(f.CaptureReportsSection);
+
+/**
+ * Mapa: id da seção → factory de import. Usado pelo prefetch on-hover
+ * (AdminSidebar/MobileAdminLayout chamam `prefetchSection(id)`).
+ */
+const sectionFactories: Record<string, () => Promise<unknown>> = {
+  dashboard: f.OperationCenter,
+  leads: f.LeadsManager,
+  pipeline: f.KanbanBoard,
+  inbox: f.InboxManager,
+  agents: f.AgentsManager,
+  
+  team: f.TeamManager,
+  products: f.ProductListPage,
+  reports: f.ReportsManager,
+  financial: f.FinancialDashboard,
+  notifications: f.NotificationManager,
+  webhooks: f.WebhooksManager,
+  'custom-fields': f.CustomFieldsManager,
+  integrations: f.IntegrationsManager,
+  sectors: f.SectorsManager,
+  plan: f.PlanSelector,
+  payments: f.CaktoAdminPanel,
+  connections: f.EvolutionInstancesPanel,
+  tags: f.TagsManager,
+  schedules: f.BusinessHoursManager,
+  company: f.CompanySettings,
+  support: f.SupportTickets,
+  'quick-replies': f.QuickRepliesManager,
+  campaigns: f.CampaignsManager,
+  cadences: f.CadencesManager,
+  'capture-reports': f.CaptureReportsSection,
+};
+
+export function prefetchAdminSection(id: string) {
+  const factory = sectionFactories[id];
+  if (factory) prefetch(factory);
+}
+
+export default function Admin() {
+  const { isAdmin, isManager } = useAuth();
+  const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'company';
+  const [activeSection, setActiveSection] = useState(initialTab);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  // Cache de seções já visitadas — mantemos elas montadas (apenas escondidas)
+  // para que a 2ª visita seja instantânea.
+  const visitedRef = useRef<Set<string>>(new Set([activeSection]));
+  visitedRef.current.add(activeSection);
+
+  // Sincroniza tab da URL → estado (permite navegação programática via ?tab=plan)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== activeSection) {
+      setActiveSection(tab);
+      visitedRef.current.add(tab);
+    }
+  }, [searchParams, activeSection]);
+
+  // Prefetch agressivo: assim que o app carrega, baixamos no idle todas as
+  // seções principais. O usuário sente "clicou, abriu".
+  useEffect(() => {
+    onIdle(() => {
+      Object.values(f).forEach((factory) => prefetch(factory));
+    }, 2500);
+  }, []);
+
+  if (!isAdmin() && !isManager()) {
+    return <Navigate to="/" replace />;
+  }
+
+  const handleSectionChange = useCallback((id: string) => {
+    // Garante que o chunk começa a baixar antes da transição (caso ainda
+    // não tenha sido prefechado).
+    prefetchAdminSection(id);
+    // Mantém ?tab=... na URL para que reload preserve a seção atual.
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', id);
+    setSearchParams(next, { replace: true });
+    startTransition(() => setActiveSection(id));
+  }, [searchParams, setSearchParams]);
+
+  const handleProductSelect = (productId: string) => {
+    setSelectedProductId(productId);
+  };
+
+  const handleBackToProducts = () => {
+    setSelectedProductId(null);
+  };
+
+  // Renderiza o conteúdo de UMA seção específica.
+  const renderSection = (sectionId: string) => {
+    if (sectionId === 'products' && selectedProductId) {
+      return (
+        <ProductDetailPage
+          productId={selectedProductId}
+          onBack={handleBackToProducts}
+        />
+      );
+    }
+
+    const menuItem = allMenuItems.find((i) => i.id === sectionId);
+    if (menuItem?.comingSoon) {
+      return <ComingSoonSection title={menuItem.label} />;
+    }
+
+    switch (sectionId) {
+      // Migrados para o cockpit (Comercial) — redireciona links/bookmarks ?tab= antigos.
+      case 'dashboard': return <Navigate to="/painel" replace />;
+      case 'leads': return <Navigate to="/leads" replace />;
+      case 'pipeline': return <Navigate to="/pipeline" replace />;
+      // Agenda unificada: a antiga UI Calendly (CalendarManager) saiu.
+      // A agenda do salão vive em /salao/agenda (views Mês/Semana/Dia/Lista).
+      case 'calendar': return <Navigate to="/salao/agenda" replace />;
+      case 'inbox': return <Navigate to="/conversas" replace />;
+      case 'agents': return <Navigate to="/minha-ia" replace />;
+      
+      // Gestão (Produtos/Setores/Equipes) → cockpit. Relatórios/Financeiro (deal/afiliado)
+      // → removidos do tenant (vivem no SuperAdmin > Afiliados). Bookmarks redirecionam.
+      case 'team': return <Navigate to="/equipes" replace />;
+      case 'products': return <Navigate to="/produtos" replace />;
+      case 'reports': return <Navigate to="/relatorios" replace />;
+      case 'financial': return <Navigate to="/faturamento" replace />;
+      // Configurações migraram para o cockpit (Gestão) como páginas individuais.
+      // Bookmarks/links ?tab=<config> antigos redirecionam pras novas rotas.
+      case 'notifications': return <Navigate to="/notificacoes" replace />;
+      case 'webhooks': return <Navigate to="/webhooks" replace />;
+      case 'custom-fields': return <Navigate to="/campos-personalizados" replace />;
+      case 'integrations': return <FeatureGate feature="integrations"><IntegrationsManager /></FeatureGate>;
+      case 'sectors': return <Navigate to="/setores" replace />;
+      case 'plan': return <Navigate to="/plano" replace />;
+      case 'payments': return <Navigate to="/faturamento" replace />;
+      case 'connections': return <Navigate to="/conexoes" replace />;
+      case 'tags': return <Navigate to="/etiquetas" replace />;
+      case 'schedules': return <Navigate to="/horarios" replace />;
+      case 'company': return <Navigate to="/empresa" replace />;
+      case 'support': return <Navigate to="/suporte" replace />;
+      case 'quick-replies': return <Navigate to="/respostas-rapidas" replace />;
+      // Migrados para o cockpit (Minha IA) — redireciona bookmarks ?tab= antigos.
+      case 'campaigns': return <Navigate to="/minha-ia" replace />;
+      case 'cadences': return <Navigate to="/minha-ia" replace />;
+      // Captação migrou 100% para o cockpit (Atrair Clientes). Quiz/Forms/WhatsApp/
+      // Widget(site)/ChatBot(chat)/Resultados vivem em /atrair; o Analytics de
+      // captação vive em /relatorios-comerciais (aba "Captação / Quizzes").
+      // Bookmarks/links ?tab=capture-* antigos redirecionam.
+      case 'capture-chatbot':
+      case 'capture-whatsapp':
+      case 'capture-forms':
+      case 'capture-widget':
+      case 'capture-quiz':
+      case 'capture-results':
+      case 'capture-templates':
+        return <Navigate to="/atrair" replace />;
+      case 'capture-analytics':
+        return <Navigate to="/relatorios-comerciais" replace />;
+      // capture-reports: id legado (fora do menu), alcançável só por URL manual.
+      case 'capture-reports':
+        return <CaptureReportsSection />;
+      // /admin foi dissolvido — Configurações viraram páginas no cockpit (Gestão).
+      // Qualquer tab desconhecido cai em Empresa (a antiga seção default).
+      default: return <Navigate to="/empresa" replace />;
+    }
+  };
+
+  // Renderiza TODAS as seções já visitadas, escondendo as inativas.
+  // Resultado: revisitar uma seção é instantâneo (componente segue montado).
+  const renderContent = () => (
+    <>
+      {Array.from(visitedRef.current).map((sectionId) => {
+        const isActive = sectionId === activeSection;
+        return (
+          <div
+            key={sectionId}
+            // `hidden` remove do fluxo visual mas mantém o componente montado.
+            hidden={!isActive}
+            // Aria para acessibilidade quando a seção está oculta.
+            aria-hidden={!isActive}
+            style={!isActive ? { display: 'none' } : undefined}
+          >
+            <SectionErrorBoundary sectionName={sectionId}>
+              {/* fallback={null} = nunca mostra spinner; useTransition mantém
+                  a tela anterior visível enquanto o chunk novo baixa. */}
+              <Suspense fallback={null}>{renderSection(sectionId)}</Suspense>
+            </SectionErrorBoundary>
+          </div>
+        );
+      })}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <MobileAdminLayout
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      >
+        {renderContent()}
+      </MobileAdminLayout>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex w-full">
+      <AdminSidebar
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      />
+      <main className="flex-1 overflow-auto">
+        <AppTopBar title={allMenuItems.find((i) => i.id === activeSection)?.label ?? 'Administração'} />
+        <div className="p-6">
+          {renderContent()}
+        </div>
+      </main>
+    </div>
+  );
+}

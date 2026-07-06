@@ -67,6 +67,17 @@ services:
     networks: [traefik-public]
     env_file: .env
 
+  nexvy-payments:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.app
+      args:
+        APP_DIR: NexvyPayments
+    container_name: nexvy-payments
+    restart: unless-stopped
+    networks: [traefik-public]
+    env_file: .env
+
 networks:
   traefik-public:
     external: true

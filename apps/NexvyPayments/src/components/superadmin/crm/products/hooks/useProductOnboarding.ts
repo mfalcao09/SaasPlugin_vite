@@ -1,0 +1,230 @@
+// Porte 1:1 de `.vendus-src-reference/src/hooks/useProductOnboarding.ts`
+// Desacoplamento 🔒: sem useAuth/organization_id. Tabelas → platform_crm_*.
+// DEFAULT_PIPELINE_STAGES vem de usePipelineMutations.ts:16-24 da fonte
+// (o funil nasce junto com o produto — "o produto É o pipeline").
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useCreatePlatformCrmProduct } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  subtitle: string;
+  field: string;
+  type: 'text' | 'textarea' | 'list';
+  placeholder?: string;
+  aiOptimizable?: boolean;
+  required?: boolean;
+}
+
+export const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: 'name',
+    title: 'Como se chama seu produto?',
+    subtitle: 'Esse será o nome que seus vendedores verão.',
+    field: 'name',
+    type: 'text',
+    placeholder: 'Ex: Produto Pro, CRM Enterprise...',
+    required: true,
+  },
+  {
+    id: 'description',
+    title: 'Descreva seu produto em uma frase',
+    subtitle: 'Uma descrição clara e objetiva ajuda os vendedores a entenderem rapidamente.',
+    field: 'description',
+    type: 'textarea',
+    placeholder: 'Ex: Plataforma de automação de vendas com IA integrada...',
+    aiOptimizable: true,
+    required: true,
+  },
+  {
+    id: 'icp',
+    title: 'Quem é seu cliente ideal (ICP)?',
+    subtitle: 'Defina o perfil ideal de cliente para este produto.',
+    field: 'icp',
+    type: 'textarea',
+    placeholder: 'Ex: Empresas B2B de tecnologia com 50-500 funcionários...',
+    aiOptimizable: true,
+    required: true,
+  },
+  {
+    id: 'pitch15s',
+    title: 'Pitch de 15 segundos',
+    subtitle: 'O pitch de elevador. Direto ao ponto.',
+    field: 'pitch_15s',
+    type: 'textarea',
+    placeholder: 'Em 15 segundos, como você apresentaria este produto?',
+    aiOptimizable: true,
+    required: true,
+  },
+  {
+    id: 'pitch30s',
+    title: 'Pitch de 30 segundos',
+    subtitle: 'Um pouco mais de contexto e valor.',
+    field: 'pitch_30s',
+    type: 'textarea',
+    placeholder: 'Expanda o pitch com mais detalhes sobre o valor entregue...',
+    aiOptimizable: true,
+  },
+  {
+    id: 'pitch2min',
+    title: 'Pitch de 2 minutos',
+    subtitle: 'A apresentação completa com problema, solução e diferencial.',
+    field: 'pitch_2min',
+    type: 'textarea',
+    placeholder: 'Conte a história completa: problema → solução → resultados...',
+    aiOptimizable: true,
+  },
+  {
+    id: 'differentials',
+    title: 'Quais são os principais diferenciais?',
+    subtitle: 'Liste os pontos que destacam seu produto da concorrência.',
+    field: 'differentials',
+    type: 'list',
+    placeholder: 'Ex: Integração nativa com WhatsApp',
+  },
+  {
+    id: 'status',
+    title: 'Qual o status inicial do produto?',
+    subtitle: 'Defina se já está pronto para ser usado pelos vendedores.',
+    field: 'status',
+    type: 'text',
+    placeholder: 'draft',
+    required: true,
+  },
+];
+
+// Fonte: usePipelineMutations.ts:16-24
+export const DEFAULT_PIPELINE_STAGES = [
+  { name: 'Novo Lead', color: '#3b82f6', order_index: 1, is_won: false, is_lost: false, description: 'Primeiro contato com o cliente potencial' },
+  { name: 'Primeiro Contato', color: '#8b5cf6', order_index: 2, is_won: false, is_lost: false, description: 'Estabelecendo primeiro contato' },
+  { name: 'Qualificação', color: '#f59e0b', order_index: 3, is_won: false, is_lost: false, description: 'Avaliando necessidades e fit' },
+  { name: 'Proposta Enviada', color: '#ec4899', order_index: 4, is_won: false, is_lost: false, description: 'Proposta comercial enviada' },
+  { name: 'Negociação', color: '#14b8a6', order_index: 5, is_won: false, is_lost: false, description: 'Negociando termos e condições' },
+  { name: 'Fechado (Ganho)', color: '#22c55e', order_index: 6, is_won: true, is_lost: false, description: 'Negócio fechado com sucesso' },
+  { name: 'Perdido', color: '#ef4444', order_index: 7, is_won: false, is_lost: true, description: 'Oportunidade perdida' },
+];
+
+export function useProductOnboarding() {
+  const createProduct = useCreatePlatformCrmProduct();
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState<Record<string, any>>({
+    status: 'draft',
+    differentials: [],
+  });
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const totalSteps = ONBOARDING_STEPS.length;
+  const currentStepData = ONBOARDING_STEPS[currentStep];
+  const progress = ((currentStep + 1) / totalSteps) * 100;
+
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const nextStep = useCallback(() => {
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  }, [currentStep, totalSteps]);
+
+  const prevStep = useCallback(() => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  }, [currentStep]);
+
+  const goToStep = useCallback((step: number) => {
+    if (step >= 0 && step < totalSteps) {
+      setCurrentStep(step);
+    }
+  }, [totalSteps]);
+
+  const canProceed = useCallback(() => {
+    const step = ONBOARDING_STEPS[currentStep];
+    if (!step.required) return true;
+
+    const value = formData[step.field];
+    if (step.type === 'list') {
+      return Array.isArray(value) && value.length > 0;
+    }
+    return !!value && String(value).trim().length > 0;
+  }, [currentStep, formData]);
+
+  const optimizeWithAI = useCallback(async (_field: string, currentValue: string) => {
+    if (!currentValue.trim()) {
+      toast.error('Digite algo antes de otimizar');
+      return null;
+    }
+    // TODO(edge): `platform-optimize-product-field` ainda não existe — UI completa,
+    // ação informa pendência (padrão da onda D3 Fase 1a).
+    setIsOptimizing(false);
+    toast.info('Otimização com IA: edge ainda não portada nesta fase (TODO(edge)).');
+    return null;
+  }, []);
+
+  const completeOnboarding = useCallback(async () => {
+    try {
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        icp: formData.icp,
+        pitch_15s: formData.pitch_15s,
+        pitch_30s: formData.pitch_30s,
+        pitch_2min: formData.pitch_2min,
+        differentials: formData.differentials,
+        status: formData.status || 'draft',
+      };
+
+      const product = await createProduct.mutateAsync(productData);
+
+      // Cria as etapas default do funil do novo produto (padrão da fonte)
+      if (product?.id) {
+        const stages = DEFAULT_PIPELINE_STAGES.map(stage => ({
+          ...stage,
+          product_id: product.id,
+        }));
+
+        const { error: stagesError } = await supabase
+          .from('platform_crm_pipeline_stages')
+          .insert(stages);
+
+        if (stagesError) {
+          console.error('Error creating pipeline stages:', stagesError);
+        }
+      }
+
+      toast.success('Produto criado com sucesso!');
+      return product;
+    } catch (error) {
+      console.error('Error creating product:', error);
+      toast.error('Erro ao criar produto');
+      return null;
+    }
+  }, [formData, createProduct]);
+
+  const resetOnboarding = useCallback(() => {
+    setCurrentStep(0);
+    setFormData({ status: 'draft', differentials: [] });
+  }, []);
+
+  return {
+    currentStep,
+    currentStepData,
+    totalSteps,
+    progress,
+    formData,
+    isOptimizing,
+    isCreating: createProduct.isPending,
+    updateField,
+    nextStep,
+    prevStep,
+    goToStep,
+    canProceed,
+    optimizeWithAI,
+    completeOnboarding,
+    resetOnboarding,
+  };
+}

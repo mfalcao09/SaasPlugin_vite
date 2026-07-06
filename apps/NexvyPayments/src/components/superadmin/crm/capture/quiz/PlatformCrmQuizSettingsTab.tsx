@@ -1,0 +1,226 @@
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Save, Loader2, Users, Target, ListChecks, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  useUpdatePlatformCrmCaptureFunnel,
+  type PlatformCrmCaptureFunnel,
+} from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
+import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { usePlatformCrmSquads } from '@/components/superadmin/crm/data/usePlatformCrmSquads';
+import { usePlatformCrmTeamMembers } from '@/components/superadmin/crm/data/usePlatformCrmTeam';
+
+/**
+ * CRM de PLATAFORMA (super_admin) — aba "Config" do QuizBuilder, DESACOPLADA do tenant.
+ * Porte de `admin/capture/quiz/QuizSettingsTab.tsx`.
+ *
+ * Adaptação de hooks (tenant → plataforma):
+ *   - `useUpdateFunnel`   → `useUpdatePlatformCrmCaptureFunnel`
+ *   - `useProducts`       → `usePlatformCrmProducts`
+ *   - `useSquads`         → `usePlatformCrmSquads`
+ *   - `useTeamMembers`    → `usePlatformCrmTeamMembers` (membro.id = user_id, full_name)
+ * `funnel` é `PlatformCrmCaptureFunnel` (sem organization_id). Todos os campos gravados existem
+ * na tabela `platform_crm_capture_funnels` (product_id, distribution_rule, assigned_*,
+ * default_temperature, default_tags).
+ */
+
+interface Props { funnel: PlatformCrmCaptureFunnel; }
+
+export function PlatformCrmQuizSettingsTab({ funnel }: Props) {
+  const [formData, setFormData] = useState({
+    product_id: funnel.product_id ?? '',
+    name: funnel.name,
+    description: funnel.description || '',
+    slug: funnel.slug,
+    distribution_rule: funnel.distribution_rule,
+    assigned_squad_id: funnel.assigned_squad_id || '',
+    assigned_user_id: funnel.assigned_user_id || '',
+    default_temperature: funnel.default_temperature ?? 'cold',
+    default_tags: (funnel.default_tags ?? []).join(', '),
+  });
+
+  const updateFunnel = useUpdatePlatformCrmCaptureFunnel();
+  const { data: products } = usePlatformCrmProducts();
+  const { data: squads } = usePlatformCrmSquads();
+  const { data: teamMembers } = usePlatformCrmTeamMembers();
+
+  const handleSave = async () => {
+    await updateFunnel.mutateAsync({
+      id: funnel.id,
+      product_id: formData.product_id || null,
+      name: formData.name,
+      description: formData.description,
+      slug: formData.slug,
+      distribution_rule: formData.distribution_rule,
+      default_temperature: formData.default_temperature,
+      default_tags: formData.default_tags.split(',').map(t => t.trim()).filter(Boolean),
+      assigned_squad_id: formData.assigned_squad_id || null,
+      assigned_user_id: formData.assigned_user_id || null,
+    });
+    toast.success('Configurações do Quiz salvas');
+  };
+
+  return (
+    <div className="space-y-6 max-w-3xl pb-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <ListChecks className="h-5 w-5 text-primary" />
+            Configurações do Quiz
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Identidade, distribuição e qualificação inicial dos leads do quiz.
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={updateFunnel.isPending} className="gap-2">
+          {updateFunnel.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Salvar
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Identidade</CardTitle>
+          <CardDescription>Produto, nome e URL pública.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Produto vinculado</Label>
+            <Select
+              value={formData.product_id}
+              onValueChange={(v) => setFormData(p => ({ ...p, product_id: v }))}
+            >
+              <SelectTrigger><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
+              <SelectContent>
+                {products?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Leads gerados serão vinculados a este produto.</p>
+          </div>
+
+          {formData.product_id !== (funnel.product_id ?? '') && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>Trocar o produto reatribui novos leads ao novo cérebro/funil.</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Slug público</Label>
+              <Input value={formData.slug} onChange={(e) => setFormData(p => ({ ...p, slug: e.target.value }))} />
+              <p className="text-[10px] text-muted-foreground">URL: /q/{formData.slug}</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Descrição interna</Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+              rows={2}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Distribuição de leads do quiz</CardTitle>
+          </div>
+          <CardDescription>Para quem vai o lead quando o Quiz capturar.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Regra</Label>
+            <Select
+              value={formData.distribution_rule}
+              onValueChange={(v) => setFormData(p => ({
+                ...p, distribution_rule: v, assigned_squad_id: '', assigned_user_id: '',
+              }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="round_robin">Round Robin</SelectItem>
+                <SelectItem value="squad">Squad</SelectItem>
+                <SelectItem value="user">Usuário específico</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {formData.distribution_rule === 'squad' && (
+            <div className="space-y-2">
+              <Label>Squad</Label>
+              <Select value={formData.assigned_squad_id} onValueChange={(v) => setFormData(p => ({ ...p, assigned_squad_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {squads?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {formData.distribution_rule === 'user' && (
+            <div className="space-y-2">
+              <Label>Usuário</Label>
+              <Select value={formData.assigned_user_id} onValueChange={(v) => setFormData(p => ({ ...p, assigned_user_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {teamMembers?.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Qualificação inicial</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Temperatura padrão</Label>
+              <Select value={formData.default_temperature} onValueChange={(v) => setFormData(p => ({ ...p, default_temperature: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cold">🥶 Frio</SelectItem>
+                  <SelectItem value="warm">😊 Morno</SelectItem>
+                  <SelectItem value="hot">🔥 Quente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Etiquetas padrão (separadas por vírgula)</Label>
+              <Input
+                value={formData.default_tags}
+                onChange={(e) => setFormData(p => ({ ...p, default_tags: e.target.value }))}
+                placeholder="quiz, qualificado"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Aplicadas automaticamente em todo lead deste Quiz.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

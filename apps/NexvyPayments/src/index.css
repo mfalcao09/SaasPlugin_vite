@@ -1,0 +1,837 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ═══════════════════════════════════════════════════════════════════════
+     TEMA LIGHT — "Beauty Rosé" (app.* do tenant). Paleta APROVADA pelo Marcelo
+     (2026-07-06). Fonte da verdade: tasks/rose-reference/lovable-styles-aprovado.css
+     (Lovable 46463c3b, commit 623c35f). Sai o rosa chapado #EC4899 → entra o
+     mesclado rosé/terracota/creme com âncora vinho.
+     Máxima: rosé #C54B60 (primary) · vinho #8C041D/#570C15 (âncora) ·
+     terracota #C4755B (acento) · creme #FAF7F2 (fundo).
+     Conversão hex→HSL determinística (1 casa), roundtrip HSL→hex Δ=0 provado.
+     Estrutura (menus/telas/fluxos) INTOCADA — só cor/acabamento mudam.
+     ═══════════════════════════════════════════════════════════════════════ */
+  :root {
+    --background: 37.5 44.4% 96.5%;      /* #faf7f2 creme quente */
+    --foreground: 340 12% 14.7%;         /* #2a2124 */
+
+    --card: 0 0% 100%;                   /* #ffffff */
+    --card-foreground: 340 12% 14.7%;
+
+    --popover: 0 0% 100%;                /* #ffffff */
+    --popover-foreground: 340 12% 14.7%;
+
+    --primary: 349.7 51.3% 53.3%;        /* #c54b60 rosé profundo */
+    --primary-foreground: 0 0% 100%;     /* #ffffff */
+
+    --secondary: 34.3 41.2% 93.3%;       /* #f5efe7 */
+    --secondary-foreground: 340 12% 14.7%;
+
+    --muted: 34.3 41.2% 93.3%;           /* #f5efe7 */
+    --muted-foreground: 332.7 5.2% 58.2%; /* #9a8f94 */
+
+    --accent: 20.7 52.7% 89.2%;          /* #f2dfd5 terracota-soft */
+    --accent-foreground: 349 94.4% 28.2%; /* #8c041d vinho */
+
+    --destructive: 0 63.9% 55.5%;        /* #d64545 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+
+    --success: 141.3 29% 42%;            /* #4c8a62 */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 62% 46.5%;             /* #c08a2d */
+    --warning-foreground: 340 12% 14.7%;
+
+    --border: 30 28.1% 87.5%;            /* #e8dfd6 */
+    --input: 240 14.6% 82.5%;            /* #ccccd9 */
+    --ring: 349.7 51.3% 53.3%;           /* #c54b60 */
+
+    --radius: 0.875rem;                  /* REF */
+
+    /* Sidebar Light — sidebar-primary = VINHO #8c041d (não o rosé) */
+    --sidebar-background: 0 0% 100%;     /* #ffffff */
+    --sidebar-foreground: 340 12% 14.7%; /* #2a2124 */
+    --sidebar-primary: 349 94.4% 28.2%;  /* #8c041d VINHO (âncora) */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 34.3 41.2% 93.3%;  /* #f5efe7 */
+    --sidebar-accent-foreground: 349 94.4% 28.2%; /* #8c041d */
+    --sidebar-border: 31.8 30.9% 89.2%;  /* #ece4db */
+    --sidebar-ring: 349.7 51.3% 53.3%;   /* #c54b60 */
+
+    /* ── Tokens custom Beauty Rosé — valores RAW hex/rgba VERBATIM do REF ──
+       (consumidos via var() direto — não passam pelo hsl() do tailwind) */
+    --wine: #8c041d;
+    --wine-deep: #570c15;
+    --rose: #c54b60;
+    --terracotta: #c4755b;
+    --terracotta-soft: #f2dfd5;
+    --cream: #faf7f2;
+    --cream-2: #f5efe7;
+    --surface-2: #f5efe7;
+    --hairline: rgba(87, 12, 21, 0.08);
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Gradiente-assinatura — a alma do redesign (135deg vinho→rosé→terracota) */
+    --gradient-signature: linear-gradient(135deg, #8c041d 0%, #c54b60 55%, #c4755b 100%);
+    --gradient-signature-soft: linear-gradient(
+      135deg,
+      rgba(140, 4, 29, 0.08) 0%,
+      rgba(197, 75, 96, 0.08) 55%,
+      rgba(196, 117, 91, 0.08) 100%
+    );
+
+    /* Gradientes legados NX reapontados ao rosé/creme (mesmos nomes) */
+    --gradient-primary: var(--gradient-signature);
+    --gradient-card: linear-gradient(180deg, #ffffff, #faf7f2);
+    --gradient-hero: radial-gradient(
+        1200px 500px at 100% -10%,
+        rgba(196, 117, 91, 0.18),
+        transparent 60%
+      ),
+      radial-gradient(800px 400px at 0% 10%, rgba(197, 75, 96, 0.12), transparent 60%);
+    --gradient-accent: linear-gradient(135deg, rgba(197, 75, 96, 0.10), rgba(196, 117, 91, 0.04));
+
+    /* Sombras multicamada premium — do REF */
+    --shadow-xs: 0 1px 2px rgba(42, 33, 36, 0.06);
+    --shadow-sm: 0 1px 2px rgba(42, 33, 36, 0.05), 0 2px 6px -2px rgba(42, 33, 36, 0.06);
+    --shadow-md: 0 1px 2px rgba(42, 33, 36, 0.06), 0 8px 20px -8px rgba(42, 33, 36, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --shadow-lg: 0 1px 2px rgba(42, 33, 36, 0.06), 0 16px 32px -14px rgba(42, 33, 36, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow-xl: 0 2px 4px rgba(42, 33, 36, 0.05), 0 30px 60px -20px rgba(87, 12, 21, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow-glow: 0 0 0 1px rgba(197, 75, 96, 0.18),
+      0 12px 32px -10px rgba(140, 4, 29, 0.35);
+
+    /* CBA port — brand/surface/chart tokens (harmonia rosé/terracota/vinho/âmbar/sálvia) */
+    --brand: 349.7 51.3% 53.3%;      /* = primary: rosé #c54b60 */
+    --brand-foreground: 0 0% 100%;
+    --brand-master: 0 70% 35%;        /* área super-admin/master (vermelho) */
+    --surface: 37.5 44.4% 96.5%;      /* creme #faf7f2 */
+    --chart-1: 349.7 51.3% 53.3%;     /* rosé #c54b60 */
+    --chart-2: 14.9 47.1% 56.3%;      /* terracota #c4755b */
+    --chart-3: 349 94.4% 28.2%;       /* vinho #8c041d */
+    --chart-4: 38 62% 46.5%;          /* âmbar #c08a2d (warning) */
+    --chart-5: 141.3 29% 42%;         /* sálvia #4c8a62 (success) */
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     TEMA DARK — "vinho-noir" (app.* do tenant). Do REF aprovado. Fundo #1b1315,
+     primary rosé-claro #d9718a. Conversão hex→HSL determinística, roundtrip Δ=0.
+     ═══════════════════════════════════════════════════════════════════════ */
+  .dark {
+    --background: 345 17.4% 9%;          /* #1b1315 vinho-noir */
+    --foreground: 27.7 41.9% 93.9%;      /* #f6efe9 */
+
+    --card: 343.6 17.5% 12.4%;           /* #251a1d */
+    --card-foreground: 27.7 41.9% 93.9%;
+
+    --popover: 341.5 16.5% 15.5%;        /* #2e2125 */
+    --popover-foreground: 27.7 41.9% 93.9%;
+
+    --primary: 345.6 57.8% 64.7%;        /* #d9718a rosé-claro */
+    --primary-foreground: 345 17.4% 9%;  /* #1b1315 */
+
+    --secondary: 341.5 16.5% 15.5%;      /* #2e2125 */
+    --secondary-foreground: 27.7 41.9% 93.9%;
+
+    --muted: 341.5 16.5% 15.5%;          /* #2e2125 */
+    --muted-foreground: 341.5 5.5% 53.5%; /* #8f8286 */
+
+    --accent: 330 14.6% 18.8%;           /* #372930 */
+    --accent-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
+
+    --destructive: 0 65.6% 64.7%;        /* #e06a6a */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+
+    --success: 142.9 28% 55.9%;          /* #6fae87 */
+    --success-foreground: 345 17.4% 9%;
+
+    --warning: 38.4 64.2% 58.4%;         /* #d9a851 */
+    --warning-foreground: 345 17.4% 9%;
+
+    --border: 330 14.6% 18.8%;           /* #372930 */
+    --input: 330 14.6% 18.8%;            /* #372930 */
+    --ring: 345.6 57.8% 64.7%;           /* #d9718a */
+
+    /* Sidebar Dark (vinho-noir) */
+    --sidebar-background: 346.7 17% 10.4%; /* #1f1618 */
+    --sidebar-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
+    --sidebar-primary: 345.6 57.8% 64.7%;  /* #d9718a */
+    --sidebar-primary-foreground: 345 17.4% 9%; /* #1b1315 */
+    --sidebar-accent: 341.5 16.5% 15.5%;   /* #2e2125 */
+    --sidebar-accent-foreground: 27.7 41.9% 93.9%; /* #f6efe9 */
+    --sidebar-border: 341.5 16.5% 15.5%;   /* #2e2125 */
+    --sidebar-ring: 345.6 57.8% 64.7%;     /* #d9718a */
+
+    /* ── Tokens custom Beauty Rosé (dark) — RAW hex/rgba VERBATIM do REF ── */
+    --wine: #8c041d;
+    --wine-deep: #570c15;
+    --rose: #d9718a;
+    --terracotta: #d98e6b;
+    --terracotta-soft: rgba(217, 142, 107, 0.12);
+    --cream: #f6efe9;
+    --cream-2: #c9bdb6;
+    --surface-2: #2e2125;
+    --hairline: rgba(255, 255, 255, 0.07);
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Gradiente-assinatura (dark) */
+    --gradient-signature: linear-gradient(135deg, #c54b60 0%, #d9718a 55%, #d98e6b 100%);
+    --gradient-signature-soft: linear-gradient(
+      135deg,
+      rgba(197, 75, 96, 0.18) 0%,
+      rgba(217, 113, 138, 0.14) 55%,
+      rgba(217, 142, 107, 0.14) 100%
+    );
+
+    /* Gradientes legados NX reapontados (dark) */
+    --gradient-primary: var(--gradient-signature);
+    --gradient-card: linear-gradient(180deg, #251a1d, #1b1315);
+    --gradient-hero: radial-gradient(
+        1200px 500px at 100% -10%,
+        rgba(217, 142, 107, 0.14),
+        transparent 60%
+      ),
+      radial-gradient(800px 400px at 0% 10%, rgba(217, 113, 138, 0.12), transparent 60%);
+    --gradient-accent: linear-gradient(135deg, rgba(197, 75, 96, 0.18), rgba(217, 142, 107, 0.06));
+
+    /* Sombras multicamada premium (dark) — do REF */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 32px -14px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-xl: 0 2px 4px rgba(0, 0, 0, 0.4), 0 30px 60px -20px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-glow: 0 0 0 1px rgba(217, 113, 138, 0.28),
+      0 12px 32px -10px rgba(217, 113, 138, 0.45);
+
+    /* CBA port — brand/surface/chart tokens (dark, harmonia rosé) */
+    --brand: 345.6 57.8% 64.7%;      /* rosé-claro #d9718a */
+    --brand-foreground: 0 0% 100%;
+    --brand-master: 0 65% 45%;
+    --surface: 343.6 17.5% 12.4%;    /* #251a1d */
+    --chart-1: 345.6 57.8% 64.7%;    /* rosé #d9718a */
+    --chart-2: 19.1 59.1% 63.5%;     /* terracota #d98e6b */
+    --chart-3: 349 94.4% 28.2%;      /* vinho #8c041d */
+    --chart-4: 38.4 64.2% 58.4%;     /* âmbar #d9a851 (warning) */
+    --chart-5: 142.9 28% 55.9%;      /* sálvia #6fae87 (success) */
+  }
+
+  /* CBA port — área master/super-admin: sidebar vermelha (naming NX) — Onda 0 */
+  .master-theme {
+    --sidebar-background: 0 60% 32%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 60% 32%;
+    --sidebar-accent: 0 55% 40%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 50% 45%;
+    --sidebar-ring: 0 0% 98%;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════
+     TEMA "NEXVY LUX" — shell de gestão/plataforma (gestao.*)
+     Design system NAVY + DOURADO aprovado pelo Marcelo (2026-07-06,
+     "Deve ficar igual!"). Fonte da verdade: projeto Lovable b703093e
+     commit 86d61a7 → tasks/lux-reference/lovable-styles-aprovado.css.
+
+     Aplicado via classe no <html> (main.tsx + script inline no index.html)
+     quando o host começa com "gestao.". O app do tenant (app.*) e o apex
+     NÃO recebem a classe → seguem no tema Beauty/rosa (Inter), INTOCADO.
+
+     ┌─ TRADUÇÃO Tailwind4(oklch)→Tailwind3+shadcn(HSL) ─────────────────┐
+     │ • Tokens shadcn (--background,--primary,--card,--border…): oklch  │
+     │   convertido p/ HSL triplet via oklch2hsl.mjs (OKLab→sRGB→HSL,    │
+     │   determinístico). hsl(var(--X)) no tailwind.config consome.      │
+     │ • Alpha (--border/--input/--ring): hsl(var(--X)) do config NÃO    │
+     │   tem slot de alpha → alpha COMPOSITADO sobre o fundo do tema     │
+     │   (card no claro/escuro; background p/ ring), triplet sólido.     │
+     │ • Tokens custom (--gold*,--navy*,--gradient-*,--shadow-*): oklch  │
+     │   VERBATIM do REF (consumidos via var() direto, não passam pelo   │
+     │   hsl() do tailwind → zero erro de conversão).                    │
+     └───────────────────────────────────────────────────────────────────┘
+
+     OBS: o azul institucional #0A52D1 (218 91% 43%) de 05/07 está
+     OBSOLETO — substituído aqui pelo lux navy+gold. A classe permanece
+     (infra host-aware reusada); só os VALORES mudaram.
+     ═════════════════════════════════════════════════════════════════ */
+  /* :root. prefix eleva a especificidade p/ VENCER :root {--primary:330}. */
+  /* ─── LUX CLARO (default): off-white frio + NAVY protagonista + DOURADO ── */
+  :root.theme-nexvy-institucional {
+    --radius: 0.875rem;
+
+    /* shadcn base (oklch→HSL, 1 casa decimal — Δ ≤ 1/255 por canal vs REF) */
+    --background: 211.2 52.7% 97.8%;    /* oklch(0.982 0.005 250) #f7f9fc */
+    --foreground: 222.5 62.3% 13.1%;    /* oklch(0.22 0.06 265)   #0d1936 */
+    --card: 0 0% 100%;                  /* oklch(1 0 0)           #ffffff */
+    --card-foreground: 222.5 62.3% 13.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.5 62.3% 13.1%;
+
+    --primary: 221.8 44.7% 23.4%;       /* oklch(0.32 0.07 265) NAVY #213156 */
+    --primary-foreground: 211.2 64.5% 98.2%; /* oklch(0.985 0.005 250) #f8fafd */
+    --secondary: 211.2 42.5% 95.7%;     /* oklch(0.965 0.008 250) #f0f4f9 */
+    --secondary-foreground: 222.5 62.3% 13.1%;
+    --muted: 211.2 32.5% 94.4%;         /* oklch(0.955 0.008 250) #ecf1f5 */
+    --muted-foreground: 217 8.1% 45.6%; /* oklch(0.55 0.02 260)   #6b727e */
+    --accent: 221.8 44.7% 23.4%;        /* navy */
+    --accent-foreground: 211.2 64.5% 98.2%;
+    --destructive: 353.4 62.4% 33.1%;   /* oklch(0.42 0.14 20)    #89202b */
+    --destructive-foreground: 211.2 64.5% 98.2%;
+    --success: 143.1 32.5% 38.2%;       /* oklch(0.55 0.09 155)   #42815a */
+    --success-foreground: 0 0% 100%;
+    --warning: 39 58% 53%;              /* alinha ao warm dourado */
+    --warning-foreground: 222.5 62.3% 13.1%;
+
+    /* alpha compositado sobre o card branco (hairline translúcida do REF) */
+    --border: 222.4 9.3% 92.2%;         /* navy .09 / #fff → #e9eaed */
+    --input: 222.4 9.3% 89.6%;          /* navy .12 / #fff → #e2e3e7 */
+    --ring: 221 15.1% 71.8%;            /* navy .35 / bg #f7f9fc → #acb3c2 */
+
+    /* mapa shadcn↔brand/surface/chart (reusa a infra CBA) */
+    --brand: 35 54% 40%;               /* DOURADO ocre = --gold #9f702f */
+    --brand-foreground: 211.2 64.5% 98.2%;
+    --surface: 0 0% 100%;              /* --surface REF (branco) */
+    --chart-1: 221.8 44.7% 23.4%;      /* navy */
+    --chart-2: 35 54% 40%;             /* gold */
+    --chart-3: 33 54% 35%;             /* value/bronze */
+    --chart-4: 39 58% 53%;             /* warm */
+    --chart-5: 143.1 32.5% 38.2%;      /* success */
+
+    /* Sidebar = navy protagonista (claro) */
+    --sidebar-background: 211.2 52.7% 97.8%;
+    --sidebar-foreground: 221.8 44.7% 23.4%;
+    --sidebar-primary: 221.8 44.7% 23.4%;    /* navy */
+    --sidebar-primary-foreground: 211.2 64.5% 98.2%;
+    --sidebar-accent: 211.2 42.5% 95.7%;
+    --sidebar-accent-foreground: 222.5 62.3% 13.1%;
+    --sidebar-border: 222.4 9.3% 92.2%;
+    --sidebar-ring: 221 15.1% 71.8%;
+
+    /* ── Tokens custom LUX — oklch VERBATIM do REF (consumidos via var()) ── */
+    --navy: oklch(0.32 0.07 265);
+    --navy-deep: oklch(0.22 0.06 265);
+    --gold: oklch(0.58 0.10 72);               /* ocre base (#A67E33 aprox.) */
+    --gold-bright: oklch(0.72 0.12 78);        /* só highlights pequenos */
+    --gold-deep: oklch(0.48 0.08 62);          /* bronze */
+    --surface-solid: oklch(1 0 0);             /* --surface do REF, uso interno */
+    --surface-elevated: oklch(0.992 0.004 250);
+    --hairline: oklch(0.22 0.06 265 / 0.08);
+    --hairline-gold: oklch(0.58 0.10 72 / 0.30);
+    --hot: oklch(0.55 0.16 25);
+    --warm: oklch(0.62 0.12 60);
+    --cold: oklch(0.55 0.09 240);
+
+    --brand-solid: oklch(0.58 0.10 72);        /* dourado nobre (papel do gold) */
+    --brand-solid-foreground: oklch(0.985 0.005 250);
+
+    --gradient-navy: linear-gradient(135deg, oklch(0.36 0.07 265), oklch(0.22 0.06 265));
+    --gradient-primary: linear-gradient(135deg, oklch(0.62 0.11 76), oklch(0.52 0.09 68) 55%, oklch(0.44 0.07 60));
+    --gradient-gold: linear-gradient(135deg, oklch(0.62 0.11 76), oklch(0.52 0.09 68) 55%, oklch(0.44 0.07 60));
+    --gradient-text: linear-gradient(135deg, oklch(0.22 0.06 265), oklch(0.42 0.09 265));
+    --gradient-value: linear-gradient(135deg, oklch(0.58 0.10 72), oklch(0.48 0.08 62));
+    --value-color: oklch(0.52 0.09 68);
+    --gradient-surface: linear-gradient(180deg, oklch(1 0 0), oklch(0.988 0.005 250));
+
+    --shadow-xs: 0 1px 2px oklch(0.22 0.06 265 / 0.06);
+    --shadow-sm:
+      0 1px 2px oklch(0.22 0.06 265 / 0.07),
+      0 3px 8px -2px oklch(0.22 0.06 265 / 0.10);
+    --shadow-md:
+      0 1px 2px oklch(0.22 0.06 265 / 0.07),
+      0 4px 10px -3px oklch(0.22 0.06 265 / 0.10),
+      0 16px 32px -14px oklch(0.22 0.06 265 / 0.22),
+      inset 0 1px 0 oklch(1 0 0 / 0.85);
+    --shadow-lg:
+      0 2px 4px oklch(0.22 0.06 265 / 0.07),
+      0 10px 20px -6px oklch(0.22 0.06 265 / 0.14),
+      0 28px 56px -20px oklch(0.22 0.06 265 / 0.30),
+      inset 0 1px 0 oklch(1 0 0 / 0.9);
+    --shadow-brand:
+      0 1px 2px oklch(0.48 0.08 62 / 0.20),
+      0 8px 22px -8px oklch(0.58 0.10 72 / 0.45),
+      inset 0 1px 0 oklch(1 0 0 / 0.28);
+    --shadow-gold: 0 0 0 1px oklch(0.58 0.10 72 / 0.28), 0 6px 18px -8px oklch(0.58 0.10 72 / 0.35);
+    --shadow-inset-top: inset 0 1px 0 oklch(1 0 0 / 0.85);
+
+    /* gradientes legados NX (mantidos p/ .gradient-* Beauty ainda usadas
+       no shell) reapontados ao lux navy→dourado */
+    --gradient-hero: linear-gradient(135deg, oklch(0.58 0.10 72 / 0.08), oklch(0.32 0.07 265 / 0.04));
+    --gradient-accent: linear-gradient(135deg, oklch(0.58 0.10 72 / 0.10), oklch(0.32 0.07 265 / 0.04));
+    --gradient-card: linear-gradient(180deg, oklch(1 0 0), oklch(0.988 0.005 250));
+    --shadow-glow: 0 6px 18px -8px oklch(0.58 0.10 72 / 0.35);
+  }
+
+  /* ─── LUX DARK: cinza automotivo fosco (zero azul/preto) + DOURADO ────── */
+  /* (2 classes p/ vencer .dark na especificidade) */
+  :root.theme-nexvy-institucional.dark {
+    /* shadcn base (oklch→HSL, 1 casa decimal — Δ ≤ 1/255 por canal vs REF) */
+    --background: 26 5.5% 8.6%;         /* oklch(0.20 0.003 60) charcoal #171615 */
+    --foreground: 40.3 27.8% 94.1%;     /* oklch(0.96 0.008 85) off-white #f4f1ec */
+    --card: 25.9 3.9% 12.6%;            /* oklch(0.245 0.003 60) #22201f */
+    --card-foreground: 40.3 27.8% 94.1%;
+    --popover: 25.9 3.9% 12.6%;
+    --popover-foreground: 40.3 27.8% 94.1%;
+
+    --primary: 38.1 68% 55.7%;          /* oklch(0.75 0.13 78) GOLD #dba341 */
+    --primary-foreground: 26 5.5% 8.6%;
+    --secondary: 25.9 2.9% 17.9%;       /* oklch(0.30 0.003 60) #2f2d2c */
+    --secondary-foreground: 40.3 27.8% 94.1%;
+    --muted: 25.9 3.1% 16.4%;           /* oklch(0.285 0.003 60) #2b2a29 */
+    --muted-foreground: 37.1 2% 52.2%;  /* oklch(0.62 0.005 80) Nardo #888683 */
+    --accent: 38.1 68% 55.7%;           /* gold */
+    --accent-foreground: 26 5.5% 8.6%;
+    --destructive: 356.9 53.2% 49.4%;   /* oklch(0.55 0.17 22) #c13b42 */
+    --destructive-foreground: 40.3 27.8% 94.1%;
+    --success: 141.7 33.6% 57.7%;       /* oklch(0.72 0.10 155) #6fb789 */
+    --success-foreground: 26 5.5% 8.6%;
+    --warning: 38 74% 60%;
+    --warning-foreground: 26 5.5% 8.6%;
+
+    /* alpha compositado sobre o card #22201f */
+    --border: 20 2.9% 18.9%;            /* white .07 / card → #31302f */
+    --input: 20 2.5% 21.5%;             /* white .10 / card → #383635 */
+    --ring: 38.1 47.6% 32.2%;           /* gold .5 / bg #171615 → #795d2b */
+
+    --brand: 38 74% 60%;               /* gold bright = brand no dark */
+    --brand-foreground: 26 5.5% 8.6%;
+    --surface: 25.9 3.9% 12.6%;
+    --chart-1: 38.1 68% 55.7%;         /* gold */
+    --chart-2: 37 57% 43%;             /* gold deep */
+    --chart-3: 38 74% 60%;             /* value/gold bright */
+    --chart-4: 38 74% 60%;             /* warm */
+    --chart-5: 141.7 33.6% 57.7%;      /* success */
+
+    /* Sidebar dark (cinza carvão + dourado) */
+    --sidebar-background: 26 5.5% 8.6%;
+    --sidebar-foreground: 40.3 27.8% 94.1%;
+    --sidebar-primary: 38.1 68% 55.7%;     /* gold */
+    --sidebar-primary-foreground: 26 5.5% 8.6%;
+    --sidebar-accent: 25.9 3.1% 16.4%;
+    --sidebar-accent-foreground: 40.3 27.8% 94.1%;
+    --sidebar-border: 20 2.9% 18.9%;
+    --sidebar-ring: 38.1 47.6% 32.2%;
+
+    /* ── Tokens custom LUX dark — oklch VERBATIM do REF ── */
+    --navy: oklch(0.30 0.003 60);              /* re-usado como cinza escuro */
+    --navy-deep: oklch(0.20 0.003 60);
+    --gold: oklch(0.62 0.11 75);
+    --gold-bright: oklch(0.78 0.13 78);
+    --gold-deep: oklch(0.52 0.10 65);
+    --surface-solid: oklch(0.245 0.003 60);    /* #26282B */
+    --surface-elevated: oklch(0.29 0.003 60);  /* #2F3236 */
+    --hairline: oklch(1 0 0 / 0.07);
+    --hairline-gold: oklch(0.78 0.13 78 / 0.28);
+    --hot: oklch(0.72 0.18 30);
+    --warm: oklch(0.80 0.14 65);
+    --cold: oklch(0.75 0.05 85);
+
+    --brand-solid: oklch(0.78 0.13 78);        /* gold no dark */
+    --brand-solid-foreground: oklch(0.20 0.003 60);
+
+    --gradient-navy: linear-gradient(135deg, oklch(0.32 0.003 60), oklch(0.22 0.003 60)); /* cinza carvão */
+    --gradient-primary: linear-gradient(135deg, oklch(0.80 0.13 80), oklch(0.62 0.11 72) 55%, oklch(0.50 0.10 62));
+    --gradient-gold: linear-gradient(135deg, oklch(0.80 0.13 80), oklch(0.62 0.11 72) 55%, oklch(0.50 0.10 62));
+    --gradient-text: linear-gradient(135deg, oklch(0.98 0.008 85), oklch(0.78 0.13 78));
+    --gradient-value: linear-gradient(135deg, oklch(0.85 0.13 80), oklch(0.68 0.12 72));
+    --value-color: oklch(0.78 0.13 78);
+    --gradient-surface: linear-gradient(180deg, oklch(0.265 0.003 60), oklch(0.235 0.003 60));
+
+    --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4), 0 2px 6px -2px oklch(0 0 0 / 0.35);
+    --shadow-md:
+      0 1px 2px oklch(0 0 0 / 0.45),
+      0 8px 20px -8px oklch(0 0 0 / 0.55),
+      inset 0 1px 0 oklch(1 0 0 / 0.05);
+    --shadow-lg:
+      0 2px 4px oklch(0 0 0 / 0.45),
+      0 22px 48px -24px oklch(0 0 0 / 0.75),
+      inset 0 1px 0 oklch(1 0 0 / 0.06);
+    --shadow-brand: 0 0 0 1px oklch(0.78 0.13 78 / 0.35), 0 10px 32px -8px oklch(0.78 0.13 78 / 0.45);
+    --shadow-gold: 0 0 0 1px oklch(0.78 0.13 78 / 0.35), 0 10px 32px -8px oklch(0.78 0.13 78 / 0.45);
+    --shadow-inset-top: inset 0 1px 0 oklch(1 0 0 / 0.06);
+
+    /* legados NX reapontados (dark) */
+    --gradient-hero: linear-gradient(135deg, oklch(0.29 0.003 60), oklch(0.20 0.003 60));
+    --gradient-accent: linear-gradient(135deg, oklch(0.78 0.13 78 / 0.14), oklch(0.30 0.003 60 / 0.06));
+    --gradient-card: linear-gradient(180deg, oklch(0.265 0.003 60), oklch(0.235 0.003 60));
+    --shadow-glow: 0 10px 32px -8px oklch(0.78 0.13 78 / 0.45);
+  }
+
+  /* ─── Tipografia + radius Apple no ESCOPO do tema lux (app.* fica Inter) ── */
+  .theme-nexvy-institucional {
+    font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  }
+  .theme-nexvy-institucional h1,
+  .theme-nexvy-institucional h2,
+  .theme-nexvy-institucional h3,
+  .theme-nexvy-institucional h4 {
+    letter-spacing: -0.022em;
+  }
+  .theme-nexvy-institucional .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    /* Zoom-out global: base 90% (14.4px) deixa toda a UI baseada em rem mais
+       compacta — pedido do Marcelo p/ caber mais nas telas. Inputs seguem 16px
+       (regra !important abaixo, anti-zoom iOS). Ajustável (ex.: 85% = mais denso). */
+    font-size: 90%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overscroll-behavior: none;
+  }
+
+  /* Headings do app (Beauty Rosé) — tracking premium do REF. Escopado ao app:
+     o tema lux (.theme-nexvy-institucional h1..h4) mantém seu -0.022em intocado. */
+  :root:not(.theme-nexvy-institucional) h1,
+  :root:not(.theme-nexvy-institucional) h2,
+  :root:not(.theme-nexvy-institucional) h3 {
+    letter-spacing: -0.015em;
+  }
+
+  /* Prevent zoom on inputs in iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Custom scrollbar - adapts to theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-foreground/10 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-foreground/20;
+  }
+
+  /* Safe areas for mobile */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Touch targets */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Hide scrollbar on mobile */
+  .hide-scrollbar {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   UTILITIES "NEXVY LUX" — tradução das @utility do REF (Tailwind 4) p/ CSS
+   normal (Tailwind 3). Disponíveis globalmente, mas as vars que consomem
+   (--gradient-*, --value-color, --hairline*, --shadow-brand) só existem no
+   escopo .theme-nexvy-institucional → só têm efeito no gestao.*. Trocam
+   automaticamente entre claro/dark quando as vars mudam.
+   ═════════════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* ── Utilities "Beauty Rosé" (app.*) — tradução das @utility do REF aprovado.
+     Nomes distintos das lux (.surface-card/.brand-gradient/…) → sem colisão.
+     Consomem os tokens custom do :root/.dark do app (--gradient-signature,
+     --shadow-*, --hairline) → trocam claro/dark automaticamente. ────────────── */
+  .bg-signature { background-image: var(--gradient-signature); }
+  .bg-signature-soft { background-image: var(--gradient-signature-soft); }
+  .bg-hero-rose { background-image: var(--gradient-hero); }
+  .text-signature {
+    background-image: var(--gradient-signature);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-premium { box-shadow: var(--shadow-lg); }
+  .shadow-premium-sm { box-shadow: var(--shadow-sm); }
+  .shadow-premium-xl { box-shadow: var(--shadow-xl); }
+  .shadow-glow-rose { box-shadow: var(--shadow-glow); }
+  .ring-hairline { box-shadow: inset 0 0 0 1px var(--hairline); }
+
+  .surface-card {
+    background: var(--gradient-surface);
+    border: 1px solid var(--hairline);
+    border-radius: calc(var(--radius) + 4px); /* --radius-xl do REF */
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 240ms cubic-bezier(.16, 1, .3, 1),
+                transform 240ms cubic-bezier(.16, 1, .3, 1);
+  }
+  .surface-card-hover:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+  .brand-gradient { background: var(--gradient-primary); }
+  .navy-gradient { background: var(--gradient-navy); }
+  .gold-gradient { background: var(--gradient-gold); }
+  /* .text-gradient lux (= --gradient-text navy) é definido no @layer utilities
+     escopado ao tema, p/ VENCER a .text-gradient legada (rosa) sem afetar app.* */
+  /* claro: cor sólida --value-color; dark: gradiente dourado clipado */
+  .text-value {
+    color: var(--value-color);
+    background: var(--gradient-value);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .theme-nexvy-institucional.dark .text-value,
+  .dark .theme-nexvy-institucional .text-value {
+    color: transparent;
+  }
+  .hairline { border-color: var(--hairline); }
+  .hairline-gold { border-color: var(--hairline-gold); }
+  .brand-glow { box-shadow: var(--shadow-brand); }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: var(--gradient-primary);
+  }
+
+  /* LUX: no gestao, .text-gradient = --gradient-text (navy→navy-claro) do REF.
+     Escopado ao tema → vence a legada acima por especificidade (mesmo layer);
+     app.* segue com a legada rosa (--gradient-primary). */
+  .theme-nexvy-institucional .text-gradient {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Press effect for touch interactions */
+  .pressable {
+    @apply transition-transform duration-100 active:scale-[0.97];
+  }
+
+  .pressable-sm {
+    @apply transition-transform duration-100 active:scale-[0.98];
+  }
+
+  /* Basic animations */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-fade-out {
+    animation: fadeOut 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.4s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  .animate-bounce-in {
+    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideDown {
+    from { 
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from { 
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes bounceIn {
+    0% { 
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: var(--shadow-glow);
+    }
+    50% {
+      /* rosé glow (era hsl(330 81% 62%) rosa chapado); usa o token do tema →
+         acompanha claro/dark e a paleta Beauty Rosé aprovada */
+      box-shadow: 0 0 30px hsl(var(--primary) / 0.45);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+  }
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  /* Staggered animation delays */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+
+  /* Temperature-based gradients for leads - adapts to theme */
+  .temperature-hot {
+    background: linear-gradient(135deg, hsl(0 72% 51% / 0.1), transparent);
+    border-left: 3px solid hsl(0 72% 51%);
+  }
+
+  .temperature-warm {
+    background: linear-gradient(135deg, hsl(38 92% 50% / 0.1), transparent);
+    border-left: 3px solid hsl(38 92% 50%);
+  }
+
+  .temperature-cold {
+    background: linear-gradient(135deg, hsl(210 80% 50% / 0.1), transparent);
+    border-left: 3px solid hsl(210 80% 50%);
+  }
+
+  /* Glass effect - adapts to theme */
+  .glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+
+  .glass-card {
+    @apply bg-card/90 backdrop-blur-sm border-border/50;
+  }
+}

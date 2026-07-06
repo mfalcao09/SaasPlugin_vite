@@ -1,4 +1,4 @@
-.PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-all deploy-evolution setup-vps pull status
+.PHONY: deploy-beauty deploy-oficinas deploy-oficinas-lp deploy-barbeiro deploy-foods deploy-gym deploy-payments deploy-all deploy-evolution setup-vps pull status
 
 VPS=vps-hostinger
 REMOTE_DIR=/opt/stacks/saasplugin-vite
@@ -9,6 +9,7 @@ DOMAIN_BARBEIRO=nexvybarbershop.com.br
 DOMAIN_FOODS=nexvyfood.com.br
 DOMAIN_GYM=nexvygym.com.br
 DOMAIN_OFICINAS=nexvyoficinas.com.br
+DOMAIN_PAYMENTS=nexvypayments.com.br
 
 setup-vps:
 	ssh $(VPS) "mkdir -p $(REMOTE_DIR) && (git -C $(REMOTE_DIR) pull 2>/dev/null || git clone https://github.com/mfalcao09/SaasPlugin_vite.git $(REMOTE_DIR))"
@@ -37,6 +38,9 @@ deploy-foods: pull
 
 deploy-gym: pull
 	ssh $(VPS) "$(REMOTE_DIR)/infra/deploy-vps.sh NexvyGYM nexvy-gym $(DOMAIN_GYM)"
+
+deploy-payments: pull
+	ssh $(VPS) "$(REMOTE_DIR)/infra/deploy-vps.sh NexvyPayments nexvy-payments $(DOMAIN_PAYMENTS)"
 
 # deploy-all: so reaproveita os alvos individuais (cada um valida seu DOMAIN).
 # Defina DOMAIN_* antes; alvos sem dominio vao falhar no script (DOMAIN obrigatorio).

@@ -1,0 +1,507 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import {
+  usePlatformCrmOpportunityScan,
+  usePlatformCrmScanItems,
+  type PlatformScanItem,
+} from '../data/usePlatformCrmRadar';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
+import {
+  Loader2,
+  Copy,
+  Check,
+  TrendingUp,
+  Flame,
+  Snowflake,
+  Skull,
+  CloudSun,
+  FileText,
+  ArrowLeft,
+  AlertTriangle,
+  RotateCw,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { RadarLeadActions } from './RadarLeadActions';
+import { RadarLeadDetailSheet } from './RadarLeadDetailSheet';
+import { resolveVisitorIdentity } from '../inbox/platformCrmIdentity';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+/**
+ * Dashboard de resultados de uma análise do Radar IA (KPIs + pizza +
+ * distribuição de score + receita potencial + lista de leads classificados).
+ * PORTE 1:1 de `admin/radar/RadarDashboard.tsx` do CRM Vendus.
+ * Dados via hooks stub do platform (TODO(edge) — motor de scan LLM).
+ */
+
+/**
+ * Cores de TEMPERATURA — SÓ para os fills do recharts (SVG), onde o token
+ * semântico não resolve. No DOM usar as classes canônicas de significado (§1.3):
+ * `TEMP_CLASSES` (badge/box tintado) e `TEMP_ICON` (cor do ícone).
+ */
+const COLORS = {
+  hot: '#ef4444',
+  warm: '#f97316',
+  cold: '#0ea5e9', // sky-500 (§1.3 — frio é sky, NÃO blue)
+  lost: '#71717a',
+};
+
+// Classes canônicas de temperatura (§1.3) — box tintado + borda + texto.
+const TEMP_CLASSES = {
+  hot: 'bg-red-500/10 text-red-600 border-red-500/30',
+  warm: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
+  cold: 'bg-sky-500/10 text-sky-600 border-sky-500/30',
+  lost: 'bg-muted text-muted-foreground border-border',
+} as const;
+
+// Cor do ícone/dot por temperatura (§1.3).
+const TEMP_ICON = {
+  hot: 'text-red-600',
+  warm: 'text-orange-600',
+  cold: 'text-sky-600',
+  lost: 'text-muted-foreground',
+} as const;
+
+const ICONS = {
+  hot: Flame,
+  warm: CloudSun,
+  cold: Snowflake,
+  lost: Skull,
+};
+
+const LABELS = {
+  hot: 'HOT',
+  warm: 'WARM',
+  cold: 'COLD',
+  lost: 'LOST',
+};
+
+export function RadarDashboard({
+  scanId,
+  onOpenConversation,
+  isHistorical,
+  onBackToLatest,
+}: {
+  scanId: string;
+  onOpenConversation?: (conversationId: string) => void;
+  isHistorical?: boolean;
+  onBackToLatest?: () => void;
+}) {
+  const {
+    data: scan,
+    isLoading: scanLoading,
+    isError: scanError,
+    refetch: refetchScan,
+  } = usePlatformCrmOpportunityScan(scanId);
+  const {
+    data: items,
+    isError: itemsError,
+    refetch: refetchItems,
+  } = usePlatformCrmScanItems(scanId);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<PlatformScanItem | null>(null);
+
+  const filteredItems = useMemo(() => {
+    const list = (items || []).filter((i) => !filter || i.classification === filter);
+    // Priorizar HOT > WARM > COLD > LOST e dentro disso por score desc
+    const order = { hot: 0, warm: 1, cold: 2, lost: 3 } as const;
+    return [...list].sort((a, b) => {
+      const ra = order[a.classification as keyof typeof order] ?? 99;
+      const rb = order[b.classification as keyof typeof order] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return (b.score || 0) - (a.score || 0);
+    });
+  }, [items, filter]);
+
+  const pieData = useMemo(() => {
+    if (!scan) return [];
+    return [
+      { name: 'HOT', value: scan.hot_count, key: 'hot' },
+      { name: 'WARM', value: scan.warm_count, key: 'warm' },
+      { name: 'COLD', value: scan.cold_count, key: 'cold' },
+      { name: 'LOST', value: scan.lost_count, key: 'lost' },
+    ].filter((d) => d.value > 0);
+  }, [scan]);
+
+  const scoreDistribution = useMemo(() => {
+    if (!items) return [];
+    const buckets = [0, 20, 40, 60, 80, 100];
+    return buckets.slice(0, -1).map((min, i) => ({
+      range: `${min}-${buckets[i + 1]}`,
+      count: items.filter((it) => it.score >= min && it.score < buckets[i + 1]).length,
+    }));
+  }, [items]);
+
+  // Erro-com-retry (§3.1): banner acionável, nunca silenciar. Cobre tanto a
+  // falha do scan quanto a dos items (ambos alimentam esta tela).
+  if (scanError || itemsError) {
+    return (
+      <div className="surface-card border-destructive/30 bg-destructive/5 py-8 flex flex-col items-center text-center gap-3">
+        <AlertTriangle className="h-10 w-10 text-destructive opacity-80" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Não foi possível carregar a análise</p>
+          <p className="text-xs text-muted-foreground">
+            Verifique sua conexão e tente novamente.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => {
+            if (scanError) refetchScan();
+            if (itemsError) refetchItems();
+          }}
+        >
+          <RotateCw className="h-3.5 w-3.5" /> Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
+  if (scanLoading || !scan) {
+    // Skeleton ANATÔMICO (§3.1): mesma altura/estrutura do conteúdo real
+    // (KPIs + 2 charts + lista) para evitar layout-shift — nunca spinner central.
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="surface-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <Skeleton className="h-7 w-8" />
+              </div>
+              <Skeleton className="h-3 w-10" />
+            </div>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          <div className="surface-card md:col-span-1 p-4">
+            <Skeleton className="h-[200px] w-full rounded-lg" />
+          </div>
+          <div className="surface-card md:col-span-2 p-4">
+            <Skeleton className="h-[200px] w-full rounded-lg" />
+          </div>
+        </div>
+        <div className="surface-card p-4 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="border hairline rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-3.5 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const isRunning = scan.status === 'running' || scan.status === 'pending';
+  const progress = scan.total_candidates ? (scan.total_analyzed / scan.total_candidates) * 100 : 0;
+
+  function copyMessage(id: string, msg: string) {
+    navigator.clipboard.writeText(msg);
+    setCopiedId(id);
+    toast.success('Mensagem copiada');
+    setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  return (
+    <div className="space-y-4">
+      {isHistorical && (
+        <div className="surface-card border-amber-500/30 bg-amber-500/5 py-3 px-4 flex items-center justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-medium">Visualizando análise de </span>
+            <span className="text-muted-foreground">
+              {formatDistanceToNow(new Date(scan.created_at), { addSuffix: true, locale: ptBR })}
+            </span>
+          </div>
+          {onBackToLatest && (
+            <Button size="sm" variant="ghost" className="gap-1" onClick={onBackToLatest}>
+              <ArrowLeft className="h-3 w-3" /> Voltar à atual
+            </Button>
+          )}
+        </div>
+      )}
+
+      {isRunning && (
+        <div className="surface-card border-primary/30 bg-primary/5 py-4 px-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2 font-medium">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Analisando conversas com IA...
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {scan.total_analyzed} / {scan.total_candidates}
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      )}
+
+      {/* KPIs (receita F3 lux): surface-card(-hover) clicável = filtro da lista.
+          Ícone em badge tintado com a cor da TEMPERATURA (dado semântico §1.3),
+          label uppercase, valor tabular-nums. aria-pressed/label p/ a11y (§3.7). */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(['hot', 'warm', 'cold', 'lost'] as const).map((k) => {
+          const Icon = ICONS[k];
+          const count = scan[`${k}_count` as keyof typeof scan] as number;
+          const isActive = filter === k;
+          return (
+            <div
+              key={k}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isActive}
+              aria-label={`Filtrar leads ${LABELS[k]} (${count})`}
+              className={cn(
+                'surface-card surface-card-hover p-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isActive && 'ring-2 ring-primary',
+              )}
+              onClick={() => setFilter(isActive ? null : k)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilter(isActive ? null : k);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border ${TEMP_CLASSES[k]}`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span className="text-2xl font-bold tabular-nums">{count}</span>
+              </div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mt-2">
+                {LABELS[k]}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-3">
+        <div className="surface-card md:col-span-1 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Distribuição</h3>
+          <div>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {pieData.map((entry) => (
+                    <Cell key={entry.key} fill={COLORS[entry.key as keyof typeof COLORS]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.08)',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="surface-card md:col-span-2 p-4 space-y-3">
+          <h3 className="text-sm font-semibold">Distribuição de score</h3>
+          <div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={scoreDistribution}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="range" fontSize={11} />
+                <YAxis fontSize={11} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ fill: 'hsl(var(--muted) / 0.4)' }}
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.08)',
+                  }}
+                />
+                <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="surface-card py-4 px-4 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 text-sm">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Receita potencial:</span>
+          {/* Valor R$ = assinatura dourada .text-value (Lei 4). */}
+          <span className="text-value font-bold text-lg tabular-nums">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              Number(scan.potential_revenue || 0),
+            )}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {scan.total_analyzed} análises
+        </div>
+      </div>
+
+      {/* Lista de leads — surface-card lux; itens = cards de risco/oportunidade. */}
+      <div className="surface-card p-4">
+        <div className="flex items-center justify-between pb-3">
+          <h3 className="text-base font-semibold">
+            {filter
+              ? `Leads ${LABELS[filter as keyof typeof LABELS]}`
+              : 'Todos os leads classificados'}
+          </h3>
+          {filter && (
+            <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>
+              Ver todos
+            </Button>
+          )}
+        </div>
+        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          {filteredItems.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              {isRunning ? 'Aguardando resultados...' : 'Nenhum lead nesta categoria'}
+            </div>
+          )}
+          {filteredItems.map((item) => {
+            const Icon = ICONS[item.classification];
+            // Identidade §3.3: nome inútil ("~"/1-2 chars) → telefone formatado
+            // vira primário; e-mail entra como fallback quando não há telefone.
+            const identity = resolveVisitorIdentity(
+              item.lead_snapshot?.name,
+              item.lead_snapshot?.phone,
+            );
+            const secondary =
+              identity.secondary || (identity.usefulName ? null : item.lead_snapshot?.email) || null;
+            return (
+              <div
+                key={item.id}
+                className="surface-card surface-card-hover p-3 space-y-2"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Icon className={`h-4 w-4 shrink-0 ${TEMP_ICON[item.classification]}`} />
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm truncate" title={identity.primary}>
+                        {identity.primary}
+                      </div>
+                      <div
+                        className="text-[11px] text-muted-foreground truncate"
+                        title={secondary || undefined}
+                      >
+                        {secondary || '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className={TEMP_CLASSES[item.classification]}>
+                      Score {item.score}
+                    </Badge>
+                    {item.action_applied && (
+                      <Badge variant="secondary" className="text-xs">
+                        ✓ Ação
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {item.reason && <p className="text-sm text-muted-foreground">{item.reason}</p>}
+
+                {item.signals?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {item.signals.map((s, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px]">
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {item.suggested_action && (
+                  <div className="text-xs">
+                    <span className="font-medium">💡 Sugestão: </span>
+                    <span className="text-muted-foreground">{item.suggested_action}</span>
+                  </div>
+                )}
+
+                {item.followup_message && (
+                  <div className="bg-muted/50 rounded p-2 text-xs flex items-start justify-between gap-2">
+                    <div className="flex-1 italic">"{item.followup_message}"</div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 shrink-0"
+                      aria-label="Copiar mensagem de follow-up"
+                      onClick={() => copyMessage(item.id, item.followup_message!)}
+                    >
+                      {copiedId === item.id ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => setDetailItem(item)}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Ver detalhes
+                  </Button>
+                  <div className="flex-1 min-w-[200px]">
+                    <RadarLeadActions item={item} onOpenConversation={onOpenConversation} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <RadarLeadDetailSheet
+        item={detailItem}
+        open={!!detailItem}
+        onOpenChange={(v) => !v && setDetailItem(null)}
+        onOpenConversation={onOpenConversation}
+      />
+    </div>
+  );
+}
