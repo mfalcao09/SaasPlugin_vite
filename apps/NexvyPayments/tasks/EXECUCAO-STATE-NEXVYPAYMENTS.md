@@ -11,12 +11,12 @@ dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223
 iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:50:00Z
 
 ## contadores
-iteracao: 11 / 40
+iteracao: 12 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: — (todos os AUTO sem gate CONFORME) | status: 16/25 CONFORME. Restantes dependem de gate: A0/B1/B4/B5 (creds C6 + deploy EF), C1 (G-NOTAAS/G-A1), D4 (G-META-TPL), A6 (deploy EF), E3 (G-INFRA), E4 (G-PILOTO); A3 aguarda G-SEC-REV
+id: UI módulo Cobranças (nova frente, fora do spec 25) + C1 NotaAS (aguarda creds Marcelo) | status: 17/25 CONFORME (+A6 pós-deploy). 6 EFs ACTIVE. Frentes paralelas: UI (herda gestao/Nexvy Lux — mapa em construção), C1 (aguarda key NotaAS+A1), C6 (A0/B1/B4/B5 aguarda creds). Restantes gate: D4 Meta, E3 infra, E4 piloto; A3 aguarda G-SEC-REV
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
@@ -27,7 +27,7 @@ A2 | AUTO | CONFORME | require-caller-org.ts + __tests__/: deno test 11/11 (afer
 A3 | AUTO + G-SEC-REV | PROXY_PRONTO | docs/security/rls-audit-2026-07.md+.html: 112/112 org-tables RLS ON, 0 sem RLS, 0 deny-all, 415 policies, 20 permissivas classificadas, 🚩1 flag (help_article_feedback) p/ revisor | (commit desta iteração)
 A4 | MODO-B | CONFORME | migration aplicada no banco (nbvaglqmcyoogolhzyzm via db query); billing-crypto.ts (wrapper de meta-crypto); deno test 8/8; SET ROLE anon SELECT=0; REVOKE anon/authenticated → has_priv=false (defesa em profundidade); rls_on=true | (commit desta iteração)
 A5 | MODO-B | CONFORME | billing_model.sql aplicada (nbvaglqmcyoogolhzyzm); 7 tab RLS ON; invoices 8 cols correção; CHECK substituida; 7/7 org-scoped; INSERT cross-org → 42501 RLS violation; isolamento 0 ALTER/DROP core (REFERENCES só organizations/leads) | (commit desta iteração)
-A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos verify-jwt-false de webhooks) | —
+A6 | MODO-B | CONFORME | 6 EFs deployadas (ACTIVE) no nbvaglqmcyoogolhzyzm; curl: notaas-webhook 404≠401 (público), billing-baixa-manual/invoice-batch 401 (protegido); doc verify-jwt-matrix.md | (commit iter 12)
 A7 | AUTO (INSP+CI) | CONFORME | grep cobrança fora da esteira = 0; CORE-DELTA 7 entradas; 0 mutação de core em migrations_cobranca (esteira criada c/ README); invariante contínuo re-aferido por fase | (commit desta iteração)
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
 B2 | MODO-B | CONFORME | billing_outbox.sql aplicada (pgmq + RPCs enqueue/read_batch/move_to_dlq + DLQ); aferido enqueue→read→dlq na_dlq=1; GRANT só service_role | (commit iter 10)
@@ -101,3 +101,4 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 9 | 2026-07-06T17:35:00Z | A5 | CONFORME | billing_model.sql aplicada; 7 tab RLS ON; invoices 8 cols correção + substituida; 7/7 org; INSERT cross-org → 42501 RLS violation | 0.00
 10 | 2026-07-06T18:10:00Z | B2/C2/C3/D5/E2 | CONFORME (lote, 5 subagentes Opus) | B2 na_dlq=1; C2 14/14+ledger; C3 DELETE-emitida bloqueado+cancelar; D5 22/22; E2 erasure+bug entity_id corrigido. Migrations aplicadas no banco; deno tests verdes | 0.00
 11 | 2026-07-06T18:45:00Z | D1/D2/D3/B3/E1 | CONFORME (lote régua, 3 subagentes Opus) | suíte deno 81/81; D régua por-fatura (enroll+stop keyed invoice_id, correção adversarial); B3 dia-útil banco sáb→seg; E1 baixa manual billing_events(paga,manual)=1. 3 migrations aplicadas | 0.00
+12 | 2026-07-06T19:00:00Z | A6 + DEPLOY | CONFORME | Marcelo autorizou deploy; 6 EFs de cobrança deployadas ACTIVE no nbvaglqmcyoogolhzyzm; A6 curl verify_jwt (público 404≠401, protegido 401); doc verify-jwt-matrix.md | 0.00
