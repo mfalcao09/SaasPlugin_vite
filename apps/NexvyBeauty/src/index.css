@@ -168,7 +168,9 @@
      O app do tenant (app.*) e o apex NÃO recebem a classe → seguem no tema
      Beauty/rosa. Só cores de marca mudam; layout/estrutura intactos.
      ───────────────────────────────────────────────────────────────── */
-  .theme-nexvy-institucional {
+  /* :root. prefix eleva a especificidade p/ VENCER :root {--primary:330} (mesmo
+     estando ambos em @layer base — empate de especificidade caía no :root). */
+  :root.theme-nexvy-institucional {
     --primary: 218 91% 43%;
     --primary-foreground: 0 0% 100%;
     --accent: 218 91% 43%;
@@ -191,7 +193,7 @@
   }
 
   /* Dark do shell institucional (2 classes p/ vencer .dark na especificidade) */
-  .theme-nexvy-institucional.dark {
+  :root.theme-nexvy-institucional.dark {
     --primary: 214 95% 60%;
     --accent: 214 95% 60%;
     --ring: 214 95% 60%;

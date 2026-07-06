@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isGestaoHostname } from '@/lib/publicUrl';
 import {
   generateColorScale,
   buildGradient,
@@ -129,9 +130,21 @@ export function usePlatformBranding() {
     const root = document.documentElement;
 
     // ===== COLORS =====
+    // gestao.* = plataforma institucional Nexvy → azul pelo CSS (.theme-nexvy-institucional).
+    // NÃO aplicar a cor do tenant inline aqui: style inline vence o CSS do tema e o
+    // gestao voltaria a rosa. Limpa qualquer cor inline herdada e deixa o CSS pintar o azul.
+    const isGestao = isGestaoHostname();
+    if (isGestao) {
+      [
+        '--primary', '--primary-foreground', '--ring',
+        '--sidebar-primary', '--sidebar-primary-foreground', '--sidebar-ring',
+        '--gradient-primary', '--gradient-accent', '--gradient-hero', '--shadow-glow',
+        '--accent', '--accent-foreground',
+      ].forEach((v) => root.style.removeProperty(v));
+    }
     const primary = settings.primary_color || '#F97316';
     const scale = generateColorScale(primary);
-    if (scale) {
+    if (scale && !isGestao) {
       root.style.setProperty('--primary', scale.baseStr);
       root.style.setProperty('--primary-foreground', scale.foreground);
       root.style.setProperty('--ring', scale.baseStr);
@@ -153,7 +166,7 @@ export function usePlatformBranding() {
       root.style.setProperty('--shadow-glow', `0 0 20px hsl(${scale.baseStr} / 0.30)`);
     }
 
-    if (settings.accent_color) {
+    if (settings.accent_color && !isGestao) {
       const accentHsl = hexToHsl(settings.accent_color);
       if (accentHsl) {
         const accentStr = hslToString(accentHsl);
