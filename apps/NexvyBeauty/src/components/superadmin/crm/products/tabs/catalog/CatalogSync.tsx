@@ -26,7 +26,7 @@ export function CatalogSync({ productId }: CatalogSyncProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <RefreshCw className="h-4 w-4 text-pink-500" />
+          <RefreshCw className="h-4 w-4 text-primary" />
           Sincronizar catálogo
         </CardTitle>
         <CardDescription>
