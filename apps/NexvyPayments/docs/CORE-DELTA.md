@@ -22,7 +22,39 @@ Antes de editar qualquer arquivo do core, pergunte: **dá para fazer isso num ar
 
 ## Delta registrado
 
-_(vazio — nenhuma edição de core ainda. As entradas serão adicionadas pelo loop de implementação conforme o roadmap exigir tocar o core, ex.: `src/main.tsx` para o branding pré-paint da marca Payments, ou a correção de segurança de `admin-provision-users`/IDOR na Fase 0 de hardening.)_
+### `src/config/brand.ts` — 2026-07-06
+- **Motivo:** ponto único de cascade por design — identidade do produto.
+- **Mudança:** `BRAND_CONFIG` → key `nexvypayments`, nome/tagline/sector de cobrança, `primaryColor #213156` (navy Lux, premissa — paleta estática `index.css` fica p/ re-skin Fase D), `defaultModules` com `cobranca`; `PRODUCT_BRAND.metrics/bgHint`.
+- **Reversível?** não — re-aplicar se o core for re-substituído por snapshot novo.
+- **Entregável/commit:** PASSO-0-APP · `22170d1`.
+
+### `src/lib/publicUrl.ts` — 2026-07-06
+- **Motivo:** host-confinement é por família de domínio; constante é do core.
+- **Mudança:** `APEX_BASE` e comentários-exemplo `nexvybeauty.com.br` → `nexvypayments.com.br` (replace-all, 0 mudança de lógica).
+- **Reversível?** não — re-aplicar em snapshot novo.
+- **Entregável/commit:** PASSO-0-APP · `22170d1`.
+
+### `src/config/modules.ts` — 2026-07-06
+- **Motivo:** hub de módulos é config do core; troca do módulo vertical.
+- **Mudança:** card `erp_salao` → card `cobranca` (rota `/cobranca`); union `ModuleId` ganha `'cobranca'` e MANTÉM `'erp_salao'` comentado como legado (remoção na limpeza A1, preserva compilação das refs do fork); `PRODUCT_MODULES` atualizado.
+- **Reversível?** não — re-aplicar em snapshot novo.
+- **Entregável/commit:** PASSO-0-APP · `22170d1`.
+
+### `package.json` + `index.html` + `public/manifest.json` — 2026-07-06
+- **Motivo:** identidade do app (npm name, PWA title/theme-color/manifest).
+- **Mudança:** `nexvy-beauty`→`nexvy-payments`; title/description/apple-title/theme-color `#213156`; manifest name/short_name/description/theme_color.
+- **Reversível?** não — re-aplicar em snapshot novo.
+- **Entregável/commit:** PASSO-0-APP · `22170d1`.
+
+### `docker-compose.yml` + `Makefile` (raiz do monorepo) — 2026-07-06
+- **Motivo:** registro do app no monorepo (previsto plano §3.13 como inevitável).
+- **Mudança:** ADITIVO — serviço `nexvy-payments` (molde GYM, sem ports/labels) e `.PHONY`+`DOMAIN_PAYMENTS`+alvo `deploy-payments` (fora do `deploy-all` até Marco 0 validado).
+- **Reversível?** sim (blocos aditivos independentes).
+- **Entregável/commit:** PASSO-0-APP · `22170d1`.
+
+### Decisões de NÃO-edição (auditoria)
+- `src/main.tsx` — **não editado**: o tema institucional host-aware (`.theme-nexvy-institucional`, Lux navy+dourado em `gestao.*`) já é genérico no core; nada Beauty-específico a trocar.
+- `src/hooks/usePlatformBranding.ts` — **não editado**: o check de cor-default `#c54b60` (linha ~151) protege a paleta estática Beauty Rosé do `index.css`; trocar o check sem re-skin da paleta criaria estado visual incoerente. Fica para o re-skin de branding (roadmap 0.5.12/Fase D).
 
 ---
 

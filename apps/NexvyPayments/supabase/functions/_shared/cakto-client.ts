@@ -67,165 +67,6 @@ export async function caktoGet(token: string, path: string, params?: Record<stri
   return text ? JSON.parse(text) : null;
 }
 
-async function caktoWrite(
-  method: 'POST' | 'PUT',
-  token: string,
-  path: string,
-  body: unknown,
-): Promise<any> {
-  const res = await fetch(`${CAKTO_BASE_URL}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`Cakto ${method} ${path} failed [${res.status}]: ${text.slice(0, 500)}`);
-  }
-  return text ? JSON.parse(text) : null;
-}
-
-export const caktoPost = (token: string, path: string, body: unknown) =>
-  caktoWrite('POST', token, path, body);
-
-export const caktoPut = (token: string, path: string, body: unknown) =>
-  caktoWrite('PUT', token, path, body);
-
-// ---- Ofertas (Offers) -------------------------------------------------------
-// Doc: https://docs.cakto.com.br/api-reference/offers/create.md
-// A API NÃO devolve a URL de checkout — só o `id` (slug). A URL pública é
-// montada como `${CAKTO_CHECKOUT_BASE}/${slug}` (ex: https://pay.cakto.com.br/<slug>).
-
-export const CAKTO_CHECKOUT_BASE_DEFAULT = 'https://pay.cakto.com.br';
-
-export interface CaktoOfferInput {
-  name: string;
-  /** Preço em reais. Mínimo R$ 5,00 (regra da Cakto). */
-  price: number;
-  /** UUID de um produto já existente no painel Cakto. */
-  product: string;
-  type?: 'unique' | 'subscription';
-  intervalType?: 'week' | 'month' | 'year' | 'lifetime';
-  interval?: number;
-  recurrence_period?: number;
-  /** -1 = ilimitado (assinatura sem fim de cobranças). */
-  quantity_recurrences?: number;
-  trial_days?: number;
-  units?: number;
-  status?: 'active' | 'disabled' | 'deleted';
-}
-
-export interface CaktoOfferResponse {
-  id: string; // slug (ex: "5Hrb526")
-  name: string;
-  price: number;
-  product: string;
-  status: string;
-  type: string;
-  intervalType?: string;
-  interval?: number;
-  recurrence_period?: number;
-  quantity_recurrences?: number;
-  trial_days?: number;
-  default?: boolean;
-  [k: string]: unknown;
-}
-
-export async function caktoCreateOffer(token: string, input: CaktoOfferInput): Promise<CaktoOfferResponse> {
-  return (await caktoPost(token, '/public_api/offers/', input)) as CaktoOfferResponse;
-}
-
-export async function caktoUpdateOffer(
-  token: string,
-  offerId: string,
-  input: Partial<CaktoOfferInput>,
-): Promise<CaktoOfferResponse> {
-  return (await caktoPut(token, `/public_api/offers/${offerId}/`, input)) as CaktoOfferResponse;
-}
-
-export async function caktoRetrieveOffer(token: string, offerId: string): Promise<CaktoOfferResponse | null> {
-  return (await caktoGet(token, `/public_api/offers/${offerId}/`)) as CaktoOfferResponse | null;
-}
-
-/** Lista todas as ofertas de um produto (segue paginação `next`). */
-export async function caktoListOffers(token: string, productId: string): Promise<CaktoOfferResponse[]> {
-  const out: CaktoOfferResponse[] = [];
-  let path: string | null = `/public_api/offers/?product=${encodeURIComponent(productId)}`;
-  let safety = 0;
-  while (path && safety < 10) {
-    safety++;
-    const data: any = await caktoGet(token, path);
-    const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
-    out.push(...(results as CaktoOfferResponse[]));
-    if (data?.next) {
-      try {
-        const u = new URL(data.next);
-        path = u.pathname + u.search;
-      } catch {
-        path = null;
-      }
-    } else {
-      path = null;
-    }
-  }
-  return out;
-}
-
-export interface CaktoProduct {
-  id: string;
-  name: string;
-  price: number;
-  type: string;
-  status?: string;
-  [k: string]: unknown;
-}
-
-/** Lista os produtos da conta (segue paginação `next`). */
-export async function caktoListProducts(token: string): Promise<CaktoProduct[]> {
-  const out: CaktoProduct[] = [];
-  let path: string | null = '/public_api/products/';
-  let safety = 0;
-  while (path && safety < 20) {
-    safety++;
-    const data: any = await caktoGet(token, path);
-    const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
-    out.push(...(results as CaktoProduct[]));
-    if (data?.next) {
-      try {
-        const u = new URL(data.next);
-        path = u.pathname + u.search;
-      } catch {
-        path = null;
-      }
-    } else {
-      path = null;
-    }
-  }
-  return out;
-}
-
-/** Monta a URL pública de checkout a partir do slug da oferta. */
-export function buildCaktoCheckoutUrl(slug: string, base: string = CAKTO_CHECKOUT_BASE_DEFAULT): string {
-  return `${base.replace(/\/+$/, '')}/${slug}`;
-}
-
-/** Extrai o slug (último segmento do path) de uma URL de checkout já gravada. */
-export function slugFromCaktoUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    const segs = new URL(url).pathname.split('/').filter(Boolean);
-    return segs.length ? segs[segs.length - 1] : null;
-  } catch {
-    // Fallback p/ valores que não são URL completa.
-    const segs = String(url).split('/').filter(Boolean);
-    return segs.length ? segs[segs.length - 1] : null;
-  }
-}
-
 export interface CaktoOrderItem {
   product_cakto_id: string | null;
   name: string | null;
@@ -288,27 +129,6 @@ export function extractCaktoItems(order: any): CaktoOrderItem[] {
   return items;
 }
 
-/**
- * Extrai o ref de vendedor/afiliado (?src=<seller>) do payload Cakto de forma
- * DEFENSIVA. O campo exato no webhook ainda não é confirmado — cobrimos todos os
- * candidatos plausíveis. Puro/síncrono (sem I/O): a resolução de affiliate_id a
- * partir deste ref acontece no webhook via RPC resolve_affiliate_ref.
- * Retorna null se nenhum candidato existir.
- */
-export function extractSellerRef(order: any): string | null {
-  const raw = order?.raw ?? order?.raw_payload ?? {};
-  const cand =
-    order?.src ??
-    order?.trackingParameters?.src ??
-    order?.tracking?.src ??
-    raw?.src ??
-    raw?.trackingParameters?.src ??
-    null;
-  if (cand == null) return null;
-  const s = String(cand).trim();
-  return s.length > 0 ? s : null;
-}
-
 export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organization', orgId: string | null) {
   const product = order.product ?? {};
   const customer = order.customer ?? order.user ?? {};
@@ -317,7 +137,6 @@ export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organiza
     scope,
     organization_id: orgId,
     cakto_id: String(order.id),
-    seller_ref: extractSellerRef(order),
     cakto_ref_id: order.refId ?? order.ref_id ?? null,
     status: order.status ?? 'unknown',
     type: order.type ?? null,

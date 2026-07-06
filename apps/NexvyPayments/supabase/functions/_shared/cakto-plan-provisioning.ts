@@ -2,9 +2,6 @@
 // Provisiona o plano da plataforma e o usuário admin a partir de um pedido Cakto.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { GRAPH_BASE } from './meta-graph.ts';
-import { decryptSecret } from './meta-crypto.ts';
-import { normalizePhoneBR } from './phone.ts';
 
 export interface CaktoOrderLike {
   cakto_id?: string | null;
@@ -18,50 +15,6 @@ export interface CaktoOrderLike {
   product_cakto_id?: string | null;
   product_name?: string | null;
   raw_payload?: any;
-}
-
-/**
- * Normaliza um texto em slug: minúsculo, sem acento, apenas [a-z0-9] e hífens.
- * Mesma regra do backfill de organizations.slug (migrations_salao/20260623),
- * porém em JS (NFD) — a org PRECISA nascer com slug ou a página pública /s/<slug>
- * dá 404.
- */
-function slugifyOrg(input: string | null | undefined): string {
-  const base = (input ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return base
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-+|-+$)/g, '');
-}
-
-/**
- * Gera um slug único para a organização a partir do nome.
- * Em colisão (organizations.slug tem UNIQUE INDEX parcial), tenta sufixo
- * -2, -3, ... Fallback para `salao-<random>` se o nome não render slug válido.
- */
-async function generateUniqueOrgSlug(
-  admin: SupabaseClient,
-  name: string | null | undefined,
-): Promise<string> {
-  let base = slugifyOrg(name);
-  if (!base) base = 'salao';
-
-  // Limita tamanho para não estourar (nomes muito longos viram slug feio).
-  base = base.slice(0, 48).replace(/-+$/g, '') || 'salao';
-
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
-    const { data } = await admin
-      .from('organizations')
-      .select('id')
-      .eq('slug', candidate)
-      .maybeSingle();
-    if (!data) return candidate;
-  }
-
-  // Último recurso: sufixo aleatório (colisão praticamente impossível).
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${base}-${rand}`;
 }
 
 export function extractOfferSlug(raw: any, fallback?: string | null): string | null {
@@ -88,9 +41,6 @@ interface ProvisionResult {
   organization_id?: string;
   plan_id?: string;
   user_id?: string;
-  /** true só quando a organization foi CRIADA nesta invocação — gate de
-   *  idempotência do welcome (retry/renovação/reprocesso não reenviam). */
-  org_created?: boolean;
   skipped?: string;
   errors?: string[];
 }
@@ -153,36 +103,22 @@ export async function provisionPlatformPlan(
 
   // 1) Localiza/cria a organization
   let orgId: string | null = null;
-  let orgCreated = false;
-  const orgName = order.customer_name || email;
   const { data: existingOrg } = await admin
     .from('organizations')
-    .select('id, slug')
+    .select('id')
     .eq('cakto_customer_email', email)
     .maybeSingle();
 
   if (existingOrg) {
     orgId = existingOrg.id;
-    // Backfill defensivo: org pré-existente sem slug tornaria /s/<slug> um 404.
-    if (!existingOrg.slug) {
-      const slug = await generateUniqueOrgSlug(admin, orgName);
-      const { error: slugErr } = await admin
-        .from('organizations')
-        .update({ slug })
-        .eq('id', orgId);
-      if (slugErr) errors.push(`slug backfill: ${slugErr.message}`);
-    }
   } else {
-    // Org nasce COM slug único — sem slug a página pública /s/<slug> dá 404.
-    const slug = await generateUniqueOrgSlug(admin, orgName);
     const { data: created, error: createErr } = await admin
       .from('organizations')
       .insert({
-        name: orgName,
+        name: order.customer_name || email,
         email,
         cakto_customer_email: email,
         status: 'active',
-        slug,
       })
       .select('id')
       .single();
@@ -191,27 +127,6 @@ export async function provisionPlatformPlan(
       return { ok: false, errors };
     }
     orgId = created.id;
-    orgCreated = true;
-
-    // F2.4 — trava fundadora: org nascida de VENDA durante a campanha 30/30/1
-    // é carimbada is_founder (se ainda há vaga) ou not_founder. A view
-    // founder_campaign_status DERIVA slots_left da contagem de is_founder —
-    // este write é o que faz o contador andar. Non-fatal por construção.
-    try {
-      const { data: camp } = await admin
-        .from('founder_campaign_status')
-        .select('slots_left, campanha_encerrada')
-        .limit(1)
-        .maybeSingle();
-      const isFounder = !!camp && !camp.campanha_encerrada && Number(camp.slots_left) > 0;
-      const { error: fsErr } = await admin
-        .from('organizations')
-        .update({ founder_status: isFounder ? 'is_founder' : 'not_founder' })
-        .eq('id', orgId);
-      if (fsErr) errors.push(`founder_status: ${fsErr.message}`);
-    } catch (e) {
-      console.warn('[cakto-provisioning] founder_status (non-fatal):', e);
-    }
   }
 
   // 2) Ativa plano
@@ -222,9 +137,6 @@ export async function provisionPlatformPlan(
       plan_status: 'active',
       plan_activated_at: new Date().toISOString(),
       cakto_subscription_id: order.cakto_ref_id ?? order.cakto_id ?? null,
-      // Módulos do NexvyBeauty são FIXOS — o provisioning é a fonte de verdade.
-      // Espelha PRODUCT_MODULES de src/config/modules.ts (não importável aqui: Deno).
-      enabled_modules: ['erp_salao', 'crm_vendas', 'atendimento'],
     })
     .eq('id', orgId);
   if (planErr) errors.push(`plan update: ${planErr.message}`);
@@ -256,7 +168,7 @@ export async function provisionPlatformPlan(
     }
   }
 
-  return { ok: errors.length === 0, organization_id: orgId ?? undefined, plan_id: plan.id, org_created: orgCreated, errors };
+  return { ok: errors.length === 0, organization_id: orgId, plan_id: plan.id, errors };
 }
 
 function randomPassword(): string {
@@ -376,64 +288,6 @@ export async function ensureAdminUser(
 }
 
 /**
- * Envia mensagem de boas-vindas ao comprador via WhatsApp Cloud API.
- * Non-fatal por design: nunca lança nem derruba o provisionamento.
- * Usa a conexão Meta ATIVA da plataforma (mesmo padrão de platform-webchat-inbox:
- * connection status='active' + decryptSecret + GRAPH_BASE).
- * Se o payload Cakto não trouxer telefone, apenas loga TODO e retorna.
- */
-async function sendWelcomeWhatsApp(
-  admin: SupabaseClient,
-  args: { phone?: string | null; fullName?: string | null; planName?: string | null },
-): Promise<{ ok: boolean; skipped?: string }> {
-  const to = normalizePhoneBR(args.phone);
-  if (!to) {
-    // TODO: Cakto não enviou telefone do comprador — sem destino não há boas-vindas WhatsApp.
-    console.log('[cakto-provisioning] welcome WhatsApp pulado: TODO telefone do comprador ausente no payload Cakto');
-    return { ok: false, skipped: 'no_phone' };
-  }
-
-  try {
-    const { data: conn } = await admin
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { ok: false, skipped: 'no_active_connection' };
-    }
-
-    const token = await decryptSecret(conn.access_token_encrypted as string);
-    const firstName = (args.fullName || '').trim().split(/\s+/)[0] || '';
-    const saudacao = firstName ? `Olá, ${firstName}!` : 'Olá!';
-    const planoTxt = args.planName ? ` do plano ${args.planName}` : '';
-    const body =
-      `${saudacao} 🎉 Sua conta NexvyBeauty${planoTxt} foi ativada com sucesso. ` +
-      `Enviamos ao seu e-mail o link para definir a senha e acessar o painel. ` +
-      `Qualquer dúvida, é só responder por aqui.`;
-
-    const payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body } };
-    const res = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      const msg = data?.error?.message ?? `graph ${res.status}`;
-      console.warn('[cakto-provisioning] welcome WhatsApp falhou:', String(msg).slice(0, 200));
-      return { ok: false, skipped: 'send_failed' };
-    }
-    return { ok: true };
-  } catch (e: any) {
-    console.warn('[cakto-provisioning] welcome WhatsApp exception:', e?.message ?? String(e));
-    return { ok: false, skipped: 'exception' };
-  }
-}
-
-/**
  * Roda o pipeline completo (plano + admin user).
  */
 export async function provisionFromOrder(
@@ -453,17 +307,6 @@ export async function provisionFromOrder(
     organizationId: planRes.organization_id,
     planName: plan?.name ?? null,
   });
-
-  // Boas-vindas WhatsApp ao comprador — non-fatal, e SÓ na primeira ativação
-  // (org recém-criada). Retry de webhook, renovação mensal e reprocesso manual
-  // reexecutam provisionFromOrder e NÃO podem duplicar o welcome (idempotência).
-  if (planRes.org_created) {
-    await sendWelcomeWhatsApp(admin, {
-      phone: order.customer_phone ?? null,
-      fullName: order.customer_name ?? null,
-      planName: plan?.name ?? null,
-    });
-  }
 
   return {
     ...planRes,

@@ -123,7 +123,6 @@ function extractQr(obj: any): string | null {
 const WEBHOOK_EVENTS = [
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
-  "MESSAGES_DELETE",
   "CONNECTION_UPDATE",
   "QRCODE_UPDATED",
   "SEND_MESSAGE",
@@ -552,11 +551,7 @@ Deno.serve(async (req) => {
           metadata: {
             instance_uuid: uuid,
             instance_name: finalName,
-            // Nome de exibição = nome do salão (org). 1ª instância = só o nome do salão;
-            // adicionais ganham o sufixo técnico pra não colidir na UI.
-            display_name: (currentCount ?? 0) === 0
-              ? (orgRow?.name || rawName)
-              : `${orgRow?.name || orgSlug} · ${rawName}`,
+            display_name: rawName,
             created_via: "self_service",
             remote: createRes.body,
           },
