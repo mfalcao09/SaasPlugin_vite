@@ -11,7 +11,7 @@
 // 7) Cria a conversa (webchat_conversations) pra IA continuar respondendo
 // 8) Loga em cakto_recovery_dispatches
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +41,9 @@ type CaktoOrderRow = {
   pix_code: string | null;
   checkout_url: string | null;
   items: CaktoOrderItem[] | null;
+  // Optional: Cakto's own product identifier. NOTE: not fetched by the SELECT below,
+  // so it is undefined at runtime — the scenario product filter (below) is currently inert.
+  product_cakto_id?: string | null;
 };
 
 const STATUS_TO_EVENT: Record<string, 'abandoned' | 'paid' | 'refunded'> = {
@@ -498,8 +501,8 @@ REGRAS DA MENSAGEM INICIAL:
             .insert({ lead_id: leadId, tag_id: tagId })
             .select()
             .maybeSingle()
-            .then(() => null)
-            .catch(() => null); // ignora duplicatas
+            // PostgrestBuilder is a PromiseLike without .catch; use then(onFulfilled, onRejected)
+            .then(() => null, () => null); // ignora duplicatas
         }
       }
     } catch (e) {

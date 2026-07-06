@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { splitIntoBubbles } from "../_shared/humanizer.ts";
 
 const corsHeaders = {
@@ -235,7 +235,7 @@ ${formResponses ? `\nRespostas do Formulário:\n${formResponses}` : ""}`;
         // Quebra em até 2 bolhas curtas (regra padrão WhatsApp do projeto)
         const bubbles = mode === 'conversational'
           ? [generatedMessage] // já forçamos curto no prompt
-          : splitIntoBubbles(generatedMessage, { maxChunks: 2, targetCharsPerChunk: 280 });
+          : splitIntoBubbles(generatedMessage, { max_bubbles: 2 });
 
         let sent = false;
         for (let i = 0; i < bubbles.length; i++) {

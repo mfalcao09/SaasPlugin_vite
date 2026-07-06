@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { matchAgentByMessage, type MatcherChannel } from "../_shared/agent-matcher.ts";
 import { parseHandoffTag, handoffTargetToAgentRole } from "../_shared/handoff-parser.ts";
 import { runOrchestrator, type Intent } from "../_shared/orchestrator.ts";
@@ -290,7 +290,7 @@ interface FlowBlockButton {
 
 interface FlowBlock {
   id: string;
-  type: 'message' | 'input' | 'buttons' | 'ai_takeover' | 'handoff' | 'tag' | 'video' | 'delay' | 'agent_switch';
+  type: 'message' | 'input' | 'buttons' | 'ai_takeover' | 'handoff' | 'tag' | 'video' | 'delay' | 'agent_switch' | 'create_lead' | 'update_lead' | 'score' | 'condition' | 'create_task';
   position: { x: number; y: number };
   data: {
     content?: string;
@@ -324,6 +324,20 @@ interface FlowBlock {
       agent_id: string;
       trigger_condition: string;
     }>;
+    // score / tag / condition / create_task blocks (flow builder actions)
+    score_value?: number | string;
+    apply_tags?: string[];
+    condition?: { variable?: string; operator?: string; value?: unknown };
+    true_next_block_id?: string | null;
+    false_next_block_id?: string | null;
+    task_config?: {
+      due_in_days?: number;
+      title_template?: string;
+      description_template?: string;
+      assign_to?: string;
+      user_id?: string;
+      squad_id?: string;
+    };
   };
   next_block_id?: string | null;
 }
@@ -1980,7 +1994,7 @@ serve(async (req) => {
             }
             // Tag-based detection: any tag containing "cliente" treats lead as customer
             const tagsLower = (lead.tags || []).map((t: string) => String(t).toLowerCase());
-            if (tagsLower.some((t) => t.includes('cliente'))) isCustomer = true;
+            if (tagsLower.some((t: string) => t.includes('cliente'))) isCustomer = true;
             // Won deal detection
             if (!isCustomer) {
               const { data: wonDeal } = await supabase
@@ -6113,7 +6127,7 @@ async function executeFlowBlock(
           .maybeSingle();
         if (cfg && convRow?.lead_id) {
           // Substitui {{var}} no template
-          const renderTpl = (tpl: string) =>
+          const renderTpl = (tpl?: string) =>
             Object.entries(flowVariables).reduce(
               (acc, [k, v]) => acc.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v ?? '')),
               tpl || ''

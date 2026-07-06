@@ -6,7 +6,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 let cachedKey: CryptoKey | null = null;
 
-async function getMasterKey(supabase: ReturnType<typeof createClient>): Promise<CryptoKey> {
+async function getMasterKey(supabase: ReturnType<typeof getServiceClient>): Promise<CryptoKey> {
   if (cachedKey) return cachedKey;
   const { data, error } = await supabase.rpc('get_or_create_meta_master_key');
   if (error || !data) throw new Error(`master-key error: ${error?.message ?? 'no key'}`);
