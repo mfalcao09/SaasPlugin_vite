@@ -11,12 +11,12 @@ dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223
 iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:50:00Z
 
 ## contadores
-iteracao: 7 / 40
+iteracao: 9 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: A4 | tentativa: 1/3 | status: EM_ANDAMENTO (subagente Opus — billing-crypto + migration cofre + TA local; CONFORME só pós-lote MODO-B)
+id: B2 (próximo AUTO) | status: fundação A4+A5 CONFORME; paralelizando B2/B3/C2/C3/D1-D3/D5/E1/E2 via subagentes Opus (dependem de invoices/billing_events já criados)
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
@@ -25,8 +25,8 @@ A0 | MODO-B (gate arquitetural) | BLOQUEADO_GATE | P1 (gate humano 1º deploy Fa
 A1 | AUTO | CONFORME | ls admin-provision-users → No such file or directory; grep src/ = 0 hits; build verde. Cert. revisor → G-SEC-REV (P3) | ea09417
 A2 | AUTO | CONFORME | require-caller-org.ts + __tests__/: deno test 11/11 (aferição re-rodada pelo revisor; autor=Opus); org real via profiles.organization_id (webchat-inbox:93); nota: === da service key → timing-safe no consumo | (commit desta iteração) |
 A3 | AUTO + G-SEC-REV | PROXY_PRONTO | docs/security/rls-audit-2026-07.md+.html: 112/112 org-tables RLS ON, 0 sem RLS, 0 deny-all, 415 policies, 20 permissivas classificadas, 🚩1 flag (help_article_feedback) p/ revisor | (commit desta iteração)
-A4 | MODO-B | EM_ANDAMENTO | subagente Opus: billing-crypto.ts + migration cofre + TA round-trip v1: local; CONFORME exige lote MODO-B (gate fase A) | —
-A5 | MODO-B | PENDENTE | — | —
+A4 | MODO-B | CONFORME | migration aplicada no banco (nbvaglqmcyoogolhzyzm via db query); billing-crypto.ts (wrapper de meta-crypto); deno test 8/8; SET ROLE anon SELECT=0; REVOKE anon/authenticated → has_priv=false (defesa em profundidade); rls_on=true | (commit desta iteração)
+A5 | MODO-B | CONFORME | billing_model.sql aplicada (nbvaglqmcyoogolhzyzm); 7 tab RLS ON; invoices 8 cols correção; CHECK substituida; 7/7 org-scoped; INSERT cross-org → 42501 RLS violation; isolamento 0 ALTER/DROP core (REFERENCES só organizations/leads) | (commit desta iteração)
 A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos verify-jwt-false de webhooks) | —
 A7 | AUTO (INSP+CI) | CONFORME | grep cobrança fora da esteira = 0; CORE-DELTA 7 entradas; 0 mutação de core em migrations_cobranca (esteira criada c/ README); invariante contínuo re-aferido por fase | (commit desta iteração)
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
@@ -51,7 +51,7 @@ E4 | HITL (G-PILOTO) | PENDENTE | — | —
 ## gates
 G-SEC-REV: aberto | G-C6-SANDBOX: aberto (creds+cert mTLS sandbox ausentes) | G-C6-PROD: aberto | G-NOTAAS-resid: aberto
 G-QUOTA: aberto | G-A1: aberto | G-META-TPL: aberto | G-PILOTO: aberto | G-INFRA: aberto
-gate_deploy_fase: {BOOTSTRAP: LIBERADO (msg Marcelo 06/07 ~06:34 BRT: "Supabase já existe, domínio já existe. Você pode acessar pelas ferramentas... credenciais no env"), A: pendente (P1 — bloqueia deploy da EF c6-mtls-poc do A0), B: pendente, C: pendente, D: pendente, E: pendente}
+gate_deploy_fase: {BOOTSTRAP: LIBERADO (msg Marcelo 06/07 ~06:34 BRT: "Supabase já existe, domínio já existe. Você pode acessar pelas ferramentas... credenciais no env"), A: migrations aditivas LIBERADAS (Marcelo relançou o loop 06/07 tarde: "seguimos por aqui" + "seja braço operacional (construção)"; Supabase já liberado; A4 billing_credentials aplicada — aditiva, banco novo/dedicado, reversível por DROP) — deploy da EF c6-mtls-poc (A0) SEGUE BLOQUEADO por falta das creds C6 sandbox, B: pendente, C: pendente, D: pendente, E: pendente}
 
 ## core_deltas                              # espelho do docs/CORE-DELTA.md
 src/config/brand.ts | identidade Payments (ponto de cascade) | 22170d1
@@ -92,3 +92,5 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 5 | 2026-07-06T10:35:00Z | A2 | CONFORME | Opus construiu (149k tokens, 24 tools); revisor re-rodou deno test = 11/11; 2 arquivos aditivos + deno.lock (std/assert) | 0.00
 6 | 2026-07-06T10:50:00Z | A3 | PROXY_PRONTO | Q1-Q3 no banco real via MCP: 112/112 RLS ON; 20 permissivas classificadas; doc .md+.html; aguarda G-SEC-REV | 0.00
 7 | 2026-07-06T10:50:00Z | A7 | CONFORME | greps de isolamento 0/0; CORE-DELTA 7 entradas; migrations_cobranca/ criada (README disciplina) | 0.00
+8 | 2026-07-06T17:25:00Z | A4 | CONFORME | migration cofre aplicada (db query); deno test 8/8; REVOKE anon/auth + RLS ON → SET ROLE anon SELECT=0, has_priv anon/auth=false, svc=true | 0.00
+9 | 2026-07-06T17:35:00Z | A5 | CONFORME | billing_model.sql aplicada; 7 tab RLS ON; invoices 8 cols correção + substituida; 7/7 org; INSERT cross-org → 42501 RLS violation | 0.00
