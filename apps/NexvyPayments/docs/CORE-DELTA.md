@@ -58,6 +58,12 @@ Antes de editar qualquer arquivo do core, pergunte: **dá para fazer isso num ar
 - **Reversível?** não — re-aplicar em snapshot novo (bloco aditivo, sem conflito com rotas do core).
 - **Entregável/commit:** UI-COBRANCA-BOOTSTRAP · (SHA pendente do commit).
 
+### `src/App.tsx` — 2026-07-06 (troca dos placeholders pelas telas reais)
+- **Motivo:** as 4 sub-telas restantes do módulo (Contratos, Régua, Inadimplência, Onboarding) foram construídas; o router é do core, então plugar os componentes reais no lugar dos `CobrancaEmBreve` exige tocar a árvore `<Routes>`. As telas em si vivem em arquivos NOVOS (`src/pages/cobranca/{Contratos,Regua,Inadimplencia,Onboarding}.tsx`) — só o enxerto de element foi inevitável.
+- **Mudança:** ADITIVO — +4 lazy imports (`CobrancaContratos`, `CobrancaRegua`, `CobrancaInadimplencia`, `CobrancaOnboarding`); as 4 sub-rotas `contratos`/`regua`/`inadimplencia`/`onboarding` passam de `<CobrancaEmBreve .../>` para os componentes reais; componente inline `CobrancaEmBreve` REMOVIDO (sem uso após a troca — evita dead code/unused). Zero remoção/alteração de rota existente do core.
+- **Reversível?** não — re-aplicar em snapshot novo (bloco aditivo, sem conflito com rotas do core).
+- **Entregável/commit:** UI-COBRANCA-BOOTSTRAP · (SHA pendente do commit).
+
 ### Decisões de NÃO-edição (auditoria)
 - `src/main.tsx` — **não editado**: o tema institucional host-aware (`.theme-nexvy-institucional`, Lux navy+dourado em `gestao.*`) já é genérico no core; nada Beauty-específico a trocar.
 - `src/hooks/usePlatformBranding.ts` — **não editado**: o check de cor-default `#c54b60` (linha ~151) protege a paleta estática Beauty Rosé do `index.css`; trocar o check sem re-skin da paleta criaria estado visual incoerente. Fica para o re-skin de branding (roadmap 0.5.12/Fase D).
