@@ -78,10 +78,15 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 14. deploy-all NÃO inclui deploy-payments até Marco 0 validado.
 15. docker compose config não validável no Mac (docker ausente); bloco é cópia literal do GYM — validar no 1º deploy VPS.
 
-## fila_humano
-1. [A0 / P1+G-C6-SANDBOX] (a) Liberar o gate humano do 1º deploy da Fase A (EF descartável `c6-mtls-poc` no projeto nbvaglqmcyoogolhzyzm); (b) fornecer credenciais SANDBOX C6: C6_CLIENT_ID, C6_CLIENT_SECRET, C6_BASE_URL (https://baas-api-sandbox.c6bank.info) e CERTIFICADO mTLS (cert+key/.pfx do sandbox) — não encontrados no env local nem no VPS. Entrega server-side: `supabase secrets set` (nunca repo/front). Critério de liberação: secrets listados via CLI + ok explícito do deploy.
-2. [Governança de branch] Decidir merge feat/nexvypayments-planning → main (e/ou feat/nexvypayments-bootstrap → main ao fim da fase) — gate humano. Critério: merge feito OU instrução explícita.
-3. [Fase D/0.5.11-12 — quando chegar] Secrets de plataforma (AI_API_KEY, RESEND_API_KEY, SUPER_ADMIN_EMAIL) + Auth Site URL + branding platform_settings + 1º super admin — pós 1º deploy VPS.
+## fila_humano  (16/25 CONFORME — os 9 restantes são TODOS gate-dependentes; Marcelo destrava)
+1. [A0/B1/B4/B5 — G-C6-SANDBOX + G-C6-PROD] credenciais C6: C6_CLIENT_ID, C6_CLIENT_SECRET, C6_BASE_URL (https://baas-api-sandbox.c6bank.info) + CERTIFICADO mTLS (cert+key/.pfx). Marcelo PROVIDENCIANDO (06/07). Entrega: `supabase secrets set` (nunca repo/front). Destrava: A0 (PoC mTLS, gate arquitetural — precede todo o trilho C6), depois B1 (c6-billing), B4 (c6-webhook), B5 (fatura prod).
+2. [DEPLOY DE EDGE FUNCTIONS — gate MODO-B] autorizar o 1º deploy das ~9 EFs novas no Supabase novo (notaas-webhook, billing-cadence-*, invoice-batch-generate, billing-baixa-manual + as de C6 quando existirem). Migrations já aplicadas; falta `supabase functions deploy`. Destrava: A6 (verify-jwt matrix — curl externo prova 401/200) + teste real das EFs. Critério: ok explícito do Marcelo p/ deploy.
+3. [A3 — G-SEC-REV] revisar por escrito a auditoria RLS (`docs/security/rls-audit-2026-07.md`: 112/112 RLS ON, 20 permissivas classificadas, 1 flag help_article_feedback) + o hardening da Fase A. Certifica A1/A3/A7.
+4. [C1 — G-NOTAAS-resid + G-A1] key NotaAS (Org Token/project key) + certificado A1 (.pfx+senha) do CNPJ do tenant → destrava emissão de NFS-e em homologação.
+5. [D4 — G-META-TPL] aprovar/submeter templates utility Meta (fatura/lembrete/atraso/2ª via) → destrava régua em produção.
+6. [E3 — G-INFRA] medição de custo real/fatura + invocations/mês (precisa produção rodando).
+7. [E4 — G-PILOTO] 2º tenant (cowork) + compromisso pago do case #1 (parecer PMF).
+8. [Governança de branch] merge feat/nexvypayments-bootstrap → main (worktree isolado) — gate humano.
 
 ## log_iteracoes
 # n | ISO-ts | entregavel | resultado | evidencia_curta | custo_delta_usd
