@@ -434,6 +434,114 @@ async function sendWelcomeWhatsApp(
 }
 
 /**
+ * B5 — catálogo-template de serviços comuns de salão. Espelha SERVICOS_PADRAO de
+ * src/components/onboarding/steps/OficinaServicesStep.tsx (duplicação consciente:
+ * aquele é React/browser, este é Deno/edge — sem módulo compartilhável entre os
+ * dois runtimes). Manter os dois em sincronia. A dona ajusta nomes/preços depois.
+ */
+const SALON_SERVICE_TEMPLATE = [
+  'Corte',
+  'Escova',
+  'Coloração',
+  'Manicure',
+  'Esmaltação em gel',
+  'Alongamento de cílios',
+  'Design de sobrancelha',
+  'Podologia / Spa dos pés',
+  'Limpeza de pele',
+  'Depilação',
+] as const;
+
+/**
+ * B6 — as 4 regras que `salon-automation-run` de fato consome (CHECK do schema:
+ * aniversario | pacote_vencendo | agendamento_24h | retorno_inativo). Nascem
+ * enabled=false (decisão Marcelo 2026-07-06): a dona revê o template e conecta o
+ * WhatsApp antes de ligar cada uma — conta recém-provisionada não sai mandando
+ * mensagem sozinha. antecedencia_dias segue a semântica de cada tipo.
+ */
+const SALON_AUTOMATION_SEED: Array<{ tipo: string; antecedencia_dias: number }> = [
+  { tipo: 'aniversario', antecedencia_dias: 0 },
+  { tipo: 'pacote_vencendo', antecedencia_dias: 3 },
+  { tipo: 'agendamento_24h', antecedencia_dias: 1 },
+  { tipo: 'retorno_inativo', antecedencia_dias: 45 },
+];
+
+/**
+ * Faz a org recém-provisionada nascer OPERACIONAL (B5/B6/B7):
+ *  - servico_catalogo: catálogo-template (shape provado em OficinaServicesStep).
+ *  - salon_automation_rules: as 4 regras cadastradas, DESLIGADAS (upsert
+ *    ignore-dup pela UNIQUE(organization_id,tipo) → idempotente por si só).
+ *  - opportunity_scan_schedules: agenda do Radar (diária 08h UTC; is_active
+ *    default true no schema). Roda a vazio até haver carteira (F6) — por design.
+ *
+ * Best-effort por design (igual a sendWelcomeWhatsApp): nunca lança nem derruba o
+ * provisionamento PAGO, e não contamina o `ok` do resultado — um erro de
+ * mobiliamento não pode transformar quem pagou em cliente que não entrou. Só é
+ * chamada na PRIMEIRA ativação (org_created), então não duplica em retry/renovação.
+ */
+async function seedSalonDataForNewOrg(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<{ ok: boolean }> {
+  let ok = true;
+
+  // B5 — serviços
+  try {
+    const rows = SALON_SERVICE_TEMPLATE.map((nome) => ({
+      organization_id: organizationId,
+      nome,
+      ativo: true,
+    }));
+    const { error } = await admin.from('servico_catalogo').insert(rows);
+    if (error) {
+      ok = false;
+      console.warn('[cakto-provisioning] seed servico_catalogo:', error.message);
+    }
+  } catch (e: any) {
+    ok = false;
+    console.warn('[cakto-provisioning] seed servico_catalogo exception:', e?.message ?? String(e));
+  }
+
+  // B6 — automações (desligadas), idempotente via UNIQUE(organization_id,tipo)
+  try {
+    const rows = SALON_AUTOMATION_SEED.map((r) => ({
+      organization_id: organizationId,
+      tipo: r.tipo,
+      enabled: false,
+      antecedencia_dias: r.antecedencia_dias,
+    }));
+    const { error } = await admin
+      .from('salon_automation_rules')
+      .upsert(rows, { onConflict: 'organization_id,tipo', ignoreDuplicates: true });
+    if (error) {
+      ok = false;
+      console.warn('[cakto-provisioning] seed salon_automation_rules:', error.message);
+    }
+  } catch (e: any) {
+    ok = false;
+    console.warn('[cakto-provisioning] seed salon_automation_rules exception:', e?.message ?? String(e));
+  }
+
+  // B7 — agenda do Radar
+  try {
+    const { error } = await admin.from('opportunity_scan_schedules').insert({
+      organization_id: organizationId,
+      name: 'Radar Automático',
+      cron_expression: '0 8 * * *',
+    });
+    if (error) {
+      ok = false;
+      console.warn('[cakto-provisioning] seed opportunity_scan_schedules:', error.message);
+    }
+  } catch (e: any) {
+    ok = false;
+    console.warn('[cakto-provisioning] seed opportunity_scan_schedules exception:', e?.message ?? String(e));
+  }
+
+  return { ok };
+}
+
+/**
  * Roda o pipeline completo (plano + admin user).
  */
 export async function provisionFromOrder(
@@ -454,10 +562,15 @@ export async function provisionFromOrder(
     planName: plan?.name ?? null,
   });
 
-  // Boas-vindas WhatsApp ao comprador — non-fatal, e SÓ na primeira ativação
-  // (org recém-criada). Retry de webhook, renovação mensal e reprocesso manual
-  // reexecutam provisionFromOrder e NÃO podem duplicar o welcome (idempotência).
+  // SÓ na primeira ativação (org recém-criada). Retry de webhook, renovação mensal
+  // e reprocesso manual reexecutam provisionFromOrder e NÃO podem duplicar nem o
+  // welcome nem os seeds (idempotência via gate org_created).
   if (planRes.org_created) {
+    // B5/B6/B7 — org nasce operacional: catálogo de serviços, automações
+    // (desligadas) e agenda do Radar. Best-effort, nunca derruba o provisionamento.
+    await seedSalonDataForNewOrg(admin, planRes.organization_id);
+
+    // Boas-vindas WhatsApp ao comprador — non-fatal.
     await sendWelcomeWhatsApp(admin, {
       phone: order.customer_phone ?? null,
       fullName: order.customer_name ?? null,
