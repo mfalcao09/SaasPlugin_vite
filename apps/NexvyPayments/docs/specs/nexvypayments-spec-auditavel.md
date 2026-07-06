@@ -129,7 +129,7 @@ O confronto de 9 alegações do blueprint contra código real confirmou as cita�
 | **E3** | Instrumentação custo real + limites Lovable + admin burden | métricas: custo/fatura medido, % sem humano, invocations/mês por tenant, contador de eventos operacionais (correção 12) | custo/fatura MEDIDO (não estimado) visível; invocations/mês visível; gatilho quantificado de migração VPS registrado | INSP | **G-INFRA** |
 | **E4** | Prova de horizontalidade (case #2 cowork) | onboarding do cowork usando só `metadata` | cowork onboarded com **0 migrations novas de vertical** e 0 código novo | INSP | **G-PILOTO** |
 
-**Total: 26 entregáveis** (A0–A7: 8 · B1–B5: 5 · C1–C3: 3 · D1–D5: 5 · E1–E4: 4). *(Era 25; A7 de isolamento do fork adicionado no reassentamento.)*
+**Total: 25 entregáveis** (A0–A7: 8 · B1–B5: 5 · C1–C3: 3 · D1–D5: 5 · E1–E4: 4). *(Era 24 sem A7; A7 de isolamento do fork adicionado no reassentamento. Errata aritmética 2026-07-06: esta linha dizia "26"; 8+5+3+5+4=25.)*
 
 ### 3.3 Ordem topológica e marcos de valor
 

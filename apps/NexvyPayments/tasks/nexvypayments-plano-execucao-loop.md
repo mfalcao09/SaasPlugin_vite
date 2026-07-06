@@ -24,7 +24,7 @@
 
 **Conformidade ao modo ESTUDO:** nenhum loop iniciado, nenhum `ScheduleWakeup`/`Monitor` armado, nada do plano executado nesta sessão.
 
-**Nota de auditoria documental:** o spec afirma "Total: 25 entregáveis", mas a enumeração soma **24** (A0–A6: 7 · B1–B5: 5 · C1–C3: 3 · D1–D5: 5 · E1–E4: 4). O loop opera sobre os **24 IDs enumerados**; a contagem "25" é erro aritmético do spec (não há entregável faltante — correção documental menor, sem impacto).
+**Nota de auditoria documental (errata 2026-07-06, iteração 1 do executor):** a matriz §5.1 do spec reassentado enumera **25 IDs** (A0–**A7**: 8 · B1–B5: 5 · C1–C3: 3 · D1–D5: 5 · E1–E4: 4) — o **A7 (isolamento do fork)** foi adicionado no reassentamento e este plano ainda dizia "24". O loop opera sobre os **25 IDs da matriz do spec** (+ PASSO-0-APP). A linha "Total: 26" do spec era erro aritmético e foi corrigida para 25.
 
 ---
 
@@ -241,13 +241,15 @@ gate_deploy_fase: {A: pendente, B: pendente, C: pendente, D: pendente, E: penden
 8. **Verificar consumo de créditos da homolog NotaAS (1ª ação da Fase C):** o briefing marca "pode consumir créditos — VERIFICAR". Se consumir: cada lote de teste debita o teto; preferir lotes mínimos (1–2 notas) até o teste de 100 do critério C1.
 9. **Matriz §5.1 do spec é editada in-place:** cada entregável CONFORME atualiza `apps/NexvyPayments/docs/specs/nexvypayments-spec-auditavel.md` (status PENDENTE→CONFORME + evidência citável: file:line, output de curl, resultado de teste). Nunca por inferência — regra anti-alucinação do próprio spec.
 10. **Gate humano não se polla:** bloqueio → proxy → `fila_humano` com ação exata → próximo elegível → parada limpa pela condição (d). Sem `sleep`/wakeup esperando humano.
-11. **Trabalhar com 24 IDs (+ PASSO-0-APP de bootstrap):** a contagem "25" do spec é erro aritmético (§0); o universo do loop são os 24 enumerados, precedidos pelo PASSO-0-APP.
+11. **Trabalhar com 25 IDs (+ PASSO-0-APP de bootstrap):** universo = matriz §5.1 do spec (A0–A7, B1–B5, C1–C3, D1–D5, E1–E4), precedido pelo PASSO-0-APP. *(Errata 2026-07-06: este plano dizia "24" por não contar o A7 adicionado no reassentamento; o prompt da §4 herda a errata.)*
 12. **A0 é kill-switch arquitetural:** cada falha de A0 registra o erro completo (runtime Deno, flag unstable, mensagem, mTLS handshake) para que a 3ª falha produza um dossiê de decisão utilizável por Marcelo — não apenas "falhou".
 13. **[NOVA — regra inviolável do reassentamento] Delta no core Vendus SEMPRE registrado.** As mods de cobrança devem ficar **100% ISOLADAS** em arquivos/migrations próprios e aditivos (`migrations_cobranca/`, `_shared/__fixtures__/`, tools novas em `registry.ts`, páginas em `src/pages/cobranca/` e `src/cockpit/`), NUNCA editando o core Vendus. **JAMAIS editar um arquivo do core Vendus sem registrar em `apps/NexvyPayments/docs/CORE-DELTA.md`** (e na seção `core_deltas` do STATE): arquivo:linha, motivo, commit. Edições inevitáveis conhecidas: `src/main.tsx` (branding institucional), `src/config/brand.ts`, `src/lib/publicUrl.ts`, `src/config/modules.ts`, `docker-compose.yml`, `Makefile`. Toda outra edição de core exige justificativa no CORE-DELTA. Atualizações futuras do upstream Vendus = **diff seletivo, não merge cego**.
 
 ---
 
 ## 4. PROMPT DE LANÇAMENTO (self-contained — copiar e colar para iniciar o loop)
+
+> **Errata (2026-07-06):** onde o prompt diz "24 entregáveis (A0–A6, …)", leia-se **25 (A0–A7, …)** — ver §0 e §3.11. A condição de parada (a) passa a cobrir os 25 + PASSO-0-APP.
 
 ```markdown
 # LOOP DE IMPLEMENTAÇÃO — NexvyPayments (app embutido no monorepo SaasPlugin / NexvyTech)

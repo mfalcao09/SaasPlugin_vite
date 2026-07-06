@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório de Parada — Loop NexvyPayments · Iteração 1</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--txt:#e6edf3;--muted:#8b949e;--gold:#d4a843;--navy:#4d7cc7;--red:#f85149;--green:#3fb950;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:1.5rem;color:var(--gold);border-bottom:2px solid var(--border);padding-bottom:12px}
+  h2{font-size:1.15rem;color:var(--navy);margin-top:32px}
+  .meta{color:var(--muted);font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:var(--gold)}
+  code{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:.85em}
+  .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:600}
+  .blocked{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid var(--amber)}
+  .pending{background:rgba(139,148,158,.12);color:var(--muted);border:1px solid var(--border)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:12px 0}
+  ol li{margin-bottom:8px}
+  .kpi{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+  .kpi div{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 18px;text-align:center}
+  .kpi b{display:block;font-size:1.4rem;color:var(--gold)}
+  .footer{margin-top:40px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);padding-top:12px}
+</style>
+</head>
+<body><div class="wrap">
+<h1>🔁 Relatório de Parada — Loop NexvyPayments · Iteração 1</h1>
+<div class="meta">2026-07-06 · sessão <code>a690757a</code> · branch <code>feat/nexvypayments-bootstrap</code> · worktree <code>SaasPlugin_vite.claude-worktrees/nexvypayments-bootstrap</code> · pareado com <code>relatorio-loop-iteracao-1.md</code></div>
+
+<div class="kpi">
+  <div><b>(d)</b>condição de parada</div>
+  <div><b>1</b>BLOQUEADO_GATE</div>
+  <div><b>25</b>PENDENTE</div>
+  <div><b>US$ 0,00</b>custo</div>
+  <div><b>1/40</b>iterações</div>
+</div>
+
+<h2>1. Condição de parada</h2>
+<div class="card"><b>(d)</b> — o próximo entregável elegível (<span class="badge blocked">PASSO-0-APP · BLOQUEADO_GATE</span>) depende de gate HITL não liberado e não há outro elegível (plano §2.0: "enquanto isto não estiver CONFORME, nenhum entregável A/B/C/D/E começa").
+<br><br><b>Evidência (verificada por máquina):</b>
+<ul>
+<li><b>DNS:</b> NS autoritativo Cloudflare (<code>gabriella.ns.cloudflare.com</code>) → <b>0 registros A</b> (apex/app/gestao/www). Domínio <b>registrado hoje</b> (registro.br <code>20260706</code>, Nexvy Tecnologia) e zona já delegada — faltam só os apontamentos.</li>
+<li><b>Supabase:</b> MCP <code>list_projects</code> → 12 projetos na org, <b>nenhum</b> é o projeto NOVO do Payments.</li>
+</ul></div>
+
+<h2>2. Placar (25 entregáveis + PASSO-0-APP)</h2>
+<table>
+<tr><th>Status</th><th>N</th><th>IDs</th></tr>
+<tr><td><span class="badge blocked">BLOQUEADO_GATE</span></td><td>1</td><td>PASSO-0-APP</td></tr>
+<tr><td><span class="badge pending">PENDENTE</span></td><td>25</td><td>A0–A7 · B1–B5 · C1–C3 · D1–D5 · E1–E4</td></tr>
+<tr><td>CONFORME / PROXY_PRONTO / FALHOU</td><td>0</td><td>—</td></tr>
+</table>
+<p><i>Errata aplicada: universo correto = <b>25 IDs</b> (matriz §5.1 do spec inclui A7 de isolamento do fork). Prompt §4 dizia "24", spec dizia "Total: 26" — corrigidos (spec:132, plano §0/§3.11/§4).</i></p>
+
+<h2>3. fila_humano — ação exata + critério de liberação</h2>
+<ol>
+<li><b>Supabase NOVO:</b> criar projeto no dashboard (org <code>tnqsxpwsdwaewufhkyfp</code>), nome "NexvyPayments", região <code>sa-east-1</code>; informar <code>SUPABASE_REF</code> + anon key + senha do banco. <b>Libera:</b> projeto visível em <code>list_projects</code> ou ref no STATE.</li>
+<li><b>DNS Cloudflare:</b> zona <code>nexvypayments.com.br</code> (já delegada) → 4 registros <b>A</b>: <code>@</code>, <code>app</code>, <code>gestao</code>, <code>www</code> → <code>145.223.29.96</code>, <b>DNS-only</b> (nuvem cinza, padrão Beauty). <b>Libera:</b> <code>dig +short</code> retorna o IP nos 4 hosts.</li>
+<li><b>Governança de branch:</b> decidir merge <code>feat/nexvypayments-planning → main</code> (gate humano). <b>Libera:</b> merge feito ou instrução para seguir do planning.</li>
+</ol>
+
+<h2>4. Custo</h2>
+<p><b>US$ 0,00</b> — notaas_homolog 0.00 · meta_msgs 0.00 · llm_teste 0.00.</p>
+
+<h2>5. Commits</h2>
+<p>Branch <code>feat/nexvypayments-bootstrap</code> (de <code>feat/nexvypayments-planning@6650382</code>): 1 commit — STATE inicial + erratas + relatório.</p>
+
+<h2>6. Premissas assumidas</h2>
+<ol>
+<li>"Entendido?" = disparo imediato da iteração 1.</li>
+<li>Universo = 25 entregáveis da matriz §5.1 (inclui A7).</li>
+<li>Branch bootstrap criado do planning (main não tem os docs); rebase adiado ao merge.</li>
+<li>Worktree isolado — outra sessão fez <code>checkout cascade/beauty</code> no working tree principal durante a iteração (reflog HEAD@{0}).</li>
+<li>Registros A em DNS-only, espelhando o Beauty.</li>
+<li>Lovable fora da via padrão (main = verdade); Opus como braço operacional.</li>
+</ol>
+
+<h2>7. core_deltas</h2>
+<p><b>Nenhum</b> — nenhuma edição de core Vendus nesta iteração.</p>
+
+<h2>8. Próxima ação recomendada</h2>
+<div class="card">Executar itens 1 e 2 da <code>fila_humano</code> (projeto Supabase + 4 registros A) e relançar o prompt §4 — a iteração 2 completa o PASSO-0-APP de ponta a ponta.</div>
+
+<div class="footer">Gerado pelo loop executor NexvyPayments · SaasPlugin_vite · 2026-07-06T09:36Z</div>
+</div></body>
+</html>
