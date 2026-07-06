@@ -84,7 +84,7 @@ A reestruturação tem **6 eixos**. O que está **no ar/em prod**: confinamento 
 
 ## 5 · Gotchas transversais
 
-- **Service Worker / PWA:** `/sw.js` cacheia agressivo. Sem versionamento/`skipWaiting`, **usuários reais podem não ver NENHUM deploy** até o SW atualizar — isso invalida silenciosamente "está no ar". `curl` não usa SW (por isso vejo `DcPLkMzY`); um browser com SW antigo pode ver o velho. **Follow-up pendente.**
+- **Service Worker / PWA — VERIFICADO OK, NÃO é gotcha** (corrigido nesta sessão): `public/sw.js` é **network-only por design** — não cacheia nada (fetch handler vazio, linha 27), `skipWaiting()` no install, **deleta caches antigos** + `clients.claim()` no activate. Comentário no topo: "never stuck on an old bundle (which previously caused infinite spinners after deploys)". **Deploys SÃO vistos** por usuários reais. O alerta genérico anterior de "SW esconde deploy" era do workflow e **não se aplica a este app**.
 - **Liveness do Lux só objetiva:** L1–L3 confirmados por computed-style (`--primary #213156`) + bundle, mas a **revisão adversarial visual (Fable) NÃO rodou**. Marcar como "no ar, não auditado visualmente".
 
 ---
