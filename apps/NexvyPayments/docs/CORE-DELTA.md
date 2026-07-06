@@ -52,6 +52,12 @@ Antes de editar qualquer arquivo do core, pergunte: **dá para fazer isso num ar
 - **Reversível?** sim (blocos aditivos independentes).
 - **Entregável/commit:** PASSO-0-APP · `22170d1`.
 
+### `src/App.tsx` — 2026-07-06
+- **Motivo:** o router é do core; registrar a rota do módulo Cobrança exige tocar a árvore `<Routes>`. Tudo o mais (casca, nav, telas) vive em arquivos NOVOS (`src/{components,pages}/cobranca/*`) — só o enxerto de `<Route>` foi inevitável.
+- **Mudança:** ADITIVO — 3 lazy imports (`CobrancaShell`, `CobrancaFaturas`, `CobrancaPagadores`); bloco `<Route path="/cobranca/*">` (índice=Faturas, `pagadores`=Pagadores, e placeholders `contratos`/`regua`/`inadimplencia`/`onboarding`→`CobrancaEmBreve`); componente inline `CobrancaEmBreve` (placeholder "em breve"). Zero remoção/alteração de rota existente.
+- **Reversível?** não — re-aplicar em snapshot novo (bloco aditivo, sem conflito com rotas do core).
+- **Entregável/commit:** UI-COBRANCA-BOOTSTRAP · (SHA pendente do commit).
+
 ### Decisões de NÃO-edição (auditoria)
 - `src/main.tsx` — **não editado**: o tema institucional host-aware (`.theme-nexvy-institucional`, Lux navy+dourado em `gestao.*`) já é genérico no core; nada Beauty-específico a trocar.
 - `src/hooks/usePlatformBranding.ts` — **não editado**: o check de cor-default `#c54b60` (linha ~151) protege a paleta estática Beauty Rosé do `index.css`; trocar o check sem re-skin da paleta criaria estado visual incoerente. Fica para o re-skin de branding (roadmap 0.5.12/Fase D).

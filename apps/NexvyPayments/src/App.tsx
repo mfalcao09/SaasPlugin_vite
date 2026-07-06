@@ -113,6 +113,12 @@ const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
 const SalaoClientes = lazyWithRetry(() => import("./pages/salao/Clientes"));
 const SalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/Financeiro"));
 
+// Cobrança (NexvyPayments) — casca própria do módulo + telas (ADITIVO, isolado
+// em src/{components,pages}/cobranca/*). CobrancaShell monta UnifiedShell+Outlet.
+const CobrancaShell = lazyWithRetry(() => import("./components/cobranca/CobrancaShell"));
+const CobrancaFaturas = lazyWithRetry(() => import("./pages/cobranca/Faturas"));
+const CobrancaPagadores = lazyWithRetry(() => import("./pages/cobranca/Pagadores"));
+
 // Global loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -191,6 +197,17 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Err
     return this.props.children;
   }
 }
+
+// Placeholder das sub-telas de cobrança ainda não construídas (contratos, régua,
+// inadimplência, onboarding). Mantém a nav COBRANCA_NAV navegável sem 404.
+const CobrancaEmBreve = ({ titulo }: { titulo: string }) => (
+  <div className="p-6">
+    <div className="surface-card p-10 text-center">
+      <h1 className="text-2xl font-bold text-foreground">{titulo}</h1>
+      <p className="mt-2 text-muted-foreground">Esta tela do módulo de cobrança está em construção.</p>
+    </div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -361,6 +378,23 @@ const App = () => (
               <Route path="/salao/servicos" element={<ProtectedRoute><SalaoServicos /></ProtectedRoute>} />
               <Route path="/salao/clientes" element={<ProtectedRoute><SalaoClientes /></ProtectedRoute>} />
               <Route path="/salao/financeiro" element={<ProtectedRoute><SalaoFinanceiro /></ProtectedRoute>} />
+
+              {/* Cobrança (NexvyPayments) — casca própria (CobrancaShell) com as
+                  telas do módulo no <Outlet/>. Faturas = índice (/cobranca).
+                  Sub-rotas ainda não construídas caem num placeholder "em breve"
+                  (não quebra a nav COBRANCA_NAV). ADITIVO — enxerto registrado em
+                  docs/CORE-DELTA.md. */}
+              <Route
+                path="/cobranca/*"
+                element={<ProtectedRoute><CobrancaShell /></ProtectedRoute>}
+              >
+                <Route index element={<CobrancaFaturas />} />
+                <Route path="pagadores" element={<CobrancaPagadores />} />
+                <Route path="contratos" element={<CobrancaEmBreve titulo="Contratos" />} />
+                <Route path="regua" element={<CobrancaEmBreve titulo="Régua de cobrança" />} />
+                <Route path="inadimplencia" element={<CobrancaEmBreve titulo="Inadimplência" />} />
+                <Route path="onboarding" element={<CobrancaEmBreve titulo="Config / Onboarding" />} />
+              </Route>
               <Route
                 path="/perfil"
                 element={
