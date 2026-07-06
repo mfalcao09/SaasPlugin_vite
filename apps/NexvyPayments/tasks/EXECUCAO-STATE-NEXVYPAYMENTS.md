@@ -51,7 +51,7 @@ E4 | HITL (G-PILOTO) | PENDENTE | — | —
 ## gates
 G-SEC-REV: aberto | G-C6-SANDBOX: aberto (creds+cert mTLS sandbox ausentes) | G-C6-PROD: aberto | G-NOTAAS-resid: aberto
 G-QUOTA: aberto | G-A1: aberto | G-META-TPL: aberto | G-PILOTO: aberto | G-INFRA: aberto
-gate_deploy_fase: {BOOTSTRAP: LIBERADO (msg Marcelo 06/07 ~06:34 BRT: "Supabase já existe, domínio já existe. Você pode acessar pelas ferramentas... credenciais no env"), A: migrations aditivas LIBERADAS (Marcelo relançou o loop 06/07 tarde: "seguimos por aqui" + "seja braço operacional (construção)"; Supabase já liberado; A4 billing_credentials aplicada — aditiva, banco novo/dedicado, reversível por DROP) — deploy da EF c6-mtls-poc (A0) SEGUE BLOQUEADO por falta das creds C6 sandbox, B: pendente, C: pendente, D: pendente, E: pendente}
+gate_deploy_fase: {BOOTSTRAP: LIBERADO (msg Marcelo 06/07 ~06:34 BRT), A: migrations aditivas CONFIRMADAS por Marcelo (msg 06/07 tarde: "Ok para migration supabase, estava autorizado") — A4/A5/B2/C2/C3/E2 aplicadas no nbvaglqmcyoogolhzyzm; deploy de EDGE FUNCTIONS (A0 c6-mtls-poc + webhooks) segue MODO-B/não-testado; A0/B1 BLOQUEADOS por creds C6 sandbox (Marcelo providenciando 06/07), B: migrations liberadas, C: migrations liberadas, D: migrations liberadas, E: migrations liberadas — deploy de EF em cada fase ainda é gate}
 
 ## core_deltas                              # espelho do docs/CORE-DELTA.md
 src/config/brand.ts | identidade Payments (ponto de cascade) | 22170d1
