@@ -8,15 +8,15 @@ worktree_executor: /Users/marcelosilva/Projects/GitHub/SaasPlugin_vite.claude-wo
 branch_atual: feat/nexvypayments-bootstrap   # de feat/nexvypayments-planning@6650382; main NÃO contém os docs (premissa 3)
 supabase_ref: nbvaglqmcyoogolhzyzm   # projeto "NexvyPayments", ACTIVE_HEALTHY, us-west-2 (criado por Marcelo 2026-07-06 09:22Z)
 dominio: nexvypayments.com.br   # zona CF cd6629d4…; 4 registros A → 145.223.29.96 DNS-only (criados via API nesta sessão)
-iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:35:00Z
+iniciado_em: 2026-07-06T09:29:24Z | ultima_atualizacao: 2026-07-06T10:50:00Z
 
 ## contadores
-iteracao: 5 / 40
+iteracao: 7 / 40
 custo_acumulado_usd: 0.00 / 10.00
 custo_por_categoria: {notaas_homolog: 0.00, meta_msgs: 0.00, llm_teste: 0.00}
 
 ## entregavel_atual
-id: A3 | tentativa: 1/3 | status: EM_ANDAMENTO (auditoria RLS read-only via MCP + doc)
+id: A4 | tentativa: 1/3 | status: EM_ANDAMENTO (subagente Opus — billing-crypto + migration cofre + TA local; CONFORME só pós-lote MODO-B)
 
 ## entregaveis                              # PASSO-0-APP + 25 IDs (matriz §5.1 do spec — inclui A7)
 # id | classe | status | evidencia (citável) | commit
@@ -24,11 +24,11 @@ PASSO-0-APP | BOOTSTRAP | CONFORME | npm run build exit 0; make -n deploy-paymen
 A0 | MODO-B (gate arquitetural) | BLOQUEADO_GATE | P1 (gate humano 1º deploy Fase A) + G-C6-SANDBOX: C6_CLIENT_ID/SECRET + cert/key mTLS sandbox NÃO encontrados (env local erp-educacional sem C6_*; VPS idem) | —
 A1 | AUTO | CONFORME | ls admin-provision-users → No such file or directory; grep src/ = 0 hits; build verde. Cert. revisor → G-SEC-REV (P3) | ea09417
 A2 | AUTO | CONFORME | require-caller-org.ts + __tests__/: deno test 11/11 (aferição re-rodada pelo revisor; autor=Opus); org real via profiles.organization_id (webchat-inbox:93); nota: === da service key → timing-safe no consumo | (commit desta iteração) |
-A3 | AUTO + G-SEC-REV | PENDENTE | — | —
-A4 | MODO-B | PENDENTE | — | —
+A3 | AUTO + G-SEC-REV | PROXY_PRONTO | docs/security/rls-audit-2026-07.md+.html: 112/112 org-tables RLS ON, 0 sem RLS, 0 deny-all, 415 policies, 20 permissivas classificadas, 🚩1 flag (help_article_feedback) p/ revisor | (commit desta iteração)
+A4 | MODO-B | EM_ANDAMENTO | subagente Opus: billing-crypto.ts + migration cofre + TA round-trip v1: local; CONFORME exige lote MODO-B (gate fase A) | —
 A5 | MODO-B | PENDENTE | — | —
 A6 | MODO-B | PENDENTE | — (insumo pronto: config.toml preservou 4 blocos verify-jwt-false de webhooks) | —
-A7 | AUTO (INSP+CI) | PENDENTE | — | —
+A7 | AUTO (INSP+CI) | CONFORME | grep cobrança fora da esteira = 0; CORE-DELTA 7 entradas; 0 mutação de core em migrations_cobranca (esteira criada c/ README); invariante contínuo re-aferido por fase | (commit desta iteração)
 B1 | MODO-B (pré-gate G-C6-SANDBOX) | PENDENTE | — | —
 B2 | MODO-B | PENDENTE | — | —
 B3 | AUTO | PENDENTE | — | —
@@ -90,3 +90,5 @@ docker-compose.yml + Makefile (raiz) | serviço nexvy-payments + alvo deploy-pay
 3 | 2026-07-06T10:17:54Z | A0 | BLOQUEADO_GATE | P1 não liberado + creds/cert C6 sandbox ausentes (env local e VPS auditados por nome) | 0.00
 4 | 2026-07-06T10:17:54Z | A1 | CONFORME | ls → not found; grep src = 0; build verde; matriz §5.1 atualizada | 0.00
 5 | 2026-07-06T10:35:00Z | A2 | CONFORME | Opus construiu (149k tokens, 24 tools); revisor re-rodou deno test = 11/11; 2 arquivos aditivos + deno.lock (std/assert) | 0.00
+6 | 2026-07-06T10:50:00Z | A3 | PROXY_PRONTO | Q1-Q3 no banco real via MCP: 112/112 RLS ON; 20 permissivas classificadas; doc .md+.html; aguarda G-SEC-REV | 0.00
+7 | 2026-07-06T10:50:00Z | A7 | CONFORME | greps de isolamento 0/0; CORE-DELTA 7 entradas; migrations_cobranca/ criada (README disciplina) | 0.00
