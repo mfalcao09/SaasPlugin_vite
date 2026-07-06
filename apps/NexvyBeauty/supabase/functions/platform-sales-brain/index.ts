@@ -255,14 +255,49 @@ function buildLeadMemoryContext(lead: Record<string, any> | null): string {
   if (q.num_clientes != null) known.push(`Carteira histórica: ~${q.num_clientes} clientes`);
   if (q.ticket_medio != null) known.push(`Ticket médio: ~R$${q.ticket_medio}`);
   if (q.recorrencia) known.push(`Recorrência: ${q.recorrencia}`);
+  if (Array.isArray(q.dor_flags) && q.dor_flags.length) known.push(`Dores ditas: ${q.dor_flags.join(', ')}`);
   if (lead.bant_need) known.push(`Necessidade/dor: ${lead.bant_need}`);
   if (lead.bant_budget) known.push(`Potencial/carteira: ${lead.bant_budget}`);
   if (lead.bant_timing) known.push(`Tempo de casa: ${lead.bant_timing}`);
   if (lead.temperature) known.push(`Temperatura atual: ${lead.temperature}`);
-  if (q.score_0_100 != null) known.push(`Score de qualificação atual: ${q.score_0_100}/100`);
 
-  if (!known.length) return '';
-  return `\n═══════════════════════════════════════\nO QUE JÁ SABEMOS DA LEAD (não repergunte)\n═══════════════════════════════════════\n${known.map((k) => `- ${k}`).join('\n')}\n`;
+  // BLOCO DE SCORE COMO FATO (computado em TS no turno anterior — NÃO recalcule).
+  // A Duda/Bia CONDUZ a conversa a partir daqui; a matemática já está feita.
+  const scoreBlock = buildScoreFactBlock(q);
+
+  if (!known.length && !scoreBlock) return '';
+  const memoryLines = known.length
+    ? `\n═══════════════════════════════════════\nO QUE JÁ SABEMOS DA LEAD (não repergunte)\n═══════════════════════════════════════\n${known.map((k) => `- ${k}`).join('\n')}\n`
+    : '';
+  return memoryLines + scoreBlock;
+}
+
+/**
+ * Renderiza o score QCR-V PERSISTIDO como FATO imperativo no prompt. O modelo
+ * recebe a conta pronta e CONDUZ (não recalcula). Vazio se ainda não há score.
+ * Formato pedido no briefing: "SCORE ATUAL: X/100 (provisório?) · PR=R$Y · rota=Z".
+ */
+function buildScoreFactBlock(q: Record<string, any>): string {
+  const score = (typeof q.score_0_100 === 'number') ? q.score_0_100 : null;
+  if (score == null) return '';
+  const provisorio = q.score_provisorio === true;
+  const pr = (typeof q.pr === 'number') ? q.pr : null;
+  const rota = typeof q.rota === 'string' ? q.rota : null;
+
+  const rotaGuidance: Record<string, string> = {
+    oferta_piloto: 'carteira robusta → conduza para o Piloto Fundadora (a conta da recuperação fecha).',
+    aprofundar: provisorio
+      ? 'FALTAM dados de carteira/ticket → descubra-os naturalmente antes de ofertar; se já sabe e ela está cética, mostre VALOR.'
+      : 'lead qualificada mas indecisa/cética → aprofunde o VALOR (garantia, conta personalizada) antes de fechar.',
+    essencial: 'carteira pequena/começando → recomende o plano de ENTRADA com a conta honesta e convide pro Piloto quando ela crescer. NUNCA rejeite.',
+  };
+  const rotaLine = rota && rotaGuidance[rota] ? `\nCONDUTA SUGERIDA (${rota}): ${rotaGuidance[rota]}` : '';
+
+  const parts = [`SCORE ATUAL: ${score}/100${provisorio ? ' (provisório — falta carteira/ticket)' : ''}`];
+  if (pr != null) parts.push(`PR=R$${pr}`);
+  if (rota) parts.push(`rota sugerida=${rota}`);
+
+  return `\n═══════════════════════════════════════\nSCORE DE QUALIFICAÇÃO (já calculado — use como FATO, NÃO recalcule)\n═══════════════════════════════════════\n${parts.join(' · ')}${rotaLine}\n`;
 }
 
 /** Faixa de temperatura a partir do score (hot ≥70 / warm 40-69 / cold <40). */
@@ -354,8 +389,14 @@ function splitIntoBubbles(input: string): string[] {
 // ─── Extração de fatos (2ª chamada LLM, barata) ─────────────────────────────
 
 /**
- * Pede ao mesmo gateway um JSON estrito com os fatos da conversa. Parse
- * defensivo — qualquer falha degrada para {} e não derruba o fluxo. Non-fatal.
+ * Pede ao mesmo gateway um JSON estrito com os FATOS CRUS da conversa. O LLM
+ * NÃO calcula mais o score (errava a conta) — só EXTRAI os fatos; quem pontua é
+ * computeQcrScore() em TypeScript (determinístico). Parse defensivo — qualquer
+ * falha degrada para {} e não derruba o fluxo. Non-fatal.
+ *
+ * Novo campo cru `dor_flags`: sinais de dor DITOS pela lead (agenda vazia, cliente
+ * sumindo, faturamento caindo, etc.) — a D4 (dor) do score deriva DELES, não de um
+ * chute do modelo. `score_0_100` foi REMOVIDO do schema de propósito.
  */
 async function extractLeadFacts(
   gatewayBase: string,
@@ -364,7 +405,7 @@ async function extractLeadFacts(
   transcript: string,
 ): Promise<Record<string, any>> {
   try {
-    const sys = 'Você extrai fatos de uma conversa de qualificação de vendas (profissional da beleza) e responde SOMENTE com um objeto JSON válido, sem texto ao redor, sem markdown. Campos (use null quando desconhecido): {"sub_vertical": string|null, "tempo_atendimento_meses": number|null, "num_clientes": number|null, "ticket_medio": number|null, "recorrencia": string|null, "nome_lead": string|null, "score_0_100": number|null}. Regras do score: D1 potencial (carteira×ticket×0,35÷217) 50pts, D2 tempo 20pts, D3 recorrência 15pts, D4 dor 15pts. Se carteira OU ticket desconhecidos, score é provisório — retorne o valor mas ele não decide rota.';
+    const sys = 'Você extrai FATOS de uma conversa de qualificação de vendas (profissional da beleza) e responde SOMENTE com um objeto JSON válido, sem texto ao redor, sem markdown. NÃO calcule score — apenas extraia o que a lead DISSE. Campos (use null quando desconhecido, exceto dor_flags que é sempre um array — vazio se nada): {"sub_vertical": string|null, "tempo_atendimento_meses": number|null, "num_clientes": number|null, "ticket_medio": number|null, "recorrencia": string|null, "nome_lead": string|null, "dor_flags": string[]}. Em dor_flags liste sinais de DOR/urgência que a lead expressou, um por item, texto curto (ex.: "agenda vazia", "clientes sumindo", "faturamento caindo", "depende de indicação", "quer previsibilidade"). Se a lead não expressou dor, retorne dor_flags: []. num_clientes = tamanho da carteira/base histórica de clientes. ticket_medio = valor médio em R$ por atendimento. tempo_atendimento_meses = há quantos meses atende (converta anos para meses).';
     const res = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -404,6 +445,127 @@ function toNum(v: unknown): number | null {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+// ─── Score QCR-V DETERMINÍSTICO (TypeScript, não o LLM) ─────────────────────
+// O LLM errava a conta; aqui a matemática é fixa e auditável. As faixas são as
+// do briefing Marcelo 05/07 (5.1). Preço-âncora do banco = 217 (NÃO 197).
+const QCRV_PRICE_ANCHOR = 217;
+
+/** Resultado do score determinístico — vira FATO no prompt e estado no lead. */
+type QcrRota = 'oferta_piloto' | 'aprofundar' | 'essencial';
+interface QcrScore {
+  score: number;          // 0-100 (soma das dimensões pontuadas)
+  provisorio: boolean;    // true quando falta carteira OU ticket (D1 incompleta)
+  rota: QcrRota;          // sugestão de OFERTA (nunca aceite/rejeite — "pagou é cliente")
+  pr: number | null;      // Potencial de Receita mensal estimado (R$)
+  r: number | null;       // razão PR ÷ preço-âncora (quantas mensalidades a carteira paga)
+}
+
+/**
+ * computeQcrScore — pontuação determinística a partir dos FATOS CRUS extraídos.
+ *
+ *   PR (Potencial de Receita) = num_clientes × ticket_medio × 0.35
+ *   R                          = PR ÷ 217 (preço-âncora do banco)
+ *
+ *   D1 Potencial (0-50): R>=5→50 · 3-5→40 · 1.5-3→25 · <1.5→10.
+ *       Sem num_clientes OU sem ticket → provisorio=true e D1=10 (parcial, não
+ *       decide rota — a Duda ainda precisa descobrir carteira/ticket).
+ *   D2 Tempo    (0-20): >=24m→20 · 8-24→15 · 3-8→8 · <3→3 (0 se desconhecido).
+ *   D3 Recorrência (0-15): por sub_vertical (map de dias): cílios/unhas/podologia
+ *       (ciclo <=30d) →15 · sobrancelha/estética/salão (30-60d) →10 · eventual →5
+ *       (0 se sub_vertical desconhecido).
+ *   D4 Dor      (0-15): heurística por nº de dor_flags detectados: >=3→15 · 2→10
+ *       · 1→5 · 0→0.
+ *
+ * Rota (sugestão de OFERTA, jamais gate de aceite): score>=70 & !provisorio →
+ * 'oferta_piloto' (carteira robusta, convém o Piloto Fundadora); 40-69 OU
+ * provisório → 'aprofundar' (falta dado/valor — a Duda cava mais / a Bia mostra
+ * valor); <40 → 'essencial' (carteira pequena/começando → plano de entrada com a
+ * conta honesta, convite pro Piloto quando crescer). NUNCA rejeita a venda.
+ */
+function computeQcrScore(facts: {
+  num_clientes?: number | null;
+  ticket_medio?: number | null;
+  tempo_atendimento_meses?: number | null;
+  sub_vertical?: string | null;
+  dor_flags?: unknown;
+}): QcrScore {
+  const numClientes = toNum(facts.num_clientes ?? null);
+  const ticket = toNum(facts.ticket_medio ?? null);
+  const tempoMeses = toNum(facts.tempo_atendimento_meses ?? null);
+  const subVertical = typeof facts.sub_vertical === 'string' ? facts.sub_vertical.toLowerCase() : '';
+  const dorFlags = Array.isArray(facts.dor_flags)
+    ? facts.dor_flags.filter((f) => typeof f === 'string' && f.trim().length > 0)
+    : [];
+
+  // ── D1 Potencial (0-50) — depende de PR/R; provisório se faltar carteira/ticket.
+  const haveCore = numClientes != null && numClientes > 0 && ticket != null && ticket > 0;
+  let pr: number | null = null;
+  let r: number | null = null;
+  let d1 = 10; // parcial por padrão (sem base → não decide rota)
+  const provisorio = !haveCore;
+  if (haveCore) {
+    pr = (numClientes as number) * (ticket as number) * 0.35;
+    r = pr / QCRV_PRICE_ANCHOR;
+    if (r >= 5) d1 = 50;
+    else if (r >= 3) d1 = 40;
+    else if (r >= 1.5) d1 = 25;
+    else d1 = 10;
+  }
+
+  // ── D2 Tempo de atendimento (0-20).
+  let d2 = 0;
+  if (tempoMeses != null) {
+    if (tempoMeses >= 24) d2 = 20;
+    else if (tempoMeses >= 8) d2 = 15;
+    else if (tempoMeses >= 3) d2 = 8;
+    else d2 = 3; // <3 meses ainda pontua (começando, mas já atende)
+  }
+
+  // ── D3 Recorrência por sub_vertical → ciclo de retorno em dias (0-15).
+  const d3 = recurrenceScoreForSubVertical(subVertical);
+
+  // ── D4 Dor (0-15) por nº de flags de dor detectados na extração.
+  let d4 = 0;
+  if (dorFlags.length >= 3) d4 = 15;
+  else if (dorFlags.length === 2) d4 = 10;
+  else if (dorFlags.length === 1) d4 = 5;
+
+  const score = d1 + d2 + d3 + d4;
+
+  // Rota: sugestão de OFERTA (nunca aceite/rejeite). Provisório nunca vai direto
+  // pro 'oferta_piloto' (falta a conta da carteira) — cai em 'aprofundar'.
+  let rota: QcrRota;
+  if (!provisorio && score >= 70) rota = 'oferta_piloto';
+  else if (score >= 40 || provisorio) rota = 'aprofundar';
+  else rota = 'essencial';
+
+  return {
+    score: Math.max(0, Math.min(100, Math.round(score))),
+    provisorio,
+    rota,
+    pr: pr != null ? Math.round(pr) : null,
+    r: r != null ? Math.round(r * 100) / 100 : null,
+  };
+}
+
+/**
+ * D3 Recorrência: mapeia o sub_vertical ao ciclo de retorno típico (dias) e daí à
+ * pontuação. Ciclo curto = mais recorrência = mais LTV. Match por palavra-chave
+ * (o LLM devolve texto livre em sub_vertical). Desconhecido → 0.
+ */
+function recurrenceScoreForSubVertical(subVertical: string): number {
+  if (!subVertical) return 0;
+  const s = subVertical;
+  const has = (...keys: string[]) => keys.some((k) => s.includes(k));
+  // Ciclo <=30d (retorno mensal ou menos): cílios, unhas, podologia.
+  if (has('cilio', 'cílio', 'lash', 'unha', 'nail', 'manicure', 'pedicure', 'podolog')) return 15;
+  // Ciclo 30-60d: sobrancelha/design, estética, salão/cabelo/maquiagem.
+  if (has('sobrancelha', 'brow', 'design', 'estetic', 'estét', 'salao', 'salão', 'cabelo', 'hair', 'maquiagem', 'make', 'depila')) return 10;
+  // Eventual/pontual (baixa recorrência).
+  if (has('eventual', 'pontual', 'noiva', 'evento', 'festa')) return 5;
+  return 0; // não reconhecido — não pontua (a Duda ainda descobre a área)
 }
 
 Deno.serve(async (req) => {
@@ -678,15 +840,21 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
 - Use o nome do cliente quando souber. Nunca repergunte o que já está em "O QUE JÁ SABEMOS DA LEAD".
 - Sempre avance a conversa (qualifique ou proponha próximo passo).`;
 
-    // 10) LLM: gateway da casa. Task fixa o modelo (default gemini-2.5-flash,
-    //     override AI_SALES_BRAIN_MODEL) — mesmo transporte do sales-copilot.
+    // 10) LLM: gateway da casa. Modelo resolvido POR-PERSONA: a Bia (closer) roda
+    //     num modelo mais forte via AI_SALES_BRAIN_MODEL_CLOSER (fallback →
+    //     AI_SALES_BRAIN_MODEL → DEFAULT_MODEL); a Duda usa AI_SALES_BRAIN_MODEL
+    //     (default gemini-2.5-flash). Mesmo transporte do sales-copilot. O modelo
+    //     efetivo volta no metadata da resposta (campo `model`).
     const apiKey = Deno.env.get('AI_API_KEY') ?? '';
     if (!apiKey) {
       console.error('[platform-sales-brain] AI_API_KEY não configurada.');
       return json({ error: 'AI_API_KEY não configurada na plataforma.' }, 500);
     }
     const gatewayBase = (Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
-    const model = Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL;
+    const model = personaIsCloser
+      ? (Deno.env.get('AI_SALES_BRAIN_MODEL_CLOSER') ?? Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL)
+      : (Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL);
+    console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : 'outra'}`);
 
     const response = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
@@ -780,7 +948,11 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     const total = bubbles.length;
     let anyDelivered = false;
     let lastDeliveryError: string | null = null;
-    const currentScore = (lead?.metadata as any)?.qualificacao?.score_0_100 ?? null;
+    // Score/rota do turno ANTERIOR (o que a Duda USOU para conduzir esta resposta).
+    // O score deste turno é computado depois, no bloco 13, sobre os fatos novos.
+    const currentQual = (lead?.metadata as any)?.qualificacao ?? {};
+    const currentScore = typeof currentQual.score_0_100 === 'number' ? currentQual.score_0_100 : null;
+    const currentRota = typeof currentQual.rota === 'string' ? currentQual.rota : null;
 
     for (let i = 0; i < total; i++) {
       const bubbleText = bubbles[i];
@@ -788,6 +960,7 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         channel: 'whatsapp_cloud',
         agent_id: persona.id,
         score: currentScore,
+        rota: currentRota,
         debounce_waited_ms: debounceWaitedMs,
         sanitized,
         bubble_n: i + 1,
@@ -872,15 +1045,25 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         const ticket = toNum(facts.ticket_medio);
         const recorrencia = typeof facts.recorrencia === 'string' ? facts.recorrencia.trim() || null : null;
         const nomeLead = typeof facts.nome_lead === 'string' ? facts.nome_lead.trim() || null : null;
-        newScore = toNum(facts.score_0_100);
+        // dor_flags CRUS: união com os já conhecidos (a lead pode revelar dor aos poucos).
+        const newDorFlags = Array.isArray(facts.dor_flags)
+          ? facts.dor_flags.filter((f: unknown) => typeof f === 'string' && (f as string).trim().length > 0).map((f: string) => f.trim())
+          : [];
 
         // Estado anterior (para detectar mudança de faixa) e merge conservador.
         const prevMeta = (lead.metadata && typeof lead.metadata === 'object') ? lead.metadata as Record<string, any> : {};
         const prevQual = (prevMeta.qualificacao && typeof prevMeta.qualificacao === 'object') ? prevMeta.qualificacao as Record<string, any> : {};
         const prevScore = toNum(prevQual.score_0_100);
         const prevTemp = scoreToTemperature(prevScore);
+        const prevDorFlags = Array.isArray(prevQual.dor_flags)
+          ? prevQual.dor_flags.filter((f: unknown) => typeof f === 'string') as string[] : [];
+        // União case-insensitive das dores (acumula sem duplicar).
+        const mergedDorFlags = Array.from(
+          new Map([...prevDorFlags, ...newDorFlags].map((f) => [f.toLowerCase(), f])).values(),
+        );
 
         // Merge: só sobrescreve o que a extração descobriu (não apaga o já sabido).
+        // Os FATOS CRUS acumulados alimentam o score determinístico logo abaixo.
         const mergedQual: Record<string, any> = {
           ...prevQual,
           ...(subVertical != null ? { sub_vertical: subVertical } : {}),
@@ -889,10 +1072,20 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
           ...(ticket != null ? { ticket_medio: ticket } : {}),
           ...(recorrencia != null ? { recorrencia } : {}),
           ...(nomeLead != null ? { nome_lead: nomeLead } : {}),
-          ...(newScore != null ? { score_0_100: newScore } : {}),
+          dor_flags: mergedDorFlags,
           updated_at: new Date().toISOString(),
         };
-        const effScore = newScore ?? prevScore;
+
+        // SCORE QCR-V DETERMINÍSTICO (TS) sobre o estado ACUMULADO — não o chute do
+        // LLM. Completa PR mesmo quando carteira e ticket vieram em turnos diferentes.
+        const qcr = computeQcrScore(mergedQual);
+        mergedQual.score_0_100 = qcr.score;
+        mergedQual.score_provisorio = qcr.provisorio;
+        mergedQual.rota = qcr.rota;
+        mergedQual.pr = qcr.pr;
+        mergedQual.r = qcr.r;
+        newScore = qcr.score;
+        const effScore = newScore;
         const newTemp = scoreToTemperature(effScore);
 
         // bant_* derivados (conforme briefing): budget = carteira+ticket,
@@ -932,7 +1125,8 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         const faixaMudou = prevTemp !== newTemp && newTemp != null;
         const systemAuthor = Deno.env.get('AI_SYSTEM_AUTHOR_ID') ?? '';
         if (faixaMudou && systemAuthor) {
-          const resumo = `[Qualificação Duda] Score ${effScore}/100 (${prevTemp ?? 'novo'} → ${newTemp}). ` +
+          const resumo = `[Qualificação Duda] Score ${effScore}/100${qcr.provisorio ? ' (provisório)' : ''} ` +
+            `(${prevTemp ?? 'novo'} → ${newTemp}) · rota ${qcr.rota}${qcr.pr != null ? ` · PR ~R$${qcr.pr}` : ''}. ` +
             `Área: ${mergedQual.sub_vertical ?? '?'} · carteira ~${mergedQual.num_clientes ?? '?'} · ` +
             `ticket ~R$${mergedQual.ticket_medio ?? '?'} · tempo ~${mergedQual.tempo_atendimento_meses ?? '?'}m.`;
           const { error: noteErr } = await supabase.from('platform_crm_lead_notes').insert({
