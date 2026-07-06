@@ -58,9 +58,22 @@ import {
   Clock,
   Package,
 } from 'lucide-react';
+import { isGrupoCrmHost } from '@/lib/publicUrl';
 
 // ─── Module IDs ─────────────────────────────────────────────
 export type PlatformModuleId = 'erp' | 'vendas';
+
+// ─── Default de módulo derivado do HOST ─────────────────────
+// O gestao.* é a MESMA shell nos dois TLDs; só muda o módulo que abre por
+// default: gestao.nexvy.tech (CRM do grupo multiproduto) → `vendas`;
+// gestao.nexvybeauty.com.br (produto Beauty) → `erp`. O switcher continua livre
+// e a escolha explícita do usuário (localStorage, por-origem) prevalece sobre
+// este default — host define o PONTO DE PARTIDA, não força o módulo.
+export function defaultModuleForHost(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): PlatformModuleId {
+  return isGrupoCrmHost(hostname) ? 'vendas' : 'erp';
+}
 
 // ─── Nav item (uma entrada de menu dentro de um módulo) ─────
 export interface PlatformNavItem {
