@@ -25,8 +25,9 @@ Duas frentes de redesign **no ar e verificadas** por computed-style: **gestao.ne
 | **`0da479d7-0c89-4455-9d9e-5506e1f46eae`** | 70 MB | 07-06 05:28 | Recuperação "Cinza Nardo" + geração da paleta **Beauty Rosé** | Rosé |
 | `b58002ed-d7b0-432d-9ac0-69392b2cb91b` | 16 MB | 07-06 05:26 | (auxiliar — sessão paralela, provável deploy) | — |
 
-Caminho completo de cada um: `~/.claude/projects/-Users-marcelosilva-Projects-GitHub/<ID>.jsonl`
-Arquivamento Notion desta sessão (marco 0): `https://notion.so/39519a77ca338116ae5ac525d57498a8`
+**Transcrição completa desta sessão (LER para tudo que fizemos e falamos):**
+`~/.claude/projects/-Users-marcelosilva-Projects-GitHub/75021603-32bd-46de-8930-fdc4cfd342a4.jsonl` (72M, transcript **ao vivo** — completo até a nova sessão abrir). Caminho das demais: mesma pasta, `<ID>.jsonl` — a tabela completa (com o tronco `986d864f`) está no [handoff-mestre §1](HANDOFF-REESTRUTURACAO-NEXVYBEAUTY-2026-07-06.md#1--sessões--contas-envolvidas-a-reestruturação-foi-multi-conta).
+Arquivamento Notion desta sessão (marco 0): `https://notion.so/39519a77ca338116ae5ac525d57498a8` (anexo `.gz` do transcript é feito no SessionEnd).
 
 ---
 
