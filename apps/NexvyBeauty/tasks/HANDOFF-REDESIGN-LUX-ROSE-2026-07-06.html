@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handoff — Redesign Lux + Rosé + Autopilot · NexvyBeauty · 2026-07-06</title>
+<style>
+  :root{
+    --bg:#0e0f13; --panel:#161821; --panel2:#1c1f2b; --line:#2a2e3d;
+    --ink:#e8e9ee; --muted:#9aa0b4; --navy:#5b7bd6; --gold:#c9a24a;
+    --rose:#c54b60; --wine:#8c041d; --green:#4caf7d; --amber:#d9a851; --red:#e06a6a;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:15px}
+  .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;
+     background:linear-gradient(120deg,var(--navy),var(--gold));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 4px}
+  h2{font-size:20px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:16px;margin:22px 0 8px;color:var(--gold)}
+  p{margin:10px 0}
+  a{color:var(--navy);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:var(--mono);background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12.5px;color:#d7c99a}
+  .tldr{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:16px 20px;margin:16px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;overflow:hidden;border-radius:10px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:var(--ink);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  td{color:var(--muted)} td strong{color:var(--ink)}
+  .tbl-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .ok{color:var(--green);font-weight:600} .todo{color:var(--amber);font-weight:600} .warn{color:var(--red);font-weight:600}
+  pre{background:#0a0b0f;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#cdd3e0}
+  ul{margin:10px 0;padding-left:22px} li{margin:6px 0;color:var(--muted)} li strong{color:var(--ink)}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;margin-right:4px}
+  .pill-navy{background:rgba(91,123,214,.16);color:var(--navy)} .pill-rose{background:rgba(197,75,96,.16);color:#e08196}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:5px;border:1px solid rgba(255,255,255,.12)}
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:10px;padding:14px 18px;margin:14px 0}
+  hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Handoff — Redesign Nexvy Lux + Beauty Rosé + Autopilot</h1>
+  <p class="sub">Documento de transferência para redisparar em sessão nova (conta paralela, Fable 5) · 2026-07-06</p>
+  <p class="sub">Repo <code>github.com/mfalcao09/SaasPlugin_vite</code> · app <code>apps/NexvyBeauty/</code> · autor: sessão <code>75021603</code> (Opus 4.8)</p>
+
+  <div class="tldr">
+    <strong>TL;DR —</strong> Duas frentes <span class="ok">no ar e verificadas</span> por computed-style:
+    <span class="pill pill-navy"><span class="swatch" style="background:#213156"></span>gestao.nexvy.tech = Nexvy Lux</span>
+    (navy <code>#213156</code> + dourado, L1+L2+L3, 5 telas P1) e
+    <span class="pill pill-rose"><span class="swatch" style="background:#c54b60"></span>app.nexvybeauty.com.br = Beauty Rosé</span>
+    (primary <code>#c54b60</code>, sidebar vinho <code>#8c041d</code>, creme <code>#faf7f2</code>) — saiu o rosa chapado <code>#EC4899</code>.
+    Fundo decorativo removido do gestao. Autopilot Duda→Bia no ar (evals 12/12). Bundle único <code>DcPLkMzY</code>, commit <code>5e0e36c</code>, árvore limpa.
+    <strong>Falta:</strong> onda <span class="todo">L4</span> (varredura P2+P3), atribuição Cakto (1 pagamento-teste), revisão adversarial (Fable ficou sem crédito).
+  </div>
+
+  <h2>1 · Sessões envolvidas (JSONLs no disco)</h2>
+  <p class="sub">Base: <code>~/.claude/projects/-Users-marcelosilva-Projects-GitHub/&lt;ID&gt;.jsonl</code> — arquivos locais, acessíveis por qualquer conta na mesma máquina.</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>Sessão (ID)</th><th>Tam.</th><th>mtime</th><th>Papel</th></tr>
+    <tr><td><strong><code>75021603-32bd-46de-8930-fdc4cfd342a4</code></strong></td><td>70 MB</td><td>07-06 05:33</td><td><strong>ESTA</strong> — aplicou Lux L3 + Rosé no código, commit <code>5e0e36c</code>, índice de memória</td></tr>
+    <tr><td><strong><code>22085aba-3283-4933-8ff6-77f4dcb7153e</code></strong></td><td>147 MB</td><td>07-06 04:54</td><td>Nexvy Lux (design system) + azul institucional + preço fonte-única</td></tr>
+    <tr><td><strong><code>0da479d7-0c89-4455-9d9e-5506e1f46eae</code></strong></td><td>70 MB</td><td>07-06 05:28</td><td>Recuperação "Cinza Nardo" + geração da paleta Beauty Rosé</td></tr>
+    <tr><td><code>b58002ed-d7b0-432d-9ac0-69392b2cb91b</code></td><td>16 MB</td><td>07-06 05:26</td><td>(auxiliar — sessão paralela, provável deploy)</td></tr>
+  </table></div>
+  <p>Arquivamento Notion desta sessão (marco 0): <a href="https://notion.so/39519a77ca338116ae5ac525d57498a8">notion.so/39519a77ca338116ae5ac525d57498a8</a></p>
+
+  <h2>2 · Decisões travadas (não reabrir sem pedido explícito)</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>#</th><th>Decisão</th><th>Verbatim / fonte</th></tr>
+    <tr><td><strong>D1</strong></td><td><strong>Nexvy Lux</strong> = design system do gestao. Claro default (navy+dourado ocre), dark cinza-automotivo, <strong>zero azul</strong>. SF Pro + sombras multicamada.</td><td>"Essa última versão está aprovada... <strong>Deve ficar igual!</strong>"</td></tr>
+    <tr><td><strong>D2</strong></td><td><strong>Beauty Rosé</strong> = paleta do app.*. Mesclado rosé/terracota/creme + âncora vinho. <strong>Estrutura (menus/telas/fluxos) INTOCADA.</strong></td><td>"Está aprovado. <strong>Quero igual, respeitada a estrutura de organização</strong>"</td></tr>
+    <tr><td><strong>D3</strong></td><td><strong>Preço = fonte única no DB.</strong> Personas nunca guardam número; brain injeta de <code>public_plans</code>. Banco 217/387/687.</td><td>"uma regra que prevalece o DB, sempre"</td></tr>
+    <tr><td><strong>D4</strong></td><td><strong>Branding host-aware.</strong> gestao nunca herda cor do tenant; app usa CSS exato quando marca-padrão (<code>isBrandDefault</code>). <strong>Inline &gt; CSS.</strong></td><td>lição após 3 deploys errados</td></tr>
+    <tr><td><strong>D5</strong></td><td><strong>Roteamento:</strong> Fable orquestra; Opus executa (spec detalhada); Sonnet mecânico; revisão/síntese = Fable.</td><td>permanente</td></tr>
+    <tr><td><strong>D6</strong></td><td><strong>Teto:</strong> máx 10–12 tarefas paralelas (Mac trava acima); 1 workflow por vez.</td><td>permanente</td></tr>
+    <tr><td><strong>D7</strong></td><td><strong>Gate de qualidade:</strong> "é o melhor resultado?"; verificação com prova (computed==REF), nunca "aterrissou".</td><td>permanente</td></tr>
+  </table></div>
+  <div class="note">⚠️ <strong>Supersessão:</strong> o azul institucional <code>#0A52D1</code> foi <strong>SUPERSEDIDO</strong> pelo Nexvy Lux (D1). Sobrevive a <strong>infra host-aware</strong> (D4), não a cor.</div>
+
+  <h2>3 · Planejado → Realizado → Falta</h2>
+  <h3>3.1 Ondas Lux (gestao) · fonte <code>tasks/PLANO-REDESIGN-LUX-GESTAO-2026-07-06.md</code></h3>
+  <div class="tbl-wrap"><table>
+    <tr><th>Onda</th><th>Escopo</th><th>Status</th><th>Prova</th></tr>
+    <tr><td><strong>L1 · Fundação</strong></td><td>Tokens Lux em <code>:root.theme-nexvy-institucional</code> + <code>.dark</code> + utilities</td><td class="ok">✅ no ar</td><td>computed <code>--primary #213156</code></td></tr>
+    <tr><td><strong>L2 · Pipeline</strong></td><td>Tela exemplar (Pipeline/Kanban) na anatomia lux</td><td class="ok">✅ no ar</td><td>bundle <code>DcPLkMzY</code></td></tr>
+    <tr><td><strong>L3 · P1 (5 telas)</strong></td><td>Leads, Painel, Radar IA, Follow-Up, Dashboard (37 arquivos)</td><td class="ok">✅ no ar</td><td><code>tsc</code> limpo + computed==REF</td></tr>
+    <tr><td><strong>L4 · Varredura</strong></td><td>P2 (18 telas) + P3 (29) por família · limpeza <code>text-pink-500</code> · TEMPLATE-UI-GESTAO_v2 · rubric-visual v2</td><td class="todo">🔲 FALTA</td><td>grep sem rosa hardcode + evals visuais</td></tr>
+  </table></div>
+
+  <h3>3.2 Beauty Rosé (app) · fonte <code>tasks/rose-reference/lovable-styles-aprovado.css</code></h3>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>Status</th><th>Prova</th></tr>
+    <tr><td><code>:root</code>/<code>.dark</code> convertidos hex→HSL (Δ=0)</td><td class="ok">✅</td><td>computed <code>--primary #c54b60</code></td></tr>
+    <tr><td>Sidebar vinho <code>#8c041d</code> via guard <code>isBrandDefault</code></td><td class="ok">✅</td><td>computed <code>--sidebar-primary #8c041d</code></td></tr>
+    <tr><td>Fundo creme <code>#faf7f2</code> + accent <code>#f2dfd5</code></td><td class="ok">✅</td><td>computed == REF</td></tr>
+    <tr><td><code>brand.ts</code> #EC4899→#C54B60; DB <code>platform_settings</code></td><td class="ok">✅</td><td><code>primary_color=#C54B60</code>, <code>accent_color=#F2DFD5</code></td></tr>
+    <tr><td>utilities <code>.bg-signature</code>/<code>.text-signature</code>/<code>.shadow-premium</code></td><td class="ok">✅</td><td>no bundle</td></tr>
+  </table></div>
+
+  <h3>3.3 Outras frentes entregues</h3>
+  <ul>
+    <li><strong>Fundo do gestao limpo:</strong> <code>FooterDecoration.tsx</code> → <code>null</code> em <code>isGestaoHostname()</code>. ✅</li>
+    <li><strong>Autopilot de vendas:</strong> Duda SDR → Bia closer, revival Vendus, EF <code>platform-sales-brain</code>; evals <span class="ok">12/12 verde</span>. ✅</li>
+    <li><strong>Preço fonte-única:</strong> personas sem número; <code>resolveAnchor(plans)</code> + <code>buildCheckoutContext</code> injetam de <code>public_plans</code>. ✅</li>
+  </ul>
+
+  <h3>3.4 O que FALTA (priorizado)</h3>
+  <ul>
+    <li><strong>[Onda L4]</strong> Varredura P2 (18) + P3 (29) do gestao no padrão Lux + limpeza <code>text-pink-500</code> + <code>TEMPLATE-UI-GESTAO_v2</code>. <em>Continuação natural; D1 aprovado, L1–L3 no ar.</em></li>
+    <li><strong>[Atribuição Cakto]</strong> Reconciliar slug do brain (<code>"duda-sdr"</code> vs ref <code>"duda"</code>) + 1 pagamento-teste p/ confirmar o campo Cakto do <code>?src=</code>. Código no workflow <code>wqkcbsgp4</code>, <span class="warn">não deployado</span>.</li>
+    <li><strong>[Revisão adversarial]</strong> Par revisor Fable ficou <span class="warn">sem crédito</span>. Rodou só o gate objetivo (tsc, grep não-regressão, computed==REF). Falta julgamento tela-a-tela.</li>
+  </ul>
+
+  <h2>4 · Status no sistema (produção)</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>Valor</th></tr>
+    <tr><td><strong>Bundle no ar</strong></td><td><code>DcPLkMzY</code> — DEPLOY-VERDE (hash servido == hash da imagem)</td></tr>
+    <tr><td><strong>Container</strong></td><td><code>nexvy-beauty</code> (svc <code>nexvy-beauty-svc</code>) — 1 container serve os 3 hosts</td></tr>
+    <tr><td><strong>Hosts</strong></td><td><code>app.nexvybeauty.com.br</code> (Rosé) · <code>gestao.nexvy.tech</code> (Lux, via <code>/opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml</code>) · apex/LP</td></tr>
+    <tr><td><strong>Supabase</strong></td><td>projeto <code>fzhlbwhdejumkyqosuvq</code> · <code>platform_settings.primary_color='#C54B60'</code>, <code>accent_color='#F2DFD5'</code></td></tr>
+    <tr><td><strong>Edge Function</strong></td><td><code>platform-sales-brain</code> deployada</td></tr>
+    <tr><td><strong>Deploy</strong></td><td><code>rsync -az --delete ... vps-hostinger:/opt/stacks/saasplugin-vite/</code> → <code>ssh vps-hostinger "cd ... &amp;&amp; bash infra/deploy-vps.sh NexvyBeauty nexvy-beauty nexvybeauty.com.br"</code></td></tr>
+    <tr><td><strong>Prova (app)</strong></td><td>computed: <code>primary #c54b60</code>, <code>sidebar #8c041d</code>, <code>bg #faf7f2</code>, <code>accent #f2dfd5</code>, inline vazio (CSS manda)</td></tr>
+    <tr><td><strong>Prova (gestao)</strong></td><td>tema LUX ativo, <code>--primary #213156</code> navy nas 5 telas P1</td></tr>
+  </table></div>
+
+  <h2>5 · Status no repositório</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>Valor</th></tr>
+    <tr><td><strong>HEAD</strong></td><td><code>5e0e36c</code> feat(beauty/redesign): Lux L3 no gestao + Beauty Rosé no app + fundo gestao limpo</td></tr>
+    <tr><td><strong>Branch / árvore</strong></td><td><code>main</code> · working tree <strong>limpa</strong></td></tr>
+    <tr><td><strong>Commits recentes</strong></td><td><code>5e0e36c</code> (L3+Rosé) · <code>125ebbe</code> (Lux L1/L2) · <code>ec8966c</code> (azul→superseded) · <code>b349da4</code> (go-live+preço+evals)</td></tr>
+  </table></div>
+
+  <h3>Arquivos-fonte canônicos (onde mexer na L4)</h3>
+  <div class="tbl-wrap"><table>
+    <tr><th>Arquivo</th><th>Papel</th></tr>
+    <tr><td><code>src/index.css</code></td><td>3 temas: Rosé (<code>:root</code>/<code>.dark</code>) · Lux (<code>:root.theme-nexvy-institucional</code>+<code>.dark</code>) · admin (<code>.master-theme</code>)</td></tr>
+    <tr><td><code>src/hooks/usePlatformBranding.ts</code></td><td>Guards <code>isGestao</code> + <code>isBrandDefault</code>. Inline &gt; CSS</td></tr>
+    <tr><td><code>src/main.tsx</code></td><td>Aplica <code>theme-nexvy-institucional</code> antes do 1º paint</td></tr>
+    <tr><td><code>src/lib/publicUrl.ts</code></td><td><code>isGestaoHostname()</code> = <code>hostname.startsWith('gestao.')</code></td></tr>
+    <tr><td><code>src/components/layout/FooterDecoration.tsx</code></td><td><code>return null</code> em gestao</td></tr>
+    <tr><td><code>src/config/brand.ts</code></td><td><code>primaryColor #C54B60</code>, <code>primaryHsl 349.7 51.3% 53.3%</code></td></tr>
+    <tr><td><code>src/components/superadmin/crm/**</code></td><td>P1 já Lux (L3). P2/P3 = alvo da L4</td></tr>
+  </table></div>
+
+  <h3>Referências de design (verbatim — fonte-de-verdade da cor)</h3>
+  <div class="tbl-wrap"><table>
+    <tr><th>Arquivo</th><th>Origem Lovable</th></tr>
+    <tr><td><code>tasks/lux-reference/lovable-styles-aprovado.css</code></td><td>projeto <code>b703093e</code> @ commit <code>86d61a7</code></td></tr>
+    <tr><td><code>tasks/rose-reference/lovable-styles-aprovado.css</code></td><td>projeto <code>46463c3b</code> @ commit <code>623c35f</code></td></tr>
+    <tr><td><code>tasks/PLANO-REDESIGN-LUX-GESTAO-2026-07-06.md</code></td><td>plano das 4 ondas</td></tr>
+    <tr><td><code>tasks/TEMPLATE-UI-GESTAO-2026-07-05.md</code></td><td>template de anatomia de tela (→ <code>_v2</code> na L4)</td></tr>
+  </table></div>
+
+  <h3>Memórias duráveis</h3>
+  <p class="sub">em <code>~/.claude/projects/-Users-marcelosilva-Projects-GitHub/memory/</code> — indexadas em <code>MEMORY.md</code>:</p>
+  <p><code>decision_nexvy_lux_design_system_gestao_2026-07-06</code> · <code>decision_beauty_rose_app_2026-07-06</code> · <code>feedback_preco_fonte_unica_db_playbook_2026-07-05</code> · <code>feedback_tema_orfao_host_aware_gestao_azul_2026-07-05</code> · <code>feedback_roteamento_modelos_orquestrador_fable_2026-07-05</code></p>
+
+  <h2>6 · Tradução Lovable → repo (não quebrar a cor)</h2>
+  <ul>
+    <li><strong>Lovable = Tailwind 4</strong> (oklch, <code>@theme</code>/<code>@utility</code>); <strong>repo = Tailwind 3 + shadcn</strong> (<code>hsl(var(--primary))</code>).</li>
+    <li>Tokens shadcn: oklch→HSL (roundtrip Δ≤1/255). Tokens custom (<code>--gold</code>, <code>--gradient-*</code>, <code>--shadow-*</code>): manter oklch verbatim. Utilities: <code>@layer components</code>.</li>
+    <li>Gráficos: só a série 0 vira <code>hsl(var(--primary))</code>; demais mantêm cor-dado.</li>
+    <li><strong>Nunca</strong> aproximar cor a olho — sempre computed-style contra o REF.</li>
+  </ul>
+
+  <h2>7 · Como retomar (roteiro padrão)</h2>
+  <ul>
+    <li><strong>Plan Mode</strong> — plano da L4 em <code>tasks/todo.md</code>, checks binários por família (P2 → P3).</li>
+    <li><strong>Subagentes</strong> (Opus executa, spec detalhada; teto 10–12; 1 workflow por vez): 1 por família + REF <code>lux-reference</code> + arquivo-alvo.</li>
+    <li><strong>Verificação com prova</strong> — <code>tsc</code> limpo + grep sem rosa hardcode + computed navy no ar. ✅ só com prova.</li>
+    <li><strong>Revisão</strong> — Fable adversarial tela-a-tela; sem crédito → gate objetivo + Opus-only.</li>
+    <li><strong>Deploy</strong> — comando §4, confirmar DEPLOY-VERDE.</li>
+    <li><strong>Commit</strong> — <code>feat(beauty/gestao-lux): L4 varredura P2/P3 ...</code> em <code>main</code>.</li>
+  </ul>
+
+  <h2>8 · Prompt de lançamento (colar na sessão nova, Fable 5)</h2>
+  <pre>Contexto: continuo o redesign do NexvyBeauty (repo github.com/mfalcao09/SaasPlugin_vite,
+app apps/NexvyBeauty/, branch main, árvore limpa em 5e0e36c). Leia primeiro o handoff completo:
+apps/NexvyBeauty/tasks/HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md — e as memórias
+decision_nexvy_lux_design_system_gestao_2026-07-06 + decision_beauty_rose_app_2026-07-06.
+
+Estado: gestao.nexvy.tech já está com o Nexvy Lux (ondas L1+L2+L3, 5 telas P1) e
+app.nexvybeauty.com.br com Beauty Rosé — ambos NO AR e verificados (bundle DcPLkMzY).
+Decisões travadas (D1 Lux "deve ficar igual", D2 Rosé "estrutura intocada", D3 preço=DB,
+D4 host-aware/inline&gt;CSS, D5 Fable orquestra/Opus executa, D6 teto 10-12 paralelos + 1 workflow,
+D7 verificação com prova computed==REF) — NÃO reabrir.
+
+Tarefa: executar a ONDA L4 do plano (tasks/PLANO-REDESIGN-LUX-GESTAO-2026-07-06.md):
+varredura das telas P2 (18) + P3 (29) do gestao para o padrão Lux, usando como fonte-de-verdade
+tasks/lux-reference/lovable-styles-aprovado.css; limpar text-pink-500 hardcoded no superadmin;
+gerar TEMPLATE-UI-GESTAO_v2. Roteiro padrão: Plan Mode em tasks/todo.md com checks binários por
+família → subagentes Opus (1 por família, teto 10-12) → verificação com prova (tsc limpo +
+grep sem rosa hardcode + computed navy #213156 no ar) → Fable revisa adversarial → deploy
+(rsync + ssh vps-hostinger + deploy-vps.sh) confirmando DEPLOY-VERDE → commit em main.
+
+Em paralelo (se couber no teto): finalizar atribuição Cakto (reconciliar slug duda-sdr vs
+ref duda; código no workflow wqkcbsgp4, não deployado; precisa de 1 pagamento-teste p/ confirmar
+o campo). Regra: nada "pronto" sem prova de funcionamento.</pre>
+
+  <h2>9 · Ressalva honesta (o que NÃO foi feito)</h2>
+  <div class="note">
+    <ul style="margin:0">
+      <li>A <strong>revisão adversarial</strong> tela-a-tela (L3 Lux + Rosé) <strong>não rodou</strong> — Fable sem crédito. Rodou o gate objetivo (tsc baseline, grep não-regressão, computed==REF): confirma fidelidade de cor e ausência de regressão, mas não substitui julgamento visual por tela. Rodar na conta Fable antes de considerar L1–L3 "auditadas".</li>
+      <li>A <strong>atribuição Cakto</strong> tem código mas <strong>não foi provada end-to-end</strong> (falta 1 pagamento-teste). Não marcar como pronta.</li>
+    </ul>
+  </div>
+
+  <hr>
+  <p class="sub">Gerado por sessão <code>75021603</code> · 2026-07-06 · par <code>.md</code> + <code>.html</code> (convenção CLAUDE.md §4)</p>
+
+</div>
+</body>
+</html>

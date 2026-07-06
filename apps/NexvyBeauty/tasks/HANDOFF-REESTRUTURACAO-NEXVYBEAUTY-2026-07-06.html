@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handoff-Mestre — Reestruturação NexvyBeauty (6 eixos) · 2026-07-06</title>
+<style>
+  :root{
+    --bg:#0e0f13; --panel:#161821; --panel2:#1c1f2b; --line:#2a2e3d;
+    --ink:#e8e9ee; --muted:#9aa0b4; --navy:#5b7bd6; --gold:#c9a24a;
+    --green:#4caf7d; --amber:#d9a851; --red:#e06a6a;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+  h1{font-size:29px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;
+     background:linear-gradient(120deg,var(--navy),var(--gold));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 4px}
+  h2{font-size:20px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:16px;margin:22px 0 8px;color:var(--gold)}
+  p{margin:10px 0}
+  a{color:var(--navy);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:var(--mono);background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12.5px;color:#d7c99a}
+  .tldr{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:16px 20px;margin:16px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;overflow:hidden;border-radius:10px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:var(--ink);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  td{color:var(--muted)} td strong{color:var(--ink)}
+  .tbl-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .ok{color:var(--green);font-weight:600} .todo{color:var(--amber);font-weight:600} .warn{color:var(--red);font-weight:600}
+  pre{background:#0a0b0f;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.55;color:#cdd3e0}
+  ul{margin:10px 0;padding-left:22px} li{margin:6px 0;color:var(--muted)} li strong{color:var(--ink)}
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .d-green{background:var(--green)} .d-amber{background:var(--amber)} .d-red{background:var(--red)}
+  hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Handoff-Mestre — Reestruturação NexvyBeauty (6 eixos)</h1>
+  <p class="sub">O redesign visual é 1 de 6 eixos · para a sessão nova (conta paralela, Fable 5) · 2026-07-06</p>
+  <p class="sub">Repo <code>github.com/mfalcao09/SaasPlugin_vite</code> @ <code>main 5e0e36c</code> (sincronizado) · autor: sessão <code>75021603</code> (Opus 4.8) · deep-dive visual: <a href="HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.html">HANDOFF-REDESIGN-LUX-ROSE</a></p>
+
+  <div class="tldr">
+    <strong>TL;DR —</strong> A reestruturação tem <strong>6 eixos</strong>.
+    <span class="ok">No ar/prod:</span> confinamento multi-host (E3), preço fonte-única (E5), módulos-fixos+gating, autopilot F0–F2 (número Cloud API respondendo), Beauty Rosé (app), Nexvy Lux L1–L3 (gestao).
+    <span class="todo">Falta</span> (frentes de dias, não "deploy pendente"): <strong>EIXO 1 — pivot D3 multiproduto</strong> (gestao = CRM do grupo p/ ~10 SaaS) <strong>decidido mas NÃO executado</strong>; autopilot Onda 5/6+F4/F5/F6; Bloco B (operação da dona); L4 do Lux (16 arquivos com rosa).
+    <strong>Feito neste turno:</strong> push dos 4 commits (<code>origin/main == 5e0e36c</code>) + estes handoffs.
+    <span class="warn">Segurado:</span> Cakto (sem pagamento-teste), ERP e <code>cakto_*/affiliate_*</code> (sessão de afiliados em voo).
+  </div>
+
+  <h2>1 · Sessões / contas envolvidas (foi multi-conta)</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>originSessionId</th><th>Período</th><th>Eixos que originou</th></tr>
+    <tr><td><strong><code>986d864f-…721352</code></strong></td><td>30/06–02/07</td><td><strong>TRONCO</strong> — CRM multiproduto (D3), gestao modular CRM/ERP, multi-host, módulos-fixos+planos</td></tr>
+    <tr><td><code>22085aba-…7153e</code></td><td>05–06/07</td><td>Nexvy Lux + tema-órfão azul + preço fonte-única</td></tr>
+    <tr><td><code>0da479d7-…f46eae</code></td><td>06/07</td><td>Beauty Rosé (app.*)</td></tr>
+    <tr><td><code>b39039b0-…106779</code></td><td>05/07</td><td>SDR nunca-rejeita + roteamento Fable</td></tr>
+    <tr><td><strong><code>75021603-…d342a4</code></strong></td><td>06/07</td><td><strong>ESTA</strong> — Lux L3 + Rosé + push + estes handoffs</td></tr>
+    <tr><td><code>05dc4b38-…</code> (nota)</td><td>—</td><td>sessão/máquina COM Supabase MCP (<code>apply_migration</code>)</td></tr>
+  </table></div>
+  <p class="sub">JSONLs: <code>~/.claude/projects/-Users-marcelosilva-Projects-GitHub/&lt;ID&gt;.jsonl</code>. Evidência multi-máquina (verbatim): "Aplicação = Supabase CLI --linked (NÃO há Supabase MCP nesta máquina)".</p>
+
+  <h2>2 · Os 6 EIXOS (espinha dorsal)</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Eixo</th><th>O quê</th><th>Status</th></tr>
+    <tr><td><strong>E1 · Pivot D3 multiproduto</strong></td><td>gestao.* → <strong>CRM DO GRUPO</strong> p/ ~10 SaaS via <code>product_id</code> (não 10 ports) + migração domínio → <code>gestao.nexvy.tech</code>. Sequência: D3→domínio→LOTE L1-L13→D1(b)…D10(a)→Utmify.</td><td><span class="dot d-red"></span><span class="warn">DECIDIDO, NÃO EXECUTADO.</span> Domínio serve o bundle (200), mas a dimensão <code>product_id</code> atrás não foi implementada.</td></tr>
+    <tr><td><strong>E2 · Modular ModuleSwitcher</strong></td><td>Módulo VENDAS (Vendus Remix em <code>platform_crm_*</code>) + Módulo ERP/GESTAO. Máxima: CRM+ERP do tenant × da operação — <strong>nunca fundir a fronteira</strong>.</td><td><span class="dot d-amber"></span>Vendas portado 1:1 (motor E2E live). ERP <strong>intocado</strong>. Pendente: desacoplar <code>AffiliatesPanel</code> (sessão conjunta).</td></tr>
+    <tr><td><strong>E3 · Confinamento multi-host</strong></td><td>1 SPA → 3 hosts (app/gestao/apex). <code>HostConfinementGuard</code>; sessão por-origem.</td><td><span class="dot d-green"></span><span class="ok">EM PROD</span> (<code>f219193</code>/<code>5c3b1db</code>). Sustenta o branding host-aware do redesign.</td></tr>
+    <tr><td><strong>E4 · Autopilot Duda→Bia</strong></td><td>SDR que <strong>NUNCA rejeita venda</strong>; score roteia oferta/upsell; Duda→Bia = UPGRADE; Bia = closer forte.</td><td><span class="dot d-amber"></span><span class="ok">F0–F2 provado E2E</span> (Cloud API no ar, webhook inbound, Duda respondeu sozinha). Pendente: Onda 5/6 + F4/F5/F6.</td></tr>
+    <tr><td><strong>E5 · Preço fonte-única</strong></td><td><code>public_plans</code> = fonte; personas nunca guardam número. Vale pros ~10 SaaS.</td><td><span class="dot d-green"></span><span class="ok">EM PROD</span> (05/07). 217/387/687.</td></tr>
+    <tr><td><strong>E6 · Redesign duplo</strong></td><td>Beauty Rosé (app) + Nexvy Lux (gestao). Lux SUPERSEDE azul <code>#0A52D1</code>.</td><td><span class="dot d-green"></span>Rosé aplicado; Lux L1–L3 no ar. <span class="todo">🔲 L4 falta.</span> <em>Único eixo que o handoff de redesign cobre.</em></td></tr>
+  </table></div>
+  <p class="sub"><strong>Sub-eixos:</strong> módulos FIXOS + planos + gating (🟢 prod, <code>1fad84b</code>) · medidor v1.1 (⏸️ adiado) · canal WhatsApp da operação (🟡 dormente, aguardando QR).</p>
+
+  <h2>3 · Backlog pendente consolidado</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>Tipo</th><th>Prova de pendência</th></tr>
+    <tr><td><strong>E1 · Pivot D3</strong> (<code>product_id</code> + migração domínio)</td><td>arquitetura (dias)</td><td>memória D3 "decidido, execução pendente"</td></tr>
+    <tr><td><strong>E6 · Onda L4 do Lux</strong> (P2 18 + P3 29)</td><td>código</td><td><strong>16 arquivos</strong> em <code>src/components/superadmin/</code> ainda com <code>text-pink-500</code>/<code>#EC4899</code>; nenhum <code>_v2</code></td></tr>
+    <tr><td><strong>Atribuição Cakto por agente</strong></td><td>pagamento-teste</td><td>código no workflow <code>wqkcbsgp4</code>, <span class="warn">não deployado</span>; falta reconciliar slug (<code>duda-sdr</code> vs <code>duda</code>)</td></tr>
+    <tr><td><strong>Bloco B — operação da dona</strong></td><td>código</td><td><code>AUDITORIA-AUTOPILOT-DIA0.md</code>: B2 (slug) <strong>BLOQUEIA</strong> → <code>/s/&lt;slug&gt;</code> 404; B5/B6/B7 FALTA/PARCIAL</td></tr>
+    <tr><td><strong>F4/F5 autopilot</strong> (Cakto blindado + prova de fogo)</td><td>infra + pagamento</td><td><code>PLANO-AUTOPILOT-VENDA</code> §F4/F5 sem ✅ (F0-F2 têm ✅)</td></tr>
+    <tr><td><strong>Onda 5/6 autopilot</strong> (Bia master-closer, revival Vendus)</td><td>código</td><td>só 5.2 ✅. <em>Nota: <code>25430d2</code> sugere 5.5/QCR-V tocados, sem marca</em></td></tr>
+    <tr><td><strong>Revisão adversarial Fable</strong> (L3 + Rosé)</td><td>qualidade</td><td>só gate objetivo rodou (Fable sem crédito)</td></tr>
+    <tr><td><strong>IG/Messenger inbox</strong></td><td>código + externo</td><td><code>todo-ig-messenger-inbox.md</code> quase 100% aberto; App Review Meta = externo</td></tr>
+    <tr><td><strong>F4 lançamento — Pilotos</strong></td><td>venda humana</td><td><code>ROADMAP-LANCAMENTO-OFERTA-V3</code> F4 é HUMANO (Marcelo vende)</td></tr>
+  </table></div>
+
+  <h2>4 · Fronteiras INVIOLÁVEIS (não tocar sozinho)</h2>
+  <div class="note">
+    <ol style="margin:0;padding-left:20px">
+      <li><strong>NÃO mexer no Módulo ERP/GESTAO</strong> sem sessão conjunta (desacoplar <code>AffiliatesPanel</code> = decisão conjunta).</li>
+      <li><strong>NÃO editar <code>cakto_*</code> / <code>affiliate_*</code> / <code>cakto_credentials</code></strong> — <strong>sessão paralela de afiliados EM VOO (outra conta)</strong>. Risco de sobrescrever trabalho em andamento.</li>
+      <li><strong>NÃO iniciar E1 (D3 + migração) como "deploy do pendente"</strong> — é espinha dorsal, exige Plan Mode próprio.</li>
+      <li><strong>NÃO restaurar o azul <code>#0A52D1</code></strong> — supersedido pelo Nexvy Lux.</li>
+    </ol>
+  </div>
+
+  <h2>5 · Gotchas transversais</h2>
+  <ul>
+    <li><strong>Service Worker / PWA:</strong> <code>/sw.js</code> cacheia agressivo. Sem versionamento/<code>skipWaiting</code>, <strong>usuários reais podem não ver NENHUM deploy</strong> até o SW atualizar — invalida silenciosamente "está no ar". <code>curl</code> não usa SW (por isso vejo <code>DcPLkMzY</code>). Follow-up pendente.</li>
+    <li><strong>Liveness do Lux só objetiva:</strong> L1–L3 por computed-style + bundle, mas a revisão visual Fable <strong>não rodou</strong>. Marcar "no ar, não auditado visualmente".</li>
+  </ul>
+
+  <h2>6 · Estado no sistema + repositório</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Item</th><th>Valor</th></tr>
+    <tr><td><strong>Repo / HEAD</strong></td><td><code>main 5e0e36c</code> · <strong><code>origin/main == local</code></strong> (push feito; 0/0)</td></tr>
+    <tr><td><strong>Bundle no ar</strong></td><td><code>assets/index-DcPLkMzY.js</code> — HTTP 200 em <code>app.nexvybeauty.com.br</code> <strong>e</strong> <code>gestao.nexvy.tech</code></td></tr>
+    <tr><td><strong>Container</strong></td><td><code>nexvy-beauty</code> — 1 serve os 3 hosts; gestao via <code>/opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml</code></td></tr>
+    <tr><td><strong>Supabase</strong></td><td><code>fzhlbwhdejumkyqosuvq</code> · EFs <code>platform-meta-whatsapp-webhook</code> + <code>platform-sales-brain</code> ACTIVE · <code>primary_color='#C54B60'</code></td></tr>
+    <tr><td><strong>Deploy frontend</strong></td><td><code>rsync … vps-hostinger</code> → <code>bash infra/deploy-vps.sh NexvyBeauty nexvy-beauty nexvybeauty.com.br</code> (anti-phantom)</td></tr>
+    <tr><td><strong>Deploy EF</strong></td><td><code>supabase functions deploy &lt;fn&gt; --project-ref fzhlbwhdejumkyqosuvq</code> (brain/webchat exigem JWT — <strong>sem</strong> <code>--no-verify-jwt</code>)</td></tr>
+  </table></div>
+
+  <h2>7 · Artefatos-fonte (conferidos em disco)</h2>
+  <p><span class="ok">✅ Existem</span> (<code>apps/NexvyBeauty/tasks/</code>): <code>AUDITORIA-AUTOPILOT-DIA0.md</code> · <code>PLANO-AUTOPILOT-VENDA-2026-07-05.md</code> · <code>todo-ig-messenger-inbox.md</code> · <code>ROADMAP-LANCAMENTO-OFERTA-V3</code> · <code>ROADMAP-CONSOLIDADO-VITRINE</code> · <code>PLANO-REDESIGN-LUX-GESTAO</code> · <code>TEMPLATE-UI-GESTAO</code> · <code>lux-reference/</code> + <code>rose-reference/</code> · handoff de redesign.</p>
+  <div class="note"><span class="warn">⚠️ Citados em memória mas NÃO em disco</span> (não perseguir — conteúdo vive nas memórias): <code>tasks/d3-multiproduto/CONTRATO-DIMENSAO-PRODUTO.md</code>, <code>tasks/auditoria-portagem/*</code>, <code>docs/blueprint-super-admin-modular-*</code>, <code>docs/porte-modulo-vendas-DONE-*</code>. Para E1/E2, <strong>ler as memórias</strong> <code>project_crm_grupo_multiproduto_decisoes_2026-07-02</code> + <code>reference_nexvybeauty_gestao_modular_crm_erp_2026-07-01</code>.</div>
+
+  <h2>8 · Como retomar + decisão de sequência</h2>
+  <p><strong>Regra:</strong> cada frente com <strong>Plan Mode</strong> em <code>tasks/todo.md</code> (checks binários) → subagentes Opus (teto 10–12, 1 workflow por vez) → verificação com prova → Fable revisa → deploy DEPLOY-VERDE → commit em <code>main</code>.</p>
+  <ol>
+    <li><strong>E1 — Pivot D3</strong>: espinha dorsal decidida-não-executada, maior alavanca. Frente de dias, plano próprio (ler memória D3).</li>
+    <li><strong>E6 — L4 do Lux</strong>: polish (16 arquivos), baixo risco, paralelizável (não colide com E1).</li>
+    <li><strong>E4 — F4/F5 + Bloco B</strong>: destrava a venda real (org nasce com slug, Cakto blindado). Depende de 1 pagamento-teste.</li>
+  </ol>
+  <p class="sub">Não prescrever E1 sem confirmação — é o pivô da plataforma. L4 é o candidato natural de "paralelo" enquanto E1 é planejado.</p>
+
+  <h2>9 · Prompt de lançamento (colar na sessão nova, Fable 5)</h2>
+  <pre>Contexto: retomo a REESTRUTURAÇÃO do NexvyBeauty (não só o redesign). Repo
+github.com/mfalcao09/SaasPlugin_vite, app apps/NexvyBeauty/, branch main sincronizada em 5e0e36c.
+Leia PRIMEIRO, nesta ordem:
+1. apps/NexvyBeauty/tasks/HANDOFF-REESTRUTURACAO-NEXVYBEAUTY-2026-07-06.md (mestre, 6 eixos)
+2. apps/NexvyBeauty/tasks/HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md (deep-dive do eixo visual)
+3. Memórias: project_crm_grupo_multiproduto_decisoes_2026-07-02 (EIXO 1 = espinha),
+   reference_nexvybeauty_gestao_modular_crm_erp_2026-07-01, project_sdr_nunca_rejeita_venda...
+
+Estado no ar: confinamento multi-host (E3), preço fonte-única (E5), módulos-fixos+gating,
+autopilot F0-F2 (número Cloud API respondendo), Beauty Rosé (app), Nexvy Lux L1-L3 (gestao),
+bundle DcPLkMzY nos 3 hosts. Pendente: EIXO 1 (pivot D3 multiproduto + migração domínio,
+DECIDIDO mas NÃO executado), L4 do Lux (16 arquivos com rosa residual), autopilot Onda 5/6 +
+F4/F5/F6, Bloco B (operação da dona pós-venda — slug BLOQUEIA).
+
+FRONTEIRAS INVIOLÁVEIS (não tocar sozinho): Módulo ERP/GESTAO; cakto_*/affiliate_*/cakto_credentials
+(sessão paralela de afiliados EM VOO em outra conta); não restaurar o azul #0A52D1; não iniciar
+E1 como "deploy do pendente" — é frente de dias com plano próprio. Gotcha: service worker/PWA
+pode esconder deploys de usuários reais — validar SW antes de declarar liveness.
+
+Tarefa: comigo (Marcelo), decidir QUAL frente avançar — provável E1 (D3, espinha, precisa Plan
+Mode próprio) ou E6-L4 (polish, baixo risco, paralelizável). Roteiro padrão: Plan Mode em
+tasks/todo.md com checks binários → subagentes Opus (teto 10-12, 1 workflow por vez) → verificação
+com prova (computed==REF / tsc / grep) → Fable revisa adversarial → deploy DEPLOY-VERDE → commit
+em main. Segurar: atribuição Cakto (falta pagamento-teste). Nada "pronto" sem prova.</pre>
+
+  <h2>10 · Ressalvas honestas</h2>
+  <div class="note">
+    <ul style="margin:0">
+      <li><strong>Push já estava feito</strong> quando o workflow sintetizou (por isso disse "push desnecessário") — pushei os 4 commits neste turno e confirmei <code>origin/main == 5e0e36c</code>, 0/0. Está no GitHub.</li>
+      <li><strong>A investigação alucinou 4 paths</strong> de artefatos (D3 contract, blueprints). Removidos — o conteúdo real de E1/E2 está nas <strong>memórias</strong>, não em docs.</li>
+      <li><strong>Cakto segurada</strong> — deployar <code>?src=</code> não-provado = atribuição de venda quebrada na raiz. Só após 1 pagamento-teste.</li>
+      <li><strong>Liveness ≠ auditado</strong> — L1–L3 do Lux por computed-style, mas sem revisão visual Fable e sob risco do service worker.</li>
+    </ul>
+  </div>
+
+  <hr>
+  <p class="sub">Gerado por sessão <code>75021603</code> · 2026-07-06 · base: workflow <code>whse62dzc</code> + verificação em disco · par <code>.md</code> + <code>.html</code> (CLAUDE.md §4)</p>
+
+</div>
+</body>
+</html>
