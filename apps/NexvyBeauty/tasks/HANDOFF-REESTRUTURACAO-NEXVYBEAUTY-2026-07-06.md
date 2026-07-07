@@ -70,6 +70,8 @@ A reestruturação tem **6 eixos**. O que está **no ar/em prod**: confinamento 
 | **Revisão adversarial Fable** (L3 Lux + Rosé) | qualidade | só gate objetivo rodou (Fable sem crédito) |
 | **IG/Messenger inbox** | código + externo | `tasks/todo-ig-messenger-inbox.md` quase 100% aberto; App Review Meta = gargalo externo |
 | **F4 lançamento — Pilotos** | venda humana | `ROADMAP-LANCAMENTO-OFERTA-V3` F1/F2/F3 ✅, **F4 é HUMANO** (Marcelo vende, loop monitora) |
+| **Merge `feat/afiliados-proprios` → `main`** | decisão de merge | 9 commits (atribuição/antifraude/payout/portal self-service/e-mail welcome) **já no `origin`**, worktree ainda viva, **aguardando decisão do Marcelo** — não presumir "em voo" sem checar: pode estar concluída e só não mergeada. Ver fronteira §4.2. |
+| **5 worktrees sem o fix supabase-js** (`e1f5`/`e1f2`/`e1db`/`beauty`/`nexvypayments-bootstrap`) | sincronização de branch | `_shared/` dessas worktrees ainda tem `esm.sh` + bug `ReturnType<typeof createClient>` (TS2345). Já corrigido e **mergeado em `main`** (`df58f9d`); cada frente herda no próximo merge/rebase — não é bloqueante, mas rodar `deno check --node-modules-dir=none` nessas worktrees ANTES do fix vai mostrar erros já resolvidos no tronco. Detalhe técnico: memória `reference_supabase_js_returntype_createclient_ts2345_2026-07-06`. |
 
 ---
 
@@ -93,7 +95,7 @@ A reestruturação tem **6 eixos**. O que está **no ar/em prod**: confinamento 
 
 | Item | Valor |
 |---|---|
-| **Repo / HEAD** | `main` `5e0e36c` · **`origin/main == local`** (push feito neste turno; ahead/behind 0/0) |
+| **Repo / HEAD** | `main` `df58f9d` · **`origin/main == local`** (0/0). Atualizado desde `5e0e36c`: merge do fix supabase-js (`_shared` + 110 functions, `deno check` 0 erros) — sessão `996e27f7`, 2026-07-06 |
 | **Bundle no ar** | `assets/index-DcPLkMzY.js` — HTTP 200 em `app.nexvybeauty.com.br` **e** `gestao.nexvy.tech` (verificado) |
 | **Container** | `nexvy-beauty` (svc `nexvy-beauty-svc`) — 1 serve os 3 hosts. Gestao roteado por `/opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml` |
 | **Supabase** | `fzhlbwhdejumkyqosuvq` · EFs `platform-meta-whatsapp-webhook` + `platform-sales-brain` ACTIVE (autopilot F0-F2) · `platform_settings.primary_color='#C54B60'` |
@@ -129,7 +131,8 @@ A reestruturação tem **6 eixos**. O que está **no ar/em prod**: confinamento 
 
 ```
 Contexto: retomo a REESTRUTURAÇÃO do NexvyBeauty (não só o redesign). Repo
-github.com/mfalcao09/SaasPlugin_vite, app apps/NexvyBeauty/, branch main sincronizada em 5e0e36c.
+github.com/mfalcao09/SaasPlugin_vite, app apps/NexvyBeauty/, branch main sincronizada em df58f9d
+(inclui fix supabase-js pós 5e0e36c — ver §3 backlog).
 Leia PRIMEIRO, nesta ordem:
 1. apps/NexvyBeauty/tasks/HANDOFF-REESTRUTURACAO-NEXVYBEAUTY-2026-07-06.md (mestre, 6 eixos)
 2. apps/NexvyBeauty/tasks/HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md (deep-dive do eixo visual)
