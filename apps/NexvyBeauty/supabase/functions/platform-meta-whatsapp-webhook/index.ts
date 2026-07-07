@@ -85,7 +85,7 @@ function extractContent(msg: Json): { content: string; contentType: string } {
  *  é uma coluna default_product_id em platform_crm_whatsapp_meta_connections.
  *  Non-fatal: sem produto cadastrado, conversa/lead seguem sem product_id. */
 async function resolveDefaultProductId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof getServiceClient>,
 ): Promise<string | null> {
   try {
     const { data } = await supabase
@@ -103,7 +103,7 @@ async function resolveDefaultProductId(
 
 /** Lead por telefone (dedupe) ou cria — espelho do auto-create do webchat. */
 async function ensureLead(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof getServiceClient>,
   fromDigits: string,
   profileName: string | null,
   productId: string | null,
@@ -144,7 +144,7 @@ async function ensureLead(
 /** Conversa aberta do visitante ou cria (channel='whatsapp'). Reabre fechada
  *  como bot_active: o número de vendas é atendido pelos agentes IA. */
 async function ensureConversation(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof getServiceClient>,
   fromDigits: string,
   profileName: string | null,
   productId: string | null,
@@ -216,7 +216,7 @@ async function ensureConversation(
  *  Retorna o id da conversa quando a mensagem foi persistida E a conversa está
  *  bot_active — é o sinal para o gatilho do cérebro de vendas (F2). */
 async function processInboundMessage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof getServiceClient>,
   connectionId: string,
   value: Json,
   msg: Json,
@@ -290,7 +290,7 @@ async function processInboundMessage(
 
 /** Statuses (sent/delivered/read/failed) → metadata da mensagem outbound. */
 async function processStatus(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof getServiceClient>,
   status: Json,
 ): Promise<void> {
   const wamid = String(status['id'] ?? '');
