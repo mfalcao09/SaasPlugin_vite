@@ -12,6 +12,7 @@
 // 8) Loga em cakto_recovery_dispatches
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { matchScenario, type Scenario } from './scenario-match.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,9 +42,7 @@ type CaktoOrderRow = {
   pix_code: string | null;
   checkout_url: string | null;
   items: CaktoOrderItem[] | null;
-  // Optional: Cakto's own product identifier. NOTE: not fetched by the SELECT below,
-  // so it is undefined at runtime — the scenario product filter (below) is currently inert.
-  product_cakto_id?: string | null;
+  product_cakto_id: string | null;
 };
 
 const STATUS_TO_EVENT: Record<string, 'abandoned' | 'paid' | 'refunded'> = {
@@ -95,7 +94,7 @@ Deno.serve(async (req) => {
   const { data: order, error: orderErr } = await supabase
     .from('cakto_orders')
     .select(
-      'id, organization_id, cakto_id, status, amount, product_id, product_name, customer_name, customer_email, customer_phone, payment_method, pix_code, checkout_url, items',
+      'id, organization_id, cakto_id, status, amount, product_id, product_cakto_id, product_name, customer_name, customer_email, customer_phone, payment_method, pix_code, checkout_url, items',
     )
     .eq('id', cakto_order_id)
     .maybeSingle<CaktoOrderRow>();
@@ -247,33 +246,15 @@ Deno.serve(async (req) => {
     .eq('is_active', true)
     .order('priority', { ascending: false });
 
-  type Scenario = {
-    name: string;
-    instruction: string;
-    links: Array<{ label: string; url: string; when_to_offer?: string }> | null;
-    tags_to_apply: string[] | null;
-    filters: Record<string, unknown> | null;
-    priority: number;
-  };
+  const items = Array.isArray(order.items) ? order.items : [];
 
-  // Filtra cenários pelos filters (ex: produto específico, valor mínimo)
-  const matchScenario = (s: Scenario): boolean => {
-    const f = s.filters || {};
-    if (f.product_cakto_id && order.product_cakto_id !== f.product_cakto_id) return false;
-    if (typeof f.min_amount === 'number' && (order.amount ?? 0) < f.min_amount) return false;
-    if (typeof f.max_amount === 'number' && (order.amount ?? 0) > f.max_amount) return false;
-    if (Array.isArray(f.required_orderbumps) && f.required_orderbumps.length > 0) {
-      const bumpIds = bumpItemsForFilter(items).map((b: any) => b.product_cakto_id);
-      if (!f.required_orderbumps.every((id: string) => bumpIds.includes(id))) return false;
-    }
-    return true;
-  };
-  // Helper definido fora do trecho para evitar dependência circular de items
-  function bumpItemsForFilter(arr: any[]): any[] {
-    return (arr || []).filter((i) => i?.role === 'orderbump');
-  }
-
-  const scenarios: Scenario[] = ((scenariosRaw as Scenario[] | null) || []).filter(matchScenario);
+  const scenarios: Scenario[] = ((scenariosRaw as Scenario[] | null) || []).filter((s) =>
+    matchScenario(s, {
+      product_cakto_id: order.product_cakto_id,
+      amount: order.amount,
+      items,
+    }),
+  );
   const scenarioTagsToApply = Array.from(
     new Set(scenarios.flatMap((s) => s.tags_to_apply || [])),
   );
@@ -282,7 +263,6 @@ Deno.serve(async (req) => {
 
   // 7) Gera a mensagem inicial
   // Monta a descrição da composição do pedido (principal + orderbumps)
-  const items = Array.isArray(order.items) ? order.items : [];
   const mainItems = items.filter((i) => i.role === 'main');
   const bumpItems = items.filter((i) => i.role === 'orderbump');
   const upsellItems = items.filter((i) => i.role === 'upsell' || i.role === 'downsell');
