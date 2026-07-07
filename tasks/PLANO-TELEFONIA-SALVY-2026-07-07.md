@@ -60,9 +60,11 @@
 - ✅ Módulo top-level `telefonia` no switcher (`registry.tsx` + `PlatformModuleId` + ícones Phone/MapPinned/Receipt).
 - ✅ Check binário: `npm run typecheck` (tsc -b) exit 0.
 
-**Pendências pro deploy (Marcelo):**
-1. `supabase secrets set SALVY_API_KEY=<key>` no projeto `fzhlbwhdejumkyqosuvq`
-2. `supabase functions deploy salvy-proxy`
-3. Smoke no Chrome real (host gestão): módulo Telefonia → 2 linhas reais aparecem; OTP visível no detalhe da linha "Vendas".
+**Deploy (feito na mesma sessão, com autorização explícita do Marcelo após bloqueio do classificador):**
+1. ✅ Secret `SALVY_API_KEY` setado via CLI (`--env-file` filtrado do `.env.local`; valor nunca impresso) — confirmado no `secrets list`.
+2. ✅ `salvy-proxy` deployada via Supabase MCP — v1 `ACTIVE`, `verify_jwt: true` (id `58086d98`).
+3. ✅ Liveness: `POST /functions/v1/salvy-proxy` sem JWT → **HTTP 401** (auth sendo aplicada).
+
+**Única pendência restante (só o Marcelo pode):** smoke no Chrome real logado como super-admin no host gestão — módulo "Telefonia" no switcher → 2 linhas reais na lista; OTP no detalhe da linha "Vendas". Depois, merge da branch `feat/telefonia-salvy` na main.
 
 **Não feito de propósito:** verificação em preview headless (regra do Marcelo: browser só no Chrome real via chrome_control) — e a função nem funcionaria sem o secret deployado.
