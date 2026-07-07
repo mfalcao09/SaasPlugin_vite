@@ -66,6 +66,11 @@ import { PlatformCrmMia } from '@/components/superadmin/crm/mia/PlatformCrmMia';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 import { PlatformCrmConnectionsPanel } from '@/components/superadmin/crm/connections/PlatformCrmConnectionsPanel';
 
+// ── Componentes do módulo TELEFONIA (linhas Salvy da plataforma) ──
+import { TelefoniaSection } from '@/components/superadmin/telefonia/TelefoniaSection';
+import { TelefoniaAreaCodes } from '@/components/superadmin/telefonia/TelefoniaAreaCodes';
+import { TelefoniaFaturas } from '@/components/superadmin/telefonia/TelefoniaFaturas';
+
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
 // ════════════════════════════════════════════════════════════
@@ -478,6 +483,39 @@ const VENDAS_NAV: PlatformNavGroup[] = [
 ];
 
 // ════════════════════════════════════════════════════════════
+// MÓDULO TELEFONIA — números virtuais Salvy da PLATAFORMA.
+// Espelho da API Salvy via Edge Function `salvy-proxy` (key server-side,
+// super-admin only). Decisão Marcelo 2026-07-07: módulo top-level (irmão de
+// Gestão/Vendas) com ações billable (pedir/cancelar linha) já na Fase 1.
+// ════════════════════════════════════════════════════════════
+const TELEFONIA_NAV: PlatformNavGroup[] = [
+  {
+    id: 'telefonia-topo',
+    label: null,
+    items: [
+      {
+        id: 't-linhas',
+        label: 'Linhas',
+        icon: I.Phone,
+        render: () => <TelefoniaSection />,
+      },
+      {
+        id: 't-disponibilidade',
+        label: 'Disponibilidade',
+        icon: I.MapPinned,
+        render: () => <TelefoniaAreaCodes />,
+      },
+      {
+        id: 't-faturas',
+        label: 'Faturas',
+        icon: I.Receipt,
+        render: () => <TelefoniaFaturas />,
+      },
+    ],
+  },
+];
+
+// ════════════════════════════════════════════════════════════
 // Registry final. Ordem = ordem no ModuleSwitcher.
 // ════════════════════════════════════════════════════════════
 export const PLATFORM_MODULES: PlatformModuleDefinition[] = [
@@ -496,5 +534,13 @@ export const PLATFORM_MODULES: PlatformModuleDefinition[] = [
     icon: I.Target,
     color: 'bg-primary',
     nav: VENDAS_NAV,
+  },
+  {
+    id: 'telefonia',
+    label: 'Telefonia',
+    description: 'Números virtuais Salvy — linhas, SMS/OTP e disponibilidade',
+    icon: I.Phone,
+    color: 'bg-emerald-700',
+    nav: TELEFONIA_NAV,
   },
 ];

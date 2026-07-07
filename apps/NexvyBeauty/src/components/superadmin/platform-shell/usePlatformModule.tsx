@@ -57,10 +57,13 @@ import {
   BellRing,
   Clock,
   Package,
+  Phone,
+  MapPinned,
+  Receipt,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
-export type PlatformModuleId = 'erp' | 'vendas';
+export type PlatformModuleId = 'erp' | 'vendas' | 'telefonia';
 
 // ─── Nav item (uma entrada de menu dentro de um módulo) ─────
 export interface PlatformNavItem {
@@ -99,7 +102,9 @@ const STORAGE_KEY = 'nexvybeauty_platform_module';
 function loadStoredModule(): PlatformModuleId | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'erp' || stored === 'vendas') return stored;
+    if (stored === 'erp' || stored === 'vendas' || stored === 'telefonia') {
+      return stored;
+    }
   } catch {
     // localStorage indisponível
   }
@@ -302,4 +307,8 @@ export const PlatformIcons = {
   Tags,
   BellRing,
   Clock,
+  // telefonia
+  Phone,
+  MapPinned,
+  Receipt,
 } as const;
