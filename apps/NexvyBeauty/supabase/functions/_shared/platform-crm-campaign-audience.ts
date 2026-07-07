@@ -20,7 +20,7 @@
 //                             (explícito). TODO(whatsapp): ao plugar WhatsApp na
 //                             plataforma, restaurar o default do original.
 
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR } from "./phone.ts";
 
 export type CustomFieldFilter = { key: string; op: string; value: any };

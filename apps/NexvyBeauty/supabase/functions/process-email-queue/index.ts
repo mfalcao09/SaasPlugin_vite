@@ -1,5 +1,5 @@
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 interface OutboundEmail {
   run_id?: string
@@ -48,7 +48,9 @@ async function sendEmail(email: OutboundEmail, apiKey: string): Promise<void> {
   }
 
   // Fallback: Lovable email lib, com sendUrl env-driven.
-  await sendLovableEmail(email, {
+  // OutboundEmail.text e opcional; EmailSendRequest exige string -> normaliza p/ '' quando ausente.
+  const lovableEmail = { ...email, text: email.text ?? '' }
+  await sendLovableEmail(lovableEmail, {
     apiKey,
     sendUrl: Deno.env.get('EMAIL_SEND_URL') ?? Deno.env.get('LOVABLE_SEND_URL'),
   })
@@ -107,7 +109,7 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   queue: string,
   msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
@@ -211,12 +213,12 @@ Deno.serve(async (req) => {
     const messageIds = Array.from(
       new Set(
         messages
-          .map((msg) =>
+          .map((msg: { message?: { message_id?: unknown } }) =>
             msg?.message?.message_id && typeof msg.message.message_id === 'string'
               ? msg.message.message_id
               : null
           )
-          .filter((id): id is string => Boolean(id))
+          .filter((id: string | null): id is string => Boolean(id))
       )
     )
     const failedAttemptsByMessageId = new Map<string, number>()

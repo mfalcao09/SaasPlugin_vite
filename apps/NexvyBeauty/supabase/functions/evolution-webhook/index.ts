@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR, phoneVariantsBR } from "../_shared/phone.ts";
 import { startTyping } from "../_shared/presence.ts";
 
@@ -582,7 +582,9 @@ async function decryptWhatsAppMedia(rawMessage: any, mediaType?: string): Promis
 
   for (const info of infos) {
     try {
-      const keyMaterial = await crypto.subtle.importKey("raw", mediaKey, "HKDF", false, ["deriveBits"]);
+      // new Uint8Array(mediaKey) re-backs the bytes with a plain ArrayBuffer (not the
+      // ArrayBufferLike/SharedArrayBuffer union), satisfying BufferSource on current lib.dom.
+      const keyMaterial = await crypto.subtle.importKey("raw", new Uint8Array(mediaKey), "HKDF", false, ["deriveBits"]);
       const expanded = new Uint8Array(await crypto.subtle.deriveBits(
         { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: new TextEncoder().encode(info) },
         keyMaterial,
@@ -1758,6 +1760,16 @@ Deno.serve(async (req) => {
         if (closeErr) {
           console.warn("[evolution-webhook] close duplicates warn:", closeErr.message);
         }
+      }
+
+      // conversationId is resolved above (existing / race / created). If none of those
+      // set it (e.g. creation failed), nothing below — media persistence, dedup/locks,
+      // bot dispatch — is meaningful. Ack the webhook and stop (mirrors other skip paths).
+      if (!conversationId) {
+        console.warn("[evolution-webhook] no conversationId resolved; skipping media/bot processing");
+        return new Response(JSON.stringify({ ok: true, skipped: "no_conversation" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // ---- MULTIMODAL ENRICHMENT (audio / image / video / document / sticker) ----

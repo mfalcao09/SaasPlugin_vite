@@ -2,7 +2,7 @@
 // Envia uma mensagem de texto para uma lista de números via Evolution API.
 // Limitado a 50 contatos por chamada com anti-flood de 1.5s entre envios.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from "npm:@supabase/supabase-js@2"
 
 const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") ?? ""
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? ""

@@ -3,7 +3,7 @@
 // salvas em `org_ai_credentials` (modelo white-label).
 // O roteador `org_ai_routing` decide qual provedor usar para cada capacidade.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { aiApiKey } from "./ai.ts";
 
 export type AICapability =

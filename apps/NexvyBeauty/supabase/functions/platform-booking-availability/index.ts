@@ -12,7 +12,7 @@
 //   { userSlug, eventSlug }      → { profile, eventType }                (1 tipo por slug)
 //   { eventTypeId, date }        → { slots }                             (disponibilidade)
 //   { userSlug, eventSlug, date }→ { profile, eventType, slots }         (calendário direto)
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.90.1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

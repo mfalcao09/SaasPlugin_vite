@@ -19,7 +19,7 @@
 // NÃO portadas: create_instance / assign_instance / *_self de org (dependiam de
 //   organization_id — inexistente na plataforma; create vira create_instance_self).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   platformCrmCorsHeaders as corsHeaders,
   authenticatePlatformAgent,

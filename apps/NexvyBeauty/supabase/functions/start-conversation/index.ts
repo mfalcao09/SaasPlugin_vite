@@ -8,7 +8,7 @@
 // 3. Enviar mensagem via Evolution API POST /message/sendText/{instance}
 // 4. Retornar { success: true } — o webhook criará a conversa ao receber o eco
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") ?? "";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";

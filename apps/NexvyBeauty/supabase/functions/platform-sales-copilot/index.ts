@@ -19,7 +19,7 @@
 // System prompt: VERBATIM do original (formato de 3 partes, regras, análise de
 // prints, o-que-nunca-fazer) — só o bloco de conhecimento foi adaptado.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
   platformCrmCorsHeaders as corsHeaders,
   authenticatePlatformAgent,

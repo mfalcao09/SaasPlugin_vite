@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,7 +66,7 @@ serve(async (req) => {
 
     // Parallelize profile + roles fetch (was sequential, ~2 round-trips)
     // Retry on transient 502/network errors from Postgrest (Cloudflare upstream)
-    const fetchWithRetry = async <T>(fn: () => Promise<T>, label: string): Promise<T> => {
+    const fetchWithRetry = async <T>(fn: () => PromiseLike<T>, label: string): Promise<T> => {
       let lastErr: any;
       for (let i = 0; i < 3; i++) {
         try {

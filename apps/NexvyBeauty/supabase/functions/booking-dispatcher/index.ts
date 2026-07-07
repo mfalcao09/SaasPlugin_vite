@@ -4,7 +4,7 @@
 // arrived, renders the message, sends through Evolution (WhatsApp) and/or the
 // email pipeline, and updates booking + status history.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   buildBookingVars,
   renderTemplate,

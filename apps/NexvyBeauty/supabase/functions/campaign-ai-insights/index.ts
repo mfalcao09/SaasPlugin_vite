@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { aiChatCompletionsUrl, aiApiKey } from "../_shared/ai.ts";
 
 const LOVABLE_API_KEY = aiApiKey();

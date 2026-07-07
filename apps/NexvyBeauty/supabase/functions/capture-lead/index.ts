@@ -4,7 +4,7 @@
 // e grava o lead em sales_leads ANTES do checkout (provider-agnóstico). A
 // atribuição mora aqui, na nossa camada — o meio de pagamento é só um adaptador.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

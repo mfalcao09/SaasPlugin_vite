@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parecer de Viabilidade — API Salvy · 2026-07-06</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2430; --border:#2d3748;
+    --txt:#e6edf3; --muted:#9aa7b4; --gold:#e8c06a; --navy:#7aa2f7;
+    --green:#3fb950; --red:#f85149; --amber:#e3b341; --code:#c9d1d9;
+    --codebg:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px}
+  header{background:linear-gradient(135deg,#111827,#0d1117);border-bottom:2px solid var(--gold);
+    padding:44px 0 32px;margin-bottom:8px}
+  header .wrap{display:block}
+  h1{font-size:28px;margin:0 0 10px;letter-spacing:-.3px}
+  h1 .tag{color:var(--gold)}
+  .meta{color:var(--muted);font-size:13.5px;line-height:1.9}
+  .meta code{color:var(--navy)}
+  h2{font-size:21px;margin:38px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:16px;color:var(--gold);margin:24px 0 8px}
+  p{margin:12px 0}
+  a{color:var(--navy);text-decoration:none}
+  a:hover{text-decoration:underline}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px;
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  th{background:var(--panel2);text-align:left;padding:10px 12px;color:var(--gold);font-weight:600;
+    border-bottom:1px solid var(--border)}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{background:var(--codebg);padding:2px 6px;border-radius:5px;font-size:13px;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:var(--code)}
+  pre{background:var(--codebg);border:1px solid var(--border);border-radius:8px;
+    padding:16px;overflow-x:auto;font-size:13px;line-height:1.5}
+  pre code{background:none;padding:0}
+  .yes{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .warn{color:var(--amber);font-weight:700}
+  blockquote{border-left:3px solid var(--gold);margin:16px 0;padding:8px 16px;
+    background:var(--panel);color:var(--muted);border-radius:0 8px 8px 0}
+  .tldr{background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:4px 20px 16px;margin:18px 0}
+  ul{padding-left:22px}li{margin:6px 0}
+  .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .pill.g{background:rgba(63,185,80,.15);color:var(--green);border:1px solid var(--green)}
+  .pill.r{background:rgba(248,81,73,.15);color:var(--red);border:1px solid var(--red)}
+  hr{border:none;border-top:1px solid var(--border);margin:34px 0}
+  .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:40px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Parecer de Viabilidade — Automação da Gestão de Números via <span class="tag">API Salvy</span></h1>
+  <div class="meta">
+    <strong>Data:</strong> 2026-07-06 &nbsp;·&nbsp; <strong>Branch:</strong> <code>feat/salvy-gestao-numeros</code> &nbsp;·&nbsp; <strong>Autor:</strong> Claude (Opus 4.8) p/ Marcelo Silva<br>
+    <strong>Fonte primária:</strong> OpenAPI spec cru (<code>https://api.salvy.com.br</code>, v1.0.0) — 17 endpoints, 461KB<br>
+    <strong>Método:</strong> leitura determinística do spec completo + inspeção do dashboard logado no Chrome real.
+  </div>
+</div></header>
+
+<div class="wrap">
+
+<h2>1. TL;DR — o veredito</h2>
+<div class="tldr">
+<p>Você pediu três coisas automatizadas via API: <strong>gerir números</strong>, <strong>gerir faturas</strong>, <strong>pedir números novos</strong>. O resultado honesto:</p>
+<table>
+<tr><th>Eixo</th><th>Automatizável via API?</th><th>Prova</th></tr>
+<tr><td><strong>Pedir número novo</strong></td><td><span class="pill g">✅ 100% API</span></td><td><code>POST /api/v2/virtual-phone-accounts</code> — só exige <code>areaCode</code> (DDD); devolve <code>phoneNumber</code> + <code>status</code> na hora</td></tr>
+<tr><td><strong>Gerir números</strong></td><td><span class="pill g">✅ 100% API</span></td><td>list · get · update · cancel · redirect · ler SMS · consultar DDDs</td></tr>
+<tr><td><strong>Gerir faturas</strong></td><td><span class="pill r">❌ NÃO existe API</span></td><td>Zero endpoints de billing no spec. Faturas são feature <strong>só do dashboard</strong></td></tr>
+</table>
+<p><strong>Resposta direta:</strong> 2 dos 3 objetivos são totalmente automatizáveis hoje. <span class="no">Faturas não</span> — a Salvy não expõe nenhuma API de billing, e isso é decisão de produto deles, não uma limitação a contornar com código. Para faturas, a saída mais elegante é <strong>manter seu próprio ledger</strong>: já que <em>você</em> controla o provisionamento via API, <em>você</em> sabe o custo esperado sem precisar da fatura deles.</p>
+</div>
+
+<h3 style="color:var(--green)">✅ Confirmação empírica (spike read-only, 2026-07-06)</h3>
+<p>Rodei o fluxo com a key real (read-only, <strong>custo zero</strong>) e confirmei ao vivo:</p>
+<ul>
+<li><strong>Auth Bearer</strong> → <code>GET /api/v2/virtual-phone-accounts</code> = <code>200</code>, 2 linhas reais ("Salão Teste" <code>pending</code>, "Vendas" <code>active</code>).</li>
+<li><strong>Leitura de OTP funciona E vem estruturada:</strong> a linha "Vendas" recebeu <code>"Your WhatsApp code: 944-591"</code> e a Salvy <strong>já entrega o código parseado</strong> em <code>detections.whatsapp.verificationCode: "944591"</code> — sem regex. Eleva o onboarding WhatsApp de <em>provável</em> para <span class="yes">comprovado</span>.</li>
+<li><strong><code>status</code></strong> distingue <code>pending</code> de <code>active</code> — máquina de estados do onboarding.</li>
+<li><strong><code>area-codes</code></strong> devolve <code>{ areaCode, available }</code> por DDD → checa disponibilidade antes de provisionar.</li>
+</ul>
+<blockquote>O único eixo ainda não exercido ao vivo é o <code>POST create</code> (billable) — travado no spike atrás de <code>SALVY_ALLOW_CREATE=1</code>, aguardando OK explícito.</blockquote>
+
+<h2>2. Inventário completo da API (as 17 rotas)</h2>
+<p>Base URL: <code>https://api.salvy.com.br</code> · Auth: <strong>Bearer token</strong> em todas.</p>
+<h3>Números virtuais — v2 é a versão atual (o núcleo do que interessa)</h3>
+<table>
+<tr><th>Método</th><th>Rota</th><th>O que faz</th></tr>
+<tr><td><code>POST</code></td><td><code>/api/v2/virtual-phone-accounts</code></td><td><strong>Criar número</strong> (pedir linha). Req: <code>areaCode</code> · opc: name, employeeId, costCenter, customFields</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/v2/virtual-phone-accounts</code></td><td>Listar todos</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/v2/virtual-phone-accounts/{id}</code></td><td>Detalhe de um número</td></tr>
+<tr><td><code>PATCH</code></td><td><code>/api/v2/virtual-phone-accounts/{id}</code></td><td>Atualizar (nome, centro de custo, campos)</td></tr>
+<tr><td><code>DELETE</code></td><td><code>/api/v2/virtual-phone-accounts/{id}</code></td><td>Cancelar número</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/v2/virtual-phone-accounts/area-codes</code></td><td>DDDs disponíveis em estoque</td></tr>
+<tr><td><code>GET</code></td><td><code>/api/v2/.../{id}/sms-messages</code></td><td><strong>Ler SMS recebidos</strong> — é aqui que sai o OTP</td></tr>
+</table>
+<blockquote>Existem versões <code>v1</code> e <code>/api/...</code> <strong>deprecated</strong> das mesmas rotas. Usar sempre <strong>v2</strong>.</blockquote>
+<p><strong>Colaboradores:</strong> <code>GET /employees</code> · <code>POST /employees/sync</code>. &nbsp; <strong>Equipamentos:</strong> CRUD + archive + timeline-notes. &nbsp; <strong>Webhooks:</strong> <code>sms.received</code> — <span class="warn">único evento existente</span>.</p>
+
+<h2>3. O que a CREATE devolve (por que "pedir número" é trivial)</h2>
+<pre><code>POST /api/v2/virtual-phone-accounts
+Authorization: Bearer &lt;key&gt;
+{ "areaCode": 11, "name": "Salão X - Tenant 123", "costCenter": "beauty" }
+
+200 → { id, name, phoneNumber, status, createdAt, canceledAt,
+        cancelReason, costCenter, employeeId, customFields }</code></pre>
+<p>Você manda um DDD e recebe <strong>o número real de volta na mesma resposta</strong>. Não há etapa de aprovação/pagamento/estoque no contrato — o custo entra na fatura mensal. <strong>1 chamada = 1 número pronto.</strong></p>
+
+<h2>4. O achado estratégico: onboarding de WhatsApp por tenant</h2>
+<p>No dashboard logado, a linha de teste "Salão Teste - Nexvy" <code>(11) 9XXXX-XXXX</code> exibia <strong>"Confirmação do WhatsApp — insira este código na configuração do seu número na API da Meta"</strong>. O fluxo de negócio que isso habilita:</p>
+<pre><code>Venda de tenant (webhook Cakto/Stripe)
+  → Edge Function server-side:
+     1. POST /api/v2/virtual-phone-accounts { areaCode }      → número novo
+     2. Registra número na Meta WhatsApp Business API
+     3. Meta envia OTP por SMS → chega no número Salvy
+     4. GET /.../{id}/sms-messages (ou webhook sms.received)  → lê o OTP
+     5. Confirma na Meta com o OTP                            → WhatsApp ativo</code></pre>
+<p><strong>Fecha ponta-a-ponta, sem intervenção humana.</strong> É o prêmio real da integração — mais valioso que "gerir faturas". Números Salvy são <em>receive-only</em>, exatamente o suficiente pro OTP da Meta.</p>
+
+<h2>5. Limitações a saber ANTES de arquitetar</h2>
+<table>
+<tr><th>Limitação</th><th>Impacto</th></tr>
+<tr><td><span class="no">❌ Sem envio de SMS</span></td><td>Números só <em>recebem</em>. Se algum SaaS precisar <em>disparar</em> SMS, a Salvy não serve — precisa Twilio/Zenvia</td></tr>
+<tr><td><span class="no">❌ Sem voz / sem internet</span></td><td>Linhas dados-zero, SMS-inbound-only. Sem ligação, sem eSIM de dados</td></tr>
+<tr><td><span class="no">❌ Sem API de faturas</span></td><td>Confirmado no spec E no painel. Billing 100% dashboard</td></tr>
+<tr><td><span class="warn">⚠️ Um único webhook</span></td><td><code>sms.received</code> apenas. Sem notificação de provisionamento/cancelamento/fatura → estado por polling ou você é a fonte da verdade</td></tr>
+<tr><td><span class="warn">⚠️ Rate limit não documentado</span></td><td>Spec não declara 429. Trate como desconhecido → backoff conservador</td></tr>
+<tr><td><span class="warn">⚠️ Key exibida uma vez só</span></td><td>Igual Seção 11.1 — gere server-side, cofre, nunca reexibível</td></tr>
+</table>
+
+<h2>6. Faturas: as 4 saídas (e a recomendada)</h2>
+<ul>
+<li><strong>(a) Painel-only</strong> — humano confere no dashboard. Simples, mas não é "tudo automatizado".</li>
+<li><strong>(b) Scraping do dashboard</strong> — <span class="no">❌ NÃO recomendo.</span> Frágil, quebra a cada deploy deles; é gambiarra (contra Seção 3.2).</li>
+<li><strong>(c) Pedir à Salvy</strong> API de faturas / webhook <code>invoice.issued</code>. Caminho certo a médio prazo — vale abrir o chamado.</li>
+<li><strong>(d) <span class="yes">✅ RECOMENDADA — seu próprio ledger.</span></strong> Você provisiona/cancela via API → tem o registro canônico de números ativos por tenant. Calcule o custo internamente e use a fatura Salvy só p/ reconciliação. Você não precisa da API de faturas pra automatizar o <em>negócio</em> — só pra <em>conferência contábil</em>, que é mensal e tolera ser semi-manual.</li>
+</ul>
+
+<h2>7. Arquitetura recomendada (alinhada à Seção 11.1)</h2>
+<pre><code>Frontend ──JWT Supabase──► Edge Function proxy ──Bearer (server)──► Salvy API
+(tenant)                   (valida JWT, chama                       api.salvy.com.br
+                            Salvy com a key)
+                                  │ escreve
+                                  ▼
+                          ledger próprio (DB)  ← fonte da verdade p/ faturas
+                          números × tenant ×      (reconcilia c/ fatura Salvy)
+                          período × status</code></pre>
+<ul>
+<li><strong>Key Salvy</strong> só no <code>.env</code> server-side / cofre — <strong>nunca</strong> <code>NEXT_PUBLIC_*</code> (Seção 11.1).</li>
+<li>Todo acesso do front via <strong>Edge Function proxy</strong> com JWT Supabase.</li>
+<li>Webhook <code>sms.received</code> → Edge Function grava OTP → dispara confirmação Meta.</li>
+<li>Cada <code>create</code>/<code>cancel</code> grava no <strong>ledger próprio</strong> → base de reconciliação.</li>
+</ul>
+
+<h2>8. Critério de "pronto" (verificável — Seção 8.3)</h2>
+<ul>
+<li><code>POST</code> criar número → <code>200</code> + <code>phoneNumber</code> → <strong>check:</strong> número aparece no dashboard</li>
+<li><code>GET .../sms-messages</code> lê OTP real da Meta → <strong>check:</strong> OTP capturado sem humano</li>
+<li>Key ausente do bundle → <strong>check:</strong> <code>grep -r salvy_ dist/</code> vazio</li>
+<li>Ledger registra 1 número → <strong>check:</strong> reconcilia com 1 item na fatura Salvy do mês</li>
+</ul>
+
+<h2>9. Perguntas abertas</h2>
+<ul>
+<li><strong>Tarifa por número</strong> — custo unitário mensal? (define o ledger e o gate de "vale provisionar automático")</li>
+<li><strong>Salvy tem API/webhook de faturas no roadmap?</strong> (decide entre saída c e d)</li>
+<li><strong>Rate limit real do create</strong> — números/minuto? (provisionar em lote sem block)</li>
+<li><strong>Portabilidade</strong> — portar número existente ou só números novos do estoque? (sem endpoint no spec → provável fluxo comercial)</li>
+<li><strong>Escopo</strong> — números p/ WhatsApp Business por tenant (minha leitura), ou também 2FA/SMS de outros fluxos?</li>
+</ul>
+
+<h2>10. Próximo passo sugerido</h2>
+<p>Isto foi <strong>descoberta + parecer</strong>, não implementação. Se aprovar a direção, o próximo passo é um <strong>spike</strong>: uma Edge Function <code>create</code> → <code>list-sms</code> num número de teste, provando o fluxo com a key real, antes de plugar no onboarding. <strong>Só codo isso com seu de-acordo.</strong></p>
+
+<hr>
+<p class="foot">Parecer gerado em 2026-07-06 · fonte: OpenAPI spec Salvy v1.0.0 (arquivado em <code>salvy-openapi-2026-07-06.json</code>) · Nexvy / SaasPlugin_vite</p>
+</div>
+</body>
+</html>

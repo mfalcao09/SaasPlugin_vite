@@ -2,7 +2,7 @@
 // Público (verify_jwt=false). Re-valida conflito server-side, faz upsert do
 // cliente por telefone, cria o agendamento na Agenda REAL (origem='publico') e
 // dispara confirmação no WhatsApp via evolution-send (MOAT do NX — fire-and-forget).
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

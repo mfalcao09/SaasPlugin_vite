@@ -2,7 +2,7 @@
 // verify_jwt: false — recebe POSTs do widget embeddable em sites de clientes
 // CORS aberto (widget roda em domínio do cliente, não o nosso)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -143,7 +143,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "failed to save message" }, 500);
   }
 
-  await supabase.rpc("increment_unread_count", { conv_id: conversationId }).catch(() => {});
+  // PostgrestFilterBuilder is a PromiseLike without .catch; then(onFulfilled, onRejected) swallows errors (best-effort)
+  await supabase.rpc("increment_unread_count", { conv_id: conversationId }).then(() => {}, () => {});
 
   return jsonResponse({
     conversation_id: conversationId,

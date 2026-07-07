@@ -9,7 +9,7 @@
 //   .../functions/v1/doppus-webhook
 //   .../functions/v1/doppus-webhook?org=<organization_id>   (opcional)
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { runPostSaleActions, normalizePhone } from '../_shared/post-sale-engine.ts';
 
 const corsHeaders = {

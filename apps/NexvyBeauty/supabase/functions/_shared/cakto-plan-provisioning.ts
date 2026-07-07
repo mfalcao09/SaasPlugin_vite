@@ -1,7 +1,7 @@
 // Helper compartilhado entre `cakto-webhook` e `cakto-reprocess-order`.
 // Provisiona o plano da plataforma e o usuário admin a partir de um pedido Cakto.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { GRAPH_BASE } from './meta-graph.ts';
 import { decryptSecret } from './meta-crypto.ts';
 import { normalizePhoneBR } from './phone.ts';

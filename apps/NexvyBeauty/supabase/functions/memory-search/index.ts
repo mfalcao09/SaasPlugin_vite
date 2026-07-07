@@ -1,7 +1,7 @@
 // Sprint 2 — Retrieval semântico
 // Recebe lead_id + query, gera embedding e retorna top-K memórias relevantes.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

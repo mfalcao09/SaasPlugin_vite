@@ -212,7 +212,8 @@ Deno.serve(async (req) => {
     const usedIds = Array.from(new Set(contextEntries.map((c) => c.id).filter(Boolean))) as string[];
     if (usedIds.length) {
       for (const id of usedIds) {
-        await supabase.rpc("noop").catch(() => {});
+        // PostgrestFilterBuilder e PromiseLike sem .catch; then(onFulfilled, onRejected) swallow (best-effort)
+        await supabase.rpc("noop").then(() => {}, () => {});
         // increment usage_count manually
         const { data: row } = await supabase
           .from("campaign_contexts")

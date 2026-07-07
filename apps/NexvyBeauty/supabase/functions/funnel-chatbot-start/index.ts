@@ -3,7 +3,7 @@
 // o fluxo encontra um bloco ai_takeover / agent_switch e precisa delegar
 // o atendimento para um Agente IA real via webchat-bot.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -123,6 +123,14 @@ serve(async (req) => {
           status: 'bot_active',
         })
         .eq('id', conversation.id);
+    }
+
+    // conversation is resolved above (reused or freshly created). Guard the residual
+    // null the type carries so downstream .lead_id / .id access is sound.
+    if (!conversation) {
+      return new Response(JSON.stringify({ error: 'conversation não resolvida' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Auto-cria lead se ainda não houver

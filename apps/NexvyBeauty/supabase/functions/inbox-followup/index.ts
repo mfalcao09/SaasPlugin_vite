@@ -2,7 +2,7 @@
 // verify_jwt: false — autenticado via CRON_SECRET no header x-cron-secret
 // Envia follow-up para conversas inativas há N dias (até 3x por conversa).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
