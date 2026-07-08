@@ -3,6 +3,7 @@ import { AppTopBar } from '@/components/layout/AppTopBar';
 import {
   PlatformModuleProvider,
   usePlatformModule,
+  defaultModuleForHost,
 } from './usePlatformModule';
 import { PlatformSidebar } from './PlatformSidebar';
 import { PLATFORM_MODULES } from './registry';
@@ -41,12 +42,17 @@ function ShellContent() {
  * Renderiza header (ModuleSwitcher embutido na sidebar) + sidebar dirigida
  * pelo módulo ativo + conteúdo. Pronta para ser montada na rota do gestao.*.
  *
- * Módulo default = `erp` (o super-admin de sempre). ModuleSwitcher alterna
- * para `vendas` (CRM da plataforma). Tema atual (rosa/claro) — sem tema escuro.
+ * Módulo default é DERIVADO DO HOST (F5/D3): gestao.nexvy.tech (CRM do grupo
+ * multiproduto) → `vendas`; gestao.nexvybeauty.com.br (produto Beauty) → `erp`.
+ * O ModuleSwitcher continua livre e a escolha explícita do usuário (localStorage,
+ * por-origem) prevalece sobre o default do host. Tema atual (rosa/claro).
  */
 export default function PlatformShell() {
   return (
-    <PlatformModuleProvider modules={PLATFORM_MODULES} defaultModule="erp">
+    <PlatformModuleProvider
+      modules={PLATFORM_MODULES}
+      defaultModule={defaultModuleForHost()}
+    >
       <ShellContent />
     </PlatformModuleProvider>
   );

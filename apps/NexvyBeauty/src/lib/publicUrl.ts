@@ -32,6 +32,16 @@ export function isGestaoHostname(hostname = typeof window !== 'undefined' ? wind
   return hostname.startsWith('gestao.');
 }
 
+// Host do CRM do GRUPO (multiproduto), servido na TLD corporativa nexvy.tech.
+// Ex.: gestao.nexvy.tech → true. Distingue-se do gestao.* do produto Beauty
+// (gestao.nexvybeauty.com.br → false), que abre no módulo ERP do salão.
+// É a MESMA SPA/rota (isGestaoHostname cobre os dois); o que muda por TLD é só o
+// MÓDULO default do PlatformShell (Vendas no grupo, ERP no Beauty). Classificação
+// de host pura — não conhece IDs de módulo (o mapa host→módulo vive no shell).
+export function isGrupoCrmHost(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
+  return isGestaoHostname(hostname) && hostname.endsWith('.nexvy.tech');
+}
+
 // Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.*,
 // NÃO é gestao.* e NÃO é dev/preview. Ex.: nexvybeauty.com.br /
 // www.nexvybeauty.com.br → true; app.* e gestao.* → false; localhost → false.
