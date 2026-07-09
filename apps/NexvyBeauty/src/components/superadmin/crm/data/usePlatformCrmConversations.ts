@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert } from '@/integrations/supabase/types';
@@ -76,6 +76,10 @@ function statusesForTab(tab: PlatformCrmStatusTab): PlatformCrmConversation['sta
  */
 export function usePlatformCrmConversations() {
   const queryClient = useQueryClient();
+  // Canal Realtime ÚNICO por instância do hook — evita o crash "cannot add
+  // postgres_changes callbacks after subscribe()" quando >1 consumidor monta o
+  // hook (ex.: a lista do inbox + o ForwardMessageDialog do composer A1).
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, '');
 
   const query = useQuery({
     queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'],
@@ -123,7 +127,7 @@ export function usePlatformCrmConversations() {
   // — atualiza apenas a lista de cards, não o histórico de mensagens.
   useEffect(() => {
     const channel = supabase
-      .channel('platform-crm-inbox-conversations')
+      .channel(`platform-crm-inbox-conversations-${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -142,7 +146,7 @@ export function usePlatformCrmConversations() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, instanceId]);
 
   return query;
 }

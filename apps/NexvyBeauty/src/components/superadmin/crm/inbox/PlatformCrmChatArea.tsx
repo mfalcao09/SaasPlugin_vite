@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Bot, ArrowRightLeft, StickyNote, BarChart3, UserCircle, MoreVertical, X,
   RotateCcw, Play, Undo2, Sparkles, Send, Loader2, Smile, Hand, Zap, Package, Check,
+  Paperclip, Mic, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +21,22 @@ import { ptBR } from 'date-fns/locale';
 import { PlatformCrmMessageBubble, type PlatformCrmBubbleReply } from './PlatformCrmMessageBubble';
 import { PlatformCrmEmptyInboxState } from './PlatformCrmEmptyInboxState';
 import { resolveVisitorIdentity, visitorInitials } from './platformCrmIdentity';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { PlatformCrmQuickActionBar } from './PlatformCrmQuickActionBar';
+import { PlatformCrmQuickRepliesPopover } from './PlatformCrmQuickRepliesPopover';
+import { PlatformCrmInternalNotes } from './PlatformCrmInternalNotes';
+import { PlatformCrmScheduleMessageDialog } from './PlatformCrmScheduleMessageDialog';
+import { PlatformCrmForwardMessageDialog } from './PlatformCrmForwardMessageDialog';
+import { PlatformCrmAudioRecorder } from './PlatformCrmAudioRecorder';
+import {
+  PlatformCrmMediaAttachment,
+  type PlatformCrmMediaKind,
+  type PlatformCrmMediaPayload,
+} from './PlatformCrmMediaAttachment';
+import { PlatformCrmTypingIndicator } from './PlatformCrmTypingIndicator';
 import type {
   PlatformCrmConversation,
   PlatformCrmMessage,
@@ -39,6 +56,13 @@ import type {
  */
 
 const EMOJIS = ['👍', '❤️', '😊', '🎉', '✅', '👋', '🙏', '💪', '😀', '😂', '🔥', '⭐'];
+
+// A1 fast-follow: os componentes de MÍDIA (áudio/anexo) e AGENDAR estão portados e
+// prontos, mas o backend ainda não existe — mídia depende do envio via Meta Cloud
+// API (upload→storage→edge); agendar depende de tabela+fila internas. Até fiar,
+// os GATILHOS ficam ocultos (nunca botão que não faz nada). Re-ligar = flip pra true.
+const A1_MEDIA_ENABLED = false;
+const A1_SCHEDULE_ENABLED = false;
 
 /** Opção mínima de produto para o seletor do header (id + nome). */
 export interface PlatformCrmProductOption {
@@ -85,6 +109,14 @@ interface PlatformCrmChatAreaProps {
   selectedProductId?: string | null;
   onSetProduct?: (productId: string | null) => void;
   isSettingProduct?: boolean;
+  /** Visitante digitando agora (o host decide a fonte; sem presença ainda → false). */
+  isTyping?: boolean;
+  /**
+   * Encaminha um CONTEÚDO para OUTRA conversa (o host grava em platform_crm_messages
+   * da conversa alvo). É o análogo desacoplado do `onForwardMessage(messageId, target)`
+   * do original — aqui encaminhamos o texto (última mensagem ou rascunho) via envio real.
+   */
+  onForwardMessage?: (content: string, targetConversationId: string) => void;
 }
 
 export function PlatformCrmChatArea({
@@ -119,13 +151,24 @@ export function PlatformCrmChatArea({
   selectedProductId,
   onSetProduct,
   isSettingProduct,
+  isTyping,
+  onForwardMessage,
 }: PlatformCrmChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState('');
   const [isSuggestingReply, setIsSuggestingReply] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<{ id: string; content: string; senderType: string } | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  // A1 — estados do composer re-portado (respostas rápidas, notas, agendar,
+  // encaminhar, gravação de áudio e anexo de mídia).
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [attachment, setAttachment] = useState<PlatformCrmMediaPayload | null>(null);
 
   const status = conversation?.status ?? 'human_active';
 
@@ -224,6 +267,94 @@ export function PlatformCrmChatArea({
     setDraft((prev) => prev + emoji);
     setEmojiOpen(false);
     textareaRef.current?.focus();
+  };
+
+  // A1 — Respostas rápidas: insere o texto escolhido no rascunho (não envia).
+  const handleQuickReplySelect = (content: string) => {
+    setDraft((prev) => (prev.trim() ? `${prev}\n${content}` : content));
+    setQuickRepliesOpen(false);
+    textareaRef.current?.focus();
+  };
+
+  // A1 — Encaminhar: manda o conteúdo (última mensagem, ou o rascunho como
+  // fallback) para OUTRA conversa via o envio real do host.
+  const handleForwardConfirm = (targetConversationId: string) => {
+    const content = messages[messages.length - 1]?.content ?? draft.trim();
+    if (!content) {
+      toast.info('Nada para encaminhar', { description: 'Sem mensagens nem rascunho nesta conversa.' });
+      return;
+    }
+    onForwardMessage?.(content, targetConversationId);
+    toast.success('Mensagem encaminhada');
+  };
+
+  // A1 — Agendar mensagem. DECISÃO DE PRODUTO (Marcelo): a plataforma ainda NÃO
+  // tem `platform_crm_scheduled_messages` (a origem gravava em `scheduled_messages`
+  // org-scoped). A UI está fiel; a persistência aguarda a tabela/edge da fila.
+  const handleScheduleConfirm = async ({ content, scheduledAt }: { content: string; scheduledAt: string }) => {
+    // TODO(A1-schedule): persistir na fila interna de mensagens agendadas da
+    // plataforma quando a tabela `platform_crm_scheduled_messages` + edge existirem.
+    void content;
+    void scheduledAt;
+    setScheduleOpen(false);
+    toast.info('Agendamento de mensagem em breve', {
+      description: 'A fila de mensagens agendadas da plataforma ainda será conectada.',
+    });
+  };
+
+  // A1 — Anexo de mídia: abre o seletor de arquivo e monta um preview local.
+  const kindFromMime = (mime: string): PlatformCrmMediaKind => {
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    if (mime.startsWith('audio/')) return 'audio';
+    return 'document';
+  };
+
+  const handleAttachClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachment({
+      kind: kindFromMime(file.type),
+      url: URL.createObjectURL(file),
+      mime: file.type || null,
+      filename: file.name,
+      size_bytes: file.size,
+    });
+    e.target.value = '';
+  };
+
+  const clearAttachment = () => {
+    setAttachment((prev) => {
+      if (prev?.url.startsWith('blob:')) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  };
+
+  // A1 — Ponto ÚNICO de integração de MÍDIA. DECISÃO DE PRODUTO (Marcelo): o CRM
+  // da plataforma envia via Meta Cloud API (suporta mídia), mas o caminho de
+  // upload + envio de mídia ainda não está fiado no `useSendPlatformCrmMessage`
+  // (que hoje só aceita texto). A UI de anexo/áudio é fiel e funcional.
+  const handleSendMedia = () => {
+    if (!attachment) return;
+    // TODO(A1-media): wire ao Cloud API media send (upload p/ storage + Edge
+    // `platform-webchat-inbox` action 'send' carregando a mídia + caption).
+    toast.info('Envio de mídia em breve', {
+      description: 'O upload + envio por Cloud API da plataforma ainda será conectado.',
+    });
+    clearAttachment();
+  };
+
+  const handleAudioConfirm = (blob: Blob, durationMs: number) => {
+    setIsRecording(false);
+    // TODO(A1-media): wire ao Cloud API media send (upload do áudio gravado +
+    // envio via Edge `platform-webchat-inbox`).
+    void blob;
+    void durationMs;
+    toast.info('Envio de áudio em breve', {
+      description: 'O upload + envio por Cloud API da plataforma ainda será conectado.',
+    });
   };
 
   // Empty state — nenhuma conversa selecionada (os 3 cards do original).
@@ -509,7 +640,7 @@ export function PlatformCrmChatArea({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => setNotesOpen(true)}>
                 <StickyNote className="h-4 w-4 mr-2" />
                 Notas internas
               </DropdownMenuItem>
@@ -612,6 +743,8 @@ export function PlatformCrmChatArea({
                   </div>
                 </div>
               ))}
+
+              {isTyping && <PlatformCrmTypingIndicator name={visitorName} />}
             </div>
           )}
         </div>
@@ -666,62 +799,196 @@ export function PlatformCrmChatArea({
             </Button>
           </div>
 
-          {/* Composer */}
-          <div className="p-3 pt-2 flex-shrink-0 bg-background">
-            <div className="flex items-end gap-2">
-              <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-2" align="start" side="top">
-                  <div className="grid grid-cols-6 gap-1">
-                    {EMOJIS.map((e) => (
-                      <button
-                        key={e}
-                        onClick={() => insertEmoji(e)}
-                        className="h-8 w-8 flex items-center justify-center text-lg hover:bg-muted rounded transition-colors"
-                      >
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+          {/* A1 — Barra de ações rápidas do composer (respostas, notas, agendar,
+              encaminhar). As ações CRM herdadas do original seguem disponíveis no
+              componente, mas não são passadas aqui (desacoplamento de plataforma). */}
+          <PlatformCrmQuickActionBar
+            onQuickReplies={() => setQuickRepliesOpen(true)}
+            onOpenNotes={() => setNotesOpen(true)}
+            onScheduleMessage={A1_SCHEDULE_ENABLED ? () => setScheduleOpen(true) : undefined}
+            onForward={onForwardMessage ? () => setForwardOpen(true) : undefined}
+          />
 
-              <Textarea
-                ref={textareaRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder={`Mensagem para ${visitorName}...`}
-                rows={1}
-                className="min-h-[40px] max-h-32 resize-none bg-muted/40 border-0 rounded-2xl"
-              />
+          {/* A1 — Preview do anexo de mídia selecionado (envio no botão). */}
+          {attachment && (
+            <div className="px-3 pt-2 flex items-start gap-2 bg-background">
+              <div className="flex-1 min-w-0 rounded-lg border border-border p-2 bg-muted/30">
+                <PlatformCrmMediaAttachment media={attachment} isOwn />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 flex-shrink-0"
+                onClick={clearAttachment}
+                aria-label="Remover anexo"
+              >
+                <X className="h-4 w-4" />
+              </Button>
               <Button
                 type="button"
-                size="icon"
-                className="h-10 w-10 rounded-full flex-shrink-0 shadow-sm"
-                onClick={handleSend}
-                disabled={!draft.trim() || isSending}
-                aria-label="Enviar mensagem"
+                size="sm"
+                className="h-8 gap-1.5 flex-shrink-0"
+                onClick={handleSendMedia}
               >
-                {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                <Send className="h-4 w-4" />
+                Enviar
               </Button>
             </div>
-          </div>
+          )}
+
+          {/* Composer OU gravador de áudio inline */}
+          {isRecording ? (
+            <PlatformCrmAudioRecorder
+              onConfirm={handleAudioConfirm}
+              onCancel={() => setIsRecording(false)}
+            />
+          ) : (
+            <div className="p-3 pt-2 flex-shrink-0 bg-background">
+              <div className="flex items-end gap-2">
+                <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
+                    >
+                      <Smile className="h-5 w-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="start" side="top">
+                    <div className="grid grid-cols-6 gap-1">
+                      {EMOJIS.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => insertEmoji(e)}
+                          className="h-8 w-8 flex items-center justify-center text-lg hover:bg-muted rounded transition-colors"
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* A1 — Respostas rápidas (também abre com `/` no início do texto) */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
+                  onClick={() => setQuickRepliesOpen(true)}
+                  aria-label="Respostas rápidas"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+
+                {/* A1 — Anexar mídia / Gravar áudio. OCULTOS até o wiring do envio
+                    via Cloud API (A1_MEDIA_ENABLED). Componentes portados e prontos. */}
+                {A1_MEDIA_ENABLED && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
+                      onClick={handleAttachClick}
+                      aria-label="Anexar arquivo"
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
+                      onClick={() => setIsRecording(true)}
+                      aria-label="Gravar áudio"
+                    >
+                      <Mic className="h-5 w-5" />
+                    </Button>
+                  </>
+                )}
+
+                <Textarea
+                  ref={textareaRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    // `/` no início do rascunho abre as Respostas Rápidas.
+                    if (e.key === '/' && draft.length === 0) {
+                      e.preventDefault();
+                      setQuickRepliesOpen(true);
+                      return;
+                    }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder={`Mensagem para ${visitorName}...`}
+                  rows={1}
+                  className="min-h-[40px] max-h-32 resize-none bg-muted/40 border-0 rounded-2xl"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-10 w-10 rounded-full flex-shrink-0 shadow-sm"
+                  onClick={handleSend}
+                  disabled={!draft.trim() || isSending}
+                  aria-label="Enviar mensagem"
+                >
+                  {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
+
+      {/* ─────────── Overlays / dialogs do composer A1 ─────────── */}
+      {/* Input de arquivo escondido (acionado pelo clipe de anexo). */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelected}
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+      />
+
+      {/* Respostas rápidas (aberto por `/` ou pelos botões). */}
+      <PlatformCrmQuickRepliesPopover
+        open={quickRepliesOpen}
+        onOpenChange={setQuickRepliesOpen}
+        onSelect={handleQuickReplySelect}
+        leadName={visitorName}
+        productName={selectedProduct?.name}
+      />
+
+      {/* Notas internas da conversa (item "Notas internas" do menu). */}
+      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-5 w-5" />
+              Notas internas
+            </DialogTitle>
+          </DialogHeader>
+          <PlatformCrmInternalNotes conversationId={conversation.id} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Agendar mensagem (fila interna — ver ponto de integração A1-schedule). */}
+      <PlatformCrmScheduleMessageDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        conversationId={conversation.id}
+        onConfirm={handleScheduleConfirm}
+      />
+
+      {/* Encaminhar para outra conversa. */}
+      <PlatformCrmForwardMessageDialog
+        open={forwardOpen}
+        onOpenChange={setForwardOpen}
+        onConfirm={handleForwardConfirm}
+        conversationId={conversation.id}
+      />
     </div>
   );
 }
