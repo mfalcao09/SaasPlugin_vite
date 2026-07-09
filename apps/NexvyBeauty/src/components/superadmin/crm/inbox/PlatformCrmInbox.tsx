@@ -159,6 +159,13 @@ export function PlatformCrmInbox() {
     sendMessage.mutate({ conversationId: selected.id, content, replyToMessageId });
   };
 
+  // A1 — Encaminhar: grava o conteúdo na conversa ALVO usando o MESMO caminho de
+  // envio (Edge `platform-webchat-inbox` com fallback client-side). Envio real,
+  // sem canal externo novo — apenas persiste em `platform_crm_messages` do destino.
+  const handleForwardMessage = (content: string, targetConversationId: string) => {
+    sendMessage.mutate({ conversationId: targetConversationId, content });
+  };
+
   /**
    * Toggle do painel de contexto (U1c): em telas ≥lg alterna a coluna docked
    * (persistindo em localStorage); abaixo de lg abre o Sheet lateral.
@@ -357,6 +364,7 @@ export function PlatformCrmInbox() {
             selectedProductId={selected?.product_id ?? null}
             onSetProduct={handleSetProduct}
             isSettingProduct={setProduct.isPending}
+            onForwardMessage={handleForwardMessage}
           />
         </div>
 
