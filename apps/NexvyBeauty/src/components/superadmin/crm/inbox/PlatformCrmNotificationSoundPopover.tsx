@@ -1,18 +1,40 @@
 import { Volume2, VolumeX, Play, MessageSquare, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import type { NotificationSoundControls } from '../data/usePlatformCrmNotificationSound';
+import type {
+  NotificationSoundControls,
+  PlaySoundResult,
+} from '../data/usePlatformCrmNotificationSound';
 
 /**
  * Popover de sons de notificação (master + volume por canal + testar) — porte
- * fiel A1.2 de `seller/inbox/NotificationSoundPopover.tsx` (Vendus v5
- * original). Consome `usePlatformCrmNotificationSound` (cópia escopada do hook
- * v5 com volumes por canal).
+ * A1.2 de `seller/inbox/NotificationSoundPopover.tsx` (Vendus v5 original).
+ * Consome `usePlatformCrmNotificationSound` (cópia escopada do hook v5 com
+ * volumes por canal). Divergência vs v5: o "Testar" agora dá feedback (toast)
+ * quando o som não toca — usuário pediu o teste, silêncio é bug.
  */
 const PRESETS = [0, 0.25, 0.5, 0.75, 1];
+
+const TEST_FAIL_MESSAGES: Record<Exclude<PlaySoundResult, 'played'>, string> = {
+  'master-off': 'Os sons estão desativados no interruptor geral.',
+  'volume-zero': 'O volume deste som está em 0% — aumente para ouvir o teste.',
+  unsupported: 'Este navegador não suporta reprodução de áudio.',
+  blocked:
+    'O navegador bloqueou o áudio. Verifique se o site não está silenciado (ícone de som na barra de endereço) e tente novamente.',
+};
+
+async function runSoundTest(playFn: () => Promise<PlaySoundResult>) {
+  const result = await playFn();
+  if (result === 'played') return;
+  console.warn('[notification-sound] Teste de som falhou:', result);
+  toast.error('Não foi possível tocar o som', {
+    description: TEST_FAIL_MESSAGES[result],
+  });
+}
 
 interface Props {
   controls: NotificationSoundControls;
@@ -136,7 +158,7 @@ export function PlatformCrmNotificationSoundPopover({ controls }: Props) {
           icon={<MessageSquare className="h-4 w-4 text-primary" />}
           value={messageVolume}
           onChange={setMessageVolume}
-          onTest={playMessage}
+          onTest={() => void runSoundTest(playMessage)}
           disabled={!masterEnabled}
         />
 
@@ -145,7 +167,7 @@ export function PlatformCrmNotificationSoundPopover({ controls }: Props) {
           icon={<Users className="h-4 w-4 text-primary" />}
           value={queueVolume}
           onChange={setQueueVolume}
-          onTest={playQueue}
+          onTest={() => void runSoundTest(playQueue)}
           disabled={!masterEnabled}
         />
       </PopoverContent>

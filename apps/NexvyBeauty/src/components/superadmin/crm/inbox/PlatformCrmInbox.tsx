@@ -146,7 +146,6 @@ export function PlatformCrmInbox({
     isFetching: fetchingConversations,
     refetch: refetchConversations,
   } = usePlatformCrmConversations();
-  const tabCounts = usePlatformCrmConversationCounts(allRows);
 
   // Produtos do GRUPO — nome do produto por id (paridade com productNameById do v5).
   const { data: allProducts = [] } = usePlatformCrmProducts();
@@ -248,6 +247,19 @@ export function PlatformCrmInbox({
     });
     return leads;
   }, [filters.selectedTagIds, tagAssignments]);
+
+  // A1.4/FILTROS: contadores das abas RESPEITAM os filtros do drawer (paridade
+  // v5: `countsFilters` = todos os filtros SEM `tab` — cada aba conta seu
+  // universo DENTRO do filtro). Reaproveita `applyPlatformCrmInboxFilters`
+  // (que por design ignora aba/busca/showResolved) e volta ao nível de row via
+  // ids, mantendo a assinatura de `usePlatformCrmConversationCounts` intocada.
+  const countRows = useMemo(() => {
+    const filteredIds = new Set(
+      applyPlatformCrmInboxFilters(conversations, filters, tagLeadIds).map((c) => c.id),
+    );
+    return (allRows || []).filter((r: PlatformCrmConversationRow) => filteredIds.has(r.id));
+  }, [allRows, conversations, filters, tagLeadIds]);
+  const tabCounts = usePlatformCrmConversationCounts(countRows);
 
   // Filtro por aba (client-side — o backend da plataforma não tem RPC de
   // paginação/filtros; mesma UI do v5). A BUSCA é interna da lista (paridade

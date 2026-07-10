@@ -49,6 +49,7 @@ import { PlatformCrmBusinessHoursManager } from '@/components/superadmin/crm/bus
 import { PlatformCrmWebhooksManager } from '@/components/superadmin/crm/webhooks/PlatformCrmWebhooksManager';
 import { PlatformCrmNotificationManager } from '@/components/superadmin/crm/notifications/PlatformCrmNotificationManager';
 import { PlatformCrmAgendaManager } from '@/components/superadmin/crm/agenda/PlatformCrmAgendaManager';
+import { PlatformCrmTasksManager } from '@/components/superadmin/crm/tasks/PlatformCrmTasksManager';
 import { PlatformCrmProductAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmProductAgentsManager';
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
@@ -264,6 +265,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Agenda',
         icon: I.CalendarDays,
         render: () => <PlatformCrmAgendaManager />,
+      },
+      {
+        id: 'v-tarefas',
+        label: 'Tarefas',
+        icon: I.ListTodo,
+        render: () => <PlatformCrmTasksManager />,
       },
     ],
   },

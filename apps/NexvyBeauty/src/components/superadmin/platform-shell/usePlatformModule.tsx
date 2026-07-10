@@ -30,6 +30,7 @@ import {
   KanbanSquare,
   Contact,
   CalendarDays,
+  ListTodo,
   MessageSquare,
   LayoutPanelTop,
   Radar,
@@ -270,6 +271,7 @@ export const PlatformIcons = {
   KanbanSquare,
   Contact,
   CalendarDays,
+  ListTodo,
   // vendas — atendimentos
   MessageSquare,
   LayoutPanelTop,
