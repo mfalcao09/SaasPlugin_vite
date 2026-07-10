@@ -6,6 +6,7 @@ import { CampaignDetail } from './CampaignDetail';
 import { CampaignReports } from './CampaignReports';
 import { ContextLibrary } from './ContextLibrary';
 import { usePlatformCrmCampaigns } from '../data/usePlatformCrmCampaigns';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 
 /**
  * CRM de PLATAFORMA (super_admin) — Campanhas Inteligentes. Porte 1:1 do
@@ -29,6 +30,14 @@ export function PlatformCrmCampaignsManager() {
   const [view, setView] = useState<View>({ kind: 'list' });
   const [tab, setTab] = useState('campaigns');
   const { campaigns, stats, preparations, refresh } = usePlatformCrmCampaigns();
+  // Filtro ATIVO pelo produto global (migration 20260710_platform_crm_campaigns_product_id,
+  // ordem Marcelo "campanha por produto"). product_id NULL = campanha do grupo todo —
+  // aparece em qualquer produto selecionado (acesso defensivo: types.ts pode não ter
+  // a coluna regenerada ainda).
+  const { activeProductId } = useActivePlatformProduct();
+  const visibleCampaigns = activeProductId
+    ? campaigns.filter((c: any) => !c.product_id || c.product_id === activeProductId)
+    : campaigns;
 
   if (view.kind === 'new' || view.kind === 'edit') {
     return (
@@ -67,7 +76,7 @@ export function PlatformCrmCampaignsManager() {
 
         <TabsContent value="campaigns" className="mt-4">
           <CampaignsList
-            campaigns={campaigns}
+            campaigns={visibleCampaigns}
             stats={stats}
             preparations={preparations}
             onNew={() => setView({ kind: 'new' })}
@@ -81,7 +90,7 @@ export function PlatformCrmCampaignsManager() {
         </TabsContent>
 
         <TabsContent value="reports" className="mt-4">
-          <CampaignReports campaigns={campaigns} />
+          <CampaignReports campaigns={visibleCampaigns} />
         </TabsContent>
       </Tabs>
     </div>

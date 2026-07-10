@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Bot, User, ArrowRightLeft, Plus, StickyNote,
   BarChart3, UserCircle, MoreVertical, X, ChevronLeft,
@@ -43,6 +43,8 @@ import { PlatformCrmForwardMessageDialog } from './PlatformCrmForwardMessageDial
 import { PlatformCrmAcceptTicketBar } from './PlatformCrmAcceptTicketBar';
 import { PlatformCrmSendTemplateDialog } from './PlatformCrmSendTemplateDialog';
 import { PlatformCrmInternalNotes } from './PlatformCrmInternalNotes';
+import { PlatformCrmFollowupAIDialog } from './PlatformCrmFollowupAIDialog';
+import { PlatformCrmCallWithAIDialog } from './PlatformCrmCallWithAIDialog';
 import type { PlatformCrmSendMediaPayload } from '../data/usePlatformCrmConversations';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -125,6 +127,8 @@ interface PlatformCrmChatAreaProps {
   currentAgentName?: string | null;
   /** ID do lead vinculado — usado para carregar etiquetas do lead no header */
   leadId?: string | null;
+  /** ID do produto da conversa — usado no PlatformCrmCallWithAIDialog (agentes por produto). */
+  productId?: string | null;
   onSendMessage: (content: string, replyToMessageId?: string, media?: PlatformCrmSendMediaPayload) => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onDeleteMessage?: (messageId: string) => void;
@@ -201,6 +205,7 @@ export function PlatformCrmChatArea({
   sectorColor,
   currentAgentName,
   leadId,
+  productId,
   onSendMessage,
   onEditMessage,
   onDeleteMessage,
@@ -249,6 +254,8 @@ export function PlatformCrmChatArea({
   const [forwardMessageId, setForwardMessageId] = useState<string | null>(null);
   const [sendTemplateOpen, setSendTemplateOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [followupAIOpen, setFollowupAIOpen] = useState(false);
+  const [callAIOpen, setCallAIOpen] = useState(false);
   const { stale: isStale } = usePlatformCrmConversationStaleness(messages);
 
 
@@ -402,15 +409,19 @@ export function PlatformCrmChatArea({
     setForwardMessageId(null);
   };
 
-  // Follow-up IA / Chamar IA — na plataforma ambos acionam o reengajamento REAL
-  // (edge ai-reactivate). TODO(A1.2-backend): dialogs completos com rascunho.
-  const handleFollowupAI = () => {
-    if (onAiReactivate) {
-      onAiReactivate();
-    } else {
-      toast.info('Follow-up IA em breve');
-    }
-  };
+  // A1.3: Wand2 (Follow-up IA) e Sparkles (Chamar IA) agora abrem os dialogs ricos
+  // (PlatformCrmFollowupAIDialog / PlatformCrmCallWithAIDialog) em vez do um-clique.
+  // O reengajamento REAL (edge ai-reactivate) segue via onAiReactivate, acionado
+  // de dentro do PlatformCrmCallWithAIDialog.
+  // Rascunho do Follow-up IA: reusa o copiloto de respostas da plataforma
+  // (edge `platform-sales-copilot` via onAiSuggest). Callback estável — o
+  // dialog regenera ao abrir com base nesta referência.
+  // TODO(A1.3-backend): edge dedicado de follow-up (resumo/estratégia/warnings
+  // estruturados, paridade com useFollowupAIDraft do tenant).
+  const generateFollowupDraft = useCallback(async (): Promise<string> => {
+    if (!onAiSuggest) return '';
+    return (await onAiSuggest()) || '';
+  }, [onAiSuggest]);
 
   if (!conversationId) {
     return <PlatformCrmEmptyInboxState />;
@@ -510,8 +521,7 @@ export function PlatformCrmChatArea({
                   'h-9 w-9 relative',
                   isStale && 'text-amber-600 hover:text-amber-700',
                 )}
-                onClick={handleFollowupAI}
-                disabled={isAiReactivating}
+                onClick={() => setFollowupAIOpen(true)}
                 aria-label="Follow-up IA"
               >
                 <Wand2 className="h-[18px] w-[18px]" />
@@ -743,8 +753,7 @@ export function PlatformCrmChatArea({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={handleFollowupAI}
-                      disabled={isAiReactivating}
+                      onClick={() => setCallAIOpen(true)}
                     >
                       <Sparkles className="h-4 w-4 text-primary" />
                     </Button>
@@ -763,8 +772,7 @@ export function PlatformCrmChatArea({
                         'h-8 w-8 relative',
                         isStale && 'text-amber-600 hover:text-amber-700',
                       )}
-                      onClick={handleFollowupAI}
-                      disabled={isAiReactivating}
+                      onClick={() => setFollowupAIOpen(true)}
                     >
                       <Wand2 className="h-4 w-4" />
                       {isStale && (
@@ -972,6 +980,10 @@ export function PlatformCrmChatArea({
               currentStageId={currentStageId}
               onPickCatalog={onPickCatalog}
               onSendPaymentLink={onSendPaymentLink}
+              onSuggestReply={onAiSuggest ? handleAiSuggest : undefined}
+              isSuggestingReply={isSuggestingReply}
+              onMarkHot={onMarkHot}
+              onSendFlow={onSendFlow}
             />
           )}
 
@@ -1080,6 +1092,39 @@ export function PlatformCrmChatArea({
           <PlatformCrmInternalNotes conversationId={conversationId} />
         </DialogContent>
       </Dialog>
+
+      {/* Chamar IA (follow-up manual) — dialog rico A1.3 (paridade CallWithAIDialog v5).
+          Aciona o reengajamento REAL via onAiReactivate (edge ai-reactivate). */}
+      {leadId && (
+        <PlatformCrmCallWithAIDialog
+          open={callAIOpen}
+          onOpenChange={setCallAIOpen}
+          lead={{
+            id: leadId,
+            name: visitorName || 'Visitante',
+            phone: visitorPhone || null,
+            product_id: productId || null,
+          }}
+          channel={channel}
+          metaConnectionId={metaConnectionId}
+          instagramConnectionId={instagramConnectionId}
+          evolutionInstanceId={evolutionInstanceId}
+          initialObjective="Retomar a conversa de onde parou, analisando todo o histórico, e dar continuidade ao atendimento."
+          onReactivate={() => onAiReactivate?.()}
+          isReactivating={isAiReactivating}
+        />
+      )}
+
+      {/* Follow-up IA — rascunho editável gerado a partir do histórico real,
+          enviado como o operador (paridade FollowupAIDialog v5). */}
+      <PlatformCrmFollowupAIDialog
+        open={followupAIOpen}
+        onOpenChange={setFollowupAIOpen}
+        conversationId={conversationId}
+        leadName={visitorName}
+        onGenerateDraft={generateFollowupDraft}
+        onSend={(content) => onSendMessage(content)}
+      />
     </div>
   );
 }

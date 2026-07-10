@@ -8,6 +8,8 @@ import {
   Package,
   CreditCard,
   ListTodo,
+  Sparkles,
+  Flame,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,6 +49,14 @@ interface PlatformCrmQuickActionBarProps {
   onPickCatalog?: () => void;
   /** Abre dialog de gerar/enviar link de pagamento. */
   onSendPaymentLink?: () => void;
+  /** Sugere uma resposta por IA (preenche o composer). Edge platform-sales-copilot. */
+  onSuggestReply?: () => void;
+  /** Loading da sugestão por IA (desabilita o botão enquanto gera). */
+  isSuggestingReply?: boolean;
+  /** Marca o lead vinculado como "quente". Visível só com lead vinculado. */
+  onMarkHot?: () => void;
+  /** Abre o seletor de fluxo/automação para enviar na conversa. */
+  onSendFlow?: () => void;
 }
 
 export function PlatformCrmQuickActionBar({
@@ -59,6 +69,10 @@ export function PlatformCrmQuickActionBar({
   currentStageId,
   onPickCatalog,
   onSendPaymentLink,
+  onSuggestReply,
+  isSuggestingReply,
+  onMarkHot,
+  onSendFlow,
 }: PlatformCrmQuickActionBarProps) {
   const currentStage = pipelineStages.find((s) => s.id === currentStageId);
 
@@ -188,6 +202,53 @@ export function PlatformCrmQuickActionBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Iniciar cadência para o lead</TooltipContent>
+        </Tooltip>
+      )}
+
+      {onSuggestReply && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1.5 shrink-0 text-violet-600 hover:text-violet-700"
+              onClick={onSuggestReply}
+              disabled={isSuggestingReply}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Sugerir resposta
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Gerar sugestão de resposta com IA</TooltipContent>
+        </Tooltip>
+      )}
+
+      {onMarkHot && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1.5 shrink-0 text-orange-600 hover:text-orange-700"
+              onClick={onMarkHot}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Marcar quente
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Marcar o lead como quente</TooltipContent>
+        </Tooltip>
+      )}
+
+      {onSendFlow && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 shrink-0" onClick={onSendFlow}>
+              <Workflow className="h-3.5 w-3.5" />
+              Fluxo
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Enviar um fluxo/automação na conversa</TooltipContent>
         </Tooltip>
       )}
     </div>

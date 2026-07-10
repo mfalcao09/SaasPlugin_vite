@@ -203,9 +203,12 @@ export function PlatformCrmInbox({
             ? agentNameById.get(row.current_agent_id) || 'Duda'
             : null,
           current_agent_avatar: null,
-          evolution_instance_id: null,
-          meta_connection_id: null,
-          instagram_connection_id: null,
+          // A1.3/FRENTE 3: ids de conexão materializados pelo backend na
+          // conversa (canal por conversa). Leitura defensiva — o tipo TS do
+          // row ainda não reflete as colunas novas (padrão A1.2).
+          evolution_instance_id: (row as any).evolution_instance_id ?? null,
+          meta_connection_id: (row as any).meta_connection_id ?? null,
+          instagram_connection_id: (row as any).instagram_connection_id ?? null,
         } as Conversation;
       }),
     [allRows, productNameById, agentNameById, sectorById],
@@ -707,6 +710,16 @@ export function PlatformCrmInbox({
     }
     try {
       await acceptConversation.mutateAsync(selectedConversation.id);
+      // A1.3/FRENTE 4: persiste o setor escolhido na conversa (coluna sector_id,
+      // migration 07-09). Best-effort + payload defensivo (`as any`) — os types
+      // TS gerados podem ainda não refletir a coluna.
+      const { error: sectorErr } = await supabase
+        .from('platform_crm_conversations')
+        .update({ sector_id: sectorId } as any)
+        .eq('id', selectedConversation.id);
+      if (sectorErr) {
+        console.warn('[PlatformCrmInbox] Falha ao gravar sector_id no aceite:', sectorErr);
+      }
       toast({ title: 'Atendimento aceito' });
       refetchConversations();
     } catch (e: any) {
@@ -821,9 +834,9 @@ export function PlatformCrmInbox({
               visitorPhone={freshSelected?.visitor_phone}
               visitorAvatarUrl={null}
               channel={freshSelected?.channel || 'webchat'}
-              metaConnectionId={null}
-              instagramConnectionId={null}
-              evolutionInstanceId={null}
+              metaConnectionId={freshSelected?.meta_connection_id ?? null}
+              instagramConnectionId={freshSelected?.instagram_connection_id ?? null}
+              evolutionInstanceId={freshSelected?.evolution_instance_id ?? null}
               status={freshStatus}
               messages={messages}
               isLoading={!!selectedConversation && loadingDetail}
@@ -834,9 +847,10 @@ export function PlatformCrmInbox({
               productName={freshSelected?.product_name || undefined}
               currentUserId={currentUserId}
               ticketCode={selectedConversation?.id?.slice(0, 6)}
-              sectorName={undefined}
-              sectorColor={undefined}
+              sectorName={freshSelected?.sector_name || undefined}
+              sectorColor={freshSelected?.sector_color || undefined}
               leadId={freshSelected?.lead_id || null}
+              productId={freshSelected?.product_id || null}
               currentAgentName={freshSelected?.current_agent_name || null}
               needsAccept={
                 !!selectedConversation &&
@@ -978,7 +992,7 @@ export function PlatformCrmInbox({
           conversationId={selectedConversation.id}
           currentAssignedUserId={currentUserId}
           currentChannel={freshSelected?.channel}
-          currentEvolutionInstanceId={null}
+          currentEvolutionInstanceId={freshSelected?.evolution_instance_id ?? null}
           onTransfer={handleTransfer}
         />
       )}
@@ -989,7 +1003,7 @@ export function PlatformCrmInbox({
           open={acceptDialog.open}
           onOpenChange={(open) => setAcceptDialog((prev) => ({ ...prev, open }))}
           conversationId={selectedConversation.id}
-          defaultSectorId={null}
+          defaultSectorId={(freshSelected as any)?.sector_id ?? null}
           isTakeover={acceptDialog.isTakeover}
           previousAssigneeName={acceptDialog.previousAssigneeName}
           onAccepted={() => {

@@ -23,6 +23,7 @@ import { usePlatformCrmKanbanFilters } from '../data/usePlatformCrmKanbanFilters
 import { usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 import { PlatformCrmProductSelector } from '../products/PlatformCrmProductSelector';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 
 const UNASSIGNED_ID = 'unassigned';
 
@@ -55,8 +56,14 @@ export function PlatformCrmKanban() {
   // (auto-lock) — preserva a UI atual do Beauty como produto único.
   const { data: products = [] } = usePlatformCrmProducts();
 
+  // A1.3 — produto GLOBAL do painel (filtra Vendas + ERP). Tem precedência sobre o
+  // seletor LOCAL do pipeline; quando "Todos" (null) o resultado é IDÊNTICO ao
+  // atual (seletor local ?? 1º produto).
+  const { activeProductId } = useActivePlatformProduct();
+
   // Auto-seleciona o 1º produto quando ainda não há escolha (KanbanBoard.tsx:42-44).
-  const effectiveProductId = selectedProductId ?? products[0]?.id ?? null;
+  const effectiveProductId =
+    activeProductId ?? selectedProductId ?? products[0]?.id ?? null;
 
   const {
     data: stages,

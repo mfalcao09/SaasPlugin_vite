@@ -19,6 +19,7 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { useAcceptPlatformCrmConversation } from '../data/usePlatformCrmConversations';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Dialog de aceite/assunção de atendimento com escolha de setor — porte fiel
@@ -62,10 +63,19 @@ export function PlatformCrmAcceptTicketDialog({
   const handleConfirm = async () => {
     if (!conversationId || !sectorId) return;
     try {
-      // TODO(A1.2-backend): persistir o sector_id escolhido na conversa quando a
-      // coluna existir em platform_crm_conversations (pende migration) e/ou o
-      // edge de aceite com setor da plataforma existir. O aceite em si é real.
       await acceptMutation.mutateAsync(conversationId);
+      // A1.3/FRENTE 4: persiste o setor escolhido na conversa (coluna sector_id,
+      // migration 07-09). Best-effort + payload defensivo (`as any`) — os types
+      // TS gerados podem ainda não refletir a coluna.
+      // TODO(A1.3-backend): edge de aceite com enforcement de setor (validar se
+      // o agente pertence ao setor) quando existir na plataforma.
+      const { error: sectorErr } = await supabase
+        .from('platform_crm_conversations')
+        .update({ sector_id: sectorId } as any)
+        .eq('id', conversationId);
+      if (sectorErr) {
+        console.warn('[PlatformCrmAcceptTicketDialog] Falha ao gravar sector_id:', sectorErr);
+      }
       toast({
         title: isTakeover ? 'Atendimento assumido' : 'Atendimento aceito',
         description: isTakeover

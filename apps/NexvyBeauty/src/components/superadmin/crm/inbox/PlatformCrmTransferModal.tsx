@@ -234,9 +234,10 @@ export function PlatformCrmTransferModal({
         updateData.status = 'human_active';
       } else if (transferType === 'sector') {
         updateData.assigned_to = null;
-        // TODO(A1.2-backend): sector_id pende migration em platform_crm_conversations
-        // (fonte gravava updateData.sector_id = selectedSectorId). O setor de destino
-        // fica registrado na nota/histórico abaixo até a coluna existir.
+        // A1.3/FRENTE 4: coluna sector_id materializada (migration 07-09) —
+        // grava o setor de destino na conversa (paridade com a fonte v5). O
+        // registro em nota/histórico abaixo é mantido como trilha.
+        updateData.sector_id = selectedSectorId;
         updateData.status = 'waiting_human';
       } else {
         // agent: devolve a conversa para a IA com agente específico

@@ -77,6 +77,9 @@ export function OrganizationsManager({ onViewOrganization }: OrganizationsManage
   });
 
   const { data: organizations, isLoading } = useAllOrganizations();
+  // TODO(A1.3-produto): entidade sem product_id — filtro inerte. organizations não
+  // referencia platform_crm_products (tem plan_id/max_products, não product_id).
+  // Filtro GLOBAL de produto não se aplica aqui; mostra tudo.
   const { data: activePlans } = useActivePlans();
   const updateOrganization = useUpdateOrganization();
   const createAuditLog = useCreateAuditLog();
