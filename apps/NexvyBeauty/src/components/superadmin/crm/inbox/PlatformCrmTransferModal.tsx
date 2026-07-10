@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePlatformCrmTeamMembers } from '../data/usePlatformCrmTeam';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
+import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
 
 /**
  * "Transferir Conversa" da inbox do CRM de PLATAFORMA.
@@ -218,6 +219,39 @@ export function PlatformCrmTransferModal({
     setIsTransferring(true);
 
     try {
+      // A1.2-FRONT (contrato 7, "idem no caminho de setor"): tenta a action do
+      // edge com `sector_id` no payload — enforcement de membership devolve 403
+      // { error, sector_name }. Qualquer outra falha (action ainda não deployada,
+      // rede) cai no FALLBACK = update direto abaixo (comportamento atual).
+      if (transferType === 'sector' && selectedSectorId) {
+        const { error: fnError } = await supabase.functions.invoke('platform-webchat-inbox', {
+          body: {
+            action: 'transfer',
+            conversation_id: conversationId,
+            sector_id: selectedSectorId,
+            ...(internalNote.trim() ? { note: internalNote.trim() } : {}),
+          },
+        });
+        if (fnError) {
+          const { status, body } = await parsePlatformCrmFnError(fnError);
+          if (status === 403) {
+            toast({
+              title: 'Setor sem acesso',
+              description: body?.sector_name
+                ? `Você não faz parte do setor "${body.sector_name}" — escolha outro setor ou peça acesso.`
+                : body?.error || 'Você não tem acesso ao setor escolhido.',
+              variant: 'destructive',
+            });
+            setIsTransferring(false);
+            return;
+          }
+          console.warn(
+            '[PlatformCrmTransferModal] action transfer indisponível — fallback update direto:',
+            fnError,
+          );
+        }
+      }
+
       // Detect admin takeover ahead of update so we can flag metadata.
       const adminTargetAgent =
         transferType === 'agent' && selectedAgentId

@@ -198,10 +198,10 @@ interface CheckWhatsAppResult {
 
 /**
  * Port do `useCheckWhatsAppNumber` do v5 (sem organization_id — adaptação d).
- * TODO(A1.2-backend): não existe edge function de verificação de número no schema de
- * plataforma (equivalente ao `evolution-check-number` do tenant; o
- * `platform-evolution-proxy` não expõe action de check). UI do v5 preservada; a ação
- * informa a pendência até o backend de plataforma existir.
+ * A1.2-FRONT (contrato 2): edge `platform-check-whatsapp-number` POST { phone }
+ * → { supported, exists, checked_via }. O resultado do contrato (mais enxuto que
+ * o CheckWhatsAppResult do tenant) é mapeado para a mesma interface, preservando
+ * a UI do v5: verificado ✓ / não existe ✗ / indisponível (supported=false ou erro).
  */
 function useCheckPlatformWhatsAppNumber() {
   const [loading, setLoading] = useState(false);
@@ -218,15 +218,50 @@ function useCheckPlatformWhatsAppNumber() {
       toast({ title: 'Número não informado', variant: 'destructive' });
       return null;
     }
-    // TODO(A1.2-backend): invocar a futura edge function de check-number da plataforma
-    // aqui (espelho do fluxo v5: setLoading → invoke → setLastResult → toasts por diagnóstico).
-    if (!params.silent) {
-      toast({
-        title: 'Verificação indisponível',
-        description: 'A verificação de número WhatsApp da plataforma ainda não tem backend (pende A1.2).',
+    const digits = params.phone.replace(/\D/g, '');
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-check-whatsapp-number', {
+        body: { phone: params.phone },
       });
+      if (error) throw error;
+      const resp = data as { supported?: boolean; exists?: boolean; checked_via?: string } | null;
+
+      const unsupported = resp?.supported === false;
+      const exists = !!resp?.exists;
+      const result: CheckWhatsAppResult = {
+        ok: !unsupported,
+        exists,
+        reliable: !unsupported,
+        diagnosis: unsupported
+          ? 'provider_false_negative_or_session_issue'
+          : exists
+          ? 'ok'
+          : 'number_not_found',
+        original_phone: params.phone,
+        normalized_phone: digits || null,
+        jid: null,
+        checked_variants: unsupported ? [] : [{ number: digits, exists, jid: null }],
+        updated: false,
+        ...(unsupported ? { error: 'unsupported' } : {}),
+        message: resp?.checked_via ? `Verificado via ${resp.checked_via}` : undefined,
+      };
+      setLastResult(result);
+      return result;
+    } catch (e: any) {
+      setLastResult(null);
+      if (!params.silent) {
+        toast({
+          title: 'Verificação indisponível',
+          description:
+            e?.message || 'O edge platform-check-whatsapp-number ainda não respondeu.',
+          variant: 'destructive',
+        });
+      }
+      return null;
+    } finally {
+      setLoading(false);
     }
-    return null;
   }
 
   return { check, loading, lastResult, setLoading, setLastResult };
@@ -1022,6 +1057,12 @@ function VerifyWhatsAppButton({
             Nenhuma instância WhatsApp conectada nesta empresa.
           </p>
         )}
+        {!loading && lastResult && lastResult.error === 'unsupported' && (
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+            <span className="font-medium">Verificação indisponível para esta conexão</span>
+          </div>
+        )}
         {!loading && lastResult && !lastResult.error && (
           <>
             <div className="flex items-center gap-2">
@@ -1077,6 +1118,7 @@ function VerifyWhatsAppButton({
               </p>
             )}
             <div className="pt-1 border-t border-border/60 text-[10px] text-muted-foreground space-y-0.5">
+              {lastResult.message && <p>{lastResult.message}</p>}
               {lastResult.checked_variants.map((v) => (
                 <div key={v.number} className="flex justify-between gap-2">
                   <span className="font-mono">{v.number}</span>

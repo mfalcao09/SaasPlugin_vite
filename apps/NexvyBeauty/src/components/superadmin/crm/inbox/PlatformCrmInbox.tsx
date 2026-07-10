@@ -596,7 +596,7 @@ export function PlatformCrmInbox({
   const handleResumeConversation = async () => {
     if (!selectedConversation) return;
     try {
-      await acceptConversation.mutateAsync(selectedConversation.id);
+      await acceptConversation.mutateAsync({ conversationId: selectedConversation.id });
       toast({ title: 'Atendimento retomado' });
     } catch { toast({ title: 'Erro', description: 'Não foi possível retomar.', variant: 'destructive' }); }
   };
@@ -740,8 +740,10 @@ export function PlatformCrmInbox({
     document.body.style.userSelect = 'none';
   }, []);
 
-  // Aceite/takeover — client-side (UPDATE platform_crm_conversations).
-  // TODO(A1.2-backend): edge de aceite com enforcement de setor.
+  // Aceite/takeover — A1.2-FRONT (contrato 7): action `accept` do edge
+  // `platform-webchat-inbox` com `sector_id` no payload (403 {error, sector_name}
+  // se o usuário não é membro do setor) + fallback ao UPDATE client-side dentro
+  // do hook enquanto a action não estiver deployada.
   const handleAcceptTicket = useCallback(async (sectorId?: string) => {
     if (!selectedConversation) return;
     if (!sectorId) {
@@ -749,21 +751,15 @@ export function PlatformCrmInbox({
       return;
     }
     try {
-      await acceptConversation.mutateAsync(selectedConversation.id);
-      // A1.3/FRENTE 4: persiste o setor escolhido na conversa (coluna sector_id,
-      // migration 07-09). Best-effort + payload defensivo (`as any`) — os types
-      // TS gerados podem ainda não refletir a coluna.
-      const { error: sectorErr } = await supabase
-        .from('platform_crm_conversations')
-        .update({ sector_id: sectorId } as any)
-        .eq('id', selectedConversation.id);
-      if (sectorErr) {
-        console.warn('[PlatformCrmInbox] Falha ao gravar sector_id no aceite:', sectorErr);
-      }
+      await acceptConversation.mutateAsync({ conversationId: selectedConversation.id, sectorId });
       toast({ title: 'Atendimento aceito' });
       refetchConversations();
     } catch (e: any) {
-      toast({ title: 'Erro ao aceitar', description: e?.message, variant: 'destructive' });
+      toast({
+        title: e?.name === 'PlatformCrmSectorForbiddenError' ? 'Setor sem acesso' : 'Erro ao aceitar',
+        description: e?.message,
+        variant: 'destructive',
+      });
     }
   }, [selectedConversation, acceptConversation, toast, refetchConversations]);
 
@@ -969,7 +965,10 @@ export function PlatformCrmInbox({
               currentStageId={linkedLead?.current_stage_id || null}
               onPickCatalog={() => setShowCatalog(true)}
               onSendPaymentLink={() => setShowPaymentLink(true)}
-              onAiReactivate={() => selectedConversation && aiReactivate.mutate(selectedConversation.id)}
+              onAiReactivate={(opts) =>
+                selectedConversation &&
+                aiReactivate.mutate({ conversationId: selectedConversation.id, ...(opts || {}) })
+              }
               isAiReactivating={aiReactivate.isPending}
             />
           </div>

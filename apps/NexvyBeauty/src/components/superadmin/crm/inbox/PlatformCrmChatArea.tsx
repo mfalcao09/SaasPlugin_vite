@@ -5,6 +5,8 @@ import {
   RotateCcw, Play, Undo2, Reply, Layers, Tag, Archive,
   FileText, Lock, Sparkles, Wand2,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { usePlatformCrmConversationStaleness } from '../data/usePlatformCrmConversationStaleness';
 import { usePlatformCrmTagsForLead } from '../data/usePlatformCrmTags';
 import { Button } from '@/components/ui/button';
@@ -45,7 +47,10 @@ import { PlatformCrmSendTemplateDialog } from './PlatformCrmSendTemplateDialog';
 import { PlatformCrmInternalNotes } from './PlatformCrmInternalNotes';
 import { PlatformCrmFollowupAIDialog } from './PlatformCrmFollowupAIDialog';
 import { PlatformCrmCallWithAIDialog } from './PlatformCrmCallWithAIDialog';
-import type { PlatformCrmSendMediaPayload } from '../data/usePlatformCrmConversations';
+import type {
+  PlatformCrmSendMediaPayload,
+  PlatformCrmAiReactivateOptions,
+} from '../data/usePlatformCrmConversations';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -60,16 +65,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
  * - statuses do enum da plataforma (human_active/waiting_human/bot_active/closed);
  * - reações via `usePlatformCrmMessageReactions` (tabela canônica pende migration);
  * - etiquetas via `usePlatformCrmTagsForLead`;
- * - janela 24h Meta: TODO(A1.2-backend) — `platform_crm_conversations` ainda não
- *   materializa meta_connection_id/RPC de janela; o banner + fluxo de template
- *   ficam prontos atrás de `outOfWindow` (hoje sempre false);
+ * - janela 24h Meta: A1.2-FRONT — RPC `platform_crm_is_within_24h_window`
+ *   alimenta o flag `outOfWindow` (banner + fluxo de template); enquanto a RPC
+ *   não existe no banco, o erro degrada para "dentro da janela" (composer livre);
  * - Follow-up IA (Wand2) e Chamar IA (Sparkles): acionam o reengajamento REAL da
- *   plataforma via `onAiReactivate` (edge platform-webchat-inbox `ai-reactivate`);
- *   TODO(A1.2-backend): portar os dialogs completos CallWithAIDialog/
- *   FollowupAIDialog (rascunho editável + janela 24h) quando os edges de
- *   follow-up da plataforma existirem;
- * - Verificar número (menu da bolha): TODO(A1.2-backend) edge
- *   `platform-check-whatsapp-number` — hoje toast informativo;
+ *   plataforma via `onAiReactivate` (edge platform-webchat-inbox `ai-reactivate`,
+ *   contrato 6 — repassa agent_id/objective/mode/extra_context do dialog);
+ * - Verificar número (menu da bolha): A1.2-FRONT — edge
+ *   `platform-check-whatsapp-number` (contrato 2), resultado exibido em toast;
  * - "Notas internas" (menu ⋮): abre o painel PlatformCrmInternalNotes num
  *   Dialog (no v5 o item existia sem handler; aqui liga na feature real).
  */
@@ -173,8 +176,12 @@ interface PlatformCrmChatAreaProps {
   onPickCatalog?: () => void;
   /** Abre o dialog de geração de link de pagamento. */
   onSendPaymentLink?: () => void;
-  /** Reengajamento pela IA (edge ai-reactivate) — alvo real dos botões Wand2/Sparkles. */
-  onAiReactivate?: () => void;
+  /**
+   * Reengajamento pela IA (edge ai-reactivate) — alvo real dos botões Wand2/Sparkles.
+   * Contrato 6: aceita os campos opcionais do CallWithAIDialog
+   * (agent_id/objective/mode/extra_context).
+   */
+  onAiReactivate?: (opts?: PlatformCrmAiReactivateOptions) => void;
   isAiReactivating?: boolean;
 }
 
@@ -260,11 +267,25 @@ export function PlatformCrmChatArea({
 
 
   // Janela 24h Meta API Oficial: bloqueia composer fora dela.
-  // TODO(A1.2-backend): `platform_crm_conversations` ainda não materializa
-  // meta_connection_id nem existe a RPC de janela (useConversationWAWindow do
-  // v5). O banner + botão "Enviar template" ficam prontos atrás deste flag.
+  // A1.2-FRONT (tarefa G): RPC `platform_crm_is_within_24h_window(conversation_id)`
+  // (cast `any` até o regen dos types). Erro/RPC ausente degrada para "dentro da
+  // janela" (composer livre) — o banner + "Enviar template" já existiam atrás do flag.
   const isMetaOfficial = !!metaConnectionId;
-  const outOfWindow = false;
+  const { data: withinWaWindow } = useQuery({
+    queryKey: ['platform-crm', 'inbox', 'wa-window', conversationId],
+    enabled: !!conversationId && isMetaOfficial,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)(
+        'platform_crm_is_within_24h_window',
+        { conversation_id: conversationId },
+      );
+      if (error) throw error;
+      return data as boolean;
+    },
+  });
+  const outOfWindow = isMetaOfficial && withinWaWindow === false;
 
   // Reações por emoji (realtime)
   const { summarize: summarizeReactions, react: reactToMessage } = usePlatformCrmMessageReactions(conversationId);
@@ -393,13 +414,31 @@ export function PlatformCrmChatArea({
     setForwardMessageId(messageId);
   };
 
-  const handleVerifyNumber = (_messageId: string) => {
+  const handleVerifyNumber = async (_messageId: string) => {
     if (!visitorPhone) return;
-    // TODO(A1.2-backend): edge `platform-check-whatsapp-number` (paridade com
-    // useCheckWhatsAppNumber do tenant) — valida o número na conexão da plataforma.
-    toast.info('Verificação de número em breve', {
-      description: 'A validação do WhatsApp pela conexão da plataforma será conectada ao edge.',
-    });
+    // A1.2-FRONT (contrato 2): edge `platform-check-whatsapp-number`
+    // POST { phone } → { supported, exists, checked_via }.
+    const toastId = toast.loading('Verificando número no WhatsApp…');
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-check-whatsapp-number', {
+        body: { phone: visitorPhone },
+      });
+      if (error) throw error;
+      const result = data as { supported?: boolean; exists?: boolean; checked_via?: string };
+      const via = result?.checked_via ? ` (via ${result.checked_via})` : '';
+      if (result?.supported === false) {
+        toast.info('Verificação indisponível para esta conexão', { id: toastId });
+      } else if (result?.exists) {
+        toast.success(`✓ Número verificado no WhatsApp${via}`, { id: toastId });
+      } else {
+        toast.error(`✗ Número não existe no WhatsApp${via}`, { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error('Verificação de número indisponível', {
+        id: toastId,
+        description: e?.message || 'O edge platform-check-whatsapp-number ainda não respondeu.',
+      });
+    }
   };
 
   const handleForwardConfirm = (targetConversationId: string) => {
@@ -413,15 +452,37 @@ export function PlatformCrmChatArea({
   // (PlatformCrmFollowupAIDialog / PlatformCrmCallWithAIDialog) em vez do um-clique.
   // O reengajamento REAL (edge ai-reactivate) segue via onAiReactivate, acionado
   // de dentro do PlatformCrmCallWithAIDialog.
-  // Rascunho do Follow-up IA: reusa o copiloto de respostas da plataforma
-  // (edge `platform-sales-copilot` via onAiSuggest). Callback estável — o
-  // dialog regenera ao abrir com base nesta referência.
-  // TODO(A1.3-backend): edge dedicado de follow-up (resumo/estratégia/warnings
-  // estruturados, paridade com useFollowupAIDraft do tenant).
-  const generateFollowupDraft = useCallback(async (): Promise<string> => {
-    if (!onAiSuggest) return '';
-    return (await onAiSuggest()) || '';
-  }, [onAiSuggest]);
+  // Rascunho do Follow-up IA — A1.2-FRONT (contrato 5): action `followup-ai-draft`
+  // do edge `platform-webchat-inbox` ({ draft, summary?, strategy? }); se o edge
+  // ainda não tratar a action (404), FALLBACK para o copiloto genérico
+  // (`platform-sales-copilot` via onAiSuggest). Callback estável — o dialog
+  // regenera ao abrir com base nesta referência.
+  const generateFollowupDraft = useCallback(async (): Promise<{
+    draft: string;
+    summary?: string | null;
+    strategy?: string | null;
+  }> => {
+    if (conversationId) {
+      try {
+        const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
+          body: { action: 'followup-ai-draft', conversation_id: conversationId },
+        });
+        if (error) throw error;
+        const rich = data as { draft?: string; summary?: string; strategy?: string } | null;
+        if (rich?.draft) {
+          return {
+            draft: rich.draft,
+            summary: rich.summary ?? null,
+            strategy: rich.strategy ?? null,
+          };
+        }
+      } catch (e) {
+        console.warn('[PlatformCrmChatArea] followup-ai-draft indisponível — fallback copiloto:', e);
+      }
+    }
+    if (!onAiSuggest) return { draft: '' };
+    return { draft: (await onAiSuggest()) || '' };
+  }, [conversationId, onAiSuggest]);
 
   if (!conversationId) {
     return <PlatformCrmEmptyInboxState />;
@@ -1110,7 +1171,7 @@ export function PlatformCrmChatArea({
           instagramConnectionId={instagramConnectionId}
           evolutionInstanceId={evolutionInstanceId}
           initialObjective="Retomar a conversa de onde parou, analisando todo o histórico, e dar continuidade ao atendimento."
-          onReactivate={() => onAiReactivate?.()}
+          onReactivate={(opts) => onAiReactivate?.(opts)}
           isReactivating={isAiReactivating}
         />
       )}

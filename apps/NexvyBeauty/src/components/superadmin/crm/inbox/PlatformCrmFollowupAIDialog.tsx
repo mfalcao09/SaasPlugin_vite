@@ -22,23 +22,28 @@ import { toast } from 'sonner';
  * mensagem é enviada COMO ELE. Substitui o um-clique Wand2 anterior.
  *
  * Adaptações de dados (regra b/d — plataforma NÃO tem organization_id):
- * - Geração do rascunho: reusa `onGenerateDraft` (edge `platform-sales-copilot`
- *   via handleAiSuggest do Inbox), que retorna um texto sugerido. Quando o
- *   copiloto está indisponível, retorna '' e o operador escreve manualmente
- *   (degrade gracioso, sem quebrar o fluxo).
+ * - Geração do rascunho — A1.2-FRONT (contrato 5): `onGenerateDraft` chama a
+ *   action `followup-ai-draft` do edge `platform-webchat-inbox` e retorna
+ *   `{ draft, summary?, strategy? }`; quando o edge está indisponível, o
+ *   chamador degrada para o copiloto genérico e, sem nada, retorna draft ''
+ *   (o operador escreve manualmente — degrade gracioso, sem quebrar o fluxo).
  * - Envio: reusa `onSend` (mutation `useSendPlatformCrmMessage`) — envio real.
- * - TODO(A1.3-backend): resumo/estratégia/warnings estruturados do rascunho
- *   (o `useFollowupAIDraft` do tenant retornava draft.summary/strategy/warnings;
- *   o `platform-sales-copilot` hoje devolve só o texto). Quando o edge de
- *   follow-up da plataforma retornar o objeto rico, exibir os cartões abaixo.
+ * - summary/strategy: exibidos como cartões informativos quando o edge
+ *   devolve o objeto rico (paridade com o useFollowupAIDraft do tenant).
  */
+export interface PlatformCrmFollowupDraft {
+  draft: string;
+  summary?: string | null;
+  strategy?: string | null;
+}
+
 interface PlatformCrmFollowupAIDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   conversationId: string | null;
   leadName?: string | null;
-  /** Gera o rascunho de follow-up (edge de IA da plataforma). Retorna o texto. */
-  onGenerateDraft: () => Promise<string>;
+  /** Gera o rascunho de follow-up (edge de IA da plataforma). Retorna draft + extras. */
+  onGenerateDraft: () => Promise<PlatformCrmFollowupDraft>;
   /** Envia a mensagem COMO o operador (mutation de envio real da plataforma). */
   onSend: (content: string) => Promise<void> | void;
 }
@@ -54,21 +59,33 @@ export function PlatformCrmFollowupAIDialog({
   onSend,
 }: PlatformCrmFollowupAIDialogProps) {
   const [text, setText] = useState('');
+  const [summary, setSummary] = useState<string | null>(null);
+  const [strategy, setStrategy] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [generatedOnce, setGeneratedOnce] = useState(false);
+
+  const applyDraft = (result: PlatformCrmFollowupDraft | null | undefined) => {
+    if (result?.draft) setText(result.draft.slice(0, MAX_LEN));
+    setSummary(result?.summary || null);
+    setStrategy(result?.strategy || null);
+  };
 
   // Gera ao abrir (paridade v5: rascunho automático a partir do histórico real).
   useEffect(() => {
     if (!open || !conversationId) return;
     let cancelled = false;
     setText('');
+    setSummary(null);
+    setStrategy(null);
     setGeneratedOnce(false);
     setIsGenerating(true);
     Promise.resolve(onGenerateDraft())
-      .then((draft) => {
+      .then((result) => {
         if (cancelled) return;
-        if (draft) setText(draft.slice(0, MAX_LEN));
+        if (result?.draft) setText(result.draft.slice(0, MAX_LEN));
+        setSummary(result?.summary || null);
+        setStrategy(result?.strategy || null);
       })
       .catch(() => {
         /* erros já tratados dentro de onGenerateDraft (toast informativo) */
@@ -87,8 +104,7 @@ export function PlatformCrmFollowupAIDialog({
     if (!conversationId) return;
     setIsGenerating(true);
     try {
-      const draft = await onGenerateDraft();
-      if (draft) setText(draft.slice(0, MAX_LEN));
+      applyDraft(await onGenerateDraft());
     } finally {
       setIsGenerating(false);
     }
@@ -140,6 +156,24 @@ export function PlatformCrmFollowupAIDialog({
                   Rascunho gerado a partir do histórico da conversa. Ajuste o que precisar.
                 </span>
               </div>
+
+              {/* Cartões ricos do contrato 5 (summary/strategy) — só quando o edge devolve */}
+              {(summary || strategy) && (
+                <div className="space-y-2">
+                  {summary && (
+                    <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                      <p className="font-medium text-muted-foreground mb-0.5">Resumo da conversa</p>
+                      <p className="text-foreground/90">{summary}</p>
+                    </div>
+                  )}
+                  {strategy && (
+                    <div className="rounded-md border bg-primary/5 border-primary/20 p-2 text-xs">
+                      <p className="font-medium text-muted-foreground mb-0.5">Estratégia sugerida</p>
+                      <p className="text-foreground/90">{strategy}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">

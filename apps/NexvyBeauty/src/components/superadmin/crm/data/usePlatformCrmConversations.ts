@@ -49,6 +49,45 @@ export interface PlatformCrmConversationRow extends PlatformCrmConversation {
 
 const PLATFORM_CRM_KEY = 'platform-crm';
 
+/**
+ * Extrai status HTTP + body JSON de um FunctionsHttpError do supabase-js
+ * (o `error.context` é a Response crua do edge). Retorna nulls quando não
+ * há contexto legível (erro de rede, edge inexistente etc.).
+ */
+export async function parsePlatformCrmFnError(
+  error: any,
+): Promise<{ status: number | null; body: any | null }> {
+  try {
+    const ctx = error?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      const status = typeof ctx.status === 'number' ? ctx.status : null;
+      let body: any = null;
+      try {
+        body = await ctx.json();
+      } catch {
+        body = null;
+      }
+      return { status, body };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { status: null, body: null };
+}
+
+/**
+ * Erro tipado do aceite com setor — contrato A1.2: o edge devolve
+ * 403 `{ error, sector_name }` quando o usuário não é membro do setor.
+ */
+export class PlatformCrmSectorForbiddenError extends Error {
+  sectorName: string | null;
+  constructor(message: string, sectorName: string | null) {
+    super(message);
+    this.name = 'PlatformCrmSectorForbiddenError';
+    this.sectorName = sectorName;
+  }
+}
+
 /** Mapeia a aba da UI para o(s) status do enum `platform_crm_conversation_status`. */
 function statusesForTab(tab: PlatformCrmStatusTab): PlatformCrmConversation['status'][] {
   switch (tab) {
@@ -380,11 +419,64 @@ export function useSendPlatformCrmMessage() {
  * reopen, returnToQueue), sem sector_id / edge de aceite.
  */
 
-/** Marca a conversa como aceita pelo agente atual (status → human_active). */
+/**
+ * Marca a conversa como aceita pelo agente atual (status → human_active).
+ *
+ * A1.2-FRONT (contrato 7): tenta a action `accept` do edge `platform-webchat-inbox`
+ * com `sector_id?` no payload; o edge responde 403 `{ error, sector_name }` quando o
+ * usuário não é membro do setor (→ `PlatformCrmSectorForbiddenError`). Se o edge
+ * estiver indisponível (404/rede), FALLBACK para o UPDATE client-side anterior.
+ * O `sector_id` também é persistido best-effort (idempotente pós-deploy do edge).
+ */
 export function useAcceptPlatformCrmConversation() {
   const queryClient = useQueryClient();
+
+  const persistSectorBestEffort = async (conversationId: string, sectorId?: string | null) => {
+    if (!sectorId) return;
+    const { error: sectorErr } = await supabase
+      .from('platform_crm_conversations')
+      .update({ sector_id: sectorId } as any)
+      .eq('id', conversationId);
+    if (sectorErr) {
+      console.warn('[useAcceptPlatformCrmConversation] Falha ao gravar sector_id:', sectorErr);
+    }
+  };
+
   return useMutation({
-    mutationFn: async (conversationId: string) => {
+    mutationFn: async ({
+      conversationId,
+      sectorId,
+    }: {
+      conversationId: string;
+      sectorId?: string | null;
+    }) => {
+      // 1) Caminho canônico: action `accept` (contrato 7 — payload ganha sector_id?).
+      const { error: fnError } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: {
+          action: 'accept',
+          conversation_id: conversationId,
+          ...(sectorId ? { sector_id: sectorId } : {}),
+        },
+      });
+
+      if (!fnError) {
+        await persistSectorBestEffort(conversationId, sectorId);
+        return;
+      }
+
+      const { status, body } = await parsePlatformCrmFnError(fnError);
+      if (status === 403) {
+        const sectorName = body?.sector_name ?? null;
+        throw new PlatformCrmSectorForbiddenError(
+          sectorName
+            ? `Você não faz parte do setor "${sectorName}" — escolha outro setor ou peça acesso.`
+            : body?.error || 'Você não tem acesso ao setor escolhido.',
+          sectorName,
+        );
+      }
+
+      // 2) Fallback: UPDATE client-side (comportamento anterior ao contrato).
+      console.warn('[useAcceptPlatformCrmConversation] action accept indisponível — fallback update:', fnError);
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id ?? null;
       const { error } = await supabase
@@ -398,11 +490,17 @@ export function useAcceptPlatformCrmConversation() {
         } as Partial<PlatformCrmConversation>)
         .eq('id', conversationId);
       if (error) throw error;
+      await persistSectorBestEffort(conversationId, sectorId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'] });
     },
-    onError: () => toast.error('Erro ao aceitar atendimento'),
+    onError: (error: any) =>
+      toast.error(
+        error instanceof PlatformCrmSectorForbiddenError
+          ? error.message
+          : 'Erro ao aceitar atendimento',
+      ),
   });
 }
 
@@ -739,24 +837,49 @@ export function useActivatePlatformCrmBot() {
   });
 }
 
+/** Campos opcionais do reengajamento por IA — contrato 6 (`ai-reactivate` estendido). */
+export interface PlatformCrmAiReactivateOptions {
+  agentId?: string;
+  objective?: string;
+  mode?: 'direct' | 'conversational';
+  extraContext?: string;
+}
+
 /**
  * Reengajamento contextual pela IA SEM trocar de dono — acorda o sales-brain para
  * gerar/entregar uma mensagem de reativação. Útil quando a IA já atende e o agente
  * quer forçar um novo toque.
+ *
+ * A1.2-FRONT (contrato 6): a action `ai-reactivate` aceita os campos opcionais
+ * `{ agent_id?, objective?, mode?, extra_context? }` — preenchidos pelo
+ * PlatformCrmCallWithAIDialog (agente/objetivo/modo/contexto).
  */
 export function useAiReactivatePlatformCrmConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (conversationId: string) => {
+    mutationFn: async ({
+      conversationId,
+      agentId,
+      objective,
+      mode,
+      extraContext,
+    }: { conversationId: string } & PlatformCrmAiReactivateOptions) => {
       const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
-        body: { action: 'ai-reactivate', conversation_id: conversationId },
+        body: {
+          action: 'ai-reactivate',
+          conversation_id: conversationId,
+          ...(agentId ? { agent_id: agentId } : {}),
+          ...(objective ? { objective } : {}),
+          ...(mode ? { mode } : {}),
+          ...(extraContext ? { extra_context: extraContext } : {}),
+        },
       });
       if (error) throw error;
       return data as { triggered?: boolean } | null;
     },
-    onSuccess: (_data, conversationId) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', conversationId],
+        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', variables.conversationId],
       });
       toast.success('IA acionada para reengajar');
     },

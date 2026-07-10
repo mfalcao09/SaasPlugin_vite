@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { parsePlatformCrmFnError } from "../data/usePlatformCrmConversations";
 
 /**
  * Card de contato compartilhado dentro da bolha — porte fiel A1.2 de
@@ -12,9 +13,11 @@ import { toast } from "sonner";
  * Adaptações de dados:
  * - "Salvar lead": `leads` (tenant, org-scoped) → `platform_crm_leads`
  *   (sem organization_id — adaptação d);
- * - "Conversar": edge `start-whatsapp-conversation` (tenant) → INSERT
- *   client-side em `platform_crm_conversations` (canal whatsapp) +
- *   TODO(A1.2-backend) para o edge de start com entrega real.
+ * - "Conversar" — A1.2-FRONT (contrato 1): edge
+ *   `platform-start-whatsapp-conversation` POST { phone, message } →
+ *   { ok, conversation_id, message_id }; erro `needs_template` orienta a usar
+ *   o fluxo de template HSM (a bolha não conhece a conexão Meta — o
+ *   SendTemplateDialog fica na "Nova Conversa" e no banner da janela 24h).
  */
 export interface SharedContact {
   name: string;
@@ -79,25 +82,46 @@ export function PlatformCrmContactCardBubble({ contacts, conversationId }: Props
         toast.error("Contato sem telefone válido");
         return;
       }
-      // TODO(A1.2-backend): edge `platform-start-whatsapp-conversation` (start com
-      // entrega real pelo canal). Enquanto isso, cria a conversa client-side —
-      // mesma mecânica do useCreatePlatformCrmConversation.
-      const { data, error } = await supabase
-        .from("platform_crm_conversations")
-        .insert({
-          visitor_id: phone,
-          visitor_name: c.name,
-          visitor_phone: phone,
-          channel: "whatsapp",
-          status: "human_active",
-        } as any)
-        .select()
-        .single();
-      if (error) throw error;
-      const newId = (data as any)?.id;
+      // A1.2-FRONT (contrato 1): start real pelo edge (dedupe + entrega pelo canal).
+      const { data, error } = await supabase.functions.invoke(
+        "platform-start-whatsapp-conversation",
+        { body: { phone, message: "" } },
+      );
+
+      const needsTemplateToast = () =>
+        toast.warning("Este número exige um template aprovado", {
+          description:
+            "Fora da janela de 24h a conversa só abre com template HSM — use a Nova Conversa (conexão Meta) para enviar o template.",
+        });
+
+      if (error) {
+        const { body } = await parsePlatformCrmFnError(error);
+        if (body?.needs_template) {
+          needsTemplateToast();
+          return;
+        }
+        throw new Error(body?.error || error.message || "Falha ao iniciar conversa");
+      }
+
+      const resp = data as {
+        ok?: boolean;
+        conversation_id?: string;
+        error?: string;
+        needs_template?: boolean;
+      } | null;
+      if (resp?.needs_template) {
+        needsTemplateToast();
+        return;
+      }
+      if (resp?.error || resp?.ok === false) {
+        throw new Error(resp?.error || "Falha ao iniciar conversa");
+      }
+
       toast.success("Conversa iniciada");
-      if (newId) {
-        try { sessionStorage.setItem('platformCrmInbox:pendingConversationId', newId); } catch {}
+      if (resp?.conversation_id) {
+        try {
+          sessionStorage.setItem('platformCrmInbox:pendingConversationId', resp.conversation_id);
+        } catch {}
       }
       void conversationId;
     } catch (e: any) {

@@ -21,8 +21,10 @@ import { toast } from 'sonner';
  * - `TemplatePicker` (admin do tenant) → listagem de templates SINCRONIZADOS
  *   da plataforma via `usePlatformCrmMetaWATemplates(connectionId)`
  *   (`platform_crm_whatsapp_meta_templates`, edges `platform-meta-whatsapp-*`);
- * - edge `meta-whatsapp-send` (tenant) → `platform-meta-whatsapp-send`
- *   (nome canônico da família de edges da plataforma);
+ * - envio real — A1.2-FRONT (contrato 3): edge `platform-meta-whatsapp-send`
+ *   POST `{ conversation_id?, to?, template_name, language, components?,
+ *   connection_id? }`; as variáveis {{n}} viram `components[0].parameters`
+ *   (formato Cloud API);
  * - sem `organization_id` (adaptação d).
  */
 export type VariableMapping = Record<string, string>;
@@ -31,7 +33,8 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   metaConnectionId: string;
-  conversationId: string;
+  /** Opcional (contrato 3): sem conversa criada ainda, o envio vai só com `to`. */
+  conversationId?: string | null;
   leadId?: string | null;
   to: string; // telefone destino
   onSent?: () => void;
@@ -74,26 +77,36 @@ export function PlatformCrmSendTemplateDialog({
   );
 
   const handleSend = async () => {
-    if (!templateId) {
+    if (!templateId || !selected) {
       toast.error('Selecione um template');
       return;
     }
     setSending(true);
     try {
-      // TODO(A1.2-backend): edge `platform-meta-whatsapp-send` (envio de template
-      // pela Cloud API da plataforma — irmão dos edges platform-meta-whatsapp-*
-      // já deployados). Enquanto não existir, o invoke falha e o erro é exibido.
+      // A1.2-FRONT (contrato 3): envio real pelo edge `platform-meta-whatsapp-send`.
+      // Variáveis {{n}} → components[0].parameters (formato Cloud API).
+      const components =
+        variables.length > 0
+          ? [
+              {
+                type: 'body',
+                parameters: variables.map((v) => ({
+                  type: 'text',
+                  text: variableMapping[v] ?? '',
+                })),
+              },
+            ]
+          : undefined;
+
       const { data, error } = await supabase.functions.invoke('platform-meta-whatsapp-send', {
         body: {
           connection_id: metaConnectionId,
-          conversation_id: conversationId,
-          to,
-          type: 'template',
-          template: {
-            template_id: templateId,
-            variable_mapping: variableMapping,
-            lead_id: leadId ?? null,
-          },
+          ...(conversationId ? { conversation_id: conversationId } : {}),
+          ...(to ? { to } : {}),
+          template_name: selected.name,
+          language: selected.language || 'pt_BR',
+          ...(components ? { components } : {}),
+          ...(leadId ? { lead_id: leadId } : {}),
         },
       });
       if (error) throw error;

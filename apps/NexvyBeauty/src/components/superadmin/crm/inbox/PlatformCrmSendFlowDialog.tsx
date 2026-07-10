@@ -46,9 +46,9 @@ export function PlatformCrmSendFlowDialog({
     if (!selectedFlowId) return;
     setIsSending(true);
     try {
-      // TODO(A1.2-backend): action `trigger-flow` no edge `platform-webchat-inbox`
-      // (paridade com o `webchat-inbox` do tenant). Enquanto o edge não tratar a
-      // action, o invoke retorna erro e o toast de falha é exibido.
+      // A1.2-FRONT (contrato 4): action `trigger-flow` no edge `platform-webchat-inbox`
+      // — { action: 'trigger-flow', conversation_id, flow_id }. Se o deploy do edge
+      // ainda não tratar a action, o invoke retorna erro e o toast de falha é exibido.
       const { error } = await supabase.functions.invoke('platform-webchat-inbox', {
         body: {
           action: 'trigger-flow',

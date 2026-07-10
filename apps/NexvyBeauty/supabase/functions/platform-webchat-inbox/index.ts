@@ -35,7 +35,7 @@
 //                   MESMO contrato de platform-meta-whatsapp-webhook.
 // Actions NÃO portadas (dependem de infra de tenant, inexistente na plataforma):
 //   conversations/conversation_counts (RPCs SQL de listagem — a lista da plataforma
-//   é client-side via RLS), trigger-flow (chat_flows = fase futura).
+//   é client-side via RLS).
 // Adaptações de schema (colunas ausentes em platform_crm_*):
 //   * edited_at/original_content, delivery_status, forwarded_from_message_id →
 //     persistidos dentro de `metadata` jsonb (sem migration).
@@ -74,6 +74,36 @@
 //     SERVICE_ROLE (cron pg_cron, migration 20260709) OU JWT super_admin.
 //     Anti-duplicação: linha 'sending' presa >10min vira 'failed' SEM reenvio
 //     (não dá pra saber se a Meta recebeu — resend manual na conversa decide).
+// ONDA-2b/INBOX-EDGE (2026-07-10) — 3 capacidades ADITIVAS (contratos antigos intactos):
+//   * trigger-flow { conversation_id, flow_id } → carrega platform_crm_chat_flows,
+//     acha o 1º passo "enviável" (message/buttons/video) a partir de start_block_id
+//     e ENTREGA pelo caminho único do send (performOutboundSend; Cloud API quando
+//     whatsapp) como sender_type='bot'. Estado do fluxo persistido na conversa em
+//     `orchestrator_state` jsonb (coluna por migration PARALELA) com fallback à
+//     coluna `metadata` e, na ausência de ambas, console.warn (a 1ª msg já saiu).
+//     Execução dos passos SEGUINTES = fase futura (o estado guarda o ponteiro).
+//   * ai-reactivate ESTENDIDO { agent_id?, objective?, mode?, extra_context? }:
+//     payload legado ({conversation_id}) = comportamento IDÊNTICO ao anterior
+//     (acorda o platform-sales-brain, fire-and-forget). mode='direct' gera UMA
+//     mensagem AQUI na edge (persona = platform_crm_agent_configs.persona_prompt
+//     quando agent_id vier + objective + extra_context + últimas 20 msgs; gateway
+//     env AI_API_KEY/AI_GATEWAY_URL — mesmo transporte do platform-sales-copilot)
+//     e entrega via performOutboundSend como bot (ato explícito do operador,
+//     independe dos gates do brain). mode='conversational' (default) mantém o
+//     fluxo do brain; os campos extras são REPASSADOS no POST (`reactivation`) —
+//     o brain de hoje os ignora; consumo é extensão futura dele.
+//   * followup-ai-draft { conversation_id, objective? } → rascunho RICO
+//     { draft, summary, strategy, strategy_label, warnings } SEM enviar nada
+//     (consumidor: PlatformCrmFollowupAIDialog; espelho do followup-ai-draft do
+//     Vendus v5, adaptado às tabelas platform_crm_* e ao gateway da plataforma).
+//   * accept ganha `sector_id?` opcional (A1): valida o setor (400 se inexistente)
+//     e o enforcement de membros — setor COM membros e aceitante fora deles →
+//     403 {error:'usuario nao pertence ao setor', sector_name}; setor SEM membros
+//     cadastrados = aberto (sem bloqueio). sector_id persistido na conversa em
+//     update SEPARADO best-effort (coluna por migration paralela — ausência nunca
+//     derruba o aceite). Transferências (accept/assign que mudam o dono) são
+//     registradas em platform_crm_conversation_transfers (insert best-effort —
+//     tabela por migration paralela; falha vira console.warn).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
@@ -205,7 +235,7 @@ async function broadcastToConversation(
  * whatsapp, e ignora redeliveries/mensagens recentes) — aqui apenas o acordamos;
  * ele decide se e o que gerar. Falha é non-fatal (a ação de UI já persistiu).
  */
-function triggerSalesBrain(conversationId: string): void {
+function triggerSalesBrain(conversationId: string, extra?: Record<string, unknown>): void {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const brainSecret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
@@ -216,7 +246,9 @@ function triggerSalesBrain(conversationId: string): void {
     const call = fetch(`${supabaseUrl}/functions/v1/platform-sales-brain`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-brain-secret': brainSecret },
-      body: JSON.stringify({ conversation_id: conversationId }),
+      // `extra` (ONDA-2b): campos adicionais repassados ao brain — hoje ele lê só
+      // conversation_id e IGNORA o resto (aditivo/forward-compatible por contrato).
+      body: JSON.stringify({ conversation_id: conversationId, ...(extra ?? {}) }),
     })
       .then(async (r) => {
         if (!r.ok) {
@@ -457,6 +489,10 @@ async function performOutboundSend(
     extraMetadata?: Record<string, unknown> | null;
     assumeConversation: boolean;
     clientTempId?: string | null;
+    /** ONDA-2b: quem "fala" na bolha. Default 'agent' (comportamento original —
+     *  send do agente e dispatch-scheduled inalterados). 'bot' = fluxo/IA
+     *  (trigger-flow, ai-reactivate direct) — mesma entrega, autor correto. */
+    senderType?: 'agent' | 'bot';
   },
 ): Promise<OutboundSendResult> {
   const { data: conversation, error: convError } = await supabase
@@ -499,7 +535,7 @@ async function performOutboundSend(
   const insertData: Record<string, unknown> = {
     conversation_id: opts.conversationId,
     direction: 'outbound',
-    sender_type: 'agent',
+    sender_type: opts.senderType ?? 'agent',
     sender_id: opts.senderId,
     content: resolvedMedia ? resolvedMedia.contentLabel : (opts.content ?? ''),
   };
@@ -749,6 +785,662 @@ async function handleDispatchScheduled(
   });
 }
 
+// ─── ONDA-2b: helpers compartilhados (IA da plataforma / transcript / auditoria) ──
+
+/** Modelo default das chamadas de IA desta edge (mesmo default do copilot). */
+const INBOX_AI_DEFAULT_MODEL = 'google/gemini-2.5-flash';
+
+/**
+ * Chamada de IA da PLATAFORMA — mesmo transporte do platform-sales-copilot /
+ * platform-sales-brain: gateway env-driven (AI_GATEWAY_URL, default OpenRouter)
+ * com chave única AI_API_KEY (a plataforma não tem roteamento por organização —
+ * o `_shared/ai-call.ts` é org-scoped e não se aplica aqui). Erro NUNCA engolido:
+ * volta estruturado { ok:false, status, error } com status coerente (429/402/…).
+ */
+async function platformAiComplete(opts: {
+  label: string;
+  messages: Array<{ role: string; content: string }>;
+  responseJson?: boolean;
+  temperature?: number;
+}): Promise<
+  | { ok: true; content: string; model: string }
+  | { ok: false; status: number; error: string }
+> {
+  const apiKey = Deno.env.get('AI_API_KEY') ?? '';
+  if (!apiKey) {
+    console.error(`[platform-webchat-inbox] ${opts.label}: AI_API_KEY não configurada.`);
+    return { ok: false, status: 500, error: 'AI_API_KEY não configurada na plataforma.' };
+  }
+  const gatewayBase = (Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
+  const model = Deno.env.get('AI_SALES_COPILOT_MODEL') ?? INBOX_AI_DEFAULT_MODEL;
+
+  const payload: Record<string, unknown> = {
+    model,
+    messages: opts.messages,
+    stream: false,
+  };
+  if (opts.responseJson) payload.response_format = { type: 'json_object' };
+  if (typeof opts.temperature === 'number') payload.temperature = opts.temperature;
+
+  const response = await fetch(`${gatewayBase}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    console.error(`[platform-webchat-inbox] ${opts.label} AI gateway error:`, response.status, errText.slice(0, 300));
+    if (response.status === 429) {
+      return { ok: false, status: 429, error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' };
+    }
+    if (response.status === 402) {
+      return { ok: false, status: 402, error: 'Créditos de IA esgotados. Adicione créditos na conta do gateway.' };
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, status: response.status, error: 'Chave do gateway de IA (AI_API_KEY) inválida ou sem permissão.' };
+    }
+    return { ok: false, status: 502, error: `Erro do provedor de IA: ${errText.slice(0, 200) || response.statusText}` };
+  }
+
+  const completion = await response.json().catch(() => null);
+  const content: string = completion?.choices?.[0]?.message?.content?.trim?.() ?? '';
+  if (!content) {
+    console.error(`[platform-webchat-inbox] ${opts.label} completion vazia:`, JSON.stringify(completion)?.slice(0, 300));
+    return { ok: false, status: 502, error: 'O modelo não retornou conteúdo. Tente novamente.' };
+  }
+  return { ok: true, content, model };
+}
+
+/** Últimas N mensagens VIVAS da conversa, em ordem cronológica (asc). */
+async function loadConversationTranscriptRows(
+  supabase: any,
+  conversationId: string,
+  limit = 20,
+): Promise<Array<Record<string, any>>> {
+  const { data } = await supabase
+    .from('platform_crm_messages')
+    .select('content, sender_type, content_type, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('is_deleted', false)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return (((data as Array<Record<string, any>>) ?? [])
+    .filter((m) => typeof m.content === 'string' && m.content.trim().length > 0))
+    .reverse();
+}
+
+/** Transcript legível pro prompt — mesmo formato do followup-ai-draft do V5. */
+function formatConversationTranscript(
+  msgs: Array<Record<string, any>>,
+  visitorLabel: string,
+): string {
+  return msgs
+    .map((m) => {
+      const who = m.sender_type === 'visitor'
+        ? `[LEAD] ${visitorLabel}`
+        : m.sender_type === 'agent'
+          ? '[VENDEDOR]'
+          : '[BOT]';
+      const ct = m.content_type && m.content_type !== 'text' ? `(${m.content_type}) ` : '';
+      return `${who}: ${ct}${String(m.content ?? '').slice(0, 400)}`;
+    })
+    .join('\n');
+}
+
+/**
+ * A1: auditoria de transferência de atendimento. A tabela
+ * `platform_crm_conversation_transfers` chega por migration PARALELA — insert
+ * best-effort: ausência de tabela/coluna vira console.warn, NUNCA erro pro
+ * chamador (o aceite/assign já aconteceu). Shape modelado no
+ * `conversation_transfers` do tenant (from/to/created_by) + sector_id.
+ */
+async function recordConversationTransfer(
+  supabase: any,
+  entry: {
+    conversation_id: string;
+    from_user_id: string | null;
+    to_user_id: string | null;
+    sector_id?: string | null;
+    created_by: string;
+  },
+): Promise<void> {
+  try {
+    const row: Record<string, unknown> = {
+      conversation_id: entry.conversation_id,
+      from_user_id: entry.from_user_id,
+      to_user_id: entry.to_user_id,
+      created_by: entry.created_by,
+    };
+    if (entry.sector_id) row.sector_id = entry.sector_id;
+    const { error } = await supabase.from('platform_crm_conversation_transfers').insert(row);
+    if (error) {
+      console.warn(
+        '[platform-webchat-inbox] transferência não registrada (migration paralela pendente?):',
+        error.message,
+      );
+    }
+  } catch (e) {
+    console.warn('[platform-webchat-inbox] transferência não registrada (exception):', e);
+  }
+}
+
+// ─── ONDA-2b/B4: action trigger-flow ─────────────────────────────────────────
+
+/** Guarda anti-loop na caminhada de blocos do fluxo. */
+const FLOW_WALK_MAX_HOPS = 20;
+
+/** Shape mínimo do bloco do FlowBuilder (jsonb `blocks` de
+ *  platform_crm_chat_flows — ver src/types/chatFlow.ts: FlowBlock). */
+interface FlowBlockLike {
+  id?: string;
+  type?: string;
+  data?: Record<string, any>;
+  next_block_id?: string | null;
+}
+
+/**
+ * Renderiza o texto "enviável" de um bloco. Só message/buttons/video produzem
+ * texto de abertura; input/delay/tag/handoff/ai_takeover não (executor completo
+ * dos passos = fase futura). Botões viram lista numerada (entrega WhatsApp é
+ * texto puro por ora — sem interactive buttons da Cloud API nesta onda).
+ */
+function renderFlowBlockText(block: FlowBlockLike): string | null {
+  const data = block?.data ?? {};
+  if (block.type === 'message') {
+    const t = String(data.content ?? '').trim();
+    return t || null;
+  }
+  if (block.type === 'buttons') {
+    const base = String(data.content ?? '').trim();
+    const labels = Array.isArray(data.buttons)
+      ? data.buttons
+          .map((b: Record<string, any>) => String(b?.label ?? '').trim())
+          .filter((l: string) => l.length > 0)
+          .map((l: string, i: number) => `${i + 1}) ${l}`)
+      : [];
+    const txt = [base, ...labels].filter(Boolean).join('\n');
+    return txt || null;
+  }
+  if (block.type === 'video') {
+    const url = String(data.video_url ?? '').trim();
+    if (!url) return null;
+    const title = String(data.video_title ?? '').trim();
+    return title ? `${title}\n${url}` : url;
+  }
+  return null;
+}
+
+/**
+ * Caminha do start_block_id (fallback: primeiro bloco do array) seguindo
+ * next_block_id até achar o 1º bloco com texto enviável. Anti-loop por Set de
+ * ids visitados + teto de hops.
+ */
+function pickFirstSendableFlowStep(
+  blocks: FlowBlockLike[],
+  startBlockId: string | null,
+): { block: FlowBlockLike; text: string } | null {
+  const byId = new Map<string, FlowBlockLike>();
+  for (const b of blocks) {
+    if (b && typeof b.id === 'string') byId.set(b.id, b);
+  }
+  let current: FlowBlockLike | undefined =
+    (startBlockId ? byId.get(startBlockId) : undefined) ?? blocks[0];
+  const seen = new Set<string>();
+  let hops = 0;
+  while (current && hops < FLOW_WALK_MAX_HOPS) {
+    if (typeof current.id === 'string') {
+      if (seen.has(current.id)) break; // loop no grafo — para
+      seen.add(current.id);
+    }
+    const text = renderFlowBlockText(current);
+    if (text) return { block: current, text };
+    const nextId: string | null = current.next_block_id ?? null;
+    current = nextId ? byId.get(nextId) : undefined;
+    hops++;
+  }
+  return null;
+}
+
+/**
+ * Persiste o estado do fluxo na conversa. Coluna canônica: `orchestrator_state`
+ * jsonb (migration PARALELA — pode não existir ainda). Fallback: coluna
+ * `metadata`. Sem ambas: console.warn e segue (a 1ª mensagem JÁ foi entregue —
+ * o botão Fluxo disparou; só o ponteiro de continuação fica pendente).
+ */
+async function persistConversationFlowState(
+  supabase: any,
+  conversationId: string,
+  state: Record<string, unknown>,
+): Promise<'orchestrator_state' | 'metadata' | null> {
+  const { error: e1 } = await (supabase.from('platform_crm_conversations') as any)
+    .update({ orchestrator_state: { flow: state } })
+    .eq('id', conversationId);
+  if (!e1) return 'orchestrator_state';
+  const { error: e2 } = await (supabase.from('platform_crm_conversations') as any)
+    .update({ metadata: { orchestrator_flow: state } })
+    .eq('id', conversationId);
+  if (!e2) return 'metadata';
+  console.warn(
+    '[platform-webchat-inbox] trigger-flow: estado do fluxo NÃO persistido (colunas orchestrator_state/metadata ausentes?):',
+    e1?.message,
+    '|',
+    e2?.message,
+  );
+  return null;
+}
+
+/**
+ * ACTION trigger-flow — { conversation_id, flow_id } (contrato do
+ * PlatformCrmSendFlowDialog). Execução MÍNIMA real: carrega o fluxo, acha o 1º
+ * passo enviável e o ENTREGA pelo caminho único do send (Cloud API quando a
+ * conversa é whatsapp; persistência + broadcast sempre), registrando o estado
+ * na conversa. Nota deliberada: o V5 só gravava current_flow_id sem enviar nada
+ * — aqui a spec da onda manda o botão Fluxo DISPARAR a 1ª mensagem de verdade.
+ */
+async function handleTriggerFlow(
+  supabase: any,
+  user: { id: string },
+  body: Record<string, any>,
+): Promise<Response> {
+  const conversationId = body?.conversation_id;
+  const flowId = body?.flow_id;
+  if (!conversationId || !flowId) {
+    return json({ error: 'conversation_id and flow_id are required' }, 400);
+  }
+
+  const { data: conv, error: convErr } = await supabase
+    .from('platform_crm_conversations')
+    .select('id, channel, status')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (convErr || !conv) {
+    return json({ error: 'Conversation not found' }, 404);
+  }
+
+  const { data: flow, error: flowErr } = await supabase
+    .from('platform_crm_chat_flows')
+    .select('id, name, blocks, start_block_id')
+    .eq('id', flowId)
+    .maybeSingle();
+  if (flowErr || !flow) {
+    return json({ error: 'Flow not found' }, 404);
+  }
+
+  const blocks = (Array.isArray(flow.blocks) ? flow.blocks : []) as FlowBlockLike[];
+  const step = pickFirstSendableFlowStep(blocks, (flow.start_block_id as string | null) ?? null);
+  if (!step) {
+    return json(
+      {
+        error:
+          'flow_has_no_sendable_first_step: o fluxo não tem bloco inicial com conteúdo enviável (message/buttons/video)',
+      },
+      422,
+    );
+  }
+
+  // Marco interno na timeline (paridade V5) — não vai pro canal externo.
+  const { data: sysMessage } = await supabase
+    .from('platform_crm_messages')
+    .insert({
+      conversation_id: conversationId,
+      direction: 'outbound',
+      sender_type: 'bot',
+      content: `📋 Fluxo "${flow.name}" iniciado`,
+    })
+    .select('*')
+    .single();
+  if (sysMessage) {
+    await broadcastToConversation(supabase, conversationId, 'new_message', sysMessage);
+  }
+
+  // 1ª mensagem do fluxo — MESMO caminho do send (entrega + persistência + broadcast).
+  const result = await performOutboundSend(supabase, {
+    conversationId: String(conversationId),
+    content: step.text,
+    senderId: null,
+    senderType: 'bot',
+    assumeConversation: false,
+    extraMetadata: {
+      origin: 'flow',
+      flow_id: flowId,
+      flow_block_id: step.block.id ?? null,
+      triggered_by: user.id,
+    },
+  });
+  if (!result.ok || !result.message) {
+    return json({ error: result.error ?? 'Failed to send flow message' }, result.status);
+  }
+
+  const flowState = {
+    flow_id: flowId,
+    flow_name: flow.name,
+    current_block_id: step.block.id ?? null,
+    next_block_id: step.block.next_block_id ?? null,
+    variables: {},
+    status: 'active',
+    started_at: new Date().toISOString(),
+    started_by: user.id,
+  };
+  const statePersistedIn = await persistConversationFlowState(supabase, conversationId, flowState);
+
+  return json({
+    success: true,
+    flow_id: flowId,
+    flow_name: flow.name,
+    message: result.message,
+    state_persisted_in: statePersistedIn,
+    ...(result.deliveryWarning ? { delivery_warning: result.deliveryWarning } : {}),
+  });
+}
+
+// ─── ONDA-2b/B5: ai-reactivate estendido + followup-ai-draft ────────────────
+
+/**
+ * ACTION ai-reactivate — retrocompatível.
+ * Payload: { conversation_id, agent_id?, objective?, mode?: 'direct'|'conversational',
+ *            extra_context? }.
+ *  - Sem campos novos → comportamento de HOJE, byte a byte: acorda o
+ *    platform-sales-brain (fire-and-forget) e devolve {success,triggered,status}.
+ *  - mode='conversational' (default) com campos novos → mesmo fluxo do brain; os
+ *    extras vão no POST (campo `reactivation`) — o brain atual os ignora
+ *    (consumo = extensão futura DELE; esta edge não toca o brain nesta onda).
+ *  - mode='direct' → UMA mensagem gerada aqui (persona_prompt de
+ *    platform_crm_agent_configs quando agent_id vier) e enviada como bot pelo
+ *    caminho único do send. Ato explícito do operador: NÃO passa pelos gates de
+ *    status do brain (funciona mesmo fora de bot_active).
+ */
+async function handleAiReactivate(
+  supabase: any,
+  user: { id: string },
+  body: Record<string, any>,
+): Promise<Response> {
+  if (!body.conversation_id) {
+    return json({ error: 'conversation_id is required' }, 400);
+  }
+
+  const { data: conv, error: convErr } = await supabase
+    .from('platform_crm_conversations')
+    .select('id, status, channel, visitor_name, lead_id')
+    .eq('id', body.conversation_id)
+    .maybeSingle();
+  if (convErr || !conv) {
+    return json({ error: 'Conversation not found' }, 404);
+  }
+
+  const agentId: string | null = body.agent_id ? String(body.agent_id) : null;
+  const objective = String(body.objective ?? '').trim();
+  const extraContext = String(body.extra_context ?? '').trim();
+  const mode: 'direct' | 'conversational' = body.mode === 'direct' ? 'direct' : 'conversational';
+
+  // Persona do pipeline ÚNICO da plataforma (agent_id explícito do operador).
+  let persona: { id: string; name: string; persona_prompt: string | null } | null = null;
+  if (agentId) {
+    const { data: agentRow } = await supabase
+      .from('platform_crm_agent_configs')
+      .select('id, name, persona_prompt')
+      .eq('id', agentId)
+      .maybeSingle();
+    if (!agentRow) {
+      return json({ error: 'Agent not found', agent_id: agentId }, 404);
+    }
+    persona = agentRow as { id: string; name: string; persona_prompt: string | null };
+  }
+
+  if (mode !== 'direct') {
+    // Comportamento atual (acorda o cérebro; gates ficam nele). Extras repassados.
+    const extras = agentId || objective || extraContext
+      ? {
+          reactivation: {
+            agent_id: agentId,
+            objective: objective || null,
+            extra_context: extraContext || null,
+            requested_by: user.id,
+          },
+        }
+      : undefined;
+    triggerSalesBrain(String(body.conversation_id), extras);
+    return json({ success: true, triggered: true, status: conv.status });
+  }
+
+  // mode='direct': gera e envia UMA mensagem única aqui na edge.
+  const msgs = await loadConversationTranscriptRows(supabase, String(body.conversation_id), 20);
+  let leadName: string | null = conv.visitor_name ?? null;
+  if (!leadName && conv.lead_id) {
+    const { data: lead } = await supabase
+      .from('platform_crm_leads')
+      .select('name')
+      .eq('id', conv.lead_id)
+      .maybeSingle();
+    leadName = lead?.name ?? null;
+  }
+  const transcript = formatConversationTranscript(msgs, leadName ?? 'Cliente');
+
+  const personaBlock = persona
+    ? `Você é ${persona.name}.${persona.persona_prompt ? `\n${persona.persona_prompt}` : ''}`
+    : 'Você é atendente de vendas por WhatsApp da plataforma NexvyBeauty.';
+  const systemPrompt = `${personaBlock}
+${objective ? `\nOBJETIVO DESTA REATIVAÇÃO: ${objective}` : ''}
+${extraContext ? `\nCONTEXTO EXTRA DO OPERADOR:\n${extraContext}` : ''}
+
+Sua tarefa: escrever UMA ÚNICA mensagem de reativação de WhatsApp para o cliente abaixo, retomando a conversa de onde parou.
+Regras duras: pt-BR; máximo ~300 caracteres; tom humano e direto; no máximo 1 pergunta; sem listas, sem markdown, sem asteriscos; no máximo 1 emoji; NUNCA revele que é IA; NUNCA invente preços ou dados do produto.
+Responda SOMENTE com o texto da mensagem, sem aspas nem comentários.`;
+  const userPrompt = `CLIENTE: ${leadName ?? '-'}
+
+HISTÓRICO DA CONVERSA (mais antiga → mais recente):
+${transcript || '(sem mensagens)'}
+
+Escreva agora a mensagem de reativação.`;
+
+  const ai = await platformAiComplete({
+    label: 'ai-reactivate-direct',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+  });
+  if (!ai.ok) return json({ error: ai.error }, ai.status);
+
+  const content = ai.content.slice(0, 1000);
+  const result = await performOutboundSend(supabase, {
+    conversationId: String(body.conversation_id),
+    content,
+    senderId: null,
+    senderType: 'bot',
+    assumeConversation: false,
+    extraMetadata: {
+      origin: 'ai-reactivate-direct',
+      requested_by: user.id,
+      ...(persona ? { agent_id: persona.id, agent_name: persona.name } : {}),
+      ...(objective ? { objective } : {}),
+    },
+  });
+  if (!result.ok || !result.message) {
+    return json({ error: result.error ?? 'Failed to send reactivation message' }, result.status);
+  }
+
+  return json({
+    success: true,
+    mode: 'direct',
+    message: result.message,
+    model: ai.model,
+    ...(result.deliveryWarning ? { delivery_warning: result.deliveryWarning } : {}),
+  });
+}
+
+/** Estratégias do rascunho de follow-up (espelho do followup-ai-draft do V5). */
+const FOLLOWUP_STRATEGY_LABEL: Record<string, string> = {
+  reengage_silence: 'Retomar após silêncio',
+  break_objection: 'Quebrar objeção',
+  force_next_step: 'Forçar próximo passo',
+  revive_interest: 'Reaquecer interesse',
+  answer_pending_question: 'Responder dúvida pendente',
+  propose_meeting: 'Propor reunião',
+};
+
+/**
+ * ACTION followup-ai-draft — { conversation_id, objective? } → rascunho RICO
+ * { draft, summary, strategy, strategy_label, warnings } SEM enviar nada (o
+ * operador revisa no PlatformCrmFollowupAIDialog e envia pelo send normal).
+ * Contexto = últimas ~20 msgs + lead (estágio/temperatura/notas) + produto.
+ */
+async function handleFollowupAiDraft(
+  supabase: any,
+  body: Record<string, any>,
+): Promise<Response> {
+  const conversationId = body?.conversation_id;
+  if (!conversationId) {
+    return json({ error: 'conversation_id is required' }, 400);
+  }
+  const objective = String(body?.objective ?? '').trim();
+
+  const { data: conv, error: convErr } = await supabase
+    .from('platform_crm_conversations')
+    .select('id, lead_id, channel, status, product_id, visitor_name, visitor_phone')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (convErr || !conv) {
+    return json({ error: 'Conversation not found' }, 404);
+  }
+
+  const msgs = await loadConversationTranscriptRows(supabase, String(conversationId), 20);
+
+  // Lead + estágio + notas (tudo best-effort — falha vira contexto ausente).
+  let lead: Record<string, any> | null = null;
+  if (conv.lead_id) {
+    const { data } = await supabase
+      .from('platform_crm_leads')
+      .select('id, name, email, phone, temperature, deal_value, current_stage_id')
+      .eq('id', conv.lead_id)
+      .maybeSingle();
+    lead = (data as Record<string, any> | null) ?? null;
+  }
+  let stageName: string | null = null;
+  if (lead?.current_stage_id) {
+    const { data: stage } = await supabase
+      .from('platform_crm_pipeline_stages')
+      .select('name')
+      .eq('id', lead.current_stage_id)
+      .maybeSingle();
+    stageName = stage?.name ?? null;
+  }
+  let notes: string[] = [];
+  if (lead?.id) {
+    const { data: n } = await supabase
+      .from('platform_crm_lead_notes')
+      .select('content')
+      .eq('lead_id', lead.id)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    notes = ((n as Array<Record<string, any>>) ?? []).map((r) => String(r.content || '').slice(0, 200));
+  }
+
+  let productCtx = '';
+  if (conv.product_id) {
+    const { data: prod } = await supabase
+      .from('platform_crm_products')
+      .select('name, pitch_15s, differentials')
+      .eq('id', conv.product_id)
+      .maybeSingle();
+    if (prod) {
+      productCtx = `Produto: ${prod.name}. Pitch: ${prod.pitch_15s || '-'}. Diferenciais: ${
+        Array.isArray(prod.differentials) ? prod.differentials.slice(0, 5).join('; ') : '-'
+      }.`;
+    }
+  }
+
+  const visitorName = conv.visitor_name || lead?.name || 'Cliente';
+  const transcript = formatConversationTranscript(msgs, visitorName);
+  const lastAgentSamples = msgs
+    .filter((m) => m.sender_type === 'agent')
+    .slice(-4)
+    .map((m) => m.content)
+    .filter(Boolean);
+
+  const systemPrompt = `Você é um copywriter de vendas consultivas (SPIN). Vai escrever UMA mensagem de WhatsApp, FINGINDO ser o próprio vendedor, para reengajar um lead. JAMAIS revele que é IA. JAMAIS use clichês ("tudo bem?", "passando para saber", "como posso ajudar"). Máx 500 caracteres. Tom direto, humano, profissional, espelha o vocabulário do vendedor. Permitido no máx 1 emoji (opcional). Em português BR.
+${objective ? `\nOBJETIVO DO VENDEDOR PARA ESTE FOLLOW-UP: ${objective}\n` : ''}
+ESTRATÉGIAS POSSÍVEIS (escolha a melhor pro contexto):
+- reengage_silence: lead sumiu há tempo, retomar sem cobrar.
+- break_objection: lead levantou objeção (preço/tempo/dúvida) e ficou parado — endereçar.
+- force_next_step: lead engajou, falta CTA pra avançar (proposta, reunião, link).
+- revive_interest: lead esfriou — trazer prova/benefício novo.
+- answer_pending_question: o lead fez pergunta sem resposta — responda e devolva CTA.
+- propose_meeting: contexto pede agendamento → sugerir reunião curta (sem oferecer horários específicos no texto).
+
+RESPONDA APENAS JSON VÁLIDO no formato:
+{"summary":"resumo em 2-3 frases do estado real da conversa", "strategy":"<key>", "draft":"texto pronto pra enviar", "warnings":["..."]}`;
+
+  const userPrompt = `CONTEXTO DO LEAD
+Nome: ${visitorName}
+Telefone: ${conv.visitor_phone || lead?.phone || '-'}
+Estágio: ${stageName || '-'}
+Temperatura: ${lead?.temperature ?? '-'}
+Valor da oportunidade: ${lead?.deal_value ?? '-'}
+${productCtx}
+${notes.length ? `Notas recentes: ${notes.join(' | ')}` : ''}
+
+ÚLTIMAS MENSAGENS DO VENDEDOR (para espelhar tom):
+${lastAgentSamples.join('\n---\n') || '(sem amostras)'}
+
+HISTÓRICO DA CONVERSA (mais antiga → mais recente):
+${transcript || '(sem mensagens)'}
+
+Devolva o JSON pedido. Nada além do JSON.`;
+
+  const ai = await platformAiComplete({
+    label: 'followup-ai-draft',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    responseJson: true,
+    temperature: 0.7,
+  });
+  if (!ai.ok) return json({ error: ai.error }, ai.status);
+
+  let parsed: Record<string, any> = {};
+  try {
+    parsed = JSON.parse(ai.content);
+  } catch {
+    const m = ai.content.match(/\{[\s\S]*\}/);
+    if (m) {
+      try {
+        parsed = JSON.parse(m[0]);
+      } catch {
+        /* JSON irrecuperável — tratado abaixo pelo draft vazio */
+      }
+    }
+  }
+
+  const draft = String(parsed.draft ?? parsed.draft_message ?? '').trim().slice(0, 800);
+  if (!draft) {
+    console.error(
+      '[platform-webchat-inbox] followup-ai-draft sem draft no JSON:',
+      ai.content.slice(0, 300),
+    );
+    return json({ error: 'A IA não retornou rascunho válido. Tente novamente.' }, 502);
+  }
+  const summary = String(parsed.summary ?? '').trim().slice(0, 400);
+  const strategy =
+    typeof parsed.strategy === 'string' && parsed.strategy in FOLLOWUP_STRATEGY_LABEL
+      ? parsed.strategy
+      : 'reengage_silence';
+
+  return json({
+    success: true,
+    draft,
+    summary,
+    strategy,
+    strategy_label: FOLLOWUP_STRATEGY_LABEL[strategy],
+    warnings: Array.isArray(parsed.warnings)
+      ? parsed.warnings.slice(0, 5).map((w: unknown) => String(w))
+      : [],
+    model: ai.model,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -880,6 +1572,17 @@ Deno.serve(async (req) => {
 
       if (updateError) {
         return json({ error: 'Failed to assign - may already be taken' }, 409);
+      }
+
+      // A1 (ONDA-2b): auditoria de transferência quando o dono mudou (best-effort;
+      // tabela platform_crm_conversation_transfers chega por migration paralela).
+      if (conversation.assigned_to !== user.id) {
+        await recordConversationTransfer(supabase, {
+          conversation_id: conversationId,
+          from_user_id: conversation.assigned_to ?? null,
+          to_user_id: user.id,
+          created_by: user.id,
+        });
       }
 
       return json({ success: true });
@@ -1080,6 +1783,41 @@ Deno.serve(async (req) => {
         return json({ error: 'Conversation not found' }, 404);
       }
 
+      // A1 (ONDA-2b): setor OPCIONAL no aceite — valida ANTES de tocar a conversa.
+      // Enforcement: setor COM membros cadastrados exige que o aceitante seja um
+      // deles; setor SEM membros = aberto (sem bloqueio). Falha de leitura dos
+      // membros NÃO bloqueia o aceite (fail-open com warn — a fonte é migration
+      // recente e indisponibilidade não pode travar atendimento em produção).
+      const sectorId: string | null = bodyParsed?.sector_id ? String(bodyParsed.sector_id) : null;
+      let sectorName: string | null = null;
+      if (sectorId) {
+        const { data: sectorRow } = await supabase
+          .from('platform_crm_sectors')
+          .select('id, name')
+          .eq('id', sectorId)
+          .maybeSingle();
+        if (!sectorRow) {
+          return json({ error: 'Invalid sector' }, 400);
+        }
+        sectorName = sectorRow.name ?? null;
+
+        const { data: memberRows, error: memberErr } = await supabase
+          .from('platform_crm_sector_members')
+          .select('user_id')
+          .eq('sector_id', sectorId);
+        if (memberErr) {
+          console.warn(
+            '[platform-webchat-inbox] accept: leitura de membros do setor falhou — enforcement pulado:',
+            memberErr.message,
+          );
+        } else {
+          const members = (memberRows as Array<{ user_id: string }>) ?? [];
+          if (members.length > 0 && !members.some((m) => m.user_id === user.id)) {
+            return json({ error: 'usuario nao pertence ao setor', sector_name: sectorName }, 403);
+          }
+        }
+      }
+
       // No original, admins podem assumir conversa de outro agente (takeover).
       // Na plataforma todo usuário autorizado é super_admin ⇒ takeover permitido.
       const previousAssignee = convRow.assigned_to;
@@ -1101,6 +1839,33 @@ Deno.serve(async (req) => {
       if (upErr) {
         console.error('[platform-webchat-inbox] accept update error:', upErr);
         return json({ error: 'Failed to accept ticket', details: upErr.message }, 500);
+      }
+
+      // A1: persiste o setor escolhido na conversa. UPDATE SEPARADO e best-effort
+      // de propósito: a coluna sector_id chega por migration PARALELA — a ausência
+      // dela não pode derrubar um aceite já efetivado.
+      if (sectorId) {
+        const { error: sectorErr } = await (supabase.from('platform_crm_conversations') as any)
+          .update({ sector_id: sectorId })
+          .eq('id', conversationId);
+        if (sectorErr) {
+          console.warn(
+            '[platform-webchat-inbox] accept: sector_id não persistido (coluna por migration paralela?):',
+            sectorErr.message,
+          );
+        }
+      }
+
+      // A1: auditoria de transferência (tabela por migration paralela; best-effort).
+      // Registra quando o dono efetivamente mudou OU quando um setor foi definido.
+      if (previousAssignee !== user.id || sectorId) {
+        await recordConversationTransfer(supabase, {
+          conversation_id: conversationId,
+          from_user_id: previousAssignee ?? null,
+          to_user_id: user.id,
+          sector_id: sectorId,
+          created_by: user.id,
+        });
       }
 
       // System message
@@ -1705,32 +2470,23 @@ Deno.serve(async (req) => {
     }
 
     // ACTION: AI reactivate — reengajamento contextual SEM trocar de dono.
-    // Não altera o status (a conversa pode seguir em bot_active); apenas acorda o
-    // sales-brain para gerar/entregar uma mensagem de reativação. Se a conversa
-    // estiver com humano (human_active/waiting_human), o próprio brain faz skip —
-    // por isso, para um reengajamento efetivo, a UI só oferece isto quando a IA
-    // está atendendo (senão o caminho é activate-bot).
+    // ONDA-2b: estendido com { agent_id?, objective?, mode?, extra_context? } —
+    // payload legado ({conversation_id}) mantém o comportamento anterior byte a
+    // byte (acorda o sales-brain, fire-and-forget; gates ficam nele). Detalhe e
+    // mode='direct' (mensagem única gerada aqui) em handleAiReactivate.
     if (action === 'ai-reactivate' && req.method === 'POST') {
-      const body = bodyParsed || {};
-      if (!body.conversation_id) {
-        return json({ error: 'conversation_id is required' }, 400);
-      }
+      return await handleAiReactivate(supabase, user, bodyParsed || {});
+    }
 
-      const { data: conv, error: convErr } = await supabase
-        .from('platform_crm_conversations')
-        .select('id, status')
-        .eq('id', body.conversation_id)
-        .maybeSingle();
+    // ACTION: Trigger flow (ONDA-2b/B4) — dispara a 1ª mensagem do fluxo pelo
+    // caminho único do send e registra o estado na conversa.
+    if (action === 'trigger-flow' && req.method === 'POST') {
+      return await handleTriggerFlow(supabase, user, bodyParsed || {});
+    }
 
-      if (convErr || !conv) {
-        return json({ error: 'Conversation not found' }, 404);
-      }
-
-      // Acorda o cérebro (fire-and-forget). O brain decide se gera algo conforme
-      // seus próprios gates (bot_active, whatsapp, sem mensagem recente do bot).
-      triggerSalesBrain(body.conversation_id);
-
-      return json({ success: true, triggered: true, status: conv.status });
+    // ACTION: Follow-up AI draft (ONDA-2b/B5) — rascunho rico SEM envio.
+    if (action === 'followup-ai-draft' && req.method === 'POST') {
+      return await handleFollowupAiDraft(supabase, bodyParsed || {});
     }
 
     return json({ error: 'Invalid action' }, 400);

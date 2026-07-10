@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
 import { usePlatformCrmMetaWAConnections } from '../data/usePlatformCrmMetaWhatsApp';
-import { useCreatePlatformCrmConversation } from '../data/usePlatformCrmConversations';
+import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
+import { PlatformCrmSendTemplateDialog } from './PlatformCrmSendTemplateDialog';
 import {
   Dialog,
   DialogContent,
@@ -33,9 +35,10 @@ import { Loader2, Search, MessageCircle, User, Phone, BadgeCheck } from 'lucide-
  * de lead, badge de lead selecionado, telefone e primeira mensagem. Trocas:
  * (a) prefixo PlatformCrm*; (b) dados — `leads` → `platform_crm_leads`,
  * instâncias/conexões → `usePlatformCrmEvolutionInstances` /
- * `usePlatformCrmMetaWAConnections`; criação → `useCreatePlatformCrmConversation`
- * client-side (o edge `start-whatsapp-conversation` do v5 ainda não tem
- * equivalente de plataforma — ver TODO no handleCreate); (d) sem
+ * `usePlatformCrmMetaWAConnections`; criação — A1.2-FRONT (contrato 1): edge
+ * `platform-start-whatsapp-conversation` POST { phone, message, connection_id?,
+ * lead_id? } → { ok, conversation_id, message_id }; erro `needs_template` abre
+ * o fluxo de template HSM (SendTemplateDialog) via toast com ação; (d) sem
  * organization_id/useAuth (RLS super_admin isola os dados).
  */
 
@@ -64,10 +67,12 @@ export function PlatformCrmStartConversationDialog({
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [connectionKey, setConnectionKey] = useState<string>('');
+  // Fluxo needs_template (contrato 1 → contrato 3): telefone alvo + dialog HSM
+  const [sendTemplateOpen, setSendTemplateOpen] = useState(false);
+  const [templatePhone, setTemplatePhone] = useState('');
 
   const { data: evoInstances } = usePlatformCrmEvolutionInstances();
   const { data: metaConnections } = usePlatformCrmMetaWAConnections();
-  const createConversation = useCreatePlatformCrmConversation();
 
   const connectionOptions = useMemo<ConnectionOption[]>(() => {
     const opts: ConnectionOption[] = [];
@@ -123,6 +128,32 @@ export function PlatformCrmStartConversationDialog({
     setSearch('');
   };
 
+  // Conexão Meta escolhida (quando houver) — usada pelo fluxo needs_template.
+  const chosenMeta = useMemo(() => {
+    const chosen = connectionOptions.find((o) => o.key === connectionKey);
+    return chosen?.provider === 'meta' ? chosen : null;
+  }, [connectionOptions, connectionKey]);
+
+  // needs_template (contrato 1): fora da janela de 24h a Cloud API exige template
+  // HSM aprovado — toast com ação que abre o PlatformCrmSendTemplateDialog.
+  const handleNeedsTemplate = (targetPhone: string) => {
+    setTemplatePhone(targetPhone);
+    if (chosenMeta) {
+      sonnerToast.warning('Este número exige um template aprovado', {
+        description: 'Fora da janela de 24h, a conversa só abre com um template HSM.',
+        action: {
+          label: 'Enviar template',
+          onClick: () => setSendTemplateOpen(true),
+        },
+      });
+    } else {
+      sonnerToast.warning('Este número exige um template aprovado', {
+        description:
+          'Selecione uma conexão WhatsApp Oficial (Meta) em "Enviar por" para enviar um template HSM.',
+      });
+    }
+  };
+
   const handleCreate = async () => {
     const targetPhone = phone.replace(/\D/g, '');
     if (!targetPhone) {
@@ -134,25 +165,53 @@ export function PlatformCrmStartConversationDialog({
 
     setIsCreating(true);
     try {
-      // TODO(A1.2-backend): edge platform-start-whatsapp-conversation — paridade
-      // com o edge `start-whatsapp-conversation` do v5: body
-      // { phone: targetPhone, lead_id: selectedLead?.id, lead_name: selectedLead?.name,
-      //   initial_message: message, provider: chosen?.provider, connection_id: chosen?.id }
-      // com dedupe (is_new) e disparo real pelo canal escolhido acima.
-      // Enquanto o edge não existe, cria a conversa client-side:
-      void chosen;
-      const conv = await createConversation.mutateAsync({
-        visitorName: selectedLead?.name || null,
-        visitorPhone: targetPhone,
-        firstMessage: message || null,
-      });
+      // A1.2-FRONT (contrato 1): edge `platform-start-whatsapp-conversation` —
+      // dedupe + disparo real pelo canal escolhido acontecem no backend.
+      const { data, error } = await supabase.functions.invoke(
+        'platform-start-whatsapp-conversation',
+        {
+          body: {
+            phone: targetPhone,
+            message: message || '',
+            ...(chosen ? { connection_id: chosen.id } : {}),
+            ...(selectedLead?.id ? { lead_id: selectedLead.id } : {}),
+          },
+        },
+      );
+
+      if (error) {
+        const { body } = await parsePlatformCrmFnError(error);
+        if (body?.needs_template) {
+          handleNeedsTemplate(targetPhone);
+          return;
+        }
+        throw new Error(body?.error || error.message || 'Falha ao iniciar conversa');
+      }
+
+      const resp = data as {
+        ok?: boolean;
+        conversation_id?: string;
+        message_id?: string;
+        error?: string;
+        needs_template?: boolean;
+      } | null;
+
+      if (resp?.needs_template) {
+        handleNeedsTemplate(targetPhone);
+        return;
+      }
+      if (resp?.error || resp?.ok === false) {
+        throw new Error(resp?.error || 'Falha ao iniciar conversa');
+      }
 
       toast({
         title: 'Conversa criada',
         description: 'Nova conversa WhatsApp iniciada.',
       });
 
-      onConversationCreated(conv.id);
+      if (resp?.conversation_id) {
+        onConversationCreated(resp.conversation_id);
+      }
       handleClose();
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -302,6 +361,19 @@ export function PlatformCrmStartConversationDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Fluxo needs_template (contrato 1 → 3): template HSM pela conexão Meta escolhida */}
+      {chosenMeta && (
+        <PlatformCrmSendTemplateDialog
+          open={sendTemplateOpen}
+          onOpenChange={setSendTemplateOpen}
+          metaConnectionId={chosenMeta.id}
+          conversationId={null}
+          leadId={selectedLead?.id ?? null}
+          to={templatePhone || phone.replace(/\D/g, '')}
+          onSent={handleClose}
+        />
+      )}
     </Dialog>
   );
 }

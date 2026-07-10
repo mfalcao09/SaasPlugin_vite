@@ -17,16 +17,20 @@ import {
 } from '@/components/ui/select';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
-import { useAcceptPlatformCrmConversation } from '../data/usePlatformCrmConversations';
+import {
+  useAcceptPlatformCrmConversation,
+  PlatformCrmSectorForbiddenError,
+} from '../data/usePlatformCrmConversations';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Dialog de aceite/assunção de atendimento com escolha de setor — porte fiel
  * A1.2 de `seller/inbox/AcceptTicketDialog.tsx` (Vendus v5 original).
  * Adaptações de dados: `useUserSectors` → `usePlatformCrmSectors`
- * (`platform_crm_sectors`); `useAcceptConversation` (edge de aceite tenant) →
- * `useAcceptPlatformCrmConversation` (UPDATE client-side).
+ * (`platform_crm_sectors`); aceite via `useAcceptPlatformCrmConversation`
+ * (contrato 7: action `accept` com `sector_id` no payload; 403
+ * `{ error, sector_name }` quando o usuário não é membro do setor; fallback
+ * ao UPDATE client-side quando o edge ainda não trata a action).
  */
 interface PlatformCrmAcceptTicketDialogProps {
   open: boolean;
@@ -63,19 +67,10 @@ export function PlatformCrmAcceptTicketDialog({
   const handleConfirm = async () => {
     if (!conversationId || !sectorId) return;
     try {
-      await acceptMutation.mutateAsync(conversationId);
-      // A1.3/FRENTE 4: persiste o setor escolhido na conversa (coluna sector_id,
-      // migration 07-09). Best-effort + payload defensivo (`as any`) — os types
-      // TS gerados podem ainda não refletir a coluna.
-      // TODO(A1.3-backend): edge de aceite com enforcement de setor (validar se
-      // o agente pertence ao setor) quando existir na plataforma.
-      const { error: sectorErr } = await supabase
-        .from('platform_crm_conversations')
-        .update({ sector_id: sectorId } as any)
-        .eq('id', conversationId);
-      if (sectorErr) {
-        console.warn('[PlatformCrmAcceptTicketDialog] Falha ao gravar sector_id:', sectorErr);
-      }
+      // A1.2-FRONT (contrato 7): sector_id vai no payload do accept; a persistência
+      // do setor + enforcement de membership acontecem no edge (com fallback ao
+      // UPDATE client-side dentro do hook enquanto a action não estiver deployada).
+      await acceptMutation.mutateAsync({ conversationId, sectorId });
       toast({
         title: isTakeover ? 'Atendimento assumido' : 'Atendimento aceito',
         description: isTakeover
@@ -86,7 +81,7 @@ export function PlatformCrmAcceptTicketDialog({
       onOpenChange(false);
     } catch (e: any) {
       toast({
-        title: 'Erro ao aceitar',
+        title: e instanceof PlatformCrmSectorForbiddenError ? 'Setor sem acesso' : 'Erro ao aceitar',
         description: e?.message || 'Tente novamente.',
         variant: 'destructive',
       });

@@ -42,12 +42,16 @@ import { resolveProvider, PROVIDER_LABEL } from './platformCrmConversationProvid
  *   entre múltiplas conexões WhatsApp por agente (Evolution/Meta) — a plataforma
  *   ainda não materializa esse leque. TODO(A1.3-backend): seletor multi-conexão +
  *   janela 24h + TemplatePicker HSM quando o schema/edge da plataforma existir.
- * - TODO(A1.3-backend): o edge `ai-reactivate` hoje aceita só `conversation_id`.
- *   Passar agent_id/objective/mode/extra_context ao disparo quando o edge de
- *   outreach manual da plataforma (equivalente ao `manual-outreach` do tenant)
- *   existir. Por ora, os campos abaixo compõem a intenção e o reengajamento é
- *   acionado no nível da conversa.
+ * - A1.2-FRONT (contrato 6): o disparo repassa `agent_id/objective/mode/extra_context`
+ *   via `onReactivate(opts)` — o hook `useAiReactivatePlatformCrmConversation`
+ *   inclui os campos opcionais no payload da action `ai-reactivate`.
  */
+export interface PlatformCrmCallWithAIOptions {
+  agentId?: string;
+  objective?: string;
+  mode?: 'direct' | 'conversational';
+  extraContext?: string;
+}
 interface PlatformCrmCallWithAIDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,8 +67,11 @@ interface PlatformCrmCallWithAIDialogProps {
   instagramConnectionId?: string | null;
   evolutionInstanceId?: string | null;
   initialObjective?: string;
-  /** Aciona o reengajamento REAL pela IA (edge ai-reactivate no nível da conversa). */
-  onReactivate: () => void;
+  /**
+   * Aciona o reengajamento REAL pela IA (edge ai-reactivate no nível da conversa).
+   * Contrato 6: recebe agent_id/objective/mode/extra_context escolhidos no dialog.
+   */
+  onReactivate: (opts: PlatformCrmCallWithAIOptions) => void;
   isReactivating?: boolean;
 }
 
@@ -139,10 +146,17 @@ export function PlatformCrmCallWithAIDialog({
   const initials = lead.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleSubmit = () => {
-    // TODO(A1.3-backend): quando existir o edge de outreach manual da plataforma,
-    // enviar { agent_id: agentId, objective, mode, extra_context } no disparo.
-    // Hoje o reengajamento é acionado no nível da conversa (ai-reactivate).
-    onReactivate();
+    // A1.2-FRONT (contrato 6): repassa os campos do dialog no payload do
+    // ai-reactivate (agent_id/objective/mode/extra_context, todos opcionais).
+    const preset = OBJECTIVE_PRESETS.find((p) => p.value === objectivePreset);
+    const objective =
+      (objectivePreset === 'custom' ? customObjective.trim() : preset?.text) || undefined;
+    onReactivate({
+      agentId: agentId || undefined,
+      objective,
+      mode,
+      extraContext: extraContext.trim() || undefined,
+    });
     onOpenChange(false);
   };
 
