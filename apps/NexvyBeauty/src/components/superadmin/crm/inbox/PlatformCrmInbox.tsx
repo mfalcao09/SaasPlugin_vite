@@ -416,21 +416,31 @@ export function PlatformCrmInbox({
     return () => window.removeEventListener('keydown', handler);
   }, [isMobile, selectedConversation]);
 
-  // AI suggestion — edge platform-sales-copilot com fallback (comportamento do destino preservado).
+  // AI suggestion — edge platform-sales-copilot. O gateway de IA dá 502
+  // intermitente (visto em prod 2026-07-10): 1 retry automático antes de
+  // desistir, e o toast diz a VERDADE (falha transitória, não "em breve").
   const handleAiSuggest = useCallback(async (): Promise<string> => {
     if (!selectedConversation?.id) return '';
-    try {
+    const invokeOnce = async () => {
       const { data, error } = await supabase.functions.invoke('platform-sales-copilot', {
         body: { conversation_id: selectedConversation.id },
       });
       if (error) throw error;
       return (data as any)?.suggestion ?? (data as any)?.answer ?? '';
-    } catch (edgeError) {
-      console.warn('platform-sales-copilot indisponível:', edgeError);
-      sonnerToast.info('Sugestão por IA disponível em breve', {
-        description: 'O copiloto de respostas da plataforma ainda será conectado.',
-      });
-      return '';
+    };
+    try {
+      return await invokeOnce();
+    } catch (firstError) {
+      console.warn('platform-sales-copilot falhou (1ª tentativa), retry…', firstError);
+      try {
+        return await invokeOnce();
+      } catch (retryError) {
+        console.warn('platform-sales-copilot falhou também no retry:', retryError);
+        sonnerToast.error('A sugestão por IA falhou agora', {
+          description: 'Instabilidade momentânea do gateway de IA — clique novamente em alguns segundos.',
+        });
+        return '';
+      }
     }
   }, [selectedConversation]);
 

@@ -49,7 +49,14 @@
 //     Cloud API oficial) são ENTREGUES via Graph API na action `send` — a
 //     connection ativa vem de platform_crm_whatsapp_meta_connections e o wamid
 //     retornado vai no metadata (statuses do webhook atualizam por ele).
-//     Instagram segue fase futura.
+//     Conversas `channel='instagram'` (DMs entradas pelo platform-instagram-
+//     webhook) são ENTREGUES via Graph DM (deliverViaInstagram — POST
+//     /{fb_page_id}/messages com page token, node IDÊNTICO ao instagram-send
+//     do Vendus V5) pelo MESMO caminho único (performOutboundSend + resend).
+//     ig_mid no metadata espelha o inbound; fora da janela 24h a Graph recusa
+//     → delivery_status='failed' + delivery_error_detail (resend recupera
+//     quando o cliente reabrir a janela). Caption em attachment NÃO existe no
+//     IG (só WhatsApp) — fica persistida, não entregue.
 // A1.2 (2026-07-09) — mídia via storage + agendamento:
 //   * send aceita `media: { bucket:'platform-crm-media', path, mimeType,
 //     kind:'image'|'audio'|'video'|'document', filename?, caption? }` — a edge
@@ -112,7 +119,7 @@ import {
 } from '../_shared/platform-crm-auth.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
-import { GRAPH_BASE } from '../_shared/meta-graph.ts';
+import { GRAPH_BASE, graphFetch, GraphError } from '../_shared/meta-graph.ts';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -203,6 +210,138 @@ async function deliverViaWhatsAppCloud(
   } catch (e) {
     console.error('[platform-webchat-inbox] entrega WhatsApp exception:', e);
     return { wamid: null, error: String(e).slice(0, 300), errorDetail: null };
+  }
+}
+
+/**
+ * Conversa de Instagram? Detecção deliberadamente redundante (channel OU
+ * visitor_id com prefixo 'ig:' OU vínculo com conexão IG) — conversa antiga
+ * sem alguma das marcas ainda entrega. Guarda dura: `channel='whatsapp'`
+ * NUNCA cai aqui (o caminho Cloud API tem precedência e fica intacto).
+ */
+function isInstagramConversation(conv: {
+  channel?: string | null;
+  visitor_id?: string | null;
+  instagram_connection_id?: string | null;
+}): boolean {
+  if (conv?.channel === 'whatsapp') return false;
+  return (
+    conv?.channel === 'instagram' ||
+    String(conv?.visitor_id ?? '').startsWith('ig:') ||
+    !!conv?.instagram_connection_id
+  );
+}
+
+/**
+ * Entrega uma mensagem outbound numa DM do Instagram — semântica COPIADA do
+ * `instagram-send` do Vendus V5: POST /{fb_page_id}/messages (page access
+ * token da conexão; node é a PÁGINA, não /me nem o ig_business_account_id),
+ * body { recipient:{id:IGSID}, messaging_type:'RESPONSE', message:{...} }.
+ * IGSID = visitor_id sem o prefixo 'ig:'. Retorna o message_id da Graph
+ * (ig_mid) — mesmo campo de idempotência do inbound (metadata->>ig_mid).
+ *
+ * Conexão: a da conversa (canal-por-conversa, A1.3); fallback: a única
+ * `active` mais recente (mono-connection, mesmo padrão do WhatsApp acima).
+ *
+ * Janela 24h: SEM pré-check aqui — a RPC platform_crm_is_within_24h_window é
+ * consumida pelo FRONT como aviso; no edge, fora da janela a Graph recusa
+ * (code 10 / subcode 2018278) e o erro vai ESTRUTURADO pro
+ * delivery_error_detail, igual ao padrão WhatsApp (mensagem persiste como
+ * failed; resend recupera quando o cliente reabrir a janela).
+ *
+ * Mídia: attachment { type, payload:{ url, is_reusable:false } } — kinds do
+ * inbox (image|audio|video|document) mapeados pro vocabulário do IG
+ * (document→file). O IG NÃO aceita caption em attachment (diferente do
+ * WhatsApp) — caption fica só no metadata persistido, nunca é entregue.
+ */
+async function deliverViaInstagram(
+  supabase: any,
+  conversation: {
+    visitor_id?: string | null;
+    instagram_connection_id?: string | null;
+  },
+  content: string,
+  media?: { kind?: string | null; url?: string | null } | null,
+): Promise<{
+  igMid: string | null;
+  connectionId: string | null;
+  error: string | null;
+  errorDetail: GraphDeliveryErrorDetail | null;
+}> {
+  let connectionId: string | null = null;
+  try {
+    let conn: Record<string, any> | null = null;
+    if (conversation.instagram_connection_id) {
+      const { data } = await supabase
+        .from('platform_crm_instagram_connections')
+        .select('id, fb_page_id, page_access_token_encrypted, status')
+        .eq('id', conversation.instagram_connection_id)
+        .maybeSingle();
+      conn = data ?? null;
+    }
+    if (!conn) {
+      const { data } = await supabase
+        .from('platform_crm_instagram_connections')
+        .select('id, fb_page_id, page_access_token_encrypted, status')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      conn = data ?? null;
+    }
+    if (!conn?.page_access_token_encrypted || !conn?.fb_page_id) {
+      return { igMid: null, connectionId: null, error: 'no_active_instagram_connection', errorDetail: null };
+    }
+    connectionId = String(conn.id);
+    if (conn.status !== 'active') {
+      return { igMid: null, connectionId, error: 'instagram_connection_inactive', errorDetail: null };
+    }
+
+    const igsid = String(conversation.visitor_id ?? '').replace(/^ig:/, '').trim();
+    if (!igsid) {
+      return { igMid: null, connectionId, error: 'no_destination_igsid', errorDetail: null };
+    }
+
+    const token = await decryptSecret(String(conn.page_access_token_encrypted));
+
+    const message: Record<string, unknown> = {};
+    if (media?.url && media?.kind) {
+      const igTypeMap: Record<string, string> = {
+        image: 'image', audio: 'audio', video: 'video', document: 'file', sticker: 'image',
+      };
+      message.attachment = {
+        type: igTypeMap[String(media.kind)] ?? 'file',
+        payload: { url: String(media.url), is_reusable: false },
+      };
+    } else {
+      message.text = String(content ?? '');
+    }
+    const payload = {
+      recipient: { id: igsid },
+      messaging_type: 'RESPONSE',
+      message,
+    };
+
+    const res = await graphFetch<{ message_id?: string }>(
+      `/${conn.fb_page_id}/messages`,
+      token,
+      { method: 'POST', body: JSON.stringify(payload) },
+    );
+    return { igMid: res?.message_id ?? null, connectionId, error: null, errorDetail: null };
+  } catch (e) {
+    if (e instanceof GraphError) {
+      const detail: GraphDeliveryErrorDetail = {
+        message: String(e.graph?.message ?? e.message).slice(0, 300),
+        code: typeof e.graph?.code === 'number' ? e.graph.code : null,
+        subcode: typeof e.graph?.error_subcode === 'number' ? e.graph.error_subcode : null,
+        fbtrace_id: e.graph?.fbtrace_id ? String(e.graph.fbtrace_id) : null,
+        http_status: e.status,
+      };
+      console.error('[platform-webchat-inbox] entrega Instagram falhou:', JSON.stringify(detail));
+      return { igMid: null, connectionId, error: detail.message, errorDetail: detail };
+    }
+    console.error('[platform-webchat-inbox] entrega Instagram exception:', e);
+    return { igMid: null, connectionId, error: String(e).slice(0, 300), errorDetail: null };
   }
 }
 
@@ -497,7 +636,7 @@ async function performOutboundSend(
 ): Promise<OutboundSendResult> {
   const { data: conversation, error: convError } = await supabase
     .from('platform_crm_conversations')
-    .select('id, assigned_to, status, channel, visitor_phone, visitor_whatsapp')
+    .select('id, assigned_to, status, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id')
     .eq('id', opts.conversationId)
     .single();
 
@@ -620,6 +759,48 @@ async function performOutboundSend(
     if (!wamid) {
       deliveryWarning = deliveryError ?? 'entrega falhou';
       console.error('[platform-webchat-inbox] WhatsApp NÃO entregue:', deliveryError);
+    }
+  }
+
+  // Entrega no canal externo: Instagram (Graph DM) — branch NOVO; os caminhos
+  // whatsapp/webchat acima ficam intactos. Metadata espelha o INBOUND
+  // (platform-instagram-webhook): ig_mid + channel:'instagram' + connection_id
+  // — mesmo campo de idempotência (metadata->>ig_mid) e mesmo vocabulário que
+  // a UI já lê nas mensagens recebidas.
+  if (isInstagramConversation(conversation)) {
+    const { igMid, connectionId, error: deliveryError, errorDetail } = await deliverViaInstagram(
+      supabase,
+      conversation,
+      String(opts.content ?? ''),
+      resolvedMedia
+        ? { kind: resolvedMedia.persistMedia.kind, url: resolvedMedia.deliverUrl }
+        : null,
+    );
+    const deliveryMeta = igMid
+      ? {
+          ...(finalMessage.metadata ?? {}),
+          ig_mid: igMid,
+          delivery_status: 'sent',
+          channel: 'instagram',
+          ...(connectionId ? { connection_id: connectionId } : {}),
+        }
+      : {
+          ...(finalMessage.metadata ?? {}),
+          delivery_status: 'failed',
+          delivery_error: deliveryError,
+          delivery_error_detail: errorDetail,
+          ...(connectionId ? { connection_id: connectionId } : {}),
+        };
+    const { data: updated } = await supabase
+      .from('platform_crm_messages')
+      .update({ metadata: deliveryMeta })
+      .eq('id', message.id)
+      .select('*')
+      .single();
+    if (updated) finalMessage = updated;
+    if (!igMid) {
+      deliveryWarning = deliveryError ?? 'entrega falhou';
+      console.error('[platform-webchat-inbox] Instagram NÃO entregue:', deliveryError);
     }
   }
 
@@ -2249,9 +2430,10 @@ Deno.serve(async (req) => {
 
     // ACTION: Resend — reentrega uma mensagem outbound que falhou.
     // Só age em mensagens com metadata.delivery_status='failed' (idempotente: uma
-    // mensagem já entregue nunca é reenviada). Reusa o Cloud API sender e atualiza
-    // o metadata in-place (sem criar mensagem nova), depois faz broadcast para a
-    // bolha refletir o novo estado (sent/failed).
+    // mensagem já entregue nunca é reenviada). Reusa o sender do canal (Cloud API
+    // no WhatsApp; Graph DM no Instagram) e atualiza o metadata in-place (sem
+    // criar mensagem nova), depois faz broadcast para a bolha refletir o novo
+    // estado (sent/failed).
     if (action === 'resend' && req.method === 'POST') {
       const body = bodyParsed || {};
       if (!body.message_id) {
@@ -2283,15 +2465,68 @@ Deno.serve(async (req) => {
       // Descobre canal/destino pela conversa.
       const { data: conv, error: convErr } = await supabase
         .from('platform_crm_conversations')
-        .select('id, channel, visitor_phone, visitor_whatsapp')
+        .select('id, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id')
         .eq('id', msg.conversation_id)
         .maybeSingle();
 
       if (convErr || !conv) {
         return json({ error: 'Conversation not found' }, 404);
       }
+
+      // Instagram — reentrega via Graph DM (branch NOVO; o caminho WhatsApp
+      // abaixo fica intacto). metadata.media persistido tem a URL pública
+      // estável do bucket — entregável direto, mesmo padrão do resend WhatsApp.
+      if (isInstagramConversation(conv)) {
+        const igMedia = meta.media && typeof meta.media === 'object' ? meta.media : null;
+        const { igMid, connectionId, error: deliveryError, errorDetail } = await deliverViaInstagram(
+          supabase,
+          conv,
+          String(msg.content ?? ''),
+          igMedia,
+        );
+        const newMeta = igMid
+          ? {
+              ...meta,
+              ig_mid: igMid,
+              delivery_status: 'sent',
+              channel: 'instagram',
+              ...(connectionId ? { connection_id: connectionId } : {}),
+              resent_at: new Date().toISOString(),
+              // null (não undefined) — mesmo motivo do caminho WhatsApp abaixo:
+              // JSON.stringify dropa undefined e deixaria o erro velho no banco.
+              delivery_error: null,
+              delivery_error_detail: null,
+            }
+          : {
+              ...meta,
+              delivery_status: 'failed',
+              delivery_error: deliveryError,
+              delivery_error_detail: errorDetail,
+              ...(connectionId ? { connection_id: connectionId } : {}),
+              resent_at: new Date().toISOString(),
+            };
+
+        const { data: updated } = await supabase
+          .from('platform_crm_messages')
+          .update({ metadata: newMeta })
+          .eq('id', msg.id)
+          .select('*')
+          .single();
+        const finalIgMessage = updated ?? { ...msg, metadata: newMeta };
+        await broadcastToConversation(supabase, msg.conversation_id, 'new_message', finalIgMessage);
+
+        if (!igMid) {
+          console.error('[platform-webchat-inbox] resend Instagram NÃO entregue:', deliveryError);
+          return json(
+            { message: finalIgMessage, delivery_warning: deliveryError ?? 'entrega falhou' },
+            200,
+          );
+        }
+        return json({ success: true, message: finalIgMessage });
+      }
+
       if (conv.channel !== 'whatsapp') {
-        return json({ error: 'Resend disponível apenas para WhatsApp por ora' }, 400);
+        return json({ error: 'Resend disponível apenas para WhatsApp e Instagram por ora' }, 400);
       }
 
       const dest = conv.visitor_whatsapp ?? conv.visitor_phone ?? '';

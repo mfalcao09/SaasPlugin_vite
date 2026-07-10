@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
+import { usePublicPlans } from '@/hooks/usePlatformPlans';
 import type { PlatformCrmMediaPayload as MediaPayload } from './PlatformCrmMediaAttachment';
 
 /**
@@ -16,8 +17,14 @@ import type { PlatformCrmMediaPayload as MediaPayload } from './PlatformCrmMedia
  *
  * Adaptação de dados: `product_catalog_items` (tenant, org-scoped) →
  * `platform_crm_products` (catálogo do GRUPO — planos SaaS). Cada item
- * exibido é um PLANO ativo de um produto (`pricing` Json = ProductPlan[]);
- * o link do card vem de `external_links.checkout || external_links.site`.
+ * exibido é um PLANO ativo de um produto (`pricing` Json = ProductPlan[]).
+ *
+ * Link de pagamento (decisão Marcelo 2026-07-10): o plano vai como produto do
+ * catálogo JÁ com seu link de checkout. O checkout_url por plano vive na view
+ * `public_plans` (mesma fonte da LP/SalesPage) e é casado por nome do plano
+ * (case-insensitive, ex. 'Essencial' ↔ 'NexvyBeauty — Essencial'). Fallback:
+ * `external_links.checkout || external_links.site` do produto. Sem URL
+ * disponível → comportamento anterior (mensagem sem link).
  */
 interface CatalogItem {
   id: string;
@@ -25,6 +32,8 @@ interface CatalogItem {
   description: string | null;
   price: number | null;
   currency: string | null;
+  /** Ciclo de cobrança legível ('mês', 'ano'...) — só para a linha de preço da mensagem. */
+  cycle: string | null;
   url: string | null;
   thumbnail_url: string | null;
   images: string[] | null;
@@ -88,6 +97,21 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
   const [sendingId, setSendingId] = useState<string | null>(null);
 
   const { data: products = [], isLoading } = usePlatformCrmProducts();
+  // Checkout por plano — view public_plans (mesma fonte da LP; SELECT anônimo).
+  const { data: publicPlans = [] } = usePublicPlans();
+
+  // Índice nome-normalizado → {checkout_url, price_monthly} dos planos públicos.
+  const publicPlanByName = useMemo(() => {
+    const map = new Map<string, { checkout_url: string; price_monthly: number | null }>();
+    for (const pl of publicPlans) {
+      if (!pl?.is_public || !pl.name || !pl.checkout_url) continue;
+      map.set(pl.name.trim().toLowerCase(), {
+        checkout_url: pl.checkout_url,
+        price_monthly: typeof pl.price_monthly === 'number' ? pl.price_monthly : null,
+      });
+    }
+    return map;
+  }, [publicPlans]);
 
   // Achata produto × plano ativo no shape de item de catálogo do v5.
   const items: CatalogItem[] = useMemo(() => {
@@ -110,6 +134,7 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
           description,
           price: null,
           currency: 'BRL',
+          cycle: null,
           url,
           thumbnail_url: thumbnail,
           images: null,
@@ -120,14 +145,20 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
 
       for (const plan of activePlans) {
         const planName = plan.nome ?? plan.name ?? null;
+        // Checkout do PLANO (public_plans, casado por nome case-insensitive).
+        // Fallback: link genérico do produto (external_links).
+        const publicPlan = planName
+          ? publicPlanByName.get(planName.trim().toLowerCase()) ?? null
+          : null;
         const planPrice =
           typeof plan.preco_mensal === 'number' ? plan.preco_mensal
           : typeof plan.price === 'number' ? plan.price
-          : null;
+          : publicPlan?.price_monthly ?? null;
         // preco_mensal → ciclo mensal implícito no shape real
         const cycle = plan.billing_cycle
           ? billingCycleLabels[plan.billing_cycle] || plan.billing_cycle
-          : typeof plan.preco_mensal === 'number' ? 'mês' : null;
+          : typeof plan.preco_mensal === 'number' || publicPlan?.price_monthly != null ? 'mês'
+          : null;
         out.push({
           id: `${p.id}:${plan.id ?? planName ?? 'plano'}`,
           title: planName ? `${p.name} — ${planName}` : p.name,
@@ -137,7 +168,8 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
             (plan.features && plan.features.length ? plan.features.slice(0, 3).join(' · ') : null),
           price: planPrice,
           currency: 'BRL',
-          url,
+          cycle,
+          url: publicPlan?.checkout_url ?? url,
           thumbnail_url: thumbnail,
           images: null,
           tags: [p.category, cycle ? `por ${cycle}` : null].filter(Boolean) as string[],
@@ -145,7 +177,7 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
       }
     }
     return out;
-  }, [products, productId]);
+  }, [products, productId, publicPlanByName]);
 
   const filtered = items.filter(i =>
     i.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,9 +188,13 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
   const handleSend = async (item: CatalogItem) => {
     setSendingId(item.id);
     const lines: string[] = [`*${item.title}*`];
-    if (item.price != null) lines.push(formatMoney(item.price, item.currency || 'BRL'));
+    if (item.price != null) {
+      const money = formatMoney(item.price, item.currency || 'BRL');
+      lines.push(item.cycle ? `${money} por ${item.cycle}` : money);
+    }
     if (item.description) lines.push('', item.description.slice(0, 280));
-    if (item.url) lines.push('', `🔗 ${item.url}`);
+    // URL crua em linha própria — WhatsApp/IG tornam o link clicável sozinhos.
+    if (item.url) lines.push('', item.url);
     const text = lines.join('\n');
 
     const imageUrl = item.thumbnail_url || item.images?.[0];

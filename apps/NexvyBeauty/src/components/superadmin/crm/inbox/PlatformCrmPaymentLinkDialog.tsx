@@ -11,9 +11,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Dialog de envio de link de pagamento (checkout Cakto/gateway do plano —
- * cobrar pretensos tenants) — porte fiel A1.2 de
+ * Dialog de COBRANÇA AVULSA genérica (setup, consultoria, upgrade custom, Pix
+ * avulso — tudo que NÃO é plano) — porte fiel A1.2 de
  * `seller/inbox/PaymentLinkDialog.tsx` (Vendus v5 original).
+ *
+ * Decisão Marcelo 2026-07-10: PLANO vai pelo Catálogo (já com checkout_url de
+ * public_plans); esta função fica para links de pagamento avulsos.
  *
  * Adaptação de dados: `payment_links` (tenant, org-scoped) →
  * `platform_crm_payment_links` (nome canônico da plataforma; a tabela PENDE
@@ -114,6 +117,9 @@ export function PlatformCrmPaymentLinkDialog({
             <CreditCard className="h-5 w-5 text-primary" />
             Enviar link de pagamento
           </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Cobrança avulsa (setup, consultoria, upgrade). Para enviar um PLANO com link de pagamento, use o Catálogo.
+          </p>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -122,7 +128,7 @@ export function PlatformCrmPaymentLinkDialog({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Plano Premium • Mensalidade"
+              placeholder="Implantação personalizada • Setup"
               maxLength={120}
               autoFocus
             />
@@ -134,7 +140,7 @@ export function PlatformCrmPaymentLinkDialog({
               <Input
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value.replace(/[^\d.,]/g, ''))}
-                placeholder="297,00"
+                placeholder="497,00"
                 inputMode="decimal"
               />
             </div>
