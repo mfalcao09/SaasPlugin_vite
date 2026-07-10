@@ -239,14 +239,37 @@ export function usePlatformCrmMessages(conversationId: string | null | undefined
 }
 
 /**
+ * Payload de mídia do CONTRATO A1.2 (front ⇄ edge `platform-webchat-inbox`).
+ * O front sobe o arquivo pro bucket `platform-crm-media`
+ * (path `conv/<conversationId>/<epoch>-<slug>`) e repassa a referência no body
+ * da action `send`; o edge persiste em `platform_crm_messages.metadata.media`
+ * e entrega ao canal.
+ */
+export interface PlatformCrmSendMediaPayload {
+  bucket: 'platform-crm-media';
+  path: string;
+  mimeType: string;
+  kind: 'image' | 'audio' | 'video' | 'document';
+  filename?: string;
+  caption?: string;
+  /** Extras opcionais para render local imediato (o edge pode recalcular). */
+  url?: string;
+  size_bytes?: number | null;
+  duration_ms?: number | null;
+  width?: number | null;
+  height?: number | null;
+}
+
+/**
  * Grava uma resposta do agente (outbound) em `platform_crm_messages`.
- * direction='outbound', sender_type='agent'.
+ * direction='outbound', sender_type='agent'. Aceita `media` (contrato A1.2).
  *
  * Caminho canônico: Edge Function `platform-webchat-inbox` (action `send`)
  * — persiste, entrega ao canal e emite o broadcast `new_message`. FALLBACK: se o
  * invoke falhar (edge ainda não deployado/offline), cai no insert client-side
- * (persiste sem entrega por canal, sem quebrar a UX). Nos dois caminhos o cache
- * local é atualizado via injeção + invalidação da lista.
+ * (persiste sem entrega por canal, sem quebrar a UX; a mídia vai em
+ * `metadata.media` no formato que o MessageBubble/extractMedia renderiza).
+ * Nos dois caminhos o cache local é atualizado via injeção + invalidação da lista.
  */
 export function useSendPlatformCrmMessage() {
   const queryClient = useQueryClient();
@@ -256,10 +279,12 @@ export function useSendPlatformCrmMessage() {
       conversationId,
       content,
       replyToMessageId,
+      media,
     }: {
       conversationId: string;
       content: string;
       replyToMessageId?: string | null;
+      media?: PlatformCrmSendMediaPayload;
     }) => {
       // 1) Caminho canônico — edge de envio (entrega por canal + broadcast).
       try {
@@ -269,6 +294,7 @@ export function useSendPlatformCrmMessage() {
             conversation_id: conversationId,
             content,
             reply_to_message_id: replyToMessageId ?? null,
+            media: media ?? null,
           },
         });
         if (error) throw error;
@@ -283,12 +309,37 @@ export function useSendPlatformCrmMessage() {
       }
 
       // 2) FALLBACK client-side — persiste a mensagem sem entrega por canal.
+      // Optimistic/persistência de mídia: `metadata.media` no shape consumido
+      // por extractMedia/MediaAttachment (kind/url/mime/filename/...), como o
+      // v5 renderiza.
       const payload: PlatformCrmMessageInsert = {
         conversation_id: conversationId,
         content,
         direction: 'outbound',
         sender_type: 'agent',
         reply_to_message_id: replyToMessageId ?? null,
+        ...(media
+          ? {
+              content_type: media.kind,
+              metadata: {
+                media: {
+                  kind: media.kind,
+                  url:
+                    media.url ??
+                    supabase.storage.from(media.bucket).getPublicUrl(media.path).data.publicUrl,
+                  mime: media.mimeType,
+                  filename: media.filename ?? null,
+                  caption: media.caption ?? null,
+                  size_bytes: media.size_bytes ?? null,
+                  duration_ms: media.duration_ms ?? null,
+                  width: media.width ?? null,
+                  height: media.height ?? null,
+                  bucket: media.bucket,
+                  path: media.path,
+                },
+              } as any,
+            }
+          : {}),
       };
 
       const { data, error } = await supabase
