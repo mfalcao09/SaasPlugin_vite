@@ -45,6 +45,13 @@ import { PlatformCrmEventModal } from '../agenda/PlatformCrmEventModal';
 import { PlatformCrmDealModal } from './PlatformCrmDealModal';
 import { PlatformCrmAcceptTicketDialog } from './PlatformCrmAcceptTicketDialog';
 import { PlatformCrmArchiveDialog, type PlatformCrmArchivePayload } from './PlatformCrmArchiveDialog';
+import {
+  PlatformCrmInboxFiltersDrawer,
+  defaultPlatformCrmInboxFilters,
+  applyPlatformCrmInboxFilters,
+  countActivePlatformCrmInboxFilters,
+  type PlatformCrmInboxFiltersState,
+} from './PlatformCrmInboxFiltersDrawer';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -63,9 +70,10 @@ import { cn } from '@/lib/utils';
  *
  * Adaptações de dados (regra b/d): tudo em `platform_crm_*` (sem
  * organization_id/RLS de tenant — super_admin only); filtros/paginação do
- * backend do tenant viram filtro client-side (mesma UI); TODO(A1.2-backend):
- * drawer de filtros avançados (InboxFiltersDrawer do v5 vive fora dos 38
- * componentes da inbox — pende porte próprio; o botão Filtros fica).
+ * backend do tenant viram filtro client-side (mesma UI). A1.4/FILTROS: o
+ * drawer de filtros avançados do v5 foi portado (PlatformCrmInboxFiltersDrawer
+ * — produto/etiqueta/setor/usuário/agente/canal/conexão/status) e é aplicado
+ * client-side sobre a lista já carregada.
  */
 interface PlatformCrmInboxProps {
   productId?: string;
@@ -126,6 +134,10 @@ export function PlatformCrmInbox({
   const [showCatalog, setShowCatalog] = useState(false);
   const [showPaymentLink, setShowPaymentLink] = useState(false);
   const [activeTab, setActiveTab] = useState<PlatformCrmStatusTab>('attending');
+
+  // A1.4/FILTROS: estado do drawer de filtros avançados (paridade SellerInbox v5).
+  const [showFiltersDrawer, setShowFiltersDrawer] = useState(false);
+  const [filters, setFilters] = useState<PlatformCrmInboxFiltersState>(defaultPlatformCrmInboxFilters);
 
   // Dados — lista completa (realtime no hook, com o fix useId() preservado).
   const {
@@ -214,13 +226,41 @@ export function PlatformCrmInbox({
     [allRows, productNameById, agentNameById, sectorById],
   );
 
+  // A1.4/FILTROS: etiquetas vivem em `platform_crm_lead_tag_assignments`
+  // (lead_id ↔ tag_id) — leitura leve, habilitada só com filtro de etiqueta ativo.
+  const { data: tagAssignments = [] } = useQuery({
+    queryKey: ['platform-crm', 'tag-assignments-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('platform_crm_lead_tag_assignments')
+        .select('lead_id, tag_id');
+      if (error) throw error;
+      return (data ?? []) as { lead_id: string; tag_id: string }[];
+    },
+    enabled: filters.selectedTagIds.length > 0,
+  });
+  const tagLeadIds = useMemo(() => {
+    if (!filters.selectedTagIds.length) return null;
+    const selected = new Set(filters.selectedTagIds);
+    const leads = new Set<string>();
+    tagAssignments.forEach((a) => {
+      if (a.lead_id && selected.has(a.tag_id)) leads.add(a.lead_id);
+    });
+    return leads;
+  }, [filters.selectedTagIds, tagAssignments]);
+
   // Filtro por aba (client-side — o backend da plataforma não tem RPC de
   // paginação/filtros; mesma UI do v5). A BUSCA é interna da lista (paridade
-  // v5: input `data-inbox-search` filtra client-side dentro do componente).
+  // v5: input `data-inbox-search` filtra client-side dentro do componente; a
+  // busca do drawer entra via `externalSearch`). "Ver Resolvidos" força a aba
+  // 'resolved' (paridade com o effectiveTab do SellerInbox) e os demais
+  // filtros do drawer (A1.4) são aplicados sobre a lista já carregada.
   const visibleConversations = useMemo(() => {
-    const byTabIds = new Set(filterConversationsByTab(allRows, activeTab).map((r) => r.id));
-    return conversations.filter((c) => byTabIds.has(c.id));
-  }, [conversations, allRows, activeTab]);
+    const effectiveTab: PlatformCrmStatusTab = filters.showResolved ? 'resolved' : activeTab;
+    const byTabIds = new Set(filterConversationsByTab(allRows, effectiveTab).map((r) => r.id));
+    const byTab = conversations.filter((c) => byTabIds.has(c.id));
+    return applyPlatformCrmInboxFilters(byTab, filters, tagLeadIds);
+  }, [conversations, allRows, activeTab, filters, tagLeadIds]);
 
   // Auto-select pending conversation (navegação externa / ContactCardBubble).
   const pendingHandledRef = useRef<string | null>(null);
@@ -755,6 +795,22 @@ export function PlatformCrmInbox({
     });
   }, [closeConversation, refetchConversations, selectedConversation, toast]);
 
+  // Encerrar TODOS os atendimentos abertos (ação admin do drawer — paridade
+  // com o handleCloseAllTickets do SellerInbox v5, sobre a lista filtrada).
+  const handleCloseAllTickets = useCallback(async () => {
+    const open = visibleConversations.filter((c) => c.status !== 'closed');
+    await Promise.allSettled(open.map((c) => closeConversation.mutateAsync({ conversationId: c.id })));
+    toast({ title: `${open.length} atendimentos encerrados` });
+    refetchConversations();
+  }, [visibleConversations, closeConversation, toast, refetchConversations]);
+
+  // Badge do funil — conta GRUPOS de filtro ativos (paridade SellerInbox v5).
+  // canFilterByAgent = true: a inbox da plataforma sempre exibe a aba Agentes.
+  const activeFilterCount = countActivePlatformCrmInboxFilters(filters, {
+    isAdmin: isAdminMode,
+    canFilterByAgent: true,
+  });
+
   const freshStatus = selectedRow?.status ?? freshSelected?.status ?? 'human_active';
   const freshAssigned = selectedRow?.assigned_to ?? freshSelected?.assigned_user_id ?? null;
 
@@ -779,7 +835,9 @@ export function PlatformCrmInbox({
               onSelect={setSelectedConversation}
               isLoading={loadingConversations}
               isFetching={fetchingConversations}
-              activeFilterCount={0}
+              externalSearch={filters.search}
+              externalShowResolved={filters.showResolved}
+              activeFilterCount={activeFilterCount}
               onNewConversation={() => setShowStartConversation(true)}
               soundControls={soundControls}
               showAssignedUser={isAdminMode}
@@ -791,22 +849,30 @@ export function PlatformCrmInbox({
               showAgentsTab
               onBulkClose={handleBulkClose}
               filtersSlot={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 relative"
-                  aria-label="Filtros"
-                  onClick={() =>
-                    // TODO(A1.2-backend): porte do InboxFiltersDrawer do v5
-                    // (produto/setor/usuário/etiqueta/canal/conexão) — fora dos
-                    // 38 componentes da inbox; pende porte próprio.
-                    sonnerToast.info('Filtros avançados em breve', {
-                      description: 'Refino por produto/setor/etiqueta/canal será habilitado em breve.',
-                    })
+                <PlatformCrmInboxFiltersDrawer
+                  open={showFiltersDrawer}
+                  onOpenChange={setShowFiltersDrawer}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  isAdmin={isAdminMode}
+                  canFilterByAgent
+                  onCloseAllTickets={isAdminMode ? handleCloseAllTickets : undefined}
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 relative"
+                      aria-label="Filtros"
+                    >
+                      <Filter className="h-4 w-4" />
+                      {activeFilterCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </Button>
                   }
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
+                />
               }
             />
           </div>
