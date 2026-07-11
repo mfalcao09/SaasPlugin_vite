@@ -106,21 +106,21 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
-            <User className="h-4 w-4 text-green-500" />
+            <User className="h-4 w-4 text-primary" />
             Gestão do Lead
           </CardTitle>
           <CardDescription className="text-xs">Atualizar informações e categorizar leads</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-1">
           <ToolToggle
-            icon={<Tag className="h-4 w-4 text-green-500" />}
+            icon={<Tag className="h-4 w-4 text-primary" />}
             label="Aplicar / remover tags"
             description="Categorizar leads com etiquetas automaticamente"
             checked={formData.can_apply_tags ?? false}
             onCheckedChange={(v) => onChange({ can_apply_tags: v })}
           />
           <ToolToggle
-            icon={<StickyNote className="h-4 w-4 text-green-500" />}
+            icon={<StickyNote className="h-4 w-4 text-primary" />}
             label="Adicionar notas internas"
             description="Registrar observações no perfil do lead"
             checked={formData.can_add_notes ?? false}
@@ -133,28 +133,28 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Mail className="h-4 w-4 text-purple-500" />
+            <Mail className="h-4 w-4 text-primary" />
             Comunicação
           </CardTitle>
           <CardDescription className="text-xs">Envio de emails, materiais e alertas</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-1">
           <ToolToggle
-            icon={<Mail className="h-4 w-4 text-purple-500" />}
+            icon={<Mail className="h-4 w-4 text-primary" />}
             label="Enviar emails"
             description="Disparar emails automáticos para o lead"
             checked={formData.can_send_emails ?? false}
             onCheckedChange={(v) => onChange({ can_send_emails: v })}
           />
           <ToolToggle
-            icon={<FileText className="h-4 w-4 text-purple-500" />}
+            icon={<FileText className="h-4 w-4 text-primary" />}
             label="Enviar materiais"
             description="Compartilhar documentos e materiais de apoio"
             checked={formData.can_send_materials ?? false}
             onCheckedChange={(v) => onChange({ can_send_materials: v })}
           />
           <ToolToggle
-            icon={<Bell className="h-4 w-4 text-purple-500" />}
+            icon={<Bell className="h-4 w-4 text-primary" />}
             label="Notificar equipe"
             description="Enviar alertas internos para vendedores"
             checked={formData.can_notify ?? false}
@@ -167,35 +167,35 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Workflow className="h-4 w-4 text-orange-500" />
+            <Workflow className="h-4 w-4 text-primary" />
             Automação
           </CardTitle>
           <CardDescription className="text-xs">Tarefas, reuniões, cadências e fluxos</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-1">
           <ToolToggle
-            icon={<ListTodo className="h-4 w-4 text-orange-500" />}
+            icon={<ListTodo className="h-4 w-4 text-primary" />}
             label="Criar tarefas"
             description="Criar atividades vinculadas ao lead"
             checked={formData.can_create_tasks ?? false}
             onCheckedChange={(v) => onChange({ can_create_tasks: v })}
           />
           <ToolToggle
-            icon={<Calendar className="h-4 w-4 text-orange-500" />}
+            icon={<Calendar className="h-4 w-4 text-primary" />}
             label="Agendar reuniões"
             description="Marcar demonstrações e calls no calendário"
             checked={formData.can_schedule_meetings ?? false}
             onCheckedChange={(v) => onChange({ can_schedule_meetings: v })}
           />
           <ToolToggle
-            icon={<Repeat className="h-4 w-4 text-orange-500" />}
+            icon={<Repeat className="h-4 w-4 text-primary" />}
             label="Iniciar cadência de follow-up"
             description="Disparar sequência automática de acompanhamento"
             checked={formData.can_start_cadence ?? false}
             onCheckedChange={(v) => onChange({ can_start_cadence: v })}
           />
           <ToolToggle
-            icon={<Workflow className="h-4 w-4 text-orange-500" />}
+            icon={<Workflow className="h-4 w-4 text-primary" />}
             label="Disparar fluxos"
             description="Iniciar chat flows automaticamente"
             checked={formData.can_trigger_flows ?? false}
@@ -208,21 +208,21 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
-            <ArrowRightLeft className="h-4 w-4 text-red-500" />
+            <ArrowRightLeft className="h-4 w-4 text-primary" />
             Gestão de Atendimento
           </CardTitle>
           <CardDescription className="text-xs">Transferência e escalação de conversas</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-1">
           <ToolToggle
-            icon={<ArrowRightLeft className="h-4 w-4 text-red-500" />}
+            icon={<ArrowRightLeft className="h-4 w-4 text-primary" />}
             label="Transferir para outro agente"
             description="Redirecionar conversa para agente IA especializado"
             checked={formData.can_transfer ?? false}
             onCheckedChange={(v) => onChange({ can_transfer: v })}
           />
           <ToolToggle
-            icon={<UserCheck className="h-4 w-4 text-red-500" />}
+            icon={<UserCheck className="h-4 w-4 text-primary" />}
             label="Transferir para humano"
             description="Escalar para fila de atendimento humano"
             checked={formData.can_transfer ?? false}
