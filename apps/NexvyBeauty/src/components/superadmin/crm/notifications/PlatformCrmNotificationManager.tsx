@@ -98,8 +98,8 @@ export function PlatformCrmNotificationManager() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-green-500/10">
-                    <Users className="h-6 w-6 text-green-500" />
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <Users className="h-6 w-6 text-primary" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">
