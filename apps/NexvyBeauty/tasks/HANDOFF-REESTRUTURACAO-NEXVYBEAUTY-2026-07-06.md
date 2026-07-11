@@ -1,3 +1,8 @@
+> 🩹 **ERRATA (2026-07-09, controller · evidência verificada no código)** — o status de **B2/B5/B6/B7 abaixo está DESATUALIZADO: tudo FEITO + MERGEADO + DEPLOYADO**.
+> Prova: commit `8bd5862` "feat(beauty/cakto): seed operacional da org no provisionamento (B5/B6/B7)", mergeado via PR#3 `fa0be0c` (2026-07-06) em main. Arquivo `_shared/cakto-plan-provisioning.ts`:
+> B2/slug → `generateUniqueOrgSlug` L42 (usos L168/L177, backfill defensivo) · B5 → `seedSalonDataForNewOrg` L482 + `servico_catalogo` L495 · B6 → `salon_automation_rules` 4 regras OFF upsert (doc L472) · B7 → `opportunity_scan_schedules` Radar 08h UTC (doc L474) · idempotência → gate `org_created` L93/L259/L480 (retry/reprocess NÃO re-semeia).
+> Deploy verificado pela sessão GO-LIVE: `cakto-webhook` v19 + `cakto-reprocess-order` v17 ACTIVE (fonte deployado contém as funções verbatim). Texto histórico preservado abaixo.
+
 # HANDOFF-MESTRE — Reestruturação NexvyBeauty (6 eixos)
 
 > **Propósito:** transferir o estado COMPLETO da reestruturação do NexvyBeauty para uma sessão nova (conta paralela, Fable 5). O redesign visual é **1 de 6 eixos** — este é o documento guarda-chuva. O detalhe do eixo visual está no par [HANDOFF-REDESIGN-LUX-ROSE](HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md).

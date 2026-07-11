@@ -2001,6 +2001,8 @@ Deno.serve(async (req) => {
 
       // No original, admins podem assumir conversa de outro agente (takeover).
       // Na plataforma todo usuário autorizado é super_admin ⇒ takeover permitido.
+      // `force` (contrato 7): sinal explícito de takeover vindo do AcceptTicketDialog.
+      const forceTakeover = bodyParsed?.force === true;
       const previousAssignee = convRow.assigned_to;
 
       // Update conversation — atendente único: limpa IA
@@ -2055,7 +2057,8 @@ Deno.serve(async (req) => {
         .select('full_name')
         .eq('id', user.id)
         .maybeSingle();
-      const sysMsg = previousAssignee && previousAssignee !== user.id
+      const isTakeover = forceTakeover || (!!previousAssignee && previousAssignee !== user.id);
+      const sysMsg = isTakeover
         ? `👮 ${profileRow?.full_name || 'Admin'} assumiu o atendimento`
         : `✋ ${profileRow?.full_name || 'Agente'} aceitou o atendimento`;
       const { data: sysMessage } = await supabase

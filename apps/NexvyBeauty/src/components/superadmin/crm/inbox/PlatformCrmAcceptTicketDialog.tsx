@@ -70,7 +70,7 @@ export function PlatformCrmAcceptTicketDialog({
       // A1.2-FRONT (contrato 7): sector_id vai no payload do accept; a persistência
       // do setor + enforcement de membership acontecem no edge (com fallback ao
       // UPDATE client-side dentro do hook enquanto a action não estiver deployada).
-      await acceptMutation.mutateAsync({ conversationId, sectorId });
+      await acceptMutation.mutateAsync({ conversationId, sectorId, force: isTakeover });
       toast({
         title: isTakeover ? 'Atendimento assumido' : 'Atendimento aceito',
         description: isTakeover

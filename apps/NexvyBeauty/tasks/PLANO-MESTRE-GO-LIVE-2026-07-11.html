@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano Mestre — Go-Live NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1060px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.8rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.2rem;margin:1.8em 0 .4em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  h2.fase{background:linear-gradient(90deg,#1a1420,transparent);padding:.4em 12px;border-radius:8px 8px 0 0;border-bottom:2px solid var(--accent)}
+  h3{font-size:1rem;color:var(--accent);margin:1.2em 0 .3em}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.4em 0 .4em 14px;margin:0 0 1em;font-size:.88rem}
+  .lead a{color:var(--blue)}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.1em .4em;border-radius:5px;font-size:.84em;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:#ffd9ec}
+  table{width:100%;border-collapse:collapse;margin:.8em 0;font-size:.86rem;background:var(--panel);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1a2130}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin:1em 0}
+  .p0{border-left:4px solid var(--green)}
+  .ok{color:var(--green);font-weight:700}.red{color:var(--red);font-weight:700}
+  .yellow{color:var(--yellow);font-weight:700}.muted{color:var(--muted)}
+  .run{color:var(--blue);font-weight:700}
+  ul{padding-left:20px}li{margin:.28em 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+  .foot{color:var(--muted);font-size:.78rem;font-style:italic;margin-top:2em}
+  .kicker{color:var(--muted);font-size:.82rem;margin-top:-.2em}
+  .pill{display:inline-block;padding:.08em .5em;border-radius:6px;font-size:.72rem;font-weight:800}
+  .pill-core{background:#241a20;color:var(--accent)} .pill-melh{background:#242b34;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Plano Mestre — Go-Live NexvyBeauty</h1>
+<div class="kicker">2026-07-11 · sessão <code>6cf2fc02</code> · <strong>registro ÚNICO</strong></div>
+<p class="lead"><strong>Supersede e absorve:</strong> <a href="STATUS-GO-LIVE-2026-07-11.html">Status Go-Live</a> · <a href="DELTA-PORTABILIDADE-100-2026-07-11.html">Delta 100%</a> · <a href="LEVANTAMENTO-PENDENCIAS-REAIS-2026-07-08.html">Levantamento 07-08</a>. A lista de ação viva é ESTA (Seção 14: um registro só).<br>
+<strong>Divisão:</strong> <span class="pill pill-core">FASE 1 = CORE</span> (mínimo pra plataforma plena + operação com fluxo: leads, ads, funil, venda automática) · <span class="pill pill-melh">FASE 2 = MELHORIA</span>. Dentro: P0→P5.<br>
+<span class="muted">✅ feito · 🔄 em execução · 🟡 parcial · ☐ a fazer · ⚠️ decisão do Marcelo.</span></p>
+
+<h2>✅ Já provado (base da decolagem)</h2>
+<table>
+<tbody>
+<tr><td>Máquina de venda: pagamento → webhook → provisionamento → org operacional</td><td class="ok">E2E 07-08 + webhook LIVE</td></tr>
+<tr><td>Planos + slugs (Essencial/Premium/Ultra) · Cards Meta (catálogo + auto-sync) · Telegram · Dedup cakto_orders</td><td class="ok">provados 07-11</td></tr>
+<tr><td>Deploy do bundle desta sessão</td><td class="ok">index-BsTNxNjo.js, 200 nos 3 hosts</td></tr>
+</tbody>
+</table>
+
+<h2 class="fase">FASE 1 — CORE</h2>
+
+<h3>P0 — ✅ CÓDIGO PRONTO (5/5) · 🔄 publicação em andamento</h3>
+<div class="card p0">
+<p class="muted"><strong>Descoberta:</strong> as colunas JÁ existiam no banco — a mentira era 100% no código. Zero migration. tsc 0 erros + deno check verde.</p>
+<table>
+<tbody>
+<tr><td>P0.1 <code>EditVisitorDialog</code> grava <code>visitor_email</code> + read path + painel lateral</td><td class="ok">✅ código</td></tr>
+<tr><td>P0.2 <code>TransferModal</code> persiste conexão/orquestrador/takeover (3 console.warn removidos)</td><td class="ok">✅ código</td></tr>
+<tr><td>P0.3 <code>AcceptTicketDialog</code> → <code>force:takeover</code> fio completo (dialog→hook→edge)</td><td class="ok">✅ código</td></tr>
+<tr><td>P0.4 <code>FollowupAIDialog</code> renderiza warnings (âmbar) + model</td><td class="ok">✅ código</td></tr>
+<tr><td>P0.5 <code>InboxMetricsHeader</code> montado via metricsSlot</td><td class="ok">✅ código</td></tr>
+<tr><td>P0.6 Commit + push + deploy (frontend + edge platform-webchat-inbox)</td><td class="run">🔄</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>P1 — Uso pleno + o que mais preocupa</h3>
+<table>
+<thead><tr><th>Frente</th><th>Itens</th><th>Esforço</th></tr></thead>
+<tbody>
+<tr><td><strong>Atendimento</strong> (finalizar porte)</td><td>LeadEditModal · JourneyTimeline handoffs · áudio iOS/Safari · A1 composer residual · trigger_flow 1ª msg · Mia botões inline</td><td>M-G</td></tr>
+<tr><td><strong>Lux L4</strong> (te preocupa muito)</td><td>47 telas + limpeza rosa (16 arq) + rubric v2 (tirar âncora azul) + revisão adversarial</td><td>G</td></tr>
+<tr><td><strong>CRM multiproduto E1/D3</strong></td><td>pivot product-aware · seed ~9 produtos · F2 prova runtime · religar 10 stubs · lead manual com product_id</td><td>G</td></tr>
+</tbody>
+</table>
+
+<h3>P2 — Vender no automático (Autopilot · Cérebro · Operação da dona ∥)</h3>
+<table>
+<thead><tr><th>Frente</th><th>Itens</th><th>Esforço</th></tr></thead>
+<tbody>
+<tr><td><strong>Cérebro/conteúdo do agente</strong> (o oco)</td><td>8 tabelas <code>platform_crm_*</code> product-scoped + edges twin: knowledge, catálogo, pós-venda, objeções, materiais, vídeos, CTAs, email-templates + gerar-IA + chat-teste (reusa edges org-scoped)</td><td class="yellow">~11-12d</td></tr>
+<tr><td><strong>Autopilot venda</strong></td><td>scoring QCR determinístico · founder_status READ · transição [PASSAR_BIA] · humanização · atribuição Cakto + 1 pgto-teste · CTA LP+UTM · copy LP 15→30/30/1</td><td>M-G</td></tr>
+<tr><td><strong>Arsenal agentes</strong></td><td>33 itens playbook §12 (estado-contato, abandono→resgate, handoffs, 10 testes aceitação) — dedup c/ F2</td><td>G</td></tr>
+<tr><td><strong>Operação da dona ∥</strong></td><td>B3 pós-compra + e-mail QR (clientes = <strong>Evolution/QR</strong>) · F6 ingestão · C4 watcher · C2/C3 painéis · LGPD</td><td>G</td></tr>
+</tbody>
+</table>
+
+<h3>P3 — Crescimento + canais + analytics (o "alto fluxo")</h3>
+<table>
+<thead><tr><th>Frente</th><th>Itens</th><th>Nota</th></tr></thead>
+<tbody>
+<tr><td><strong>Motor de leads (scrap)</strong> — core</td><td>réplica prospectagram: Apify IG/Maps/TikTok + enrichment + LGPD 3 travas · gate PoC F0</td><td class="yellow">⚠️ novo build; confirmar entrada</td></tr>
+<tr><td><strong>Ads direcionados</strong> — core</td><td>Meta Ads do CRM OU frente advertising-hub?</td><td class="yellow">⚠️ define a rota</td></tr>
+<tr><td><strong>IG/Messenger</strong> (reduzido)</td><td><code>instagram-send</code> (sender real ⚠️ verificar) + list-media + subscribe-fields + resto</td><td>App Review = gate</td></tr>
+<tr><td><strong>Dashboard de Jornada</strong></td><td>leadJourney (760l) + 11 hooks + 10 componentes → analytics origem/campanha/criativo</td><td>~2-3d</td></tr>
+</tbody>
+</table>
+
+<h3>P4/P5 — Paridade fina + débitos (o que sobrar)</h3>
+<table>
+<tbody>
+<tr><td>P4.1 Features re-exposição (summaries, gamificação, gcal, campaign-assistant, squad-perf)</td><td>~1.5-2d</td></tr>
+<tr><td>P4.2 Cadência (context library + editor no hub)</td><td>~2-3d</td></tr>
+<tr><td>P4.3 Edges infra (suspend/reactivate org, onboarding-link, accept-invite, provision-users, fechar Meta-WA, 4 assist)</td><td>~4d</td></tr>
+<tr><td>P5 Débitos 9.x: migration B7 fire-now · afiliados stale ⚠️ · Salvy ⚠️ · WIP stash · commit dedup · reconciliar HEAD VPS</td><td>var</td></tr>
+</tbody>
+</table>
+
+<h2>🚀 Decolagem (transversal)</h2>
+<table>
+<tbody>
+<tr><td>Máquina pagamento→provisionamento</td><td class="ok">✅ provado</td></tr>
+<tr><td>Onboarding número Meta API do salão-<strong>TESTE</strong> (só o nosso; clientes = QR)</td><td>☐ a construir</td></tr>
+<tr><td><strong>Teste de funil E2E completo</strong></td><td class="yellow">🔚 POR ÚLTIMO (sua ordem d)</td></tr>
+<tr><td>Piloto controlado 1-3 salões</td><td>após funil</td></tr>
+</tbody>
+</table>
+
+<h2 class="fase">FASE 2 — MELHORIA (pós-core)</h2>
+<ul>
+<li><strong>Voz IA no atendimento</strong> (10 edges voice-* + CallVoiceAIDialog)</li>
+<li><strong>Fluxos automáticos de IG</strong> (ig-flow-executor, instagram-flow-generate-ai)</li>
+<li><strong>Apresentação visual rica de produtos</strong> (imagem catálogo Meta ~5 linhas + checkout Cakto manual) — <a href="MELHORIA-APRESENTACAO-VISUAL-PRODUTOS-POS-LANCAMENTO-2026-07-11.html">análise</a></li>
+<li>Profundidade: D6b suíte 13 abas, D7 webhooks saída, D9 push</li>
+</ul>
+
+<h2>⚠️ Decisões que destravam (só você)</h2>
+<table>
+<thead><tr><th>#</th><th>Decisão</th><th>Bloqueia</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Ads = via CRM Meta Ads ou via advertising-hub?</strong></td><td>P3.B (a rota)</td></tr>
+<tr><td>2</td><td><strong>Motor de leads (scrap) entra agora</strong> como P3.A? (novo build, gate PoC)</td><td>P3.A</td></tr>
+<tr><td>3</td><td><code>CallVoiceAIDialog</code> cai com Voz? · <code>InboxProductSelector</code> substituído pelo ProductContext? · <code>instagram-send</code> outbound é real?</td><td>limpa o delta</td></tr>
+<tr><td>4</td><td><strong>Corte de lançamento:</strong> Fase 1 completa antes, ou lançar com P0-P2 e P3-P5 fast-follow?</td><td>ritmo</td></tr>
+<tr><td>5</td><td>Afiliados fases 2-5 · Telefonia Salvy — reimplementar ou descartar?</td><td>P5</td></tr>
+</tbody>
+</table>
+
+<hr>
+<p class="foot">Registro vivo único (Seção 14). Fontes absorvidas: Status Go-Live 07-11 · Delta 100% 07-11 (5 auditorias vs oficial-vendus-v5) · Levantamento 07-08 · prioridades do Marcelo 07-11.</p>
+
+</div>
+</body>
+</html>

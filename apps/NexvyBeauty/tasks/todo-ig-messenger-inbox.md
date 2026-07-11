@@ -1,3 +1,6 @@
+> 🩹 **ERRATA (2026-07-09, controller · triagem 6cf2fc02, evidência verificada)** — L16 nota 'Supabase MCP NÃO conectado' era da sessão morta 06-24 (MCP conectado hoje). Frente IG/Messenger REATIVADA por decisão do Marcelo 07-09 ('devem voltar') — gargalo real = App Review Meta (embed + vídeo do Marcelo), caminho no LEVANTAMENTO Frente 4.
+> Texto histórico preservado abaixo.
+
 # TODO — Instagram Direct + Messenger na Inbox (NexvyBeauty)
 
 > Fonte de verdade do build. Gerado 2026-06-24 após recon verificado (código + schema real).

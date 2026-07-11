@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Go-Live NexvyBeauty — 2026-07-11</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.28rem;margin:2em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:1.05rem;color:var(--accent);margin:1.4em 0 .4em}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.4em 0 .4em 14px;margin:0 0 1em;font-size:.92rem}
+  .lead a{color:var(--blue)}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.86em;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:#ffd9ec}
+  table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.9rem;background:var(--panel);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1a2130}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:1em 0}
+  .verdict{background:linear-gradient(135deg,#1a1420,#161b22);border:1px solid var(--accent2)}
+  pre{background:#0a0e14;border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto;
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.82rem;line-height:1.5;color:#c9d4e0}
+  .ok{color:var(--green);font-weight:700}
+  .red{color:var(--red);font-weight:700}
+  .yellow{color:var(--yellow);font-weight:700}
+  .muted{color:var(--muted)}
+  ul{padding-left:20px}li{margin:.28em 0}
+  .badge{display:inline-block;padding:.1em .5em;border-radius:6px;font-size:.72rem;font-weight:700;vertical-align:middle}
+  .b-gray{background:#242b34;color:var(--muted)}
+  hr{border:none;border-top:1px solid var(--border);margin:2.2em 0}
+  .foot{color:var(--muted);font-size:.8rem;font-style:italic;margin-top:2em}
+  .kicker{color:var(--muted);font-size:.82rem;margin-top:-.2em}
+  strong{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Status Go-Live — NexvyBeauty</h1>
+<div class="kicker">2026-07-11 · sessão <code>6cf2fc02</code></div>
+<p class="lead">Atualiza o <a href="LEVANTAMENTO-PENDENCIAS-REAIS-2026-07-08.html">Levantamento de Pendências (07-08)</a>. Foco: o que já foi feito + o que falta <strong>de verdade</strong> pra lançar.<br>
+<span class="muted">Evidência: 🅲 = verificado em código/banco/prod nesta sessão · 🅳 = doc/auditoria recente · ❔ = não verificado.</span></p>
+
+<h2>0. Veredito — a que distância estamos de vender</h2>
+<div class="card verdict">
+<p><strong>A máquina de dinheiro está construída E PROVADA.</strong> Pagamento → webhook → provisionamento → org operacional nasce ponta-a-ponta (provado E2E em 07-08 e reconfirmado hoje). O que separa a gente de um <strong>primeiro cliente pagante</strong> não é mais engenharia de núcleo — são <strong>3 coisas</strong>:</p>
+<ol>
+<li><strong>1 prova do funil conversacional</strong> (LP → WhatsApp → Duda qualifica → Bia oferta → link Cakto → pagamento). O <em>provisionamento</em> está provado; a <em>conversa que vende</em> ponta-a-ponta, não.</li>
+<li><strong>Conectar o WhatsApp da dona</strong> (scan do QR) — o único "teto físico" que exige ação humana + teu número de salão-teste.</li>
+<li><strong>Um punhado de decisões tuas</strong> (§4) que destravam o resto.</li>
+</ol>
+<p>Tudo além disso é polimento pós-lançamento. <span class="ok">Dá pra decolar com um piloto controlado agora.</span></p>
+</div>
+
+<h2>1. O que ESTA SESSÃO (07-11) fechou — delta desde 07-08</h2>
+<table>
+<thead><tr><th>Item</th><th>Antes (07-08)</th><th>Agora</th><th>Ev.</th></tr></thead>
+<tbody>
+<tr><td><strong>Funil de pagamento Cakto</strong></td><td>webhook deployado mas <code>verify_jwt</code> travava + sem secret</td><td><span class="ok">✅ LIVE</span> — aberto, secret no ar, 2 testes 200, guard-rail "plano não encontrado → Telegram" provado</td><td>🅲</td></tr>
+<tr><td><strong>F4.3 secrets Telegram</strong> (2.2)</td><td>"código pronto, falta secret"</td><td><span class="ok">✅ secrets no ar</span>, alerta testado HTTP 200</td><td>🅲</td></tr>
+<tr><td><strong>Cards nativos Meta (catálogo)</strong></td><td>nem existia como frente</td><td><span class="ok">✅ catálogo criado + 3 planos empurrados + auto-sync ligado</span> (espelha o Cakto: frontend→edge com JWT)</td><td>🅲</td></tr>
+<tr><td><strong>2.10 Sync ao salvar plano</strong></td><td>"sem evidência de entrega"</td><td><span class="ok">✅ confirmado wired</span> (<code>maybeSyncCakto</code> + agora <code>maybeSyncCommerce</code>)</td><td>🅲</td></tr>
+<tr><td><strong>Dedup <code>cakto_orders</code></strong> (débito)</td><td>bug latente (NULL≠NULL no índice)</td><td><span class="ok">✅ corrigido</span> (<code>UNIQUE NULLS NOT DISTINCT</code>), deduplicado, provado</td><td>🅲</td></tr>
+<tr><td><strong>Paridade do Atendimento (FRENTE 1)</strong></td><td>"régua 11/35 — reclamação nº1"</td><td><span class="ok">✅ auditoria funda rebaixou o risco</span>: inbox 73% completo, 0 não-portado; núcleo em paridade</td><td>🅳</td></tr>
+<tr><td>Itens de atendimento desta sessão</td><td>vários abertos</td><td><span class="ok">✅</span> Mia por telefone · chip Pipeline espelha switcher · status do lead vem da conversa · tela Tarefas · som corrigido · IG outbound · catálogo no inbox c/ checkout · copiloto com retry</td><td>🅲</td></tr>
+</tbody>
+</table>
+<div class="card"><strong>A grande mudança de leitura:</strong> o levantamento de 07-08 apontava a <strong>paridade do inbox</strong> como o gap nº1 (régua pessimista 11/35). A <strong>auditoria funda de 07-11</strong> (5 auditores + 39 verificações adversariais, 260 itens) desmentiu: o núcleo que você opera todo dia está <strong>completo ou em paridade funcional</strong>; os gaps são <strong>opcionais e nomeados</strong>, não espalhados. → <span class="ok">A onda de portabilidade pode ser ENCERRADA.</span></div>
+
+<h2>2. Backlog re-priorizado — bloqueia lançar × pós-lançamento</h2>
+
+<h3>🔴 Bloqueia (caminho crítico — §3)</h3>
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Dono</th><th>Esforço</th></tr></thead>
+<tbody>
+<tr><td>B-1</td><td><strong>Prova do funil conversacional E2E</strong> — 1 conversa real LP→Duda→Bia→link→pagamento-teste→org</td><td>Claude + você (1 pagamento-teste)</td><td>M</td></tr>
+<tr><td>B-2</td><td><strong>Conectar WhatsApp da dona</strong> (B3) — pós-compra criar instância + deep-link do QR; o scan é humano</td><td>Claude (código) + você (nº + local Evolution)</td><td>M</td></tr>
+<tr><td>B-3</td><td><strong>Deploy do frontend + commits/push</strong> desta sessão</td><td><span class="ok">✅ FEITO</span> — commit <code>a90b84a</code> + deploy provado (<code>index-BsTNxNjo.js</code>, HTTP 200 nos 3 hosts)</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3>🟡 Melhora o dia-1 mas NÃO bloqueia</h3>
+<ul>
+<li>B4/F6 ingestão de histórico 180d da dona (novas msgs já fluem sem backfill)</li>
+<li>C4 watcher de queda de sessão WhatsApp · C2/C3 painéis de ativação</li>
+<li>2.4 scoring QCR determinístico · 2.7 <code>founder_status</code> READ no runtime · 2.5 humanização</li>
+<li>2.9 copy da LP "15 vagas" × 30/30/1 (incoerência pública — rápido)</li>
+<li>Apresentação visual rica de produtos (imagens no catálogo Meta + checkout Cakto) — <span class="badge b-gray">pendência de venda pós-lançamento</span> (análise em paralelo)</li>
+</ul>
+
+<h3>⚪ Pós-lançamento / trilha própria</h3>
+<ul>
+<li>Voz IA (canal inteiro) · Meta Ads (frente que você já explora) · Fluxos automáticos de IG</li>
+<li>4 cards da auditoria: <strong>D</strong> captação pública · <strong>E</strong> cérebro/conteúdo dos agentes · <strong>F</strong> Evolution <em>send</em> · <strong>G</strong> analytics de jornada</li>
+<li>Lux L4 (47 telas) · CRM multiproduto E1/D3 · Afiliados fases 2-5 · Telefonia Salvy</li>
+</ul>
+
+<h2>3. Caminho crítico pra DECOLAR (mínimo viável)</h2>
+<pre>1. [✅ FEITO] Deploy frontend + commits/push desta sessão
+     → provado: bundle index-BsTNxNjo.js servido, HTTP 200 nos 3 hosts
+
+2. [Claude] B3: pós-compra provisiona evolution_instance + e-mail com deep-link do QR
+     → verifica: org-teste recebe e-mail com link de QR clicável
+
+3. [VOCÊ] escanear o QR do WhatsApp do salão-teste (o único ato físico)
+     → verifica: instância "connected"; 1 msg de teste entra no inbox da plataforma
+
+4. [Claude + VOCÊ] B1: 1 rodada real do funil conversacional
+     LP → wa.me → Duda qualifica → Bia oferta → link Cakto → 1 pagamento-teste → org nasce
+     → verifica: a org do comprador-teste nasce operacional (provisionamento já provado;
+        falta provar a CONVERSA que leva até o link)
+
+5. [VOCÊ] rápido: corrigir copy da LP (15 vagas → 30/30/1) — incoerência pública
+
+6. → PILOTO CONTROLADO: 1-3 salões reais (warm intros), você acompanha, mede.</pre>
+<p class="muted">Cada passo tem check binário. Os passos 3 e 4 (o pagamento-teste e o número do salão) são teus átomos — sem eles o loop trava no achismo.</p>
+
+<h2>4. Decisões que SÓ VOCÊ toma (destravam o resto)</h2>
+<table>
+<thead><tr><th>#</th><th>Decisão</th><th>Impacto</th></tr></thead>
+<tbody>
+<tr><td>D-1</td><td><strong>Número do salão-teste + onde roda a Evolution</strong></td><td>destrava B3/B4/F6 (passos 2-4) — o maior desbloqueio</td></tr>
+<tr><td>D-2</td><td><strong>Quando iniciar o piloto</strong> (warm intros, ≥3 pagamentos reais)</td><td>gatilho da venda humana</td></tr>
+<tr><td>D-3</td><td><code>transfer_sector</code> — <strong>dropar?</strong> (recomendo sim)</td><td>limpa débito/herança Vendus</td></tr>
+<tr><td>D-4</td><td>IG/Messenger — <strong>retomar (App Review Meta, exige teu vídeo) ou enterrar?</strong></td><td>fecha FRENTE 4</td></tr>
+<tr><td>D-5</td><td>4 cards da auditoria (D/E/F/G) — <strong>quais entram no backlog?</strong></td><td>define o pós-lançamento</td></tr>
+<tr><td>D-6</td><td>Afiliados fases 2-5 / Telefonia Salvy — <strong>reimplementar ou descartar branch stale?</strong></td><td>limpa 9.2/9.3</td></tr>
+</tbody>
+</table>
+
+<h2>5. Recomendação</h2>
+<div class="card">
+<p><strong>Encerre a onda de portabilidade hoje</strong> (a auditoria dá GO condicional — o núcleo está pronto, os gaps são opcionais e nomeados). O caminho pra decolar é curto e conhecido: os passos 2-4 do §3, gatilhados pela decisão <strong>D-1</strong> (teu número de salão-teste).</p>
+<p>A verdade desconfortável, dita direto: <span class="red">não é código que está te separando do lançamento</span> — é a decisão de apontar um salão-teste real e rodar 1 venda de ponta a ponta. <strong>A máquina está pronta esperando o primeiro combustível real.</strong></p>
+</div>
+
+<hr>
+<p class="foot">Fontes: Levantamento 07-08 · Auditoria de Portabilidade V5 07-11 · verificação em <code>SaasPlugin_vite</code> + Supabase <code>fzhlbwhdejumkyqosuvq</code> nesta sessão (07-11).</p>
+
+</div>
+</body>
+</html>

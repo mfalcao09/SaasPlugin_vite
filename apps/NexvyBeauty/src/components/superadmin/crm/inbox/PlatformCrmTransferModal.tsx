@@ -278,8 +278,8 @@ export function PlatformCrmTransferModal({
         updateData.assigned_to = null;
         updateData.current_agent_id = selectedAgentId;
         updateData.status = 'bot_active';
-        // TODO(A1.2-backend): orchestrator_state ('em_atendimento') pende migration em
-        // platform_crm_conversations (fonte marcava para o orquestrador não re-rotear).
+        // Marca o estado do orquestrador para não re-rotear (paridade com a fonte v5).
+        updateData.orchestrator_state = 'em_atendimento';
       }
 
       // Troca opcional de conexão (instância Evolution / WhatsApp).
@@ -292,21 +292,27 @@ export function PlatformCrmTransferModal({
         ? evolutionInstances.find((i) => i.id === selectedInstanceId)
         : null;
       if (willChangeInstance && newInstance) {
-        // TODO(A1.2-backend): evolution_instance_id pende migration em
-        // platform_crm_conversations (fonte gravava updateData.evolution_instance_id).
-        // A intenção fica registrada na nota/histórico abaixo.
-        console.warn(
-          '[PlatformCrmTransferModal] Troca de conexão registrada apenas em nota — coluna evolution_instance_id pendente em platform_crm_conversations.',
-        );
+        // Grava a nova conexão Evolution na conversa (paridade com a fonte v5) —
+        // a nota/histórico abaixo permanece como trilha legível.
+        updateData.evolution_instance_id = newInstance.id;
       }
 
-      // Read existing metadata to merge admin takeover flag
+      // Admin takeover: mescla os flags no metadata (jsonb) da conversa, sem
+      // sobrescrever o que já existe (paridade com a fonte v5).
       if (adminTargetAgent) {
-        // TODO(A1.2-backend): coluna metadata pende migration em platform_crm_conversations
-        // (fonte mesclava manual_admin_takeover/_by/_at no metadata da conversa).
-        console.warn(
-          '[PlatformCrmTransferModal] Flag de admin takeover não persistida — coluna metadata pendente em platform_crm_conversations.',
-        );
+        const { data: metaRow } = await supabase
+          .from('platform_crm_conversations')
+          .select('metadata')
+          .eq('id', conversationId)
+          .maybeSingle();
+        const existingMeta =
+          metaRow?.metadata && typeof metaRow.metadata === 'object' ? metaRow.metadata : {};
+        updateData.metadata = {
+          ...(existingMeta as Record<string, unknown>),
+          manual_admin_takeover: true,
+          manual_admin_takeover_by: currentUser?.id ?? null,
+          manual_admin_takeover_at: new Date().toISOString(),
+        };
       }
 
       const { error: updateError } = await supabase

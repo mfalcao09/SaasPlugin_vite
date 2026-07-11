@@ -461,6 +461,8 @@ export function PlatformCrmChatArea({
     draft: string;
     summary?: string | null;
     strategy?: string | null;
+    warnings?: string[] | null;
+    model?: string | null;
   }> => {
     if (conversationId) {
       try {
@@ -468,12 +470,20 @@ export function PlatformCrmChatArea({
           body: { action: 'followup-ai-draft', conversation_id: conversationId },
         });
         if (error) throw error;
-        const rich = data as { draft?: string; summary?: string; strategy?: string } | null;
+        const rich = data as {
+          draft?: string;
+          summary?: string;
+          strategy?: string;
+          warnings?: string[];
+          model?: string;
+        } | null;
         if (rich?.draft) {
           return {
             draft: rich.draft,
             summary: rich.summary ?? null,
             strategy: rich.strategy ?? null,
+            warnings: Array.isArray(rich.warnings) ? rich.warnings : null,
+            model: rich.model ?? null,
           };
         }
       } catch (e) {

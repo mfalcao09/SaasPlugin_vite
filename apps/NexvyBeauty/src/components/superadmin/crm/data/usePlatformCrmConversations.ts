@@ -446,16 +446,21 @@ export function useAcceptPlatformCrmConversation() {
     mutationFn: async ({
       conversationId,
       sectorId,
+      force,
     }: {
       conversationId: string;
       sectorId?: string | null;
+      /** Takeover: admin assumindo conversa de outro atendente (paridade v5). */
+      force?: boolean;
     }) => {
-      // 1) Caminho canônico: action `accept` (contrato 7 — payload ganha sector_id?).
+      // 1) Caminho canônico: action `accept` (contrato 7 — payload ganha sector_id?
+      //    e force? para o takeover explícito).
       const { error: fnError } = await supabase.functions.invoke('platform-webchat-inbox', {
         body: {
           action: 'accept',
           conversation_id: conversationId,
           ...(sectorId ? { sector_id: sectorId } : {}),
+          ...(force ? { force: true } : {}),
         },
       });
 
