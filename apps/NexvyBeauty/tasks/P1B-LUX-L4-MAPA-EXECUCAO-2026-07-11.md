@@ -180,6 +180,10 @@ Triagem obrigatória no L4.0: separar **semântico** (status dot IA/bot `bg-blue
 
 ## 5 · Rubric v2 necessária (pré-requisito do L4.0)
 
+> ✅ **ENTREGUE (2026-07-11, sessão `6cf2fc02`):** a rubric v2 e a worklist exata já estão em disco, aguardando aprovação do Marcelo:
+> - `tasks/TEMPLATE-UI-GESTAO_v2-2026-07-11.md` — rubric v2 re-ancorada em navy `#213156` (claro) / gold `#dba341` (dark), tokens verbatim de `index.css`, delta explícito vs v1.
+> - `tasks/P1B-LUX-L4-WORKLIST-HARDCODE-2026-07-11.md` — **113 hardcodes catalogados** (`arquivo:linha`): **34 TROCAR** (15 rosa-legado + 2 azul-ação + 17 azul-decorativo) · **78 MANTER** (14 IG-pink + 42 blue-semântico + 14 rose-semântico + 8 `#EC4899` dado) · 1 `#0A52D1` órfão em `brand.ts` (decisão à parte). **1 decisão pende Marcelo:** balde "azul decorativo" colapsa p/ navy (monocromático) ou fica multi-hue (§0 da worklist).
+
 O `TEMPLATE-UI-GESTAO-2026-07-05` é **canonicamente bom em estrutura** (famílias F1-F6, §2 receitas, §3 transversais, §4 processo GAN, §5 mapa de telas) — **preservar tudo isso**. O que muda no `_v2`:
 
 1. **§1.1 Paleta efetiva → RE-ANCORAR no Lux.** Trocar `--primary/--accent/--ring 218 91% 43% (#0A52D1) azul` por **navy `221.8 44.7% 23.4%` (#213156)** no claro e **gold `38.1 68% 55.7%` (#dba341)** no dark (valores verbatim de `index.css:278,383`). Idem `--gradient-primary` (azul→cyan) → gradiente navy/gold do `lux-reference`.

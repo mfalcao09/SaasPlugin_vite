@@ -10,8 +10,16 @@
 |---|---|---|
 | **P0** mentira silenciosa | ✅ **6/6 DONE** | commit `81e4406` · edge v24 · bundle `index-8-60N2YO.js` 200 nos 4 hosts |
 | PR #6 → main + VPS limpo | ✅ **DONE** | merge `f8966d2` · VPS HEAD==origin/main, tree limpo · container rebuild de git limpo · 200 nos 4 hosts · +x do deploy-vps.sh fixado (`0e07271`) |
-| **P1.A** residual inbox (LeadEditModal · JourneyTimeline handoffs · áudio iOS) | 🔄 | agente Opus executando |
-| **P1.A2** trigger_flow 1ª msg + Mia botões inline | ☐ | próxima leva do P1.A |
+| **P1.A** residual inbox (LeadEditModal · JourneyTimeline handoffs · áudio iOS) | ✅ **DONE+DEPLOY** | PR #8 `13b02aa` · edge v25 (fix handoffs engolidos `sector_id`→`to_sector_id`) · bundle `index-BnK6AkGC.js` 200 nos 3 hosts |
+| **P1.A2** trigger_flow 1ª msg + Mia botões inline | ✅ **DONE+DEPLOY** | PR #10 `e7f8647` + edge deployada · trigger_flow agora ENVIA de verdade (matou msg-fantasma no histórico) · Mia botões JÁ existiam desde 03/07 (levantamento estava stale) |
+| **P1.B — L4.0 + L4.1** (rubric 🔒 TRAVADA) | ✅ **DONE+DEPLOY+✅ VALIDADO MARCELO** | PRs #11+#12 → `94f0045` · `index-DyfytF6b.js` 4 hosts · **gate visual APROVADO 07-11 ("Toca em frente, visual validado!!")** |
+| **P1.B — L4.4 (F4) + L4.5 (F6)** | ✅ revisadas+merge | PRs #13+#14 → `784ff71` · diffs 100% visuais · F4/F6 já estavam ~conformes (L4.0 fez o grosso); tipografia + arco-íris completado + KPI green→primary |
+| **P1.B — L4.2 (F5-ERP)** | ✅ revisada+merge | PR #15 `e92c97b` — 6 telas ERP (86-88), receita F5 calibrada, colisão de checkout auto-reconciliada (lição: worktrees) |
+| **P1.B — L4.3 (F5-Vendas) ∥ L4.6 (F1-Mia)** | 🔄 ondas FINAIS em paralelo | worktrees ISOLADOS (`-l43`/`-l46`) · L4.3 propaga receita da L4.2 · depois: merge → **deploy consolidado → 2ª validação Marcelo** |
+| 🐛 **Card nativo: envio de catálogo sai como LINK** (reporte Marcelo na validação) | 📌 card criado | provável: send path monta texto em vez de `interactive type='product'`; verificar também vínculo catálogo↔WABA (one-time) · frente própria, momento oportuno |
+| **P1.C — GOs executados** | ✅ | db-spine mergeado (PR #7) · seed 4 produtos no banco (Beauty published + LAW/Ads/Payments draft) |
+| **P1.C — F2 re-enxerto ProductContext** | ✅ **DONE+DEPLOY+RUNTIME** | PR #9 `93e7754` + deploy (`index-DVCtvFO1.js`) + **prova runtime via chrome_control**: LAW ativo→0 leads · Todos→6 leads · chip+localStorage corretos |
+| **P1.B — L4.0 rubric v2 + worklist hardcode** | 🔄 prep | agente Opus escreve `TEMPLATE-UI-GESTAO_v2` (re-ancora navy, sai do azul) + worklist exata dos ~50 hardcodes — SEM aplicar; tua revisão antes de tocar arquivo |
 | **P1.B** Lux L4 | ✅ mapa · ☐ execução | [P1B-MAPA](P1B-LUX-L4-MAPA-EXECUCAO-2026-07-11.md): 47 telas, ~40 visual-puro (~50 arqs hardcode, 42 azuis!), 7 feature-gaps roteados (R3) · 1ª onda = L4.0 rubric v2 + limpeza |
 | **P1.C** CRM multiproduto E1/D3 | ✅ mapa · ⚠️ 3 GOs | [P1C-MAPA](P1C-E1D3-MAPA-EXECUCAO-2026-07-11.md): db-spine merge LIMPO · F2 = 4 conflitos c/ inbox A1.x · **gargalo = seed de produtos (1 só, confirmado ao vivo)** · lead manual grava product_id NULL · Traefik gestao.nexvy.tech fora do repo (ponto cego) |
 | **P2.A** cérebro dos agentes (8 tabelas) | ☐ | aguarda fila |
