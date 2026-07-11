@@ -156,11 +156,11 @@ export function PlatformCrmCaptureWhatsAppTab() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <MessageSquare className="h-6 w-6 text-emerald-600" />
+          <h1 className="text-lg font-semibold text-foreground leading-tight flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-emerald-600" />
             WhatsApp
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Fluxos disparados quando o lead envia a primeira mensagem no canal WhatsApp da
             plataforma.
           </p>

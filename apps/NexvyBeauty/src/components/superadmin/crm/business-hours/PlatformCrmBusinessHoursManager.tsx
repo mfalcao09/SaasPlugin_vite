@@ -121,7 +121,7 @@ export function PlatformCrmBusinessHoursManager() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Horários de funcionamento</h1>
+          <h1 className="text-lg font-semibold text-foreground leading-tight">Horários de funcionamento</h1>
           <p className="text-sm text-muted-foreground">
             Defina quando sua equipe atende. Fora desse horário, a IA pode enviar uma mensagem automática.
           </p>

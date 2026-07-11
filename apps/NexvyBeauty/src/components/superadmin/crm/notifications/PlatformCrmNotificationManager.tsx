@@ -50,8 +50,8 @@ export function PlatformCrmNotificationManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Central de Notificações</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-lg font-semibold text-foreground leading-tight">Central de Notificações</h1>
+          <p className="text-sm text-muted-foreground">
             Envie notificações manuais ou configure alertas automáticos
           </p>
         </div>

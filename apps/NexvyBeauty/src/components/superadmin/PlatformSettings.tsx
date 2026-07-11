@@ -134,8 +134,8 @@ export function PlatformSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between sticky top-0 z-10 bg-background/80 backdrop-blur-md py-2 -mx-2 px-2 rounded-lg">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Identidade Visual</h1>
-          <p className="text-muted-foreground">Personalize toda a aparência da plataforma</p>
+          <h1 className="text-lg font-semibold text-foreground leading-tight">Identidade Visual</h1>
+          <p className="text-sm text-muted-foreground">Personalize toda a aparência da plataforma</p>
         </div>
         <Button onClick={handleSave} disabled={updateSettings.isPending} size="lg">
           <Save className="h-4 w-4 mr-2" />

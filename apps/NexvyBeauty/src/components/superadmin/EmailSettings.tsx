@@ -99,8 +99,8 @@ export function EmailSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Configurações de E-mail</h1>
-          <p className="text-muted-foreground">Provedor, templates e automações de e-mail da plataforma</p>
+          <h1 className="text-lg font-semibold text-foreground leading-tight">Configurações de E-mail</h1>
+          <p className="text-sm text-muted-foreground">Provedor, templates e automações de e-mail da plataforma</p>
         </div>
       </div>
 
