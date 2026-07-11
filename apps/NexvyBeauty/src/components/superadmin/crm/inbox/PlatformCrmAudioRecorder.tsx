@@ -46,11 +46,20 @@ export function PlatformCrmAudioRecorder({ onConfirm, onCancel, disabled }: Plat
           return;
         }
         streamRef.current = stream;
-        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : '';
+        // Preferimos AAC (audio/mp4) porque toca em qualquer dispositivo, incluindo
+        // iPhone/Safari. Chrome/Firefox não suportam — caem para webm/opus e o
+        // upload converte para m4a antes do envio (ver TODO ffmpeg em
+        // usePlatformCrmMediaUpload).
+        const candidates = [
+          'audio/mp4;codecs=mp4a.40.2',
+          'audio/mp4',
+          'audio/aac',
+          'audio/webm;codecs=opus',
+          'audio/webm',
+        ];
+        const mime = candidates.find((c) => {
+          try { return MediaRecorder.isTypeSupported(c); } catch { return false; }
+        }) || '';
         const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
         mediaRecorderRef.current = rec;
         chunksRef.current = [];

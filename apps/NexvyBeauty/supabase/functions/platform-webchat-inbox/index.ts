@@ -1093,7 +1093,10 @@ async function recordConversationTransfer(
       to_user_id: entry.to_user_id,
       created_by: entry.created_by,
     };
-    if (entry.sector_id) row.sector_id = entry.sector_id;
+    // Coluna real da tabela é `to_sector_id` (setor de destino) — não `sector_id`.
+    // Sem o mapeamento correto o insert falhava e o evento de handoff nunca era
+    // registrado quando havia setor, esvaziando a timeline de atendentes.
+    if (entry.sector_id) row.to_sector_id = entry.sector_id;
     const { error } = await supabase.from('platform_crm_conversation_transfers').insert(row);
     if (error) {
       console.warn(

@@ -5,6 +5,28 @@
 
 ---
 
+## 📊 PLACAR (atualizado a cada fechamento com prova)
+| Pacote | Status | Prova / Nota |
+|---|---|---|
+| **P0** mentira silenciosa | ✅ **6/6 DONE** | commit `81e4406` · edge v24 · bundle `index-8-60N2YO.js` 200 nos 4 hosts |
+| PR #6 → main + VPS limpo | ✅ **DONE** | merge `f8966d2` · VPS HEAD==origin/main, tree limpo · container rebuild de git limpo · 200 nos 4 hosts · +x do deploy-vps.sh fixado (`0e07271`) |
+| **P1.A** residual inbox (LeadEditModal · JourneyTimeline handoffs · áudio iOS) | 🔄 | agente Opus executando |
+| **P1.A2** trigger_flow 1ª msg + Mia botões inline | ☐ | próxima leva do P1.A |
+| **P1.B** Lux L4 | ✅ mapa · ☐ execução | [P1B-MAPA](P1B-LUX-L4-MAPA-EXECUCAO-2026-07-11.md): 47 telas, ~40 visual-puro (~50 arqs hardcode, 42 azuis!), 7 feature-gaps roteados (R3) · 1ª onda = L4.0 rubric v2 + limpeza |
+| **P1.C** CRM multiproduto E1/D3 | ✅ mapa · ⚠️ 3 GOs | [P1C-MAPA](P1C-E1D3-MAPA-EXECUCAO-2026-07-11.md): db-spine merge LIMPO · F2 = 4 conflitos c/ inbox A1.x · **gargalo = seed de produtos (1 só, confirmado ao vivo)** · lead manual grava product_id NULL · Traefik gestao.nexvy.tech fora do repo (ponto cego) |
+| **P2.A** cérebro dos agentes (8 tabelas) | ☐ | aguarda fila |
+| **P2.B/C/D** autopilot · arsenal · operação-dona | ☐ | |
+| **P3.A** motor de leads (scrap) | ☐ confirmado CORE | vinculado à venda em piloto automático (ordem Marcelo 07-11) |
+| **P3.B** Ads → **NexvyAds** | ✅ rota resolvida | frente própria (c5663f14); F1 dogfooding gestao.* em track paralelo; gate UI = merges P1.C |
+| **P3.C/D** IG send · jornada | ☐ | |
+| **P4/P5** paridade fina · débitos | ☐ | |
+| Decolagem: nº Meta API salão-teste | ☐ | |
+| Decolagem: funil E2E | 🔚 por último | ordem Marcelo |
+
+> **Governança de execução:** subagentes = **Opus 4.8**; orquestração/revisão = Fable (ordem Marcelo 07-11, economia).
+
+---
+
 ## ✅ JÁ PROVADO (base da decolagem — não re-fazer)
 | Item | Prova |
 |---|---|
@@ -28,7 +50,7 @@
 | P0.3 | `AcceptTicketDialog` → `force:takeover` fio completo (dialog→hook→edge consome) | ✅ código |
 | P0.4 | `FollowupAIDialog` renderiza `warnings` (caixa âmbar) + `model` | ✅ código |
 | P0.5 | `InboxMetricsHeader` montado via `metricsSlot` (nota: no canônico também era dead-import; montado pela intenção) | ✅ código |
-| P0.6 | Commit + push + deploy (frontend + edge `platform-webchat-inbox`) | 🔄 |
+| P0.6 | Commit + push + deploy (frontend + edge `platform-webchat-inbox`) | ✅ `81e4406` · edge **v24** · bundle `index-8-60N2YO.js` HTTP 200 nos 4 hosts |
 
 ## P1 — Uso pleno + o que mais preocupa (Atendimento · Lux · CRM multiproduto)
 | # | Frente | Itens | Esforço |
@@ -49,7 +71,7 @@
 | # | Frente | Itens | Esforço | Nota |
 |---|---|---|---|---|
 | P3.A | **Motor de leads (scrap)** — CORE por você | réplica do prospectagram: Apify IG/Maps/TikTok + enrichment + LGPD 3 travas. Gate = PoC F0 | G | ⚠️ novo build; confirmar entrada agora |
-| P3.B | **Ads direcionados** — CORE por você | ⚠️ **DECISÃO:** via edges Meta Ads do CRM (`marketing-connect/sync`, `meta-ads-validate`) OU via a frente separada **advertising-hub** que você explora? | M-G | ⚠️ define a rota |
+| P3.B | **Ads direcionados** — ✅ ROTA RESOLVIDA: **NexvyAds** (frente própria, sessão `c5663f14`) | F1 = plugar no CRM `gestao.*` (dogfooding, Meta primeiro). **Track paralelo AGORA** pro caminho-crítico humano (App Review Meta = semanas) + infra isolada (`ads_*`, OAuth, edges novas); **gate de montagem na UI = merges do P1.C** (evita colisão com Lux/ProductContext). Consequência: portar `marketing-connect/sync`/`meta-ads-validate` do V5 = **SUPERSEDED** (sai do delta) | — (frente própria) | doc: `_indice-planos/DISCOVERY-NEXVY-ADS-2026-07-11.md` |
 | P3.C | **IG/Messenger** (reduzido — já conectou IG da operação) | `instagram-send` (sender real de DM ⚠️ verificar se outbound já funciona), `instagram-list-media`, `instagram-subscribe-fields` + resto do plano de 6 blocos | M | App Review Meta = gate |
 | P3.D | **Dashboard de Jornada** (DELTA §🅲) | `lib/leadJourney` (760l) + `useLeadJourney` (11 hooks) + 10 componentes `journey/` → analytics origem/campanha/**criativo** | ~2-3d |
 
@@ -59,7 +81,7 @@
 | P4.1 | Features re-exposição: summaries deals/comissões, gamificação metas, Google Calendar connect, AICampaignAssistant, squad-performance comparativo | ~1.5-2d |
 | P4.2 | Cadência: biblioteca de contextos (`context_id`) + editor rico no hub do produto | ~2-3d |
 | P4.3 | Edges infra: suspend/reactivate org, onboarding-link, accept-invite-signup, admin-provision-users, fechar Meta-WA (media-upload + watchdog), 4 assist inbox/booking | ~4d |
-| P5 | **Débitos 9.x distribuídos; sobra vira último P:** migration B7 (`opportunity_scan_schedules`) fire-now · afiliados fases 2-5 (branch stale — ⚠️ decisão) · Telefonia Salvy (⚠️ decisão) · WIP stash · commit migration dedup · reconciliar HEAD do VPS (card ativo) | var |
+| P5 | **Débitos 9.x distribuídos; sobra vira último P:** migration B7 (`opportunity_scan_schedules`) fire-now · afiliados fases 2-5 (branch stale — ⚠️ decisão) · Telefonia Salvy (⚠️ decisão) · WIP stash · ~~reconciliar HEAD do VPS~~ ✅ (07-11) · **versionar router Traefik `nexvy-gestao-grupo.yml` no repo** (hoje só no VPS; template hardcoda nexvybeauty.com.br — redeploy pode derrubar gestao.nexvy.tech) | var |
 
 ---
 
@@ -81,14 +103,23 @@
 
 ---
 
-## ⚠️ Decisões que destravam (só você)
+## ✅ Decisões RATIFICADAS (Marcelo, 07-11)
+| # | Decisão | Efeito |
+|---|---|---|
+| R1 | **Ads = NexvyAds** (frente própria, sessão `c5663f14`; F1 dogfooding no gestao.*, Meta primeiro, agente HITL) | P3.B resolvido; portar `marketing-*` do V5 = **superseded** |
+| R2 | **Scrap de leads = CORE**, vinculado à venda em piloto automático | P3.A confirmado |
+| R3 | **Lux L4:** gap de *feature* numa tela → **roteia pro pacote dono**; L4 registra só o vínculo | evita execução dupla |
+| R4 | **E1/D3:** separação **LÓGICA agora** (features/rotas/dados autônomos, mesmo bundle host-aware); **FÍSICA quando empilhar o 2º produto** no gestao.* — 🚨 **RADAR permanente** (memória gravada pra sessões futuras) | P1.C destravado |
+| R5 | Subagentes = Opus 4.8; orquestração/revisão = Fable | governança |
+| R6 | P1 autorizado; avanço gradual com placar | execução |
+
+## ⚠️ Decisões AINDA pendentes (só você)
 | # | Decisão | Bloqueia |
 |---|---|---|
-| 1 | **Ads = via CRM Meta Ads ou via advertising-hub?** | P3.B (a rota) |
-| 2 | **Motor de leads (scrap) entra agora** como P3.A core? (novo build, gate PoC) | P3.A |
-| 3 | `CallVoiceAIDialog` cai com a trilha de Voz? · `InboxProductSelector` substituído pelo ProductContext global? · `instagram-send` outbound é real? | limpa o delta |
-| 4 | **Corte de lançamento:** Fase 1 completa antes de lançar, ou lançar com P0-P2 e P3-P5 fast-follow? | ritmo |
-| 5 | Afiliados fases 2-5 · Telefonia Salvy — reimplementar ou descartar? | P5 |
+| 1 | `CallVoiceAIDialog` cai com a trilha de Voz? · `InboxProductSelector` substituído pelo ProductContext global? · `instagram-send` outbound é real? | limpa o delta |
+| 2 | **Corte de lançamento:** Fase 1 completa antes de lançar, ou lançar com P0-P2 e P3-P5 fast-follow? | ritmo |
+| 3 | Afiliados fases 2-5 · Telefonia Salvy — reimplementar ou descartar? | P5 |
+| 4 | **Errata P4/D10** (Utmify → Fase 2 do NexvyAds, atribuição) — ato constitucional, aguarda teu "aprovo" na sessão Ads | NexvyAds F2 |
 
 ---
 

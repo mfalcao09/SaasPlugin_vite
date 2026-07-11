@@ -963,8 +963,11 @@ export function PlatformCrmLeadContextPanel({
         <TabsContent value="journey" className="flex-1 m-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
-              {/* Interface real do destino: a jornada de plataforma é lead-scoped (leadId). */}
-              <PlatformCrmJourneyTimeline leadId={lead?.id ?? leadId ?? null} />
+              {/* Handoffs (paridade canônica) = conversa; jornada no funil = lead. */}
+              <PlatformCrmJourneyTimeline
+                conversationId={conversationId}
+                leadId={lead?.id ?? leadId ?? null}
+              />
             </div>
           </ScrollArea>
         </TabsContent>

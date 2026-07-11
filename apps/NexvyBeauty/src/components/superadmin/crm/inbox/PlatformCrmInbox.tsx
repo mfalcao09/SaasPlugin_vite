@@ -34,6 +34,7 @@ import { PlatformCrmChatArea, type Message } from './PlatformCrmChatArea';
 import { PlatformCrmLeadContextPanel } from './PlatformCrmLeadContextPanel';
 import { PlatformCrmTransferModal } from './PlatformCrmTransferModal';
 import { PlatformCrmEditVisitorDialog } from './PlatformCrmEditVisitorDialog';
+import { PlatformCrmLeadEditModal } from './PlatformCrmLeadEditModal';
 import { PlatformCrmStartConversationDialog } from './PlatformCrmStartConversationDialog';
 import { PlatformCrmSendFlowDialog } from './PlatformCrmSendFlowDialog';
 import { PlatformCrmSendCadenceDialog } from './PlatformCrmSendCadenceDialog';
@@ -1104,14 +1105,31 @@ export function PlatformCrmInbox({
       {/* Dialogs */}
       {selectedConversation && (
         <>
-          <PlatformCrmEditVisitorDialog
-            open={showEditContact}
-            onOpenChange={setShowEditContact}
-            conversationId={selectedConversation.id}
-            visitorName={selectedRow?.visitor_name ?? freshSelected?.visitor_name}
-            visitorEmail={(selectedRow as any)?.visitor_email ?? null}
-            visitorPhone={freshSelected?.visitor_phone}
-          />
+          {linkedLead ? (
+            <PlatformCrmLeadEditModal
+              isOpen={showEditContact}
+              onClose={() => setShowEditContact(false)}
+              lead={linkedLead as any}
+              onSave={async (updates) => {
+                const { error } = await supabase
+                  .from('platform_crm_leads')
+                  .update(updates)
+                  .eq('id', linkedLead.id);
+                if (error) throw error;
+                queryClient.invalidateQueries({ queryKey: ['platform-crm', 'linked-lead'] });
+                refetchConversations();
+              }}
+            />
+          ) : (
+            <PlatformCrmEditVisitorDialog
+              open={showEditContact}
+              onOpenChange={setShowEditContact}
+              conversationId={selectedConversation.id}
+              visitorName={selectedRow?.visitor_name ?? freshSelected?.visitor_name}
+              visitorEmail={(selectedRow as any)?.visitor_email ?? null}
+              visitorPhone={freshSelected?.visitor_phone}
+            />
+          )}
           <PlatformCrmSendFlowDialog
             open={showSendFlow}
             onOpenChange={setShowSendFlow}
