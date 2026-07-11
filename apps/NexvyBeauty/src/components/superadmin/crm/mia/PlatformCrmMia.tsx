@@ -219,7 +219,8 @@ export function PlatformCrmMia() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" /> Conversar com a Mia
+                  <span className="w-1 h-5 bg-primary rounded-full flex-shrink-0" aria-hidden="true" />
+                  <MessageSquare className="h-5 w-5 text-primary" /> Conversar com a Mia
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
