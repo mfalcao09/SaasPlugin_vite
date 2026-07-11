@@ -1564,14 +1564,22 @@ async function executeAction(
           .eq('id', existingLeadId);
       }
 
-      // 5. Se canal WhatsApp e bloco inicial é mensagem, o original enviava a
-      //    primeira mensagem via Evolution Go (integration_settings/
-      //    evolution_instances/evolution-send). __NO_EQUIVALENT__ na plataforma
-      //    (sem canal WhatsApp). Preservamos a montagem da mensagem e a
-      //    persistência no histórico (webchat_messages → platform_crm_messages),
-      //    mas o ENVIO real fica indisponível (sinalizado).
-      // TODO: sem equivalente platform_crm — envio WhatsApp (evolution_instances/evolution-send) indisponível.
+      // 5. REVIVAL (P1.A2 item 1) — a 1ª mensagem do flow sai de verdade pela
+      //    Meta Cloud API (número de VENDAS oficial da plataforma), MESMO
+      //    padrão do notify_whatsapp acima: deliverViaWhatsAppCloud reaproveitado
+      //    1:1 (guard de connection ativa embutido — não-throwing, erro vira
+      //    campo `error`, nunca derruba o webhook). Antes o branch era
+      //    persist-only (só gravava no histórico, sem enviar) — o original
+      //    (Evolution Go) não tinha equivalente; a Cloud API já usada pelo
+      //    notify_whatsapp/ai_agent_outreach cobre o gap.
+      //    Idempotência: persistimos metadata.wamid no MESMO shape do
+      //    platform-meta-whatsapp-send (delivery_status/channel/origem),
+      //    protegido pelo índice único uq_platform_crm_messages_wamid — uma
+      //    reentrega do mesmo wamid não duplica a linha no histórico. Falha de
+      //    envio (sem connection ativa, Graph fora) NÃO persiste mensagem
+      //    "enviada" fantasma — vira `whatsapp_send_error` no resultado.
       let firstMessageSent: string | null = null;
+      let whatsappSendError: string | null = null;
       if (channel === 'whatsapp' && startBlock) {
         const blockData = startBlock.data || {};
         let messageText: string =
@@ -1589,23 +1597,35 @@ async function executeAction(
         }
 
         if (messageText) {
-          // Envio via Evolution Go → __NO_EQUIVALENT__ (sem instâncias na
-          // plataforma). O original abortava (throw) se não houvesse instância;
-          // aqui, como o canal inexiste, apenas registramos a mensagem no
-          // histórico (webchat_messages → platform_crm_messages) sem enviar.
-          console.warn('[Webhook/TriggerFlow] envio WhatsApp indisponível na plataforma — mensagem só persistida no histórico');
+          const { wamid, error } = await deliverViaWhatsAppCloud(supabase, leadPhone, messageText);
 
-          await supabase.from('platform_crm_messages').insert({
-            conversation_id: conversation.id,
-            content: messageText,
-            sender_type: 'bot',
-            direction: 'outbound',
-          });
-          firstMessageSent = messageText;
+          if (wamid) {
+            await supabase.from('platform_crm_messages').insert({
+              conversation_id: conversation.id,
+              content: messageText,
+              sender_type: 'bot',
+              direction: 'outbound',
+              metadata: {
+                wamid,
+                delivery_status: 'sent',
+                channel: 'whatsapp_cloud',
+                origin: 'trigger_flow',
+                flow_id: flowId,
+              },
+            });
+            await supabase
+              .from('platform_crm_conversations')
+              .update({ last_message_at: new Date().toISOString() })
+              .eq('id', conversation.id);
+            firstMessageSent = messageText;
+          } else {
+            console.error(`[Webhook/TriggerFlow] envio Cloud API falhou (flow=${flowId}):`, error);
+            whatsappSendError = error ?? 'entrega falhou';
+          }
         }
       }
 
-      console.log(`[Webhook/TriggerFlow] flow=${flowId} agent=${agentId} channel=${channel} conv=${conversation.id}`);
+      console.log(`[Webhook/TriggerFlow] flow=${flowId} agent=${agentId} channel=${channel} conv=${conversation.id} sent=${!!firstMessageSent}`);
 
       return {
         lead_id: existingLeadId,
@@ -1615,6 +1635,7 @@ async function executeAction(
         conversation_id: conversation.id,
         start_block_id: startBlock?.id || null,
         first_message_sent: firstMessageSent,
+        whatsapp_send_error: whatsappSendError,
       };
     }
 
