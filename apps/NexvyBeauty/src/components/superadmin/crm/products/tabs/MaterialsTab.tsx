@@ -3,7 +3,8 @@
 // Persistência: TODO(table: platform_crm_materials) + TODO(storage: bucket `materials`
 // no projeto da plataforma) — envio marca pendência (padrão da onda).
 import { useState, useCallback, useEffect } from 'react';
-import { useProductMaterials, useTodoMutation, todoBackend } from '../hooks/useProductHubStubs';
+import { supabase } from '@/integrations/supabase/client';
+import { useProductMaterials, useCreateProductMaterial, useDeleteProductMaterial } from '../hooks/useProductHubStubs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -99,7 +100,8 @@ const tagOptions = [
 
 export function MaterialsTab({ productId }: MaterialsTabProps) {
   const { data: materials, isLoading } = useProductMaterials(productId);
-  const deleteMaterial = useTodoMutation('Excluir material');
+  const createMaterial = useCreateProductMaterial();
+  const deleteMaterial = useDeleteProductMaterial();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -179,11 +181,34 @@ export function MaterialsTab({ productId }: MaterialsTabProps) {
 
     setIsUploading(true);
     try {
-      // TODO(storage: bucket `materials` da plataforma) + TODO(table: platform_crm_materials)
-      // Fluxo da fonte: upload → getPublicUrl → insert {product_id, name, type, url, objective, tags, status}
-      todoBackend('Upload/salvamento de material');
+      // Fluxo da fonte: upload → getPublicUrl → insert. No modo link, usa a URL direta.
+      let finalUrl = newMaterial.url.trim();
+
+      if (uploadMode === 'file' && selectedFile) {
+        const ext = selectedFile.name.split('.').pop() || 'bin';
+        const path = `platform/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('materials')
+          .upload(path, selectedFile);
+        if (uploadError) throw uploadError;
+        finalUrl = supabase.storage.from('materials').getPublicUrl(path).data.publicUrl;
+      }
+
+      await createMaterial.mutateAsync({
+        product_id: productId,
+        name: newMaterial.name.trim(),
+        type: newMaterial.type,
+        url: finalUrl,
+        objective: newMaterial.objective.trim() || null,
+        tags: newMaterial.tags,
+        status: 'active',
+      });
+      toast.success('Material adicionado!');
       resetForm();
       setIsDialogOpen(false);
+    } catch (e: any) {
+      console.error('[MaterialsTab] upload/salvar falhou:', e);
+      toast.error('Erro ao adicionar material: ' + (e?.message ?? 'desconhecido'));
     } finally {
       setIsUploading(false);
     }
@@ -191,7 +216,12 @@ export function MaterialsTab({ productId }: MaterialsTabProps) {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este material?')) return;
-    deleteMaterial.mutate(id);
+    try {
+      await deleteMaterial.mutateAsync({ id, productId });
+      toast.success('Material removido');
+    } catch (e: any) {
+      toast.error('Erro ao remover material');
+    }
   };
 
   const resetForm = () => {

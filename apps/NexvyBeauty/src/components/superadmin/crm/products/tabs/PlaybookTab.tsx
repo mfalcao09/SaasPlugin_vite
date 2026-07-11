@@ -9,7 +9,7 @@ import {
   usePlatformCrmProduct,
   useUpdatePlatformCrmProduct,
 } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { useProductTrainingVideos, useTodoMutation } from '../hooks/useProductHubStubs';
+import { useProductTrainingVideos, useCreateProductTrainingVideo, useDeleteProductTrainingVideo } from '../hooks/useProductHubStubs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,22 +35,32 @@ export function PlaybookTab({ productId }: PlaybookTabProps) {
     thumbnail_url: '',
   });
 
-  // TODO(table: platform_crm_product_training_videos)
   const { data: trainingVideos, isLoading: loadingVideos } = useProductTrainingVideos(productId);
-  const createVideo = useTodoMutation('Adicionar vídeo aula do Playbook');
-  const deleteVideo = useTodoMutation('Remover vídeo aula do Playbook');
+  const createVideo = useCreateProductTrainingVideo();
+  const deleteVideo = useDeleteProductTrainingVideo();
 
   const handleAddVideo = () => {
     if (!videoForm.title.trim() || !videoForm.video_url.trim()) {
       toast.error('Título e URL do vídeo são obrigatórios');
       return;
     }
-    createVideo.mutate(videoForm, {
-      onSuccess: () => {
-        setVideoDialogOpen(false);
-        setVideoForm({ title: '', description: '', video_url: '', thumbnail_url: '' });
+    createVideo.mutate(
+      {
+        product_id: productId,
+        title: videoForm.title.trim(),
+        video_url: videoForm.video_url.trim(),
+        description: videoForm.description.trim() || null,
+        thumbnail_url: videoForm.thumbnail_url.trim() || null,
       },
-    });
+      {
+        onSuccess: () => {
+          toast.success('Vídeo adicionado!');
+          setVideoDialogOpen(false);
+          setVideoForm({ title: '', description: '', video_url: '', thumbnail_url: '' });
+        },
+        onError: () => toast.error('Erro ao adicionar vídeo'),
+      },
+    );
   };
 
   return (
@@ -142,7 +152,7 @@ export function PlaybookTab({ productId }: PlaybookTabProps) {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => deleteVideo.mutate(video.id)}
+                                onClick={() => deleteVideo.mutate({ id: video.id, productId })}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Remover

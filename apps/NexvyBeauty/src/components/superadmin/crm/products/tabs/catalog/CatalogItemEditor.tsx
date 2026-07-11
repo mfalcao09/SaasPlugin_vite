@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Image as ImageIcon, Video, FileText } from 'lucide-react';
-import { useTodoMutation, type ProductCatalogItem } from '../../hooks/useProductHubStubs';
+import { useCreateProductCatalogItem, useUpdateProductCatalogItem, type ProductCatalogItem } from '../../hooks/useProductHubStubs';
+import { toast } from 'sonner';
 
 interface Props {
   productId: string;
@@ -22,7 +23,9 @@ interface Props {
 }
 
 export function CatalogItemEditor({ productId, item, open, onClose }: Props) {
-  const save = useTodoMutation(item ? 'Salvar item do catálogo' : 'Criar item do catálogo');
+  const createItem = useCreateProductCatalogItem();
+  const updateItem = useUpdateProductCatalogItem();
+  const save = item ? updateItem : createItem;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -109,9 +112,19 @@ export function CatalogItemEditor({ productId, item, open, onClose }: Props) {
       product_id: productId,
     };
 
-    // TODO(table: platform_crm_product_catalog_items) — insert/update quando a tabela existir
-    await save.mutateAsync(payload);
-    onClose();
+    try {
+      if (item) {
+        await updateItem.mutateAsync({ id: item.id, ...payload });
+        toast.success('Item atualizado');
+      } else {
+        await createItem.mutateAsync(payload);
+        toast.success('Item adicionado ao catálogo');
+      }
+      onClose();
+    } catch (e: any) {
+      console.error('[CatalogItemEditor] salvar falhou:', e);
+      toast.error('Erro ao salvar item: ' + (e?.message ?? 'desconhecido'));
+    }
   };
 
   return (

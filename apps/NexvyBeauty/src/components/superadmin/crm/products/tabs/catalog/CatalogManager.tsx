@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useProductCatalogItems, useTodoMutation, type ProductCatalogItem } from '../../hooks/useProductHubStubs';
+import { useProductCatalogItems, useDeleteProductCatalogItem, type ProductCatalogItem } from '../../hooks/useProductHubStubs';
 import { CatalogItemEditor } from './CatalogItemEditor';
 import { CatalogImporter } from './CatalogImporter';
 import { CatalogSync } from './CatalogSync';
@@ -21,7 +21,7 @@ export function CatalogManager({ productId }: CatalogManagerProps) {
   const [editing, setEditing] = useState<ProductCatalogItem | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const { data: items, isLoading } = useProductCatalogItems(productId, search);
-  const remove = useTodoMutation('Remover item do catálogo');
+  const remove = useDeleteProductCatalogItem();
 
   const handleDelete = (id: string, title: string) => {
     if (confirm(`Remover "${title}" do catálogo?`)) remove.mutate(id);
