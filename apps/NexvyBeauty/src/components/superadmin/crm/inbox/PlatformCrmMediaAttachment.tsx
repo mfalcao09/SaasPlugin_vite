@@ -81,6 +81,7 @@ function AudioPlayer({ media, isOwn }: { media: PlatformCrmMediaPayload; isOwn: 
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState((media.duration_ms || 0) / 1000);
+  const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -88,13 +89,16 @@ function AudioPlayer({ media, isOwn }: { media: PlatformCrmMediaPayload; isOwn: 
     const onTime = () => setProgress(a.currentTime);
     const onLoaded = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
     const onEnd = () => { setPlaying(false); setProgress(0); };
+    const onErr = () => { setErrored(true); setPlaying(false); };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onLoaded);
     a.addEventListener('ended', onEnd);
+    a.addEventListener('error', onErr);
     return () => {
       a.removeEventListener('timeupdate', onTime);
       a.removeEventListener('loadedmetadata', onLoaded);
       a.removeEventListener('ended', onEnd);
+      a.removeEventListener('error', onErr);
     };
   }, []);
 
@@ -102,7 +106,9 @@ function AudioPlayer({ media, isOwn }: { media: PlatformCrmMediaPayload; isOwn: 
     const a = audioRef.current;
     if (!a) return;
     if (playing) { a.pause(); setPlaying(false); }
-    else { a.play(); setPlaying(true); }
+    else {
+      a.play().then(() => setPlaying(true)).catch(() => setErrored(true));
+    }
   };
 
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -116,9 +122,33 @@ function AudioPlayer({ media, isOwn }: { media: PlatformCrmMediaPayload; isOwn: 
 
   const pct = duration > 0 ? (progress / duration) * 100 : 0;
 
+  // Fallback para áudios .webm/opus em iPhone/Safari (não decodifica nativamente):
+  // mostra botão para baixar/abrir em app externo.
+  if (errored) {
+    return (
+      <div className="flex items-center gap-2 w-full max-w-full sm:min-w-[200px] sm:max-w-[280px] py-1">
+        <a
+          href={media.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className={cn(
+            'text-xs underline underline-offset-2 hover:opacity-80',
+            isOwn ? 'text-primary' : 'text-foreground',
+          )}
+        >
+          Áudio incompatível — baixar para ouvir
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2.5 min-w-[220px] max-w-[280px] py-1">
-      <audio ref={audioRef} src={media.url} preload="metadata" />
+    <div className="flex items-center gap-2.5 w-full max-w-full sm:min-w-[200px] sm:max-w-[280px] py-1">
+      <audio ref={audioRef} preload="metadata">
+        <source src={media.url} type={media.mime || undefined} />
+        <source src={media.url} />
+      </audio>
       <button
         onClick={toggle}
         className={cn(
