@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Settings2, TrendingUp, Users } from 'lucide-react';
+import { LayoutGrid, Package, Settings2, TrendingUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,8 +21,6 @@ import {
 } from '../data/usePlatformCrmLeads';
 import { usePlatformCrmKanbanFilters } from '../data/usePlatformCrmKanbanFilters';
 import { usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
-import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
-import { PlatformCrmProductSelector } from '../products/PlatformCrmProductSelector';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 
 const UNASSIGNED_ID = 'unassigned';
@@ -45,25 +43,18 @@ export function PlatformCrmKanban() {
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  // Produto do pipeline (dimensão D3). Espelho de KanbanBoard.tsx:19 da fonte
-  // (`selectedProductId`). null = ainda não escolhido (auto-seleção abaixo).
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const { filters, updateFilter, clearFilters, hasActiveFilters } =
     usePlatformCrmKanbanFilters();
 
-  // Produtos do CRM da plataforma. Com 1 produto, o seletor vira label estática
-  // (auto-lock) — preserva a UI atual do Beauty como produto único.
-  const { data: products = [] } = usePlatformCrmProducts();
-
-  // A1.3 — produto GLOBAL do painel (filtra Vendas + ERP). Tem precedência sobre o
-  // seletor LOCAL do pipeline; quando "Todos" (null) o resultado é IDÊNTICO ao
-  // atual (seletor local ?? 1º produto).
-  const { activeProductId } = useActivePlatformProduct();
-
-  // Auto-seleciona o 1º produto quando ainda não há escolha (KanbanBoard.tsx:42-44).
-  const effectiveProductId =
-    activeProductId ?? selectedProductId ?? products[0]?.id ?? null;
+  // Produto GLOBAL do painel (A1.3) — ÚNICA fonte de verdade do filtro de produto,
+  // mesma semântica do LeadsManager: null ("Todos os produtos") = sem filtro;
+  // produto selecionado no switcher da sidebar = filtra etapas + leads.
+  // O seletor LOCAL do V5 (selectedProductId + auto-lock no 1º produto) foi
+  // removido: ele desobedecia o switcher global e o dono não tinha controle
+  // sobre ele — o chip do header agora é só um ESPELHO read-only do global.
+  const { activeProductId, activeProduct } = useActivePlatformProduct();
+  const effectiveProductId = activeProductId;
 
   const {
     data: stages,
@@ -186,15 +177,20 @@ export function PlatformCrmKanban() {
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {/*
-            Seletor de Produto (pipeline-por-produto — dimensão D3). Espelha
-            KanbanBoard.tsx:92-103 da fonte. Com 1 produto vira label estática
-            (auto-lock em PlatformCrmProductSelector, como InboxProductSelector:26-31).
+            Chip de produto EM FOCO — ESPELHO read-only do switcher global da
+            sidebar (useActivePlatformProduct). Mesma pílula visual do antigo
+            auto-lock do PlatformCrmProductSelector; a troca de produto acontece
+            SOMENTE no switcher global (uma fonte de verdade).
           */}
-          <PlatformCrmProductSelector
-            products={products}
-            selectedProductId={effectiveProductId}
-            onChange={setSelectedProductId}
-          />
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs text-primary"
+            title="Produto em foco — controlado pelo seletor de produto da sidebar"
+          >
+            <Package className="h-3.5 w-3.5" />
+            <span className="font-medium truncate max-w-[160px]">
+              {activeProduct?.name ?? 'Todos os produtos'}
+            </span>
+          </div>
           <Button variant="outline" size="sm" className="h-9" onClick={() => setStageManagerOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             Gerenciar Etapas
