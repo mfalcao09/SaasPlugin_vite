@@ -308,6 +308,20 @@ export interface PlatformCrmSendMediaPayload {
 }
 
 /**
+ * Produto do catálogo Meta para envio como CARD NATIVO (ONDA cards-nativos).
+ * `retailer_id` = `plan-<slug>` sincronizado via platform-commerce-sync.
+ * O edge tenta o interactive product message (WhatsApp) / generic template (IG)
+ * e cai no texto+link (o `content` da mensagem) se o card for recusado.
+ */
+export interface PlatformCrmSendProductPayload {
+  retailer_id: string;
+  title?: string | null;
+  price_label?: string | null;
+  image_url?: string | null;
+  checkout_url?: string | null;
+}
+
+/**
  * Grava uma resposta do agente (outbound) em `platform_crm_messages`.
  * direction='outbound', sender_type='agent'. Aceita `media` (contrato A1.2).
  *
@@ -327,11 +341,13 @@ export function useSendPlatformCrmMessage() {
       content,
       replyToMessageId,
       media,
+      product,
     }: {
       conversationId: string;
       content: string;
       replyToMessageId?: string | null;
       media?: PlatformCrmSendMediaPayload;
+      product?: PlatformCrmSendProductPayload;
     }) => {
       // 1) Caminho canônico — edge de envio (entrega por canal + broadcast).
       try {
@@ -342,6 +358,7 @@ export function useSendPlatformCrmMessage() {
             content,
             reply_to_message_id: replyToMessageId ?? null,
             media: media ?? null,
+            product: product ?? null,
           },
         });
         if (error) throw error;

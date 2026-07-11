@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 import { usePublicPlans } from '@/hooks/usePlatformPlans';
 import type { PlatformCrmMediaPayload as MediaPayload } from './PlatformCrmMediaAttachment';
+import type { PlatformCrmSendProductPayload } from '../data/usePlatformCrmConversations';
 
 /**
  * Seletor de catálogo para enviar produto/plano no chat — porte fiel A1.2 de
@@ -38,13 +39,16 @@ interface CatalogItem {
   thumbnail_url: string | null;
   images: string[] | null;
   tags: string[] | null;
+  /** ONDA cards-nativos: `plan-<slug>` do catálogo Meta (platform-commerce-sync).
+   *  Presente = o envio pede CARD NATIVO ao edge; ausente = texto+link (legado). */
+  retailer_id: string | null;
 }
 
 interface PlatformCrmCatalogPickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId?: string | null;
-  onSend: (text: string, media?: MediaPayload) => void;
+  onSend: (text: string, media?: MediaPayload, product?: PlatformCrmSendProductPayload) => void;
 }
 
 function formatMoney(value: number | null, currency = 'BRL') {
@@ -100,14 +104,17 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
   // Checkout por plano — view public_plans (mesma fonte da LP; SELECT anônimo).
   const { data: publicPlans = [] } = usePublicPlans();
 
-  // Índice nome-normalizado → {checkout_url, price_monthly} dos planos públicos.
+  // Índice nome-normalizado → {checkout_url, price_monthly, slug} dos planos
+  // públicos. O slug alimenta o retailer_id (`plan-<slug>`) do card nativo —
+  // MESMA regra do platform-commerce-sync (retailerIdForSlug).
   const publicPlanByName = useMemo(() => {
-    const map = new Map<string, { checkout_url: string; price_monthly: number | null }>();
+    const map = new Map<string, { checkout_url: string; price_monthly: number | null; slug: string | null }>();
     for (const pl of publicPlans) {
       if (!pl?.is_public || !pl.name || !pl.checkout_url) continue;
       map.set(pl.name.trim().toLowerCase(), {
         checkout_url: pl.checkout_url,
         price_monthly: typeof pl.price_monthly === 'number' ? pl.price_monthly : null,
+        slug: pl.slug ? String(pl.slug).trim() : null,
       });
     }
     return map;
@@ -139,6 +146,7 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
           thumbnail_url: thumbnail,
           images: null,
           tags: p.category ? [p.category] : null,
+          retailer_id: null,
         });
         continue;
       }
@@ -173,6 +181,9 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
           thumbnail_url: thumbnail,
           images: null,
           tags: [p.category, cycle ? `por ${cycle}` : null].filter(Boolean) as string[],
+          // retailer_id só quando o plano público casou E tem slug — mesmo
+          // universo que o platform-commerce-sync sobe pro catálogo Meta.
+          retailer_id: publicPlan?.slug ? `plan-${publicPlan.slug}` : null,
         });
       }
     }
@@ -198,8 +209,27 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
     const text = lines.join('\n');
 
     const imageUrl = item.thumbnail_url || item.images?.[0];
+
+    // CARD NATIVO (bug 2026-07-11): item com retailer_id vai como product —
+    // o edge entrega interactive product message (WhatsApp) / generic template
+    // (IG) e cai no `text` acima se o card for recusado. Nesse caso a MÍDIA é
+    // omitida de propósito: o card já renderiza a imagem do catálogo, e mídia
+    // anexada suprimiria o card no edge (mídia tem precedência lá).
+    const product: PlatformCrmSendProductPayload | undefined = item.retailer_id
+      ? {
+          retailer_id: item.retailer_id,
+          title: item.title,
+          price_label:
+            item.price != null
+              ? `${formatMoney(item.price, item.currency || 'BRL')}${item.cycle ? ` por ${item.cycle}` : ''}`
+              : null,
+          image_url: imageUrl ?? null,
+          checkout_url: item.url,
+        }
+      : undefined;
+
     let media: MediaPayload | undefined;
-    if (imageUrl) {
+    if (imageUrl && !product) {
       media = {
         kind: 'image',
         url: imageUrl,
@@ -207,7 +237,7 @@ export function PlatformCrmCatalogPickerDialog({ open, onOpenChange, productId, 
       };
     }
 
-    onSend(text, media);
+    onSend(text, media, product);
     setSendingId(null);
     onOpenChange(false);
     setSearch('');

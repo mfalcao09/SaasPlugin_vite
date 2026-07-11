@@ -213,6 +213,156 @@ async function deliverViaWhatsAppCloud(
   }
 }
 
+/** catalog_id configurado (one-time) em platform_settings. null = não ligar cards. */
+async function resolveCommerceCatalogId(supabase: any): Promise<string | null> {
+  const { data } = await supabase
+    .from('platform_settings')
+    .select('meta_commerce_catalog_id')
+    .limit(1)
+    .maybeSingle();
+  return (data?.meta_commerce_catalog_id as string | null) ?? null;
+}
+
+/**
+ * Product message no WhatsApp Cloud API (single-product interactive) — card
+ * NATIVO do catálogo. Mesma resolução de connection do deliverViaWhatsAppCloud
+ * (active mais recente). `bodyText` vira interactive.body.text (a Cloud API
+ * exige body não-vazio; máx 1024 chars).
+ */
+async function deliverProductViaWhatsAppCloud(
+  supabase: any,
+  toPhone: string,
+  catalogId: string,
+  retailerId: string,
+  bodyText: string,
+): Promise<{ wamid: string | null; error: string | null; errorDetail: GraphDeliveryErrorDetail | null }> {
+  try {
+    const { data: conn } = await supabase
+      .from('platform_crm_whatsapp_meta_connections')
+      .select('id, phone_number_id, access_token_encrypted')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
+      return { wamid: null, error: 'no_active_connection', errorDetail: null };
+    }
+    const token = await decryptSecret(conn.access_token_encrypted as string);
+    const to = String(toPhone ?? '').replace(/\D/g, '');
+    if (!to) return { wamid: null, error: 'no_destination_phone', errorDetail: null };
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'product',
+        body: { text: String(bodyText || 'Confira 👇').slice(0, 1024) },
+        action: { catalog_id: catalogId, product_retailer_id: retailerId },
+      },
+    };
+    const res = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const g = data?.error ?? {};
+      const detail: GraphDeliveryErrorDetail = {
+        message: String(g?.message ?? `graph ${res.status}`).slice(0, 300),
+        code: typeof g?.code === 'number' ? g.code : null,
+        subcode: typeof g?.error_subcode === 'number' ? g.error_subcode : null,
+        fbtrace_id: g?.fbtrace_id ? String(g.fbtrace_id) : null,
+        http_status: res.status,
+      };
+      return { wamid: null, error: detail.message, errorDetail: detail };
+    }
+    return { wamid: data?.messages?.[0]?.id ?? null, error: null, errorDetail: null };
+  } catch (e) {
+    return { wamid: null, error: String(e).slice(0, 300), errorDetail: null };
+  }
+}
+
+/**
+ * Generic template (1 elemento, botão web_url) numa DM do Instagram — o teto
+ * do que o IG DM oferece via API (não existe product message no IG). Mesma
+ * resolução de connection/IGSID do deliverViaInstagram.
+ */
+async function deliverProductViaInstagramTemplate(
+  supabase: any,
+  conversation: { visitor_id?: string | null; instagram_connection_id?: string | null },
+  product: { title?: string | null; price_label?: string | null; image_url?: string | null; checkout_url?: string | null },
+): Promise<{ igMid: string | null; connectionId: string | null; error: string | null; errorDetail: GraphDeliveryErrorDetail | null }> {
+  let connectionId: string | null = null;
+  try {
+    let conn: Record<string, any> | null = null;
+    if (conversation.instagram_connection_id) {
+      const { data } = await supabase
+        .from('platform_crm_instagram_connections')
+        .select('id, fb_page_id, page_access_token_encrypted, status')
+        .eq('id', conversation.instagram_connection_id)
+        .maybeSingle();
+      conn = data ?? null;
+    }
+    if (!conn) {
+      const { data } = await supabase
+        .from('platform_crm_instagram_connections')
+        .select('id, fb_page_id, page_access_token_encrypted, status')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      conn = data ?? null;
+    }
+    if (!conn?.page_access_token_encrypted || !conn?.fb_page_id) {
+      return { igMid: null, connectionId: null, error: 'no_active_instagram_connection', errorDetail: null };
+    }
+    connectionId = String(conn.id);
+    if (conn.status !== 'active') return { igMid: null, connectionId, error: 'instagram_connection_inactive', errorDetail: null };
+    if (!product.checkout_url) return { igMid: null, connectionId, error: 'missing_checkout_url', errorDetail: null };
+
+    const igsid = String(conversation.visitor_id ?? '').replace(/^ig:/, '').trim();
+    if (!igsid) return { igMid: null, connectionId, error: 'no_destination_igsid', errorDetail: null };
+
+    const token = await decryptSecret(String(conn.page_access_token_encrypted));
+    const payload = {
+      recipient: { id: igsid },
+      messaging_type: 'RESPONSE',
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'generic',
+            elements: [{
+              title: String(product.title ?? 'Plano'),
+              ...(product.price_label ? { subtitle: String(product.price_label) } : {}),
+              ...(product.image_url ? { image_url: String(product.image_url) } : {}),
+              buttons: [{ type: 'web_url', url: String(product.checkout_url), title: 'Assinar' }],
+            }],
+          },
+        },
+      },
+    };
+    const res = await graphFetch<{ message_id?: string }>(
+      `/${conn.fb_page_id}/messages`, token, { method: 'POST', body: JSON.stringify(payload) },
+    );
+    return { igMid: res?.message_id ?? null, connectionId, error: null, errorDetail: null };
+  } catch (e) {
+    if (e instanceof GraphError) {
+      const detail: GraphDeliveryErrorDetail = {
+        message: String(e.graph?.message ?? e.message).slice(0, 300),
+        code: typeof e.graph?.code === 'number' ? e.graph.code : null,
+        subcode: typeof e.graph?.error_subcode === 'number' ? e.graph.error_subcode : null,
+        fbtrace_id: e.graph?.fbtrace_id ? String(e.graph.fbtrace_id) : null,
+        http_status: e.status,
+      };
+      return { igMid: null, connectionId, error: detail.message, errorDetail: detail };
+    }
+    return { igMid: null, connectionId, error: String(e).slice(0, 300), errorDetail: null };
+  }
+}
+
 /**
  * Conversa de Instagram? Detecção deliberadamente redundante (channel OU
  * visitor_id com prefixo 'ig:' OU vínculo com conexão IG) — conversa antiga
@@ -632,6 +782,16 @@ async function performOutboundSend(
      *  send do agente e dispatch-scheduled inalterados). 'bot' = fluxo/IA
      *  (trigger-flow, ai-reactivate direct) — mesma entrega, autor correto. */
     senderType?: 'agent' | 'bot';
+    /** ONDA cards-nativos: quando presente, tenta entregar um card de produto
+     *  (WhatsApp product message / IG generic template). Fallback = texto+link
+     *  (o `content` DEVE conter o link do checkout para o fallback ser íntegro). */
+    product?: {
+      retailer_id: string;
+      title?: string | null;
+      price_label?: string | null;
+      image_url?: string | null;
+      checkout_url?: string | null;
+    } | null;
   },
 ): Promise<OutboundSendResult> {
   const { data: conversation, error: convError } = await supabase
@@ -728,21 +888,43 @@ async function performOutboundSend(
   let deliveryWarning: string | null = null;
   if (conversation.channel === 'whatsapp') {
     const dest = conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '';
-    const { wamid, error: deliveryError, errorDetail } = await deliverViaWhatsAppCloud(
-      supabase,
-      dest,
-      String(opts.content ?? ''),
-      resolvedMedia
-        ? {
-            kind: resolvedMedia.persistMedia.kind,
-            url: resolvedMedia.deliverUrl,
-            caption: resolvedMedia.effectiveCaption || null,
-            filename: resolvedMedia.persistMedia.filename,
-          }
-        : null,
-    );
+    // Card nativo primeiro (só quando pedido, sem mídia, e com catálogo ligado).
+    // Qualquer recusa da Graph cai no texto+link — NUNCA deixa de responder.
+    let wamid: string | null = null;
+    let deliveryError: string | null = null;
+    let errorDetail: GraphDeliveryErrorDetail | null = null;
+    let deliveredAsProduct = false;
+    if (opts.product?.retailer_id && !resolvedMedia) {
+      const catalogId = await resolveCommerceCatalogId(supabase);
+      if (catalogId) {
+        const r = await deliverProductViaWhatsAppCloud(
+          supabase, dest, catalogId, opts.product.retailer_id, String(opts.content ?? ''),
+        );
+        if (r.wamid) { wamid = r.wamid; deliveredAsProduct = true; }
+        else console.warn('[platform-webchat-inbox] product card falhou, fallback texto:', r.error);
+      }
+    }
+    if (!wamid) {
+      const r = await deliverViaWhatsAppCloud(
+        supabase,
+        dest,
+        String(opts.content ?? ''),
+        resolvedMedia
+          ? {
+              kind: resolvedMedia.persistMedia.kind,
+              url: resolvedMedia.deliverUrl,
+              caption: resolvedMedia.effectiveCaption || null,
+              filename: resolvedMedia.persistMedia.filename,
+            }
+          : null,
+      );
+      wamid = r.wamid; deliveryError = r.error; errorDetail = r.errorDetail;
+    }
     const deliveryMeta = wamid
-      ? { ...(message.metadata ?? {}), wamid, delivery_status: 'sent', channel: 'whatsapp_cloud' }
+      ? { ...(message.metadata ?? {}), wamid, delivery_status: 'sent', channel: 'whatsapp_cloud',
+          ...(deliveredAsProduct
+            ? { wa_type: 'interactive_product', product_retailer_id: opts.product?.retailer_id }
+            : {}) }
       : {
           ...(message.metadata ?? {}),
           delivery_status: 'failed',
@@ -768,20 +950,41 @@ async function performOutboundSend(
   // — mesmo campo de idempotência (metadata->>ig_mid) e mesmo vocabulário que
   // a UI já lê nas mensagens recebidas.
   if (isInstagramConversation(conversation)) {
-    const { igMid, connectionId, error: deliveryError, errorDetail } = await deliverViaInstagram(
-      supabase,
-      conversation,
-      String(opts.content ?? ''),
-      resolvedMedia
-        ? { kind: resolvedMedia.persistMedia.kind, url: resolvedMedia.deliverUrl }
-        : null,
-    );
+    let igMid: string | null = null;
+    let connectionId: string | null = null;
+    let deliveryError: string | null = null;
+    let errorDetail: GraphDeliveryErrorDetail | null = null;
+    let deliveredAsProduct = false;
+    if (opts.product?.checkout_url && !resolvedMedia) {
+      const r = await deliverProductViaInstagramTemplate(supabase, conversation, {
+        title: opts.product.title, price_label: opts.product.price_label,
+        image_url: opts.product.image_url, checkout_url: opts.product.checkout_url,
+      });
+      if (r.igMid) { igMid = r.igMid; connectionId = r.connectionId; deliveredAsProduct = true; }
+      else {
+        connectionId = r.connectionId;
+        console.warn('[platform-webchat-inbox] IG template falhou, fallback texto:', r.error);
+      }
+    }
+    if (!igMid) {
+      const r = await deliverViaInstagram(
+        supabase,
+        conversation,
+        String(opts.content ?? ''),
+        resolvedMedia
+          ? { kind: resolvedMedia.persistMedia.kind, url: resolvedMedia.deliverUrl }
+          : null,
+      );
+      igMid = r.igMid; connectionId = r.connectionId ?? connectionId;
+      deliveryError = r.error; errorDetail = r.errorDetail;
+    }
     const deliveryMeta = igMid
       ? {
           ...(finalMessage.metadata ?? {}),
           ig_mid: igMid,
           delivery_status: 'sent',
           channel: 'instagram',
+          ...(deliveredAsProduct ? { ig_type: 'generic_template' } : {}),
           ...(connectionId ? { connection_id: connectionId } : {}),
         }
       : {
@@ -1789,6 +1992,21 @@ Deno.serve(async (req) => {
         return json({ error: 'conversation_id and content (or media) are required' }, 400);
       }
 
+      // Card nativo (ONDA cards-nativos): product opcional vindo do picker de
+      // catálogo. Shape mínimo validado aqui; entrega/fallback é do
+      // performOutboundSend. Ignorado silenciosamente se malformado.
+      const product =
+        body.product && typeof body.product === 'object' &&
+        typeof body.product.retailer_id === 'string' && body.product.retailer_id.trim()
+          ? {
+              retailer_id: String(body.product.retailer_id).trim(),
+              title: body.product.title != null ? String(body.product.title) : null,
+              price_label: body.product.price_label != null ? String(body.product.price_label) : null,
+              image_url: body.product.image_url != null ? String(body.product.image_url) : null,
+              checkout_url: body.product.checkout_url != null ? String(body.product.checkout_url) : null,
+            }
+          : null;
+
       const result = await performOutboundSend(supabase, {
         conversationId: String(conversationId),
         content: String(body.content ?? ''),
@@ -1799,6 +2017,7 @@ Deno.serve(async (req) => {
           body.metadata && typeof body.metadata === 'object' ? body.metadata : null,
         assumeConversation: true,
         clientTempId: body.client_temp_id ?? null,
+        product,
       });
 
       if (!result.ok || !result.message) {
