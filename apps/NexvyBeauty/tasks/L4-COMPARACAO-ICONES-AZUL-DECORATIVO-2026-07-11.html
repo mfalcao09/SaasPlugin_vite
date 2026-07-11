@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L4 — Azul decorativo: comparação lado a lado (17 ícones)</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  :root{ --bg:#0d1117; --panel:#161b22; --border:#2b3441; --text:#e6edf3; --muted:#9aa7b4;
+    --navy:#213156; --gold:#dba341; --blue:#3b82f6; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:1.5rem;margin:.2em 0;background:linear-gradient(90deg,#f472b6,#a855f7);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:.86rem;margin-bottom:24px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 26px;font-size:.8rem;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;overflow:hidden;font-size:.84rem}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+  th{background:#1c2230;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#fff}
+  tr:last-child td{border-bottom:none}
+  .file{font-family:"SF Mono",Menlo,monospace;font-size:.72rem;color:var(--muted)}
+  .cell{display:flex;align-items:center;justify-content:center;width:88px;height:56px;border-radius:10px}
+  .cell svg{width:26px;height:26px}
+  .c-atual-light{background:#ffffff;border:1px solid #e5e7eb}
+  .c-atual-light svg{color:var(--blue)}
+  .c-navy-light{background:#ffffff;border:1px solid #e5e7eb}
+  .c-navy-light svg{color:var(--navy)}
+  .c-atual-dark{background:#12161f;border:1px solid #2b3441}
+  .c-atual-dark svg{color:var(--blue)}
+  .c-gold-dark{background:#12161f;border:1px solid #2b3441}
+  .c-gold-dark svg{color:var(--gold)}
+  .flag{color:#d29922;font-size:.72rem}
+  h2{font-size:1.05rem;color:#f472b6;margin:34px 0 10px}
+  .kpirow{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px}
+  .kpicard{flex:1;min-width:200px;background:#fff;color:#111;border-radius:12px;padding:14px 16px;
+    border:1px solid #e5e7eb;display:flex;align-items:center;gap:12px}
+  .kpicard .ic{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .kpicard .ic svg{width:20px;height:20px}
+  .kpicard b{display:block;font-size:1.05rem}
+  .kpicard small{color:#6b7280;font-size:.72rem}
+  .cap{color:var(--muted);font-size:.76rem;margin:4px 0 14px}
+  .note{background:#1a1f2b;border:1px solid var(--border);border-left:3px solid #d29922;
+    border-radius:10px;padding:12px 16px;font-size:.82rem;color:var(--muted);margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Azul decorativo — os 17 ícones, lado a lado</h1>
+<div class="sub">Decisão do balde §3.2 da worklist L4 · cores exatas dos tokens: azul atual <code>#3b82f6</code> (blue-500) · navy <code>#213156</code> (tema claro) · gold <code>#dba341</code> (tema dark)</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#3b82f6"></span> ATUAL (blue-500)</span>
+  <span><span class="dot" style="background:#213156"></span> Opção A — navy (tema claro)</span>
+  <span><span class="dot" style="background:#dba341"></span> Opção A — gold (tema dark)</span>
+</div>
+
+<table>
+<thead><tr>
+  <th>#</th><th>Onde (tela · ícone)</th>
+  <th>ATUAL · claro</th><th>OPÇÃO A · claro</th>
+  <th>ATUAL · dark</th><th>OPÇÃO A · dark</th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+
+<h2>Sensação em contexto — cards de KPI (tema claro)</h2>
+<div class="kpirow">
+  <div class="kpicard"><div class="ic" style="background:#eff6ff"><i data-lucide="target" style="color:#3b82f6"></i></div><div><b>128</b><small>Volume de Deals — ATUAL (azul)</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#fffbeb"><i data-lucide="clock" style="color:#f59e0b"></i></div><div><b>12</b><small>Pendentes — amber (fica, Opção A)</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#ecfdf5"><i data-lucide="check-circle" style="color:#10b981"></i></div><div><b>37</b><small>Concluídos — emerald (fica, Opção A)</small></div></div>
+</div>
+<div class="cap">↑ Dashboard ATUAL: cada KPI com uma cor ("rainbow").</div>
+
+<div class="kpirow">
+  <div class="kpicard"><div class="ic" style="background:#eef1f7"><i data-lucide="target" style="color:#213156"></i></div><div><b>128</b><small>Volume de Deals — navy</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#fffbeb"><i data-lucide="clock" style="color:#f59e0b"></i></div><div><b>12</b><small>Pendentes — amber mantido</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#ecfdf5"><i data-lucide="check-circle" style="color:#10b981"></i></div><div><b>37</b><small>Concluídos — emerald mantido</small></div></div>
+</div>
+<div class="cap">↑ OPÇÃO A (recomendada): azul-decorativo → navy da marca; amber/emerald (semáforo) ficam.</div>
+
+<div class="kpirow">
+  <div class="kpicard"><div class="ic" style="background:#eef1f7"><i data-lucide="target" style="color:#213156"></i></div><div><b>128</b><small>Volume de Deals — navy</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#eef1f7"><i data-lucide="clock" style="color:#213156"></i></div><div><b>12</b><small>Pendentes — navy</small></div></div>
+  <div class="kpicard"><div class="ic" style="background:#eef1f7"><i data-lucide="check-circle" style="color:#213156"></i></div><div><b>37</b><small>Concluídos — navy</small></div></div>
+</div>
+<div class="cap">↑ OPÇÃO "MONO TOTAL": tudo colapsa pra marca — mais sóbrio, perde o semáforo visual.</div>
+
+<div class="note">⚠️ O item #31 (Thermometer no AgentToolsTab) é fronteiriço: termômetro costuma significar <em>temperatura do lead</em> (semântico). Se você preferir, ele vira MANTER e sai do balde.</div>
+
+<script>
+const items = [
+  ["18","Comissões · SummaryCard","check-circle","CheckCircle"],
+  ["19","Dashboard · KPI Volume de Deals","target","Target"],
+  ["20","Billing · FileText","file-text","FileText"],
+  ["21","Detalhe da Org · Users","users","Users"],
+  ["22","Usuários · Users","users","Users"],
+  ["23","Email Settings · Clock","clock","Clock"],
+  ["24","Playbook · Layers","layers","Layers"],
+  ["25","Cérebro · Arquivos (FileText)","file-text","FileText"],
+  ["26","Equipe · User","user","User"],
+  ["27","Agenda · LayoutGrid","layout-grid","LayoutGrid"],
+  ["28","Agente/Tools · GitBranch","git-branch","GitBranch"],
+  ["29","Agente/Tools · GitBranch (2º)","git-branch","GitBranch"],
+  ["30","Agente/Tools · Target","target","Target"],
+  ["31","Agente/Tools · Thermometer ⚠️","thermometer","Thermometer"],
+  ["32","Inbox · Resumo IA (Lightbulb)","lightbulb","Lightbulb"],
+  ["33","Sales Leads · KPI Novos","sparkles","KPI 'Novos'"],
+  ["34","Captação · Analytics (acento KPI)","bar-chart-3","acento de KPI"],
+];
+const tb = document.getElementById('rows');
+for (const [n, onde, icon, label] of items) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${n}</td>
+    <td><b>${label}</b><br><span class="file">${onde}</span>${n==='31' ? '<br><span class="flag">fronteiriço: pode ser semântico (temperatura)</span>' : ''}</td>
+    <td><div class="cell c-atual-light"><i data-lucide="${icon}"></i></div></td>
+    <td><div class="cell c-navy-light"><i data-lucide="${icon}"></i></div></td>
+    <td><div class="cell c-atual-dark"><i data-lucide="${icon}"></i></div></td>
+    <td><div class="cell c-gold-dark"><i data-lucide="${icon}"></i></div></td>`;
+  tb.appendChild(tr);
+}
+lucide.createIcons();
+</script>
+</div>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rubric v2 — Padrão Visual do gestao.* (Lux navy/gold) — PARA APROVAÇÃO</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#2b3441;--text:#e6edf3;--muted:#9aa7b4;
+    --accent:#f472b6;--accent2:#a855f7;--green:#3fb950;--red:#f85149;--yellow:#d29922;
+    --navy:#213156;--gold:#dba341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px 90px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:1.55rem;margin:.2em 0;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  h2{font-size:1.15rem;color:#fff;border-bottom:1px solid var(--border);padding-bottom:.3em;margin:2em 0 .6em}
+  h3{font-size:.95rem;color:var(--accent);margin:1.2em 0 .4em}
+  .sub{color:var(--muted);font-size:.85rem}
+  .approve{background:linear-gradient(135deg,#1a1420,#161b22);border:1px solid var(--accent2);
+    border-radius:12px;padding:16px 20px;margin:18px 0;font-size:.9rem}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .themecard{border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+  .themecard .head{padding:10px 16px;font-weight:700;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase}
+  .sw{display:flex;align-items:center;gap:12px;padding:8px 16px;font-size:.8rem}
+  .chip{width:44px;height:28px;border-radius:7px;border:1px solid rgba(128,128,128,.35);flex-shrink:0}
+  .sw code{font-family:"SF Mono",Menlo,monospace;font-size:.72rem;opacity:.75}
+  .sw b{min-width:150px;font-weight:600}
+  .frame{border-radius:14px;padding:20px;border:1px solid var(--border)}
+  .f-light{background:#f7f9fc;color:#0d1936}
+  .f-dark{background:#171615;color:#f4f1ec}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 18px;font-size:.85rem;
+    font-weight:600;border:none;cursor:default}
+  .btn-navy{background:#213156;color:#f8fafd}
+  .btn-gold{background:#dba341;color:#171615}
+  .btn-out-l{background:transparent;color:#213156;border:1px solid #d5dae3}
+  .btn-out-d{background:transparent;color:#f4f1ec;border:1px solid #31302f}
+  .kpi{border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:center;min-width:190px}
+  .kpi-l{background:#fff;border:1px solid #e9eaed;box-shadow:0 1px 3px rgba(13,25,54,.08)}
+  .kpi-d{background:#22201f;border:1px solid #31302f}
+  .kpi .ic{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .kpi b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums}
+  .kpi small{font-size:.68rem;opacity:.65}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:600;margin:3px 4px 3px 0}
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}
+  .sidebar-l{background:#fff;border:1px solid #e9eaed;border-radius:12px;padding:10px;width:210px;font-size:.8rem}
+  .sidebar-d{background:#22201f;border:1px solid #31302f;border-radius:12px;padding:10px;width:210px;font-size:.8rem}
+  .nav{padding:8px 12px;border-radius:9px;margin:2px 0;display:flex;gap:8px;align-items:center}
+  .nav.active-l{background:#213156;color:#f8fafd;font-weight:600}
+  .nav.active-d{background:#dba341;color:#171615;font-weight:600}
+  .nav.idle-l{color:#3c4459}.nav.idle-d{color:#c9c4bb}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;overflow:hidden;font-size:.82rem;margin:.6em 0}
+  th,td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+  th{background:var(--panel2);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#fff}
+  tr:last-child td{border-bottom:none}
+  .forb{background:#1d1214;border:1px solid #5c2226;border-radius:10px;padding:12px 16px;margin:8px 0;font-size:.84rem}
+  .forb b{color:var(--red)}
+  .foot{color:var(--muted);font-size:.78rem;font-style:italic;margin-top:26px}
+  code{background:var(--panel2);padding:.1em .4em;border-radius:5px;font-size:.82em;
+    font-family:"SF Mono",Menlo,monospace;color:#ffd9ec}
+  ul{padding-left:20px}li{margin:.25em 0}
+  .decis{background:#12341f22;border:1px solid #2ea04366;border-radius:12px;padding:14px 18px;margin:14px 0;font-size:.88rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Padrão Visual do gestao.* — Rubric v2 (Lux navy/gold)</h1>
+<div class="sub">TEMPLATE-UI-GESTAO_v2 · 2026-07-11 · par visual do <code>tasks/TEMPLATE-UI-GESTAO_v2-2026-07-11.md</code> · supersede a v1 (que documentava o azul #0A52D1 obsoleto)</div>
+
+<div class="approve">
+<b>O que você está aprovando ao travar esta rubric:</b>
+<ul>
+<li><b>1. A paleta</b> (§1 abaixo) — navy protagonista no claro, dourado no dark. <b>Já é o que renderiza em produção</b> — a rubric documenta e trava, não muda o tema.</li>
+<li><b>2. A decisão MONO TOTAL</b> (ratificada por você hoje) — acentos decorativos colapsam pra marca; cores de SIGNIFICADO ficam.</li>
+<li><b>3. As proibições</b> (§4) — o que reprova uma tela automaticamente.</li>
+<li><b>4. O gate</b> (§5) — toda tela das ondas L4.1+ precisa de score ≥85 antes de fechar.</li>
+</ul>
+Depois do teu "travo": a limpeza dos ~34+ hardcodes roda mecanicamente e as 47 telas entram em ondas, todas medidas por ESTE padrão.
+</div>
+
+<div class="decis">✅ <b>DECISÃO JÁ RATIFICADA (você, hoje):</b> MONO TOTAL — os 17 azuis-decorativos <b>e também</b> os amber/emerald decorativos de KPI colapsam pra <code>text-primary</code> (navy no claro / gold no dark). Cores de <b>significado</b> (canal, temperatura, status, fila, dado do banco) <b>não são tocadas</b>.</div>
+
+<h2>1 · Paleta canônica (tokens verbatim do index.css em produção)</h2>
+<div class="grid2">
+  <div class="themecard" style="background:#f7f9fc">
+    <div class="head" style="background:#213156;color:#f8fafd">TEMA CLARO — navy protagonista</div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#f7f9fc"></span><b>background</b><code>#f7f9fc</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#0d1936"></span><b>foreground (texto)</b><code>#0d1936</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#ffffff"></span><b>card / popover</b><code>#ffffff</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#213156"></span><b>PRIMARY (ação/marca)</b><code>#213156 NAVY</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#ecf1f5"></span><b>muted (fundos 2º)</b><code>#ecf1f5</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#6b727e"></span><b>muted-foreground</b><code>#6b727e</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#e9eaed"></span><b>border / input</b><code>#e9eaed</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#89202b"></span><b>destructive</b><code>#89202b</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#42815a"></span><b>success</b><code>#42815a</code></div>
+    <div class="sw" style="color:#0d1936"><span class="chip" style="background:#9f702f"></span><b>brand (dourado ocre)</b><code>#9f702f</code></div>
+  </div>
+  <div class="themecard" style="background:#171615">
+    <div class="head" style="background:#dba341;color:#171615">TEMA DARK — charcoal fosco + gold</div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#171615"></span><b>background</b><code>#171615 charcoal</code></div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#f4f1ec"></span><b>foreground (texto)</b><code>#f4f1ec</code></div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#22201f"></span><b>card / popover</b><code>#22201f</code></div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#dba341"></span><b>PRIMARY (ação/marca)</b><code>#dba341 GOLD</code></div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#888683"></span><b>muted-foreground ("Nardo")</b><code>#888683</code></div>
+    <div class="sw" style="color:#f4f1ec"><span class="chip" style="background:#31302f"></span><b>border / input</b><code>#31302f</code></div>
+  </div>
+</div>
+<p class="sub">Regra nº1: componente NUNCA sabe o hue — só usa <code>bg-primary</code>/<code>text-primary</code>; o tema entra pela classe do host. O mesmo componente no app.* renderiza Beauty Rosé sem mudar 1 linha.</p>
+
+<h2>2 · Espécimes — como fica na prática</h2>
+<div class="grid2">
+  <div class="frame f-light">
+    <h3 style="color:#213156;margin-top:0">Tema claro</h3>
+    <div class="row">
+      <button class="btn btn-navy">Ação primária</button>
+      <button class="btn btn-out-l">Secundária</button>
+    </div>
+    <div class="row">
+      <div class="kpi kpi-l"><div class="ic" style="background:#eef1f7;color:#213156">🎯</div><div><b>128</b><small>Volume de Deals</small></div></div>
+      <div class="kpi kpi-l"><div class="ic" style="background:#eef1f7;color:#213156">⏱</div><div><b>12</b><small>Pendentes (mono)</small></div></div>
+    </div>
+    <div class="row">
+      <span class="badge" style="background:#21315619;color:#213156;border:1px solid #21315640">Selecionado</span>
+      <span class="badge" style="background:#10b98119;color:#059669;border:1px solid #10b98140">IA atendendo (semântico)</span>
+      <span class="badge" style="background:#ef444419;color:#dc2626;border:1px solid #ef444440">Quente (semântico)</span>
+    </div>
+    <div class="sidebar-l">
+      <div class="nav active-l">▦ Dashboard</div>
+      <div class="nav idle-l">◇ Pipeline</div>
+      <div class="nav idle-l">◎ Leads</div>
+    </div>
+  </div>
+  <div class="frame f-dark">
+    <h3 style="color:#dba341;margin-top:0">Tema dark</h3>
+    <div class="row">
+      <button class="btn btn-gold">Ação primária</button>
+      <button class="btn btn-out-d">Secundária</button>
+    </div>
+    <div class="row">
+      <div class="kpi kpi-d"><div class="ic" style="background:#dba34122;color:#dba341">🎯</div><div><b>128</b><small>Volume de Deals</small></div></div>
+      <div class="kpi kpi-d"><div class="ic" style="background:#dba34122;color:#dba341">⏱</div><div><b>12</b><small>Pendentes (mono)</small></div></div>
+    </div>
+    <div class="row">
+      <span class="badge" style="background:#dba34122;color:#dba341;border:1px solid #dba34155">Selecionado</span>
+      <span class="badge" style="background:#10b98122;color:#34d399;border:1px solid #10b98150">IA atendendo (semântico)</span>
+      <span class="badge" style="background:#ef444422;color:#f87171;border:1px solid #ef444450">Quente (semântico)</span>
+    </div>
+    <div class="sidebar-d">
+      <div class="nav active-d">▦ Dashboard</div>
+      <div class="nav idle-d">◇ Pipeline</div>
+      <div class="nav idle-d">◎ Leads</div>
+    </div>
+  </div>
+</div>
+
+<h2>3 · Cores de SIGNIFICADO — as únicas literais permitidas (NÃO são marca, ficam)</h2>
+<table>
+<thead><tr><th>Significado</th><th>Como fica</th></tr></thead>
+<tbody>
+<tr><td>Canal WhatsApp</td><td><span class="badge" style="background:#10b981;color:#fff">WhatsApp</span></td></tr>
+<tr><td>Canal Instagram</td><td><span class="badge" style="background:linear-gradient(90deg,#a855f7,#ec4899);color:#fff">Instagram</span></td></tr>
+<tr><td>Canal Facebook/Messenger</td><td><span class="badge" style="background:#0866FF;color:#fff">Meta</span></td></tr>
+<tr><td>Fila / urgência</td><td><span class="badge" style="background:#ef4444;color:#fff">3 aguardando</span></td></tr>
+<tr><td>Temperatura (quente/morna/fria)</td><td><span class="badge" style="background:#ef444419;color:#dc2626">Quente</span> <span class="badge" style="background:#f9731619;color:#ea580c">Morna</span> <span class="badge" style="background:#0ea5e919;color:#0284c7">Fria</span></td></tr>
+<tr><td>Status (humano/aguardando/bot/encerrada)</td><td>dots <span style="color:#22c55e">●</span> <span style="color:#eab308">●</span> <span style="color:#3b82f6">●</span> <span style="color:#6b7280">●</span></td></tr>
+<tr><td>Estado negativo (Não/Cancelado/Falhou)</td><td><span class="badge" style="background:#f43f5e22;color:#e11d48">Cancelado</span></td></tr>
+<tr><td>Cor de etiqueta/setor/estágio/evento</td><td>vem do <b>banco</b> (dado do usuário) — intocável</td></tr>
+</tbody>
+</table>
+
+<h2>4 · Proibições (reprovam a tela na hora)</h2>
+<div class="forb"><b>1. Azul institucional supersedido</b> — <code>#0A52D1</code> / <code>blue-*</code> como ação, CTA, marca ou decoração → sempre <code>primary</code>. <span class="chip" style="background:#0A52D1;display:inline-block;vertical-align:middle;width:26px;height:16px"></span> ⛔</div>
+<div class="forb"><b>2. Rosa Beauty como marca</b> no gestao (<code>#EC4899</code>/<code>pink-*</code>) — rosa é do app.*; exceção: badge Instagram (semântico).</div>
+<div class="forb"><b>3. Verde-lima Vendus</b> (<code>#84CC16</code>, vendus-gradient) — proibido em qualquer tela.</div>
+<div class="forb"><b>4. Dark-first / overrides <code>dark:</code> por tela</b> — calibra no claro; os tokens seguram o dark.</div>
+<div class="forb"><b>5. Qualquer hex/hsl de marca hardcoded</b> → sempre token.</div>
+
+<h2>5 · O gate — como cada tela é aprovada nas ondas L4.1+</h2>
+<table>
+<thead><tr><th>Critério</th><th>Peso</th></tr></thead>
+<tbody>
+<tr><td>Hierarquia visual (1 ação primária clara, escala tipográfica, anatomia da família)</td><td>25</td></tr>
+<tr><td>Densidade &amp; usabilidade (densidade Vendus, atalhos)</td><td>20</td></tr>
+<tr><td>Affordance (tudo descobrível, tooltips, contadores)</td><td>15</td></tr>
+<tr><td>Consistência de token (zero azul-ação/pink-marca; literais só semânticas)</td><td>15</td></tr>
+<tr><td>Estados (vazio/carregando/erro/sucesso + skeleton)</td><td>15</td></tr>
+<tr><td>Mobile + higiene (responsivo, a11y, 0 erro console)</td><td>10</td></tr>
+</tbody>
+</table>
+<p><b>Gate: ≥85/100</b> (máx 4 iterações por tela) + checklist binário pré-score (greps de cor, identidade WhatsApp, estados presentes, tsc verde, computed <code>--primary</code> = navy no claro / gold no dark). A 1ª tela de cada família roda o loop completo; as demais herdam a receita calibrada.</p>
+
+<h2>6 · Depois do teu "travo"</h2>
+<ul>
+<li><b>L4.0</b> — limpeza mecânica dos hardcodes (worklist §TROCAR + extensão amber/emerald decorativos) — Opus, zero julgamento.</li>
+<li><b>L4.1→L4.6</b> — ondas de telas por família (Dashboard → ERP → Vendas → Editores → Configurações → Mia), cada uma medida pela rubric.</li>
+<li>Divergência descoberta numa família nova <b>atualiza a rubric</b> (_v3), nunca forka padrão por tela.</li>
+</ul>
+
+<p class="foot">Fontes: tokens verbatim de <code>src/index.css</code> (produção, commits ec8966c/125ebbe) · REF Lovable lux-reference · worklist P1B-LUX-L4-WORKLIST-HARDCODE · decisão MONO TOTAL ratificada por Marcelo 07-11. Par .md: <code>tasks/TEMPLATE-UI-GESTAO_v2-2026-07-11.md</code>.</p>
+
+</div>
+</body>
+</html>
