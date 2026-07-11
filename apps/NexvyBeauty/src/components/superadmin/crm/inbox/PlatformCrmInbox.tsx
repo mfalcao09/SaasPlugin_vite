@@ -21,6 +21,7 @@ import {
   type PlatformCrmConversationRow,
   type PlatformCrmStatusTab,
   type PlatformCrmSendMediaPayload,
+  type PlatformCrmSendProductPayload,
 } from '../data/usePlatformCrmConversations';
 import { usePlatformCrmNotificationSound } from '../data/usePlatformCrmNotificationSound';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
@@ -465,11 +466,12 @@ export function PlatformCrmInbox({
     }
   }, [selectedConversation]);
 
-  // Send (com reply + mídia do CONTRATO A1.2)
+  // Send (com reply + mídia do CONTRATO A1.2; product = card nativo do catálogo)
   const handleSendMessage = async (
     content: string,
     replyToMessageId?: string,
     media?: PlatformCrmSendMediaPayload,
+    product?: PlatformCrmSendProductPayload,
   ) => {
     if (!selectedConversation) return;
     try {
@@ -478,6 +480,7 @@ export function PlatformCrmInbox({
         content,
         replyToMessageId,
         media,
+        product,
       });
     } catch {
       toast({
@@ -1192,7 +1195,7 @@ export function PlatformCrmInbox({
             open={showCatalog}
             onOpenChange={setShowCatalog}
             productId={linkedLead?.product_id || freshSelected?.product_id || null}
-            onSend={(text, media) =>
+            onSend={(text, media, product) =>
               handleSendMessage(
                 text,
                 undefined,
@@ -1206,6 +1209,7 @@ export function PlatformCrmInbox({
                       url: media.url,
                     }
                   : undefined,
+                product,
               )
             }
           />

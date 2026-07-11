@@ -257,8 +257,75 @@ Deno.serve(async (req) => {
     if (!user) return jsonError('invalid_token', 'Invalid token', 401);
 
     const action = body?.action ? String(body.action) : 'sync';
-    if (action !== 'sync') {
-      return jsonError('unsupported_action', `ação '${action}' não suportada (use 'sync')`, 400);
+    if (action !== 'sync' && action !== 'waba-status' && action !== 'link-waba') {
+      return jsonError(
+        'unsupported_action',
+        `ação '${action}' não suportada (use 'sync', 'waba-status' ou 'link-waba')`,
+        400,
+      );
+    }
+
+    // ── waba-status / link-waba: o vínculo catálogo↔WABA é PRÉ-REQUISITO do
+    //    product message (card nativo). Sem ele a Cloud API recusa o interactive
+    //    type=product. `waba-status` é read-only (GET); `link-waba` faz o POST
+    //    one-time — idempotente (re-vincular o mesmo catálogo não duplica).
+    if (action === 'waba-status' || action === 'link-waba') {
+      const { catalogId } = await getCatalogId(supabase);
+      if (!catalogId) {
+        return jsonError('catalog_not_configured', 'platform_settings.meta_commerce_catalog_id ausente', 422);
+      }
+      const resolved = await resolveActiveConnection(supabase, body?.connection_id ? String(body.connection_id) : null);
+      if (!resolved.conn?.waba_id) {
+        return jsonError(resolved.reason ?? 'no_waba', 'conexão Meta ativa sem waba_id', 422);
+      }
+      const wabaId = resolved.conn.waba_id;
+      const envTok = Deno.env.get('META_COMMERCE_TOKEN')?.trim() || null;
+      let tok: string;
+      try {
+        tok = envTok ?? await decryptSecret(resolved.conn.access_token_encrypted!);
+      } catch (e) {
+        console.error('[platform-commerce-sync] token decrypt failed:', String(e).slice(0, 200));
+        return jsonError('token_decrypt_failed', 'falha ao decriptar o token da conexão', 500);
+      }
+
+      if (action === 'link-waba') {
+        const res = await fetch(`${GRAPH_BASE}/${wabaId}/product_catalogs`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ catalog_id: catalogId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const g = data?.error ?? {};
+          return jsonError('link_waba_failed', String(g?.message ?? `graph ${res.status}`).slice(0, 300), 422, {
+            code: g?.code ?? null, subcode: g?.error_subcode ?? null,
+            fbtrace_id: g?.fbtrace_id ?? null, http_status: res.status,
+            waba_id: wabaId, catalog_id: catalogId,
+          });
+        }
+        return json({ ok: true, action, waba_id: wabaId, catalog_id: catalogId, result: data });
+      }
+
+      // waba-status
+      const res = await fetch(
+        `${GRAPH_BASE}/${wabaId}/product_catalogs?fields=id,name`,
+        { headers: { Authorization: `Bearer ${tok}` } },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const g = data?.error ?? {};
+        return jsonError('waba_status_failed', String(g?.message ?? `graph ${res.status}`).slice(0, 300), 422, {
+          code: g?.code ?? null, subcode: g?.error_subcode ?? null,
+          fbtrace_id: g?.fbtrace_id ?? null, http_status: res.status,
+          waba_id: wabaId, catalog_id: catalogId,
+        });
+      }
+      const catalogs = Array.isArray(data?.data) ? data.data : [];
+      const linked = catalogs.some((c: any) => String(c?.id) === String(catalogId));
+      return json({
+        ok: true, action, waba_id: wabaId, catalog_id: catalogId,
+        linked, linked_catalogs: catalogs,
+      });
     }
 
     const dryRun = body?.dryRun === true;
