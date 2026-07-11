@@ -29,10 +29,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useProductKnowledgeSources,
   useProductKnowledgeSourceStats,
+  useCreateProductKnowledgeSource,
   todoBackend,
 } from '../hooks/useProductHubStubs';
 import { CatalogManager } from './catalog/CatalogManager';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface BrainTabProps {
   productId: string;
@@ -93,8 +95,63 @@ const SOURCE_TYPES = [
 export function BrainTab({ productId }: BrainTabProps) {
   const { data: sources, isLoading: sourcesLoading } = useProductKnowledgeSources(productId);
   const { data: stats } = useProductKnowledgeSourceStats(productId);
+  const createSource = useCreateProductKnowledgeSource();
   const [activeTab, setActiveTab] = useState('overview');
   const [activeSource, setActiveSource] = useState<string | null>(null);
+
+  // FAQ e Treinamento direto: conteúdo textual → insere fonte de conhecimento real.
+  // (Arquivos/website/youtube exigem storage/crawl/transcrição — P2.A-2.)
+  const [faqQuestion, setFaqQuestion] = useState('');
+  const [faqAnswer, setFaqAnswer] = useState('');
+  const [trainingText, setTrainingText] = useState('');
+
+  const handleAddFaq = () => {
+    if (!faqQuestion.trim() || !faqAnswer.trim()) {
+      toast.error('Preencha a pergunta e a resposta');
+      return;
+    }
+    createSource.mutate(
+      {
+        product_id: productId,
+        source_type: 'faq',
+        title: faqQuestion.trim(),
+        question: faqQuestion.trim(),
+        answer: faqAnswer.trim(),
+      },
+      {
+        onSuccess: () => {
+          toast.success('FAQ adicionado ao Cérebro!');
+          setFaqQuestion('');
+          setFaqAnswer('');
+        },
+        onError: () => toast.error('Erro ao adicionar FAQ'),
+      },
+    );
+  };
+
+  const handleTeachAI = () => {
+    if (!trainingText.trim()) {
+      toast.error('Escreva o que a IA deve aprender');
+      return;
+    }
+    const firstLine = trainingText.trim().split('\n')[0].slice(0, 80);
+    createSource.mutate(
+      {
+        product_id: productId,
+        source_type: 'training',
+        title: firstLine || 'Treinamento direto',
+        raw_content: trainingText.trim(),
+        extracted_content: trainingText.trim(),
+      },
+      {
+        onSuccess: () => {
+          toast.success('Conhecimento adicionado ao Cérebro!');
+          setTrainingText('');
+        },
+        onError: () => toast.error('Erro ao ensinar a IA'),
+      },
+    );
+  };
 
   if (sourcesLoading) {
     return (
@@ -324,16 +381,25 @@ export function BrainTab({ productId }: BrainTabProps) {
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <Label>Pergunta</Label>
-                <Input placeholder="Ex: Qual o prazo de implantação?" />
+                <Input
+                  placeholder="Ex: Qual o prazo de implantação?"
+                  value={faqQuestion}
+                  onChange={(e) => setFaqQuestion(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Resposta</Label>
-                <Textarea rows={3} placeholder="Ex: A implantação leva em média 7 dias úteis..." />
+                <Textarea
+                  rows={3}
+                  placeholder="Ex: A implantação leva em média 7 dias úteis..."
+                  value={faqAnswer}
+                  onChange={(e) => setFaqAnswer(e.target.value)}
+                />
               </div>
-              <Button onClick={() => todoBackend('FAQ do Cérebro')}>
-                <Plus className="h-4 w-4 mr-2" /> Adicionar FAQ
+              <Button onClick={handleAddFaq} disabled={createSource.isPending}>
+                {createSource.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                Adicionar FAQ
               </Button>
-              {/* TODO(table: platform_crm_product_knowledge_sources) */}
             </CardContent>
           </Card>
         </TabsContent>
@@ -351,11 +417,14 @@ export function BrainTab({ productId }: BrainTabProps) {
               <Textarea
                 rows={5}
                 placeholder={'Ex: Nosso diferencial nº 1 é o suporte via WhatsApp em até 5 minutos.\nNunca prometa desconto acima de 10% sem aprovação.'}
+                value={trainingText}
+                onChange={(e) => setTrainingText(e.target.value)}
               />
-              <Button onClick={() => todoBackend('Treinamento direto do Cérebro')}>
-                <Sparkles className="h-4 w-4 mr-2" /> Ensinar a IA
+              <Button onClick={handleTeachAI} disabled={createSource.isPending}>
+                {createSource.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                Ensinar a IA
               </Button>
-              {/* TODO(edge): process-training-material · TODO(table) */}
+              {/* Embedding/indexação da fonte → P2.A-2 */}
             </CardContent>
           </Card>
         </TabsContent>

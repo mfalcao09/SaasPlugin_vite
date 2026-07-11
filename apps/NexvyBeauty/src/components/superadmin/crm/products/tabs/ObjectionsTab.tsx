@@ -10,7 +10,7 @@ import {
   usePlatformCrmProduct,
   useUpdatePlatformCrmProduct,
 } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { useProductObjections, todoBackend, type ProductObjection } from '../hooks/useProductHubStubs';
+import { useProductObjections, useCreateProductObjection, todoBackend, type ProductObjection } from '../hooks/useProductHubStubs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -471,7 +471,7 @@ function ManualObjectionForm({ productId }: { productId: string }) {
   const [whatTheyMean, setWhatTheyMean] = useState('');
   const [suggestedResponse, setSuggestedResponse] = useState('');
   const [followUpQuestion, setFollowUpQuestion] = useState('');
-  void productId;
+  const createObjection = useCreateProductObjection();
 
   const handleRefineAll = () => {
     if (!whatTheySay.trim()) {
@@ -482,7 +482,7 @@ function ManualObjectionForm({ productId }: { productId: string }) {
     todoBackend('Geração dos campos com IA');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!whatTheySay.trim()) {
       toast.error('Digite a objeção do cliente');
       return;
@@ -491,8 +491,25 @@ function ManualObjectionForm({ productId }: { productId: string }) {
       toast.error('Digite a resposta sugerida');
       return;
     }
-    // TODO(table: platform_crm_objections) — persistência na fase de backend
-    todoBackend('Salvar objeção manual');
+    try {
+      await createObjection.mutateAsync({
+        product_id: productId,
+        category,
+        whatTheySay: whatTheySay.trim(),
+        whatTheyMean: whatTheyMean.trim(),
+        suggestedResponse: suggestedResponse.trim(),
+        followUpQuestion: followUpQuestion.trim(),
+      });
+      toast.success('Objeção salva!');
+      setWhatTheySay('');
+      setWhatTheyMean('');
+      setSuggestedResponse('');
+      setFollowUpQuestion('');
+      setCategory('thinking');
+    } catch (e) {
+      console.error('[ObjectionsTab] salvar objeção falhou:', e);
+      toast.error('Erro ao salvar objeção');
+    }
   };
 
   return (
@@ -566,8 +583,8 @@ function ManualObjectionForm({ productId }: { productId: string }) {
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={handleSave} className="gap-2">
-            <Save className="h-4 w-4" />
+          <Button onClick={handleSave} className="gap-2" disabled={createObjection.isPending}>
+            {createObjection.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Salvar objeção
           </Button>
         </div>

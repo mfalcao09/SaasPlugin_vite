@@ -16,7 +16,8 @@ import {
   useProductPostSaleEventActions,
   useProductPostSaleEventLogs,
   useProductEmailTemplates,
-  useTodoMutation,
+  useUpsertProductPostSaleEventAction,
+  useDeleteProductPostSaleEventAction,
   type PostSaleEventAction,
 } from '../hooks/useProductHubStubs';
 import { usePlatformCrmTags, useCreatePlatformCrmTag } from '@/components/superadmin/crm/data/usePlatformCrmTags';
@@ -56,8 +57,8 @@ export function PostSaleTab({ productId }: Props) {
   const { data: sectors } = usePlatformCrmSectors();
   const { data: team } = usePlatformCrmTeamMembers();
   const { data: stages } = usePlatformCrmProductStages(productId);
-  const upsert = useTodoMutation('Salvar ação de pós-venda');
-  const remove = useTodoMutation('Remover ação de pós-venda');
+  const upsert = useUpsertProductPostSaleEventAction();
+  const remove = useDeleteProductPostSaleEventAction(productId);
   const [packageOpen, setPackageOpen] = useState(false);
 
   const byEvent = useMemo(() => {
