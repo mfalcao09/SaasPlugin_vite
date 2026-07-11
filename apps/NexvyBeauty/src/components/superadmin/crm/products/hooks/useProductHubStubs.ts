@@ -437,6 +437,9 @@ export function useProductCatalogItems(productId?: string | null, search?: strin
       if (error) throw error;
       return (data ?? []) as ProductCatalogItem[];
     },
+    // Consistente com as irmãs do hub: sem produto ativo não lista catálogo
+    // cross-produto (a coluna é product-scoped).
+    enabled: !!productId,
   });
 }
 
@@ -557,25 +560,27 @@ export interface PostSaleEventAction {
   product_id: string;
   event_type: string;
   is_active: boolean;
-  add_tag_ids: string[] | null;
-  remove_tag_ids: string[] | null;
-  send_mode: 'none' | 'flow' | 'message' | null;
+  // NOT NULL DEFAULT no banco — o default só vale na OMISSÃO, não em null
+  // explícito; tipo alinhado à realidade pra o tsc barrar um null futuro.
+  add_tag_ids: string[];
+  remove_tag_ids: string[];
+  send_mode: 'none' | 'flow' | 'message';
   flow_id: string | null;
   inline_message: string | null;
-  message_channel: 'whatsapp' | 'email' | null;
+  message_channel: 'whatsapp' | 'email';
   evolution_instance_id: string | null;
   target_stage_id: string | null;
-  deal_outcome: 'none' | 'won' | 'lost' | null;
-  deal_value_source: 'none' | 'webhook' | 'manual' | null;
+  deal_outcome: 'none' | 'won' | 'lost';
+  deal_value_source: 'none' | 'webhook' | 'manual';
   deal_value_manual: number | null;
   assign_sector_id: string | null;
   assign_user_id: string | null;
   agent_id: string | null;
   agent_objective: string | null;
   agent_extra_context: string | null;
-  agent_outreach_mode: 'direct' | 'conversational' | null;
+  agent_outreach_mode: 'direct' | 'conversational';
   email_template_id: string | null;
-  delay_minutes: number | null;
+  delay_minutes: number;
 }
 
 export interface PostSaleEventLog {
