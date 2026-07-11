@@ -1,0 +1,165 @@
+<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Cards Nativos de Catálogo (Meta Commerce) — 2026-07-11</title><style>body{background:#0f1117;color:#e2e6ee;font-family:-apple-system,'Segoe UI',sans-serif;max-width:1000px;margin:2rem auto;padding:0 1.5rem;line-height:1.6}h1{color:#f6c453;border-bottom:2px solid #2a2f3a;padding-bottom:.4rem}h2{color:#8ab4f8;margin-top:2rem}h3{color:#9ae6b4}table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.92rem}th{background:#1a1f2b;color:#f6c453;text-align:left}th,td{border:1px solid #2a2f3a;padding:.5rem .7rem;vertical-align:top}tr:nth-child(even) td{background:#141824}code{background:#1a1f2b;color:#9ae6b4;padding:.1rem .35rem;border-radius:4px;font-size:.85em}pre{background:#141824;border:1px solid #2a2f3a;border-radius:6px;padding:.9rem 1rem;overflow-x:auto;font-size:.82rem}pre code{background:none;padding:0;color:#cbd3e1}blockquote{border-left:3px solid #f6c453;margin:.6rem 0;padding:.4rem .9rem;color:#b7bfcf;background:#141824}hr{border:none;border-top:1px solid #2a2f3a;margin:1.6rem 0}strong{color:#fff}li{margin:.3rem 0}.ok{color:#9ae6b4}.no{color:#f6889a}.warn{color:#f6c453}</style></head><body>
+<h1>Cards nativos de catálogo (Meta Commerce) para o CRM NexvyBeauty — Mapa API-first</h1>
+<blockquote><strong>Groundwork · 2026-07-11 · branch <code>feat/beauty-inbox-a1.2</code></strong><br>Peça técnica. Nada foi deployado, nenhum token real usado, nenhuma Graph chamada. Este documento + a edge <code>platform-commerce-sync</code> + o diff proposto são a base para a execução posterior na Meta.</blockquote>
+<hr>
+<h2>0. Resposta direta à pergunta do dono</h2>
+<p><strong>"Dá pra automatizar o sync dos planos com o catálogo Meta pra não ter gap quando mudarem no gestão?"</strong></p>
+<p><span class='ok'>[Certo]</span> <strong>Sim, sem gap — e o padrão certo é trigger na origem, não polling.</strong> O gap só existe com sync manual ou varredura periódica. A casa já tem o padrão que elimina isso: um <strong>trigger no <code>UPDATE</code>/<code>INSERT</code> de <code>platform_plans</code></strong> que dispara a edge <code>platform-commerce-sync</code> via <code>pg_net</code> (<code>net.http_post</code>). No instante em que o dono muda preço/nome/checkout, o commit dispara o UPSERT no catálogo Meta. O <code>retailer_id</code> estável <code>plan-&lt;slug&gt;</code> garante que a re-sincronização <strong>atualiza o mesmo item</strong> (idempotente, nunca duplica).</p>
+<table><tr><th>Natureza</th><th>O quê</th><th>Quem</th><th>Frequência</th></tr>
+<tr><td><strong>One-time (humano, na Meta)</strong></td><td>Criar o Product Catalog · vincular à WABA · garantir token com <code>catalog_management</code></td><td>Dono/você, no Business Manager ou via Graph</td><td>1×</td></tr>
+<tr><td><strong>Contínuo (automático, código)</strong></td><td>UPSERT dos planos no catálogo a cada mudança de <code>platform_plans</code></td><td>Edge <code>platform-commerce-sync</code> via trigger <code>pg_net</code></td><td>Toda edição de plano</td></tr>
+<tr><td><strong>Rede de segurança (opcional)</strong></td><td><code>sync</code> full via cron</td><td>Cron 5–15min chamando <code>action:'sync'</code></td><td>Baixa (idempotente)</td></tr></table>
+<p><strong>Recomendação de robustez:</strong> trigger (tempo-real) <strong>+</strong> cron de reconciliação (pega qualquer disparo perdido — pg_net é best-effort, não transacional-garantido).</p>
+<hr>
+<h2>1. Ativos que já temos (inventário)</h2>
+<table><tr><th>Ativo</th><th>Valor</th><th>Onde vive</th></tr>
+<tr><td>Business ID</td><td><code>1331611869008138</code></td><td>Meta Business Manager</td></tr>
+<tr><td>WABA ID</td><td><code>976904392005535</code></td><td>Meta WhatsApp</td></tr>
+<tr><td>Token da connection</td><td>cifrado (<code>access_token_encrypted</code>)</td><td><code>platform_crm_whatsapp_meta_connections</code> → <code>decryptSecret()</code></td></tr>
+<tr><td><code>phone_number_id</code></td><td>por connection</td><td><code>platform_crm_whatsapp_meta_connections</code></td></tr>
+<tr><td>Page token (IG/FB)</td><td>cifrado (<code>page_access_token_encrypted</code>)</td><td><code>platform_crm_instagram_connections</code></td></tr>
+<tr><td>Versão Graph fixada</td><td><code>v21.0</code></td><td><code>_shared/meta-graph.ts</code></td></tr>
+<tr><td>Crypto de credencial</td><td>AES-256-GCM envelope</td><td><code>_shared/meta-crypto.ts</code></td></tr></table>
+<p>Escopos que o dono citou ter: <strong>page token</strong>, <strong>whatsapp_business_management</strong>, <strong>instagram_manage_messages</strong>.</p>
+<hr>
+<h2>2. Mapa de endpoints (Graph API <code>v21.0</code>)</h2>
+<h3>2.1 Criar o Product Catalog — ONE-TIME</h3>
+<pre><code>POST https://graph.facebook.com/v21.0/1331611869008138/owned_product_catalogs
+Authorization: Bearer &lt;SYSTEM_USER_TOKEN&gt;
+Body: { "name": "NexvyBeauty — Planos" }
+→ { "id": "&lt;catalog_id&gt;" }</code></pre>
+<ul><li><strong>Permissão exigida:</strong> <code>business_management</code> <strong>+</strong> <code>catalog_management</code>.</li><li><strong>Grava:</strong> <code>platform_settings.meta_commerce_catalog_id</code> (chave nova).</li></ul>
+<h3>2.2 Criar/atualizar produtos (os 3–4 planos) — CONTÍNUO</h3>
+<p>Dois caminhos equivalentes; a edge usa o <strong>batch</strong> por ser upsert idempotente:</p>
+<p><strong>Opção A — batch (usada pela edge):</strong></p>
+<pre><code>POST /v21.0/{catalog_id}/batch
+Body: {
+  "allow_upsert": true,
+  "requests": [
+    { "method": "UPDATE", "retailer_id": "plan-essencial",
+      "data": {
+        "name": "Essencial",
+        "price": 21700,            // ⚠️ CENTAVOS (inteiro) — R$217,00
+        "currency": "BRL",
+        "url": "https://&lt;checkout_url&gt;",
+        "image_url": "https://&lt;imagem&gt;",
+        "availability": "in stock",
+        "condition": "new",
+        "brand": "Nexvy",
+        "description": "Plano Essencial — assinatura mensal."
+      } }
+  ]
+}</code></pre>
+<p><strong>Opção B — produto único:</strong></p>
+<pre><code>POST /v21.0/{catalog_id}/products
+Body: { "retailer_id":"plan-essencial", "name":"Essencial", "price":21700,
+        "currency":"BRL", "url":"...", "image_url":"...", "availability":"in stock" }</code></pre>
+<ul><li><strong>Permissão exigida:</strong> <code>catalog_management</code>.</li><li><strong>Campos mínimos:</strong> <code>retailer_id</code>, <code>name</code>, <code>price</code> (centavos), <code>currency</code>, <code>image_url</code>, <code>url</code>. Meta <strong>rejeita</strong> produto sem <code>image_url</code> → §4.</li><li><strong>retailer_id estável = <code>plan-&lt;slug&gt;</code></strong> → chave natural do UPSERT.</li></ul>
+<h3>2.3 Vincular catálogo à WABA — ONE-TIME (só p/ product message no WhatsApp)</h3>
+<pre><code>POST /v21.0/976904392005535/product_catalogs
+Body: { "catalog_id": "&lt;catalog_id&gt;" }</code></pre>
+<ul><li><strong>Permissão exigida:</strong> <code>whatsapp_business_management</code> <span class='ok'>(temos)</span>.</li><li><strong>Alternativa sem Graph:</strong> WhatsApp Manager → Catálogo → conectar (UI).</li></ul>
+<h3>2.4 Enviar product message no WhatsApp — CONTÍNUO (runtime)</h3>
+<pre><code>POST /v21.0/{phone_number_id}/messages
+Body: {
+  "messaging_product": "whatsapp",
+  "to": "55DDDXXXXXXXX",
+  "type": "interactive",
+  "interactive": {
+    "type": "product",
+    "body":   { "text": "Nosso plano Essencial 👇" },
+    "footer": { "text": "Toque para ver e assinar" },
+    "action": {
+      "catalog_id": "&lt;catalog_id&gt;",
+      "product_retailer_id": "plan-essencial"
+    }
+  }
+}</code></pre>
+<ul><li><strong>Permissão:</strong> o mesmo token da connection que já envia mensagem (Cloud API).</li><li><strong>Multi-produto</strong> (<code>type:"product_list"</code>) existe, mas p/ 3–4 planos o single-product por card é mais limpo.</li></ul>
+<h3>2.5 Instagram — generic template com botão de URL — CONTÍNUO</h3>
+<p>O IG DM <strong>não</strong> renderiza product message do catálogo; o equivalente é o <strong>generic template</strong> (imagem + título + botão <code>web_url</code>):</p>
+<pre><code>POST /v21.0/{fb_page_id}/messages
+Body: {
+  "recipient": { "id": "&lt;IGSID&gt;" },
+  "messaging_type": "RESPONSE",
+  "message": {
+    "attachment": {
+      "type": "template",
+      "payload": {
+        "template_type": "generic",
+        "elements": [{
+          "title": "Plano Essencial",
+          "subtitle": "R$ 217/mês",
+          "image_url": "https://&lt;imagem&gt;",
+          "buttons": [{ "type": "web_url", "url": "https://&lt;checkout_url&gt;",
+                        "title": "Assinar" }]
+        }]
+      }
+    }
+  }
+}</code></pre>
+<ul><li><strong>Permissão:</strong> <code>instagram_manage_messages</code> <span class='ok'>(temos)</span> + page token <span class='ok'>(temos)</span>.</li><li>Não depende do catálogo — usa os mesmos campos do plano.</li></ul>
+<hr>
+<h2>3. Permissões — o que temos × o que falta</h2>
+<table><tr><th>Ação</th><th>Escopo exigido</th><th>Temos?</th><th>Gap / passo humano</th></tr>
+<tr><td>Criar catálogo (<code>owned_product_catalogs</code>)</td><td><code>business_management</code> + <code>catalog_management</code></td><td class='no'>❓ catalog_management provavelmente não</td><td><strong>Gerar system-user token com <code>catalog_management</code></strong></td></tr>
+<tr><td>Upsert de produtos (<code>/batch</code>, <code>/products</code>)</td><td><code>catalog_management</code></td><td class='no'>idem</td><td>idem — mesmo token do catálogo</td></tr>
+<tr><td>Vincular à WABA (<code>/product_catalogs</code>)</td><td><code>whatsapp_business_management</code></td><td class='ok'>✅</td><td>nenhum</td></tr>
+<tr><td>Product message WhatsApp</td><td>token da Cloud API (em uso)</td><td class='ok'>✅</td><td>nenhum</td></tr>
+<tr><td>Generic template IG</td><td><code>instagram_manage_messages</code> + page token</td><td class='ok'>✅</td><td>nenhum</td></tr></table>
+<p><span class='warn'>[Provável]</span> <strong>O único gap real é <code>catalog_management</code>.</strong> Os tokens atuais cobrem o runtime de envio e a vinculação, mas <strong>não</strong> cobrem criar catálogo nem escrever produtos. Passo humano: <strong>criar um System User no Business Manager (1331611869008138), dar acesso ao catálogo com <code>catalog_management</code>, gerar token permanente e guardá-lo</strong> — a edge o lê da mesma connection ou de uma chave dedicada; devolve erro estruturado #200 se faltar o escopo.</p>
+<hr>
+<h2>4. A edge <code>platform-commerce-sync</code> (ENTREGA 2)</h2>
+<p><code>apps/NexvyBeauty/supabase/functions/platform-commerce-sync/index.ts</code> — <strong>autorada, <code>deno check</code> verde, NÃO deployada.</strong></p>
+<ul>
+<li><strong>Action <code>sync</code></strong>: lê <code>public_plans</code> (<code>name, slug, price_monthly, checkout_url</code>) → requests <code>UPDATE</code> → <code>POST /{catalog_id}/batch</code>.</li>
+<li><strong>retailer_id</strong> = <code>plan-&lt;slug&gt;</code> (estável, idempotente).</li>
+<li><strong>price</strong> = <code>Math.round(price_monthly * 100)</code> (centavos).</li>
+<li><strong>catalog_id</strong> = <code>platform_settings.meta_commerce_catalog_id</code>.</li>
+<li><strong>image_url</strong> = <code>platform_settings.meta_commerce_default_image_url</code> (opcional, configurável).</li>
+<li><strong>Credenciais</strong>: connection ativa + <code>decryptSecret</code> — padrão meta da casa.</li>
+<li><strong>Auth</strong>: <code>authenticatePlatformAgent</code> (super_admin JWT <strong>ou</strong> service_role + <code>actorUserId</code> — caminho do trigger/cron).</li>
+<li><strong>Idempotente + erros estruturados</strong>; itens sem slug/checkout/preço são <strong>pulados com <code>skipped[]</code></strong>, nunca derrubam o batch.</li>
+<li><strong><code>dryRun: true</code></strong>: devolve os requests montados sem chamar a Graph.</li>
+</ul>
+<h3>4.1 Ligar o sync automático (SQL de referência — NÃO aplicado aqui)</h3>
+<pre><code>create extension if not exists pg_net;
+
+create or replace function public.trg_commerce_sync_on_plan_change()
+returns trigger language plpgsql security definer as $$
+begin
+  perform net.http_post(
+    url     := current_setting('app.settings.functions_url') || '/platform-commerce-sync',
+    headers := jsonb_build_object(
+                 'Content-Type','application/json',
+                 'Authorization','Bearer ' || current_setting('app.settings.service_role_key')),
+    body    := jsonb_build_object('action','sync','actorUserId', '&lt;super_admin_uuid&gt;')
+  );
+  return coalesce(new, old);
+end $$;
+
+create trigger commerce_sync_after_plan_change
+  after insert or update of name, price_monthly, checkout_url on public.platform_plans
+  for each row execute function public.trg_commerce_sync_on_plan_change();</code></pre>
+<hr>
+<h2>5. Sequência de execução (quando sair do groundwork)</h2>
+<ol>
+<li><strong>[humano/Meta]</strong> Criar System User + token com <code>catalog_management</code>.</li>
+<li><strong>[humano/Meta]</strong> <code>POST /1331611869008138/owned_product_catalogs</code> → catalog_id.</li>
+<li><strong>[humano/DB]</strong> Gravar <code>meta_commerce_catalog_id</code> (+ <code>meta_commerce_default_image_url</code>) em <code>platform_settings</code>.</li>
+<li><strong>[humano/Meta]</strong> Vincular catálogo à WABA <code>976904392005535</code>.</li>
+<li><strong>[código]</strong> Deploy <code>platform-commerce-sync</code>; <code>dryRun:true</code> → conferir → <code>sync</code> real (backfill).</li>
+<li><strong>[código/migration]</strong> Criar o trigger <code>pg_net</code> em <code>platform_plans</code> (§4.1).</li>
+<li><strong>[código]</strong> Aplicar o diff do runtime (ENTREGA 3) no <code>platform-webchat-inbox</code>.</li>
+<li><strong>[verificação]</strong> Editar um plano no gestão → conferir item atualizado (<code>GET /{catalog_id}/products?fields=retailer_id,name,price</code>).</li>
+</ol>
+<hr>
+<h2>6. Riscos e decisões pendentes do dono</h2>
+<ul>
+<li><span class='ok'>[Certo]</span> <strong><code>catalog_management</code> é o bloqueio.</strong> Sem esse token nada escreve no catálogo. Passo humano na Meta.</li>
+<li><span class='warn'>[Provável]</span> <strong>Imagem dos planos.</strong> Planos não têm coluna de imagem hoje. Default por marca (rápido) vs imagem por plano (coluna nova). A edge suporta as duas via <code>meta_commerce_default_image_url</code>.</li>
+<li><span class='warn'>[Palpite]</span> <strong>Moeda.</strong> Fixei <code>BRL</code>. Outra moeda vira coluna.</li>
+<li><span class='ok'>[Certo]</span> <strong>Remoção de plano.</strong> UPSERT não apaga. Plano despublicado fica no catálogo até um <code>action:'prune'</code> (DELETE) — TODO na edge, fora deste groundwork.</li>
+<li><strong>Token dedicado × reuso do token da connection.</strong> A edge reusa o token da connection; isolar é uma chave nova em <code>platform_settings</code> (3 linhas).</li>
+</ul>
+</body></html>

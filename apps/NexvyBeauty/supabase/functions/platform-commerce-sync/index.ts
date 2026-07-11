@@ -274,13 +274,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2) credenciais da connection ativa
-    const { conn, reason } = await resolveActiveConnection(supabase, connectionIdInput);
-    if (!conn) {
-      return jsonError(reason ?? 'no_active_connection', 'Nenhuma conexão Meta ativa disponível', reason === 'connection_not_found' ? 404 : 422);
-    }
-    if (!conn.access_token_encrypted) {
-      return jsonError('connection_incomplete', 'conexão sem access_token', 422);
+    // 2) token do catálogo — prioriza o SECRET DEDICADO (system-user token com
+    //    catalog_management), isolado do token de mensagens do WhatsApp. Sem o
+    //    secret, cai no token da connection Meta ativa (compat legado). O batch
+    //    de catálogo só precisa de catalog_id + token; a WABA connection não é
+    //    necessária quando o secret está presente.
+    const envToken = Deno.env.get('META_COMMERCE_TOKEN')?.trim() || null;
+    let conn: MetaConnection | null = null;
+    if (!envToken) {
+      const resolved = await resolveActiveConnection(supabase, connectionIdInput);
+      if (!resolved.conn) {
+        return jsonError(
+          resolved.reason ?? 'no_active_connection',
+          'Sem META_COMMERCE_TOKEN e nenhuma conexão Meta ativa disponível',
+          resolved.reason === 'connection_not_found' ? 404 : 422,
+        );
+      }
+      if (!resolved.conn.access_token_encrypted) {
+        return jsonError('connection_incomplete', 'conexão sem access_token', 422);
+      }
+      conn = resolved.conn;
     }
 
     // 3) planos públicos (verdade da origem)
@@ -305,7 +318,7 @@ Deno.serve(async (req) => {
 
     const summary = {
       catalog_id: catalogId,
-      connection_id: conn.id,
+      connection_id: envToken ? 'env:META_COMMERCE_TOKEN' : conn!.id,
       plans_total: plans.length,
       to_upsert: requests.map((r) => r.retailer_id),
       skipped,
@@ -318,13 +331,17 @@ Deno.serve(async (req) => {
       return json({ ok: true, dryRun: false, ...summary, note: 'nenhum plano elegível para upsert' });
     }
 
-    // 5) token + entrega
+    // 5) token + entrega — secret dedicado (uso direto) OU token da connection (decrypt)
     let token: string;
-    try {
-      token = await decryptSecret(conn.access_token_encrypted);
-    } catch (e) {
-      console.error('[platform-commerce-sync] token decrypt failed:', String(e).slice(0, 200));
-      return jsonError('token_decrypt_failed', 'falha ao decriptar o token da conexão', 500);
+    if (envToken) {
+      token = envToken;
+    } else {
+      try {
+        token = await decryptSecret(conn!.access_token_encrypted!);
+      } catch (e) {
+        console.error('[platform-commerce-sync] token decrypt failed:', String(e).slice(0, 200));
+        return jsonError('token_decrypt_failed', 'falha ao decriptar o token da conexão', 500);
+      }
     }
 
     const result = await sendCatalogBatch(catalogId, token, requests);

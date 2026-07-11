@@ -20,6 +20,7 @@ import {
   useCreatePlan,
   useUpdatePlan,
   useSyncCaktoOffer,
+  useSyncCommerceCatalog,
 } from '@/hooks/usePlatformPlans';
 import { MODULE_DEFINITIONS } from '@/config/modules';
 
@@ -141,6 +142,7 @@ export function PlanFormBody({
   const createPlan = useCreatePlan();
   const updatePlan = useUpdatePlan();
   const syncCakto = useSyncCaktoOffer();
+  const syncCommerce = useSyncCommerceCatalog();
 
   useEffect(() => {
     setForm(plan ? { ...(plan as any) } : emptyPlan);
@@ -171,6 +173,9 @@ export function PlanFormBody({
       // Geração automática do checkout Cakto (não bloqueia o salvar do plano).
       if (saved?.id) {
         await maybeSyncCakto(saved.id);
+        // Mesmo mecanismo, agora para o catálogo Meta (cards nativos): full sync
+        // idempotente dos planos públicos. Não bloqueia o save.
+        await maybeSyncCommerce();
       }
       onSaved?.(saved ?? form);
     } catch (err: any) {
@@ -188,6 +193,19 @@ export function PlanFormBody({
       if (generated) toast.success('Checkout Cakto gerado/atualizado');
     } catch (e: any) {
       toast.warning(`Plano salvo, mas a oferta Cakto não foi gerada: ${e?.message ?? e}`);
+    }
+  };
+
+  // Atualiza o Product Catalog do Meta (cards nativos) — full sync idempotente
+  // dos planos públicos. Skip silencioso quando o catálogo não está configurado
+  // neste deploy; feedback sem interromper o fluxo de save.
+  const maybeSyncCommerce = async () => {
+    try {
+      const res = await syncCommerce.mutateAsync();
+      if (res?.skipped) return; // catálogo Meta não configurado -> nada a fazer
+      if ((res?.upserted ?? 0) > 0) toast.success('Catálogo Meta sincronizado');
+    } catch (e: any) {
+      toast.warning(`Plano salvo, mas o catálogo Meta não sincronizou: ${e?.message ?? e}`);
     }
   };
 

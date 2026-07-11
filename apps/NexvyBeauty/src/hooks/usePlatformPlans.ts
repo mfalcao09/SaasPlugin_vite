@@ -259,6 +259,55 @@ export function useSyncCaktoOffer() {
   });
 }
 
+// ---- Sincronização do catálogo Meta Commerce (cards nativos) ----------------
+// Espelha o padrão do Cakto acima: o frontend chama a edge platform-commerce-sync
+// com o JWT do super_admin (mesmo gate das demais platform-*). Empurra os planos
+// públicos (full sync idempotente) para o Product Catalog do Meta, para os cards
+// nativos de WhatsApp/Instagram refletirem gestão. Sem trigger/vault/secret novo.
+
+export interface CommerceSyncResult {
+  ok?: boolean;
+  // skip semântico (mesmo contrato do Cakto): catálogo não configurado neste
+  // deploy -> não é erro, só não há o que sincronizar.
+  skipped?: boolean;
+  reason?: string;
+  dryRun?: boolean;
+  catalog_id?: string;
+  upserted?: number;
+  to_upsert?: string[];
+  plans_total?: number;
+  error?: string;
+  message?: string;
+}
+
+export function useSyncCommerceCatalog() {
+  return useMutation({
+    mutationFn: async (): Promise<CommerceSyncResult> => {
+      const { data, error } = await supabase.functions.invoke('platform-commerce-sync', {
+        body: { action: 'sync' },
+      });
+      if (error) {
+        // FunctionsHttpError esconde o corpo real na Response.
+        const ctx = (error as { context?: { json?: () => Promise<CommerceSyncResult> } }).context;
+        let body: CommerceSyncResult | null = null;
+        try {
+          body = (await ctx?.json?.()) ?? null;
+        } catch {
+          /* mantém error.message */
+        }
+        // Catálogo não configurado neste deploy -> skip silencioso, não é falha.
+        if (body?.error === 'catalog_not_configured') {
+          return { skipped: true, reason: 'catalog_not_configured' };
+        }
+        throw new Error(body?.message ?? body?.error ?? error.message);
+      }
+      const result = (data ?? {}) as CommerceSyncResult;
+      if (result.ok === false) throw new Error(result.message ?? result.error ?? 'sync falhou');
+      return result;
+    },
+  });
+}
+
 export interface CaktoPlanSyncResult {
   plan_id: string;
   plan_name: string;
