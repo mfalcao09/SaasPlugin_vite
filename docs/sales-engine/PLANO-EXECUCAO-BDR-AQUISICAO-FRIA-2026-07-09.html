@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano de Execução — BDR de Aquisição Fria · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#111823; --card:#131c28; --line:#22303f;
+    --tx:#dce6f0; --mut:#8aa0b4; --acc:#4fd1c5; --acc2:#7aa2ff;
+    --red:#ff6b6b; --yel:#ffcc5c; --grn:#5ce6a1; --code:#0e151d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0a0e13 60%);color:var(--tx);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+  header{padding:44px 0 22px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  h1{font-size:29px;line-height:1.2;margin:0 0 10px;letter-spacing:-.4px}
+  h1 .lob{color:var(--acc)}
+  .meta{color:var(--mut);font-size:14px}.meta b{color:var(--tx)}
+  h2{font-size:21px;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line);letter-spacing:-.3px}
+  h3{font-size:16px;margin:20px 0 8px;color:var(--acc2)}
+  p{margin:10px 0} ul,ol{padding-left:22px} li{margin:5px 0}
+  a{color:var(--acc);text-decoration:none;border-bottom:1px solid rgba(79,209,197,.35)}
+  code{background:var(--code);padding:1.5px 6px;border-radius:5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#c7f0ea}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.45}
+  pre code{background:none;padding:0;color:#a9c4d6}
+  .callout{background:var(--bg2);border-left:3px solid var(--acc);border-radius:8px;padding:12px 16px;margin:16px 0}
+  .key{background:linear-gradient(90deg,rgba(79,209,197,.10),rgba(122,162,255,.06));border:1px solid var(--line);border-left:3px solid var(--yel);border-radius:8px;padding:14px 16px;margin:18px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--bg2);color:var(--acc2);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+  .tag{display:inline-block;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:ui-monospace,monospace;font-size:12px;color:var(--acc)}
+  .c-cert{color:var(--grn);font-weight:600}.c-prov{color:var(--yel);font-weight:600}.c-palp{color:var(--red);font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+  .big{font-size:22px;font-weight:700;color:var(--acc)}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span class="lob">🎯</span> Plano de Execução — BDR de Aquisição Fria</h1>
+  <div class="meta"><b>2026-07-09</b> · Claude para Marcelo Silva · NexvyBeauty · <span class="pill">spec build-ready + checklist dia-0</span> <span class="pill" style="border-color:var(--grn);color:var(--grn)">10 decisões CRAVADAS</span></div>
+  <p class="meta" style="margin-top:8px">Dorme até "produto no ar". Gate invariável: aquisição fria é <b>pós-Decolagem-verde</b>, não pós-provisionamento.</p>
+  <p class="meta" style="margin-top:6px"><span class="pill" style="border-color:var(--yel);color:var(--yel)">⚑ DONO desde 2026-07-09</span> Execução + orquestração pertencem à sessão <b>GO-LIVE (local_d4bae0c2)</b>, centralizado. A sessão BDR de origem = suporte de contexto/consulta. Pendências D5 + D6/D7 + build B1-B7 + guardrail são da GO-LIVE.</p>
+</header>
+
+<h2>1. Decisões cravadas (o registro)</h2>
+<table>
+<tr><th>#</th><th>Decisão</th><th>Cravado</th></tr>
+<tr><td><b>D1</b></td><td>Canal do lead frio</td><td><b>Ads → click-to-WhatsApp → opt-in no número oficial → Duda.</b> Nunca frio no oficial.</td></tr>
+<tr><td><b>D2</b></td><td>Autonomia v1</td><td><b>Playbook fixo + tetos + kill-switch</b>, com aprovação em lote na calibragem.</td></tr>
+<tr><td><b>D3</b></td><td>Fonte de scrap</td><td><b>Instagram &gt; TikTok &gt; Maps</b> (dados: IG dá 56% de celular casável; Maps daria fixo).</td></tr>
+<tr><td><b>D4</b></td><td>ICP / keywords</td><td><b>nails, cabeleireira, manicure, lash, sobrancelha</b>. Micro-negócio (média 4,2k seg.).</td></tr>
+<tr><td><b>D5</b></td><td>Isca + criativos</td><td><b>a elaborar</b> — config, não bloqueia build.</td></tr>
+<tr><td><b>D6</b></td><td>Verba inicial</td><td><b>R$500</b> — orçamento de aprendizado (revela custo-por-opt-in).</td></tr>
+<tr><td><b>D7</b></td><td>Volume</td><td>semente <b>limpa</b> de milhares de celulares-ICP, <b>ritmo sustentável</b>; verba define o teto.</td></tr>
+<tr><td><b>D8</b></td><td>Fronteira</td><td>nós = <b>aquisição → opt-in → handoff</b>; a venda é da Duda.</td></tr>
+<tr><td><b>D9</b></td><td>Auto-melhoria (Hermes/eval)</td><td><b>diferida p/ v2.</b> v1 = playbook fixo.</td></tr>
+<tr><td><b>D10</b></td><td>LGPD</td><td><b>legítimo interesse + opt-out + origem</b>, reusando <code>consent_log</code> da GO-LIVE.</td></tr>
+</table>
+
+<h2>2. Realidade dos dados <span class="pill">trial 2026-07-06 · 124 leads · 5 keywords</span></h2>
+<table>
+<tr><th>Sinal</th><th>Número</th><th>Leitura</th></tr>
+<tr><td>Com telefone/WhatsApp</td><td class="big">77%</td><td>95/124 — a prospectagram extrai contato da bio</td></tr>
+<tr><td><b>Celular real casável</b></td><td class="big">56%</td><td>70/124 — o resto é fixo/inválido (descartar)</td></tr>
+<tr><td>Email</td><td>0</td><td>e-mail não é o canal, confirmado</td></tr>
+<tr><td>Porte (seguidores)</td><td>21–60k (méd. 4,2k)</td><td>ICP exato de micro-beleza</td></tr>
+</table>
+<div class="callout"><b>Implicação:</b> match esperado ~<b>56%</b> (só celulares limpos) — bom pra custom direto E ótimo pra semente de lookalike. O pipeline <b>descarta fixo/inválido</b> antes de subir pra Meta. IG &gt; Maps validado pelos dados, não só pela intuição.</div>
+
+<h2>3. Arquitetura</h2>
+<pre><code>IG (keywords D4) ──scrape──▶ prospect_staging ──valida/dedup/normaliza──▶ celulares-ICP limpos
+                                          ┌──────────────────────────────────┤
+                                          ▼                                   ▼
+                                  Custom Audience (direto)           Lookalike (semente)
+                                          └──────────────┬───────────────────┘
+                                                         ▼
+                                     Campanha ADS (verba D6, criativos D5)
+                                                         │ click-to-WhatsApp
+                                                         ▼
+                         wa.me/&lt;número-oficial&gt;?text=Gostaria de saber mais sobre o NexvyBeauty
+                                                         │ = INBOUND opt-in (nunca frio)
+                                                         ▼
+                                     Duda (platform-sales-brain) qualifica → vende</code></pre>
+<h3>A construir (nosso)</h3>
+<ul>
+  <li><b>Scraper IG</b> (reusa prospectagram / Apify ban-aware) → <code>prospect_staging</code>, ritmo sustentável.</li>
+  <li><b><code>prospect_staging</code></b> — tabela ADITIVA no sales-spark: <code>handle, nome, telefone_e164, is_mobile, whatsapp_link, seguidores, bio, palavras_chave, origem, dedupe_key, status</code> + RLS org-scoped.</li>
+  <li><b>Pipeline</b> valida/dedup/normaliza (E.164, filtra celular, dedup) — só <code>validated</code> sobe.</li>
+  <li><b>Exportador</b> de custom audience (CSV E.164). Upload manual v1; Marketing API v2.</li>
+  <li><b>Guardrails</b>: kill-switch, tetos diários, circuit-breaker por sinal. <b>Circuit-breaker = módulo COMPARTILHADO com a GO-LIVE</b> (<code>shared/outbound-guardrail</code>, acordado 2026-07-09): mesmo motor, cada frente pluga política+sinal. Não construir solo — sync antes de fechar o schema.
+    <b>Contrato de interface (travado entre sessões):</b>
+    <code>Signal = {ts, metric_id, value, window}</code> (série normalizada; adapter traduz a fonte real → Signal) ·
+    <code>Policy = {metric_id, yellow_at, red_at, window, cooldown}</code> (declarativa; histerese via cooldown).
+    Núcleo burro: Signal vs Policy → <code>pause/resume/alert</code>; convenção <b>maior = pior</b> (métrica "menor=pior" é invertida no adapter). Kill-switch por frente (nós: ads+Duda; GO-LIVE: disparo Baileys).</li>
+</ul>
+<h3>Já existe (não reconstruir)</h3>
+<ul>
+  <li>Número oficial + webhook + <b>Duda</b> — provado E2E pela GO-LIVE.</li>
+  <li>sales-spark (cadências/memória/A-B) · <code>consent_log</code> (GO-LIVE cria na Onda 1).</li>
+</ul>
+
+<h2>4. Sequência de build</h2>
+<table>
+<tr><th>Passo</th><th>Entrega</th><th>Check binário</th></tr>
+<tr><td>B1</td><td><code>prospect_staging</code> (migration aditiva)</td><td>aplica limpa; RLS testada; sincronizada c/ consent_log</td></tr>
+<tr><td>B2</td><td>Scraper IG → staging</td><td>run popula ≥N validados; ritmo sem derrubar conta</td></tr>
+<tr><td>B3</td><td>Pipeline validar/dedup</td><td>124 brutos → ~70 celulares limpos <code>validated</code></td></tr>
+<tr><td>B4</td><td>Exportador custom audience</td><td>CSV E.164 pronto pro Ads Manager</td></tr>
+<tr><td><b>B5</b></td><td><b>Teste de match-rate (grátis)</b></td><td>≥30% → custom direto; &lt;30% → lookalike</td></tr>
+<tr><td><b>B6</b></td><td><b>Campanha piloto (R$500)</b></td><td>mede <b>custo-por-opt-in</b>; cai na Duda</td></tr>
+<tr><td>B7</td><td>Guardrails</td><td>kill-switch testado; teto corta; circuit-breaker dispara</td></tr>
+</table>
+<div class="key"><b>B5 e B6 são o coração empírico.</b> Tudo antes é encanamento; eles dizem se a operação fecha (custo-por-opt-in &lt; valor do cliente).</div>
+
+<h2>5. Checklist dia-0 (quando a GO-LIVE der o verde)</h2>
+<ol>
+  <li>Confirmar com GO-LIVE: Decolagem-verde + oficial + Duda estáveis.</li>
+  <li>Scraper IG (keywords D4) → <code>prospect_staging</code> (1ª leva).</li>
+  <li>Pipeline valida → celulares-ICP limpos.</li>
+  <li><b>Teste de match-rate</b> → custom-direto vs lookalike.</li>
+  <li>Criativos (D5) + campanha R$500, destino click-to-WhatsApp → oficial.</li>
+  <li>Ligar guardrails (kill-switch, tetos, circuit-breaker).</li>
+  <li>Monitorar 48-72h: custo-por-opt-in, report-rate, opt-in→demo.</li>
+  <li>Escala: custo-por-opt-in aceitável → aumenta verba; senão itera criativo/ICP.</li>
+</ol>
+
+<h2>6. Config em aberto (não bloqueia build)</h2>
+<ul>
+  <li><b>D5 — Isca:</b> valor-diagnóstico ("descubra quantas clientes sumiram da sua agenda") &gt; pitch direto. Precisa da voz do Marcelo + criativos.</li>
+  <li><b>D10 — LGPD:</b> reusar <code>consent_log</code>; opt-out no 1º toque da Duda; campo <code>origem</code> dia 1.</li>
+  <li><b>D6/D7 — parâmetros</b> (verba/dia, teto scrape/dia) na largada.</li>
+</ul>
+
+<h2>7. Riscos e guardrails</h2>
+<ul>
+  <li>Número oficial nunca frio, só inbound opt-in + circuit-breaker por quality-rating. <span class="c-cert">[Certo]</span></li>
+  <li>Scraping IG: contas caem → ritmo sustentável, Apify ban-aware, nunca burst. <span class="c-prov">[Provável]</span></li>
+  <li>Match sujo: fixo/inválido descartado antes da Meta. <span class="c-cert">[Certo]</span></li>
+  <li>Verba: R$500 é aprendizado; escalar só com custo-por-opt-in provado. <span class="c-cert">[Certo]</span></li>
+  <li>LGPD: legítimo interesse só com opt-out imediato + minimização + origem. <span class="c-prov">[Provável]</span></li>
+  <li>Colisão GO-LIVE: <code>prospect_staging</code> aditiva; PR que toque o brain sincroniza antes.</li>
+</ul>
+
+<h2>8. Flags de honestidade</h2>
+<ul>
+  <li>77% telefone / 56% celular: <span class="c-cert">[Certo]</span> (medido no trial).</li>
+  <li>Match ~56%: <span class="c-prov">[Provável]</span> — confirmar no B5 (grátis).</li>
+  <li>IG &gt; Maps: <span class="c-prov">[Provável]</span>, sustentado pelos dados.</li>
+  <li>Custo-por-opt-in de R$500: <span class="c-palp">[Palpite]</span> — só o B6 revela.</li>
+</ul>
+
+<div class="key"><b>Pendências do Marcelo (HITL):</b> (1) aprovar isca D5 + criativos; (2) setar verba/dia e teto scrape/dia; (3) dar o "vai" quando a GO-LIVE confirmar produto no ar.</div>
+
+<h2>10. Prompt de início da sessão executora <span class="pill">copiar/colar</span></h2>
+<p class="meta">Cole o bloco abaixo como primeira mensagem da <b>nova sessão executora</b>, no dia do "vai". Bootstrapa a sessão com o gate, a ordem de trabalho e a coordenação — sem depender do histórico desta discussão.</p>
+<pre><code>Você é a sessão EXECUTORA da frente BDR de Aquisição Fria do NexvyBeauty.
+FONTE DE VERDADE: docs/sales-engine/PLANO-EXECUCAO-BDR-AQUISICAO-FRIA-2026-07-09.md
+— leia o arquivo INTEIRO antes de qualquer ação.
+
+GATE (invariável): só construa/execute se a sessão GO-LIVE
+(local_d4bae0c2 "NexvyBeauty: GO LIVE") já confirmou "produto no ar / Onda 1
+iniciada". Se ela ainda NÃO confirmou, PARE e avise o Marcelo — construir antes
+é foguete sem pista.
+
+ESTADO: as 10 decisões (D1-D10) estão cravadas (§1 do doc). Nada foi construído.
+A branch feat/sales-eval-p1 (refactor antigo da Duda) foi DELETADA de propósito —
+ignore, pertencia à v2 (D9 diferido). Rode `git status` e verifique o working-tree
+antes de tocar em qualquer coisa (há sessões paralelas — cautela).
+
+ORDEM DE TRABALHO: siga a sequência B1→B7 (§4 do doc). Comece por B1 (migration
+ADITIVA `prospect_staging` — NÃO altere leads/conversations que a Duda consome).
+Cada passo tem check binário; não avance sem provar o anterior. O coração é B5
+(teste de match-rate, grátis) + B6 (piloto R$500 medindo custo-por-opt-in).
+
+COORDENAÇÃO OBRIGATÓRIA: o circuit-breaker é um módulo COMPARTILHADO
+(`shared/outbound-guardrail`). ANTES de projetar/construir o guardrail, pingue a
+GO-LIVE (local_d4bae0c2) pra convergir no schema — NÃO construa um solo. Qualquer
+PR que toque `platform-sales-brain` também exige sync com ela antes.
+
+DADOS: amostra em ~/Downloads/prospectagram-leads-unificado-2026-07-06.{csv,json}
+(124 leads trial; 77% com telefone, 56% celular casável). É PII REAL — nunca
+commitar dado pessoal; só schema/agregados.
+
+PENDÊNCIAS DO MARCELO (não construa sem, pergunte se faltarem): D5 (isca +
+criativos), parâmetros D6/D7 (verba/dia, teto de scrape/dia).
+
+Comece confirmando o GATE com o Marcelo. Se verde, leia o doc e ataque B1.</code></pre>
+
+<footer>Plano de Execução BDR · Aquisição Fria · NexvyBeauty · 2026-07-09 · gerado por Claude. Par <code>.md</code>: <code>PLANO-EXECUCAO-BDR-AQUISICAO-FRIA-2026-07-09.md</code></footer>
+</div>
+</body>
+</html>

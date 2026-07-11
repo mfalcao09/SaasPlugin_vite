@@ -15,8 +15,15 @@
 | **P1.B — L4.0 + L4.1** (rubric 🔒 TRAVADA) | ✅ **DONE+DEPLOY+✅ VALIDADO MARCELO** | PRs #11+#12 → `94f0045` · `index-DyfytF6b.js` 4 hosts · **gate visual APROVADO 07-11 ("Toca em frente, visual validado!!")** |
 | **P1.B — L4.4 (F4) + L4.5 (F6)** | ✅ revisadas+merge | PRs #13+#14 → `784ff71` · diffs 100% visuais · F4/F6 já estavam ~conformes (L4.0 fez o grosso); tipografia + arco-íris completado + KPI green→primary |
 | **P1.B — L4.2 (F5-ERP)** | ✅ revisada+merge | PR #15 `e92c97b` — 6 telas ERP (86-88), receita F5 calibrada, colisão de checkout auto-reconciliada (lição: worktrees) |
-| **P1.B — L4.3 (F5-Vendas) ∥ L4.6 (F1-Mia)** | 🔄 ondas FINAIS em paralelo | worktrees ISOLADOS (`-l43`/`-l46`) · L4.3 propaga receita da L4.2 · depois: merge → **deploy consolidado → 2ª validação Marcelo** |
-| 🐛 **Card nativo: envio de catálogo sai como LINK** (reporte Marcelo na validação) | 📌 card criado | provável: send path monta texto em vez de `interactive type='product'`; verificar também vínculo catálogo↔WABA (one-time) · frente própria, momento oportuno |
+| **P1.B — L4.3 + L4.6 (finais)** | ✅ revisadas+merge | PRs #16+#18 — L4.3: 8 telas Vendas (87-91) · L4.6: Mia+agenda (diff mínimo, F1 já conforme) |
+| **P1.B — LUX L4 COMPLETO (6/6 ondas)** | ✅ **DONE — VALIDADO MARCELO 07-11** | "Tudo validado" · violet-IA ratificado como semântica (§1.3 da rubric) · prod `index-B2JtzwHl.js` |
+| **🏁 P1 INTEIRO** | ✅ **COMPLETO E VALIDADO** | P1.A + P1.A2 + P1.B (6/6) + P1.C — todos com deploy provado + gate visual aprovado |
+| ♻️ Errata Utmify (P4/D10) | ✅ aprovada Marcelo 07-11 | Utmify absorvida como Fase 2 do NexvyAds (atribuição) — registrada no MEMORY |
+| **P2.A-0 — fundação do cérebro** | ✅ **DONE** | 🎉 ACHADO: 9 tabelas JÁ existiam (F4/db-spine, mergeado hoje — DELTA auditou antes) · faltava só a 10ª (`agent_training_materials`, 15==15, RLS provado) — PR #20 `6824b93` · **P2.A encolheu de ~11-12d pra religação** |
+| **P2.A-1 — religar hooks (fim dos stubs)** | ✅ **DONE+DEPLOY** | PR #21 `8c1605f` — 8 subsistemas CRUD real · review adversarial Opus APROVOU (zero mismatch de coluna); orquestrador FECHOU as 2 ressalvas live (buckets path-agnósticos ✅ / schema==migration ✅) + corrigiu 2 nits (enabled guard + tipo NOT NULL) · bundle `index-DnoQkIgH.js` 200 · **cérebro persiste de verdade em prod** |
+| **P2.A-2 — edges twin (pipelines)** | ✅ **verify APROVADO + commit `3925df6`** · 🚀 deploy em curso | WF `ww9uhyszl`: 9 edges portadas 1:1 (deno EXIT=0 cada) + 5 stubs religados · verify adversarial: gate anti-`organization_id` LIMPO (só `.is(null)` discriminador), tsc delta-0, build verde · minha re-checagem: 9/9 com `authenticatePlatformAgent`, secrets AI_API_KEY/AI_GATEWAY_URL ✅ (LOVABLE=fallback), FIRECRAWL pendente (edge dormente sem caller) · branch `feat/p2a2-cerebro-edges` |
+| 🐛 Card nativo: envio de catálogo saía como LINK | ✅ **RESOLVIDO** (sessão spin-off) | PR #19 `ab95943` + deploy — WhatsApp `interactive product` + IG template + fallback link · **WABA↔catálogo VINCULADO** em prod · ⏳ HITL: Marcelo reenvia um plano no chat e confirma o card |
+| 🐛 Auth service_role nas edges platform-* | ✅ **RESOLVIDO** (sessão 5de0b2f1) | NÃO estava quebrado: runtime injeta a key NOVA `sb_secret_*` como SUPABASE_SERVICE_ROLE_KEY; só falha quem usa a JWT LEGADA. Fix (c): callers externos usam a `sb_secret` (ZERO código). Caminho service_role+actorUserId PROVADO 200 E2E. **HITL só se/quando escrever trigger pg_net:** obter a sb_secret real (dashboard/Mgmt API — CLI mascara) pra gravar no Vault |
 | **P1.C — GOs executados** | ✅ | db-spine mergeado (PR #7) · seed 4 produtos no banco (Beauty published + LAW/Ads/Payments draft) |
 | **P1.C — F2 re-enxerto ProductContext** | ✅ **DONE+DEPLOY+RUNTIME** | PR #9 `93e7754` + deploy (`index-DVCtvFO1.js`) + **prova runtime via chrome_control**: LAW ativo→0 leads · Todos→6 leads · chip+localStorage corretos |
 | **P1.B — L4.0 rubric v2 + worklist hardcode** | 🔄 prep | agente Opus escreve `TEMPLATE-UI-GESTAO_v2` (re-ancora navy, sai do azul) + worklist exata dos ~50 hardcodes — SEM aplicar; tua revisão antes de tocar arquivo |
@@ -31,7 +38,7 @@
 | Decolagem: nº Meta API salão-teste | ☐ | |
 | Decolagem: funil E2E | 🔚 por último | ordem Marcelo |
 
-> **Governança de execução:** subagentes = **Opus 4.8**; orquestração/revisão = Fable (ordem Marcelo 07-11, economia).
+> **Governança de execução (v2, ordem Marcelo 07-11 noite):** sessão = **Opus 4.8 Ultracode** (orquestra+revisa); subagentes = **Sonnet 5** default, **Opus** p/ porte 1:1/merge semântico/auditoria; Fable autorizado se complexidade exigir. Fan-out real via **Workflow**.
 
 ---
 

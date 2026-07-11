@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano de Execução — Onboarding DECOLAGEM · 2026-07-09</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;padding:0 1rem 3rem;max-width:1120px;margin:0 auto}
+  header{padding:2.2rem 0 1.2rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .kicker{color:var(--gold);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase}
+  h1{font-size:1.7rem;color:#fff;margin:.3rem 0 .2rem}
+  .sub{color:var(--muted);font-size:.88rem}
+  .status{display:inline-block;margin-top:.6rem;padding:.2rem .7rem;border-radius:99px;background:#0f2a1a;color:var(--green);font-size:.78rem;font-weight:600}
+  h2{font-size:1.14rem;color:var(--gold);margin:2rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1rem;color:var(--blue);margin:1.3rem 0 .5rem}
+  p{margin:.5rem 0}
+  blockquote{border-left:3px solid var(--rose);padding:.5rem .9rem;color:var(--muted);margin:.8rem 0;background:var(--panel);border-radius:0 8px 8px 0}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.84rem}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.5rem .65rem;border:1px solid var(--border)}
+  td{padding:.45rem .65rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:.12rem .4rem;border-radius:5px;font-size:.82em;color:var(--rose)}
+  ul,ol{margin:.5rem 0 .5rem 1.4rem}
+  li{margin:.28rem 0}
+  .wave{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin:1rem 0}
+  .wave h3{margin-top:0}
+  .wave .checks{background:var(--panel2);border-radius:8px;padding:.6rem .8rem;font-size:.83rem;margin-top:.6rem}
+  .wave .checks b{color:var(--green)}
+  .wrap{overflow-x:auto}
+  .footer{margin-top:2.4rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+  .hitl{color:var(--yellow)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">NexvyBeauty · handoff para sessão paralela</div>
+  <h1>PLANO DE EXECUÇÃO — Onboarding "DECOLAGEM" ✈️</h1>
+  <p class="sub">2026-07-09 · origem: sessão 6cf2fc02 (Fable) · doc-mãe: DESENHO-ONBOARDING-NEXVYBEAUTY-2026-07-09 (APROVADO)</p>
+  <span class="status">🟢 PRONTO PARA HANDOFF — aguardando "vai" do Marcelo</span>
+</header>
+
+<blockquote><b>Regra de vida:</b> onda N+1 só abre com Review da N preenchido (DESENHO §14). Toda entrega exige EVIDÊNCIA (commit + file:line + prova viva). Sessão morrer → handoff obrigatório com herdeiro nomeado. Divergência plano×desenho → o DESENHO manda.</blockquote>
+
+<h2>0. Contexto mínimo (self-contained)</h2>
+<ul>
+<li><b>Repo:</b> <code>~/Projects/GitHub/SaasPlugin_vite</code> (base <code>main</code>), app <code>apps/NexvyBeauty/</code> · Supabase <code>fzhlbwhdejumkyqosuvq</code></li>
+<li><b>PROVADO em prod (não reconstruir):</b> S0 provisionamento completo (E2E 07-08; cakto-webhook v19/reprocess v17 ACTIVE) · booking + dispatcher WhatsApp · motor F2 c/ Duda/Bia (evals 12/12) · Lux L1-L3</li>
+<li><b>Fonte do backlog:</b> LEVANTAMENTO-PENDENCIAS-REAIS-2026-07-08 (docs antigos mentem; erratas em curso)</li>
+<li><b>Critério global:</b> checklist "liberado pra voo" 7/7 — salão voando em piloto automático (resultado, não sensação)</li>
+</ul>
+
+<h2>1. Decisões travadas (aprovação em bloco 07-09 — não re-litigar)</h2>
+<div class="wrap"><table>
+<tr><td>D-1 demo NÃO dispara</td><td>D-2 módulos derivam de <code>plan.modules</code></td><td>D-3 TTL demo 7d</td><td>D-4 kit v1 = Lia+Vera</td></tr>
+<tr><td>D-5 wizard absorvido QR-first</td><td>D-6 pesquisar API Cakto → senão NexvyPayments</td><td>D-7 CSV sempre visível</td><td>D-8 IG no Premium+</td></tr>
+</table></div>
+
+<h2>2. Fato novo que molda o G0</h2>
+<p>Número de teste = <b>Salvy NOVO, sem aparelho físico</b>. Evolution/Baileys <b>não cria conta</b> — só pareia. Caminhos: (a) <b>Meta Cloud API</b> = zero aparelho (OTP via Salvy; provado no nº de vendas) mas SEM history-sync; (b) <b>emulador Android + WhatsApp Business + OTP Salvy → QR Evolution</b> (testa Baileys; ToS cinzento; ban-risk se automatizar). E <b>número novo = histórico zero</b> → valida encanamento, não profundidade. Logo <b>G0 = G0a + G0b</b>.</p>
+
+<h2>3. Ondas — entregáveis, checks, medição</h2>
+
+<div class="wave"><h3>G0a — Encanamento do sync (nº Salvy) · P-M</h3>
+<p>1) Conta WhatsApp no Salvy via emulador+OTP (⚠️ zero automação de envio) · 2) instância Evolution <code>syncFullHistory:true</code>+Desktop, pareada · 3) <b>experimento ground-truth</b>: semear N≥50 msgs conhecidas em ≥3 dias → desparear → re-parear → medir retorno vs gabarito · 4) consumer do <code>MESSAGES_SET</code> gravando <code>{remoteJid, wa_timestamp, direction}</code>.</p>
+<div class="checks"><b>Checks:</b> instância connected · ≥1 chunk processado/gravado · tabela ground-truth publicada (semeadas×recuperadas×% + min wa_timestamp). <b>Medida:</b> % recuperação + latência scan→último chunk.</div></div>
+
+<div class="wave"><h3>G0b — Profundidade REAL (números velhos) · P</h3>
+<p>Mesma medição em <b>3-5 números com histórico real</b> (nº pessoal do Marcelo READ-ONLY · salões parceiros c/ consentimento). Publicar nº×dias×volume. <span class="hitl">Bloqueado: Marcelo indicar números.</span> G0a NÃO espera G0b; Onda 1 abre com G0a verde.</p>
+<div class="checks"><b>Checks:</b> n≥3 medidos · mediana conhecida · copy ratificada ("seus últimos meses", nunca "180 dias").</div></div>
+
+<div class="wave"><h3>Onda 1 — Golden path funil 1 (pago→voando) · G</h3>
+<p>1) <b>S1 on-the-fly</b>: 1º acesso cria <code>evolution_instances</code> + tela QR c/ consentimento (<code>consent_log</code>: tabela+migration) + 2 campos (nome do salão, sub-vertical) · 2) <b>S2 live</b> (chunks→banco, idempotente por wamid) · 3) <b>S4</b> carteira (dedupe via <code>phone.ts</code> → upsert clientes c/ pushName + última visita) · 4) <b>S3 Home de Valor</b> (R$ X + top-3 + AHA parcial subindo; base specs VITRINE/PLANO-V1) · 5) disparo 1-clique (reusa reativação) · 6) <b>D-2</b>: enabled_modules deriva do plano (migration + provisioning + redeploy verificado ACTIVE) · 7) auditoria de enforcement das quotas (relatório).</p>
+<div class="checks"><b>Checks:</b> org de teste do pagamento à 1ª reativação SEM toque humano · carteira ≥ contatos únicos · checklist ≥5/7 · enabled_modules==plan.modules · relatório de quotas. <b>Medida:</b> time_to_aha &lt;10min · scan_rate instrumentado.</div></div>
+
+<div class="wave"><h3>Onda 2 — Setup + Tripulação · M-G</h3>
+<p>Wizard reordenado QR-first e absorvido (D-5) · pergunta revenda S/N · <b>galeria kit do salão</b> (Lia+Vera): templates no motor F2, <b>nomeação</b> (nome no prompt+assinatura), guardrails (catálogo-only; escala pra dona; "nunca perde cliente") · evals 5-10 goldens/agente · gating <code>max_ai_agents</code>.</p>
+<div class="checks"><b>Checks:</b> agente nomeado responde no zap da org · eval ≥90% + sabotado falha · Essencial trava no 2º agente · wizard separado não existe mais. <b>Medida:</b> tripulacao_ativada · checklist_7de7.</div></div>
+
+<div class="wave"><h3>Onda 3 — Funil 2 (demo como arma) · G</h3>
+<p><b>Spike promoção demo→live PRIMEIRO</b> (renomear instância sem derrubar sessão; falhou → fallback re-scan c/ copy honesta) · pool demo-tenants (slots+fila+rate-limit) · consentimento+<code>consent_log</code> · agregados em memória (mascarados; nada persiste) · Home de Valor com véu · CTA→checkout c/ plano sugerido pelo tamanho da carteira · pós-pagamento: promoção + S4 persistindo · TTL 7d + purge + log de exclusão.</p>
+<div class="checks"><b>Checks:</b> demo→pagamento→MESMA conexão · demo abandonada→zerada no TTL c/ log · zero clientes de demo não-convertida. <b>Medida:</b> aha_to_payment · auditoria de purge (LGPD).</div></div>
+
+<div class="wave"><h3>Onda 4 — Billing nosso · G</h3>
+<p>D-6 pesquisa API Cakto (charge on-demand? tokenização?) → ADR · arquitetura <code>checkout.nexvybeauty.com.br</code> (plugável; senão ponte NexvyPayments) · <b>dunning</b>: retry→aviso (zap do salão)→grace (<code>grace_period_days</code>)→suspensão (<code>plan_status</code>) · perfil coletado no NOSSO checkout.</p>
+<div class="checks"><b>Checks:</b> ADR publicado · assinatura E2E staging · 1 falha percorrendo dunning inteiro · suspensão reversível provada. <b>Medida:</b> taxa de recuperação de dunning.</div></div>
+
+<h2>4. Guardrails invioláveis</h2>
+<ol>
+<li><b>Porte = cópia com tema, NUNCA simplificação</b> (lei 01/07; tripwire M3 vigia)</li>
+<li>§11.1: browser nunca fala com serviço interno; secrets só em env/cofre</li>
+<li>Never-touch-alone: AffiliatesPanel · ERP compartilhado · <code>nexvy-agents</code> (smoke antes/depois de qualquer restart do engine)</li>
+<li>Nada é done sem evidência (commit+file:line+prova viva); sem prova → in_progress</li>
+<li>Merged ≠ deployed ≠ tested: redeploy explícito + versão ACTIVE verificada</li>
+<li>Errata datada ao superar doc; Review §14 ao fechar onda</li>
+<li>Branch <code>feat/onboarding-decolagem-onda&lt;N&gt;</code>; PR por onda; nunca direto em main</li>
+</ol>
+
+<h2>5. Dependências externas (fila HITL do Marcelo)</h2>
+<div class="wrap"><table>
+<tr><th>Item</th><th>Destrava</th><th>Status</th></tr>
+<tr><td>Números velhos p/ G0b (3-5, read-only)</td><td>profundidade real</td><td class="hitl">⏳ Marcelo</td></tr>
+<tr><td>Local da instância Evolution (VPS/stack)</td><td>G0a/S2</td><td class="hitl">⏳ 1 resposta</td></tr>
+<tr><td>Secrets TELEGRAM_ALERT_*</td><td>alarme de venda perdida (C1)</td><td class="hitl">⏳ 5 min</td></tr>
+<tr><td>OTP Salvy no registro (G0a)</td><td>conta de teste</td><td class="hitl">⏳ presença pontual</td></tr>
+<tr><td>D-6 (pesquisa Cakto)</td><td>Onda 4</td><td>roda sem ele</td></tr>
+</table></div>
+
+<h2>6. Riscos</h2>
+<div class="wrap"><table>
+<tr><th>Risco</th><th>Sev</th><th>Resposta</th></tr>
+<tr><td>Ban do nº fresco no Baileys</td><td>ALTA</td><td>read-mostly no G0a; zero automação; rampa; Cloud API como blindagem paga</td></tr>
+<tr><td>Sync raso</td><td>MÉDIA</td><td>carteira nasce do que veio + tempo real + CSV (D-7); copy nunca promete 180d</td></tr>
+<tr><td>Promoção demo→live falha</td><td>MÉDIA</td><td>spike primeiro; fallback re-scan honesto</td></tr>
+<tr><td>Emulador (ToS)</td><td>MÉDIA</td><td>só teste interno; produção = aparelho da dona</td></tr>
+<tr><td>Sessão executora morre</td><td>MÉDIA</td><td>handoff + herdeiro nomeado</td></tr>
+</table></div>
+
+<h2>7. Protocolo de reporte</h2>
+<p>Fim de onda: Review no DESENHO §14 + dossiê P1 via controladora + reporte ao Marcelo pela régua <b>"o que ficou FUNCIONANDO?"</b>. Métricas do DESENHO §13 instrumentadas desde a Onda 1.</p>
+
+<h2>8. Ordem</h2>
+<p><code>G0a</code> → <i>(G0b em paralelo quando houver números)</i> → <code>Onda 1</code> → <code>Onda 2</code> → <code>Onda 3</code> → <code>Onda 4</code>. Complexidade: <b>ALTA</b>. Marco que importa: <b>Onda 1 verde</b> (primeira vitória visível).</p>
+
+<div class="footer">Par canônico: PLANO-EXECUCAO-ONBOARDING-DECOLAGEM-2026-07-09.md · Doc-mãe: DESENHO-ONBOARDING-NEXVYBEAUTY-2026-07-09 (APROVADO 07-09) · Fontes: LEVANTAMENTO 07-08 · pesquisa history-sync 07-08 · leitura de código/banco 07-09.</div>
+</body>
+</html>

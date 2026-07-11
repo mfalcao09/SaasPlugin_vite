@@ -1,0 +1,87 @@
+<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Backlog GO-LIVE Restante — 2026-07-10</title><style>body{background:#0f1117;color:#e2e6ee;font-family:-apple-system,'Segoe UI',sans-serif;max-width:1100px;margin:2rem auto;padding:0 1.5rem;line-height:1.55}
+h1{color:#f6c453;border-bottom:2px solid #2a2f3a;padding-bottom:.4rem}h2{color:#8ab4f8;margin-top:2rem}h3{color:#9ae6b4}
+table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.9rem}th{background:#1a1f2b;color:#f6c453;text-align:left}
+th,td{border:1px solid #2a2f3a;padding:.45rem .6rem;vertical-align:top}tr:nth-child(even) td{background:#141824}
+code{background:#1a1f2b;color:#9ae6b4;padding:.1rem .35rem;border-radius:4px;font-size:.85em}
+blockquote{border-left:3px solid #f6c453;margin:.6rem 0;padding:.3rem .9rem;color:#b7bfcf;background:#141824}
+hr{border:none;border-top:1px solid #2a2f3a;margin:1.6rem 0}strong{color:#fff}</style></head><body><blockquote><strong>Gerado:</strong> 2026-07-10 · sessão GO-LIVE Beauty · workflow golive-gap-analysis (4 agentes)</blockquote>
+<blockquote><strong>Contexto:</strong> pós-entrega A1.2/A1.3 (porte completo inbox V5 + canal por conversa + IG @nexvytech ATIVO com DM inbound provada).</blockquote>
+<blockquote><strong>Em execução no momento da geração:</strong> A1.4 InboxFiltersDrawer (filtros canal/atendente/conexão/setor) · A1.5 melhorias wizard IG.</blockquote>
+<h1>BACKLOG ÚNICO — GO-LIVE NexvyBeauty (sintetizado 2026-07-10)</h1>
+<p>Legenda: <strong>Esforço</strong> S/M/L · <strong>Status</strong>: ✅ executável-já · ⏳ pende decisão/ação Marcelo · 🔧 em execução agora</p>
+<p>Base de paths: <code>apps/NexvyBeauty/</code> (repo <code>SaasPlugin_vite</code>). Docs em <code>apps/NexvyBeauty/tasks/</code>.</p>
+<p><strong>Dedupes aplicados:</strong> B3+B4 (teto físico) absorvidos em C1/C2/C3 (G0a/G0b/Onda 1) — não listados separados. 3.1/3.2/3.3 idem. A1 composer (item 1.1) EXCLUÍDO (porte 38 componentes entregue). 7.2 (demo tour) absorvido pela Onda 3. transfer_sector e IG/Messenger: decisões já tomadas 07-09 (MANTER/REATIVAR) → viraram itens de build, não HITL.</p>
+<hr>
+<h2>(A) Inbox/CRM plataforma</h2>
+<table>
+<tr><th>#</th><th>Item</th><th>Evidência</th><th>Esf.</th><th>Status</th></tr>
+<tr><td>A0</td><td>InboxFiltersDrawer (filtros canal/atendente/conexão/setor)</td><td><code>PlatformCrmInbox.tsx:66,800</code></td><td>M</td><td>🔧 em execução</td></tr>
+<tr><td>A0b</td><td>Wizard IG: nome editável, credenciais em branco=manter, subscribe via API</td><td>escopo declarado pela orquestração</td><td>S</td><td>🔧 em execução</td></tr>
+<tr><td>A1</td><td>transfer_sector completo: migration <code>sector_id</code> em <code>platform_crm_conversations</code> + tabela setores product-scoped + religar action + UI + edge de aceite c/ enforcement setor↔agente</td><td>LEVANTAMENTO 1.8 (decisão Marcelo 07-09: construir); <code>PlatformCrmLeadContextPanel.tsx:120</code>, <code>PlatformCrmTransferModal.tsx:333</code>, <code>PlatformCrmInbox.tsx:704</code>, <code>PlatformCrmAcceptTicketDialog.tsx:70</code></td><td>M</td><td>✅</td></tr>
+<tr><td>A2</td><td>Pacote de migrations do inbox: <code>visitor_email</code>, <code>orchestrator_state</code>, <code>evolution_instance_id</code>, <code>metadata</code> (takeover), tabela histórico de transferências, match responsável (auto_notification), <code>platform_crm_payment_links</code>, <code>platform_crm_message_reactions</code>, <code>meta_connection_id</code>+RPC janela 24h</td><td><code>PlatformCrmEditVisitorDialog.tsx:69</code>, <code>PlatformCrmTransferModal.tsx:116,247,261,271,345</code>, <code>PlatformCrmPaymentLinkDialog.tsx:69</code>, <code>usePlatformCrmMessageReactions.ts:60,196</code>, <code>PlatformCrmChatArea.tsx:63,263</code></td><td>M</td><td>✅</td></tr>
+<tr><td>A3</td><td>Filtro por produto nos módulos ERP (Organizations/Subscriptions/Billing) — exige <code>product_id</code> em <code>organizations</code> (hoje só <code>plan_id</code>)</td><td><code>OrganizationsManager.tsx:80</code>, <code>SubscriptionsManager.tsx:44</code>, <code>BillingManager.tsx:40</code></td><td>M</td><td>⏳ decisão de modelagem</td></tr>
+<tr><td>A4</td><td>E1/D3 multiproduto restante: LOTE L1-L13 product-aware, seed ~9 produtos, fix lead manual gravando <code>product_id NULL</code>, prova runtime F2 (2+ produtos), religar 10 stubs pós-Lux (branches não mergeadas)</td><td>LEVANTAMENTO 6.1</td><td>L</td><td>✅</td></tr>
+<tr><td>A5</td><td>FormBuilder aba &quot;Respostas&quot; + runtime público <code>/f/:slug</code> (Edge/rota pública)</td><td><code>PlatformCrmFormBuilder.tsx:42</code>, <code>PlatformCrmCaptureFormsTab.tsx:172</code></td><td>M</td><td>✅</td></tr>
+<tr><td>A6</td><td>Presença online real do visitante (widget/edge emitir presence; hoje sempre false)</td><td><code>PlatformCrmInbox.tsx:631</code></td><td>S</td><td>✅</td></tr>
+<tr><td>A7</td><td>Transcode de mídia client-side (.mov→.mp4, webm→m4a) — deps <code>@ffmpeg/*</code> no app</td><td><code>usePlatformCrmMediaUpload.ts:20,52,191</code></td><td>M</td><td>✅</td></tr>
+<tr><td>A8</td><td>D6b suíte profunda Agentes IA (editor 13 abas vs 3 campos; UI supervisor)</td><td>LEVANTAMENTO 1.7</td><td>L</td><td>✅</td></tr>
+<tr><td>A9</td><td>IG Direct + Messenger: restante dos 23 itens de <code>todo-ig-messenger-inbox.md</code> (só migration autorada, não aplicada) + <strong>App Review Meta</strong> (embed + vídeo)</td><td>LEVANTAMENTO 4.1 (REATIVADA 07-09)</td><td>L</td><td>✅ código / ⏳ App Review (vídeo do Marcelo)</td></tr>
+</table>
+<blockquote>⚠️ Verificação: <code>PlatformCrmScheduleMessageDialog.tsx:147,263,292</code> ainda referencia migration <code>20260709_platform_crm_scheduled_messages.sql</code> como &quot;pende aplicar&quot;, mas &quot;agendamento+cron&quot; consta ENTREGUE — confirmar se migration foi aplicada e remover casts <code>(supabase as any)</code> (S).</blockquote>
+<h2>(B) Backend/edges</h2>
+<table>
+<tr><th>#</th><th>Item</th><th>Evidência</th><th>Esf.</th><th>Status</th></tr>
+<tr><td>B1</td><td>Edge <code>platform-start-whatsapp-conversation</code> (paridade v5, entrega real; destrava ContactCard &quot;conversar&quot;)</td><td><code>PlatformCrmStartConversationDialog.tsx:137</code>, <code>PlatformCrmContactCardBubble.tsx:17,82</code></td><td>M</td><td>✅</td></tr>
+<tr><td>B2</td><td>Edge <code>platform-check-whatsapp-number</code> (verificação de número; hoje toast)</td><td><code>PlatformCrmChatArea.tsx:71,398</code>, <code>PlatformCrmLeadContextPanel.tsx:201,221</code></td><td>S</td><td>✅</td></tr>
+<tr><td>B3</td><td>Edge <code>platform-meta-whatsapp-send</code> (template HSM via Cloud API)</td><td><code>PlatformCrmSendTemplateDialog.tsx:83</code></td><td>M</td><td>✅</td></tr>
+<tr><td>B4</td><td><code>trigger_flow</code>: action <code>trigger-flow</code> no <code>platform-webchat-inbox</code> + enviar 1ª msg via Cloud API (hoje persist-only)</td><td><code>PlatformCrmSendFlowDialog.tsx:49</code>; LEVANTAMENTO 1.3 (Top-8 #3)</td><td>M</td><td>✅</td></tr>
+<tr><td>B5</td><td>Suíte IA do inbox: edge <code>followup-ai-draft</code> plataforma (A7/L13) + <code>ai-reactivate</code> estendido (agent_id/objective/mode/extra_context) + multi-conexão + janela 24h + TemplatePicker nos dialogs</td><td>LEVANTAMENTO 1.2 (Top-8 #7); <code>PlatformCrmCallWithAIDialog.tsx:43,45,142,219</code>, <code>PlatformCrmFollowupAIDialog.tsx:30</code>, <code>PlatformCrmChatArea.tsx:68,419</code></td><td>M</td><td>✅</td></tr>
+<tr><td>B6</td><td>Forward com vínculo <code>forwarded_from_message_id</code></td><td><code>PlatformCrmInbox.tsx:456</code></td><td>S</td><td>✅</td></tr>
+<tr><td>B7</td><td>Migration versionada de <code>opportunity_scan_schedules</code> (<strong>fire-now</strong> — <code>db reset</code> quebraria)</td><td>LEVANTAMENTO 9.1 (Top-8 #1)</td><td>S</td><td>✅</td></tr>
+<tr><td>B8</td><td>LOTE adiados: L1 campanha recorrente, L4 lembrete booking WhatsApp, L5, L10</td><td>LEVANTAMENTO 1.4</td><td>M</td><td>✅</td></tr>
+<tr><td>B9</td><td>D5(b) Mia com botões inline Confirmar/Cancelar (aprovado verbatim 03/07)</td><td>LEVANTAMENTO 1.5</td><td>M</td><td>✅</td></tr>
+<tr><td>B10</td><td>D7 webhooks de saída + D9 push</td><td>LEVANTAMENTO 1.6</td><td>M</td><td>✅</td></tr>
+<tr><td>B11</td><td>Família TODO(edge) não-A1 (~25 hits): <code>platform-optimize-product-field</code>, <code>generate-agent-ai</code>, Google Calendar OAuth, booking dispatcher, CatalogSync gateway, BrainTab process-training-material etc. — triar e priorizar</td><td>FONTE 2 §&quot;pende avulsos&quot; (products/agents/agenda/capture)</td><td>L</td><td>✅ (triagem primeiro)</td></tr>
+</table>
+<h2>(C) Onboarding/go-live do produto</h2>
+<table>
+<tr><th>#</th><th>Item</th><th>Evidência</th><th>Esf.</th><th>Status</th></tr>
+<tr><td>C1</td><td>G0a encanamento do sync: conta WhatsApp (emulador+OTP Salvy), instância Evolution <code>syncFullHistory:true</code>, experimento ground-truth N≥50, consumer mínimo <code>MESSAGES_SET</code></td><td>PLANO-EXECUCAO-ONBOARDING G0a</td><td>M</td><td>⏳ pende &quot;vai&quot; do Marcelo (plano em handoff)</td></tr>
+<tr><td>C2</td><td>G0b profundidade REAL do history-sync em 3-5 números velhos (<code>min(wa_timestamp)</code>, ratificar copy &quot;últimos meses&quot;)</td><td>PLANO G0b; LEVANTAMENTO 3.3</td><td>S</td><td>⏳ Marcelo indicar números</td></tr>
+<tr><td>C3</td><td>Onda 1 golden path (pago→voando): S1 QR on-the-fly + LGPD <code>consent_log</code>; S2 pipeline live idempotente (wamid); S4 derivação carteira→<code>clientes</code>; S3 Home de Valor; disparo 1-clique c/ rampa+jitter+circuit-breaker (<code>shared/outbound-guardrail</code>, contrato c/ sessão BDR); D-2 <code>enabled_modules</code> de <code>plan.modules</code>; auditoria quotas <code>max_*</code></td><td>PLANO Onda 1; absorve LEVANTAMENTO 3.1/3.2 e B3/B4 (go-live original)</td><td>L</td><td>⏳ pende &quot;vai&quot;</td></tr>
+<tr><td>C4</td><td>Onda 2 setup leve + tripulação: wizard S5 QR-first, pergunta revenda, galeria kit Lia+Vera, guardrails, evals 5-10 goldens/agente, gating <code>max_ai_agents</code></td><td>PLANO Onda 2</td><td>L</td><td>⏳ pende &quot;vai&quot;</td></tr>
+<tr><td>C5</td><td>Onda 3 funil 2 demo: spike promoção demo→live, pool demo-tenants efêmeros, consentimento pré-scan, Home com véu, CTA→checkout (absorve V5 &quot;demo que se vende sozinho&quot;)</td><td>PLANO Onda 3; LEVANTAMENTO 7.2</td><td>L</td><td>⏳ pende &quot;vai&quot;</td></tr>
+<tr><td>C6</td><td>F5 prova de fogo do funil completo (LP→WhatsApp→Duda→Bia→Cakto→pagamento-teste→org)</td><td>LEVANTAMENTO 2.1</td><td>M</td><td>✅</td></tr>
+<tr><td>C7</td><td>Secrets <code>TELEGRAM_ALERT_BOT_TOKEN</code>/<code>CHAT_ID</code> (alerta C1 de falha de provisionamento — código pronto)</td><td>LEVANTAMENTO 2.2; go-live C1</td><td>S</td><td>⏳ ação Marcelo (~5min)</td></tr>
+<tr><td>C8</td><td>Atribuição Cakto: reconciliar slug <code>duda-sdr</code>×<code>duda</code> + 1 pagamento-teste + deploy workflow <code>wqkcbsgp4</code> (sem isso tudo cai em <code>sem_atribuicao</code>)</td><td>LEVANTAMENTO 2.3</td><td>M</td><td>✅</td></tr>
+<tr><td>C9</td><td>Scoring determinístico <code>computeQcrScore()</code> (QCR PR÷217)</td><td>LEVANTAMENTO 2.4 (Top-8 #6)</td><td>M</td><td>✅</td></tr>
+<tr><td>C10</td><td>Transição-upgrade <code>[PASSAR_BIA]</code> + calibração do 35% com dado real</td><td>LEVANTAMENTO 2.5</td><td>M</td><td>✅</td></tr>
+<tr><td>C11</td><td>Humanização (agrupamento/digitação) nas respostas dos agentes</td><td>LEVANTAMENTO 2.6</td><td>S</td><td>✅</td></tr>
+<tr><td>C12</td><td><code>founder_status</code> LEITURA no runtime (write provado; bifurca concierge×autopilot)</td><td>LEVANTAMENTO 2.7 (Top-8 #5)</td><td>S</td><td>✅</td></tr>
+<tr><td>C13</td><td>F3 CTA LP→<code>wa.me</code> com UTM + tracking 1st-party (verificar estado antes)</td><td>LEVANTAMENTO 2.8</td><td>S</td><td>✅</td></tr>
+<tr><td>C14</td><td>Copy da LP: &quot;15 vagas, 5/semana&quot; contradiz 30/30/1 ratificado</td><td>LEVANTAMENTO 2.9 (Top-8 #4)</td><td>S</td><td>✅</td></tr>
+<tr><td>C15</td><td>Sync Cakto automático ao salvar plano (pedido 30/06)</td><td>LEVANTAMENTO 2.10</td><td>S</td><td>✅</td></tr>
+<tr><td>C16</td><td>C4 watcher de queda de sessão WhatsApp (bot silencia sem avisar)</td><td>LEVANTAMENTO 3.5</td><td>M</td><td>✅</td></tr>
+<tr><td>C17</td><td>C2/C3 painéis ativação/recuperado (parciais)</td><td>LEVANTAMENTO 3.6</td><td>M</td><td>✅</td></tr>
+<tr><td>C18</td><td>LGPD do F6: base legal/consentimento no onboarding + DPA</td><td>LEVANTAMENTO 3.7</td><td>S</td><td>✅ (jurídico)</td></tr>
+<tr><td>C19</td><td>B8/Radar com matéria-prima — dependente de C3 (S2/S4); sem carteira roda a vazio no dia-0</td><td>LEVANTAMENTO 3.4; go-live original</td><td>—</td><td>bloqueado por C3</td></tr>
+<tr><td>C20</td><td>Arsenal §12 playbook-mestre: 33 itens <code>[ ]</code> (estado-do-contato, resgate checkout, handoffs, 10 testes aceitação, dashboard) + dedupe item-a-item com o que F2 já entregou</td><td>LEVANTAMENTO 8.1/8.2</td><td>L</td><td>✅ (dedupe primeiro)</td></tr>
+<tr><td>C21</td><td>Coortes piloto GTM: warm intros, ≥3 pagamentos reais, coortes 2-3, medição semanal, veredito semana 12</td><td>LEVANTAMENTO 7.1</td><td>—</td><td>⏳ humano/Marcelo</td></tr>
+<tr><td>C22</td><td>Gaps CBA (7 de 9): Landings, NBA IA, Workflows, Squad, Materiais, Scoring standalone, tela Playbook</td><td>LEVANTAMENTO 7.3</td><td>L</td><td>⏳ Marcelo decidir quais valem</td></tr>
+</table>
+<h2>(D) Infra/UX geral</h2>
+<table>
+<tr><th>#</th><th>Item</th><th>Evidência</th><th>Esf.</th><th>Status</th></tr>
+<tr><td>D1</td><td>Lux L4: 47 telas (P2=18 + P3=29) + limpeza rosa (16 arquivos) + TEMPLATE_v2 + rubric v2</td><td>LEVANTAMENTO 5.1 (Top-8 #8); HANDOFF-REDESIGN-LUX-ROSE-2026-07-06.md</td><td>L</td><td>✅</td></tr>
+<tr><td>D2</td><td>Revisão adversarial Fable tela-a-tela L3+Rosé (nunca rodou — estava sem crédito)</td><td>LEVANTAMENTO 5.2</td><td>M</td><td>✅</td></tr>
+<tr><td>D3</td><td>Eyeball U4 (re-skin do gestao)</td><td>LEVANTAMENTO 5.3</td><td>—</td><td>⏳ Marcelo</td></tr>
+<tr><td>D4</td><td>Migração domínio <code>gestao.nexvy.tech</code> + reskin neutro</td><td>LEVANTAMENTO 6.3</td><td>M</td><td>✅</td></tr>
+<tr><td>D5</td><td>D1(b) Meta Cloud por produto + Utmify</td><td>LEVANTAMENTO 6.2</td><td>M</td><td>⏳ pende credenciais</td></tr>
+<tr><td>D6</td><td>Afiliados fases 2-5 (branch 224 commits stale): reimplementar sobre main ou descartar</td><td>LEVANTAMENTO 9.2/9.6</td><td>L</td><td>⏳ Marcelo</td></tr>
+<tr><td>D7</td><td>Telefonia Salvy (80%): mergear branch + secret + deploy</td><td>LEVANTAMENTO 9.3</td><td>S</td><td>⏳ Marcelo</td></tr>
+<tr><td>D8</td><td>PRECO: editar migrations <code>20260705_*</code> na fonte (re-provisionamento reintroduziria preço em texto nas personas)</td><td>LEVANTAMENTO 9.4</td><td>S</td><td>✅</td></tr>
+<tr><td>D9</td><td>Higiene git: confirmar <code>stash@{0}</code> superseded por <code>cab7c7d</code> e dropar; push de <code>feat/beauty-lux-l4</code> (sem remoto, risco de perda)</td><td>LEVANTAMENTO 9.5/9.6</td><td>S</td><td>✅</td></tr>
+<tr><td>D10</td><td>Limpeza stale: import morto de <code>EmBreve</code> (<code>platform-shell/registry.tsx:6</code>) + comentário stale linha 230 (todos os 36 itens já renderizam componentes reais)</td><td>FONTE 2 §Registry</td><td>S</td><td>✅</td></tr>
+</table>
+<hr>
+<p><strong>Resumo:</strong> 43 itens (2 em execução, 9 bloqueados em Marcelo — sendo os de maior alavancagem: &quot;vai&quot; do plano Decolagem [C1/C3-C5], números velhos p/ G0b [C2], secrets Telegram [C7, 5min]). Fire-now técnico: B7 (migration <code>opportunity_scan_schedules</code>). Maiores blocos executáveis-já sem dependência: A1+A2 (setores+migrations inbox), B1-B5 (edges de paridade), C6/C8 (prova do funil + atribuição Cakto).</p></body></html>

@@ -183,7 +183,8 @@ da connection e devolve erro estruturado #200 se faltar o escopo).
 ## 4. A edge `platform-commerce-sync` (ENTREGA 2)
 
 `apps/NexvyBeauty/supabase/functions/platform-commerce-sync/index.ts` — **autorada,
-`deno check` verde, NÃO deployada.**
+`deno check` verde, DEPLOYADA (v3 ACTIVE, 2026-07-11)** *(errata 2026-07-11: versão
+anterior deste doc dizia "NÃO deployada")*.
 
 - **Action `sync`**: lê `public_plans` (`name, slug, price_monthly, checkout_url`,
   ordenado por preço) → monta requests `UPDATE` → `POST /{catalog_id}/batch`.
@@ -227,6 +228,24 @@ create trigger commerce_sync_after_plan_change
 > O SQL exato de leitura do `functions_url`/`service_role_key` segue o que a casa
 > já usa nos demais disparos pg_net (GUC/Vault) — ajuste na migration de execução.
 
+> ⚠️ **FORMATO DA KEY — RESOLVIDO (investigação 2026-07-11, sessão 5de0b2f1):**
+> o `app.settings.service_role_key` do Vault/GUC DEVE conter a key **NOVA
+> (`sb_secret_…`, 41 chars)** — NUNCA a service_role legada (JWT `eyJ…`, 219 chars).
+> Prova empírica no projeto `fzhlbwhdejumkyqosuvq`:
+> 1. Sonda no runtime das edges: `SUPABASE_SERVICE_ROLE_KEY` injetada = formato
+>    `sb_secret` (41 chars). A legada NÃO está no env → `token === serviceRoleKey`
+>    do `authenticatePlatformAgent` nunca bate com ela.
+> 2. Repro do bug: `Bearer <legada>` → passa o gateway, mas a função devolve
+>    `401 {"error":"Invalid token"}`.
+> 3. Fix validado live: `Bearer <sb_secret>` + `actorUserId` super_admin →
+>    **HTTP 200** no `dryRun` da `platform-commerce-sync` (gateway aceita
+>    `sb_secret` mesmo com `verify_jwt` default — hipótese contrária refutada).
+>
+> **Decisão de fix: (c) padronizar callers na key nova** — zero mudança de código.
+> Hardening futuro opcional (se rotação de keys entrar em cena): comparar também
+> contra a lista `SUPABASE_SECRET_KEYS` (env plural que o runtime já injeta), pois
+> durante rotação há 2+ secret keys ativas e `SUPABASE_SERVICE_ROLE_KEY` contém só uma.
+
 ---
 
 ## 5. Sequência de execução (quando sair do groundwork)
@@ -235,8 +254,8 @@ create trigger commerce_sync_after_plan_change
 2. **[humano/Meta]** `POST /1331611869008138/owned_product_catalogs` → catalog_id.
 3. **[humano/DB]** Gravar `meta_commerce_catalog_id` (+ `meta_commerce_default_image_url`) em `platform_settings`.
 4. **[humano/Meta]** Vincular catálogo à WABA `976904392005535`.
-5. **[código]** Deploy `platform-commerce-sync`; rodar `dryRun:true` → conferir → `sync` real (backfill).
-6. **[código/migration]** Criar o trigger `pg_net` em `platform_plans` (§4.1).
+5. ~~**[código]** Deploy `platform-commerce-sync`~~ ✅ FEITO (v3 ACTIVE 2026-07-11); `dryRun:true` conferido (4 planos: 3 upserts + `trial` skipped por `missing_checkout_url`) → falta só o `sync` real (backfill). Obs.: o `dryRun` de 2026-07-11 já devolveu `catalog_id` `975221148843266` e credencial `env:META_COMMERCE_TOKEN` configurados — passos 1–3 aparentam concluídos; conferir o 4 (vínculo WABA) antes do runtime de conversa.
+6. **[código/migration]** Criar o trigger `pg_net` em `platform_plans` (§4.1). **⚠️ Usar a key NOVA (`sb_secret_…`) no Vault/GUC — a legada (JWT) leva 401 no gate interno; ver box "FORMATO DA KEY — RESOLVIDO" no §4.1.**
 7. **[código]** Aplicar o diff do runtime (ENTREGA 3 — product message/IG template) no `platform-webchat-inbox`.
 8. **[verificação]** Editar um plano no gestão → conferir item atualizado no catálogo (`GET /{catalog_id}/products?fields=retailer_id,name,price`).
 

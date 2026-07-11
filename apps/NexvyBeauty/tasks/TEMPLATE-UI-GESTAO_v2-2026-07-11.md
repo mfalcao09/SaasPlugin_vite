@@ -106,6 +106,7 @@ Codificam semântica de domínio, não marca:
 | Cor de categoria (tipo de bloco/objeção/setor/estágio) | mapa de cores da FEATURE (`bg-blue-500`, `bg-pink-500`… como **rótulo de categoria**, não marca) |
 | Cor de evento de agenda / estágio de pipeline / etiqueta / setor | **cor vinda do banco** `style={{backgroundColor: x.color}}` — é DADO |
 | Seleção de item de lista | barra `before:` `bg-emerald-500` (herança Vendus) |
+| **Ação de IA** ("Gerar com IA", "Otimizar", affordance de IA) | família **`violet-*`/`purple-*`** — ✅ ratificada por Marcelo 07-11 como cor SEMÂNTICA de IA (convenção app-wide, ~32 arquivos; NÃO colapsa pro primary) |
 
 **(1.3d) DADO ≠ marca:** swatches de color-picker (`#EC4899`, `#3b82f6`… em arrays de opções), presets de tema de formulário e seed de estágios são **dado editável pelo usuário** — não são vazamento de marca. **Não trocar** (opcional: reseedar só o *default* se ele for cor-de-marca; baixa prioridade).
 
