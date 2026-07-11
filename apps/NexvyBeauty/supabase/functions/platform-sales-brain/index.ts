@@ -157,6 +157,8 @@ async function deliverViaWhatsAppCloud(
 function buildKnowledgeContext(
   product: Record<string, any> | null,
   campaign: Record<string, any> | null,
+  structuredObjections: Array<Record<string, any>> = [],
+  knowledgeSources: Array<Record<string, any>> = [],
 ): string {
   if (!product) return '';
   let ctx = `\n## PRODUTO: ${product.name}\n`;
@@ -182,6 +184,27 @@ function buildKnowledgeContext(
   if (product.objections) ctx += `\n## OBJEÇÕES E RESPOSTAS\n${product.objections}\n`;
   if (product.pitch_2min) ctx += `\n## PITCH 2MIN\n${product.pitch_2min}\n`;
   if (product.icp) ctx += `\n## ICP (CLIENTE IDEAL)\n${product.icp}\n`;
+
+  // P2.A (Cérebro estruturado, product-scoped): COMPLEMENTA — nunca substitui — os
+  // campos texto-plano acima. Enquanto as tabelas estiverem vazias, isto é no-op
+  // (nada é anexado, contexto byte-idêntico ao legado).
+  if (structuredObjections.length) {
+    ctx += `\n## OBJEÇÕES ESTRUTURADAS (Cérebro do Produto)\n`;
+    for (const o of structuredObjections) {
+      const say = o.what_they_say ?? '';
+      const resp = o.suggested_response ?? '';
+      if (say && resp) ctx += `- Quando disserem "${say}"${o.category ? ` (${o.category})` : ''}: ${resp}\n`;
+    }
+  }
+  if (knowledgeSources.length) {
+    ctx += `\n## BASE DE CONHECIMENTO ESTRUTURADA (Cérebro do Produto)\n`;
+    for (const k of knowledgeSources) {
+      // cap por campo (anti-bloat de contexto/custo quando a base for populada em escala)
+      const content = String(k.extracted_content || k.answer || k.description || '').slice(0, 600);
+      const cat = k.data_category || k.source_type || '';
+      if (content) ctx += `- ${k.title ?? 'Fonte'}${cat ? ` (${cat})` : ''}: ${content}\n`;
+    }
+  }
   return ctx;
 }
 
@@ -837,8 +860,10 @@ Deno.serve(async (req) => {
     let product: Record<string, any> | null = null;
     let campaign: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
+    let structuredObjections: Array<Record<string, any>> = [];
+    let knowledgeSources: Array<Record<string, any>> = [];
     if (conversation.product_id) {
-      const [productRes, campaignRes, plansRes] = await Promise.all([
+      const [productRes, campaignRes, plansRes, objRes, ksRes] = await Promise.all([
         supabase
           .from('platform_crm_products')
           .select(
@@ -859,17 +884,34 @@ Deno.serve(async (req) => {
           .from('public_plans')
           .select('name, slug, price_monthly, checkout_url')
           .order('price_monthly', { ascending: true }),
+        // P2.A: Cérebro estruturado (product-scoped). NON-THROWING: qualquer falha
+        // degrada pra [] e nunca derruba a resposta. LIMIT p/ não estourar contexto.
+        supabase
+          .from('platform_crm_objections')
+          .select('category, what_they_say, suggested_response')
+          .eq('product_id', conversation.product_id)
+          .limit(30)
+          .then((r) => r, () => ({ data: [] as Array<Record<string, any>> })),
+        supabase
+          .from('platform_crm_product_knowledge_sources')
+          .select('title, extracted_content, answer, description, data_category, source_type')
+          .eq('product_id', conversation.product_id)
+          .eq('is_active', true)
+          .limit(20)
+          .then((r) => r, () => ({ data: [] as Array<Record<string, any>> })),
       ]);
       product = (productRes.data as Record<string, any> | null) ?? null;
       campaign = (campaignRes.data as Record<string, any> | null) ?? null;
       plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url);
+      structuredObjections = ((objRes?.data as Array<Record<string, any>>) ?? []);
+      knowledgeSources = ((ksRes?.data as Array<Record<string, any>>) ?? []);
     }
 
     // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
     // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
     // persona já é não-nula aqui (guard acima); fallback 'duda' se o nome vier vazio.
-    const knowledgeContext = buildKnowledgeContext(product, campaign)
+    const knowledgeContext = buildKnowledgeContext(product, campaign, structuredObjections, knowledgeSources)
       + buildCheckoutContext(plans, persona.name ?? 'duda')
       + (plans.length ? PRICE_RULE_BLOCK : '');
     const productName = product?.name ?? 'NexvyBeauty';
