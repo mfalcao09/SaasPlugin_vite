@@ -50,8 +50,8 @@ export function PlatformCrmNotificationManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Central de Notificações</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-lg font-semibold text-foreground leading-tight">Central de Notificações</h1>
+          <p className="text-sm text-muted-foreground">
             Envie notificações manuais ou configure alertas automáticos
           </p>
         </div>
@@ -98,8 +98,8 @@ export function PlatformCrmNotificationManager() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-green-500/10">
-                    <Users className="h-6 w-6 text-green-500" />
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <Users className="h-6 w-6 text-primary" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold">

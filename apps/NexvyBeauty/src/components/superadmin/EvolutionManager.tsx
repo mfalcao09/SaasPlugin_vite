@@ -98,8 +98,8 @@ export function EvolutionManager() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">WhatsApp / Evolution Go</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-lg font-semibold text-foreground leading-tight">WhatsApp / Evolution Go</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Configure o servidor global e gerencie as instâncias de cada empresa.
         </p>
       </div>
