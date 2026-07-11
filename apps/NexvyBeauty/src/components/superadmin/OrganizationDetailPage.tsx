@@ -442,7 +442,7 @@ export function OrganizationDetailPage({ orgId, onBack }: OrganizationDetailPage
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-blue-500" />
+                    <Users className="h-5 w-5 text-primary" />
                     <span>Usuários</span>
                   </div>
                   <span className="font-bold">

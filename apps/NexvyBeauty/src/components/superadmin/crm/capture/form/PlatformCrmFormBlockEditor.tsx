@@ -57,7 +57,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   input: 'bg-blue-500',
   selection: 'bg-green-500',
   logic: 'bg-orange-500',
-  advanced: 'bg-pink-500',
+  advanced: 'bg-violet-500',
   media: 'bg-cyan-500',
 };
 
@@ -1276,11 +1276,11 @@ export function PlatformCrmFormBlockEditor({
           {['ai_question', 'ai_followup'].includes(localBlock.block_type) && (
             <>
               <Separator />
-              <div className="p-3 bg-pink-500/10 border border-pink-500/20 rounded-lg">
-                <p className="text-sm text-pink-700 dark:text-pink-300">
+              <div className="p-3 bg-muted border border-border rounded-lg">
+                <p className="text-sm text-foreground">
                   <strong>Pergunta com IA</strong>
                 </p>
-                <p className="text-xs text-pink-600 dark:text-pink-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Esta pergunta será gerada dinamicamente com base no contexto do produto e nas
                   respostas anteriores do usuário.
                 </p>

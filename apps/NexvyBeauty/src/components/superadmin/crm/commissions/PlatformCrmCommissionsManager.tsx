@@ -654,8 +654,8 @@ function CommissionsTab() {
           title="Comissões Aprovadas"
           value={summary.approved}
           hint="A pagar"
-          icon={<CheckCircle className="h-4 w-4 text-blue-500" />}
-          valueClassName="text-blue-600"
+          icon={<CheckCircle className="h-4 w-4 text-primary" />}
+          valueClassName="text-primary"
         />
         <SummaryCard
           title="Comissões Pagas"

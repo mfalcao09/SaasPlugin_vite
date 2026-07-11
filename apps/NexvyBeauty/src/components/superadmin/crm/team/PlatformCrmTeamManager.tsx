@@ -289,7 +289,7 @@ export function PlatformCrmTeamManager() {
                   <SelectContent>
                     <SelectItem value="seller">
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-blue-500" />
+                        <User className="h-4 w-4 text-primary" />
                         Vendedor
                       </div>
                     </SelectItem>

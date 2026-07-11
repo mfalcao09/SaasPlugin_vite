@@ -148,7 +148,7 @@ export function PlatformCrmAISummaryTab({ conversationId }: PlatformCrmAISummary
       {/* Suggestions */}
       {data.suggestions?.length > 0 && (
         <Section
-          icon={<Lightbulb className="h-3.5 w-3.5 text-blue-500" />}
+          icon={<Lightbulb className="h-3.5 w-3.5 text-primary" />}
           title="Próximas ações sugeridas"
           items={data.suggestions}
         />
