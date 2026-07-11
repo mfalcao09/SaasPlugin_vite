@@ -128,11 +128,11 @@ export function SystemHealth() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Uptime</p>
-                  <p className="text-lg font-semibold">{service.uptime}%</p>
+                  <p className="text-lg font-semibold tabular-nums">{service.uptime}%</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Latência</p>
-                  <p className="text-lg font-semibold">{service.latency}</p>
+                  <p className="text-lg font-semibold tabular-nums">{service.latency}</p>
                 </div>
               </div>
               <div className="space-y-1">

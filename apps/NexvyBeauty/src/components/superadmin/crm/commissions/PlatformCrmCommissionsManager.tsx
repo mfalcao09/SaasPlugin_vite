@@ -567,7 +567,7 @@ function SummaryCard({
           <span className="text-sm font-medium">{title}</span>
           {icon}
         </div>
-        <div className={`text-2xl font-bold ${valueClassName ?? ''}`}>
+        <div className={`text-2xl font-bold tabular-nums ${valueClassName ?? ''}`}>
           {formatCurrency(value)}
         </div>
         <p className="text-xs text-muted-foreground">{hint}</p>
