@@ -280,21 +280,21 @@ export function PlatformCrmProductListPage({ onProductSelect }: PlatformCrmProdu
                     <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                       <TrendingUp className="h-3.5 w-3.5" />
                     </div>
-                    <p className="text-lg font-semibold text-foreground">{stats.totalLeads}</p>
+                    <p className="text-lg font-semibold text-foreground tabular-nums">{stats.totalLeads}</p>
                     <p className="text-xs text-muted-foreground">Leads</p>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                       <Users className="h-3.5 w-3.5" />
                     </div>
-                    <p className="text-lg font-semibold text-foreground">{stats.sellers}</p>
+                    <p className="text-lg font-semibold text-foreground tabular-nums">{stats.sellers}</p>
                     <p className="text-xs text-muted-foreground">Vendedores</p>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                       <DollarSign className="h-3.5 w-3.5" />
                     </div>
-                    <p className="text-lg font-semibold text-foreground">
+                    <p className="text-lg font-semibold text-foreground tabular-nums">
                       {new Intl.NumberFormat('pt-BR', {
                         notation: 'compact',
                         compactDisplay: 'short',

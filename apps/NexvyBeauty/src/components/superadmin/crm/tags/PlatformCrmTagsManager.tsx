@@ -201,7 +201,7 @@ export function PlatformCrmTagsManager() {
                         <Badge variant="secondary">Status do ciclo</Badge>
                       )}
                       {tag.is_automatic && <Badge variant="outline">Automática</Badge>}
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="tabular-nums">
                         {usage[tag.id] ?? 0} {usage[tag.id] === 1 ? 'uso' : 'usos'}
                       </Badge>
                     </div>

@@ -190,12 +190,12 @@ function FunnelResults() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Funil</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Temperatura</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Quando</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Lead</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Funil</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Score</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Temperatura</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Tags</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Quando</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -241,7 +241,7 @@ function FunnelResults() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {format(new Date(l.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                       </TableCell>
                       <TableCell>
@@ -282,7 +282,7 @@ function FunnelResults() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-lg border p-3">
                     <div className="text-xs text-muted-foreground">Score</div>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold tabular-nums">
                       {((selected.metadata as Record<string, unknown> | null)?.score as number) ??
                         0}
                     </div>
@@ -408,12 +408,12 @@ function FormResults() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Formulário</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Tempo</TableHead>
-                  <TableHead>Quando</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Formulário</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Score</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Tags</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Tempo</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Quando</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -452,10 +452,10 @@ function FormResults() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {s.time_spent_seconds != null ? `${s.time_spent_seconds}s` : '-'}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {s.created_at
                           ? format(new Date(s.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })
                           : '-'}
