@@ -1,3 +1,6 @@
+> 🩹 **ERRATA (2026-07-09, controller · triagem 6cf2fc02, evidência verificada)** — L112 `transfer_sector` NÃO é 'schema pendente' — Marcelo DECIDIU 07-09: MANTER no CRM da plataforma e CONSTRUIR (setores product-scoped + sector_id + religar action + UI); backlog F1 do LEVANTAMENTO. · L114 F6 foi absorvido/especificado por DESENHO-ONBOARDING-NEXVYBEAUTY-2026-07-09.md (steps S2/S4, gate G0).
+> Texto histórico preservado abaixo.
+
 # PLANO — Autopilot de VENDA 100% (dia-0 da captação)
 > 2026-07-05 · Base: AUDITORIA-AUTOPILOT-DIA0.md (bloqueadores A1-A7 verificados no código/banco)
 > Funil-alvo: **LP → clicou → WhatsApp → tirou dúvida → comprou → provisionado** — zero toque humano (Marcelo só monitora pelo Telegram).

@@ -66,9 +66,7 @@ export function PlatformCrmEditVisitorDialog({
         .update({
           visitor_name: n,
           visitor_phone: phone.trim() || null,
-          // TODO(A1.2-backend): persistir visitor_email quando a coluna existir em
-          // platform_crm_conversations (pende migration) — o campo segue na UI
-          // para paridade com o v5 e o valor digitado é preservado no formulário.
+          visitor_email: email.trim() || null,
         })
         .eq('id', conversationId);
       if (error) throw error;

@@ -1,3 +1,6 @@
+> 🩹 **ERRATA (2026-07-09, controller · triagem 6cf2fc02, evidência verificada)** — L221 'Evals são o gate que falta (5.6)' DESATUALIZADO — evals RODARAM 12/12 verde (commit b349da4); gate 5.6 SATISFEITO. Residual = só 5.7 (calibração 35% com dado real).
+> Texto histórico preservado abaixo.
+
 # PLAYBOOK CLOSER — BIA (fechamento por VALOR do cliente cético)
 
 > Braço BIA-MASTER-CLOSER (Onda 5, itens 5.4 + 5.5) · 2026-07-05 · NexvyBeauty — canal de vendas WhatsApp (Piloto Fundadora 30/30/1)

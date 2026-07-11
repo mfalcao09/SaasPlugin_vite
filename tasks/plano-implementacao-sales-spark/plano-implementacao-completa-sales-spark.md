@@ -1,3 +1,6 @@
+> ⚰️ **SUPERSEDED** (2026-07-09, errata da auditoria-213 · CARD 4) — Fase 0 (baseline) foi resolvida: apps/NexvyBeauty/.vendus-src-reference/ existe byte-idêntico (via repo novo-remix-vendus-v4, per CONTROLE-SESSOES). Mas a premissa-mãe morreu: decisão Marcelo 07-02 = 1 CRM do grupo multiproduto ('não 10 ports') — memo project_crm_grupo_multiproduto_decisoes. Único d
+> Conteúdo histórico preservado abaixo; NÃO executar a partir deste doc.
+
 # Plano de Implementação Completa (100%) — sales-spark → SaaS Nexvy
 
 > **Data:** 2026-06-09

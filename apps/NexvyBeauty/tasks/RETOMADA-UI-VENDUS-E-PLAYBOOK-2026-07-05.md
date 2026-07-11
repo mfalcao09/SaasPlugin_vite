@@ -1,3 +1,6 @@
+> 🩹 **ERRATA (2026-07-09, controller · triagem 6cf2fc02, evidência verificada)** — §3 marca FALTA para itens JÁ ENTREGUES (07-05, commits 555badc+b349da4): U1 (PlatformCrmInbox.tsx:75-76 + LeadContextPanel 456L) · U2 (ConversationList.tsx:266-304) · U3 (platformCrmIdentity.ts) · A2 (AnalysisPanel.tsx:20,57-58 + edge) · A4 (usePlatformPresenceHeartbeat em PlatformShell.tsx:16) · A6 (booking-dispatcher/index.ts:81 via Cloud API). PERMANECEM FALTA: A1 (composer 8 comps) · A3 (decidido MANTER/construir) · A7 (followup-ai-draft inexistente) · U4 (eyeball Marcelo).
+> Texto histórico preservado abaixo.
+
 # RETOMADA — Modelo de UI (Remix Vendus) + Playbook na IA da ponta
 > 2026-07-05 · Forense de 3 sessões (986d864f "Nexvybeauty CRM porting work" 481MB 26/06→03/07 · 7034f3dd · 81daecc0) + worktree `_wt-crm-pele-viva` + mapa de código do copiloto.
 > Gatilho: "a UI está ruim, bagunçada" + "Sugerir Resposta IA" respondeu genérico ("piloto = teste gratuito" ❌).

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta pra 100% — Porte Vendus V5 → CRM Plataforma</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1040px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.85rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.25rem;margin:2em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:1.02rem;color:var(--accent);margin:1.3em 0 .3em}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.4em 0 .4em 14px;margin:0 0 1em;font-size:.9rem}
+  .lead a{color:var(--blue)}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.85em;
+    font-family:"SF Mono",Menlo,Consolas,monospace;color:#ffd9ec}
+  table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.88rem;background:var(--panel);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1a2130}
+  .tot td{font-weight:800;background:#12341f22;color:#fff}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:1em 0}
+  .verdict{background:linear-gradient(135deg,#1a1420,#161b22);border:1px solid var(--accent2)}
+  .warn{background:linear-gradient(135deg,#241a10,#161b22);border:1px solid var(--yellow)}
+  .key{background:linear-gradient(135deg,#101f24,#161b22);border:1px solid var(--blue)}
+  .ok{color:var(--green);font-weight:700}.red{color:var(--red);font-weight:700}
+  .yellow{color:var(--yellow);font-weight:700}.muted{color:var(--muted)}
+  ul{padding-left:20px}li{margin:.3em 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--border);margin:2.2em 0}
+  .foot{color:var(--muted);font-size:.8rem;font-style:italic;margin-top:2em}
+  .kicker{color:var(--muted);font-size:.82rem;margin-top:-.2em}
+  .big{font-size:1.5rem;font-weight:800;color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Delta pra 100% — Porte Vendus V5 → CRM da Plataforma</h1>
+<div class="kicker">2026-07-11 · sessão <code>6cf2fc02</code> · 5 auditores 1:1 vs base canônica <code>oficial-vendus-v5</code></div>
+<p class="lead"><strong>Pergunta:</strong> "75% não é confortável. O que falta para os 100% viável — os 100% do que é possível pro nosso CRM?" · Padrão DURO: se não é cópia fiel, é gap.</p>
+
+<h2>0. Veredito honesto</h2>
+<div class="card verdict">
+<p><strong>O número raw bate com teu incômodo: <span class="big">~74%</span> portado 1:1.</strong> Mas o delta <strong>não é caos espalhado</strong> — concentra em <strong>2 blocos grandes + um rabo escasso</strong>, e parte dos "20%" é <strong>trilha-própria que você já parkou</strong> (Voz IA, Meta Ads, fluxos IG), não buraco de porte.</p>
+<p>A verdade desconfortável: o maior gap real <strong>não é o inbox</strong> (esse está fiel) — é o <strong>cérebro/conteúdo dos agentes</strong> (objeções, materiais, base de conhecimento, catálogo, pós-venda): <strong>UI portada 1:1 mas backend inerte</strong> (tabelas <code>platform_crm_*</code> product-scoped nunca criadas). E há um cluster de <span class="red">"mentira silenciosa"</span> (UI diz "salvo" e não persiste) que é bug de produto.</p>
+</div>
+
+<h2>1. Placar consolidado (301 itens)</h2>
+<table>
+<thead><tr><th>Domínio</th><th>✅ 1:1</th><th>🟡 parcial</th><th>🔴 não-portado</th><th>⚪ N/A</th><th>Delta (dev-days)</th></tr></thead>
+<tbody>
+<tr><td>Inbox / Atendimento</td><td>37</td><td>9</td><td>1</td><td>5</td><td>~2-3</td></tr>
+<tr><td><strong>Agentes / Cérebro / Conteúdo</strong></td><td>13</td><td>2</td><td>11</td><td>0</td><td class="yellow">~11-12</td></tr>
+<tr><td>Cadência / Jornada / Lead / Kanban</td><td>32</td><td>2</td><td>13</td><td>1</td><td>~4-5</td></tr>
+<tr><td>Edge Functions (backend)</td><td>122</td><td>3</td><td>27</td><td>2</td><td>~7-8 (in-scope)</td></tr>
+<tr><td>Features de apoio + Hooks</td><td>14</td><td>6</td><td>1</td><td>0</td><td>~1.5-2</td></tr>
+<tr class="tot"><td>TOTAL</td><td>218</td><td>22</td><td>53</td><td>8</td><td>—</td></tr>
+</tbody>
+</table>
+<ul>
+<li><strong>1:1 raw:</strong> 218 / 293 in-scope = <strong>74,4%</strong> (confirma teu "75%").</li>
+<li><strong>Excluindo trilhas parked</strong> (Voz/Ads/IG-flows ≈ 16 itens): <strong>~79%</strong>.</li>
+<li><strong>Total pra 100% 1:1 (menos trilhas parked): ~26-31 dev-days</strong> — muito menos com paralelismo.</li>
+</ul>
+
+<h2>2. Como o delta se agrupa</h2>
+
+<h3>🅰 Trilhas próprias — JÁ parked (não é buraco de porte)</h3>
+<p class="muted">Decisões de produto: <strong>Voz IA</strong> (10 edges + CallVoiceAIDialog, GRANDE) · <strong>Meta Ads/CTWA</strong> (marketing-connect/sync, meta-ads-validate) · <strong>Fluxos IG</strong> (ig-flow-executor, instagram-flow-generate-ai).</p>
+
+<h3>🅱 Cérebro/conteúdo do agente — O MAIOR BLOCO (~11-12d)</h3>
+<div class="card">
+<p>Config/orquestração/MIA/goals/captação <strong>persistem 100%</strong>. O gap é o <strong>conteúdo product-scoped</strong>: UI portada 1:1, mas mutações caem num stub (<code>useProductHubStubs.ts</code> → <code>toast.info</code> + query <code>[]</code>). <strong>8 tabelas + ~7 edges twin faltando:</strong> base de conhecimento, catálogo de itens, pós-venda, objeções estruturadas, materiais, vídeo-aulas, CTAs do chat, templates de e-mail, treino do agente, gerar-agente-IA, chat de teste.</p>
+<p><strong>Causa-raiz única:</strong> faltam tabelas <code>platform_crm_*</code> sem <code>organization_id</code> + versão <code>platform-*</code> de edges que <strong>já existem</strong> org-scoped (reuso trocando <code>organization_id</code>→<code>product_id</code>). <strong>Impacto:</strong> alimenta a Duda/Bia por produto — coração do "agente que vende".</p>
+</div>
+
+<h3>🅲 Dashboard de Jornada / atribuição (~2-3d)</h3>
+<p><code>lib/leadJourney.ts</code> (760 linhas) + <code>useLeadJourney.ts</code> (11 hooks) + 10 componentes <code>journey/</code> <strong>não portados</strong>. Funil, heatmap, aquisição por origem/campanha/<strong>criativo</strong>, gargalos, touchpoints, feed real-time. A aba de jornada <em>por-lead</em> ESTÁ portada; falta o <em>dashboard analítico</em>.</p>
+
+<h3>🅳 Inbox borda + "MENTIRA SILENCIOSA" (~2-3d)</h3>
+<div class="card warn">
+<p>Núcleo do atendimento fiel. Mas <strong>3 gaps são bug de produto</strong> (UI diz "salvo", não persiste):</p>
+<ul>
+<li><span class="red">🔴 <code>EditVisitorDialog</code></span> — email do visitante não grava (TODO migration).</li>
+<li><span class="red">🔴 <code>TransferModal</code></span> — troca de conexão Evolution vira <code>console.warn</code>, não persiste.</li>
+<li><span class="yellow">🟡 Áudio iOS/Safari</span> — grava só webm/opus → não toca no iPhone; sem fallback "baixar".</li>
+<li class="muted">FollowupAI sem warnings/model · AcceptTicket sem force:takeover · InboxMetricsHeader e ProductSelector não montados · LeadEditModal (editar lead vinculado) sempre abre só o EditVisitor.</li>
+</ul>
+</div>
+
+<h3>🅴 Instagram — sender real de DM (~2-3d) ⚠️ VERIFICAR</h3>
+<p><code>platform-instagram-*</code> só tem connect/draft/test/webhook. Faltam <strong><code>instagram-send</code></strong> (sender de DM real), <code>instagram-list-media</code>, <code>instagram-subscribe-fields</code>. <span class="yellow">⚠️ Conflito:</span> sessões anteriores marcaram "IG outbound funcionando" — precisa confirmar se o envio real funciona ou passa por outra rota.</p>
+
+<h3>🅵 Features de apoio — re-exposição (~1.5-2d)</h3>
+<p class="muted">Tudo existe tenant-side; falta re-expor em <code>platform_crm_*</code>: summaries deals/comissões, gamificação de metas, Google Calendar connect, AICampaignAssistant, squad-performance comparativo.</p>
+
+<h3>🅶 Cadência (~2-3d)</h3>
+<p class="muted">Editor + modelo byte-idênticos. Faltam: biblioteca de contextos reutilizáveis (<code>context_id</code>) + editor rico no hub do produto (stub <code>todoBackend</code>).</p>
+
+<h2>3. 🔑 O lote de migrations que mata a "mentira silenciosa"</h2>
+<div class="card key">
+<p>Um padrão atravessa 🅱🅳🅶: <strong>a UI existe e mente porque falta a tabela/coluna <code>platform_crm_*</code>.</strong> Um <strong>lote único de migrations product-scoped</strong> (RLS via helper SECURITY DEFINER, padrão já usado) destrava de uma vez: 8 tabelas de conteúdo + <code>visitor_email</code> + colunas do Transfer + <code>context_id</code> de cadência. <strong>É o movimento de maior retorno</strong> — transforma dezenas de UIs inertes em funcionais e mata os bugs onde o sistema mente pro operador.</p>
+</div>
+
+<h2>4. Ordem de ataque recomendada (rumo aos 100%)</h2>
+<table>
+<thead><tr><th>Prio</th><th>Pacote</th><th>Esforço</th><th>Por quê primeiro</th></tr></thead>
+<tbody>
+<tr><td><strong>P0</strong></td><td><strong>Correção da "mentira silenciosa"</strong> — lote de migrations + iOS audio + wirings do inbox</td><td>~2-3d</td><td>Bug de produto: hoje o sistema <strong>mente</strong>. Barato, alto impacto de confiança</td></tr>
+<tr><td><strong>P1</strong></td><td><strong>Cérebro/conteúdo do agente</strong> — 8 tabelas + edges twin</td><td>~11-12d</td><td>Maior bloco; coração do "agente que vende". Paralelizável</td></tr>
+<tr><td><strong>P2</strong></td><td><strong>Dashboard de Jornada</strong> — leadJourney + hooks + 10 componentes</td><td>~2-3d</td><td>Analytics de origem/campanha/criativo</td></tr>
+<tr><td><strong>P3</strong></td><td><strong>Edges in-scope restantes</strong> — instagram-send, 4 assist inbox/booking, fechar Meta-WA, infra org</td><td>~7-8d</td><td>Rabo escasso mas real</td></tr>
+<tr><td><strong>P4</strong></td><td><strong>Features re-exposição</strong> + <strong>cadência</strong> (contextos + editor no hub)</td><td>~3-4d</td><td>Paridade fina; nenhum é regressão</td></tr>
+<tr><td>—</td><td>Voz IA · Meta Ads · Fluxos IG</td><td>—</td><td><strong>Parked</strong> (trilha própria, tua decisão)</td></tr>
+</tbody>
+</table>
+
+<h2>5. Decisões que só você toma</h2>
+<ol>
+<li><strong><code>CallVoiceAIDialog</code></strong> — confirma que é drop (junto com a trilha de Voz)?</li>
+<li><strong><code>InboxProductSelector</code></strong> — substituído de propósito pelo <code>ProductContext</code> global (E1/F2)? Se sim, ratifica e some do delta.</li>
+<li><strong><code>instagram-send</code></strong> — o outbound de DM marcado "funcionando" é real? (preciso verificar).</li>
+<li><strong>Corte do lançamento:</strong> <strong>100% 1:1 antes de lançar</strong> (P0-P4, ~26-31d), ou <strong>lançar com P0+P1 e P2-P4 como fast-follow</strong>? A máquina de venda já roda; o delta é qualidade/profundidade, não bloqueio de operação.</li>
+</ol>
+
+<h2>6. Ressalva de método</h2>
+<p class="muted">Auditoria por leitura profunda + grep dos dois lados, não <code>diff -r</code> byte-a-byte em cada arquivo. Onde afirmei "byte-idêntico" (useLeadTracking, useCadence) foi confirmado; nos blocos grandes por presença em caminho idêntico + amostra. Rigor total = <code>diff -r</code> nas pastas (~1h).</p>
+
+<hr>
+<p class="foot">Fontes: 5 auditorias paralelas vs <code>oficial-vendus-v5</code> · cruzado com Levantamento 07-08 e Auditoria de Portabilidade V5 07-11.</p>
+
+</div>
+</body>
+</html>

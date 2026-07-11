@@ -1,3 +1,6 @@
+> 🩹 **ERRATA (2026-07-09, controller · triagem 6cf2fc02, evidência verificada)** — L38 'Pendente: platform-booking-dispatcher (email/WhatsApp)' duplamente superado — (a) dispatcher EXISTE e ENVIA via WhatsApp Cloud API idempotente (booking-dispatcher/index.ts:81, deployado); (b) canal e-mail = won't-do (decisão Marcelo 07-08: confirmação = WhatsApp do salão, nunca e-mail).
+> Texto histórico preservado abaixo.
+
 # Portar fluxo PÚBLICO de booking (Calendly) CRM Vendus → super-admin platform_crm_*
 
 ## Achados de recon

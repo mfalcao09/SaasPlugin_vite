@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, RefreshCw, Send, Wand2 } from 'lucide-react';
+import { Sparkles, RefreshCw, Send, Wand2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -35,6 +35,10 @@ export interface PlatformCrmFollowupDraft {
   draft: string;
   summary?: string | null;
   strategy?: string | null;
+  /** Avisos da IA (ex.: falta de contexto, dado sensível) — exibidos em âmbar. */
+  warnings?: string[] | null;
+  /** Modelo que gerou o rascunho — exibido como label discreto. */
+  model?: string | null;
 }
 
 interface PlatformCrmFollowupAIDialogProps {
@@ -61,6 +65,8 @@ export function PlatformCrmFollowupAIDialog({
   const [text, setText] = useState('');
   const [summary, setSummary] = useState<string | null>(null);
   const [strategy, setStrategy] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [model, setModel] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [generatedOnce, setGeneratedOnce] = useState(false);
@@ -69,6 +75,8 @@ export function PlatformCrmFollowupAIDialog({
     if (result?.draft) setText(result.draft.slice(0, MAX_LEN));
     setSummary(result?.summary || null);
     setStrategy(result?.strategy || null);
+    setWarnings(Array.isArray(result?.warnings) ? result!.warnings! : []);
+    setModel(result?.model || null);
   };
 
   // Gera ao abrir (paridade v5: rascunho automático a partir do histórico real).
@@ -78,14 +86,14 @@ export function PlatformCrmFollowupAIDialog({
     setText('');
     setSummary(null);
     setStrategy(null);
+    setWarnings([]);
+    setModel(null);
     setGeneratedOnce(false);
     setIsGenerating(true);
     Promise.resolve(onGenerateDraft())
       .then((result) => {
         if (cancelled) return;
-        if (result?.draft) setText(result.draft.slice(0, MAX_LEN));
-        setSummary(result?.summary || null);
-        setStrategy(result?.strategy || null);
+        applyDraft(result);
       })
       .catch(() => {
         /* erros já tratados dentro de onGenerateDraft (toast informativo) */
@@ -175,6 +183,21 @@ export function PlatformCrmFollowupAIDialog({
                 </div>
               )}
 
+              {/* Avisos da IA (contrato 5) — caixa âmbar */}
+              {warnings.length > 0 && (
+                <div className="rounded-md border border-amber-300/60 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 p-2 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400 mb-1">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    <span>Atenção</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-0.5 text-amber-800/90 dark:text-amber-200/90">
+                    {warnings.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-muted-foreground">
@@ -216,6 +239,11 @@ export function PlatformCrmFollowupAIDialog({
             <RefreshCw className={cn('h-4 w-4', isGenerating && 'animate-spin')} />
             Gerar outra
           </Button>
+          {model && (
+            <span className="self-center text-[10px] text-muted-foreground/70 tabular-nums">
+              {model}
+            </span>
+          )}
           <div className="flex-1" />
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
             Cancelar

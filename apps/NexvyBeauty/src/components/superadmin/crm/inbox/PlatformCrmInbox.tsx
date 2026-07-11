@@ -29,6 +29,7 @@ import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
 import { resolveVisitorIdentity } from './platformCrmIdentity';
 import { PlatformCrmConversationList, type Conversation } from './PlatformCrmConversationList';
+import { PlatformCrmInboxMetricsHeader } from './PlatformCrmInboxMetricsHeader';
 import { PlatformCrmChatArea, type Message } from './PlatformCrmChatArea';
 import { PlatformCrmLeadContextPanel } from './PlatformCrmLeadContextPanel';
 import { PlatformCrmTransferModal } from './PlatformCrmTransferModal';
@@ -857,6 +858,7 @@ export function PlatformCrmInbox({
               externalShowResolved={filters.showResolved}
               activeFilterCount={activeFilterCount}
               onNewConversation={() => setShowStartConversation(true)}
+              metricsSlot={<PlatformCrmInboxMetricsHeader conversations={countRows} />}
               soundControls={soundControls}
               showAssignedUser={isAdminMode}
               headerLabel={isAdminMode ? 'Atendimentos · Admin' : 'Atendimentos'}
@@ -1003,7 +1005,7 @@ export function PlatformCrmInbox({
               lead={leadForPanel}
               conversationId={selectedConversation.id}
               visitorName={freshSelected?.visitor_name || null}
-              visitorEmail={null}
+              visitorEmail={(freshSelected as any)?.visitor_email ?? null}
               visitorPhone={freshSelected?.visitor_phone || null}
               visitorAvatarUrl={null}
               channel={freshSelected?.channel || 'webchat'}
@@ -1041,7 +1043,7 @@ export function PlatformCrmInbox({
               lead={leadForPanel}
               conversationId={selectedConversation.id}
               visitorName={freshSelected?.visitor_name || null}
-              visitorEmail={null}
+              visitorEmail={(freshSelected as any)?.visitor_email ?? null}
               visitorPhone={freshSelected?.visitor_phone || null}
               visitorAvatarUrl={null}
               channel={freshSelected?.channel || 'webchat'}
@@ -1107,7 +1109,7 @@ export function PlatformCrmInbox({
             onOpenChange={setShowEditContact}
             conversationId={selectedConversation.id}
             visitorName={selectedRow?.visitor_name ?? freshSelected?.visitor_name}
-            visitorEmail={null}
+            visitorEmail={(selectedRow as any)?.visitor_email ?? null}
             visitorPhone={freshSelected?.visitor_phone}
           />
           <PlatformCrmSendFlowDialog

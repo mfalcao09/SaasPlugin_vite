@@ -73,6 +73,8 @@ interface PlatformCrmConversationListProps {
   headerLabel?: string;
   /** Substitui o botão de filtro padrão (usado para ancorar popover). */
   filtersSlot?: React.ReactNode;
+  /** Barra de métricas rápidas exibida no topo da lista (ativas/não-lidas/etc). */
+  metricsSlot?: React.ReactNode;
   /** Aba ativa controlada (backend filtra por status). */
   activeTab?: StatusTab;
   onTabChange?: (tab: StatusTab) => void;
@@ -126,6 +128,7 @@ export function PlatformCrmConversationList({
   soundControls,
   showAssignedUser = false,
   filtersSlot,
+  metricsSlot,
   activeTab: activeTabProp,
   onTabChange,
   tabCounts,
@@ -370,6 +373,11 @@ export function PlatformCrmConversationList({
           </Tooltip>
         )}
       </div>
+
+      {/* Métricas rápidas (ativas / não lidas / aguardando / +5min) */}
+      {metricsSlot && (
+        <div className="px-3 py-2 border-b bg-background">{metricsSlot}</div>
+      )}
 
       {/* Barra de ações em lote */}
       {selectionMode && (
