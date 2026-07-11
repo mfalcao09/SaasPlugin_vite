@@ -24,6 +24,7 @@ import {
 } from '../data/usePlatformCrmConversations';
 import { usePlatformCrmNotificationSound } from '../data/usePlatformCrmNotificationSound';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { usePlatformCrmAgentConfigs } from '../data/usePlatformCrmAgentConfigs';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
@@ -141,13 +142,19 @@ export function PlatformCrmInbox({
   const [showFiltersDrawer, setShowFiltersDrawer] = useState(false);
   const [filters, setFilters] = useState<PlatformCrmInboxFiltersState>(defaultPlatformCrmInboxFilters);
 
+  // Produto ativo GLOBAL (D3 F2) — filtra a caixa pelo produto do switcher da
+  // sidebar do painel (A1.3). Conversas sem produto seguem sempre visíveis (ver
+  // hook). NÃO se confunde com o seletor POR-CONVERSA abaixo (esse vincula o
+  // produto de UMA conversa à IA).
+  const { activeProductId } = useActivePlatformProduct();
+
   // Dados — lista completa (realtime no hook, com o fix useId() preservado).
   const {
     data: allRows = [],
     isLoading: loadingConversations,
     isFetching: fetchingConversations,
     refetch: refetchConversations,
-  } = usePlatformCrmConversations();
+  } = usePlatformCrmConversations(activeProductId);
 
   // Produtos do GRUPO — nome do produto por id (paridade com productNameById do v5).
   const { data: allProducts = [] } = usePlatformCrmProducts();

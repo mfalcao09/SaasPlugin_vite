@@ -146,7 +146,11 @@ export function PlatformCrmLeadsManager() {
   };
 
   const handleCreateLead = async (values: CreatePlatformCrmLeadValues) => {
-    await createLead.mutateAsync(values);
+    // Carimba o produto ativo GLOBAL (D3 F2): o lead manual nasce vinculado ao
+    // produto do switcher da sidebar. "Todos os produtos" (activeProductId null)
+    // → product_id null (fallback). Antes ficava SEMPRE null (bug: sumia da lista
+    // ao ter um produto ativo, pois visibleLeads filtra por product_id).
+    await createLead.mutateAsync({ ...values, product_id: activeProductId ?? null });
     setCreateDialogOpen(false);
   };
 

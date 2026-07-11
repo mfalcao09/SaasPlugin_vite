@@ -113,7 +113,7 @@ function statusesForTab(tab: PlatformCrmStatusTab): PlatformCrmConversation['sta
  * tem RPC de contagem/paginação como o webchat), mantendo os contadores por aba
  * sempre consistentes com a lista completa.
  */
-export function usePlatformCrmConversations() {
+export function usePlatformCrmConversations(productId?: string | null) {
   const queryClient = useQueryClient();
   // Canal Realtime ÚNICO por instância do hook — evita o crash "cannot add
   // postgres_changes callbacks after subscribe()" quando >1 consumidor monta o
@@ -121,12 +121,20 @@ export function usePlatformCrmConversations() {
   const instanceId = useId().replace(/[^a-zA-Z0-9]/g, '');
 
   const query = useQuery({
-    queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'],
+    // productId no key: trocar o produto ativo GLOBAL (D3 F2) re-consulta a lista.
+    queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations', productId ?? null],
     queryFn: async (): Promise<PlatformCrmConversationRow[]> => {
-      const { data, error } = await supabase
+      // Produto ativo GLOBAL (D3 F2): filtra as conversas pelo produto ativo, mas
+      // SEMPRE inclui as ainda sem produto (product_id null = não classificadas),
+      // para que nenhuma conversa suma da caixa ao trocar de produto.
+      let convQuery = supabase
         .from('platform_crm_conversations')
         .select('*')
         .order('last_message_at', { ascending: false, nullsFirst: false });
+      if (productId) {
+        convQuery = convQuery.or(`product_id.eq.${productId},product_id.is.null`);
+      }
+      const { data, error } = await convQuery;
 
       if (error) throw error;
       const rows = (data ?? []) as PlatformCrmConversation[];

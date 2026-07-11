@@ -72,7 +72,7 @@ import {
 } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 
 const statusConfig: Record<
@@ -102,15 +102,14 @@ export function PlatformCrmCaptureFormsTab() {
 
   const { data: forms, isLoading } = usePlatformCrmForms();
   const { data: templates } = usePlatformCrmFormTemplates();
-  const { data: products = [] } = usePlatformCrmProducts();
+  // Produto ativo GLOBAL (D3 F2): lista filtra pelo ativo e novo form nasce nele.
+  const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
   const createForm = useCreatePlatformCrmForm();
   const createFromTemplate = useCreatePlatformCrmFormFromTemplate();
   const deleteForm = useDeletePlatformCrmForm();
   const duplicateForm = useDuplicatePlatformCrmForm();
   const toggleStatus = useTogglePlatformCrmFormStatus();
 
-  // 1 produto → auto-seleciona e trava (label estática no campo).
-  const singleProductId = products.length === 1 ? products[0].id : '';
   // Obrigatório quando há produtos; sem produtos o backend aplica o default.
   const productReady = products.length === 0 || !!productId;
 
@@ -119,7 +118,11 @@ export function PlatformCrmCaptureFormsTab() {
       form.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       form.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || form.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    // Recorte pelo produto ativo GLOBAL (D3 F2): "Todos" mostra tudo; concreto
+    // mostra os do produto + os sem produto (nunca somem).
+    const matchesProduct =
+      !activeProductId || form.product_id === activeProductId || form.product_id == null;
+    return matchesSearch && matchesStatus && matchesProduct;
   });
 
   const isCreating = createForm.isPending || createFromTemplate.isPending;
@@ -129,7 +132,8 @@ export function PlatformCrmCaptureFormsTab() {
     setDescription('');
     setSelectedTemplateId('');
     setCreateMethod('manual');
-    setProductId(singleProductId);
+    // Novo form nasce no produto ativo (concreto). Com 1 produto, é ele mesmo.
+    setProductId(effectiveProductId ?? '');
     setIsCreateOpen(true);
   };
 
