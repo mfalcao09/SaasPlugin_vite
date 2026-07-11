@@ -169,7 +169,7 @@ export function CampaignsList({
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1 tabular-nums">
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       Criada em {format(new Date(c.created_at), "dd 'de' MMM yyyy, HH:mm", { locale: ptBR })}
@@ -203,7 +203,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
       <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
         {icon}<span>{label}</span>
       </div>
-      <p className="text-sm font-semibold leading-tight mt-0.5">{value}</p>
+      <p className="text-sm font-semibold leading-tight mt-0.5 tabular-nums">{value}</p>
     </div>
   );
 }

@@ -103,7 +103,7 @@ export function PlatformCrmSectorsManager() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-medium">Setor</th>
                     <th className="text-left px-4 py-2.5 font-medium">Ordem</th>
@@ -132,7 +132,7 @@ export function PlatformCrmSectorsManager() {
                             <div className="font-medium text-foreground">{s.name}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-3 text-muted-foreground tabular-nums">
                           {s.bot_order ?? '-'}
                         </td>
                         <td className="px-4 py-3">

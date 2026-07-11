@@ -191,7 +191,7 @@ export function PlatformCrmCaptureTemplatesTab() {
                   <Sparkles className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition" />
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t tabular-nums">
                   {t.estimated_time && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {t.estimated_time}
@@ -254,7 +254,7 @@ export function PlatformCrmCaptureTemplatesTab() {
                   <Sparkles className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition" />
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t tabular-nums">
                   <span className="flex items-center gap-1">
                     <ListChecks className="h-3 w-3" />
                     {Array.isArray(t.blocks) ? t.blocks.length : 0} blocos

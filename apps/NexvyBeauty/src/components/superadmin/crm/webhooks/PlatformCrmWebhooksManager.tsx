@@ -135,12 +135,12 @@ export function PlatformCrmWebhooksManager() {
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Activity className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Activity className="h-4 w-4" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Requisições este mês</p>
-                <p className="text-2xl font-bold">{totalRequestsThisMonth.toLocaleString()}</p>
+                <p className="text-2xl font-bold tabular-nums">{totalRequestsThisMonth.toLocaleString()}</p>
               </div>
             </div>
             <Badge variant="secondary" className="text-sm">
@@ -186,11 +186,11 @@ export function PlatformCrmWebhooksManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-center">Req. Mês</TableHead>
-                  <TableHead className="text-center">Req. Total</TableHead>
-                  <TableHead>Última Requisição</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Nome</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">Req. Mês</TableHead>
+                  <TableHead className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">Req. Total</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Última Requisição</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -232,13 +232,13 @@ export function PlatformCrmWebhooksManager() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center font-medium">
+                    <TableCell className="text-center font-medium tabular-nums">
                       {webhook.requests_this_month || 0}
                     </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
+                    <TableCell className="text-center text-muted-foreground tabular-nums">
                       {webhook.requests_count || 0}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground tabular-nums">
                       {webhook.last_request_at
                         ? format(new Date(webhook.last_request_at), "dd/MM/yyyy 'às' HH:mm", {
                             locale: ptBR,

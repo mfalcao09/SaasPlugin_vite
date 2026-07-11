@@ -160,7 +160,7 @@ export function PlatformCrmQuickRepliesManager() {
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   {category}
                 </h3>
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-[10px] tabular-nums">
                   {items.length}
                 </Badge>
               </div>
