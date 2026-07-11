@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploy NexvyBeauty — Runbook Canônico</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --fg:#e6edf3; --muted:#9198a1; --accent:#f778ba; --accent2:#58a6ff;
+    --ok:#3fb950; --warn:#d29922; --code:#f0f6fc; --codebg:#0b0f14;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:2.5rem 1rem}
+  main{max-width:920px;margin:0 auto}
+  h1{font-size:1.9rem;margin:.2rem 0 .3rem;color:#fff}
+  h2{font-size:1.28rem;margin:2.2rem 0 .7rem;padding-bottom:.35rem;
+    border-bottom:1px solid var(--border);color:var(--accent)}
+  h3{font-size:1.05rem;margin:1.3rem 0 .4rem;color:var(--accent2)}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .lead{color:var(--muted);border-left:3px solid var(--accent);
+    background:var(--panel);padding:.8rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+  .gold{border-left-color:var(--warn);background:var(--panel2)}
+  table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.94rem}
+  th,td{border:1px solid var(--border);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff}
+  tr:nth-child(even) td{background:var(--panel)}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.88em;
+    background:var(--panel2);color:var(--code);padding:.1rem .35rem;border-radius:4px}
+  pre{background:var(--codebg);border:1px solid var(--border);border-radius:8px;
+    padding:1rem;overflow-x:auto;margin:1rem 0}
+  pre code{background:none;padding:0;color:#c9d1d9;font-size:.85rem;line-height:1.6}
+  ol,ul{padding-left:1.3rem}
+  li{margin:.3rem 0}
+  .ok{color:var(--ok);font-weight:600}
+  .warn{color:var(--warn);font-weight:600}
+  .meta{color:var(--muted);font-size:.9rem}
+  hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+  strong{color:#fff}
+</style>
+</head>
+<body>
+<main>
+  <h1>Deploy NexvyBeauty — Runbook Canônico</h1>
+  <p class="meta">Fonte única de verdade do deploy do NexvyBeauty no VPS <code>vps-hostinger</code> (145.223.29.96).<br>
+  Última reconciliação: <strong>2026-07-11</strong> (git do VPS regularizado — ver §6). Par <code>.md</code> + <code>.html</code> — editar os dois em sincronia.</p>
+
+  <h2>1. TL;DR — o fluxo determinístico</h2>
+  <pre><code># 1. no Mac: commite e PUSHE tudo que vai pra produção
+git add -A && git commit -m "..." && git push origin main
+
+# 2. no VPS: puxe main e rode o deploy
+ssh vps-hostinger
+cd /opt/stacks/saasplugin-vite
+git pull --ff-only origin main
+./infra/deploy-vps.sh NexvyBeauty nexvy-beauty gestao.nexvybeauty.com.br</code></pre>
+  <p>O script só retorna <code>0</code> quando <strong>prova</strong> que o bundle novo está servindo (gate anti-phantom). Qualquer coisa diferente de <code class="ok">DEPLOY-VERDE:</code> = deploy não concluído.</p>
+  <div class="lead gold"><strong>Regra de ouro (a lição de 2026-07-11):</strong> o que vai pra produção <strong>passa pelo git</strong> (commit + push + pull no VPS). <strong>Nunca</strong> sincronizar arquivo-a-arquivo via <code>scp</code> sobre um working tree — isso quebra o determinismo e foi exatamente o que precisou ser desfeito (§6).</div>
+
+  <h2>2. Topologia real</h2>
+  <table>
+    <tr><th>Item</th><th>Valor</th></tr>
+    <tr><td>Container</td><td><code>nexvy-beauty</code> (porta interna 80/tcp, healthcheck ativo)</td></tr>
+    <tr><td>Stack / repo no VPS</td><td><code>/opt/stacks/saasplugin-vite</code> (repo git completo)</td></tr>
+    <tr><td>Branch de produção</td><td><code>main</code></td></tr>
+    <tr><td>Remote</td><td><code>origin</code> → github.com/mfalcao09/SaasPlugin_vite</td></tr>
+    <tr><td>Script de deploy</td><td><code>infra/deploy-vps.sh</code></td></tr>
+    <tr><td>Dockerfile</td><td><code>infra/Dockerfile.app</code> (multi-app via <code>--build-arg APP_DIR</code>)</td></tr>
+    <tr><td>Rede</td><td><code>traefik-public</code> (externa)</td></tr>
+    <tr><td>Traefik</td><td><strong>file provider</strong> — template <code>infra/traefik/NexvyBeauty.yml.template</code> → <code>/opt/stacks/traefik/dynamic/nexvy-beauty.yml</code></td></tr>
+    <tr><td>Domínios</td><td><code>gestao.nexvybeauty.com.br</code> (cockpit) · <code>app.nexvybeauty.com.br</code> · <code>nexvybeauty.com.br</code></td></tr>
+  </table>
+  <div class="lead"><strong>Ponto crítico:</strong> o <code>deploy-vps.sh</code> <strong>builda do WORKING TREE</strong> de <code>/opt/stacks/saasplugin-vite</code> — <strong>não</strong> de checkout limpo, <strong>não</strong> faz <code>git pull</code> sozinho. Empacota o que estiver no disco. Por isso o <code>git pull --ff-only</code> <strong>antes</strong> garante que o build reflete o commit certo. Working tree sujo → você builda a sujeira.</div>
+
+  <h2>3. O que o <code>deploy-vps.sh</code> faz (gate anti-phantom)</h2>
+  <pre><code>./infra/deploy-vps.sh APP_DIR CONTAINER DOMAIN</code></pre>
+  <ol>
+    <li>Snapshot do hash do bundle servido HOJE (<code>BEFORE_HASH</code>).</li>
+    <li><code>docker build --no-cache</code> (default) da imagem, do working tree.</li>
+    <li>Lê o hash do bundle <strong>da imagem recém-buildada</strong> (<code>EXPECTED_HASH</code>).</li>
+    <li>Recria o container em <code>traefik-public</code>; renderiza o template Traefik.</li>
+    <li><strong>Gate anti-phantom:</strong> poll até <code>HTTP 200</code> (até 90s, inclui cert), depois exige <code>SERVED_HASH == EXPECTED_HASH</code>. Servir bundle velho → <code class="warn">GATE FALHOU (PHANTOM)</code> + exit 1.</li>
+  </ol>
+  <p>Sucesso: <code class="ok">DEPLOY-VERDE: NexvyBeauty servindo provado em https://gestao.nexvybeauty.com.br/</code>.<br>
+  Vars úteis: <code>BUILD_NO_CACHE=0</code>, <code>READY_TIMEOUT</code>, <code>BUNDLE_RE</code>.</p>
+
+  <h2>4. <code>.env</code> e variáveis (Vite = build-time)</h2>
+  <ul>
+    <li>SPA Vite: <code>VITE_*</code> são <strong>embutidas no bundle em BUILD-time</strong>, lidas de <code>apps/NexvyBeauty/.env</code> pelo <code>Dockerfile.app</code>.</li>
+    <li>Mudou <code>.env</code> → <strong>precisa REBUILD</strong> (não basta restart). O script rebuilda por padrão.</li>
+    <li><code>apps/NexvyBeauty/.env</code> e <code>.env.production</code> vivem <strong>só no VPS</strong> (gitignored). <code>reset --hard</code> / <code>clean -fd</code> (sem <code>-x</code>) <strong>não os apagam</strong> — <span class="warn">nunca rodar <code>git clean -x</code></span>.</li>
+  </ul>
+
+  <h2>5. Edge functions e migrations (Supabase — à parte)</h2>
+  <p>O bundle vite <strong>não</strong> inclui <code>supabase/functions/*</code> nem <code>supabase/migrations*</code>. São deployados separadamente ao Supabase (functions via <code>supabase functions deploy</code>/MCP; migrations via <code>apply_migration</code>/MCP). Reconciliar o git do VPS <strong>não</strong> aplica migrations nem redeploya edge functions.</p>
+
+  <h2>6. Reconciliação 2026-07-11 (histórico)</h2>
+  <p><strong>Sintoma:</strong> VPS com <code>HEAD</code> preso em <code>main</code>/<code>a907c13</code> e <strong>~348 arquivos "sujos"</strong> que eram, na verdade, o branch <code>feat/beauty-inbox-a1.2</code> (nunca mergeado), sincronizado via <code>scp</code>. Funcionava, mas frágil: qualquer <code>git pull</code>/<code>checkout</code> colidiria.</p>
+  <p><strong>Diagnóstico (provado):</strong></p>
+  <ul>
+    <li><code>feat/beauty-inbox-a1.2</code> = <code>main</code> + 8 commits <strong>lineares</strong> (merge-base = <code>origin/main</code>; fast-forward puro; dry-merge 0 conflitos).</li>
+    <li>Paridade <code>src/</code> VPS↔branch = <span class="ok">ZERO divergência</span>. As 3 diferenças de código eram 2 migrations SQL + 1 edge function — fora do bundle frontend. O VPS estava sempre <em>atrás</em> do branch, <strong>nunca à frente</strong>.</li>
+  </ul>
+  <p><strong>Ações:</strong></p>
+  <ol>
+    <li>PR #5 <code>feat/beauty-inbox-a1.2 → main</code> (merge; <code>origin/main</code> = <code>7610ce7</code>, tree idêntico a <code>a90b84a</code>).</li>
+    <li>VPS: <code>git fetch && git reset --hard origin/main</code> (<code>.env*</code> preservados; container <strong>não</strong> rebuildado → prod intocada).</li>
+    <li>Resultado: <code>HEAD == origin/main</code>, working tree limpo, <code>git pull --ff-only</code> volta a funcionar.</li>
+  </ol>
+  <p class="meta">Rollback como rede: SHA pré-reset em <code>/tmp/beauty_pre_reset_head.txt</code> no VPS; conteúdo recuperável de <code>origin/main</code>.</p>
+
+  <h2>7. Regras anti-regressão</h2>
+  <ol>
+    <li><strong>Produção passa pelo git.</strong> Commit + push (Mac) → <code>git pull --ff-only origin main</code> (VPS) → <code>deploy-vps.sh</code>. Zero <code>scp</code> de código.</li>
+    <li><strong>Nunca <code>git clean -x</code></strong> neste repo (apagaria <code>.env*</code>).</li>
+    <li><strong><code>reset --hard</code> no VPS só com paridade provada</strong> — comparar contra o ref alvo incluindo untracked (<code>git add -AN</code> temporário + <code>git diff &lt;ref&gt;</code> + <code>git reset</code>).</li>
+    <li><strong>Branch de trabalho → main via PR (fast-forward).</strong> Não deixar feature branch virar trunk de facto.</li>
+    <li><strong>Deploy só é "verde" com <code>DEPLOY-VERDE:</code></strong> — o gate anti-phantom é a prova.</li>
+  </ol>
+
+  <h2>8. Rollback de deploy</h2>
+  <pre><code>ssh vps-hostinger
+cd /opt/stacks/saasplugin-vite
+git log --oneline -5                 # achar o SHA bom anterior
+git checkout &lt;SHA_ANTERIOR&gt;          # ou: git reset --hard &lt;SHA&gt;
+./infra/deploy-vps.sh NexvyBeauty nexvy-beauty gestao.nexvybeauty.com.br</code></pre>
+  <p class="meta">Logs: <code>docker logs -f nexvy-beauty --tail=100</code> · <code>curl -I https://gestao.nexvybeauty.com.br/</code></p>
+</main>
+</body>
+</html>
