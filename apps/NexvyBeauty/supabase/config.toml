@@ -12,6 +12,11 @@ verify_jwt = false
 [functions.platform-meta-whatsapp-webhook]
 verify_jwt = false
 
+# Webhook público de DMs do Instagram (Meta -> plataforma). Sem JWT.
+# Auth real = X-Hub-Signature-256 (HMAC do app_secret) validada na função.
+[functions.platform-instagram-webhook]
+verify_jwt = false
+
 # Cérebro de vendas (F2): chamada server-to-server do webhook. Sem JWT.
 # Auth real = service-role key OU x-brain-secret (BRAIN_INTERNAL_SECRET) na função.
 [functions.platform-sales-brain]

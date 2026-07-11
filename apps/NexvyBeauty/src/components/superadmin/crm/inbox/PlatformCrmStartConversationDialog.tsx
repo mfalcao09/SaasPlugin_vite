@@ -1,23 +1,45 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
+import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmMetaWAConnections } from '../data/usePlatformCrmMetaWhatsApp';
+import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
+import { PlatformCrmSendTemplateDialog } from './PlatformCrmSendTemplateDialog';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, MessageCircle, User, Phone } from 'lucide-react';
-import { useCreatePlatformCrmConversation } from '../data/usePlatformCrmConversations';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, Search, MessageCircle, User, Phone, BadgeCheck } from 'lucide-react';
 
 /**
  * "Nova Conversa" da inbox do CRM de PLATAFORMA.
- * PORTE 1:1 da UX de `seller/inbox/StartConversationDialog.tsx` (CRM Vendus) —
- * mesmo layout (nome/telefone/primeira mensagem). Desacoplado: sem seletor de
- * conexão Evolution/Meta e sem busca de leads por organização.
- *
- * WIRE CLIENT-SIDE: cria a linha em `platform_crm_conversations` via
- * `useCreatePlatformCrmConversation` (+ primeira mensagem opcional). A entrega por
- * WhatsApp/canal externo depende do edge `start-conversation` (fase futura).
+ * PORTE fiel (cópia 1:1) de `seller/inbox/StartConversationDialog.tsx` (297 L,
+ * Vendus v5 original) — seletor de conexão (Evolution QR + Meta Oficial), busca
+ * de lead, badge de lead selecionado, telefone e primeira mensagem. Trocas:
+ * (a) prefixo PlatformCrm*; (b) dados — `leads` → `platform_crm_leads`,
+ * instâncias/conexões → `usePlatformCrmEvolutionInstances` /
+ * `usePlatformCrmMetaWAConnections`; criação — A1.2-FRONT (contrato 1): edge
+ * `platform-start-whatsapp-conversation` POST { phone, message, connection_id?,
+ * lead_id? } → { ok, conversation_id, message_id }; erro `needs_template` abre
+ * o fluxo de template HSM (SendTemplateDialog) via toast com ação; (d) sem
+ * organization_id/useAuth (RLS super_admin isola os dados).
  */
 
 interface PlatformCrmStartConversationDialogProps {
@@ -26,63 +48,279 @@ interface PlatformCrmStartConversationDialogProps {
   onConversationCreated: (conversationId: string) => void;
 }
 
+type ConnectionOption = {
+  key: string; // `${provider}:${id}`
+  provider: 'evolution' | 'meta';
+  id: string;
+  label: string;
+};
+
 export function PlatformCrmStartConversationDialog({
   open,
   onOpenChange,
   onConversationCreated,
 }: PlatformCrmStartConversationDialogProps) {
-  const [name, setName] = useState('');
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
-  const createConversation = useCreatePlatformCrmConversation();
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [connectionKey, setConnectionKey] = useState<string>('');
+  // Fluxo needs_template (contrato 1 → contrato 3): telefone alvo + dialog HSM
+  const [sendTemplateOpen, setSendTemplateOpen] = useState(false);
+  const [templatePhone, setTemplatePhone] = useState('');
 
-  const handleClose = () => {
-    setName('');
-    setPhone('');
-    setMessage('');
-    onOpenChange(false);
+  const { data: evoInstances } = usePlatformCrmEvolutionInstances();
+  const { data: metaConnections } = usePlatformCrmMetaWAConnections();
+
+  const connectionOptions = useMemo<ConnectionOption[]>(() => {
+    const opts: ConnectionOption[] = [];
+    (evoInstances || []).forEach((inst: any) => {
+      if (inst.status && inst.status !== 'connected' && inst.status !== 'active') return;
+      const name = (inst.metadata as any)?.display_name || inst.name;
+      const phone = inst.phone_number ? ` · +${inst.phone_number}` : '';
+      opts.push({
+        key: `evolution:${inst.id}`,
+        provider: 'evolution',
+        id: inst.id,
+        label: `${name}${phone} — WhatsApp (QR)`,
+      });
+    });
+    (metaConnections || []).forEach((c: any) => {
+      if (c.status !== 'active') return;
+      const name = c.display_name || 'WhatsApp Oficial';
+      const phone = c.phone_number ? ` · +${c.phone_number}` : '';
+      opts.push({
+        key: `meta:${c.id}`,
+        provider: 'meta',
+        id: c.id,
+        label: `${name}${phone} — WhatsApp Oficial`,
+      });
+    });
+    return opts;
+  }, [evoInstances, metaConnections]);
+
+  useEffect(() => {
+    if (open && !connectionKey && connectionOptions.length > 0) {
+      setConnectionKey(connectionOptions[0].key);
+    }
+  }, [open, connectionKey, connectionOptions]);
+
+  // Search leads — platform_crm_leads (product-scoped puro, sem organization_id)
+  const { data: leads = [] } = useQuery({
+    queryKey: ['platform-crm-leads-search', search],
+    queryFn: async () => {
+      if (!search || search.length < 2) return [];
+      const { data } = await supabase
+        .from('platform_crm_leads')
+        .select('id, name, phone, email, company')
+        .or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`)
+        .limit(10);
+      return data || [];
+    },
+    enabled: open && search.length >= 2,
+  });
+
+  const handleSelectLead = (lead: any) => {
+    setSelectedLead(lead);
+    if (lead.phone) setPhone(lead.phone);
+    setSearch('');
+  };
+
+  // Conexão Meta escolhida (quando houver) — usada pelo fluxo needs_template.
+  const chosenMeta = useMemo(() => {
+    const chosen = connectionOptions.find((o) => o.key === connectionKey);
+    return chosen?.provider === 'meta' ? chosen : null;
+  }, [connectionOptions, connectionKey]);
+
+  // needs_template (contrato 1): fora da janela de 24h a Cloud API exige template
+  // HSM aprovado — toast com ação que abre o PlatformCrmSendTemplateDialog.
+  const handleNeedsTemplate = (targetPhone: string) => {
+    setTemplatePhone(targetPhone);
+    if (chosenMeta) {
+      sonnerToast.warning('Este número exige um template aprovado', {
+        description: 'Fora da janela de 24h, a conversa só abre com um template HSM.',
+        action: {
+          label: 'Enviar template',
+          onClick: () => setSendTemplateOpen(true),
+        },
+      });
+    } else {
+      sonnerToast.warning('Este número exige um template aprovado', {
+        description:
+          'Selecione uma conexão WhatsApp Oficial (Meta) em "Enviar por" para enviar um template HSM.',
+      });
+    }
   };
 
   const handleCreate = async () => {
-    const conv = await createConversation.mutateAsync({
-      visitorName: name.trim() || null,
-      visitorPhone: phone.trim() || null,
-      firstMessage: message.trim() || null,
-    });
-    onConversationCreated(conv.id);
-    handleClose();
+    const targetPhone = phone.replace(/\D/g, '');
+    if (!targetPhone) {
+      toast({ title: 'Informe um telefone', variant: 'destructive' });
+      return;
+    }
+
+    const chosen = connectionOptions.find((o) => o.key === connectionKey);
+
+    setIsCreating(true);
+    try {
+      // A1.2-FRONT (contrato 1): edge `platform-start-whatsapp-conversation` —
+      // dedupe + disparo real pelo canal escolhido acontecem no backend.
+      const { data, error } = await supabase.functions.invoke(
+        'platform-start-whatsapp-conversation',
+        {
+          body: {
+            phone: targetPhone,
+            message: message || '',
+            ...(chosen ? { connection_id: chosen.id } : {}),
+            ...(selectedLead?.id ? { lead_id: selectedLead.id } : {}),
+          },
+        },
+      );
+
+      if (error) {
+        const { body } = await parsePlatformCrmFnError(error);
+        if (body?.needs_template) {
+          handleNeedsTemplate(targetPhone);
+          return;
+        }
+        throw new Error(body?.error || error.message || 'Falha ao iniciar conversa');
+      }
+
+      const resp = data as {
+        ok?: boolean;
+        conversation_id?: string;
+        message_id?: string;
+        error?: string;
+        needs_template?: boolean;
+      } | null;
+
+      if (resp?.needs_template) {
+        handleNeedsTemplate(targetPhone);
+        return;
+      }
+      if (resp?.error || resp?.ok === false) {
+        throw new Error(resp?.error || 'Falha ao iniciar conversa');
+      }
+
+      toast({
+        title: 'Conversa criada',
+        description: 'Nova conversa WhatsApp iniciada.',
+      });
+
+      if (resp?.conversation_id) {
+        onConversationCreated(resp.conversation_id);
+      }
+      handleClose();
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const canCreate = name.trim().length > 0 || phone.trim().length > 0;
+  const handleClose = () => {
+    setSearch('');
+    setPhone('');
+    setMessage('');
+    setSelectedLead(null);
+    onOpenChange(false);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !createConversation.isPending && onOpenChange(o)}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" />
-            Nova Conversa
+            Nova Conversa WhatsApp
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Nome */}
+          {/* Connection picker */}
           <div>
-            <Label>Nome do contato</Label>
+            <Label>Enviar por</Label>
+            {connectionOptions.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Nenhuma conexão WhatsApp ativa. Configure em Conexões.
+              </p>
+            ) : (
+              <Select value={connectionKey} onValueChange={setConnectionKey}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Escolha a caixa de origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {connectionOptions.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      <span className="flex items-center gap-2">
+                        {o.provider === 'meta' ? (
+                          <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                        )}
+                        <span>{o.label}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Lead search */}
+          <div>
+            <Label>Buscar Lead (opcional)</Label>
             <div className="relative mt-1">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Ex.: Maria Silva"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Nome, telefone ou email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
+            {leads.length > 0 && (
+              <ScrollArea className="mt-2 max-h-40 border rounded-md">
+                {leads.map((lead) => (
+                  <button
+                    key={lead.id}
+                    onClick={() => handleSelectLead(lead)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted/50 flex items-center gap-2 text-sm border-b last:border-0"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{lead.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {lead.phone || lead.email}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </ScrollArea>
+            )}
           </div>
 
-          {/* Telefone */}
+          {/* Selected lead badge */}
+          {selectedLead && (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10 text-sm">
+              <User className="h-4 w-4 text-primary" />
+              <span className="font-medium">{selectedLead.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-xs"
+                onClick={() => { setSelectedLead(null); setPhone(''); }}
+              >
+                Remover
+              </Button>
+            </div>
+          )}
+
+          {/* Phone */}
           <div>
-            <Label>Telefone (opcional)</Label>
+            <Label>Telefone WhatsApp</Label>
             <div className="relative mt-1">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -94,7 +332,7 @@ export function PlatformCrmStartConversationDialog({
             </div>
           </div>
 
-          {/* Primeira mensagem */}
+          {/* Initial message */}
           <div>
             <Label>Primeira mensagem (opcional)</Label>
             <Textarea
@@ -111,8 +349,8 @@ export function PlatformCrmStartConversationDialog({
           <Button variant="outline" onClick={handleClose}>
             Cancelar
           </Button>
-          <Button onClick={handleCreate} disabled={createConversation.isPending || !canCreate}>
-            {createConversation.isPending ? (
+          <Button onClick={handleCreate} disabled={isCreating || !phone.replace(/\D/g, '')}>
+            {isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Criando...
@@ -123,6 +361,19 @@ export function PlatformCrmStartConversationDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Fluxo needs_template (contrato 1 → 3): template HSM pela conexão Meta escolhida */}
+      {chosenMeta && (
+        <PlatformCrmSendTemplateDialog
+          open={sendTemplateOpen}
+          onOpenChange={setSendTemplateOpen}
+          metaConnectionId={chosenMeta.id}
+          conversationId={null}
+          leadId={selectedLead?.id ?? null}
+          to={templatePhone || phone.replace(/\D/g, '')}
+          onSent={handleClose}
+        />
+      )}
     </Dialog>
   );
 }

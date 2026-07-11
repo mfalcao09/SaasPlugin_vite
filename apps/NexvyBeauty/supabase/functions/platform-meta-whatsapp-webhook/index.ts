@@ -80,9 +80,10 @@ function extractContent(msg: Json): { content: string; contentType: string } {
   }
 }
 
-/** Produto padrão do canal de vendas. O número de WhatsApp de vendas é
- *  mono-produto por ora (vende só o NexvyBeauty, slug fixo); o destino certo
- *  é uma coluna default_product_id em platform_crm_whatsapp_meta_connections.
+/** Fallback de produto (slug fixo) para conexões SEM product_id cadastrado.
+ *  A regra canônica (A1.3) é herdar `product_id` DA CONEXÃO por onde a
+ *  mensagem entrou (platform_crm_whatsapp_meta_connections.product_id);
+ *  este resolve só cobre conexões antigas ainda não vinculadas a produto.
  *  Non-fatal: sem produto cadastrado, conversa/lead seguem sem product_id. */
 async function resolveDefaultProductId(
   supabase: ReturnType<typeof getServiceClient>,
@@ -148,6 +149,7 @@ async function ensureConversation(
   fromDigits: string,
   profileName: string | null,
   productId: string | null,
+  connectionId: string,
 ): Promise<Json | null> {
   const visitorId = `wa:${fromDigits}`;
   const { data: rows } = await supabase
@@ -185,6 +187,7 @@ async function ensureConversation(
         channel: 'whatsapp',
         status: 'bot_active',
         needs_human: false,
+        meta_connection_id: connectionId,
         // Só no INSERT: conversa existente nunca tem product_id sobrescrito.
         ...(productId ? { product_id: productId } : {}),
       })
@@ -195,6 +198,29 @@ async function ensureConversation(
       return null;
     }
     conversation = created as Json;
+  }
+
+  // Canal-por-conversa (A1.3): conversa existente ganha o vínculo com a conexão
+  // por onde a mensagem entrou e herda product_id da conexão APENAS quando ainda
+  // não tem produto (atribuição manual nunca é sobrescrita). Recém-criadas já
+  // nascem com os dois campos — patch vira no-op.
+  const channelPatch: Json = {};
+  if (conversation['meta_connection_id'] !== connectionId) {
+    channelPatch['meta_connection_id'] = connectionId;
+  }
+  if (!conversation['product_id'] && productId) {
+    channelPatch['product_id'] = productId;
+  }
+  if (Object.keys(channelPatch).length > 0) {
+    const { error: patchError } = await supabase
+      .from('platform_crm_conversations')
+      .update(channelPatch)
+      .eq('id', conversation['id']);
+    if (patchError) {
+      console.error('[platform-meta-whatsapp-webhook] channel patch failed (non-fatal):', patchError);
+    } else {
+      Object.assign(conversation, channelPatch);
+    }
   }
 
   if (!conversation['lead_id']) {
@@ -240,7 +266,7 @@ async function processInboundMessage(
       ? String((contacts[0]?.['profile'] as Json | undefined)?.['name'] ?? '') || null
       : null;
 
-  const conversation = await ensureConversation(supabase, fromDigits, profileName, defaultProductId);
+  const conversation = await ensureConversation(supabase, fromDigits, profileName, defaultProductId, connectionId);
   if (!conversation) return null;
 
   const { content, contentType } = extractContent(msg);
@@ -351,7 +377,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: conn } = await supabase
     .from('platform_crm_whatsapp_meta_connections')
-    .select('id, app_secret_encrypted, status')
+    .select('id, app_secret_encrypted, status, product_id')
     .eq('id', connectionId)
     .maybeSingle();
   if (!conn) return new Response('unknown connection', { status: 404 });
@@ -396,7 +422,10 @@ Deno.serve(async (req: Request) => {
           for (const m of (value['messages'] as Json[] | undefined) ?? []) {
             sawMessage = true;
             if (defaultProductId === undefined) {
-              defaultProductId = await resolveDefaultProductId(supabase);
+              // Herança canônica (A1.3): product_id vem DA CONEXÃO por onde a
+              // mensagem entrou; slug fixo é só fallback p/ conexão sem produto.
+              defaultProductId = (conn.product_id as string | null) ??
+                (await resolveDefaultProductId(supabase));
             }
             const brainConvId = await processInboundMessage(supabase, connectionId, value, m, defaultProductId);
             if (brainConvId) convsForBrain.add(brainConvId);

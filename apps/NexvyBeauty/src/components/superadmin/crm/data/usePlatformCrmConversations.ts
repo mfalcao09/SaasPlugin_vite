@@ -49,6 +49,45 @@ export interface PlatformCrmConversationRow extends PlatformCrmConversation {
 
 const PLATFORM_CRM_KEY = 'platform-crm';
 
+/**
+ * Extrai status HTTP + body JSON de um FunctionsHttpError do supabase-js
+ * (o `error.context` é a Response crua do edge). Retorna nulls quando não
+ * há contexto legível (erro de rede, edge inexistente etc.).
+ */
+export async function parsePlatformCrmFnError(
+  error: any,
+): Promise<{ status: number | null; body: any | null }> {
+  try {
+    const ctx = error?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      const status = typeof ctx.status === 'number' ? ctx.status : null;
+      let body: any = null;
+      try {
+        body = await ctx.json();
+      } catch {
+        body = null;
+      }
+      return { status, body };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { status: null, body: null };
+}
+
+/**
+ * Erro tipado do aceite com setor — contrato A1.2: o edge devolve
+ * 403 `{ error, sector_name }` quando o usuário não é membro do setor.
+ */
+export class PlatformCrmSectorForbiddenError extends Error {
+  sectorName: string | null;
+  constructor(message: string, sectorName: string | null) {
+    super(message);
+    this.name = 'PlatformCrmSectorForbiddenError';
+    this.sectorName = sectorName;
+  }
+}
+
 /** Mapeia a aba da UI para o(s) status do enum `platform_crm_conversation_status`. */
 function statusesForTab(tab: PlatformCrmStatusTab): PlatformCrmConversation['status'][] {
   switch (tab) {
@@ -239,14 +278,37 @@ export function usePlatformCrmMessages(conversationId: string | null | undefined
 }
 
 /**
+ * Payload de mídia do CONTRATO A1.2 (front ⇄ edge `platform-webchat-inbox`).
+ * O front sobe o arquivo pro bucket `platform-crm-media`
+ * (path `conv/<conversationId>/<epoch>-<slug>`) e repassa a referência no body
+ * da action `send`; o edge persiste em `platform_crm_messages.metadata.media`
+ * e entrega ao canal.
+ */
+export interface PlatformCrmSendMediaPayload {
+  bucket: 'platform-crm-media';
+  path: string;
+  mimeType: string;
+  kind: 'image' | 'audio' | 'video' | 'document';
+  filename?: string;
+  caption?: string;
+  /** Extras opcionais para render local imediato (o edge pode recalcular). */
+  url?: string;
+  size_bytes?: number | null;
+  duration_ms?: number | null;
+  width?: number | null;
+  height?: number | null;
+}
+
+/**
  * Grava uma resposta do agente (outbound) em `platform_crm_messages`.
- * direction='outbound', sender_type='agent'.
+ * direction='outbound', sender_type='agent'. Aceita `media` (contrato A1.2).
  *
  * Caminho canônico: Edge Function `platform-webchat-inbox` (action `send`)
  * — persiste, entrega ao canal e emite o broadcast `new_message`. FALLBACK: se o
  * invoke falhar (edge ainda não deployado/offline), cai no insert client-side
- * (persiste sem entrega por canal, sem quebrar a UX). Nos dois caminhos o cache
- * local é atualizado via injeção + invalidação da lista.
+ * (persiste sem entrega por canal, sem quebrar a UX; a mídia vai em
+ * `metadata.media` no formato que o MessageBubble/extractMedia renderiza).
+ * Nos dois caminhos o cache local é atualizado via injeção + invalidação da lista.
  */
 export function useSendPlatformCrmMessage() {
   const queryClient = useQueryClient();
@@ -256,10 +318,12 @@ export function useSendPlatformCrmMessage() {
       conversationId,
       content,
       replyToMessageId,
+      media,
     }: {
       conversationId: string;
       content: string;
       replyToMessageId?: string | null;
+      media?: PlatformCrmSendMediaPayload;
     }) => {
       // 1) Caminho canônico — edge de envio (entrega por canal + broadcast).
       try {
@@ -269,6 +333,7 @@ export function useSendPlatformCrmMessage() {
             conversation_id: conversationId,
             content,
             reply_to_message_id: replyToMessageId ?? null,
+            media: media ?? null,
           },
         });
         if (error) throw error;
@@ -283,12 +348,37 @@ export function useSendPlatformCrmMessage() {
       }
 
       // 2) FALLBACK client-side — persiste a mensagem sem entrega por canal.
+      // Optimistic/persistência de mídia: `metadata.media` no shape consumido
+      // por extractMedia/MediaAttachment (kind/url/mime/filename/...), como o
+      // v5 renderiza.
       const payload: PlatformCrmMessageInsert = {
         conversation_id: conversationId,
         content,
         direction: 'outbound',
         sender_type: 'agent',
         reply_to_message_id: replyToMessageId ?? null,
+        ...(media
+          ? {
+              content_type: media.kind,
+              metadata: {
+                media: {
+                  kind: media.kind,
+                  url:
+                    media.url ??
+                    supabase.storage.from(media.bucket).getPublicUrl(media.path).data.publicUrl,
+                  mime: media.mimeType,
+                  filename: media.filename ?? null,
+                  caption: media.caption ?? null,
+                  size_bytes: media.size_bytes ?? null,
+                  duration_ms: media.duration_ms ?? null,
+                  width: media.width ?? null,
+                  height: media.height ?? null,
+                  bucket: media.bucket,
+                  path: media.path,
+                },
+              } as any,
+            }
+          : {}),
       };
 
       const { data, error } = await supabase
@@ -329,11 +419,64 @@ export function useSendPlatformCrmMessage() {
  * reopen, returnToQueue), sem sector_id / edge de aceite.
  */
 
-/** Marca a conversa como aceita pelo agente atual (status → human_active). */
+/**
+ * Marca a conversa como aceita pelo agente atual (status → human_active).
+ *
+ * A1.2-FRONT (contrato 7): tenta a action `accept` do edge `platform-webchat-inbox`
+ * com `sector_id?` no payload; o edge responde 403 `{ error, sector_name }` quando o
+ * usuário não é membro do setor (→ `PlatformCrmSectorForbiddenError`). Se o edge
+ * estiver indisponível (404/rede), FALLBACK para o UPDATE client-side anterior.
+ * O `sector_id` também é persistido best-effort (idempotente pós-deploy do edge).
+ */
 export function useAcceptPlatformCrmConversation() {
   const queryClient = useQueryClient();
+
+  const persistSectorBestEffort = async (conversationId: string, sectorId?: string | null) => {
+    if (!sectorId) return;
+    const { error: sectorErr } = await supabase
+      .from('platform_crm_conversations')
+      .update({ sector_id: sectorId } as any)
+      .eq('id', conversationId);
+    if (sectorErr) {
+      console.warn('[useAcceptPlatformCrmConversation] Falha ao gravar sector_id:', sectorErr);
+    }
+  };
+
   return useMutation({
-    mutationFn: async (conversationId: string) => {
+    mutationFn: async ({
+      conversationId,
+      sectorId,
+    }: {
+      conversationId: string;
+      sectorId?: string | null;
+    }) => {
+      // 1) Caminho canônico: action `accept` (contrato 7 — payload ganha sector_id?).
+      const { error: fnError } = await supabase.functions.invoke('platform-webchat-inbox', {
+        body: {
+          action: 'accept',
+          conversation_id: conversationId,
+          ...(sectorId ? { sector_id: sectorId } : {}),
+        },
+      });
+
+      if (!fnError) {
+        await persistSectorBestEffort(conversationId, sectorId);
+        return;
+      }
+
+      const { status, body } = await parsePlatformCrmFnError(fnError);
+      if (status === 403) {
+        const sectorName = body?.sector_name ?? null;
+        throw new PlatformCrmSectorForbiddenError(
+          sectorName
+            ? `Você não faz parte do setor "${sectorName}" — escolha outro setor ou peça acesso.`
+            : body?.error || 'Você não tem acesso ao setor escolhido.',
+          sectorName,
+        );
+      }
+
+      // 2) Fallback: UPDATE client-side (comportamento anterior ao contrato).
+      console.warn('[useAcceptPlatformCrmConversation] action accept indisponível — fallback update:', fnError);
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id ?? null;
       const { error } = await supabase
@@ -347,11 +490,17 @@ export function useAcceptPlatformCrmConversation() {
         } as Partial<PlatformCrmConversation>)
         .eq('id', conversationId);
       if (error) throw error;
+      await persistSectorBestEffort(conversationId, sectorId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'inbox', 'conversations'] });
     },
-    onError: () => toast.error('Erro ao aceitar atendimento'),
+    onError: (error: any) =>
+      toast.error(
+        error instanceof PlatformCrmSectorForbiddenError
+          ? error.message
+          : 'Erro ao aceitar atendimento',
+      ),
   });
 }
 
@@ -688,24 +837,49 @@ export function useActivatePlatformCrmBot() {
   });
 }
 
+/** Campos opcionais do reengajamento por IA — contrato 6 (`ai-reactivate` estendido). */
+export interface PlatformCrmAiReactivateOptions {
+  agentId?: string;
+  objective?: string;
+  mode?: 'direct' | 'conversational';
+  extraContext?: string;
+}
+
 /**
  * Reengajamento contextual pela IA SEM trocar de dono — acorda o sales-brain para
  * gerar/entregar uma mensagem de reativação. Útil quando a IA já atende e o agente
  * quer forçar um novo toque.
+ *
+ * A1.2-FRONT (contrato 6): a action `ai-reactivate` aceita os campos opcionais
+ * `{ agent_id?, objective?, mode?, extra_context? }` — preenchidos pelo
+ * PlatformCrmCallWithAIDialog (agente/objetivo/modo/contexto).
  */
 export function useAiReactivatePlatformCrmConversation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (conversationId: string) => {
+    mutationFn: async ({
+      conversationId,
+      agentId,
+      objective,
+      mode,
+      extraContext,
+    }: { conversationId: string } & PlatformCrmAiReactivateOptions) => {
       const { data, error } = await supabase.functions.invoke('platform-webchat-inbox', {
-        body: { action: 'ai-reactivate', conversation_id: conversationId },
+        body: {
+          action: 'ai-reactivate',
+          conversation_id: conversationId,
+          ...(agentId ? { agent_id: agentId } : {}),
+          ...(objective ? { objective } : {}),
+          ...(mode ? { mode } : {}),
+          ...(extraContext ? { extra_context: extraContext } : {}),
+        },
       });
       if (error) throw error;
       return data as { triggered?: boolean } | null;
     },
-    onSuccess: (_data, conversationId) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', conversationId],
+        queryKey: [PLATFORM_CRM_KEY, 'inbox', 'messages', variables.conversationId],
       });
       toast.success('IA acionada para reengajar');
     },

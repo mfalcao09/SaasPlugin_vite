@@ -20,6 +20,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { PlatformModuleSwitcher } from './PlatformModuleSwitcher';
+import { PlatformProductSwitcher } from './PlatformProductSwitcher';
 import { usePlatformModule } from './usePlatformModule';
 
 // ─── Conteúdo da sidebar (compartilhado desktop/mobile) ──────
@@ -58,6 +59,13 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
               {activeModuleDefinition.description}
             </p>
           </div>
+        </div>
+
+        {/* Seletor GLOBAL de produto (A1.3) — ao lado do ModuleSwitcher, no
+            mesmo bloco de header. Filtra Vendas + ERP; "Todos os produtos" =
+            default. Visível em desktop e no sheet mobile (ambos usam SidebarInner). */}
+        <div className="mt-3">
+          <PlatformProductSwitcher />
         </div>
       </div>
 

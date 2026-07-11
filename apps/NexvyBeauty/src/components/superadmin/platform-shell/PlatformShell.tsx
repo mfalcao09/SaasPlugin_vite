@@ -7,6 +7,7 @@ import {
 import { PlatformSidebar } from './PlatformSidebar';
 import { PLATFORM_MODULES } from './registry';
 import { usePlatformPresenceHeartbeat } from '@/components/superadmin/crm/data/usePlatformPresenceHeartbeat';
+import { PlatformProductProvider } from '@/contexts/PlatformProductContext';
 
 // ─── Conteúdo (consome o Context) ───────────────────────────
 function ShellContent() {
@@ -47,7 +48,12 @@ function ShellContent() {
 export default function PlatformShell() {
   return (
     <PlatformModuleProvider modules={PLATFORM_MODULES} defaultModule="erp">
-      <ShellContent />
+      {/* Seletor GLOBAL de produto (A1.3) — filtra Vendas + ERP. Envolve a
+          árvore inteira (sidebar + conteúdo) para que switcher e telas
+          compartilhem o mesmo activeProductId. */}
+      <PlatformProductProvider>
+        <ShellContent />
+      </PlatformProductProvider>
     </PlatformModuleProvider>
   );
 }

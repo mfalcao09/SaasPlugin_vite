@@ -115,6 +115,46 @@ async function aiChatCompletion(body: Record<string, unknown>): Promise<any> {
 }
 
 // ============================================================
+// Identidade de lead — porte 1:1 do fallback da inbox
+// (src/components/superadmin/crm/inbox/platformCrmIdentity.ts):
+// lead sem nome útil NUNCA vira "sem nome" — o telefone formatado é a
+// identidade primária (e o email, o último fallback).
+// ============================================================
+
+/** Nome "útil" = 3+ caracteres com ao menos uma letra/dígito (descarta "~", "..." etc). */
+function isUsefulLeadName(name: string | null | undefined): boolean {
+  const trimmed = (name ?? '').trim();
+  if (trimmed.length < 3) return false;
+  return /[\p{L}\p{N}]/u.test(trimmed);
+}
+
+/** "+5518996267790" → "(18) 99626-7790". Formatos não-BR voltam crus. */
+function formatLeadPhone(phone: string | null | undefined): string | null {
+  const raw = (phone ?? '').trim();
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, '');
+  let local = digits;
+  if ((local.length === 12 || local.length === 13) && local.startsWith('55')) {
+    local = local.slice(2);
+  }
+  if (local.length === 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  if (local.length === 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  return raw;
+}
+
+/** Identidade exibível: nome útil → nome; senão telefone formatado; senão email; senão fallback. */
+function leadIdentity(
+  name: string | null | undefined,
+  phone: string | null | undefined,
+  email?: string | null,
+  fallback = 'Lead sem cadastro',
+): string {
+  const trimmed = (name ?? '').trim();
+  if (isUsefulLeadName(trimmed)) return trimmed;
+  return formatLeadPhone(phone) || (email ?? '').trim() || trimmed || fallback;
+}
+
+// ============================================================
 // Helpers de hidratação (nomes de usuários via profiles — ver header)
 // ============================================================
 
@@ -237,7 +277,7 @@ async function getTeamStatus(admin: any) {
 async function getUnansweredConversations(admin: any) {
   // Adaptação: sem last_inbound_at na plataforma → tempo aproximado por last_message_at.
   const { data } = await admin.from('platform_crm_conversations')
-    .select('id, visitor_name, assigned_to, last_message_at, channel')
+    .select('id, visitor_name, visitor_phone, visitor_whatsapp, assigned_to, last_message_at, channel')
     .eq('status', 'waiting_human')
     .order('last_message_at', { ascending: true, nullsFirst: false })
     .limit(20);
@@ -249,8 +289,10 @@ async function getUnansweredConversations(admin: any) {
       const minutos = c.last_message_at
         ? Math.round((now - new Date(c.last_message_at).getTime()) / 60000)
         : null;
+      const phone = c.visitor_phone ?? c.visitor_whatsapp ?? null;
       return {
-        lead: c.visitor_name ?? 'Visitante',
+        lead: leadIdentity(c.visitor_name, phone, null, 'Visitante'),
+        telefone: formatLeadPhone(phone),
         canal: c.channel,
         responsavel: c.assigned_to ? nameMap.get(c.assigned_to) ?? '—' : 'Sem responsável',
         tempo_sem_resposta_min: minutos,
@@ -261,7 +303,7 @@ async function getUnansweredConversations(admin: any) {
 
 async function getHotLeads(admin: any) {
   const { data } = await admin.from('platform_crm_leads')
-    .select('name, assigned_to, temperature, last_contact_at, next_action')
+    .select('name, phone, email, assigned_to, temperature, last_contact_at, next_action')
     .eq('temperature', 'hot')
     .order('last_contact_at', { ascending: false, nullsFirst: false })
     .limit(20);
@@ -269,7 +311,11 @@ async function getHotLeads(admin: any) {
   const nameMap = await profileNameMap(admin, (data ?? []).map((l: any) => l.assigned_to));
   return {
     leads: (data ?? []).map((l: any) => ({
-      lead: l.name,
+      // Fallback de identidade (U3): sem nome útil → telefone formatado é a identidade.
+      lead: leadIdentity(l.name, l.phone, l.email),
+      telefone: formatLeadPhone(l.phone),
+      email: l.email ?? null,
+      cadastro_incompleto: !isUsefulLeadName(l.name),
       responsavel: l.assigned_to ? nameMap.get(l.assigned_to) ?? '—' : 'Sem responsável',
       proxima_acao: l.next_action ?? null,
     })),
@@ -372,9 +418,12 @@ async function getLeadContext(admin: any, args: any) {
     encontrado: true,
     lead: {
       id: lead.id,
-      nome: lead.name,
+      // Fallback de identidade (U3): sem nome útil → telefone formatado é a identidade.
+      nome: leadIdentity(lead.name, lead.phone, lead.email),
+      nome_cadastro: lead.name ?? null,
+      cadastro_incompleto: !isUsefulLeadName(lead.name),
       email: lead.email,
-      phone: lead.phone,
+      phone: formatLeadPhone(lead.phone) ?? lead.phone,
       empresa: lead.company,
       origem: lead.source ?? lead.lead_origin,
       etapa: (stage as any)?.data?.name ?? null,
@@ -555,7 +604,7 @@ async function getFollowupContext(admin: any) {
       .eq('status', 'scheduled').lt('scheduled_at', nowIso)
       .order('scheduled_at', { ascending: true }).limit(20),
     admin.from('platform_crm_conversations')
-      .select('id, visitor_name, last_message_at')
+      .select('id, visitor_name, visitor_phone, visitor_whatsapp, last_message_at')
       .in('status', OPEN_STATUSES).lt('last_message_at', since24h)
       .order('last_message_at', { ascending: true }).limit(10),
   ]);
@@ -563,7 +612,10 @@ async function getFollowupContext(admin: any) {
     cadencias_ativas: activeCad.count ?? 0,
     followups_atrasados: (overdueRuns.data ?? []).length,
     followups_atrasados_amostra: overdueRuns.data ?? [],
-    conversas_sem_retorno_24h: (staleConv.data ?? []).map((c: any) => ({ lead: c.visitor_name ?? 'Visitante', ultima: c.last_message_at })),
+    conversas_sem_retorno_24h: (staleConv.data ?? []).map((c: any) => ({
+      lead: leadIdentity(c.visitor_name, c.visitor_phone ?? c.visitor_whatsapp, null, 'Visitante'),
+      ultima: c.last_message_at,
+    })),
   };
 }
 
@@ -582,13 +634,13 @@ async function getDailyAISummary(admin: any) {
     .select('id, is_won, is_lost').or('is_won.eq.true,is_lost.eq.true');
   const closedStageIds = new Set((closedStages ?? []).map((s: any) => s.id));
   const { data: staleLeads } = await admin.from('platform_crm_leads')
-    .select('id, name, deal_value, current_stage_id, updated_at')
+    .select('id, name, phone, email, deal_value, current_stage_id, updated_at')
     .gt('deal_value', 0).lt('updated_at', sevenDaysAgo)
     .order('deal_value', { ascending: false }).limit(20);
   const riskDeals = (staleLeads ?? [])
     .filter((l: any) => !l.current_stage_id || !closedStageIds.has(l.current_stage_id))
     .slice(0, 5)
-    .map((l: any) => ({ lead_id: l.id, lead: l.name, deal_value: l.deal_value, updated_at: l.updated_at }));
+    .map((l: any) => ({ lead_id: l.id, lead: leadIdentity(l.name, l.phone, l.email), deal_value: l.deal_value, updated_at: l.updated_at }));
 
   const recomendacoes: string[] = [];
   if ((op.conversas_sem_resposta ?? 0) > 0) recomendacoes.push(`Priorize as ${op.conversas_sem_resposta} conversas aguardando resposta.`);

@@ -37,6 +37,9 @@ export function BillingManager() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: billingHistory, isLoading } = useBillingHistory();
+  // TODO(A1.3-produto): entidade sem product_id — filtro inerte. O histórico de
+  // faturamento liga a organizations, não a platform_crm_products. Sem product_id
+  // por onde o filtro GLOBAL agir; mostra tudo.
   const { data: stats } = useSuperAdminStats();
 
   const formatCurrency = (value: number) => {

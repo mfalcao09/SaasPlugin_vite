@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { LeadTransferButton, LeadTransferHistory } from './PlatformCrmLeadTransfer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +84,7 @@ import {
   MousePointer,
   ExternalLink,
   StopCircle,
+  Bot,
   Calendar as CalendarIcon,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -200,7 +202,7 @@ export function PlatformCrmLeadDetail({ leadId, onBack }: PlatformCrmLeadDetailP
     <div className="flex flex-col h-full min-h-0 bg-background">
       {/* Header */}
       <div className="flex-shrink-0">
-        <LeadDetailHeader lead={lead} sellers={sellers} onBack={onBack} />
+        <LeadDetailHeader lead={lead} onBack={onBack} />
       </div>
 
       {/* Tabs */}
@@ -298,18 +300,123 @@ function initials(name?: string | null) {
     .slice(0, 2);
 }
 
+// -------------------------------------------------------------------------------------
+// Estado de ATENDIMENTO derivado da CONVERSA (não do lead.assigned_to).
+//
+// FIX de consistência: o cabeçalho mostrava "Sem atendimento" fixo sempre que
+// `lead.assigned_to` (dono do lead no CRM) fosse nulo — mas aceitar/responder uma
+// conversa no Chat grava em `platform_crm_conversations` (status/assigned_to/
+// current_agent_id), NÃO no lead. Resultado: conversa aceita aparecia como "Sem
+// atendimento". Agora o rótulo é DERIVADO da conversa mais recente do lead, então
+// aceitar, devolver à fila ou encerrar refletem automaticamente.
+// -------------------------------------------------------------------------------------
+type LeadAttendanceKind = 'human' | 'ai' | 'queue' | 'resolved' | 'none';
+interface LeadAttendanceState {
+  kind: LeadAttendanceKind;
+  label: string;
+  name?: string;
+}
+
+function useLeadAttendanceStatus(leadId: string) {
+  return useQuery({
+    queryKey: ['platform-crm', 'lead-attendance', leadId],
+    enabled: !!leadId,
+    staleTime: 15_000,
+    queryFn: async (): Promise<LeadAttendanceState> => {
+      const { data: convs } = await supabase
+        .from('platform_crm_conversations')
+        .select('id, status, assigned_to, accepted_by, current_agent_id')
+        .eq('lead_id', leadId)
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .limit(1);
+
+      const conv = convs?.[0];
+      if (!conv) return { kind: 'none', label: 'Sem conversa' };
+
+      switch (conv.status) {
+        case 'closed':
+          return { kind: 'resolved', label: 'Resolvido' };
+
+        case 'human_active': {
+          const uid = conv.assigned_to ?? conv.accepted_by;
+          let name = 'atendente';
+          if (uid) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('id', uid)
+              .maybeSingle();
+            name = prof?.full_name || prof?.email || 'atendente';
+          }
+          return { kind: 'human', name, label: `Em atendimento — ${name}` };
+        }
+
+        case 'bot_active': {
+          let agent = 'Duda';
+          if (conv.current_agent_id) {
+            const { data: a } = await supabase
+              .from('platform_crm_agent_configs')
+              .select('name')
+              .eq('id', conv.current_agent_id)
+              .maybeSingle();
+            agent = a?.name || 'Duda';
+          }
+          return { kind: 'ai', name: agent, label: `IA atendendo (${agent})` };
+        }
+
+        case 'waiting_human':
+          return { kind: 'queue', label: 'Aguardando na fila' };
+
+        default:
+          return { kind: 'none', label: 'Sem conversa' };
+      }
+    },
+  });
+}
+
+/** Chip visual do estado de atendimento — cor + ícone por tipo. */
+function LeadAttendanceBadge({ state }: { state?: LeadAttendanceState }) {
+  const s = state ?? { kind: 'none' as const, label: 'Sem conversa' };
+  const styleByKind: Record<LeadAttendanceKind, { className: string; icon: JSX.Element }> = {
+    human: {
+      className: 'text-emerald-600',
+      icon: <User className="h-4 w-4" />,
+    },
+    ai: {
+      className: 'text-primary',
+      icon: <Bot className="h-4 w-4" />,
+    },
+    queue: {
+      className: 'text-amber-500',
+      icon: <Clock className="h-4 w-4" />,
+    },
+    resolved: {
+      className: 'text-muted-foreground',
+      icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+    },
+    none: {
+      className: 'text-muted-foreground',
+      icon: <User className="h-4 w-4" />,
+    },
+  };
+  const cfg = styleByKind[s.kind];
+  return (
+    <div className={`flex items-center gap-2 ${cfg.className}`}>
+      {cfg.icon}
+      <span className="text-sm">{s.label}</span>
+    </div>
+  );
+}
+
 function LeadDetailHeader({
   lead,
-  sellers,
   onBack,
 }: {
   lead: LeadRow;
-  sellers: { id: string; full_name: string; avatar_url: string | null }[];
   onBack: () => void;
 }) {
-  const assignee = lead.assigned_to
-    ? sellers.find((s) => s.id === lead.assigned_to) ?? lead.profiles ?? null
-    : null;
+  // Rótulo de atendimento DERIVADO da conversa mais recente (não de lead.assigned_to).
+  const { data: attendance, isLoading: attendanceLoading } = useLeadAttendanceStatus(lead.id);
 
   const getTemperatureIcon = () => {
     switch (lead.temperature) {
@@ -432,25 +539,16 @@ function LeadDetailHeader({
           </div>
         </div>
 
-        {/* Assigned info */}
+        {/* Atendimento — DERIVADO da conversa mais recente do lead (status real:
+            humano aceitou / IA atendendo / na fila / resolvido / sem conversa). */}
         <div className="mt-4 pt-4 border-t border-border flex items-center gap-4">
-          {assignee ? (
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={assignee.avatar_url || undefined} />
-                <AvatarFallback className="text-xs">
-                  {initials(assignee.full_name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-muted-foreground">
-                {assignee.full_name}
-              </span>
+          {attendanceLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Carregando atendimento…</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-amber-500">
-              <User className="h-4 w-4" />
-              <span className="text-sm">Sem atendimento</span>
-            </div>
+            <LeadAttendanceBadge state={attendance} />
           )}
         </div>
       </div>

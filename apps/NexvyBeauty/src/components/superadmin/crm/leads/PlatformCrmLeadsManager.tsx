@@ -32,6 +32,7 @@ import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
 import { usePlatformCrmSquads } from '../data/usePlatformCrmSquads';
 import { usePlatformCrmSellers } from '../data/usePlatformCrmSellers';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 
 import { PlatformCrmLeadsKPICards } from './PlatformCrmLeadsKPICards';
 import { PlatformCrmLeadsTabs } from './PlatformCrmLeadsTabs';
@@ -84,6 +85,16 @@ export function PlatformCrmLeadsManager() {
   const { data: sellers = [] } = usePlatformCrmSellers();
   // Catálogo do CRM da plataforma (dimensão D3) — alimenta o filtro "Produto".
   const { data: products = [] } = usePlatformCrmProducts();
+
+  // A1.3 — filtro GLOBAL de produto (client-side sobre a lista renderizada).
+  // Quando "Todos" (null) a lista é IDÊNTICA ao atual. Obs.: leads são paginados
+  // no servidor; com um produto ativo o rodapé "N de M" (total do servidor) pode
+  // superestimar — se precisar de contagem exata, dá para dirigir o filtro
+  // server-side existente (filters.productId) no futuro.
+  const { activeProductId } = useActivePlatformProduct();
+  const visibleLeads = activeProductId
+    ? leads.filter((l) => l.product_id === activeProductId)
+    : leads;
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -376,7 +387,7 @@ export function PlatformCrmLeadsManager() {
 
       {/* Tabela */}
       <PlatformCrmLeadsTable
-        leads={leads}
+        leads={visibleLeads}
         selectedLeads={selectedLeads}
         onToggleSelect={toggleSelectLead}
         onToggleSelectAll={toggleSelectAll}

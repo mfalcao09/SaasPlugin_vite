@@ -41,6 +41,9 @@ export function SubscriptionsManager() {
   const [planFilter, setPlanFilter] = useState<string>('all');
 
   const { data: subscriptions, isLoading } = useAllSubscriptions();
+  // TODO(A1.3-produto): entidade sem product_id — filtro inerte. Assinaturas ligam a
+  // organizations + plan_type (slug do plano), não a platform_crm_products. Sem
+  // product_id por onde o filtro GLOBAL agir; mostra tudo.
   const { data: activePlans } = useActivePlans();
   const updateSubscription = useUpdateSubscription();
 

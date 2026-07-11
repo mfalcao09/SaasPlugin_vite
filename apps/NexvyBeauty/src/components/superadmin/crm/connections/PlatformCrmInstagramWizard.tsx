@@ -40,6 +40,12 @@ export function PlatformCrmInstagramWizard({ open, onClose, editing }: Props) {
   const draft = useDraftPlatformCrmInstagramConnection();
   const save = useSavePlatformCrmInstagramConnection();
 
+  // Conexão em edição com credenciais já cifradas no banco: campos de segredo
+  // deixam de ser obrigatórios (em branco = manter o atual). Fallback em
+  // status==='active' cobre o caso de a coluna cifrada não vir no select.
+  const hasStoredSecret = !!editing && (!!editing.app_secret_encrypted || editing.status === 'active');
+  const hasStoredToken = !!editing && (!!editing.page_access_token_encrypted || editing.status === 'active');
+
   // Reset / hydrate on open
   useEffect(() => {
     if (!open) return;
@@ -105,17 +111,19 @@ export function PlatformCrmInstagramWizard({ open, onClose, editing }: Props) {
 
   const handleActivate = async () => {
     if (!draftId) return;
-    if (!form.app_id || !form.fb_page_id || !form.ig_business_account_id || !form.page_access_token) {
-      toast.error('Preencha todos os campos'); return;
+    if (!form.app_id || !form.fb_page_id || !form.ig_business_account_id || (!form.page_access_token && !hasStoredToken)) {
+      toast.error(hasStoredToken ? 'Preencha App ID, Page ID e IG Account ID' : 'Preencha todos os campos');
+      return;
     }
     const res: any = await save.mutateAsync({
       connection_id: draftId,
-      display_name: form.display_name,
+      display_name: form.display_name.trim() || undefined,
       app_id: form.app_id,
       app_secret: form.app_secret || undefined,
       fb_page_id: form.fb_page_id,
       ig_business_account_id: form.ig_business_account_id,
-      page_access_token: form.page_access_token,
+      // Em branco em conexão existente = manter o token salvo (edge decripta e reusa)
+      page_access_token: form.page_access_token || undefined,
     });
     if (res?.ok) onClose();
   };
@@ -224,8 +232,8 @@ export function PlatformCrmInstagramWizard({ open, onClose, editing }: Props) {
                 <p>2. Cole a <strong>URL de callback</strong> acima.</p>
                 <p>3. Cole o <strong>Verify Token</strong> acima.</p>
                 <p>4. Deixe <strong>mTLS / certificado de cliente desativado</strong>.</p>
-                <p>5. Clique em <strong>Verificar e salvar</strong>.</p>
-                <p>6. Assine o campo <strong>messages</strong> (opcional: <code>messaging_postbacks</code>, <code>message_reactions</code>).</p>
+                <p>5. Clique em <strong>Verificar e salvar</strong>. Só isso.</p>
+                <p>6. <strong>Não precisa assinar campos aqui</strong>: a UI da Meta não permite assinar <code>messages</code> sem Advanced Access. A assinatura é feita <strong>automaticamente via API</strong> quando você clicar em "Validar e ativar" no final deste assistente.</p>
               </AlertDescription>
             </Alert>
 
@@ -261,14 +269,30 @@ export function PlatformCrmInstagramWizard({ open, onClose, editing }: Props) {
               </AlertDescription>
             </Alert>
 
+            {editing && (
+              <div>
+                <Label>Nome da conexão</Label>
+                <Input
+                  value={form.display_name}
+                  onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+                  placeholder="Ex.: Instagram @minhamarca"
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>App ID</Label>
                 <Input value={form.app_id} onChange={(e) => setForm({ ...form, app_id: e.target.value })} />
               </div>
               <div>
-                <Label>App Secret {editing && <span className="text-xs text-muted-foreground">(em branco mantém)</span>}</Label>
-                <Input type="password" value={form.app_secret} onChange={(e) => setForm({ ...form, app_secret: e.target.value })} />
+                <Label>App Secret {hasStoredSecret && <span className="text-xs text-muted-foreground">(em branco mantém)</span>}</Label>
+                <Input
+                  type="password"
+                  value={form.app_secret}
+                  onChange={(e) => setForm({ ...form, app_secret: e.target.value })}
+                  placeholder={hasStoredSecret ? '•••• deixe em branco para manter o atual' : undefined}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -282,8 +306,13 @@ export function PlatformCrmInstagramWizard({ open, onClose, editing }: Props) {
               </div>
             </div>
             <div>
-              <Label>Page Access Token (longa duração)</Label>
-              <Input type="password" value={form.page_access_token} onChange={(e) => setForm({ ...form, page_access_token: e.target.value })} />
+              <Label>Page Access Token (longa duração) {hasStoredToken && <span className="text-xs text-muted-foreground">(em branco mantém)</span>}</Label>
+              <Input
+                type="password"
+                value={form.page_access_token}
+                onChange={(e) => setForm({ ...form, page_access_token: e.target.value })}
+                placeholder={hasStoredToken ? '•••• deixe em branco para manter o atual' : undefined}
+              />
             </div>
 
             <p className="text-xs text-muted-foreground">

@@ -10,12 +10,25 @@
 //     QRCODE_UPDATED/qrcode.updated/QRCode/QR  → qr_code/qr_code_updated_at/status.
 //   * Ignora (200) qualquer outro evento.
 //
-// TODO(inbox): ingestão de mensagens (MESSAGES_UPSERT / Message / SendMessage /
-//   receipts / reactions / bot-flows) NÃO é portada aqui — pertence à fase do
-//   INBOX de plataforma (platform_crm_conversations/messages), a "fase central
-//   depois". Este webhook cobre só o que faz o painel Conexões ficar vivo (QR/status).
+// A1.3 (inbox): ingestão de mensagens (MESSAGES_UPSERT/messages.upsert do v2 +
+//   Message/SendMessage do Evolution Go) portada do `evolution-webhook` do V5
+//   → platform_crm_conversations/messages:
+//   * Conversa channel='whatsapp_evolution' com visitor_id='wa_evo:<digitos>'
+//     — prefixo próprio pra NUNCA colidir com a conversa 'wa:' do canal Meta
+//     Cloud do mesmo telefone (canal-por-conversa); caixa isolada por instância.
+//   * Canal-por-conversa: evolution_instance_id na conversa + product_id
+//     herdado DA INSTÂNCIA (nunca sobrescreve atribuição manual).
+//   * Lead auto-criado por telefone (dedupe) + pipeline; mensagem inbound com
+//     mídia básica (URL como a Evolution der — sem pipeline de download);
+//     idempotência por key.id (metadata->>evolution_message_id); broadcast.
+//   * fromMe = outbound digitado no APARELHO conectado → registrado como
+//     agente com metadata.source='external_device' (shape do V5 que o front
+//     do inbox de plataforma já reconhece p/ dedup visual).
+//   * Receipts/reactions/bot-flows continuam FORA (fase seguinte do inbox).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
+import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,9 +36,31 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/** Mídia básica extraída de uma mensagem whatsmeow/Baileys (cópia do V5, sem
+ *  rawMessage/base64: não portamos o pipeline de download — persistimos só a
+ *  URL "como a Evolution der"; sem URL, needs_download marca a lacuna). */
+type MediaInfo = {
+  type: "audio" | "image" | "video" | "document" | "sticker";
+  mime?: string;
+  caption?: string;
+  url?: string;
+  needsDownload?: boolean;
+};
+
 type Normalized =
   | { kind: "connection"; instance: string; state: "open" | "connecting" | "close"; phone?: string }
   | { kind: "qrcode"; instance: string; qr: string }
+  | {
+      kind: "message";
+      instance: string;
+      fromMe: boolean;
+      remoteJid: string;
+      lidJid?: string;
+      pushName: string;
+      messageId: string;
+      content: string;
+      media?: MediaInfo;
+    }
   | { kind: "unknown"; instance: string; event: string };
 
 function extractInstance(payload: any): string {
@@ -72,6 +107,93 @@ function normalizeQrString(value: any): string | null {
   return raw;
 }
 
+/** Extrai mídia de um objeto message whatsmeow/Baileys (cópia do V5).
+ *  base64 embutido NUNCA é persistido (pesado) — só marca que não precisa
+ *  de download; sem base64 e sem URL, needsDownload=true. */
+function extractMedia(message: any): MediaInfo | undefined {
+  if (!message) return undefined;
+  const pickUrl = (m: any): string | undefined =>
+    m?.url || m?.URL || m?.directPath || m?.DirectPath || undefined;
+  const pickBase64 = (m: any): string | undefined =>
+    typeof m?.base64 === "string" ? m.base64 :
+    typeof m?.Base64 === "string" ? m.Base64 :
+    typeof m?.media === "string" ? m.media :
+    typeof m?.Media === "string" ? m.Media :
+    undefined;
+
+  const audio = message.audioMessage;
+  if (audio) {
+    const url = pickUrl(audio);
+    return {
+      type: "audio",
+      mime: audio.mimetype || audio.Mimetype || "audio/ogg",
+      url,
+      needsDownload: !pickBase64(audio) && !url,
+    };
+  }
+  const image = message.imageMessage;
+  if (image) {
+    const url = pickUrl(image);
+    return {
+      type: "image",
+      mime: image.mimetype || image.Mimetype || "image/jpeg",
+      caption: image.caption || image.Caption || "",
+      url,
+      needsDownload: !pickBase64(image) && !url,
+    };
+  }
+  const video = message.videoMessage;
+  if (video) {
+    const url = pickUrl(video);
+    return {
+      type: "video",
+      mime: video.mimetype || video.Mimetype || "video/mp4",
+      caption: video.caption || video.Caption || "",
+      url,
+      needsDownload: !pickBase64(video) && !url,
+    };
+  }
+  const doc = message.documentMessage;
+  if (doc) {
+    const url = pickUrl(doc);
+    return {
+      type: "document",
+      mime: doc.mimetype || doc.Mimetype || "application/octet-stream",
+      caption: doc.fileName || doc.FileName || doc.title || doc.Title || "",
+      url,
+      needsDownload: !pickBase64(doc) && !url,
+    };
+  }
+  const sticker = message.stickerMessage;
+  if (sticker) {
+    const url = pickUrl(sticker);
+    return {
+      type: "sticker",
+      mime: sticker.mimetype || sticker.Mimetype || "image/webp",
+      url,
+      needsDownload: !pickBase64(sticker) && !url,
+    };
+  }
+  return undefined;
+}
+
+/** Texto exibível de um objeto message whatsmeow/Baileys (cascade do V5). */
+function extractTextContent(message: any): string {
+  return (
+    message?.conversation ||
+    message?.extendedTextMessage?.text ||
+    message?.imageMessage?.caption ||
+    message?.videoMessage?.caption ||
+    (message?.audioMessage ? "[áudio]" : "") ||
+    (message?.imageMessage ? "[imagem]" : "") ||
+    (message?.videoMessage ? "[vídeo]" : "") ||
+    (message?.documentMessage ? "[documento]" : "") ||
+    (message?.stickerMessage ? "[figurinha]" : "") ||
+    (message?.contactMessage || message?.contactsArrayMessage ? "📇 Contato compartilhado" : "") ||
+    ""
+  );
+}
+
 function normalizePayload(payload: any): Normalized | null {
   const event: string = payload.event || payload.type || payload.Event || "";
   const instance: string = extractInstance(payload);
@@ -79,6 +201,29 @@ function normalizePayload(payload: any): Normalized | null {
   const data = payload.data || payload;
 
   // ---- v2 events ----
+  if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
+    const messages = Array.isArray(data.messages) ? data.messages : [data];
+    const msg = messages[0];
+    if (!msg) return null;
+    const key = msg.key || {};
+
+    // Reação (👍/❤️) não é mensagem nova — fica p/ a fase de reactions do inbox.
+    if (msg.message?.reactionMessage) {
+      return { kind: "unknown", instance, event: `${event}:reaction` };
+    }
+
+    return {
+      kind: "message",
+      instance,
+      fromMe: key.fromMe === true,
+      remoteJid: key.remoteJid || "",
+      pushName: msg.pushName || "",
+      messageId: key.id || "",
+      content: extractTextContent(msg.message) || msg.body || "",
+      media: extractMedia(msg.message),
+    };
+  }
+
   if (event === "connection.update" || event === "CONNECTION_UPDATE") {
     return {
       kind: "connection",
@@ -93,6 +238,46 @@ function normalizePayload(payload: any): Normalized | null {
   }
 
   // ---- Evolution Go events ----
+  // Message / SendMessage carregam estruturas whatsmeow Info + Message (V5).
+  if (event === "Message" || event === "SendMessage") {
+    const info = data.Info || data.info || {};
+    const message = data.Message || data.message || {};
+    const sender: string = info.Sender || info.sender || info.RemoteJid || "";
+    const rawRemoteJid: string = info.Chat || info.RemoteJid || sender || "";
+    const fromMe: boolean = !!(info.IsFromMe ?? info.isFromMe ?? event === "SendMessage");
+
+    // Resolver JID @lid → JID @s.whatsapp.net (telefone real) quando o
+    // whatsmeow envia o "Alt". Em fromMe o destino real vem em
+    // RecipientAlt/RecipientPn/ChatAlt; em inbound, em SenderAlt/SenderPn.
+    const altJidCandidates = fromMe
+      ? [info.RecipientAlt, info.RecipientPn, info.ChatAlt, info.recipientAlt, info.recipientPn, info.chatAlt]
+      : [info.SenderAlt, info.SenderPn, info.senderAlt, info.senderPn];
+    const altPhoneJid = altJidCandidates.find(
+      (j: any) => typeof j === "string" && j.includes("@s.whatsapp.net"),
+    ) as string | undefined;
+    const remoteJid = altPhoneJid || rawRemoteJid;
+    const lidJid = rawRemoteJid.includes("@lid")
+      ? rawRemoteJid
+      : (altJidCandidates.find((j: any) => typeof j === "string" && j.includes("@lid")) as string | undefined);
+
+    // Reação não é mensagem nova — fica p/ a fase de reactions do inbox.
+    if (message.reactionMessage || message.ReactionMessage) {
+      return { kind: "unknown", instance, event: `${event}:reaction` };
+    }
+
+    return {
+      kind: "message",
+      instance,
+      fromMe,
+      remoteJid,
+      lidJid,
+      pushName: info.PushName || info.pushName || "",
+      messageId: info.ID || info.id || "",
+      content: extractTextContent(message),
+      media: extractMedia(message),
+    };
+  }
+
   if (event === "Connected" || event === "PairSuccess") {
     return { kind: "connection", instance, state: "open", phone: data.JID || data.jid };
   }
@@ -122,8 +307,307 @@ function normalizePayload(payload: any): Normalized | null {
     return { kind: "qrcode", instance, qr };
   }
 
-  // Demais eventos (mensagens/receipts/etc) — pertencem à fase do inbox.
+  // Demais eventos (receipts/reactions/presença) — fase seguinte do inbox.
   return { kind: "unknown", instance, event };
+}
+
+// ─── Persistência no inbox de plataforma (espelho do meta-whatsapp-webhook) ──
+
+/** Lead por telefone (dedupe) ou cria — espelho do platform-meta-whatsapp-webhook,
+ *  com source/lead_channel do canal Evolution. */
+async function ensureLead(
+  supabase: any,
+  fromDigits: string,
+  pushName: string | null,
+  productId: string | null,
+): Promise<string | null> {
+  try {
+    const phonePlus = `+${fromDigits}`;
+    const { data: existing } = await supabase
+      .from("platform_crm_leads")
+      .select("id")
+      .or(`phone.eq.${fromDigits},phone.eq.${phonePlus}`)
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) return existing.id as string;
+
+    const { data: created, error } = await supabase
+      .from("platform_crm_leads")
+      .insert({
+        name: pushName || `WhatsApp ${phonePlus}`,
+        phone: phonePlus,
+        source: "whatsapp_evolution",
+        lead_channel: "whatsapp_evolution",
+        // Só no INSERT: lead existente nunca tem product_id sobrescrito.
+        ...(productId ? { product_id: productId } : {}),
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("[platform-evolution-webhook] auto-create lead failed (non-fatal):", error);
+      return null;
+    }
+    return (created?.id as string) ?? null;
+  } catch (e) {
+    console.error("[platform-evolution-webhook] ensureLead error (non-fatal):", e);
+    return null;
+  }
+}
+
+/** Conversa da caixa Evolution (isolada por instância, V5-style) ou cria
+ *  (channel='whatsapp_evolution'). visitor_id usa prefixo 'wa_evo:' pra nunca
+ *  colidir com a conversa 'wa:' do canal Meta Cloud do mesmo telefone.
+ *  Reabre fechada como bot_active — padrão do inbox de plataforma. */
+async function ensureConversation(
+  supabase: any,
+  instance: any,
+  fromDigits: string,
+  pushName: string | null,
+  productId: string | null,
+): Promise<any | null> {
+  const visitorId = `wa_evo:${fromDigits}`;
+  const { data: rows } = await supabase
+    .from("platform_crm_conversations")
+    .select("*")
+    .eq("visitor_id", visitorId)
+    .eq("channel", "whatsapp_evolution")
+    .eq("evolution_instance_id", instance.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  let conversation = rows?.[0] ?? null;
+
+  if (conversation && conversation.status === "closed") {
+    const { data: reopened, error } = await supabase
+      .from("platform_crm_conversations")
+      .update({
+        status: "waiting_human", // até existir send+brain por canal Evolution (era bot_active no V5)
+        needs_human: false,
+        accepted_at: null,
+        accepted_by: null,
+        assigned_to: null,
+      })
+      .eq("id", conversation.id)
+      .select()
+      .single();
+    if (!error && reopened) conversation = reopened;
+  }
+
+  if (!conversation) {
+    const { data: created, error } = await supabase
+      .from("platform_crm_conversations")
+      .insert({
+        visitor_id: visitorId,
+        visitor_name: pushName || null,
+        visitor_phone: `+${fromDigits}`,
+        visitor_whatsapp: `+${fromDigits}`,
+        channel: "whatsapp_evolution",
+        status: "waiting_human", // até existir send+brain por canal Evolution (era bot_active no V5)
+        needs_human: false,
+        evolution_instance_id: instance.id,
+        // Só no INSERT: conversa existente nunca tem product_id sobrescrito.
+        ...(productId ? { product_id: productId } : {}),
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error("[platform-evolution-webhook] create conversation failed:", error);
+      return null;
+    }
+    conversation = created;
+  }
+
+  // Canal-por-conversa (A1.3): herda product_id da instância APENAS quando a
+  // conversa ainda não tem produto (atribuição manual nunca é sobrescrita).
+  if (!conversation.product_id && productId) {
+    const { error: patchError } = await supabase
+      .from("platform_crm_conversations")
+      .update({ product_id: productId })
+      .eq("id", conversation.id);
+    if (!patchError) conversation.product_id = productId;
+  }
+
+  if (!conversation.lead_id) {
+    const leadId = await ensureLead(supabase, fromDigits, pushName, productId);
+    if (leadId) {
+      await supabase
+        .from("platform_crm_conversations")
+        .update({ lead_id: leadId })
+        .eq("id", conversation.id);
+      conversation.lead_id = leadId;
+      await ensurePlatformLeadInPipeline(supabase, leadId);
+    }
+  }
+
+  return conversation;
+}
+
+/** Ingestão de 1 mensagem Evolution → inbox de plataforma. Retorna a Response
+ *  (sempre 200 — Evolution re-entregaria em não-200 e o key.id já dedupa). */
+async function handleMessage(
+  supabase: any,
+  instance: any,
+  norm: Extract<Normalized, { kind: "message" }>,
+): Promise<Response> {
+  const ok = (body: Record<string, unknown>) =>
+    new Response(JSON.stringify({ ok: true, ...body }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  // Grupos ficam fora do inbox de vendas (igual V5).
+  if (norm.remoteJid.endsWith("@g.us")) return ok({ skipped: "group" });
+
+  // JID @lid sem telefone real resolvido → sem identidade utilizável (V5:
+  // não criar conversa fantasma a partir de LID).
+  const remoteIsLid = norm.remoteJid.includes("@lid");
+  const fromDigits = remoteIsLid
+    ? ""
+    : norm.remoteJid.split("@")[0].split(":")[0].replace(/\D/g, "");
+  if (!fromDigits) return ok({ skipped: "no_phone" });
+
+  // Idempotência por key.id (padrão wamid/ig_mid): re-entregas não duplicam.
+  if (norm.messageId) {
+    const { data: dupe } = await supabase
+      .from("platform_crm_messages")
+      .select("id")
+      .eq("metadata->>evolution_message_id", norm.messageId)
+      .limit(1)
+      .maybeSingle();
+    if (dupe) return ok({ skipped: "duplicate_message_id" });
+  }
+
+  const productId = (instance.product_id as string | null) ?? null;
+  const media = norm.media;
+  const contentType = media ? media.type : "text";
+  const content = norm.content || (media ? `[${media.type}]` : "");
+  if (!content && !media) return ok({ skipped: "empty" });
+
+  // Shape metadata.media espelhado do inbox (kind/mime/url/caption); a URL é
+  // a que a Evolution der (pode ser CDN .enc do WhatsApp — o pipeline de
+  // download/decrypt é fase seguinte; needs_download marca a lacuna).
+  const mediaMeta = media
+    ? {
+        kind: media.type,
+        type: media.type,
+        mime: media.mime ?? null,
+        url: media.url ?? null,
+        caption: media.caption || null,
+        ...(media.needsDownload ? { needs_download: true } : {}),
+      }
+    : null;
+
+  // fromMe = enviada pelo APARELHO conectado (fora do CRM) → outbound de
+  // agente com metadata.source='external_device' (V5; o front já reconhece).
+  if (norm.fromMe) {
+    const visitorId = `wa_evo:${fromDigits}`;
+    const { data: rows } = await supabase
+      .from("platform_crm_conversations")
+      .select("id, status")
+      .eq("visitor_id", visitorId)
+      .eq("channel", "whatsapp_evolution")
+      .eq("evolution_instance_id", instance.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const conv = rows?.[0] ?? null;
+    // Sem conversa → papo iniciado fora do CRM; o inbox de VENDAS nasce de
+    // inbound (lead fala primeiro). Não criamos conversa fantasma (o V5 criava
+    // com status 'human' — decisão de escopo registrada no retorno A1.3).
+    if (!conv) return ok({ skipped: "device_outbound_no_conversation" });
+
+    // Dedupe extra do V5: mesmo conteúdo outbound nos últimos 60s na mesma
+    // conversa (eco do envio feito pelo próprio CRM via Evolution).
+    if (content) {
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { data: recent } = await supabase
+        .from("platform_crm_messages")
+        .select("id")
+        .eq("conversation_id", conv.id)
+        .eq("direction", "outbound")
+        .eq("content", content)
+        .gte("created_at", since)
+        .limit(1)
+        .maybeSingle();
+      if (recent?.id) return ok({ skipped: "outbound_echo_content" });
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("platform_crm_messages")
+      .insert({
+        conversation_id: conv.id,
+        direction: "outbound",
+        sender_type: "agent",
+        content: content || "[mídia]",
+        content_type: contentType,
+        metadata: {
+          evolution_message_id: norm.messageId || null,
+          evolution_instance_id: instance.id,
+          channel: "whatsapp_evolution",
+          source: "external_device",
+          from_device: true,
+          remote_jid: norm.remoteJid,
+          ...(mediaMeta ? { media: mediaMeta } : {}),
+        },
+      })
+      .select()
+      .single();
+    if (error) {
+      if (!String(error.code).includes("23505")) {
+        console.error("[platform-evolution-webhook] insert device outbound failed:", error);
+      }
+      return ok({ stored: false });
+    }
+
+    await supabase
+      .from("platform_crm_conversations")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", conv.id);
+    await broadcastPlatformNewMessage(supabase, String(conv.id), inserted);
+    return ok({ stored: "external_outbound" });
+  }
+
+  // ---- INBOUND ----
+  const conversation = await ensureConversation(
+    supabase, instance, fromDigits, norm.pushName || null, productId,
+  );
+  if (!conversation) return ok({ stored: false });
+
+  const { data: inserted, error } = await supabase
+    .from("platform_crm_messages")
+    .insert({
+      conversation_id: conversation.id,
+      direction: "inbound",
+      sender_type: "visitor",
+      content: content || "[mensagem]",
+      content_type: contentType,
+      metadata: {
+        evolution_message_id: norm.messageId || null,
+        evolution_instance_id: instance.id,
+        channel: "whatsapp_evolution",
+        remote_jid: norm.remoteJid,
+        ...(norm.lidJid ? { wa_lid: norm.lidJid.split("@")[0].split(":")[0] } : {}),
+        push_name: norm.pushName || null,
+        ...(mediaMeta ? { media: mediaMeta } : {}),
+      },
+    })
+    .select()
+    .single();
+  if (error) {
+    // 23505 = corrida entre re-entregas resolvida por índice único (ok).
+    if (!String(error.code).includes("23505")) {
+      console.error("[platform-evolution-webhook] insert message failed:", error);
+    }
+    return ok({ stored: false });
+  }
+
+  await supabase
+    .from("platform_crm_conversations")
+    .update({
+      last_message_at: new Date().toISOString(),
+      ...(norm.pushName && !conversation.visitor_name ? { visitor_name: norm.pushName } : {}),
+    })
+    .eq("id", conversation.id);
+
+  await broadcastPlatformNewMessage(supabase, String(conversation.id), inserted);
+  return ok({ stored: "inbound" });
 }
 
 Deno.serve(async (req) => {
@@ -177,6 +661,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ---- MESSAGE (ingestão A1.3) ----
+    if (norm.kind === "message") {
+      return await handleMessage(supabase, instance, norm);
     }
 
     // ---- CONNECTION ----

@@ -1,0 +1,56 @@
+<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Auditoria Portabilidade V5 — 2026-07-11</title><style>body{background:#0f1117;color:#e2e6ee;font-family:-apple-system,'Segoe UI',sans-serif;max-width:1000px;margin:2rem auto;padding:0 1.5rem;line-height:1.6}h1{color:#f6c453;border-bottom:2px solid #2a2f3a;padding-bottom:.4rem}h2{color:#8ab4f8;margin-top:2rem}h3{color:#9ae6b4}table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.92rem}th{background:#1a1f2b;color:#f6c453;text-align:left}th,td{border:1px solid #2a2f3a;padding:.5rem .7rem}tr:nth-child(even) td{background:#141824}code{background:#1a1f2b;color:#9ae6b4;padding:.1rem .35rem;border-radius:4px;font-size:.85em}blockquote{border-left:3px solid #f6c453;margin:.6rem 0;padding:.4rem .9rem;color:#b7bfcf;background:#141824}hr{border:none;border-top:1px solid #2a2f3a;margin:1.6rem 0}strong{color:#fff}li{margin:.3rem 0}</style></head><body><h1>Auditoria de Portabilidade Vendus V5 → CRM da Plataforma (gestão)</h1>
+<blockquote><strong>Gerado:</strong> 2026-07-11 · sessão GO-LIVE Beauty · workflow <code>auditoria-porte-v5</code> (5 auditores por área + 39 verificações adversariais)</blockquote>
+<blockquote><strong>Pergunta do dono:</strong> &quot;Faça uma análise minuciosa pra ter certeza que tudo foi portado. Quero segurança para encerrar a onda de portabilidade e seguir para as próximas.&quot;</blockquote>
+<blockquote><strong>Cobertura da auditoria:</strong> 260 itens comparados (V5 × plataforma) nas 5 áreas; 5.76M tokens de subagente. A síntese-agente morreu no limite de sessão — este relatório foi sintetizado dos dados brutos do journal.</blockquote>
+<hr>
+<h2>1. VEREDITO EXECUTIVO — <strong>GO condicional</strong></h2>
+<p><strong>Encerre a onda de portabilidade — com uma condição: aceitar formalmente que 3 subsistemas grandes ficam FORA do porte como trilhas próprias</strong> (não são buracos, são produtos/canais inteiros que nunca estiveram no escopo de um CRM de texto).</p>
+<p>A verdade desconfortável, dita primeiro: <strong>&quot;tudo&quot; NÃO foi portado ao pé da letra</strong> — ~50% dos itens de menu e ~34% das edges têm algum gap. <strong>Mas</strong> o que importa está portado: o núcleo do CRM que você opera todo dia (inbox, leads, pipeline, campanhas, cadências, agentes Duda/Bia, setores, notificações, relatórios, Mia, canais WhatsApp+Instagram) está <strong>completo ou em paridade funcional</strong>. Os gaps confirmados <strong>não são espalhados</strong> — eles se agrupam em blocos coerentes e opcionais. Portanto: dá pra encerrar a onda de *fidelidade de porte* com segurança, desde que os blocos abaixo virem backlog explícito e nomeado (vários já são trilha separada).</p>
+<hr>
+<h2>2. PLACAR POR ÁREA</h2>
+<table>
+<tr><th>Área</th><th>Completo</th><th>Parcial</th><th>Não-portado</th><th>N/A-tenant</th><th>Total</th></tr>
+<tr><td><strong>Inbox / Chat</strong></td><td>35</td><td>8</td><td>0</td><td>5</td><td>48</td></tr>
+<tr><td><strong>Menu / Páginas</strong></td><td>29</td><td>4</td><td>13</td><td>5</td><td>51</td></tr>
+<tr><td><strong>Edge Functions</strong></td><td>26</td><td>11</td><td>28</td><td>12</td><td>77</td></tr>
+<tr><td><strong>Hooks (dados)</strong></td><td>35</td><td>20</td><td>12</td><td>1</td><td>68</td></tr>
+<tr><td><strong>Features transversais</strong></td><td>6</td><td>10</td><td>0</td><td>0</td><td>16</td></tr>
+</table>
+<p><strong>Leitura:</strong> o Inbox — a peça que mais custou e que você mais usa — está <strong>73% completo, 0 não-portado</strong>. Menu e features transversais: <strong>tudo presente</strong> (nenhum item central ausente). Os &quot;não-portado&quot; concentram-se em Edges (subsistemas de backend inteiros) e Hooks (analytics/conteúdo).</p>
+<hr>
+<h2>3. OS GAPS CONFIRMADOS — 3 blocos FORA-DE-ESCOPO + 4 DENTRO-DE-ESCOPO</h2>
+<h3>🟦 FORA DO ESCOPO (subsistemas/canais inteiros — trilha própria, NÃO bloqueiam encerrar a onda)</h3>
+<p><strong>A. Voz IA (canal inteiro ausente)</strong> — 11 itens de menu + 10 edges + hooks <code>useVoice*</code>.</p>
+<p><code>voice-dashboard/live/history/agents/voices/contexts/campaigns/webhooks/inbound/usage</code> + <code>xai-voice-*</code>, clone de voz, pós-call. É um <strong>produto separado</strong> (ligações com IA, clonagem de voz) — nunca foi escopo de um CRM de texto/chat. Decisão: trilha futura própria, não gap de porte.</p>
+<p><strong>B. Marketing / Meta Ads</strong> — <code>MarketingManager</code>, <code>marketing-connect/sync</code>, <code>meta-ads-validate</code>.</p>
+<p>Conecta com a <strong>outra frente que você já está explorando</strong> (plataforma opensource de gestão de ADS). Decisão: trilha separada — não duplicar aqui.</p>
+<p><strong>C. Fluxos de automação do Instagram</strong> — <code>ig-flow-executor</code>, <code>instagram-flow-generate-ai</code>, <code>useInstagramFlows</code>.</p>
+<p>Distinto do <strong>DM de Instagram</strong> (esse está PRONTO e vivo — in+out). São *fluxos automáticos* de IG. Decisão: backlog pós-onda se houver demanda.</p>
+<h3>🟥 DENTRO DO ESCOPO (gaps reais do CRM — viram backlog priorizado, ainda não bloqueiam)</h3>
+<p><strong>D. Runtime público de Captação</strong> — tabelas <code>platform_crm_capture_funnels/forms/quiz</code> <strong>criadas</strong>, mas as edges de execução pública faltam (<code>funnel-submit/api</code>, <code>form-submit</code>, <code>quiz-ai-result</code>).</p>
+<p>Efeito: o <strong>construtor</strong> de funil/form/quiz existe e é profundo (flowbuilder visual), mas um lead <strong>não consegue submeter</strong> um form/quiz público ainda. <strong>Importa pra geração de lead.</strong> Esforço M.</p>
+<p><strong>E. Conteúdo / Cérebro dos agentes (stubs com TODO)</strong> — <code>objections</code>, <code>materials</code>, <code>knowledge sources</code>, <code>catalog-items</code>, <code>product CTAs</code>, <code>post-sale</code>, <code>email-templates</code>.</p>
+<p>UI 1:1 existe; faltam as tabelas <code>platform_crm_*</code> por trás (mutação inerte com toast). Efeito: você não cadastra objeções/materiais/base-de-conhecimento pros agentes ainda. <strong>Importa pra qualidade da Duda/Bia.</strong> Esforço M (é sobretudo migration + religar).</p>
+<p><strong>F. Envio via Evolution (canal só-recebimento)</strong> — <code>evolution-send</code> não portado.</p>
+<p>O WhatsApp-QR (Evolution) <strong>recebe</strong> mas não <strong>responde</strong> pelo CRM (só Meta Cloud + agora IG respondem). Se Evolution for canal real de venda, é gap; se o oficial (Meta Cloud) é o número de venda, é secundário. <strong>Decisão sua.</strong> Esforço S/M.</p>
+<p><strong>G. Analytics de jornada/origem do lead</strong> — <code>useLeadJourney</code> (12 queries), <code>useLeadTracking</code> (origem/campanha/criativo).</p>
+<p>Dashboards de atribuição de mídia por lead. Efeito: relatórios de &quot;de onde vieram os leads&quot; mais rasos. Esforço M.</p>
+<p><strong>Gaps menores</strong> (parciais, cosméticos ou de agregação): <code>useDealsSummary</code>/<code>useCommissionsSummary</code> (cards de agregado), gamificação (badges/leaderboard), <code>useSquadPerformance</code> comparativo, upload de ícone de squad, sync de Google Calendar do lado plataforma, <code>EditVisitorDialog</code> email não-persiste (coluna já criada na Onda-1 — só religar), <code>PaymentLinkDialog</code> histórico (tabela já criada — só religar).</p>
+<hr>
+<h2>4. FALSOS-POSITIVOS (alegados como gap, REFUTADOS na verificação adversarial)</h2>
+<p>Prova de que a auditoria não superestimou os gaps — 4 alegações caíram:</p>
+<li><strong>&quot;Biblioteca de Contextos&quot; nas Cadências</strong> — está portada (<code>ContextLibrary</code> importado no manager).</li>
+<li><strong>Aprovação/pagamento de comissões + cards de sumário</strong> — portado; o <code>TODO(1:1)</code> no <code>PlatformCrmFinanceiro.tsx</code> está <strong>stale</strong> (mentira no comentário).</li>
+<li><strong><code>send-mass-email</code></strong> — FOI portado 1:1 (existe em <code>functions/send-mass-email/</code>).</li>
+<li><strong>Follow-up IA automático</strong> — re-motorizado nas <strong>Cadências</strong> da plataforma (decisão documentada, não gap).</li>
+<blockquote>Ação de higiene: apagar os 2 TODOs stale (Financeiro + o comentário de comissões) pra não confundir auditorias futuras.</blockquote>
+<hr>
+<h2>5. N/A-TENANT (excluídos por design — corretos)</h2>
+<p>Itens do V5 que pertencem à conta/assinatura do <strong>cliente-salão</strong> (módulo ERP, não CRM de vendas): Plano/Empresa/Pagamentos-do-cliente/Integrações-do-cliente/Suporte-do-cliente. A exclusão está documentada no <code>registry.tsx</code> e <strong>bate</strong> com a auditoria (12 edges + 5 menus + 1 hook N/A, todos justificados pela máxima &quot;CRM ≠ ERP do cliente&quot;).</p>
+<hr>
+<h2>6. RECOMENDAÇÃO DE ENCERRAMENTO</h2>
+<li><strong>Encerre a onda de PORTE</strong> declarando <code>done</code> a fidelidade do núcleo (inbox/leads/pipeline/campanhas/cadências/agentes/setores/relatórios/Mia/canais WA+IG).</li>
+<li><strong>Registre os 3 blocos fora-de-escopo</strong> (Voz IA · Meta Ads · IG Flows) como trilhas nomeadas — não backlog de &quot;porte incompleto&quot;, e sim decisões de produto.</li>
+<li><strong>Abra 4 cards de backlog dentro-de-escopo</strong> com prioridade sua: D (captação pública), E (cérebro/conteúdo), F (Evolution send), G (analytics de jornada).</li>
+<li><strong>Higiene:</strong> religar os &quot;só-migration-falta&quot; (email do visitante, payment_links histórico — tabelas já existem da Onda-1) e apagar os 2 TODOs stale.</li>
+<p>Com isso, a resposta honesta à sua pergunta é: <strong>você pode seguir para as próximas ondas com segurança</strong> — o que ficou pra trás é conhecido, nomeado e opcional, não um campo minado de buracos escondidos.</p></body></html>

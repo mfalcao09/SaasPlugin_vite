@@ -206,7 +206,10 @@ function slugify(name: string): string {
  * vazio, devolve a url original SEM quebrar.
  */
 function appendSellerRef(url: string, personaName: string): string {
-  const src = slugify(personaName);
+  // Ref estável = 1º token do nome ('Duda — SDR Qualificadora' → 'duda'),
+  // casando com o ref_code seedado em 20260706_sellers_e_relatorio_vendas.sql
+  // (renomear o sufixo da persona não quebra a atribuição).
+  const src = slugify(personaName).split('-')[0];
   if (!url || !src) return url;
   try {
     const u = new URL(url);

@@ -10,6 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Loader2, Rocket, Save } from 'lucide-react';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { usePlatformCrmCampaignContexts } from '../data/usePlatformCrmCampaignContexts';
@@ -106,7 +108,20 @@ export function CampaignWizard({
       tags_remove: [] as string[],
     },
     post_cadence_id: null as string | null,
+    // Campanha por produto (ordem Marcelo 07-10): null = grupo todo.
+    // Default na CRIAÇÃO = produto global ativo do seletor (se houver).
+    product_id: null as string | null,
   });
+
+  // Produto global ativo pré-seleciona o produto da campanha nova (não sobrescreve edição).
+  const { activeProductId } = useActivePlatformProduct();
+  const { data: wizardProducts = [] } = usePlatformCrmProducts();
+  useEffect(() => {
+    if (!campaignId && activeProductId) {
+      setForm((f) => (f.product_id === null ? { ...f, product_id: activeProductId } : f));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, activeProductId]);
 
   // Carregar dados auxiliares de plataforma.
   useEffect(() => {
@@ -161,6 +176,7 @@ export function CampaignWizard({
             ...((d.post_response_actions as any) ?? {}),
           },
           post_cadence_id: d.post_cadence_id ?? null,
+          product_id: d.product_id ?? null,
         });
       }
       setLoading(false);
@@ -231,6 +247,7 @@ export function CampaignWizard({
       recurrence: form.schedule_type === 'recurring' ? form.recurrence : null,
       post_response_actions: form.post_response_actions,
       post_cadence_id: form.post_cadence_id ?? null,
+      product_id: form.product_id ?? null,
     };
   };
 
@@ -239,7 +256,9 @@ export function CampaignWizard({
     if (!form.agent_id) { toast.error('Selecione um agente'); return null; }
     setSaving(true);
     try {
-      const payload = buildPayload();
+      // payload as any: product_id existe em prod (migration 20260710) mas o
+      // types.ts gerado ainda não foi regenerado — RejectExcessProperties rejeitaria.
+      const payload = buildPayload() as any;
       const { data, error } = campaignId
         ? await supabase.from('platform_crm_campaigns').update(payload).eq('id', campaignId).select('id').single()
         : await supabase.from('platform_crm_campaigns').insert(payload).select('id').single();
@@ -305,6 +324,21 @@ export function CampaignWizard({
           <div>
             <Label>Descrição</Label>
             <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </div>
+          <div>
+            <Label>Produto</Label>
+            <Select
+              value={form.product_id ?? 'all'}
+              onValueChange={(v) => setForm({ ...form, product_id: v === 'all' ? null : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="Grupo todo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Grupo todo (sem produto)</SelectItem>
+                {wizardProducts.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
