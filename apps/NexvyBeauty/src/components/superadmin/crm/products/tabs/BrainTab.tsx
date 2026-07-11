@@ -35,6 +35,7 @@ import {
 import { CatalogManager } from './catalog/CatalogManager';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BrainTabProps {
   productId: string;
@@ -104,6 +105,67 @@ export function BrainTab({ productId }: BrainTabProps) {
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
   const [trainingText, setTrainingText] = useState('');
+
+  // Website/YouTube: a edge `platform-process-knowledge-source` extrai o conteúdo
+  // (é stateless — só website/youtube) e devolve; a persistência fica com o chamador,
+  // via useCreateProductKnowledgeSource (mesmo contrato da org-scoped).
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [processingSource, setProcessingSource] = useState<'website' | 'youtube' | null>(null);
+
+  const handleProcessSource = async (
+    sourceType: 'website' | 'youtube',
+    url: string,
+    reset: () => void,
+  ) => {
+    if (!url.trim()) {
+      toast.error('Informe a URL');
+      return;
+    }
+    setProcessingSource(sourceType);
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-process-knowledge-source', {
+        body: { sourceType, url: url.trim(), productId },
+      });
+      if (error) {
+        // FunctionsHttpError esconde a mensagem real no corpo da Response.
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const result = (data ?? {}) as {
+        success?: boolean;
+        error?: string;
+        data?: { title?: string; content?: string; description?: string };
+      };
+      if (!result.success) throw new Error(result.error ?? 'Falha ao processar a fonte');
+      const extracted = result.data ?? {};
+      await createSource.mutateAsync({
+        product_id: productId,
+        source_type: sourceType,
+        title: extracted.title || url.trim(),
+        source_url: url.trim(),
+        raw_content: extracted.content ?? null,
+        extracted_content: extracted.content ?? null,
+      });
+      toast.success(
+        sourceType === 'youtube'
+          ? 'Vídeo processado e adicionado ao Cérebro!'
+          : 'Site lido e adicionado ao Cérebro!',
+      );
+      reset();
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao processar a fonte');
+    } finally {
+      setProcessingSource(null);
+    }
+  };
 
   const handleAddFaq = () => {
     if (!faqQuestion.trim() || !faqAnswer.trim()) {
@@ -337,12 +399,23 @@ export function BrainTab({ productId }: BrainTabProps) {
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <Label>URL do site</Label>
-                <Input placeholder="https://seusite.com.br" />
+                <Input
+                  placeholder="https://seusite.com.br"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                />
               </div>
-              <Button onClick={() => todoBackend('Crawling de website do Cérebro')}>
-                <Globe className="h-4 w-4 mr-2" /> Iniciar crawling
+              <Button
+                onClick={() => handleProcessSource('website', websiteUrl, () => setWebsiteUrl(''))}
+                disabled={processingSource === 'website'}
+              >
+                {processingSource === 'website' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Globe className="h-4 w-4 mr-2" />
+                )}
+                Iniciar crawling
               </Button>
-              {/* TODO(edge): crawler/indexação · TODO(table) */}
             </CardContent>
           </Card>
         </TabsContent>
@@ -359,12 +432,23 @@ export function BrainTab({ productId }: BrainTabProps) {
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <Label>URL do vídeo</Label>
-                <Input placeholder="https://youtube.com/watch?v=..." />
+                <Input
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                />
               </div>
-              <Button onClick={() => todoBackend('Transcrição de vídeo do Cérebro')}>
-                <Youtube className="h-4 w-4 mr-2" /> Transcrever vídeo
+              <Button
+                onClick={() => handleProcessSource('youtube', youtubeUrl, () => setYoutubeUrl(''))}
+                disabled={processingSource === 'youtube'}
+              >
+                {processingSource === 'youtube' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Youtube className="h-4 w-4 mr-2" />
+                )}
+                Transcrever vídeo
               </Button>
-              {/* TODO(edge): transcrição · TODO(table) */}
             </CardContent>
           </Card>
         </TabsContent>

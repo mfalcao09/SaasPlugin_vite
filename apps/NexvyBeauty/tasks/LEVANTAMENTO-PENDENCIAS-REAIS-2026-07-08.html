@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Levantamento — Pendências Reais NexvyBeauty · 2026-07-08</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--accent:#e8b4bc;--gold:#d4a94e;--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.55;padding:2rem 1rem;max-width:1100px;margin:0 auto}
+  h1{font-size:1.5rem;color:var(--accent);border-bottom:2px solid var(--border);padding-bottom:.6rem;margin-bottom:.4rem}
+  h2{font-size:1.15rem;color:var(--gold);margin:2rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1rem;color:var(--blue);margin:1.4rem 0 .5rem}
+  p{margin:.5rem 0}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:1.2rem}
+  blockquote{border-left:3px solid var(--accent);padding:.4rem .8rem;color:var(--muted);font-style:italic;margin:.8rem 0;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.85rem}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
+  td{padding:.4rem .6rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel);padding:.1rem .35rem;border-radius:4px;font-size:.83em;color:var(--accent)}
+  .ok{color:var(--green);font-weight:600}.no{color:var(--red);font-weight:600}.pt{color:var(--yellow);font-weight:600}
+  .tag{display:inline-block;font-size:.72rem;padding:.05rem .45rem;border-radius:10px;border:1px solid var(--border);color:var(--muted);margin-right:.3rem}
+  ul,ol{margin:.5rem 0 .5rem 1.4rem}
+  li{margin:.25rem 0}
+  .footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+  .kpi{display:flex;gap:.8rem;flex-wrap:wrap;margin:1rem 0}
+  .kpi div{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem;min-width:140px}
+  .kpi b{display:block;font-size:1.4rem;color:var(--accent)}
+  .kpi span{font-size:.75rem;color:var(--muted)}
+  .wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<h1>LEVANTAMENTO — Pendências REAIS do NexvyBeauty</h1>
+<p class="sub">2026-07-08 · sessão 2c9bdcd8/6cf2fc02 · research profundo em 3 frentes + verificação de código</p>
+
+<blockquote>Pedido do Marcelo (verbatim): "Você precisa levantar o que falta de verdade, de tudo que eu já pedi em todas sessões que já tivemos sobre isso, não apenas o que você esbarra."</blockquote>
+
+<p><b>Método:</b> (A) censo exaustivo de 34 docs de plano (~378 promessas) · (B) mineração de 203 mensagens do Marcelo nos JSONLs + RAG (10.235 docs) + workstreams (05/05→08/07) · (C) caso "UI do atendimento" ponta-a-ponta · cruzado com verificação de código/banco/deploy em 07-08.</p>
+<p><span class="tag">🅲 verificado no código/prod nesta sessão</span><span class="tag">🅳 atestado por doc mais recente</span><span class="tag">❔ não verificado — grep antes de executar</span></p>
+
+<h2>0. Sumário executivo</h2>
+<div class="kpi">
+  <div><b>34</b><span>docs censados</span></div>
+  <div><b>~378</b><span>promessas extraídas</span></div>
+  <div><b>~82</b><span>com ✅ no doc</span></div>
+  <div><b>~265</b><span>sem marca</span></div>
+  <div><b>17</b><span>clusters de conflito</span></div>
+  <div><b>≥3</b><span>pedidos repetidos (mortos)</span></div>
+</div>
+<ol>
+  <li><b>O sistema está mais pronto do que os docs dizem</b> — 16/17 conflitos = doc velho marcando FALTA para coisa entregue. A dívida nº1 é <b>errata</b>, não código.</li>
+  <li><b>O que morre, morre por processo</b>: sessão morre sem herdeiro · frente nova engole a fila · executor "simplifica" sem plano e ninguém registra.</li>
+  <li><b>O backlog real cabe em 9 frentes / ~41 itens</b> (§3) — não nos ~265 "sem marca".</li>
+</ol>
+
+<h2>1. Pronto e PROVADO (errata contra os docs que mentem)</h2>
+<div class="wrap"><table>
+<tr><th>Item</th><th>Docs dizem</th><th>Realidade</th><th>Evidência</th></tr>
+<tr><td>B2 slug + página pública</td><td class="no">FALTA/BLOQUEIA → 404</td><td class="ok">✅ prod, ao vivo</td><td>🅲 /s/&lt;slug&gt; HTTP 200; E2E 07-08</td></tr>
+<tr><td>B5/B6/B7 seeds</td><td class="no">FALTA/PARCIAL</td><td class="ok">✅ provado E2E</td><td>🅲 org-teste: 10 serv + 4 regras + 1 radar; teardown limpo</td></tr>
+<tr><td>Deploy cakto-webhook/reprocess</td><td class="no">pós-merge pendente</td><td class="ok">✅ v19/v17 ACTIVE</td><td>🅲 fonte deployado contém seeds verbatim</td></tr>
+<tr><td>F4.1 slugs Cakto 3 planos</td><td>sem marca</td><td class="ok">✅ 217 wej72ha · 387 qngyuri · 687 hriw6aj</td><td>🅲 query banco</td></tr>
+<tr><td>F4.3 alerta Telegram (código)</td><td>sem marca</td><td class="ok">✅ 5 cenários — <b>falta só secret</b></td><td>🅲 platform-alerts.ts</td></tr>
+<tr><td>F4.4 boas-vindas</td><td>sem marca</td><td class="ok">✅ completo (email idempotente + zap gated)</td><td>🅲 cakto-plan-provisioning.ts</td></tr>
+<tr><td>2.4 trava fundadora (WRITE)</td><td>sem marca</td><td class="ok">✅ org-teste nasceu is_founder</td><td>🅲 E2E 07-08</td></tr>
+<tr><td>Service Worker gotcha</td><td>listado</td><td class="ok">✅ NÃO se aplica (skipWaiting+claim)</td><td>🅲 public/sw.js</td></tr>
+<tr><td>cakto-recovery filtro inerte</td><td class="no">bug pendente</td><td class="ok">✅ fix em main cab7c7d + testes</td><td>🅲 grep+git</td></tr>
+<tr><td>Revival 6/8 actions</td><td>religar (sem marca)</td><td class="ok">✅ LIVE</td><td>🅲 platform-webchat-inbox / webhook-receiver</td></tr>
+<tr><td>Booking dispatcher (WhatsApp)</td><td class="no">TODO</td><td class="ok">✅ Cloud API, idempotente</td><td>🅲 :81</td></tr>
+<tr><td>U1/U2/U3 + A2/A4/A6 atendimento</td><td class="no">RETOMADA: FALTA</td><td class="ok">✅ entregues 07-05</td><td>🅲 file:line (frente C)</td></tr>
+<tr><td>Lux L1-L3 + Rosé + preço fonte-única + evals 12/12</td><td>sem marca</td><td class="ok">✅ no ar</td><td>🅳 HANDOFFs 07-06</td></tr>
+<tr><td>F0-META/F1/F2 autopilot</td><td class="no">DIA0: FALTA</td><td class="ok">✅ PROVADO E2E</td><td>🅳 PLANO-AUTOPILOT</td></tr>
+</table></div>
+<blockquote>Errata datada nesses docs: delegada à sessão <code>local_ef8ba55e</code> (em fila, lastro confirmado no git).</blockquote>
+
+<h2>2. Decisões registradas HOJE que mudam o backlog</h2>
+<ol>
+  <li><b>Confirmação de agendamento → WhatsApp do salão, NUNCA e-mail</b> → mata bloqueio Resend do booking (TODO email = won't-do).</li>
+  <li><b>B4 = histórico WhatsApp do salão</b> (scan QR → ingestão 180d). B3+B4 = UMA parede.</li>
+  <li><b>transfer_sector</b> → candidata a DROP (aguarda ok).</li>
+  <li><b>beauty-sdr squad</b> → radar, não é prioridade agora.</li>
+</ol>
+
+<h2>3. O QUE FALTA DE VERDADE — 9 frentes, ~41 itens</h2>
+
+<h3>FRENTE 1 — Paridade do Atendimento (3 broncas: 01/07, 05/07×2) · régua: 35 comps originais → 11 portados</h3>
+<div class="wrap"><table>
+<tr><th>#</th><th>Item</th><th>Evidência</th><th>Esforço</th></tr>
+<tr><td>1.1</td><td><b>A1 composer completo</b>: portar QuickRepliesPopover, InternalNotes (botão disabled), JourneyTimeline, ScheduleMessage, Forward, AudioRecorder+Media, QuickActionBar — de seller/inbox → superadmin/crm/inbox</td><td>🅲 originais prontos — é PORTE</td><td>M-G</td></tr>
+<tr><td>1.2</td><td>A7 followup-ai-draft (L13) plataforma</td><td>🅲 não existe</td><td>M</td></tr>
+<tr><td>1.3</td><td>trigger_flow: enviar 1ª msg via Cloud API (persist-only hoje)</td><td>🅲 :1567-1606</td><td>P</td></tr>
+<tr><td>1.4</td><td>LOTE adiados: L1, L4 (lembrete via WhatsApp), L5, L10</td><td>🅳 75% (8/13)</td><td>M</td></tr>
+<tr><td>1.5</td><td>D5(b) Mia botões inline Confirmar/Cancelar (aprovado 03/07)</td><td>🅳 sem entrega</td><td>M</td></tr>
+<tr><td>1.6</td><td>D7 webhooks saída · D9 push ("resto adiado")</td><td>🅳</td><td>M</td></tr>
+<tr><td>1.7</td><td>D6b suíte Agentes IA (editor 13 abas→3 campos; UI supervisor)</td><td>🅳</td><td>G</td></tr>
+<tr><td>1.8</td><td>A3 transfer_sector → <b>DROP</b> (aguarda ok)</td><td>🅲 stub</td><td>zero</td></tr>
+</table></div>
+
+<h3>FRENTE 2 — Autopilot de venda</h3>
+<div class="wrap"><table>
+<tr><th>#</th><th>Item</th><th>Evidência</th></tr>
+<tr><td>2.1</td><td><b>F5 prova de fogo do FUNIL COMPLETO</b> (LP→zap→Duda→Bia→pagamento→org). Provisionamento ✅ 07-08; funil conversacional, não</td><td>🅲 parcial</td></tr>
+<tr><td>2.2</td><td>Secrets TELEGRAM_ALERT_BOT_TOKEN/CHAT_ID (código pronto)</td><td>🅲 · ops você</td></tr>
+<tr><td>2.3</td><td>Atribuição Cakto: slug duda-sdr×duda + <b>1 pagamento-teste</b> + deploy</td><td>🅳 "não é opcional"</td></tr>
+<tr><td>2.4</td><td>Onda 5.1 scoring computeQcrScore() em código</td><td>🅳</td></tr>
+<tr><td>2.5</td><td>5.3 [PASSAR_BIA] · 5.7 calibração 35% real</td><td>🅳</td></tr>
+<tr><td>2.6</td><td>2.5 humanização (agrupamento/digitação)</td><td>🅳</td></tr>
+<tr><td>2.7</td><td>founder_status LEITURA no runtime (write ✅)</td><td>🅲/❔</td></tr>
+<tr><td>2.8</td><td>F3 CTA LP→wa.me + UTM + tracking 1st-party</td><td>❔</td></tr>
+<tr><td>2.9</td><td>Copy LP "15 vagas" × 30/30/1 ratificado</td><td>🅳 conflito público</td></tr>
+<tr><td>2.10</td><td>Sync Cakto automático ao salvar plano (pedido 30/06)</td><td>🅳 sem entrega</td></tr>
+</table></div>
+
+<h3>FRENTE 3 — Operação da dona (teto físico)</h3>
+<div class="wrap"><table>
+<tr><th>#</th><th>Item</th><th>Evidência</th></tr>
+<tr><td>3.1</td><td>B3 semi-auto: evolution_instance + e-mail deep-link QR</td><td>🅳</td></tr>
+<tr><td>3.2</td><td><b>F6 pipeline ingestão</b>: MESSAGES_SET → wa_timestamp → dedupe → clientes</td><td>🅲 hoje ZERO backfill (46 msgs, ~7d, canal Meta)</td></tr>
+<tr><td>3.3</td><td><b>PoC profundidade history-sync</b> (180d NÃO garantido; syncFullHistory+Desktop; medir em 3-5 números) — bloqueado no salão-teste + local da Evolution</td><td>🅲 pesquisa feita</td></tr>
+<tr><td>3.4</td><td>B8/Radar com matéria-prima (herda F6)</td><td>🅳</td></tr>
+<tr><td>3.5</td><td>C4 watcher de queda de sessão WhatsApp</td><td>🅳 FALTA</td></tr>
+<tr><td>3.6</td><td>C2/C3 painéis parciais</td><td>🅳</td></tr>
+<tr><td>3.7</td><td>LGPD F6: base legal no onboarding + DPA</td><td>pesquisa 07-08</td></tr>
+</table></div>
+
+<h3>FRENTE 4 — IG Direct + Messenger</h3>
+<p>23 itens do <code>todo-ig-messenger-inbox.md</code> — só a migration autorada (nem aplicada). Gargalo raiz: <b>App Review Meta nunca submetido</b> (exige embed + vídeo seu). Você mandou "desligar" em 30/06. <b>Decisão: retomar ou enterrar formalmente?</b></p>
+
+<h3>FRENTE 5 — UI/Design</h3>
+<div class="wrap"><table>
+<tr><th>#</th><th>Item</th><th>Evidência</th></tr>
+<tr><td>5.1</td><td><b>Lux L4</b>: 47 telas (P2=18+P3=29) + limpeza rosa (16 arqs) + TEMPLATE_v2 + rubric v2 (atual ancora no AZUL supersedido)</td><td>🅳 sessão executora morreu por limite</td></tr>
+<tr><td>5.2</td><td>Revisão adversarial Fable (nunca rodou)</td><td>🅳</td></tr>
+<tr><td>5.3</td><td>Eyeball U4 (seu átomo)</td><td>você</td></tr>
+</table></div>
+
+<h3>FRENTE 6 — CRM do grupo / multiproduto (E1/D3)</h3>
+<ul>
+  <li>6.1 E1 pivot completo: LOTE product-aware · seed ~9 produtos · lead manual product_id NULL · F2 sem prova runtime · <b>religar 10 stubs pós-Lux</b> — 🅳 "decidido, não executado"</li>
+  <li>6.2 D1(b) Meta Cloud por produto · Utmify (sem credenciais)</li>
+  <li>6.3 Migração gestao.nexvy.tech + reskin neutro</li>
+</ul>
+
+<h3>FRENTE 7 — GTM (humano — seu)</h3>
+<ul>
+  <li>7.1 Coortes piloto: warm intros · ≥3 pagamentos reais · coortes 2-3 · medição semanal · veredito semana 12</li>
+  <li>7.2 V5 "demo que se vende sozinho" — nunca iniciado</li>
+  <li>7.3 Gaps CBA sem entrega (7/9): Landings, NBA IA, Workflows, Squad, Materiais, Scoring, tela Playbook — <b>quais ainda valem?</b></li>
+</ul>
+
+<h3>FRENTE 8 — Arsenal / malha de agentes</h3>
+<ul>
+  <li>8.1 Checklist §12 do playbook-mestre: <b>33 itens todos abertos</b> — estado-do-contato injetado · abandono checkout→resgate · handoffs · <b>10 testes de aceitação</b> · dashboard métricas</li>
+  <li>8.2 Deduplicar contra o que F2 já entregou (❔ verificar item a item antes de executar)</li>
+</ul>
+
+<h3>FRENTE 9 — Débitos técnicos e decisões</h3>
+<ul>
+  <li>9.1 Migration versionada de <code>opportunity_scan_schedules</code> — 🅲 <b>fire-now</b></li>
+  <li>9.2 Afiliados fases 2-5 em branch 224 commits stale — reimplementar ou descartar?</li>
+  <li>9.3 Telefonia Salvy 80% (branch, sem merge/secret/deploy)</li>
+  <li>9.4 PRECO: editar migrations 20260705_* na fonte</li>
+  <li>9.5 WIP stash@{0} scenario-match — provavelmente superseded (confirmar+dropar)</li>
+  <li>9.6 feat/beauty-lux-l4 sem remoto (risco de perda) · merge afiliados-proprios aguardando decisão</li>
+</ul>
+
+<h2>4. Padrões de morte + antídotos</h2>
+<div class="wrap"><table>
+<tr><th>Padrão</th><th>Casos</th><th>Antídoto</th></tr>
+<tr><td>Sessão morre sem herdeiro</td><td>Lux L4, IG/Messenger</td><td>Handoff obrigatório + herdeiro nomeado</td></tr>
+<tr><td>Frente nova engole a fila</td><td>LOTE→Lux→E1→E4</td><td>Frente só fecha com Review preenchido; WIP-limit</td></tr>
+<tr><td>Executor "simplifica" sem plano</td><td>inbox 43→9 arqs</td><td>Gate de diff-contagem no review (regra já existe)</td></tr>
+<tr><td>Plano sem checkbox/Review</td><td>RETOMADA, PLANO-LUX</td><td>Checks binários + Review obrigatórios (§8.3)</td></tr>
+<tr><td>Doc sem errata ao ser superado</td><td>17 conflitos</td><td>Errata datada (despachada p/ ef8ba55e)</td></tr>
+</table></div>
+<p><b>Contraste:</b> pedidos pontuais em sessão única fecham com prova (9 casos). O sistema morre nas frentes <b>longas e órfãs</b>.</p>
+
+<h2>5. Decisões que SÓ VOCÊ pode tomar</h2>
+<ol>
+  <li>transfer_sector: <b>dropar?</b> (recomendo sim)</li>
+  <li>IG/Messenger: retomar (App Review + vídeo seu) ou enterrar?</li>
+  <li>Gaps CBA (7 abertos): quais valem?</li>
+  <li>Afiliados fases 2-5: reimplementar ou descartar?</li>
+  <li>Telefonia Salvy: mergear+secret+deploy?</li>
+  <li>Salão de teste (número + onde roda a Evolution) → PoC F6</li>
+  <li>Secrets Telegram → acende C1/F4.3 em 5 min</li>
+  <li>Coortes piloto (venda humana): quando?</li>
+</ol>
+
+<h2>6. Top-8 execução recomendada (sem depender de você)</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Item</th><th>Por quê</th></tr>
+<tr><td>1</td><td>9.1 migration B7</td><td>fire-now, 30min, fecha débito de schema</td></tr>
+<tr><td>2</td><td>1.1 A1 composer (porte 8 comps)</td><td>sua reclamação nº1; originais prontos</td></tr>
+<tr><td>3</td><td>1.3 trigger_flow 1ª msg</td><td>pequeno, padrão existe</td></tr>
+<tr><td>4</td><td>2.9 copy LP 15→30/30/1</td><td>incoerência pública</td></tr>
+<tr><td>5</td><td>2.7 founder_status READ</td><td>fecha ciclo da trava</td></tr>
+<tr><td>6</td><td>2.4 scoring QCR em código</td><td>qualificação fora do "feeling" do LLM</td></tr>
+<tr><td>7</td><td>1.2 followup-ai-draft</td><td>completa LOTE órfão</td></tr>
+<tr><td>8</td><td>5.1 Lux L4 (ondas + herdeiro)</td><td>maior bloco visual pendente</td></tr>
+</table></div>
+
+<div class="footer">
+Fontes: 34 docs em apps/NexvyBeauty/tasks/ + _indice-planos/ · JSONLs 986d864f, b39039b0, 22085aba, 2c9bdcd8 · auditoria-portagem (E-inbox, CONSOLIDADO) · código SaasPlugin_vite@main cab7c7d · Supabase fzhlbwhdejumkyqosuvq (v19/v17) · 2026-07-08. Par canônico: LEVANTAMENTO-PENDENCIAS-REAIS-2026-07-08.md
+</div>
+</body>
+</html>

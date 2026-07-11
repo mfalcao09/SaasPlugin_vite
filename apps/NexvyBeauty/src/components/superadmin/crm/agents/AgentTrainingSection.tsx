@@ -119,7 +119,7 @@ export function AgentTrainingSection({ agentId, productId }: Props) {
 
       const publicUrl = supabase.storage.from('product-documents').getPublicUrl(filePath).data.publicUrl;
 
-      const { error: insertError } = await db.from(TABLE).insert({
+      const { data: inserted, error: insertError } = await db.from(TABLE).insert({
         product_id: productId,
         agent_id: agentId,
         title: newMaterial.title.trim(),
@@ -129,13 +129,36 @@ export function AgentTrainingSection({ agentId, productId }: Props) {
         file_url: publicUrl,
         processing_status: 'pending',
         created_by: profile?.id ?? null,
-      });
+      }).select('id').single();
       if (insertError) throw insertError;
 
       setNewMaterial({ title: '', category: 'sales_techniques', description: '' });
       setSelectedFile(null);
+
+      // Dispara a ingestão/embedding do material (twin product-scoped). O upload já
+      // persistiu; se a indexação falhar, o material fica 'pending' para reprocesso.
+      try {
+        const { error: processError } = await supabase.functions.invoke(
+          'platform-process-training-material',
+          { body: { material_id: inserted.id, product_id: productId, file_url: publicUrl } },
+        );
+        if (processError) {
+          let msg = processError.message;
+          const ctx = (processError as { context?: { json?: () => Promise<{ error?: string; details?: string }> } }).context;
+          try {
+            const body = await ctx?.json?.();
+            if (body?.error) msg = body.details ?? body.error;
+          } catch {
+            /* mantém processError.message */
+          }
+          throw new Error(msg);
+        }
+        toast.success('Material enviado e indexado!');
+      } catch (procErr: any) {
+        console.error('[AgentTrainingSection] indexação falhou:', procErr);
+        toast.warning('Material salvo, mas a indexação falhou — reprocesse mais tarde.');
+      }
       queryClient.invalidateQueries({ queryKey: ['platform-crm', 'agent-training-materials', agentId] });
-      toast.success('Material enviado! A indexação será liberada em breve (P2.A-2).');
     } catch (e: any) {
       console.error('[AgentTrainingSection] upload falhou:', e);
       toast.error('Erro ao enviar material: ' + (e?.message ?? 'desconhecido'));
