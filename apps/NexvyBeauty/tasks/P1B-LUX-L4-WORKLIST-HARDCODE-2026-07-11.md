@@ -172,3 +172,10 @@
 | **Subtotal MANTER** | **78** | |
 | `#0A52D1` em `brand.ts` | 1 | decisão à parte (app.*, não-mecânico) |
 | **TOTAL catalogado** | **113** | |
+
+### §3.3b Complemento mono-total (revisão Fable pós-L4.0 — cobertos pela decisão §6.5 ratificada)
+| arquivo:linha | valor | → alvo | status |
+|---|---|---|---|
+| `SuperAdminDashboard.tsx:110` | `text-violet-500` (Users, KPI Leads) | `text-primary` | ✅ aplicado (Fable) |
+| `SuperAdminDashboard.tsx:147` | `text-cyan-500` (Users, KPI Usuários) | `text-primary` | ✅ aplicado (Fable) |
+| `crm/capture/PlatformCrmCaptureAnalyticsTab.tsx:243` | `color="text-purple-500"` (KPI Conversão) | `text-primary` | ✅ aplicado (Fable) |

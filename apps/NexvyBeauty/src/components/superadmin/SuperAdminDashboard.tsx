@@ -107,7 +107,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Leads na Plataforma</CardTitle>
-            <Users className="h-4 w-4 text-violet-500" />
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -144,7 +144,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Usuários</CardTitle>
-            <Users className="h-4 w-4 text-cyan-500" />
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (

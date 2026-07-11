@@ -240,7 +240,7 @@ export function PlatformCrmCaptureAnalyticsTab() {
               icon={<TrendingUp className="h-4 w-4" />}
               label="Conversão"
               value={`${stats.conversionRate.toFixed(1)}%`}
-              color="text-purple-500"
+              color="text-primary"
             />
             <KPI
               icon={<Activity className="h-4 w-4" />}
