@@ -234,7 +234,7 @@ export function EmailSettings() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-blue-500" />
+                  <Clock className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-medium">Lembrete antes do vencimento</p>
                     <p className="text-sm text-muted-foreground">

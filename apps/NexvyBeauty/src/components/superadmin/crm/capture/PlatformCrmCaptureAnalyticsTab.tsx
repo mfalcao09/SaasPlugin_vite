@@ -228,13 +228,13 @@ export function PlatformCrmCaptureAnalyticsTab() {
               icon={<Eye className="h-4 w-4" />}
               label="Visualizações"
               value={totalViews}
-              color="text-blue-500"
+              color="text-primary"
             />
             <KPI
               icon={<CheckCircle2 className="h-4 w-4" />}
               label="Conclusões"
               value={stats.total}
-              color="text-emerald-500"
+              color="text-primary"
             />
             <KPI
               icon={<TrendingUp className="h-4 w-4" />}
@@ -246,7 +246,7 @@ export function PlatformCrmCaptureAnalyticsTab() {
               icon={<Activity className="h-4 w-4" />}
               label="Score médio"
               value={stats.avgScore}
-              color="text-orange-500"
+              color="text-primary"
             />
           </div>
 

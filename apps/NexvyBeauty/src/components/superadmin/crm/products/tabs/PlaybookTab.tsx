@@ -394,7 +394,7 @@ function OfferPlaybookEditor({ productId }: { productId: string }) {
       <Card className="bg-card">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Layers className="h-4 w-4 text-blue-500" />
+            <Layers className="h-4 w-4 text-primary" />
             Planos (descrição livre)
           </CardTitle>
           <CardDescription>

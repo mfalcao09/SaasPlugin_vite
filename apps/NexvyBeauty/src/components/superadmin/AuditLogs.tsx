@@ -35,7 +35,7 @@ export function AuditLogs() {
       case 'platform_settings':
         return <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">Config</Badge>;
       case 'platform_email_settings':
-        return <Badge variant="outline" className="bg-pink-500/10 text-pink-500 border-pink-500/20">E-mail</Badge>;
+        return <Badge variant="outline" className="bg-muted text-muted-foreground border-border">E-mail</Badge>;
       default:
         return type ? <Badge variant="secondary">{type}</Badge> : null;
     }

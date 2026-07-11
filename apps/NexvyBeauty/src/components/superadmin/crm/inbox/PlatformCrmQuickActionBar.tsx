@@ -84,7 +84,7 @@ export function PlatformCrmQuickActionBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1.5 shrink-0 text-blue-600 hover:text-blue-700"
+              className="h-7 text-xs gap-1.5 shrink-0 text-primary hover:text-primary/80"
               onClick={onPickCatalog}
             >
               <Package className="h-3.5 w-3.5" />

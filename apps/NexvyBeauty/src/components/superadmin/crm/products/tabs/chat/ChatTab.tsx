@@ -72,7 +72,7 @@ export function ChatTab({ productId }: ChatTabProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-pink-500" />
+          <Bot className="h-5 w-5 text-primary" />
           Simulador de Conversa
         </CardTitle>
         <CardDescription>
@@ -94,7 +94,7 @@ export function ChatTab({ productId }: ChatTabProps) {
                   className={cn('flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start')}
                 >
                   {msg.role !== 'user' && (
-                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-600">
+                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Bot className="h-4 w-4" />
                     </div>
                   )}
@@ -102,7 +102,7 @@ export function ChatTab({ productId }: ChatTabProps) {
                     className={cn(
                       'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
                       msg.role === 'user'
-                        ? 'bg-pink-500 text-white'
+                        ? 'bg-primary text-primary-foreground'
                         : msg.role === 'system'
                           ? 'border border-amber-300 bg-amber-50 text-amber-800'
                           : 'border bg-white text-foreground',
@@ -111,7 +111,7 @@ export function ChatTab({ productId }: ChatTabProps) {
                     {msg.content}
                   </div>
                   {msg.role === 'user' && (
-                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pink-500 text-white">
+                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <User className="h-4 w-4" />
                     </div>
                   )}

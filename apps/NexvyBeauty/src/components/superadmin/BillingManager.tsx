@@ -137,7 +137,7 @@ export function BillingManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-blue-500" />
+              <FileText className="h-5 w-5 text-primary" />
               <span className="text-sm text-muted-foreground">Faturas</span>
             </div>
             <p className="text-2xl font-bold mt-2">{billingHistory?.length || 0}</p>

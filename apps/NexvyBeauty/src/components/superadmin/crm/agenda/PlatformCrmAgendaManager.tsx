@@ -219,7 +219,7 @@ function AgendaCalendarView() {
             <span className="text-sm font-semibold">{stats.today}</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/40">
-            <LayoutGrid className="h-4 w-4 text-blue-500" />
+            <LayoutGrid className="h-4 w-4 text-primary" />
             <span className="text-xs text-muted-foreground">No período</span>
             <span className="text-sm font-semibold">{stats.total}</span>
           </div>

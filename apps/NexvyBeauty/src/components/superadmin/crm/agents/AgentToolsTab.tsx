@@ -64,21 +64,21 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
       <Card>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-blue-500" />
+            <GitBranch className="h-4 w-4 text-primary" />
             Pipeline & Qualificação
           </CardTitle>
           <CardDescription className="text-xs">Movimentação e qualificação de leads</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-3 space-y-1">
           <ToolToggle
-            icon={<GitBranch className="h-4 w-4 text-blue-500" />}
+            icon={<GitBranch className="h-4 w-4 text-primary" />}
             label="Mover lead no pipeline"
             description="Avançar ou retroceder o lead entre estágios"
             checked={formData.can_update_pipeline ?? false}
             onCheckedChange={(v) => onChange({ can_update_pipeline: v })}
           />
           <ToolToggle
-            icon={<Target className="h-4 w-4 text-blue-500" />}
+            icon={<Target className="h-4 w-4 text-primary" />}
             label="Qualificar lead"
             description="Registrar qualificação no método configurado (BANT, Método BMC, GPCT ou personalizado)"
             checked={formData.can_qualify ?? false}
@@ -93,7 +93,7 @@ export function AgentToolsTab({ formData, onChange }: AgentToolsTabProps) {
             </div>
           )}
           <ToolToggle
-            icon={<Thermometer className="h-4 w-4 text-blue-500" />}
+            icon={<Thermometer className="h-4 w-4 text-primary" />}
             label="Alterar temperatura"
             description="Classificar lead como frio, morno ou quente"
             checked={formData.can_update_lead ?? false}

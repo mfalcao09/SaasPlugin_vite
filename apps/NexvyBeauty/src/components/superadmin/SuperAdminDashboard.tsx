@@ -73,7 +73,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">ARR Total</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -90,7 +90,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Volume de Deals</CardTitle>
-            <Target className="h-4 w-4 text-blue-500" />
+            <Target className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -127,7 +127,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Empresas</CardTitle>
-            <Building2 className="h-4 w-4 text-orange-500" />
+            <Building2 className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -161,7 +161,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Assinaturas</CardTitle>
-            <CreditCard className="h-4 w-4 text-pink-500" />
+            <CreditCard className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {statsLoading ? (

@@ -86,7 +86,7 @@ const SOURCE_TYPES = [
     label: 'Catálogo',
     icon: Package,
     description: 'Itens que a IA pode buscar e enviar',
-    color: 'text-pink-500',
+    color: 'text-primary',
   },
 ];
 
@@ -250,7 +250,7 @@ export function BrainTab({ productId }: BrainTabProps) {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-500" /> Arquivos
+                <FileText className="h-4 w-4 text-primary" /> Arquivos
               </CardTitle>
               <CardDescription>PDFs, DOCs e apresentações viram conhecimento pesquisável para a IA.</CardDescription>
             </CardHeader>
