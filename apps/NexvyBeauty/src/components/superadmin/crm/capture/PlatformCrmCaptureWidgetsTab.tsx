@@ -56,7 +56,7 @@ import {
 } from '@/components/superadmin/crm/data/usePlatformCrmWebchatWidgets';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 import { usePublicAppUrl } from '@/lib/publicUrl';
 import { PlatformCrmWidgetManager } from './widget/PlatformCrmWidgetManager';
@@ -77,22 +77,26 @@ export function PlatformCrmCaptureWidgetsTab() {
   const [productId, setProductId] = useState('');
 
   const { data: widgets, isLoading } = usePlatformCrmWebchatWidgets();
-  const { data: products = [] } = usePlatformCrmProducts();
+  // Produto ativo GLOBAL (D3 F2): lista filtra pelo ativo e novo widget nasce nele.
+  const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
   const createWidget = useCreatePlatformCrmWebchatWidget();
   const updateWidget = useUpdatePlatformCrmWebchatWidget();
   const toggleWidget = useTogglePlatformCrmWebchatWidget();
   const deleteWidget = useDeletePlatformCrmWebchatWidget();
 
-  // Com 1 produto, a fonte trava a seleção nele (label estática, auto-select).
-  const singleProductId = products.length === 1 ? products[0].id : '';
   // O produto é obrigatório para gravar, EXCETO quando ainda não há produtos
   // cadastrados (aí o backend aplica o default) — espelha a fonte, que só exige
   // o select quando há produtos para escolher.
   const productReady = products.length === 0 || !!productId;
 
-  const filtered = (widgets || []).filter((w) =>
-    w.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filtered = (widgets || []).filter((w) => {
+    const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // Recorte pelo produto ativo GLOBAL (D3 F2): "Todos" mostra tudo; concreto
+    // mostra os do produto + os sem produto (nunca somem).
+    const matchesProduct =
+      !activeProductId || w.product_id === activeProductId || w.product_id == null;
+    return matchesSearch && matchesProduct;
+  });
 
   const resetForm = () => {
     setName('');
@@ -102,8 +106,8 @@ export function PlatformCrmCaptureWidgetsTab() {
 
   const openCreate = () => {
     resetForm();
-    // Pré-seleciona o único produto (auto-trava) — fonte: label estática.
-    if (singleProductId) setProductId(singleProductId);
+    // Novo widget nasce no produto ativo (concreto). Com 1 produto, é ele mesmo.
+    if (effectiveProductId) setProductId(effectiveProductId);
     setIsCreateOpen(true);
   };
 
@@ -122,8 +126,8 @@ export function PlatformCrmCaptureWidgetsTab() {
     setEditing(widget);
     setName(widget.name);
     setWelcomeMessage(widget.welcome_message ?? '');
-    // Edição herda o produto atual (fonte WidgetSettingsTab l.23).
-    setProductId(widget.product_id ?? singleProductId);
+    // Edição herda o produto atual; fallback = produto ativo (D3 F2).
+    setProductId(widget.product_id ?? effectiveProductId ?? '');
   };
 
   const handleUpdate = async () => {

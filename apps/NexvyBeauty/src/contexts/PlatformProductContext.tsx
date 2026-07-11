@@ -31,6 +31,13 @@ export interface PlatformProductContextValue {
   isLoading: boolean;
   /** Produto ativo resolvido (ou null quando "Todos"). */
   activeProduct: PlatformCrmProduct | null;
+  /**
+   * Id concreto para telas que EXIGEM um produto (Agentes/Captação — agentes e
+   * funis são por-produto): `activeProductId ?? products[0]?.id ?? null`.
+   * Difere de `activeProductId`, que é `null` em "Todos os produtos". Telas que
+   * toleram "Todos" (Kanban, Leads, Agenda, Inbox) seguem usando `activeProductId`.
+   */
+  effectiveProductId: string | null;
 }
 
 const PlatformProductContext = createContext<PlatformProductContextValue | null>(null);
@@ -44,6 +51,7 @@ const SAFE_DEFAULT: PlatformProductContextValue = {
   products: [],
   isLoading: false,
   activeProduct: null,
+  effectiveProductId: null,
 };
 
 function readStored(): string | null {
@@ -89,9 +97,20 @@ export function PlatformProductProvider({ children }: { children: ReactNode }) {
     [products, activeProductId],
   );
 
+  // Produto concreto para telas por-produto: o ativo, ou o 1º como fallback
+  // (espelha o `activeProductId ?? products[0]?.id` que cada tela fazia local).
+  const effectiveProductId = activeProductId ?? products[0]?.id ?? null;
+
   const value = useMemo<PlatformProductContextValue>(
-    () => ({ activeProductId, setActiveProductId, products, isLoading, activeProduct }),
-    [activeProductId, setActiveProductId, products, isLoading, activeProduct],
+    () => ({
+      activeProductId,
+      setActiveProductId,
+      products,
+      isLoading,
+      activeProduct,
+      effectiveProductId,
+    }),
+    [activeProductId, setActiveProductId, products, isLoading, activeProduct, effectiveProductId],
   );
 
   return (
