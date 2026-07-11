@@ -110,37 +110,45 @@ export function BillingManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <DollarSign className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <DollarSign className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">MRR Atual</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{formatCurrency(stats?.mrr || 0)}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{formatCurrency(stats?.mrr || 0)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <CheckCircle className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Total Recebido</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{formatCurrency(totalPaid)}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{formatCurrency(totalPaid)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-amber-500" />
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                <Clock className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Pendente</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{formatCurrency(totalPending)}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{formatCurrency(totalPending)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <FileText className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Faturas</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{billingHistory?.length || 0}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{billingHistory?.length || 0}</p>
           </CardContent>
         </Card>
       </div>
@@ -195,13 +203,13 @@ export function BillingManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Pagamento</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Empresa</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Descrição</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Vencimento</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Pagamento</TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-muted-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,18 +221,18 @@ export function BillingManager() {
                     <TableCell className="text-muted-foreground">
                       {bill.description || 'Mensalidade'}
                     </TableCell>
-                    <TableCell className="font-semibold">
+                    <TableCell className="font-semibold tabular-nums">
                       {formatCurrency(bill.amount)}
                     </TableCell>
                     <TableCell>{getStatusBadge(bill.status)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {bill.due_date 
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {bill.due_date
                         ? format(new Date(bill.due_date), "dd/MM/yyyy", { locale: ptBR })
                         : '-'
                       }
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {bill.payment_date 
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {bill.payment_date
                         ? format(new Date(bill.payment_date), "dd/MM/yyyy", { locale: ptBR })
                         : '-'
                       }

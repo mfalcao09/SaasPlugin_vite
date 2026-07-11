@@ -190,7 +190,7 @@ export function SubscriptionsManager() {
                 <div className={`w-3 h-3 rounded-full ${getPlanDotColor(plan.slug)}`} />
                 <span className="font-medium">{plan.name}</span>
               </div>
-              <p className="text-2xl font-bold mt-2">{countByPlan(plan.slug)}</p>
+              <p className="text-2xl font-bold mt-2 tabular-nums">{countByPlan(plan.slug)}</p>
               <p className="text-xs text-muted-foreground">
                 {Number(plan.price_monthly) > 0
                   ? `${formatCurrency(Number(plan.price_monthly))}/mês`
@@ -314,12 +314,12 @@ export function SubscriptionsManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Renovação</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Empresa</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Plano</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Renovação</TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wide text-muted-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -329,7 +329,7 @@ export function SubscriptionsManager() {
                       {sub.organizations?.name || 'N/A'}
                     </TableCell>
                     <TableCell>{getPlanBadge(sub.plan_type)}</TableCell>
-                    <TableCell>
+                    <TableCell className="tabular-nums">
                       {sub.is_complimentary ? (
                         <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
                           <Gift className="h-3 w-3 mr-1" />
@@ -340,7 +340,7 @@ export function SubscriptionsManager() {
                       )}
                     </TableCell>
                     <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                    <TableCell>
+                    <TableCell className="tabular-nums">
                       {sub.current_period_end
                         ? format(new Date(sub.current_period_end), "dd/MM/yyyy", { locale: ptBR })
                         : '-'

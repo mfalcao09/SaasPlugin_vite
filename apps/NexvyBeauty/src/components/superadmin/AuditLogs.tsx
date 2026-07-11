@@ -109,7 +109,7 @@ export function AuditLogs() {
                         <User className="h-3.5 w-3.5" />
                         {log.profiles?.full_name || 'Sistema'}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 tabular-nums">
                         <Calendar className="h-3.5 w-3.5" />
                         {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </span>
@@ -119,7 +119,7 @@ export function AuditLogs() {
                     </div>
                     
                     {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+                      <pre className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-x-auto">
                         {JSON.stringify(log.metadata, null, 2)}
                       </pre>
                     )}

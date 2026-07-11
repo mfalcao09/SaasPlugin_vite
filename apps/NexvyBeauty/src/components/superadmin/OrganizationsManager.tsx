@@ -418,7 +418,7 @@ export function OrganizationsManager({ onViewOrganization }: OrganizationsManage
                         {org.cnpj && `CNPJ: ${org.cnpj} | `}
                         {org.email || 'Sem e-mail'}
                       </p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground tabular-nums">
                         <span className="flex items-center gap-1">
                           <Users className="h-3.5 w-3.5" />
                           {org.max_users || 10} usuários
