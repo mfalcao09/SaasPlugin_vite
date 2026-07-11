@@ -1,0 +1,64 @@
+<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Apresentação visual rica de produtos (Meta + Cakto) — 2026-07-11</title><style>body{background:#0f1117;color:#e2e6ee;font-family:-apple-system,'Segoe UI',sans-serif;max-width:1000px;margin:2rem auto;padding:0 1.5rem;line-height:1.6}h1{color:#f6c453;border-bottom:2px solid #2a2f3a;padding-bottom:.4rem}h2{color:#8ab4f8;margin-top:2rem}h3{color:#9ae6b4}table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.92rem}th{background:#1a1f2b;color:#f6c453;text-align:left}th,td{border:1px solid #2a2f3a;padding:.5rem .7rem;vertical-align:top}tr:nth-child(even) td{background:#141824}code{background:#1a1f2b;color:#9ae6b4;padding:.1rem .35rem;border-radius:4px;font-size:.85em}pre{background:#141824;border:1px solid #2a2f3a;border-radius:6px;padding:.9rem 1rem;overflow-x:auto;font-size:.82rem}pre code{background:none;padding:0;color:#cbd3e1}blockquote{border-left:3px solid #f6c453;margin:.6rem 0;padding:.4rem .9rem;color:#b7bfcf;background:#141824}hr{border:none;border-top:1px solid #2a2f3a;margin:1.6rem 0}strong{color:#fff}li{margin:.3rem 0}.ok{color:#9ae6b4}.no{color:#f6889a}.warn{color:#f6c453}</style></head><body>
+<h1>Apresentação visual rica de planos/produtos — propagação Meta + Cakto</h1>
+<blockquote><strong>Pendência de feature/venda ESTACIONADA para pós-lançamento · 2026-07-11 · branch <code>feat/beauty-inbox-a1.2</code></strong><br>Análise de viabilidade. <strong>Nenhum código alterado.</strong> Groundwork para decisão do dono, não spec de build.</blockquote>
+<hr>
+<h2>0. A verdade desconfortável primeiro</h2>
+<p><span class='ok'>[Certo]</span> <strong>A promessa "cadastra uma vez, propaga rico pra AMBOS" só é entregável pela METADE.</strong></p>
+<p>O catálogo Meta é 90% do caminho andado — a edge já aceita <code>image_url</code>, falta só popular a partir do plano. Barato, alto retorno.</p>
+<p><span class='warn'>[Provável]</span> <strong>O checkout da Cakto — que é justamente onde mora o ganho de conversão (depoimento, selo, cronômetro, header) — NÃO é automatizável pela API.</strong> A <code>public_api</code> da Cakto que o código usa expõe só <code>token/</code>, <code>products/</code> e <code>offers/</code> (campos comerciais: nome, preço, recorrência, trial). Não há endpoint de checkout-builder. A camada visual do checkout Cakto vive na UI (<code>app.cakto.com.br/checkout-builder</code>) e continua <strong>manual, por produto</strong>.</p>
+<p>Ou seja: o "single source of truth visual" que propaga pra tudo é uma meia-verdade. Meta = automatizável. Cakto visual = SOP manual. Vale fazer — mas com a expectativa calibrada, senão vira frustração ("por que a Cakto não atualizou sozinha?").</p>
+<hr>
+<h2>1. Estado atual (verificado, sem chute)</h2>
+<table><tr><th>Camada</th><th>O que existe hoje</th><th>Gap para "apresentação rica"</th></tr>
+<tr><td><strong>Modelo de plano</strong> (<code>platform_plans</code>)</td><td><code>name</code>, <code>slug</code>, <code>description</code> (text), <code>highlight_label</code>, feature flags, <code>modules</code> (jsonb), <code>extra_features</code> (jsonb)</td><td class='no'><strong>Sem <code>image_url</code>, sem galeria, sem depoimento estruturado</strong></td></tr>
+<tr><td><strong>View pública</strong> (<code>public_plans</code>)</td><td>Expõe display cols; <strong>exclui <code>extra_features</code> de propósito</strong></td><td>Sem imagem; campo novo precisa entrar na view</td></tr>
+<tr><td><strong>Sync Meta</strong> (<code>platform-commerce-sync</code>)</td><td>Lê <code>public_plans</code> (só <code>name, slug, price_monthly, checkout_url</code>). Batch UPSERT <span class='ok'>já suporta <code>image_url</code></span></td><td>Imagem só vem do <strong>global</strong> <code>meta_commerce_default_image_url</code> (=<code>null</code>). <strong>Sem imagem por-plano</strong></td></tr>
+<tr><td><strong>Sync Cakto</strong> (<code>cakto-sync-offer</code> + <code>_shared/cakto-client.ts</code>)</td><td>Cria/atualiza <strong>ofertas</strong> (<code>/public_api/offers/</code>) e lista produtos (<code>/public_api/products/</code>). <code>CaktoOfferInput</code> = só campos comerciais</td><td class='no'><strong>Nenhum campo visual na API.</strong> Sem endpoint de checkout-builder</td></tr></table>
+<p>Observação: o webhook Cakto traz <code>product.image</code> (o produto TEM imagem no cadastro), mas o cliente só <strong>lista</strong> produtos — não cria/edita. Imagem do produto Cakto é setada <strong>à mão no painel</strong>.</p>
+<hr>
+<h2>2. Campos a adicionar aos planos (nosso sistema)</h2>
+<table><tr><th>Campo</th><th>Tipo</th><th>Serve a</th><th>Prioridade</th></tr>
+<tr><td><code>image_url</code></td><td><code>text</code></td><td><strong>Card Meta</strong> (WhatsApp/IG) + imagem do card na vitrine</td><td class='ok'><strong>Alta — destrava o item 3</strong></td></tr>
+<tr><td><code>highlights</code></td><td><code>text[]</code> / <code>jsonb</code></td><td>Bullets de benefício na vitrine/LP (Meta não usa)</td><td class='warn'>Média</td></tr>
+<tr><td><code>gallery</code></td><td><code>jsonb</code> (<code>text[]</code>)</td><td>Galeria na LP; Meta usa <code>additional_image_urls</code> se um dia quisermos</td><td>Baixa</td></tr>
+<tr><td><code>testimonial</code></td><td><code>jsonb</code> (<code>{quote, author}</code>)</td><td>Prova social na LP (Cakto é manual)</td><td>Baixa</td></tr></table>
+<p><strong>Atalho pragmático:</strong> <code>image_url</code> como coluna dedicada (entra na view e no card Meta com custo mínimo). Galeria/destaques/depoimento cabem em <code>extra_features</code> (jsonb já existe) <strong>se</strong> só a LP consumir — mas a view exclui <code>extra_features</code>, então a LP precisaria expor esses campos. Não crie 4 colunas de uma vez: <strong><code>image_url</code> resolve 80% do valor.</strong></p>
+<hr>
+<h2>3. Propagação pro catálogo Meta (caminho exato)</h2>
+<p>A edge já tem o encaixe. Caminho mínimo, sem tocar na lógica de batch:</p>
+<ol>
+<li><strong>Migration:</strong> <code>ALTER TABLE platform_plans ADD COLUMN image_url text;</code> + recriar <code>public_plans</code> incluindo <code>image_url</code> (a view é <code>DROP/CREATE</code> — trivial).</li>
+<li><strong>Edge <code>platform-commerce-sync</code>:</strong>
+<ul>
+<li>interface <code>PublicPlan</code>: adicionar <code>image_url: string | null</code>.</li>
+<li><code>select('name, slug, price_monthly, checkout_url')</code> → adicionar <code>image_url</code>.</li>
+<li><code>planToBatchRequest</code>: usar <code>plan.image_url ?? defaultImage</code> como <code>image</code> (fallback pro global que já existe). ~5 linhas.</li>
+</ul></li>
+<li>Pronto: cada plano com imagem própria vira card visual no WhatsApp/IG; sem imagem, cai no default global. <strong>Meta rejeita produto sem <code>image_url</code></strong> — então o fallback global continua sendo a rede de segurança.</li>
+</ol>
+<p>Custo: <strong>1 migration + ~5 linhas na edge.</strong> Zero credencial nova (o gap <code>catalog_management</code> do doc CARDS-NATIVOS é pré-requisito de qualquer sync Meta, não desta melhoria).</p>
+<hr>
+<h2>4. Propagação pro checkout da Cakto — investigação</h2>
+<p><span class='warn'>[Provável]</span> <strong>Não há caminho de API para a camada visual do checkout.</strong></p>
+<ul>
+<li>O cliente da casa (<code>_shared/cakto-client.ts</code>) fala com <code>api.cakto.com.br/public_api/</code>: <code>token/</code>, <code>products/</code> (só GET/list), <code>offers/</code> (create/update — campos comerciais).</li>
+<li><code>CaktoOfferInput</code> não tem imagem, depoimento, selo, cronômetro nem header. A doc referenciada no código (<code>/api-reference/offers/create</code>) é comercial.</li>
+<li>Componentes ricos (imagem, depoimento, selo, header, lista, cronômetro) são configurados na UI <code>app.cakto.com.br/checkout-builder</code>, <strong>por produto</strong>.</li>
+</ul>
+<p><strong>Conclusão registrada:</strong> a parte visual do checkout Cakto é <strong>manual (UI)</strong>. O máximo que a automação faz hoje já faz: gerar a oferta e gravar a <code>checkout_url</code>. Enriquecimento visual do checkout = <strong>SOP humano documentado</strong>, não código.</p>
+<blockquote>⚠️ Confiança <strong>[Provável]</strong>, não [Certo]: baseado no cliente implementado + doc referenciada no código, não em varredura da doc oficial completa. Se algum dia a Cakto publicar API de checkout-builder, reabrir este item. Para fechar com [Certo], 15 min lendo <code>docs.cakto.com.br</code> resolvem — mas o custo/benefício de confirmar não muda a recomendação.</blockquote>
+<hr>
+<h2>5. Esforço + recomendação</h2>
+<table><tr><th>Frente</th><th>Esforço</th><th>ROI</th></tr>
+<tr><td><code>image_url</code> por-plano → view → card Meta</td><td class='ok'><strong>P</strong> (1 migration + ~5 linhas + campo no editor de plano)</td><td><strong>Alto</strong> — card visual real no WhatsApp/IG</td></tr>
+<tr><td>Galeria + destaques + depoimento (modelo + view + form admin)</td><td class='warn'><strong>M</strong> (4 campos, UI de edição, consumo na LP)</td><td>Médio — só LP, sem propagação</td></tr>
+<tr><td>Checkout Cakto visual via API</td><td class='no'><strong>N/A</strong> — API não expõe</td><td>— (fica SOP manual)</td></tr></table>
+<p><strong>Recomendação:</strong> fazer <strong>só o P agora</strong> quando sair do pós-lançamento — <code>image_url</code> por-plano fechando o único gap real do card Meta. Deixar galeria/destaques/depoimento como fase 2 (M), atrelada a quando a LP/vitrine precisar. <strong>Não investir esforço tentando automatizar o visual da Cakto</strong> — a API não expõe; registre como checklist manual no runbook de cadastro de produto. Calibrar a comunicação: "propaga automático pro Meta; Cakto visual é 1 passo manual no painel".</p>
+<hr>
+<h2>Review</h2>
+<ul>
+<li><strong>Meta:</strong> encaixe pronto na edge; só falta <code>image_url</code> na origem (coluna + view + 5 linhas). Esforço <strong>P</strong>.</li>
+<li><strong>Cakto:</strong> <span class='warn'>[Provável]</span> sem API de checkout-builder — camada visual permanece manual (UI). Não automatizar.</li>
+<li><strong>Decisão pendente do dono:</strong> (a) só <code>image_url</code> agora (P) ou (b) modelo visual completo galeria+destaques+depoimento (M, fase 2). Recomendação: (a).</li>
+</ul>
+</body></html>

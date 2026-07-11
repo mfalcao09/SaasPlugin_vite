@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1.C — CRM multiproduto E1/D3 · Mapa de Execução</title>
+<style>
+  :root{--bg:#0d1017;--panel:#151a23;--panel2:#1b2230;--ink:#e6edf3;--mut:#9aa7b8;--line:#263041;
+        --blue:#4aa3ff;--navy:#0A52D1;--rose:#C54B60;--gold:#e2b23e;--green:#3fb950;--red:#f85149;--amber:#e3a008;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 22px 80px}
+  h1{font-size:26px;line-height:1.25;margin:0 0 6px;background:linear-gradient(90deg,var(--blue),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:20px;margin:38px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--blue)}
+  h4{font-size:14px;margin:16px 0 6px;color:var(--gold)}
+  p,li{color:var(--ink)}
+  .meta{color:var(--mut);font-size:13px;border-left:3px solid var(--blue);padding:8px 14px;background:var(--panel);border-radius:0 8px 8px 0;margin:14px 0}
+  .meta code{color:var(--blue)}
+  code{background:var(--panel2);padding:1px 6px;border-radius:5px;font:12.5px/1.5 "SF Mono",Menlo,Consolas,monospace;color:#c9d5e5}
+  pre{background:#0a0d13;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font:12.5px/1.55 "SF Mono",Menlo,Consolas,monospace;color:#c9d5e5}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--gold);font-weight:600}
+  tr:nth-child(even) td{background:var(--panel)}
+  blockquote{margin:14px 0;padding:10px 16px;background:var(--panel);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--ink)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:5px;margin-right:4px;vertical-align:middle}
+  .certo{background:rgba(63,185,80,.16);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+  .prov{background:rgba(74,163,255,.16);color:var(--blue);border:1px solid rgba(74,163,255,.4)}
+  .palp{background:rgba(227,160,8,.16);color:var(--amber);border:1px solid rgba(227,160,8,.4)}
+  .warn{color:var(--amber);font-weight:600}
+  .go{color:var(--red);font-weight:700}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 22px 18px;margin:18px 0}
+  ul,ol{padding-left:22px}
+  .tldr{border:1px solid rgba(226,178,62,.35);background:linear-gradient(180deg,rgba(226,178,62,.05),transparent)}
+  hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+  .foot{color:var(--mut);font-size:12.5px;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>P1.C — CRM multiproduto E1/D3 · Mapa de Execução</h1>
+  <div class="meta">
+    <b>Data:</b> 2026-07-11 · scoping read-only em <code>src/</code><br>
+    <b>Repo:</b> <code>SaasPlugin_vite</code> · <b>App:</b> <code>apps/NexvyBeauty</code><br>
+    <b>Branches:</b> <code>feat/e1-db-spine</code> (1795ca4) · <code>feat/e1-f2-productcontext</code> (162c497) · base <code>main</code> (f8966d2)<br>
+    Provas de liveness (curl/DNS/git) rodadas nesta sessão; tsc/build/UI <b>herdadas dos docs das branches</b>.
+  </div>
+
+  <section class="tldr">
+    <h2>0 · TL;DR (resposta desconfortável primeiro)</h2>
+    <p><span class="tag certo">Certo</span> As duas branches E1 <b>não são fungíveis nem prontas para merge simétrico.</b></p>
+    <ul>
+      <li><code>feat/e1-db-spine</code> = <b>SQL puro, aditivo, merge LIMPO</b> (0 conflitos). Efeito de banco <b>já está no prod</b> — a branch só versiona o que o MCP aplicou. Merge quase cosmético, baixo risco.</li>
+      <li><code>feat/e1-f2-productcontext</code> = <b>React, merge com 4 CONFLITOS</b>. O main avançou 25 commits de inbox (PRs #5/#6) que tocaram <b>os mesmos 4 arquivos</b> que a F2 religou.</li>
+    </ul>
+    <p><span class="tag certo">Certo</span> A prova de runtime da F2 <b>continua bloqueada: só existe 1 produto semeado</b> (<code>nexvybeauty</code>). Sem 2+ produtos o switcher vira label travada. <b>O gargalo do P1.C não é código — é o seed de produtos, que depende de decisão do Marcelo.</b></p>
+    <p><span class="tag prov">Provável</span> <b>Duas trilhas D3</b> (§1.4): o que serve <code>gestao.nexvy.tech</code> hoje é a trilha <b>D3-antiga</b> (deploy 2026-07-03). As branches E1 são a trilha <b>nova</b> e ainda estão fora do main. Não confundir "D3 live" com "E1 mergeado".</p>
+    <p><b>1º passo:</b> mergear <code>feat/e1-db-spine</code> primeiro (limpo, destrava a religação); <b>antes de tocar na F2</b>, decidir a lista de produtos + rodar o seed. Resolver conflito de uma feature que não pode ser provada é ordem errada.</p>
+  </section>
+
+  <h2>1 · Estado REAL de cada peça</h2>
+
+  <h3>1.1 <code>feat/e1-db-spine</code> (1795ca4) — espinha de banco</h3>
+  <table>
+    <tr><th>Dimensão</th><th>Estado</th></tr>
+    <tr><td>Merge-base com main</td><td><code>00acf9b</code> (2026-07-06)</td></tr>
+    <tr><td>Main à frente da base</td><td><b>25 commits</b></td></tr>
+    <tr><td>Mergeable?</td><td><b style="color:var(--green)">SIM, LIMPO</b> (0 conflitos via merge-tree)</td></tr>
+    <tr><td>Conteúdo</td><td>3 migrations SQL + todo. <b>Zero arquivo de app.</b></td></tr>
+    <tr><td>Efeito no prod</td><td><b>JÁ APLICADO</b> via MCP (F1 baseline + F4 9 tabelas + F6 RLS). Branch = registro versionado.</td></tr>
+  </table>
+  <p>Migrations: <code>..._f1_baseline_reconciliation.sql</code>, <code>..._product_hub_tables.sql</code> (9 tabelas), <code>..._rls_product_isolation.sql</code> (RLS opção (c), provada 4 personas/2 JWTs).</p>
+  <blockquote><span class="tag certo">Certo</span> As 9 tabelas são <b>exatamente o backend dos 10 stubs</b> (§2 PASSO 5). Merge desta branch é pré-requisito da religação.</blockquote>
+
+  <h3>1.2 <code>feat/e1-f2-productcontext</code> (162c497) — produto ativo global</h3>
+  <table>
+    <tr><th>Dimensão</th><th>Estado</th></tr>
+    <tr><td>Mergeable?</td><td><b class="go">NÃO — 4 conflitos de conteúdo</b></td></tr>
+    <tr><td>tsc/build (herdado)</td><td>24 erros = baseline, zero novos; build verde. <i>Medido em 06-07, pode ter drift.</i></td></tr>
+    <tr><td>Prova de runtime</td><td><b class="warn">PENDENTE/BLOQUEADA</b> — precisa 2+ produtos</td></tr>
+  </table>
+  <p>Novo <code>ProductContext.tsx</code> (Model A: <code>activeProductId</code> cru + <code>effectiveProductId</code> fallback) + religação de Kanban, Leads, Inbox, Agenda, Agentes, Captação, PlatformShell, PlatformCrmSection.</p>
+  <pre>CONFLICT: superadmin/crm/inbox/PlatformCrmInbox.tsx
+CONFLICT: superadmin/crm/kanban/PlatformCrmKanban.tsx
+CONFLICT: superadmin/crm/leads/PlatformCrmLeadsManager.tsx
+CONFLICT: superadmin/platform-shell/PlatformShell.tsx</pre>
+  <p><b>Causa-raiz:</b> o A1.x de inbox no main (<code>66a74ff</code> "produto global (switcher)", <code>f2b88d0</code> "chip Pipeline espelha switcher") <b>já mexeu em produto global</b> — <b>sobreposição semântica</b>, não só textual. Resolver = reconciliar duas implementações do mesmo conceito.</p>
+  <blockquote><span class="tag prov">Provável</span> Parte da F2 pode já estar reimplementada no main. Diffar o "produto global" do main antes; o merge pode virar "adotar o ProductContext como fonte única".</blockquote>
+
+  <h3>1.3 <code>gestao.nexvy.tech</code> — no ar, servindo o quê</h3>
+  <pre>curl https://gestao.nexvy.tech        → HTTP 200
+curl https://gestao.nexvybeauty.com.br → HTTP 200
+DNS: gestao.nexvy.tech / gestao.nexvybeauty.com.br → 145.223.29.96 (mesmo IP)</pre>
+  <p>Serve o <b>mesmo container <code>nexvy-beauty</code></b> (bundle host-aware). <code>isGestaoHostname()</code> (prefixo) → <code>&lt;PlatformShell/&gt;</code> + tema Nexvy Lux + <code>viewMode='gestao'</code>.</p>
+  <p><span class="warn">⚠ Infra:</span> o router Traefik do <code>nexvy.tech</code> <b>não está no repo</b> — o template versionado <b>hardcoda <code>nexvybeauty.com.br</code></b>. O nexvy.tech é servido por <code>nexvy-gestao-grupo.yml</code> no VPS (DNS Cloudflare zona <code>ea83eda1</code>, cert LE exp 2026-10-01). <b>Ponto cego de versionamento.</b></p>
+  <p><span class="warn">⚠ App:</span> <code>isHostConfinementActive()</code> só liga para <code>nexvybeauty.com.br</code> (<code>APEX_BASE</code> hardcoded). Em nexvy.tech o confinamento está <b>inativo</b> — correto por ora, dívida latente.</p>
+
+  <h3>1.4 ⚠ Duas trilhas D3 — não confundir</h3>
+  <table>
+    <tr><th></th><th>D3-antiga (LIVE)</th><th>E1 novo (branches, fora do main)</th></tr>
+    <tr><td>Abordagem</td><td><code>product_id</code> em 21 tabelas + backfill Beauty</td><td>espinha <code>platform_crm_*</code> <b>sem org_id</b> + ProductContext + 9 hub tables + RLS(c)</td></tr>
+    <tr><td>Estado</td><td><b style="color:var(--green)">P0/P1/P2/P3 ✅ deploy 07-03, LIVE</b></td><td>F1/F4/F6 no banco ✅ · F2 código ⏳ · <b>nada mergeado</b></td></tr>
+    <tr><td>Serve nexvy.tech?</td><td><b>SIM</b></td><td>não</td></tr>
+  </table>
+  <p><span class="tag prov">Provável</span> Não são contraditórias — E1 é refino sobre a F1a viva. Mas o <b>ProductContext (F2) ainda não está no ar</b>; fechar P1.C = unificar no ProductContext e provar re-filtro com ≥2 produtos.</p>
+
+  <h3>1.5 ProductContext — até onde funciona</h3>
+  <p>Código completo e coerente (Model A, flag <code>initialized</code>, switcher reusa <code>PlatformCrmProductSelector</code>), montado só no Módulo Vendas; ERP intocado. Lê <code>platform_crm_products</code> sem <code>org_id</code>. <b>Não provado em runtime.</b> Watcher auto-prova (sessão <code>eb0b1860</code>) depende de estar viva — não-garantido.</p>
+
+  <h2>2 · Checklist executável (ordenado)</h2>
+  <blockquote>Cada passo tem <b>check binário</b>. 🚦 = exige GO do Marcelo.</blockquote>
+
+  <h4>PASSO 1 — Mergear <code>feat/e1-db-spine</code> → main</h4>
+  <p>Primeira. <code>git merge feat/e1-db-spine</code> (0 conflitos). <b>Check:</b> migrations idempotentes, no-op no prod. Risco <b style="color:var(--green)">baixo</b>.</p>
+
+  <h4>PASSO 2 — 🚦 Decidir lista de produtos + semear (F3)</h4>
+  <p><b>Bloqueador nº1.</b> Hoje <b>1 produto</b> (recheck ao vivo recomendado). <b>Não existe seed em código</b> — produtos nascem via UI (<code>useCreatePlatformCrmProduct</code>). Lista = os ~10 SaaS do grupo (Beauty, LAW, Ads, Payments, Advoco, Oficinas, Foods, GYM, BarbeiroPro, Intentus…). <b>Qual subconjunto/nome/slug/preço é decisão do Marcelo.</b> <b>Check:</b> <code>count(platform_crm_products) ≥ 2</code>.</p>
+
+  <h4>PASSO 3 — Prova de runtime da F2 (check binário do plano)</h4>
+  <p>Pré: ≥2 produtos + F2 no ar. Trocar produto no switcher GLOBAL. <b>Check:</b> Pipeline E Leads E Inbox <b>re-filtram simultaneamente</b> (conjuntos distintos por <code>product_id</code>).</p>
+
+  <h4>PASSO 4 — 🚦 Mergear F2 (resolver 4 conflitos)</h4>
+  <p>Resolver Inbox/Kanban/LeadsManager/PlatformShell adotando o <b>ProductContext como fonte única</b> e removendo os <code>useState</code> locais do A1.x. Diffar <code>66a74ff</code>/<code>f2b88d0</code> antes. <b>Check:</b> tsc ≤ baseline + build verde + switcher re-filtrando. Risco <b class="warn">médio-alto</b>.</p>
+
+  <h4>PASSO 5 — Religar os 10 stubs → tabelas reais</h4>
+  <table>
+    <tr><th>Stub hook</th><th>Tabela F4</th></tr>
+    <tr><td>useProductKnowledgeSources / …Stats</td><td>platform_crm_product_knowledge_sources</td></tr>
+    <tr><td>useProductMaterials</td><td>platform_crm_materials</td></tr>
+    <tr><td>useProductTrainingVideos</td><td>platform_crm_product_training_videos</td></tr>
+    <tr><td>useProductObjections</td><td>platform_crm_objections</td></tr>
+    <tr><td>useProductCatalogItems</td><td>platform_crm_product_catalog_items</td></tr>
+    <tr><td>useProductCTAs</td><td>platform_crm_product_ctas</td></tr>
+    <tr><td>useProductPostSaleEventActions</td><td>platform_crm_post_sale_event_actions</td></tr>
+    <tr><td>useProductPostSaleEventLogs</td><td>platform_crm_post_sale_event_logs</td></tr>
+    <tr><td>useProductEmailTemplates</td><td>platform_crm_email_templates</td></tr>
+  </table>
+  <p><span class="warn">⚠ Colisão:</span> a religação edita <code>catalog/CatalogSync.tsx</code> e <code>chat/ChatTab.tsx</code>, que <b><code>feat/beauty-lux-l4</code> também alterou</b> (<code>87cc744</code>). <b>2 arquivos em conflito previsível.</b> Pré: regenerar <code>types.ts</code>. <b>Check por aba:</b> criar → reload → persiste (10 abas).</p>
+
+  <h4>PASSO 6 — Lead manual gravando <code>product_id</code></h4>
+  <p><b>Achado:</b> <code>PlatformCrmLeadsManager.tsx:96</code> filtra por <code>product_id === activeProductId</code>; lead manual sem produto grava NULL → <b>some quando um produto está ativo</b>. Ação: carimbar <code>product_id = effectiveProductId</code> na criação. <b>Check:</b> lead aparece em X, some em Y; <code>product_id ≠ NULL</code>.</p>
+
+  <h2>3 · Mapa do DESACOPLAMENTO (Beauty ↔ gestao)</h2>
+  <h3>3.1 O que HOJE está acoplado (siameses)</h3>
+  <table>
+    <tr><th>Camada</th><th>Acoplamento atual</th></tr>
+    <tr><td>Bundle</td><td><b>1 bundle Vite</b>, 1 container <code>nexvy-beauty</code>, serve 3 hosts + nexvy.tech</td></tr>
+    <tr><td>Routing</td><td>1 <code>App.tsx</code>; host decide via prefixo (<code>isGestaoHostname</code>/<code>isApexDomain</code>)</td></tr>
+    <tr><td>Marca/tema</td><td><code>getActiveBrand(host)</code> + <code>.theme-nexvy-institucional</code> trocam Nexvy↔Beauty em runtime</td></tr>
+    <tr><td>Auth/viewMode</td><td><code>useSuperAdminView</code> deriva gestao|empresa do hostname</td></tr>
+    <tr><td>Banco</td><td><b>1 Supabase</b>; ERP salão (org-scoped) e CRM grupo (<code>platform_crm_*</code> sem org_id) coabitam</td></tr>
+    <tr><td>Componentes</td><td><code>superadmin/crm/*</code> e <code>salao/*</code>+<code>admin/*</code> no mesmo <code>src/</code>; compartilham ui/Logo/useAuth/supabase</td></tr>
+    <tr><td>Rede</td><td>router nexvy.tech vive <b>fora do repo</b> → ponto cego</td></tr>
+  </table>
+  <p>Costuras já existentes: <code>requiredHostClass</code>+<code>HostConfinementGuard</code> (só em nexvybeauty.com.br), <code>SuperAdminRoute</code>, e a máxima <b>"crm/ nunca toca tabela de tenant"</b> (enforçada por <code>platform_crm_*</code> sem org_id).</p>
+
+  <h3>3.2 O que "separação lógica com autonomia" exigiria</h3>
+  <table>
+    <tr><th>Opção</th><th>Essência</th><th>Custo</th></tr>
+    <tr><td><b>A — Mono-bundle, endurecer fronteiras</b></td><td>barrier de imports crm↔salão; versionar router nexvy.tech; generalizar APEX_BASE; autonomia por flag/rota</td><td><b style="color:var(--green)">baixo, reversível</b></td></tr>
+    <tr><td>B — Split de build (monorepo real)</td><td><code>apps/gestao</code> + <code>apps/NexvyBeauty</code> sobre <code>packages/ui</code>+<code>packages/supabase</code>; deploys independentes</td><td>médio-alto</td></tr>
+    <tr><td>C — Repos/serviços separados</td><td>CRM vira produto próprio; Beauty consome via API</td><td>alto</td></tr>
+  </table>
+  <blockquote><span class="tag palp">Palpite</span> Dado o estágio (Beauty 1º produto, receita a destravar), <b>Opção A casa com "impacto mínimo"</b>. B/C = decisão do Marcelo quando o 2º produto entrar. <b>Este doc não escolhe — mapeia.</b></blockquote>
+
+  <h2>4 · Riscos / irreversíveis (GO do Marcelo)</h2>
+  <table>
+    <tr><th>#</th><th>Ação</th><th>Por quê</th></tr>
+    <tr><td>R1 🚦</td><td>Seed de produtos em prod</td><td>escreve em <code>platform_crm_products</code>; lista é decisão de negócio, inferir = §8.1 violado</td></tr>
+    <tr><td>R2 🚦</td><td>Merge F2 (4 conflitos)</td><td>sobreposição semântica com A1.x → regressão silenciosa possível no inbox</td></tr>
+    <tr><td>R3 🚦</td><td>Ordem F2×Lux L4×religação</td><td>3 frentes tocam CatalogSync/ChatTab/tabs; ordem sugerida: db-spine→Lux L4→religação→F2</td></tr>
+    <tr><td>R4 🚦</td><td>Deploy que regenere Traefik</td><td>template hardcoda nexvybeauty.com.br; pode <b>derrubar gestao.nexvy.tech</b> (router fora do repo)</td></tr>
+    <tr><td>R5</td><td>Confiar no watcher auto-prova</td><td>se a sessão morreu, a prova não dispara sozinha</td></tr>
+  </table>
+  <p><b>Sem GO:</b> merge da <code>feat/e1-db-spine</code> (SQL aditivo idempotente, efeito já no prod).</p>
+
+  <h2>5 · Premissas explícitas (§8.1)</h2>
+  <ol>
+    <li><span class="tag certo">verificado</span> merge limpo db-spine / 4 conflitos F2 — via <code>git merge-tree</code>.</li>
+    <li><span class="tag certo">verificado</span> nexvy.tech 200 + mesmo IP — via curl/dig.</li>
+    <li><span class="tag prov">herdado</span> tsc 24-baseline + build verde F2 — doc F2 (06-07, <b>pode ter drift</b>).</li>
+    <li><span class="tag prov">herdado</span> 1 produto no banco — doc F2; sem MCP Supabase autenticado nesta sessão.</li>
+    <li><span class="tag palp">não inferido</span> lista dos ~9 produtos — <b>exige o Marcelo</b>; sem seed em código.</li>
+  </ol>
+
+  <hr>
+  <h2>Review</h2>
+  <p><b>db-spine merge limpo</b> (SQL aditivo, efeito já no prod) · <b>F2 com 4 conflitos</b> contra o inbox A1.x · <b>gestao.nexvy.tech vivo mas com router fora do repo</b> · <b>prova da F2 bloqueada por falta de 2+ produtos</b> (gargalo de decisão) · <b>10 stubs prontos para religar nas 9 tabelas F4</b> (colidem com Lux L4 em 2 arquivos). Desacoplamento = siameses de bundle/host/banco; 3 opções mapeadas sem escolher. Próximo ato humano: Marcelo decide a lista de produtos (R1) e a ordem de merge (R3).</p>
+  <p class="foot">Pareado com <code>P1C-E1D3-MAPA-EXECUCAO-2026-07-11.md</code> · gerado 2026-07-11.</p>
+</div>
+</body>
+</html>
