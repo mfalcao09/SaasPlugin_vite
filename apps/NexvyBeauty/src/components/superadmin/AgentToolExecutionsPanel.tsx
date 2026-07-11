@@ -107,12 +107,12 @@ export function AgentToolExecutionsPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Quando</TableHead>
-                <TableHead>Ferramenta</TableHead>
-                <TableHead>Agente</TableHead>
-                <TableHead>Canal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duração</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Quando</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Ferramenta</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Agente</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Canal</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Duração</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -153,7 +153,7 @@ export function AgentToolExecutionsPanel() {
                       <Badge variant="destructive">Erro</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{e.duration_ms ?? 0}ms</TableCell>
+                  <TableCell className="text-xs text-muted-foreground tabular-nums">{e.duration_ms ?? 0}ms</TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" onClick={() => setSelected(e)}>
                       Ver
@@ -238,7 +238,7 @@ function StatCard({
           {icon}
           <span>{label}</span>
         </div>
-        <p className={`text-2xl font-bold mt-2 ${accent ?? 'text-foreground'}`}>{value}</p>
+        <p className={`text-2xl font-bold mt-2 tabular-nums ${accent ?? 'text-foreground'}`}>{value}</p>
       </CardContent>
     </Card>
   );

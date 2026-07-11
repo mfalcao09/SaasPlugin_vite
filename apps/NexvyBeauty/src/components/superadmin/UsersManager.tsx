@@ -85,19 +85,23 @@ export function UsersManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Users className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Total</span>
             </div>
-            <p className="text-2xl font-bold mt-2">{users?.length || 0}</p>
+            <p className="text-2xl font-bold mt-2 tabular-nums">{users?.length || 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Shield className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Admins</span>
             </div>
-            <p className="text-2xl font-bold mt-2">
+            <p className="text-2xl font-bold mt-2 tabular-nums">
               {users?.filter((u: any) => u.user_roles?.some((r: any) => r.role === 'admin')).length || 0}
             </p>
           </CardContent>
@@ -105,10 +109,12 @@ export function UsersManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Users className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Gestores</span>
             </div>
-            <p className="text-2xl font-bold mt-2">
+            <p className="text-2xl font-bold mt-2 tabular-nums">
               {users?.filter((u: any) => u.user_roles?.some((r: any) => r.role === 'manager')).length || 0}
             </p>
           </CardContent>
@@ -116,10 +122,12 @@ export function UsersManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-emerald-500" />
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <Users className="h-4 w-4" />
+              </div>
               <span className="text-sm text-muted-foreground">Vendedores</span>
             </div>
-            <p className="text-2xl font-bold mt-2">
+            <p className="text-2xl font-bold mt-2 tabular-nums">
               {users?.filter((u: any) => u.user_roles?.some((r: any) => r.role === 'seller')).length || 0}
             </p>
           </CardContent>
@@ -173,10 +181,10 @@ export function UsersManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Cadastro</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Usuário</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Empresa</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Cargo</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wide text-muted-foreground">Cadastro</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,7 +218,7 @@ export function UsersManager() {
                         )) || <Badge variant="secondary">Sem cargo</Badge>}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground tabular-nums">
                       {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                     </TableCell>
                   </TableRow>
