@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, FileSpreadsheet } from 'lucide-react';
-import { useTodoMutation } from '../../hooks/useProductHubStubs';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface Props { productId: string }
@@ -38,7 +39,36 @@ function parseCSV(text: string): string[][] {
 }
 
 export function CatalogImporter({ productId }: Props) {
-  const importMut = useTodoMutation('Importar itens de planilha CSV');
+  const qc = useQueryClient();
+  // Twin product-scoped: a edge insere os itens em platform_crm_product_catalog_items
+  // (source_type='csv'), escopado por product_id. Segue o padrão dos hooks vivos
+  // (trata FunctionsHttpError lendo o corpo real da Response).
+  const importMut = useMutation({
+    mutationFn: async (payload: { product_id: string; items: unknown[] }) => {
+      const { data, error } = await supabase.functions.invoke('platform-catalog-import-csv', {
+        body: payload,
+      });
+      if (error) {
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const result = (data ?? {}) as { success?: boolean; error?: string; inserted?: number };
+      if (result.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['platform-crm', 'product-catalog-items'] });
+      toast.success(`${result.inserted ?? 0} itens importados para o catálogo!`);
+    },
+    onError: (e: unknown) => toast.error((e as Error).message || 'Erro ao importar itens'),
+  });
   const [preview, setPreview] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   void headers;
@@ -87,10 +117,13 @@ export function CatalogImporter({ productId }: Props) {
 
   const handleImport = async () => {
     if (preview.length === 0) return;
-    // TODO(edge: platform-catalog-import-csv) — payload: { product_id, items }
-    await importMut.mutateAsync({ product_id: productId, items: preview });
-    setPreview([]);
-    setHeaders([]);
+    try {
+      await importMut.mutateAsync({ product_id: productId, items: preview });
+      setPreview([]);
+      setHeaders([]);
+    } catch {
+      /* erro já sinalizado no onError da mutação; mantém o preview para retry */
+    }
   };
 
   return (

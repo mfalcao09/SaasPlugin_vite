@@ -11,6 +11,8 @@ import {
   useUpdatePlatformCrmProduct,
 } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 import { useProductObjections, useCreateProductObjection, todoBackend, type ProductObjection } from '../hooks/useProductHubStubs';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -167,6 +169,8 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const qc = useQueryClient();
   const isMobile = useIsMobile();
 
   const filteredObjections = objections.filter(obj => {
@@ -184,9 +188,37 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // TODO(edge: generate-objections) — geração em lote com IA
-  const handleOpenGenerator = () => todoBackend('Geração de objeções em lote com IA');
-  // TODO(edge: handle-objection) — refino individual com IA
+  // Geração em lote com IA — a edge platform-generate-objections gera E persiste
+  // em platform_crm_objections (product-scoped); aqui só invalidamos a lista.
+  const handleOpenGenerator = async () => {
+    if (!productId) return;
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-generate-objections', {
+        body: { productId },
+      });
+      if (error) {
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const result = (data ?? {}) as { success?: boolean; error?: string; saved?: number };
+      if (!result.success) throw new Error(result.error ?? 'Falha ao gerar objeções');
+      qc.invalidateQueries({ queryKey: ['platform-crm', 'product-objections', productId] });
+      toast.success(`${result.saved ?? 0} objeções geradas com IA!`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao gerar objeções');
+    } finally {
+      setGenerating(false);
+    }
+  };
+  // TODO(edge: platform-handle-objection) — refino individual com IA (fora do MAP desta onda)
   const handleRefineObjection = (_objection: ProductObjection) => todoBackend('Refino de objeção com IA');
 
   const categories = Object.entries(categoryConfig);
@@ -202,8 +234,8 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
           </p>
         </div>
         {showAdminActions && productId && productName && (
-          <Button onClick={handleOpenGenerator} className="gap-2" size={isMobile ? 'sm' : 'default'}>
-            <Sparkles className="h-4 w-4" />
+          <Button onClick={handleOpenGenerator} disabled={generating} className="gap-2" size={isMobile ? 'sm' : 'default'}>
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {isMobile ? 'Gerar IA' : 'Gerar em Lote com IA'}
           </Button>
         )}
@@ -261,8 +293,8 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
               : 'Peça ao administrador para cadastrar objeções deste produto'}
           </p>
           {showAdminActions && productId && productName && (
-            <Button onClick={handleOpenGenerator} className="gap-2">
-              <Sparkles className="h-4 w-4" />
+            <Button onClick={handleOpenGenerator} disabled={generating} className="gap-2">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               Gerar Objeções com IA
             </Button>
           )}
