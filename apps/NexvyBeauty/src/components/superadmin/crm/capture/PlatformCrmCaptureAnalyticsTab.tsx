@@ -464,11 +464,13 @@ function KPI({
   return (
     <Card>
       <CardContent className="p-4">
-        <div className={`flex items-center gap-2 text-xs text-muted-foreground mb-2 ${color}`}>
-          {icon}
-          <span>{label}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">{label}</span>
+          <div className={`h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center ${color}`}>
+            {icon}
+          </div>
         </div>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold tabular-nums mt-2">{value}</div>
       </CardContent>
     </Card>
   );

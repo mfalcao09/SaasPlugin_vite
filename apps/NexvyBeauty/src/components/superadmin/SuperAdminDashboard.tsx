@@ -56,14 +56,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">MRR Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <DollarSign className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{formatCurrency(stats?.mrr || 0)}</div>
+                <div className="text-2xl font-bold tabular-nums">{formatCurrency(stats?.mrr || 0)}</div>
                 <p className="text-xs text-muted-foreground">Receita recorrente mensal</p>
               </>
             )}
@@ -73,14 +75,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">ARR Total</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{formatCurrency(stats?.arr || 0)}</div>
+                <div className="text-2xl font-bold tabular-nums">{formatCurrency(stats?.arr || 0)}</div>
                 <p className="text-xs text-muted-foreground">Receita recorrente anual</p>
               </>
             )}
@@ -90,14 +94,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Volume de Deals</CardTitle>
-            <Target className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Target className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{formatCurrency(stats?.totalDealsValue || 0)}</div>
+                <div className="text-2xl font-bold tabular-nums">{formatCurrency(stats?.totalDealsValue || 0)}</div>
                 <p className="text-xs text-muted-foreground">Total processado</p>
               </>
             )}
@@ -107,14 +113,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Leads na Plataforma</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Users className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats?.leads?.toLocaleString('pt-BR') || 0}</div>
+                <div className="text-2xl font-bold tabular-nums">{stats?.leads?.toLocaleString('pt-BR') || 0}</div>
                 <p className="text-xs text-muted-foreground">Total de leads</p>
               </>
             )}
@@ -127,14 +135,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Empresas</CardTitle>
-            <Building2 className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Building2 className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats?.organizations || 0}</div>
+                <div className="text-2xl font-bold tabular-nums">{stats?.organizations || 0}</div>
                 <p className="text-xs text-muted-foreground">Organizações ativas</p>
               </>
             )}
@@ -144,14 +154,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Usuários</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Users className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats?.users || 0}</div>
+                <div className="text-2xl font-bold tabular-nums">{stats?.users || 0}</div>
                 <p className="text-xs text-muted-foreground">Cadastrados</p>
               </>
             )}
@@ -161,14 +173,16 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Assinaturas</CardTitle>
-            <CreditCard className="h-4 w-4 text-primary" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <CreditCard className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats?.activeSubscriptions || 0}</div>
+                <div className="text-2xl font-bold tabular-nums">{stats?.activeSubscriptions || 0}</div>
                 <p className="text-xs text-muted-foreground">Ativas</p>
               </>
             )}
@@ -178,7 +192,9 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Saúde</CardTitle>
-            <Activity className="h-4 w-4 text-emerald-500" />
+            <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <Activity className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">

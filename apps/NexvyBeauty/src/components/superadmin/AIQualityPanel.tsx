@@ -68,9 +68,11 @@ function MetricCard({
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{label}</span>
-          <Icon className="h-4 w-4 text-muted-foreground" />
+          <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <Icon className="h-4 w-4" />
+          </div>
         </div>
-        <div className="text-2xl font-bold mt-1">{value}</div>
+        <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
         {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
       </CardContent>
     </Card>
