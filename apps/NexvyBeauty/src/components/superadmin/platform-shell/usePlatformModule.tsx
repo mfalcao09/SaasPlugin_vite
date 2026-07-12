@@ -59,6 +59,7 @@ import {
   BellRing,
   Clock,
   Package,
+  Instagram,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
@@ -284,6 +285,7 @@ export const PlatformIcons = {
   Megaphone,
   Send,
   Webhook,
+  Instagram,
   // vendas — captação
   FileQuestion,
   FormInput,

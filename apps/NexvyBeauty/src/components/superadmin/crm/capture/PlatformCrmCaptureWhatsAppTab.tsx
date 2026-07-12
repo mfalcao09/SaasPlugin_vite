@@ -56,6 +56,7 @@ import {
   Save,
   Target,
   AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -71,6 +72,8 @@ import {
 import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
 import { usePlatformCrmSquads } from '@/components/superadmin/crm/data/usePlatformCrmSquads';
 import { usePlatformCrmTeamMembers } from '@/components/superadmin/crm/data/usePlatformCrmTeam';
+import { usePlatformCrmMetaWAConnections } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
+import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
 
 /**
  * CRM de PLATAFORMA (super_admin) — CAPTAÇÃO via WHATSAPP (porte 1:1 do
@@ -120,6 +123,23 @@ export function PlatformCrmCaptureWhatsAppTab() {
   const deleteFunnel = useDeletePlatformCrmCaptureFunnel();
   const duplicateFunnel = useDuplicatePlatformCrmCaptureFunnel();
   const updateStatus = useTogglePlatformCrmFunnelStatus();
+
+  // C6: status REAL do canal WhatsApp da plataforma (antes era um banner hardcoded
+  // "não conectado", falso). Conectado = conexão Meta oficial ATIVA OU instância
+  // Evolution (QR) pareada. Predicados canônicos do codebase (AgentEditor l.1147/1163;
+  // meta='active', evolution='connected'|'paired').
+  const { data: metaConnections } = usePlatformCrmMetaWAConnections();
+  const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
+  const connectedMeta = (metaConnections ?? []).find((c) => c.status === 'active');
+  const connectedEvolution = (evolutionInstances ?? []).find(
+    (i) => i.status === 'connected' || i.status === 'paired',
+  );
+  const isChannelConnected = !!connectedMeta || !!connectedEvolution;
+  const connectedChannelLabel = connectedMeta
+    ? `${connectedMeta.display_name}${connectedMeta.phone_number ? ` — ${connectedMeta.phone_number}` : ''}`
+    : connectedEvolution
+      ? `${connectedEvolution.name}${connectedEvolution.phone_number ? ` — ${connectedEvolution.phone_number}` : ''}`
+      : '';
 
   const whatsappFunnels = (funnels ?? []).filter((f) => f.channel_type === 'whatsapp');
 
@@ -171,14 +191,25 @@ export function PlatformCrmCaptureWhatsAppTab() {
         </Button>
       </div>
 
-      {/* Canal abstraído — sem provider conectado ainda */}
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-sm">
-        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-        <p>
-          O canal WhatsApp da plataforma ainda não está conectado. Os fluxos e configurações
-          ficam salvos e serão ativados automaticamente quando o canal for plugado.
-        </p>
-      </div>
+      {/* C6: status do canal reflete a conexão REAL (Meta oficial / Evolution QR). */}
+      {isChannelConnected ? (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-sm">
+          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <p>
+            Canal WhatsApp conectado
+            {connectedChannelLabel ? ` (${connectedChannelLabel})` : ''}. Os fluxos ativos
+            disparam quando o lead enviar a primeira mensagem.
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <p>
+            O canal WhatsApp da plataforma ainda não está conectado. Os fluxos e configurações
+            ficam salvos e serão ativados automaticamente quando o canal for plugado.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">

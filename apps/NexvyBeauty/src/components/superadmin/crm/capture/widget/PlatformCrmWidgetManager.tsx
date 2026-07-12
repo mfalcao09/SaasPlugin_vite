@@ -120,10 +120,10 @@ export function PlatformCrmWidgetManager() {
             Bolha de chat embutida em sites externos via snippet <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Widget
-        </Button>
+        {/* C5: removido o "Novo Widget" redundante/circular do builder (esta sub-aba
+            é aberta via "Abrir builder" a partir de PlatformCrmCaptureWidgetsTab, que
+            já tem seu próprio "Novo Widget"). A criação segue disponível pelo estado
+            vazio abaixo e pela aba Funis (canal = widget). */}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
