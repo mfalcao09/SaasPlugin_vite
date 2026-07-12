@@ -1,12 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Loader2, MousePointerClick, Workflow, Trash2 } from 'lucide-react';
+import { CheckCircle2, Loader2, MousePointerClick } from 'lucide-react';
 import { FunnelBlock, FunnelBlockType, createDefaultBlock, getPaletteItem } from '@/types/funnel';
 import { useUpdatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import type { PlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import type { TablesUpdate } from '@/integrations/supabase/types';
 import { PlatformCrmWidgetBlockPalette } from './PlatformCrmWidgetBlockPalette';
+// Canvas visual funnel-typed (nós arrastáveis + linhas de conexão + toolbar/zoom/pan).
+// Reuso do componente de apresentação puro admin/capture/FlowCanvas — mesmo tipo `FunnelBlock`
+// que a paleta e o estado deste tab. Sem organization_id: FlowCanvas é UI pura, product-scoped
+// permanece intacto (o funil de plataforma carrega product_id, nunca org).
+import { FlowCanvas } from '@/components/admin/capture/FlowCanvas';
 
 interface Props { funnel: PlatformCrmCaptureFunnel; }
 
@@ -41,27 +45,32 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
   const updateFunnel = useUpdatePlatformCrmCaptureFunnel();
   const selectedBlock = blocks.find(b => b.id === selectedBlockId);
 
+  const persist = useCallback(async (nextBlocks: FunnelBlock[], nextStart: string | null) => {
+    let validStart = nextStart;
+    if (!validStart || !nextBlocks.some(b => b.id === validStart)) {
+      validStart = findBestStartBlock(nextBlocks, null);
+    }
+    await updateFunnel.mutateAsync({
+      id: funnel.id,
+      flow_blocks: nextBlocks as unknown as TablesUpdate<'platform_crm_capture_funnels'>['flow_blocks'],
+      start_block_id: validStart,
+    });
+    return validStart;
+  }, [funnel.id, updateFunnel]);
+
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!isDirty) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      let validStart = startBlockId;
-      if (!validStart || !blocks.some(b => b.id === validStart)) {
-        validStart = findBestStartBlock(blocks, null);
-      }
       try {
-        await updateFunnel.mutateAsync({
-          id: funnel.id,
-          flow_blocks: blocks as unknown as TablesUpdate<'platform_crm_capture_funnels'>['flow_blocks'],
-          start_block_id: validStart,
-        });
+        await persist(blocks, startBlockId);
         setIsDirty(false);
         setLastSavedAt(new Date());
       } catch { /* hook trata toast */ }
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [blocks, startBlockId, isDirty, funnel.id, updateFunnel]);
+  }, [blocks, startBlockId, isDirty, persist]);
 
   const handleAddBlock = useCallback((type: FunnelBlockType, position?: { x: number; y: number }) => {
     const pos = position || { x: 100 + (blocks.length % 3) * 280, y: 100 + Math.floor(blocks.length / 3) * 150 };
@@ -79,6 +88,11 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
     if (blocks.length === 0) setStartBlockId(newBlock.id);
   }, [blocks.length]);
 
+  const handleUpdateBlock = useCallback((blockId: string, updates: Partial<FunnelBlock>) => {
+    setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, ...updates } : b));
+    setIsDirty(true);
+  }, []);
+
   const handleDeleteBlock = useCallback((blockId: string) => {
     setBlocks(prev => {
       const deleted = prev.find(b => b.id === blockId);
@@ -93,6 +107,69 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
     }
     setIsDirty(true);
   }, [selectedBlockId, startBlockId, blocks]);
+
+  const handleDuplicateBlock = useCallback((blockId: string) => {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block) return;
+    const nb = createDefaultBlock(block.type, { x: block.position.x + 30, y: block.position.y + 30 });
+    nb.data = { ...block.data };
+    setBlocks(prev => [...prev, nb]);
+    setSelectedBlockId(nb.id);
+    setIsDirty(true);
+  }, [blocks]);
+
+  const handleSetStartBlock = useCallback((blockId: string) => {
+    setStartBlockId(blockId);
+    setIsDirty(true);
+  }, []);
+
+  const handleDeleteConnection = useCallback((
+    sourceId: string,
+    connectionType: 'normal' | 'condition_true' | 'condition_false' | 'option',
+    optionIndex?: number,
+  ) => {
+    setBlocks(prev => prev.map(block => {
+      if (block.id !== sourceId) return block;
+      switch (connectionType) {
+        case 'normal': return { ...block, next_block_id: null };
+        case 'condition_true': return { ...block, data: { ...block.data, true_next_block_id: null } };
+        case 'condition_false': return { ...block, data: { ...block.data, false_next_block_id: null } };
+        case 'option':
+          if (block.type === 'buttons' && block.data.options && optionIndex !== undefined) {
+            const opts = [...block.data.options];
+            opts[optionIndex] = { ...opts[optionIndex], next_block_id: null };
+            return { ...block, data: { ...block.data, options: opts } };
+          }
+          if (block.type === 'ai_decide' && block.data.ai_outputs && optionIndex !== undefined) {
+            const outs = [...block.data.ai_outputs];
+            outs[optionIndex] = { ...outs[optionIndex], next_block_id: null };
+            return { ...block, data: { ...block.data, ai_outputs: outs } };
+          }
+          return block;
+        default: return block;
+      }
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleAutoDetectStart = useCallback(() => {
+    const detected = findBestStartBlock(blocks, null);
+    if (detected && detected !== startBlockId) {
+      setStartBlockId(detected);
+      setIsDirty(true);
+      return true;
+    }
+    return false;
+  }, [blocks, startBlockId]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      const validStart = await persist(blocks, startBlockId);
+      if (validStart !== startBlockId) setStartBlockId(validStart);
+      setIsDirty(false);
+      setLastSavedAt(new Date());
+    } catch { /* hook trata toast */ }
+  }, [blocks, startBlockId, persist]);
 
   return (
     <div className="h-[calc(100vh-200px)] flex flex-col gap-2">
@@ -111,56 +188,27 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
           <PlatformCrmWidgetBlockPalette onAddBlock={handleAddBlock} />
         </Card>
 
-        {/* Canvas visual (FlowCanvas/FunnelBlockEditor) — porte profundo pendente (TODO edge).
-            Enquanto isso, a lista de blocos permite add (paleta) / seleção / exclusão e auto-save. */}
+        {/* Canvas visual: nós arrastáveis + linhas de conexão (next_block_id / condition
+            true-false / opções de botões / saídas de ai_decide) + toolbar de zoom/pan/auto-layout.
+            Estado (blocks/selectedBlockId/startBlockId/isDirty) e auto-save preservados. */}
         <Card className="flex-1 relative overflow-hidden">
-          <CardContent className="p-4 h-full overflow-auto">
-            {blocks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Workflow className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-muted-foreground max-w-xs">
-                  Arraste ou clique nos blocos da paleta para montar o fluxo do widget.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {blocks.map((b, i) => {
-                  const item = getPaletteItem(b.type);
-                  const isStart = b.id === startBlockId;
-                  return (
-                    <div
-                      key={b.id}
-                      onClick={() => setSelectedBlockId(b.id)}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedBlockId === b.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xs text-muted-foreground w-5">{i + 1}</span>
-                        <span className="text-lg">{item?.icon}</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{item?.label || b.type}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {b.data.content || b.data.placeholder || item?.description}
-                          </p>
-                        </div>
-                        {isStart && <Badge variant="outline" className="text-[10px]">Início</Badge>}
-                      </div>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteBlock(b.id); }}
-                        aria-label="Remover bloco"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <CardContent className="p-0 h-full">
+            <FlowCanvas
+              blocks={blocks}
+              selectedBlockId={selectedBlockId}
+              startBlockId={startBlockId}
+              isDirty={isDirty}
+              isSaving={updateFunnel.isPending}
+              onSelectBlock={setSelectedBlockId}
+              onAddBlock={handleAddBlock}
+              onUpdateBlock={handleUpdateBlock}
+              onDeleteBlock={handleDeleteBlock}
+              onDuplicateBlock={handleDuplicateBlock}
+              onSetStartBlock={handleSetStartBlock}
+              onDeleteConnection={handleDeleteConnection}
+              onSave={handleSave}
+              onAutoDetectStart={handleAutoDetectStart}
+            />
           </CardContent>
         </Card>
 
@@ -173,8 +221,9 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
                   <p className="text-sm font-semibold">{getPaletteItem(selectedBlock.type)?.label || selectedBlock.type}</p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  O editor visual detalhado de blocos (FunnelBlockEditor) será liberado num próximo porte.
-                  Por ora, use a paleta para compor o fluxo e defina o conteúdo pelo canal público.
+                  O editor visual detalhado de propriedades (FunnelBlockEditor) será liberado num
+                  próximo porte. Por ora, monte o fluxo no canvas: arraste os nós, ligue as saídas
+                  (bolinhas à direita) às entradas (bolinha à esquerda) e defina o bloco de início.
                 </p>
               </div>
             ) : (
@@ -183,7 +232,7 @@ export function PlatformCrmWidgetFlowTab({ funnel }: Props) {
                   <MousePointerClick className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Selecione um bloco para editar suas propriedades
+                  Selecione um bloco para ver suas propriedades
                 </p>
               </div>
             )}

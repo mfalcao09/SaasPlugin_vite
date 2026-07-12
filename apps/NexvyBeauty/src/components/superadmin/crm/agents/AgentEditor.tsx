@@ -1209,7 +1209,7 @@ export function AgentEditor({
               {/* Tab: Executive (apenas para tipo admin) */}
               {formData.agent_type === 'admin' && (
                 <TabsContent value="executive" className="mt-0">
-                  <AdminExecutivePanel compact />
+                  <AdminExecutivePanel compact adminAgentId={agent?.id ?? null} />
                 </TabsContent>
               )}
 
