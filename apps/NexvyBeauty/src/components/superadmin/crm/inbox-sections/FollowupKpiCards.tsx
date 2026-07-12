@@ -91,7 +91,7 @@ export function FollowupKpiCards({ stats, loading }: Props) {
               <Icon className="h-[18px] w-[18px]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground leading-snug">
+              <p className="text-[12px] font-medium text-muted-foreground leading-snug">
                 {it.title}
               </p>
               {loading ? (

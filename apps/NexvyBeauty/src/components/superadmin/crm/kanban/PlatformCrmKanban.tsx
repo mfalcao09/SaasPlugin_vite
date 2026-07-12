@@ -232,7 +232,7 @@ export function PlatformCrmKanban() {
               <kpi.icon className="h-[18px] w-[18px]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground truncate">
+              <p className="text-[12px] font-medium text-muted-foreground truncate">
                 {kpi.label}
               </p>
               <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none truncate">

@@ -234,7 +234,7 @@ export function PlatformCrmInboxPanel({ onOpenConversation }: Props = {}) {
                   <Icon className="h-[18px] w-[18px]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="truncate text-[12px] font-medium text-muted-foreground">
                     {kpi.label}
                   </p>
                   <p className="mt-1 truncate text-[30px] font-semibold leading-none tracking-[-0.03em] tabular-nums">
