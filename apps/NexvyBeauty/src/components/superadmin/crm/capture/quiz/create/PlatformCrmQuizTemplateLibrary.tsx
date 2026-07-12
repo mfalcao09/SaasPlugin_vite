@@ -1,17 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// PlatformCrmQuizTemplateLibrary — "Biblioteca de Templates de Quiz" (super_admin).
-// Porte de `admin/capture/quiz/create/QuizTemplateLibrary.tsx`.
-// Data-layer tenant → plataforma:
-//   - useQuizTemplates (@/data estático)     → usePlatformCrmQuizTemplates
-//                                               (tabela platform_crm_quiz_templates)
-//   - CATEGORY_LABELS/BADGE_LABELS estáticos  → categorias/etiquetas derivadas
-//                                               dinamicamente dos templates do DB
-//   - useCreateFunnel + cloneFlowBlocks       → useCreatePlatformCrmFunnelFromQuizTemplate
-//                                               (clona flow_json + appearance + usage_count)
-//   - product select                          → PlatformCrmCaptureProductField +
-//                                               useActivePlatformProduct; o product_id é
-//                                               carimbado via useUpdatePlatformCrmCaptureFunnel
-//                                               (o hook de template não grava product_id).
+// PlatformCrmQuizTemplateLibrary — diálogo "Usar Template" de Quiz (super_admin).
+//
+// FONTE ÚNICA: lê a MESMA biblioteca da página de Templates
+// (`usePlatformCaptureTemplateLibrary` = seed estático `QUIZ_TEMPLATES` + DB
+// `platform_crm_quiz_templates`). Antes lia só o DB (`usePlatformCrmQuizTemplates`),
+// que nasce vazio → o diálogo aparecia "Nenhum template encontrado" mesmo com os
+// templates existindo no seed. Agora galeria e diálogo mostram o mesmo catálogo.
+//
+// Criação: clona `flow_blocks` (regenera ids via `clonePlatformFlowBlocks`) e cria um
+// funil `channel_type='quiz'` via `useCreatePlatformCrmCaptureFunnel` (mesmo caminho da
+// página). O `product_id` é carimbado direto no insert (o hook aceita product_id), sem
+// precisar de um segundo update. Mantém o contrato `onCreated(funnelId)`.
 // Zero organization_id.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useMemo, useState } from 'react';
@@ -25,13 +24,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Clock, ListChecks, Rocket, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  usePlatformCrmQuizTemplates,
-  useCreatePlatformCrmFunnelFromQuizTemplate,
-  type PlatformCrmQuizTemplate,
-} from '@/components/superadmin/crm/data/usePlatformCrmQuizTemplates';
-import { useUpdatePlatformCrmCaptureFunnel } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
+  useCreatePlatformCrmCaptureFunnel,
+  type PlatformCrmCaptureFunnelInsert,
+} from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmCaptureProductField } from '../../PlatformCrmCaptureProductField';
+import {
+  usePlatformCaptureTemplateLibrary,
+  clonePlatformFlowBlocks,
+} from '../../templates/usePlatformCaptureTemplateLibrary';
+import {
+  CATEGORY_LABELS,
+  BADGE_LABELS,
+  type QuizTemplate,
+  type QuizBadge,
+} from '../../templates/platformQuizTemplates';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -44,18 +51,16 @@ export function PlatformCrmQuizTemplateLibrary({ open, onOpenChange, onCreated }
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('all');
   const [badge, setBadge] = useState<string>('all');
-  const [selected, setSelected] = useState<PlatformCrmQuizTemplate | null>(null);
+  const [selected, setSelected] = useState<QuizTemplate | null>(null);
   const [name, setName] = useState('');
   const [productId, setProductId] = useState('');
 
-  const { data: templates = [] } = usePlatformCrmQuizTemplates();
+  const { templates, isLoading } = usePlatformCaptureTemplateLibrary();
   const { products, effectiveProductId } = useActivePlatformProduct();
-  const createFromTemplate = useCreatePlatformCrmFunnelFromQuizTemplate();
-  const updateFunnel = useUpdatePlatformCrmCaptureFunnel();
-  const busy = createFromTemplate.isPending || updateFunnel.isPending;
+  const createFunnel = useCreatePlatformCrmCaptureFunnel();
+  const busy = createFunnel.isPending;
 
-  // Categorias/etiquetas dinâmicas (os labels do tenant eram estáticos; aqui as
-  // opções vêm dos próprios templates do DB — só valores realmente presentes).
+  // Categorias/etiquetas presentes no catálogo (seed + DB), com label amigável.
   const categories = useMemo(
     () => Array.from(new Set(templates.map((t) => t.category).filter(Boolean))),
     [templates],
@@ -69,11 +74,11 @@ export function PlatformCrmQuizTemplateLibrary({ open, onOpenChange, onCreated }
     const q = query.trim().toLowerCase();
     if (q && !t.name.toLowerCase().includes(q) && !(t.description ?? '').toLowerCase().includes(q)) return false;
     if (category !== 'all' && t.category !== category) return false;
-    if (badge !== 'all' && !(t.badges ?? []).includes(badge)) return false;
+    if (badge !== 'all' && !(t.badges ?? []).includes(badge as QuizBadge)) return false;
     return true;
   }), [templates, query, category, badge]);
 
-  const pickTemplate = (t: PlatformCrmQuizTemplate) => {
+  const pickTemplate = (t: QuizTemplate) => {
     setSelected(t);
     setName(t.name);
     setProductId(effectiveProductId ?? '');
@@ -84,11 +89,15 @@ export function PlatformCrmQuizTemplateLibrary({ open, onOpenChange, onCreated }
   const handleUse = async () => {
     if (!selected || !name.trim() || !productReady) { toast.error('Selecione um produto'); return; }
     try {
-      const created = await createFromTemplate.mutateAsync({ name: name.trim(), template: selected });
-      // Carimba o produto ativo (o hook de template não grava product_id).
-      if (productId) {
-        await updateFunnel.mutateAsync({ id: created.id, product_id: productId });
-      }
+      const cloned = clonePlatformFlowBlocks(selected.flow_blocks);
+      const created = await createFunnel.mutateAsync({
+        name: name.trim(),
+        description: selected.description,
+        channel_type: 'quiz',
+        product_id: productId || null,
+        flow_blocks: cloned as unknown as PlatformCrmCaptureFunnelInsert['flow_blocks'],
+        start_block_id: cloned[0]?.id ?? null,
+      });
       toast.success('Quiz criado a partir do template!');
       onOpenChange(false);
       setSelected(null);
@@ -116,21 +125,23 @@ export function PlatformCrmQuizTemplateLibrary({ open, onOpenChange, onCreated }
             <SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas categorias</SelectItem>
-              {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              {categories.map((c) => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={badge} onValueChange={setBadge}>
             <SelectTrigger className="w-full md:w-[180px]"><SelectValue placeholder="Etiqueta" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas etiquetas</SelectItem>
-              {badges.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              {badges.map((b) => <SelectItem key={b} value={b}>{BADGE_LABELS[b] ?? b}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
 
         {/* Grid */}
         <div className="overflow-y-auto flex-1 -mx-1 px-1">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">Nenhum template encontrado.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-2">
@@ -143,12 +154,12 @@ export function PlatformCrmQuizTemplateLibrary({ open, onOpenChange, onCreated }
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>
                     <div className="flex flex-wrap gap-1">
-                      <Badge variant="secondary" className="text-[10px]">{t.category}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{CATEGORY_LABELS[t.category] ?? t.category}</Badge>
                       {(t.badges ?? []).slice(0, 2).map((b) => (
-                        <Badge key={b} variant="outline" className="text-[10px]">{b}</Badge>
+                        <Badge key={b} variant="outline" className="text-[10px]">{BADGE_LABELS[b] ?? b}</Badge>
                       ))}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t tabular-nums">
                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{t.estimated_time}</span>
                       <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" />{t.question_count}</span>
                     </div>

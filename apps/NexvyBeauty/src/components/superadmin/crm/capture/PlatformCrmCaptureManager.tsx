@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Filter as FunnelIcon, FileText, Code2, Megaphone } from 'lucide-react';
 import { PlatformCrmCaptureFunnelsTab } from './PlatformCrmCaptureFunnelsTab';
-import { PlatformCrmCaptureFormsTab } from './PlatformCrmCaptureFormsTab';
+import { PlatformCrmFormsManager } from './PlatformCrmFormsManager';
 import { PlatformCrmCaptureWidgetsTab } from './PlatformCrmCaptureWidgetsTab';
 
 /**
@@ -72,7 +72,7 @@ export function PlatformCrmCaptureManager({
           <PlatformCrmCaptureFunnelsTab initialChannel={initialChannel} />
         </TabsContent>
         <TabsContent value="forms" className="mt-6">
-          <PlatformCrmCaptureFormsTab />
+          <PlatformCrmFormsManager />
         </TabsContent>
         <TabsContent value="widgets" className="mt-6">
           <PlatformCrmCaptureWidgetsTab />

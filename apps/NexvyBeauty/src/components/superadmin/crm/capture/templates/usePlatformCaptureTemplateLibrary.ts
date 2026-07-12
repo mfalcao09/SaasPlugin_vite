@@ -5,7 +5,12 @@ import {
   type QuizTemplate,
   type QuizCategory,
 } from './platformQuizTemplates';
+import { FORM_TEMPLATES } from './platformFormTemplates';
 import { usePlatformCrmQuizTemplates } from '@/components/superadmin/crm/data/usePlatformCrmQuizTemplates';
+import {
+  usePlatformCrmFormTemplates,
+  type PlatformCrmFormTemplate,
+} from '@/components/superadmin/crm/data/usePlatformCrmForms';
 
 /**
  * CRM de PLATAFORMA (super_admin) — hook da biblioteca de Templates de Quiz.
@@ -36,6 +41,25 @@ export function usePlatformCaptureTemplateLibrary() {
     }));
     return [...seed, ...mapped];
   }, [dbTemplates]);
+
+  return { templates, isLoading };
+}
+
+/**
+ * CRM de PLATAFORMA (super_admin) — hook da biblioteca de Templates de FORMULÁRIO.
+ *
+ * Espelha `usePlatformCaptureTemplateLibrary` (quiz): UNE o seed estático em código
+ * (`FORM_TEMPLATES`, sempre presente) com os templates persistidos no DB da plataforma
+ * (`platform_crm_form_templates`, via `usePlatformCrmFormTemplates`). Seed primeiro; sem
+ * de-dup por id (o seed usa os ids do tenant, o DB usa ids próprios — não colidem).
+ */
+export function usePlatformCaptureFormTemplateLibrary() {
+  const { data: dbTemplates, isLoading } = usePlatformCrmFormTemplates();
+
+  const templates = useMemo<PlatformCrmFormTemplate[]>(
+    () => [...FORM_TEMPLATES, ...((dbTemplates ?? []) as PlatformCrmFormTemplate[])],
+    [dbTemplates],
+  );
 
   return { templates, isLoading };
 }

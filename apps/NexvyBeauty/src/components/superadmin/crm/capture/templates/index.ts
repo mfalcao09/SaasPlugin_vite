@@ -4,8 +4,10 @@ export { PlatformCrmCaptureTemplatesLibrary } from './PlatformCrmCaptureTemplate
 export { PlatformCrmQuizCreateWithAI } from './create/PlatformCrmQuizCreateWithAI';
 export {
   usePlatformCaptureTemplateLibrary,
+  usePlatformCaptureFormTemplateLibrary,
   clonePlatformFlowBlocks,
 } from './usePlatformCaptureTemplateLibrary';
+export { FORM_TEMPLATES } from './platformFormTemplates';
 export {
   QUIZ_TEMPLATES,
   CATEGORY_LABELS,

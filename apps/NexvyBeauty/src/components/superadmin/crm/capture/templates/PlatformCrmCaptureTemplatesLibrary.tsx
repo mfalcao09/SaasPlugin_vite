@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,9 @@ import {
   Loader2,
   FileText,
   Search,
+  MessageSquare,
+  MousePointerClick,
+  MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -36,10 +39,7 @@ import {
   useCreatePlatformCrmCaptureFunnel,
   type PlatformCrmCaptureFunnelInsert,
 } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
-import {
-  usePlatformCrmFormTemplates,
-  type PlatformCrmFormTemplate,
-} from '@/components/superadmin/crm/data/usePlatformCrmForms';
+import { type PlatformCrmFormTemplate } from '@/components/superadmin/crm/data/usePlatformCrmForms';
 import { useCreatePlatformCrmFormFromTemplate } from '@/components/superadmin/crm/data/usePlatformCrmCaptureOps';
 import { PlatformCrmCaptureProductField } from '../PlatformCrmCaptureProductField';
 import {
@@ -50,6 +50,7 @@ import {
 } from './platformQuizTemplates';
 import {
   usePlatformCaptureTemplateLibrary,
+  usePlatformCaptureFormTemplateLibrary,
   clonePlatformFlowBlocks,
 } from './usePlatformCaptureTemplateLibrary';
 import { PlatformCrmQuizCreateWithAI } from './create/PlatformCrmQuizCreateWithAI';
@@ -89,6 +90,39 @@ const FORM_CATEGORY_META: Record<string, { label: string; icon: string; gradient
 
 function formMeta(category?: string | null) {
   return FORM_CATEGORY_META[category || 'general'] || FORM_CATEGORY_META.general;
+}
+
+/**
+ * Seção de ferramenta que ainda não tem templates prontos (chatbot/widget/whatsapp).
+ * Empty-state honesto ("Em breve") — sem inventar dados.
+ */
+function ComingSoonToolSection({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 pt-4 border-t">
+        <div className="h-12 w-12 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
+          {icon}
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <Card className="border-dashed">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Em breve — nenhum template de {title.toLowerCase()} disponível ainda.
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export function PlatformCrmCaptureTemplatesLibrary() {
@@ -155,7 +189,10 @@ export function PlatformCrmCaptureTemplatesLibrary() {
   };
 
   // ── Formulário ──────────────────────────────────────────────────────────────
-  const { data: formTemplates, isLoading: isLoadingForms } = usePlatformCrmFormTemplates();
+  // MESMA fonte da galeria (seed + DB), espelhando o quiz: garante que os templates
+  // de formulário nunca sumam quando a tabela de DB está vazia.
+  const { templates: formTemplates, isLoading: isLoadingForms } =
+    usePlatformCaptureFormTemplateLibrary();
   const createFormFromTemplate = useCreatePlatformCrmFormFromTemplate();
 
   const [formFilter, setFormFilter] = useState<string>('todos');
@@ -207,7 +244,17 @@ export function PlatformCrmCaptureTemplatesLibrary() {
     Array.isArray(t.blocks) ? t.blocks.length : 0;
 
   return (
-    <div className="max-w-6xl mx-auto py-6 space-y-6">
+    <div className="max-w-6xl mx-auto py-6 space-y-8">
+      {/* Cabeçalho da página — galeria global de templates do módulo Automação */}
+      <div>
+        <h1 className="text-2xl font-semibold">Templates</h1>
+        <p className="text-sm text-muted-foreground">
+          Galeria de modelos prontos das ferramentas de captação. Escolha uma ferramenta,
+          personalize e coloque no ar em 1 clique.
+        </p>
+      </div>
+
+      {/* ── Ferramenta: QUIZ ──────────────────────────────────────────────── */}
       {/* Cabeçalho Quiz + ação IA */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -215,7 +262,7 @@ export function PlatformCrmCaptureTemplatesLibrary() {
             <LayoutGrid className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Templates de Quiz</h1>
+            <h2 className="text-xl font-semibold">Quiz</h2>
             <p className="text-sm text-muted-foreground">
               Comece em 1 clique. Quizzes prontos com perguntas, scoring, ramificação e
               resultado já configurados.
@@ -330,13 +377,13 @@ export function PlatformCrmCaptureTemplatesLibrary() {
         </div>
       )}
 
-      {/* Cabeçalho Formulário */}
-      <div className="flex items-center gap-3 pt-4">
+      {/* ── Ferramenta: FORMULÁRIO ────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-4 border-t">
         <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
           <FileText className="h-6 w-6" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold">Templates de Formulário</h2>
+          <h2 className="text-xl font-semibold">Formulário</h2>
           <p className="text-sm text-muted-foreground">
             Formulários de captação prontos (blocos, tema e configurações incluídos).
           </p>
@@ -412,6 +459,23 @@ export function PlatformCrmCaptureTemplatesLibrary() {
           })}
         </div>
       )}
+
+      {/* ── Ferramentas sem seed pronto ainda — empty-state honesto ───────── */}
+      <ComingSoonToolSection
+        icon={<MessageSquare className="h-6 w-6" />}
+        title="ChatBot"
+        subtitle="Fluxos de chatbot prontos para qualificar e distribuir leads."
+      />
+      <ComingSoonToolSection
+        icon={<MousePointerClick className="h-6 w-6" />}
+        title="Widget"
+        subtitle="Widgets de captação embutíveis no site com temas prontos."
+      />
+      <ComingSoonToolSection
+        icon={<MessageCircle className="h-6 w-6" />}
+        title="WhatsApp"
+        subtitle="Modelos de fluxo de captação e resposta pelo WhatsApp."
+      />
 
       {/* Modal clone de quiz */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>

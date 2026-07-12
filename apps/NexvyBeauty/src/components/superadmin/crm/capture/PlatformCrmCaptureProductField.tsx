@@ -38,14 +38,17 @@ export function PlatformCrmCaptureProductField({
   // cargo do backend (coluna com DEFAULT). Evita travar a criação.
   if (products.length === 0) return null;
 
-  // 1 produto → label estática (auto-travado), fiel ao PlatformCrmProductSelector.
+  // 1 produto → campo estático (auto-travado), fiel ao PlatformCrmProductSelector.
+  // Espelha as métricas do <Input>/<SelectTrigger> (h-10, borda, px-3, rounded-md)
+  // para alinhar com os demais campos do dialog — evita o "pill" curto/sem borda
+  // que destoava do campo "Nome" logo abaixo. `min-w-0` garante truncamento.
   if (products.length === 1) {
     return (
       <div className="space-y-2">
         <Label>Produto</Label>
-        <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-md bg-primary/10 text-sm text-primary">
-          <Package className="h-4 w-4 shrink-0" />
-          <span className="font-medium truncate">{products[0].name}</span>
+        <div className="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-foreground">
+          <Package className="h-4 w-4 shrink-0 text-primary" />
+          <span className="font-medium truncate min-w-0">{products[0].name}</span>
         </div>
       </div>
     );
@@ -56,10 +59,13 @@ export function PlatformCrmCaptureProductField({
       <Label>Produto *</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger>
-          <span className="flex items-center gap-1.5">
+          {/* NÃO usar <span> aqui: o SelectTrigger tem `[&>span]:line-clamp-1`,
+              que sobrescreve `display:flex` por `-webkit-box` e quebra o alinhamento
+              do ícone + valor. Um <div> não é atingido pelo seletor `[&>span]`. */}
+          <div className="flex items-center gap-1.5 min-w-0">
             <Package className="h-4 w-4 text-primary shrink-0" />
             <SelectValue placeholder="Selecione o produto" />
-          </span>
+          </div>
         </SelectTrigger>
         <SelectContent>
           {products.map((product) => (
