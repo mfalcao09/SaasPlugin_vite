@@ -298,9 +298,9 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
         <Card>
           <CardContent className="py-12 text-center">
             <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Nenhuma conexão criada ainda.</p>
+            <p className="text-muted-foreground">Nenhuma instância de WhatsApp via QR ainda.</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp.
+              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp via QR (Evolution API).
             </p>
           </CardContent>
         </Card>

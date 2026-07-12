@@ -68,6 +68,7 @@ import { PlatformCrmJourneyPage } from '@/components/superadmin/crm/journey/Plat
 import { PlatformCrmMia } from '@/components/superadmin/crm/mia/PlatformCrmMia';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 import { PlatformCrmConnectionsPanel } from '@/components/superadmin/crm/connections/PlatformCrmConnectionsPanel';
+import { PlatformCrmIntegrationsManager } from '@/components/superadmin/crm/integrations/PlatformCrmIntegrationsManager';
 
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
@@ -463,6 +464,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Conexões',
         icon: I.Plug,
         render: () => <PlatformCrmConnectionsPanel />,
+      },
+      {
+        id: 'v-integracoes',
+        label: 'Integrações',
+        icon: I.Plug,
+        render: () => <PlatformCrmIntegrationsManager />,
       },
       {
         id: 'v-respostas',
