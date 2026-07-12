@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Shield, User, Crown, Loader2, Search, Filter, Mail } from 'lucide-react';
+import { Users, Shield, User, Crown, Loader2, Search, Filter, Mail, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   usePlatformCrmTeamMembers,
@@ -38,6 +38,7 @@ import {
 } from '@/components/superadmin/crm/data/usePlatformCrmTeam';
 import { usePlatformCrmSquads } from '@/components/superadmin/crm/data/usePlatformCrmSquads';
 import { PlatformCrmMemberCard } from './PlatformCrmMemberCard';
+import { PlatformCrmUserFormDialog } from './PlatformCrmUserFormDialog';
 
 type EditableRole = 'admin' | 'manager' | 'seller' | 'super_admin';
 
@@ -65,6 +66,7 @@ export function PlatformCrmTeamManager() {
   const [editingMember, setEditingMember] = useState<PlatformCrmTeamMember | null>(null);
   const [selectedRole, setSelectedRole] = useState<EditableRole>('seller');
   const [memberToRemove, setMemberToRemove] = useState<PlatformCrmTeamMember | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Filter members
   const filteredMembers = useMemo(() => {
@@ -160,9 +162,10 @@ export function PlatformCrmTeamManager() {
           <h2 className="text-xl font-semibold text-foreground">Equipe</h2>
           <p className="text-sm text-muted-foreground">Gerencie usuários e suas permissões</p>
         </div>
-        {/* TODO(migration): botão "Adicionar Usuário" — o onboarding de usuário da
-            plataforma (convite/criação) ainda não tem fluxo/tabela no schema
-            platform_crm_*; sem UserFormDialog equivalente. */}
+        <Button onClick={() => setAddOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Adicionar Usuário
+        </Button>
       </div>
 
       <div className="space-y-6">
@@ -367,6 +370,9 @@ export function PlatformCrmTeamManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Adicionar Usuário (port do Vendus V5, product-scoped) */}
+      <PlatformCrmUserFormDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }

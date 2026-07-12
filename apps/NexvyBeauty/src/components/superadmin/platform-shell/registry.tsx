@@ -52,6 +52,7 @@ import { PlatformCrmAgendaManager } from '@/components/superadmin/crm/agenda/Pla
 import { PlatformCrmTasksManager } from '@/components/superadmin/crm/tasks/PlatformCrmTasksManager';
 import { PlatformCrmProductAgentsManager } from '@/components/superadmin/crm/agents/PlatformCrmProductAgentsManager';
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
+import { InstagramAutomationsSection } from '@/components/superadmin/crm/instagram-flows/InstagramAutomationsSection';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmCaptureTemplatesTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureTemplatesTab';
 import { PlatformCrmCaptureResultsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureResultsTab';
@@ -338,6 +339,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Cadências',
         icon: I.Send,
         render: () => <PlatformCrmCadencesManager />,
+      },
+      {
+        id: 'v-instagram-flows',
+        label: 'Automações Instagram',
+        icon: I.Instagram,
+        render: () => <InstagramAutomationsSection />,
       },
       {
         id: 'v-webhooks',

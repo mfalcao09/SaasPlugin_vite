@@ -15,6 +15,11 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// Campos do webhook inscritos por conexao. `comments`/`mentions` habilitam as
+// automacoes product-scoped (Instagram Flows / front-4) alem do inbox de DMs.
+// (Antes so `messages,messaging_postbacks,message_reactions`.)
+const IG_SUBSCRIBED_FIELDS = 'messages,messaging_postbacks,message_reactions,comments,mentions';
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
@@ -124,7 +129,7 @@ Deno.serve(async (req: Request) => {
   let subscribedOk = true;
   try {
     await graphFetch(
-      `/${fb_page_id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_reactions`,
+      `/${fb_page_id}/subscribed_apps?subscribed_fields=${IG_SUBSCRIBED_FIELDS}`,
       effectiveToken,
       { method: 'POST' },
     );
@@ -147,7 +152,7 @@ Deno.serve(async (req: Request) => {
       const params = new URLSearchParams({
         object: 'instagram',
         callback_url: callbackUrl,
-        fields: 'messages,messaging_postbacks,message_reactions',
+        fields: IG_SUBSCRIBED_FIELDS,
         verify_token: String(existing.webhook_verify_token ?? ''),
       });
       await graphFetch(`/${app_id}/subscriptions?${params.toString()}`, appAccessToken, { method: 'POST' });

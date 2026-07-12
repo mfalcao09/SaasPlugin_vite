@@ -403,6 +403,224 @@ async function handleEvent(
     .eq('id', connectionId);
 
   await broadcastPlatformNewMessage(supabase, String(conversation['id']), inserted as Json);
+
+  // ── Gatilho de flows (dm_keyword/story_reply) — ADITIVO, falha-segura ──────
+  // Não altera nada acima (persistência/broadcast do inbox permanecem intactos).
+  // Só dispara flows ATIVOS do produto desta conexão que casem o texto da DM.
+  try {
+    await triggerDmFlows(
+      supabase, conn, pageToken, evt, msg, senderId, mid,
+      String(conversation['id']), content, extraMetadata,
+    );
+  } catch (e) {
+    console.error('[platform-instagram-webhook] dm flow trigger error (non-fatal):', e);
+  }
+}
+
+// ─── Automações (flows product-scoped) — ADITIVO, falha-segura ──────────────
+// Front-4: dispara platform-ig-flow-executor quando um evento (DM keyword,
+// story reply, comentário, menção) casa o trigger_config de um
+// platform_crm_instagram_flows ATIVO do produto da conexão. TUDO best-effort:
+// o webhook responde 200 mesmo se o disparo falhar. O executor tem dedup
+// (comment_id) e throttle (sender) próprios — re-entregas do Meta não duplicam.
+
+/** Invoca o executor SEM bloquear a resposta 200 ao Meta (waitUntil quando há
+ *  runtime Supabase; senão fire-and-forget com .catch). Nunca lança. */
+function dispatchExecutor(
+  supabase: ReturnType<typeof getServiceClient>,
+  payload: Json,
+): void {
+  try {
+    const call = supabase.functions
+      .invoke('platform-ig-flow-executor', { body: payload })
+      .then((r: { error?: unknown }) => {
+        if (r?.error) console.error('[platform-instagram-webhook] executor error:', r.error);
+      })
+      .catch((e: unknown) => console.error('[platform-instagram-webhook] executor invoke error:', e));
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt?.waitUntil) rt.waitUntil(call);
+  } catch (e) {
+    console.error('[platform-instagram-webhook] dispatchExecutor error (non-fatal):', e);
+  }
+}
+
+/** DM inbound → flows com trigger dm_keyword (ou story_reply). Product-scoped. */
+async function triggerDmFlows(
+  supabase: ReturnType<typeof getServiceClient>,
+  conn: Json,
+  _pageToken: string | null,
+  _evt: Json,
+  msg: Json,
+  senderId: string,
+  mid: string,
+  conversationId: string,
+  content: string,
+  extraMetadata: Json,
+): Promise<void> {
+  const productId = (conn['product_id'] as string | null) ?? null;
+  if (!productId) return; // flows são product-scoped (product_id NOT NULL)
+  const connectionId = String(conn['id']);
+
+  const replyTo = (msg['reply_to'] as Json | undefined) ?? undefined;
+  const isStoryReply = !!(replyTo && replyTo['story']) || extraMetadata['ig_type'] === 'story_mention';
+
+  const { data: flows } = await supabase
+    .from('platform_crm_instagram_flows')
+    .select('id, connection_id, trigger_type, trigger_config, status')
+    .eq('product_id', productId)
+    .in('trigger_type', isStoryReply ? ['story_reply', 'dm_keyword'] : ['dm_keyword'])
+    .eq('status', 'active');
+
+  for (const flow of (flows as Json[] | null) ?? []) {
+    if (flow['connection_id'] && flow['connection_id'] !== connectionId) continue;
+    if (!matchesDmTrigger(flow, content)) continue;
+    dispatchExecutor(supabase, {
+      flow_id: flow['id'],
+      connection_id: connectionId,
+      trigger_source: isStoryReply ? 'story_reply' : 'dm',
+      source_id: mid || null,
+      sender_ig_id: senderId,
+      conversation_id: conversationId,
+      trigger_text: content,
+    });
+  }
+}
+
+/** entry[].changes[] → comments/mentions. Product-scoped. Nunca lança sozinha
+ *  (o caller envolve em try/catch; aqui só faz queries + dispatch best-effort). */
+async function handleChange(
+  supabase: ReturnType<typeof getServiceClient>,
+  conn: Json,
+  change: Json,
+): Promise<void> {
+  const field = String(change['field'] ?? '');
+  const value = (change['value'] as Json | undefined) ?? {};
+  const productId = (conn['product_id'] as string | null) ?? null;
+  const connectionId = String(conn['id']);
+
+  // Sem product na conexão não há flow product-scoped p/ casar — preserva o
+  // comportamento anterior (apenas loga).
+  if (!productId) {
+    console.log('[platform-instagram-webhook] change sem product_id na conexão, ignorado:', field);
+    return;
+  }
+
+  if (field === 'comments') {
+    const commentId = String(value['id'] ?? '');
+    const from = (value['from'] as Json | undefined) ?? {};
+    const fromId = String(from['id'] ?? '');
+    const fromUser = String(from['username'] ?? '');
+    const text = String(value['text'] ?? '');
+    const mediaId = String((value['media'] as Json | undefined)?.['id'] ?? '');
+    if (!commentId || !text) return;
+    // Ignora comentário da própria conta.
+    if (fromId && fromId === String(conn['ig_business_account_id'])) return;
+    // Dedup barato antes de invocar (o executor também deduplica).
+    const { data: dup } = await supabase
+      .from('platform_crm_instagram_comment_replies')
+      .select('id')
+      .eq('connection_id', connectionId)
+      .eq('comment_id', commentId)
+      .maybeSingle();
+    if (dup) return;
+
+    const { data: flows } = await supabase
+      .from('platform_crm_instagram_flows')
+      .select('id, connection_id, trigger_type, trigger_config, status')
+      .eq('product_id', productId)
+      .in('trigger_type', ['comment_keyword', 'mention'])
+      .eq('status', 'active');
+    for (const flow of (flows as Json[] | null) ?? []) {
+      if (flow['connection_id'] && flow['connection_id'] !== connectionId) continue;
+      if (!matchesCommentTrigger(flow, text, mediaId)) continue;
+      dispatchExecutor(supabase, {
+        flow_id: flow['id'],
+        connection_id: connectionId,
+        trigger_source: 'comment',
+        source_id: commentId,
+        comment_id: commentId,
+        sender_ig_id: fromId || null,
+        sender_name: fromUser || null,
+        trigger_text: text,
+      });
+    }
+    return;
+  }
+
+  if (field === 'mentions') {
+    const mediaId = String(value['media_id'] ?? '');
+    const commentId = String(value['comment_id'] ?? '');
+    const { data: flows } = await supabase
+      .from('platform_crm_instagram_flows')
+      .select('id, connection_id, trigger_type, status')
+      .eq('product_id', productId)
+      .eq('trigger_type', 'mention')
+      .eq('status', 'active');
+    for (const flow of (flows as Json[] | null) ?? []) {
+      if (flow['connection_id'] && flow['connection_id'] !== connectionId) continue;
+      dispatchExecutor(supabase, {
+        flow_id: flow['id'],
+        connection_id: connectionId,
+        trigger_source: 'mention',
+        source_id: commentId || mediaId || null,
+        comment_id: commentId || null,
+      });
+    }
+    return;
+  }
+
+  console.log('[platform-instagram-webhook] change não tratado:', field);
+}
+
+/** Casa uma DM contra o trigger_config de um flow dm_keyword/story_reply. */
+function matchesDmTrigger(flow: Json, text: string): boolean {
+  const cfg = (flow['trigger_config'] as Json | undefined) ?? {};
+  const keywords: string[] = Array.isArray(cfg['keywords'])
+    ? (cfg['keywords'] as unknown[]).map(String).filter(Boolean)
+    : [];
+  if (keywords.length === 0) return false; // dm_keyword sem keywords não dispara
+  const match = String(cfg['match'] ?? 'any');
+  const cs = !!cfg['case_sensitive'];
+  const t = cs ? text : text.toLowerCase();
+  const ks = cs ? keywords : keywords.map((k) => k.toLowerCase());
+  if (match === 'exact') return ks.some((k) => t.trim() === k.trim());
+  if (match === 'all') return ks.every((k) => t.includes(k));
+  if (match === 'regex') {
+    try {
+      return ks.some((k) => new RegExp(k, cs ? '' : 'i').test(text));
+    } catch {
+      return false;
+    }
+  }
+  return ks.some((k) => t.includes(k));
+}
+
+/** Casa um comentário contra o trigger_config (com filtro opcional de post). */
+function matchesCommentTrigger(flow: Json, text: string, mediaId: string): boolean {
+  const cfg = (flow['trigger_config'] as Json | undefined) ?? {};
+  const postIds: string[] = Array.isArray(cfg['post_ids'])
+    ? (cfg['post_ids'] as unknown[]).map(String).filter(Boolean)
+    : [];
+  if (postIds.length > 0 && mediaId && !postIds.includes(mediaId)) return false;
+  const keywords: string[] = Array.isArray(cfg['keywords'])
+    ? (cfg['keywords'] as unknown[]).map(String).filter(Boolean)
+    : [];
+  if (keywords.length === 0) return true; // "qualquer comentário"
+  const match = String(cfg['match'] ?? 'any');
+  const cs = !!cfg['case_sensitive'];
+  const t = cs ? text : text.toLowerCase();
+  const ks = cs ? keywords : keywords.map((k) => k.toLowerCase());
+  if (match === 'exact') return ks.some((k) => t.trim() === k.trim());
+  if (match === 'all') return ks.every((k) => t.includes(k));
+  if (match === 'regex') {
+    try {
+      return ks.some((k) => new RegExp(k, cs ? '' : 'i').test(text));
+    } catch {
+      return false;
+    }
+  }
+  return ks.some((k) => t.includes(k));
 }
 
 // ─── HTTP ───────────────────────────────────────────────────────────────────
@@ -537,12 +755,17 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // entry[].changes (comments/mentions) — no V5 alimentava as automações
-      // ManyChat (instagram_flows); a plataforma não tem esse motor. Só loga.
+      // entry[].changes (comments/mentions) → automações product-scoped
+      // (front-4). ADITIVO e falha-segura: cada change isolado em try/catch;
+      // erro só loga (nunca quebra o webhook nem a resposta 200 ao Meta).
       const changes = Array.isArray(entry['changes']) ? (entry['changes'] as Json[]) : [];
       for (const ch of changes) {
-        console.log('[platform-instagram-webhook] change ignorado (sem automações):',
-          String(ch['field'] ?? 'unknown'));
+        try {
+          await handleChange(supabase, conn, ch);
+        } catch (e) {
+          console.error('[platform-instagram-webhook] change error (non-fatal):',
+            String(ch['field'] ?? 'unknown'), e);
+        }
       }
     }
   } catch (e) {

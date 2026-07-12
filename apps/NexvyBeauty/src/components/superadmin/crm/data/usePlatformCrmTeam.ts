@@ -15,8 +15,11 @@ type AppRole = Database['public']['Enums']['app_role'];
  * Port do `TeamManager`/`useTeam` do CRM Vendus. Sem organization_id /
  * product_id — a RLS super_admin-only isola os dados.
  *
- * TODO(migration): produtos por membro (o original tinha member.products via
- * tabela de atribuição produto↔usuário, que não existe no schema platform_crm_*).
+ * ATUALIZAÇÃO (2026-07-12): existe SIM a tabela de atribuição produto↔usuário —
+ * `platform_crm_user_product_assignments` (user_id, product_id, assigned_by,
+ * monthly_goal). Ela agora é a 3ª fonte de `user_ids` da equipe (além de
+ * squad_members + leads), para que um usuário recém-criado e atribuído a um
+ * produto apareça na lista mesmo sem squad/lead.
  * TODO(migration): convites pendentes (não há tabela de convites da plataforma).
  */
 
@@ -53,6 +56,12 @@ export function usePlatformCrmTeamMembers() {
         .select('assigned_to, sdr_id, closer_id');
       if (asErr) throw asErr;
 
+      // 3ª fonte: usuários atribuídos a um produto (aparecem mesmo sem squad/lead)
+      const { data: productAssigns, error: paErr } = await supabase
+        .from('platform_crm_user_product_assignments')
+        .select('user_id');
+      if (paErr) throw paErr;
+
       const ids = new Set<string>();
       (squadMembers ?? []).forEach((m) => m.user_id && ids.add(m.user_id));
       (assigned ?? []).forEach((l) => {
@@ -60,6 +69,7 @@ export function usePlatformCrmTeamMembers() {
         if (l.sdr_id) ids.add(l.sdr_id);
         if (l.closer_id) ids.add(l.closer_id);
       });
+      (productAssigns ?? []).forEach((a) => a.user_id && ids.add(a.user_id));
 
       if (ids.size === 0) return [];
       const userIds = [...ids];
@@ -162,6 +172,73 @@ export function useRemovePlatformCrmTeamMember() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'team-members'] });
+    },
+  });
+}
+
+export interface CreatePlatformCrmTeamMemberInput {
+  email: string;
+  password: string;
+  full_name: string;
+  role: AppRole;
+  recovery_whatsapp?: string;
+  /** Produto ativo (effectiveProductId). null = "Todos os produtos" (sem atribuição). */
+  product_id: string | null;
+  monthly_goal?: number | null;
+  sector_ids?: string[];
+  squad_id?: string | null;
+  avatar_url?: string | null;
+}
+
+/**
+ * Criação de usuário da PLATAFORMA (super_admin) — port do fluxo "Adicionar Usuário"
+ * do CRM Vendus, porém PRODUCT-SCOPED e SEM organization_id.
+ *
+ * ⚠️ HITL / PENDÊNCIA DE INFRA (verificado 2026-07-12, proj fzhlbwhdejumkyqosuvq):
+ * a edge server-side `create-platform-team-member` **AINDA NÃO EXISTE**. As edges
+ * de criação hoje deployadas — `create-team-member` e `create-organization-admin`
+ * — são ORG/TENANT-scoped (gravam `profiles.organization_id`, usam `sector_members`
+ * / `evolution_instances` / `initialize_user_permissions` do tenant) e NÃO servem
+ * ao time da plataforma, cujo universo é `platform_crm_*` sem org. Reusá-las criaria
+ * um usuário de tenant que sequer apareceria nesta tela. Por isso NÃO reaproveitamos.
+ *
+ * Contrato esperado da edge a construir (service-role; senha NUNCA logada — Seção 11):
+ *   body: CreatePlatformCrmTeamMemberInput
+ *   passos server-side:
+ *     1. is_super_admin(caller) — gate de permissão.
+ *     2. admin.auth.admin.createUser({ email, password, email_confirm:true,
+ *        user_metadata:{ full_name } }).
+ *     3. profiles.upsert({ id, full_name, email, avatar_url, recovery_whatsapp })
+ *        — SEM organization_id.
+ *     4. user_roles: delete + insert { user_id, role }.
+ *     5. platform_crm_user_product_assignments.insert({ user_id, product_id,
+ *        assigned_by: caller, monthly_goal }) quando product_id != null.
+ *     6. platform_crm_sector_members.insert(sector_ids.map(...)).
+ *     7. platform_crm_squad_members.insert({ squad_id, user_id, role:'member' })
+ *        quando squad_id != null.
+ *   retorno: { success:true, user_id }.
+ *
+ * Enquanto a edge não existir, o submit devolve erro (exibido via toast) — sem
+ * fallback silencioso e sem gravar em tabela de tenant errada.
+ */
+export function useCreatePlatformCrmTeamMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreatePlatformCrmTeamMemberInput) => {
+      const { data, error } = await supabase.functions.invoke(
+        'create-platform-team-member',
+        { body: input },
+      );
+      if (error) throw error;
+      const payload = data as { success?: boolean; user_id?: string; error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'team-members'] });
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'sellers'] });
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'sectors'] });
     },
   });
 }
