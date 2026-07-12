@@ -120,10 +120,11 @@ export function PlatformCrmWidgetManager() {
             Bolha de chat embutida em sites externos via snippet <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
           </p>
         </div>
-        {/* C5: removido o "Novo Widget" redundante/circular do builder (esta sub-aba
-            é aberta via "Abrir builder" a partir de PlatformCrmCaptureWidgetsTab, que
-            já tem seu próprio "Novo Widget"). A criação segue disponível pelo estado
-            vazio abaixo e pela aba Funis (canal = widget). */}
+        {/* C5: cabeçalho sem botão de criação. O ponto de entrada circular
+            "Abrir builder" foi REMOVIDO de PlatformCrmCaptureWidgetsTab (a aba
+            Widget do menu), então este manager de funis-widget não é mais montado
+            por lá. A criação/edição de fluxos widget vive na aba Funis (canal =
+            widget); a criação avulsa segue no estado vazio abaixo. */}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">

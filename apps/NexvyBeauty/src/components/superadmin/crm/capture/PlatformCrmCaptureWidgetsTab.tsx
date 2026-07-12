@@ -42,8 +42,6 @@ import {
   KeyRound,
   Loader2,
   Clock,
-  Wrench,
-  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -59,12 +57,11 @@ import { ptBR } from 'date-fns/locale';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
 import { usePublicAppUrl } from '@/lib/publicUrl';
-import { PlatformCrmWidgetManager } from './widget/PlatformCrmWidgetManager';
 
 export function PlatformCrmCaptureWidgetsTab() {
-  // Alterna entre a lista de widgets de webchat e o builder visual de fluxo
-  // (PlatformCrmWidgetManager → PlatformCrmWidgetBuilder), portado do WidgetBuilder.
-  const [showBuilder, setShowBuilder] = useState(false);
+  // Aba única de widgets de webchat (platform_crm_webchat_widgets). O builder
+  // visual de funis de canal 'widget' vive na aba Funis (FlowBuilder), então o
+  // antigo botão "Abrir builder" (caminho duplicado/circular) foi removido.
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -157,19 +154,6 @@ export function PlatformCrmCaptureWidgetsTab() {
     toast.success('Snippet de instalação copiado!');
   };
 
-  // "Abrir builder" — navega para o builder visual de fluxo (funis de canal widget).
-  if (showBuilder) {
-    return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setShowBuilder(false)} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar aos widgets de webchat
-        </Button>
-        <PlatformCrmWidgetManager />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -183,16 +167,10 @@ export function PlatformCrmCaptureWidgetsTab() {
             <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowBuilder(true)} className="gap-2">
-            <Wrench className="h-4 w-4" />
-            Abrir builder
-          </Button>
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Widget
-          </Button>
-        </div>
+        <Button onClick={openCreate} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Novo Widget
+        </Button>
       </div>
 
       <div className="relative">
