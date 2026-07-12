@@ -47,6 +47,7 @@ import {
   platformCrmCorsHeaders as corsHeaders,
 } from '../_shared/platform-crm-auth.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
+import { humanize } from '../_shared/humanizer.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -826,7 +827,7 @@ Deno.serve(async (req) => {
       const { data: agents } = await supabase
         .from('platform_crm_product_agents')
         .select(
-          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id',
+          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id, humanization',
         )
         .eq('product_id', conversation.product_id)
         .eq('is_active', true)
@@ -1064,7 +1065,14 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
     // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
     if (!needsHandoff && !passedToBia) reply = keepFirstQuestion(reply);
-    let bubbles = splitIntoBubbles(reply);
+    // HUMANIZER (opt-in, TRAVA DE FALLBACK): só age se a persona tem config de
+    // humanização gerada (jsonb via platform-generate-agent-ai). Sem config
+    // (estado atual dos agentes) → comportamento byte-idêntico ao de hoje:
+    // splitIntoBubbles local + fórmula de pausa proporcional abaixo.
+    const hCfg = (persona as any).humanization ?? null;
+    const hRes = hCfg ? humanize(reply, hCfg, 'whatsapp') : null;
+    // TODO(humanizer): honrar postponeUntil (postergar resposta na madrugada) — requer scheduler
+    let bubbles = hRes ? hRes.bubbles : splitIntoBubbles(reply);
     if (bubbles.length === 0) {
       bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
     }
@@ -1134,8 +1142,13 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
 
       // Pausa proporcional ao tamanho da PRÓXIMA bolha (ritmo humano), só entre bolhas.
       if (i < total - 1) {
-        const next = bubbles[i + 1] ?? '';
-        await sleep(Math.min(next.length * BUBBLE_PAUSE_PER_CHAR_MS, BUBBLE_PAUSE_CAP_MS));
+        if (hRes) {
+          // Delay já calculado pelo humanizer para a transição i→i+1 (clamp de segurança).
+          await sleep(Math.min(hRes.betweenDelaysMs[i] ?? 0, BUBBLE_PAUSE_CAP_MS));
+        } else {
+          const next = bubbles[i + 1] ?? '';
+          await sleep(Math.min(next.length * BUBBLE_PAUSE_PER_CHAR_MS, BUBBLE_PAUSE_CAP_MS));
+        }
       }
     }
 
