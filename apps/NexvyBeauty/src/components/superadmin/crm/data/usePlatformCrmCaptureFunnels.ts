@@ -95,6 +95,10 @@ export function useCreatePlatformCrmCaptureFunnel() {
       channel_type?: string;
       distribution_rule?: string;
       status?: string;
+      // Sementes de blocos do funil (IA/scratch/template). Default: []
+      // preserva o comportamento atual quando não informados.
+      flow_blocks?: PlatformCrmCaptureFunnelInsert['flow_blocks'];
+      start_block_id?: string | null;
     }) => {
       const slug = generateFunnelSlug(input.name) || `funil-${Date.now()}`;
       const payload: PlatformCrmCaptureFunnelInsert = {
@@ -111,7 +115,12 @@ export function useCreatePlatformCrmCaptureFunnel() {
           form: { enabled: false, slug_override: null },
           widget: { enabled: false },
         },
-        flow_blocks: [],
+        // Semeia os blocos quando presentes; default [] mantém o insert atual.
+        flow_blocks: input.flow_blocks ?? [],
+        // start_block_id só entra no insert quando informado (coluna nullable).
+        ...(input.start_block_id != null
+          ? { start_block_id: input.start_block_id }
+          : {}),
       };
       const { data, error } = await supabase
         .from('platform_crm_capture_funnels')
