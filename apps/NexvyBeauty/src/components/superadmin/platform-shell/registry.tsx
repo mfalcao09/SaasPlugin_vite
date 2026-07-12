@@ -54,11 +54,13 @@ import { PlatformCrmProductAgentsManager } from '@/components/superadmin/crm/age
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { InstagramAutomationsSection } from '@/components/superadmin/crm/instagram-flows/InstagramAutomationsSection';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
-import { PlatformCrmCaptureTemplatesTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureTemplatesTab';
-import { PlatformCrmCaptureResultsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureResultsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
 import { PlatformCrmSellerFormSection } from '@/components/superadmin/crm/capture/PlatformCrmSellerFormSection';
+import { PlatformCrmQuizManager } from '@/components/superadmin/crm/capture/quiz/PlatformCrmQuizManager';
+import { PlatformCrmChatBotManager } from '@/components/superadmin/crm/capture/chatbot';
+import { PlatformCrmCaptureTemplatesLibrary } from '@/components/superadmin/crm/capture/templates';
+import { PlatformCrmCaptureResultsSection } from '@/components/superadmin/crm/capture/results';
 import { PlatformCrmInbox } from '@/components/superadmin/crm/inbox/PlatformCrmInbox';
 import { PlatformCrmInboxPanel } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxPanel';
 import { PlatformCrmInboxRadar } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxRadar';
@@ -363,7 +365,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-quiz',
         label: 'Quiz',
         icon: I.FileQuestion,
-        render: () => <PlatformCrmCaptureManager initialTab="funnels" initialChannel="quiz" />,
+        render: () => <PlatformCrmQuizManager />,
       },
       {
         id: 'v-formularios',
@@ -381,7 +383,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-chatbot',
         label: 'ChatBot',
         icon: I.MessageCircle,
-        render: () => <PlatformCrmCaptureManager initialTab="funnels" initialChannel="chatbot" />,
+        render: () => <PlatformCrmChatBotManager />,
       },
       {
         id: 'v-widget',
@@ -399,13 +401,13 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-templates',
         label: 'Templates',
         icon: I.LayoutTemplate,
-        render: () => <PlatformCrmCaptureTemplatesTab />,
+        render: () => <PlatformCrmCaptureTemplatesLibrary />,
       },
       {
         id: 'v-resultados',
         label: 'Resultados',
         icon: I.Trophy,
-        render: () => <PlatformCrmCaptureResultsTab />,
+        render: () => <PlatformCrmCaptureResultsSection />,
       },
       {
         id: 'v-analytics',

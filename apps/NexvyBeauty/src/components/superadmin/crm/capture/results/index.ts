@@ -1,0 +1,1 @@
+export { PlatformCrmCaptureResultsSection } from './PlatformCrmCaptureResultsSection';
