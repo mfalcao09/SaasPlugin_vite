@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { ProductAgent, AGENT_TYPE_LABELS, AGENT_TEMPLATES } from './types';
 import { cn } from '@/lib/utils';
+import { usePlatformCrmAgentConnectionsSummary } from '@/components/superadmin/crm/data/usePlatformCrmAgentConnections';
 
 interface AgentCardProps {
   agent: ProductAgent;
@@ -76,10 +77,14 @@ export const AgentCard = memo(function AgentCard({
     ([key]) => agent[key as keyof ProductAgent]
   );
 
-  // TODO(edge): resumo de conexoes dedicadas dependia de `product_agent_connections`
-  // + tabelas de conexao tenant, sem twin platform_crm_* nesta onda. Fica null.
-  const dedicatedSummary: string | null = null;
-  const instanceLabel = dedicatedSummary;
+  // Resumo das conexões dedicadas (multi-canal: evolution + meta + instagram),
+  // via twin product-scoped `platform_crm_agent_connections`. Fallback legado:
+  // coluna única `evolution_instance_id`. null = agente atende em qualquer conexão.
+  const { data: dedicatedSummary } = usePlatformCrmAgentConnectionsSummary(
+    agent.id,
+    agent.evolution_instance_id,
+  );
+  const instanceLabel = dedicatedSummary ?? null;
 
   return (
     <Card className={cn(

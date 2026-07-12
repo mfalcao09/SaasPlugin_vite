@@ -12,12 +12,17 @@ import { toast } from 'sonner';
  *
  * Desacoplamento vs. o CRM de tenant original:
  *  - SEM `organization_id`: RLS super_admin-only isola. Nada de tenant.
- *  - SEM `whatsapp_instance_id` na tabela de settings (coluna inexistente no
- *    schema de plataforma). A seleção de instância de disparo é estado local da
- *    UI (não persiste) até o dispatcher existir. TODO(edge).
- *  - O ENVIO real (confirmação/lembrete/recuperação por e-mail/WhatsApp) depende
- *    de Edge Function ainda não portada — este hook só faz o CRUD de config.
- *    TODO(edge): `platform-booking-dispatcher`.
+ *  - SEM preferência de conexão de disparo (o tenant tinha `whatsapp_instance_id`
+ *    por-event-type). A plataforma é MONO-CONNECTION por design: o número de
+ *    VENDAS é único e o `platform-booking-dispatcher` AUTO-SELECIONA a conexão
+ *    Meta `active` mais recente (`platform_crm_whatsapp_meta_connections`). Uma
+ *    coluna de preferência por-event-type não agregaria valor enquanto houver um
+ *    só número — por isso o campo foi removido (não era estado de UI útil nem
+ *    persistia). Se um dia a plataforma rodar múltiplos números ativos, reabrir
+ *    como coluna real (migration) em vez de estado-fantasma de UI.
+ *  - O ENVIO real de confirmação/aviso interno por WhatsApp é feito pelo
+ *    `platform-booking-dispatcher` (já portado); este hook faz só o CRUD de
+ *    config. E-mail transacional ainda depende de provedor de plataforma.
  */
 
 export type ReminderChannel = 'whatsapp' | 'email' | 'both';
@@ -32,14 +37,12 @@ export type PlatformCrmBookingNotificationSettings =
 export type PlatformCrmBookingReminder = Tables<'platform_crm_booking_reminders'>;
 
 /**
- * Draft da UI de settings: campos persistidos + `whatsapp_instance_id` (NÃO
- * persistido — a coluna não existe no schema de plataforma; estado só de UI).
+ * Draft da UI de settings — espelha 1:1 os campos persistidos. Sem preferência de
+ * conexão de disparo: o dispatcher auto-seleciona a conexão Meta `active`
+ * (mono-connection). Ver nota de desacoplamento no topo do arquivo.
  */
-export type PlatformCrmBookingNotificationDraft = Partial<
-  PlatformCrmBookingNotificationSettings
-> & {
-  whatsapp_instance_id?: string | null;
-};
+export type PlatformCrmBookingNotificationDraft =
+  Partial<PlatformCrmBookingNotificationSettings>;
 
 export const DEFAULT_CONFIRMATION_WHATSAPP = `Olá, {{nome_lead}}! 👋
 
@@ -77,7 +80,6 @@ export function buildDefaultSettings(
     event_type_id: eventTypeId,
     send_email: true,
     send_whatsapp: false,
-    whatsapp_instance_id: null,
     confirmation_message_whatsapp: DEFAULT_CONFIRMATION_WHATSAPP,
     confirmation_subject_email: 'Sua reunião foi confirmada',
     confirmation_html_email: null,
@@ -132,11 +134,7 @@ export function usePlatformCrmBookingNotifications(
   const upsertSettings = useMutation({
     mutationFn: async (input: PlatformCrmBookingNotificationDraft) => {
       if (!eventTypeId) throw new Error('Missing event');
-      // Descarta `whatsapp_instance_id` (não persistido — coluna inexistente).
-      const { whatsapp_instance_id: _ignored, ...persisted } = {
-        ...buildDefaultSettings(eventTypeId),
-        ...input,
-      };
+      const persisted = { ...buildDefaultSettings(eventTypeId), ...input };
       const payload = { ...persisted, event_type_id: eventTypeId };
       const { data, error } = await supabase
         .from('platform_crm_booking_notification_settings')

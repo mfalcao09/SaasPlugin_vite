@@ -33,14 +33,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
  * Desacoplamento vs. o CRM de tenant original:
  *  - SEM `useAuth`/`organization_id`: defaults só a partir de `eventTypeId`; RLS
  *    super_admin isola.
- *  - Seletor de "Instância WhatsApp" (nº de disparo) OMITIDO: (a) a coluna
- *    `whatsapp_instance_id` não existe em `platform_crm_booking_notification_settings`
- *    e (b) a fonte de instâncias (`useEvolutionInstances`) é tenant-bound
- *    (`organization_id`) — importá-la violaria a fronteira. TODO(edge): plugar
- *    seleção de nº de disparo quando o dispatcher de plataforma existir.
- *  - O ENVIO real (confirmação/lembrete/recuperação por e-mail/WhatsApp) depende
- *    de Edge Function não portada. O botão "Salvar notificações" persiste a
- *    config; o disparo é TODO(edge): `platform-booking-dispatcher`.
+ *  - Seletor de "Instância WhatsApp" (nº de disparo) NÃO existe por design: a
+ *    plataforma é MONO-CONNECTION (número único de VENDAS) e o
+ *    `platform-booking-dispatcher` auto-seleciona a conexão Meta `active` mais
+ *    recente. Uma escolha por-event-type não agregaria valor com um só número —
+ *    por isso nem UI nem coluna de preferência (ver nota no hook).
+ *  - O ENVIO de confirmação/aviso interno por WhatsApp é feito pelo
+ *    `platform-booking-dispatcher` (já portado). O botão "Salvar notificações"
+ *    persiste a config; o disparo é acionado pelo submit. E-mail transacional
+ *    ainda depende de provedor de plataforma.
  */
 
 interface Props {
@@ -102,9 +103,9 @@ export function PlatformCrmNotificationsAutomationTab({ eventTypeId }: Props) {
               label="Enviar confirmação por WhatsApp"
             />
           </div>
-          {/* TODO(edge): seleção de instância/nº de disparo do WhatsApp — coluna
-              `whatsapp_instance_id` inexistente no schema de plataforma e a fonte
-              de instâncias é tenant-bound. Plugar quando houver dispatcher. */}
+          {/* Sem seletor de nº de disparo: plataforma mono-connection — o
+              `platform-booking-dispatcher` auto-seleciona a conexão Meta `active`
+              mais recente. Ver nota de desacoplamento no topo. */}
         </div>
 
         {/* 2. Confirmation message template */}
@@ -131,7 +132,7 @@ export function PlatformCrmNotificationsAutomationTab({ eventTypeId }: Props) {
 
         {/* Save button */}
         <div className="flex justify-end pt-2">
-          {/* TODO(edge): persiste a config; disparo real depende de edge inexistente. */}
+          {/* Persiste a config; o disparo real é feito pelo platform-booking-dispatcher no submit. */}
           <Button
             type="button"
             onClick={() => upsertSettings.mutate(draft)}

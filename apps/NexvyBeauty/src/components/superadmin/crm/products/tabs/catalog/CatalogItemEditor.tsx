@@ -1,9 +1,11 @@
 // Porte de `.vendus-src-reference/src/components/admin/products/tabs/catalog/CatalogItemEditor.tsx`
 // Sem organization_id. Persistência: TODO(table: platform_crm_product_catalog_items).
-// Mídia: o CatalogMediaUploader da fonte (331 l.) sobe para o storage do tenant —
-// TODO(storage: bucket catalog da plataforma); aqui a mídia entra por URL (listas
-// de fotos/vídeos/documentos mantidas no shape do item).
-import { useState, useEffect } from 'react';
+// Mídia: o CatalogMediaUploader da fonte (331 l., bucket `catalog-media` org-scoped)
+// foi portado inline aqui como uploader real — sobe fotos/vídeos/documentos para o
+// bucket público product-scoped `product-documents` (mesmo do Cérebro do Produto /
+// BrainTab), em path `platform/catalog/<productId>/<kind>/...`, pega a publicUrl e
+// grava nas listas do item. A opção de colar URL fica como fallback.
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,9 +13,36 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Image as ImageIcon, Video, FileText } from 'lucide-react';
+import { Plus, X, Image as ImageIcon, Video, FileText, Upload, Loader2 } from 'lucide-react';
 import { useCreateProductCatalogItem, useUpdateProductCatalogItem, type ProductCatalogItem } from '../../hooks/useProductHubStubs';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Bucket product-scoped público (mesmo do BrainTab/Cérebro). RLS: leitura pública,
+// INSERT exclusivo super_admin (este editor vive sob /superadmin/). Ver migration
+// supabase/migrations_platform_crm/20260711_product_documents_bucket.sql.
+const CATALOG_BUCKET = 'product-documents' as const;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 25 MB
+const MAX_DOC_BYTES = 10 * 1024 * 1024; // 10 MB
+
+type CatalogFileKind = 'image' | 'video' | 'document';
+
+function classifyCatalogFile(file: File): CatalogFileKind | null {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type === 'application/pdf') return 'document';
+  // DOC/DOCX/TXT e afins também entram como documento.
+  if (/\.(pdf|docx?|txt|rtf|xlsx?|pptx?|csv)$/i.test(file.name)) return 'document';
+  return null;
+}
+
+function catalogMediaPath(productId: string, kind: CatalogFileKind, file: File): string {
+  const ts = Date.now();
+  const rnd = Math.random().toString(36).slice(2, 8);
+  const safeName = file.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+  return `platform/catalog/${productId}/${kind}/${ts}-${rnd}-${safeName}`;
+}
 
 interface Props {
   productId: string;
@@ -40,6 +69,8 @@ export function CatalogItemEditor({ productId, item, open, onClose }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [attrPairs, setAttrPairs] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
   const [isActive, setIsActive] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (item) {
@@ -84,6 +115,64 @@ export function CatalogItemEditor({ productId, item, open, onClose }: Props) {
     else if (/(youtube\.com|youtu\.be|vimeo\.com|\.mp4)/i.test(u)) setVideos([...videos, u]);
     else setDocuments([...documents, { url: u, name: u.split('/').pop() || 'documento' }]);
     setMediaInput('');
+  };
+
+  // Upload real: sobe cada arquivo para o bucket product-scoped e grava a publicUrl
+  // na lista certa (fotos/vídeos/documentos). Vários arquivos por vez são suportados.
+  const handleUploadFiles = async (fileList: FileList | null) => {
+    const files = fileList ? Array.from(fileList) : [];
+    if (files.length === 0) return;
+    if (!productId) {
+      toast.error('Produto inválido para upload.');
+      return;
+    }
+    setUploading(true);
+    const nextImages = [...images];
+    const nextVideos = [...videos];
+    const nextDocs = [...documents];
+    try {
+      for (const file of files) {
+        const kind = classifyCatalogFile(file);
+        if (!kind) {
+          toast.error(`Formato não suportado: ${file.name}`);
+          continue;
+        }
+        const limit =
+          kind === 'image' ? MAX_IMAGE_BYTES : kind === 'video' ? MAX_VIDEO_BYTES : MAX_DOC_BYTES;
+        if (file.size > limit) {
+          toast.error(
+            `Arquivo muito grande (${file.name}): máx ${Math.round(limit / 1024 / 1024)}MB.`,
+          );
+          continue;
+        }
+
+        const path = catalogMediaPath(productId, kind, file);
+        const { error: upErr } = await supabase.storage
+          .from(CATALOG_BUCKET)
+          .upload(path, file, {
+            upsert: false,
+            contentType: file.type || 'application/octet-stream',
+            cacheControl: '3600',
+          });
+        if (upErr) {
+          console.error('[CatalogItemEditor] upload falhou:', upErr);
+          toast.error(`Erro ao enviar ${file.name}: ${upErr.message || 'desconhecido'}`);
+          continue;
+        }
+
+        const { data: pub } = supabase.storage.from(CATALOG_BUCKET).getPublicUrl(path);
+        const publicUrl = pub.publicUrl;
+        if (kind === 'image') nextImages.push(publicUrl);
+        else if (kind === 'video') nextVideos.push(publicUrl);
+        else nextDocs.push({ url: publicUrl, name: file.name, type: file.type || undefined });
+      }
+      setImages(nextImages);
+      setVideos(nextVideos);
+      setDocuments(nextDocs);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -158,15 +247,43 @@ export function CatalogItemEditor({ productId, item, open, onClose }: Props) {
 
           <div className="space-y-2">
             <Label>📦 Mídia do item (fotos, vídeos, documentos)</Label>
-            {/* TODO(storage): upload direto quando o bucket da plataforma existir */}
+            {/* Uploader real → bucket product-scoped (product-documents). */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx,.txt,.rtf,.xls,.xlsx,.ppt,.pptx,.csv"
+              className="hidden"
+              onChange={(e) => handleUploadFiles(e.target.files)}
+              disabled={uploading}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              {uploading ? 'Enviando...' : 'Enviar arquivo (foto, vídeo ou documento)'}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Imagem até 5MB · vídeo até 25MB · documento até 10MB.
+            </p>
+            {/* Fallback: colar a URL de uma mídia já hospedada. */}
             <div className="flex gap-2">
               <Input
                 value={mediaInput}
                 onChange={(e) => setMediaInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMediaUrl(); } }}
-                placeholder="Cole a URL da foto, vídeo ou documento"
+                placeholder="Ou cole a URL da foto, vídeo ou documento"
+                disabled={uploading}
               />
-              <Button type="button" variant="outline" onClick={addMediaUrl}>Add</Button>
+              <Button type="button" variant="outline" onClick={addMediaUrl} disabled={uploading}>Add</Button>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {images.map((u, i) => (
