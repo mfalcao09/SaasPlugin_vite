@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -66,9 +67,13 @@ type TagOpt = { id: string; name: string };
 type CadenceOpt = { id: string; name: string };
 
 export function CampaignWizard({
+  open,
+  onOpenChange,
   campaignId,
   onClose,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   campaignId: string | null;
   onClose: () => void;
 }) {
@@ -291,12 +296,26 @@ export function CampaignWizard({
   }, [form.contexts, libraryContexts]);
 
   if (loading) {
-    return <div className="p-10 text-center text-muted-foreground">Carregando…</div>;
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] overflow-y-auto p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Assistente de campanha</DialogTitle>
+          </DialogHeader>
+          <div className="p-10 text-center text-muted-foreground">Carregando…</div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between gap-2 sticky top-0 bg-background/80 backdrop-blur z-10 py-2 -mx-4 px-4 border-b">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] overflow-y-auto p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{campaignId ? 'Editar campanha' : 'Nova campanha inteligente'}</DialogTitle>
+        </DialogHeader>
+        <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between gap-2 sticky top-0 bg-background/80 backdrop-blur z-10 py-2 -mx-4 px-4 pr-12 border-b">
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4 mr-2" />Voltar
         </Button>
@@ -714,7 +733,9 @@ export function CampaignWizard({
           </div>
         </CardContent>
       </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

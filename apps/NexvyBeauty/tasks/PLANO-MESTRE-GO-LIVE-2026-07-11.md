@@ -34,13 +34,54 @@
 | **P2.A** cérebro dos agentes (8 tabelas) | ☐ | aguarda fila |
 | **P2.B/C/D** autopilot · arsenal · operação-dona | ☐ | |
 | **P3.A** motor de leads (scrap) | ☐ confirmado CORE | vinculado à venda em piloto automático (ordem Marcelo 07-11) |
-| **P3.B** Ads → **NexvyAds** | ✅ rota resolvida | frente própria (c5663f14); F1 dogfooding gestao.* em track paralelo; gate UI = merges P1.C |
+| **P3.B** Ads → **NexvyAds** | ✅ rota + **decisão de porte RATIFICADA (07-12)** | 3 auditorias fecharam: V5 é read-only real (OAuth+Graph+cofre = ouro, **ZERO escrita**) → veredito **PORT read-product + remap product-scoped (mecânico) + BUILD escrita/agentes**. Errata §11.9 (discovery nunca auditou o V5). Conexão = **Login for Business/config_id** (não "Embedded Signup"=WhatsApp). **Orquestrado NESTA sessão** (ordem Marcelo). F1 kickoff a seguir |
 | **P3.C/D** IG send · jornada | ☐ | |
 | **P4/P5** paridade fina · débitos | ☐ | |
 | Decolagem: nº Meta API salão-teste | ☐ | |
 | Decolagem: funil E2E | 🔚 por último | ordem Marcelo |
+| 🔄 **07-12 Consolidação (4 ondas)** | 🔄 **verify+deploy em andamento** | Jornada + Radar/Follow-up + quickwins(Throughput/Dialogs) + cadence-hide · **tsc `--noEmit` exit 0** · verify adversarial 3 lentes rodando · deploy ÚNICO gestao.nexvy.tech após verde (+ migration journey) |
+| **P3.D Jornada do Lead** | ✅ **portada 1:1 (tsc 0)** · 🔄 deploy | agente `a04b69b2`: journey/ (lib+hook+10 comp) + migration `20260712_journey_events` (product-scoped, enums consolidados, **NÃO aplicada**) + nav Vendas→Atendimentos · atribuição CTWA plugável no journey_events |
+| Voz IA (Fase 2) — chaves | 🟡 XAI setada · ⏳ OpenAI | `XAI_API_KEY` no Supabase (digest `48c44c…`, valor nunca exposto) · `OPENAI_API_KEY` aguarda Marcelo criar conta · módulo code-complete, deploy espera as 2 chaves |
 
 > **Governança de execução (v2, ordem Marcelo 07-11 noite):** sessão = **Opus 4.8 Ultracode** (orquestra+revisa); subagentes = **Sonnet 5** default, **Opus** p/ porte 1:1/merge semântico/auditoria; Fable autorizado se complexidade exigir. Fan-out real via **Workflow**.
+
+---
+
+## 🔒 TRAVA 1 — Validação do atendimento (registro COMPLETO desde 07-11 · nada se perde)
+> Releitura de TODOS os submits do Marcelo desde *"Estou atacando a partir de agora a trava 1: validação do atendimento como um todo"*. Este bloco é o anti-retrabalho: nada some.
+
+| # | Apontamento do Marcelo | Status 07-12 |
+|---|---|---|
+| T1.1 | Cards KPI: uppercase→Title Case (6 comp) | ✅ **DEPLOY** PR#29 `DK1x3twv` |
+| T1.2 | Radar IA: botão fora do scroll + simetria dos cards | ✅ **DEPLOY** PR#30 `Cjchj127` (refinado em T1.5) |
+| T1.3 | Cards da tela atendimento: alinhamento dos textos piorou | ✅ coberto por T1.1 (KpiCard h-full + rodapé mt-auto) |
+| T1.4 | Follow-up: card "Status das réguas ativas" desalinhado | ✅ feito · 🔄 deploy consolidação · ⚠️ decisão: Title Case do título (manti sentence p/ simetria com irmãos) |
+| T1.5 | Radar IA: botão colado no FUNDO + box maior + rebalancear boxes + horários flexíveis | ✅ feito (a81e0a1) · 🔄 deploy consolidação · ⚠️ não validado no browser |
+| T1.6 | Jornada do Lead: não estava em gestao.* → portar 1:1 (dashboard + tabela) | ✅ portada tsc 0 (a04b69b2) · 🔄 deploy + migration journey |
+| T1.7 | Throughput de campanhas: portar | ✅ código pronto · 🔄 deploy consolidação |
+| T1.8 | Nova Campanha + Nova Cadência → abrir em Dialog sobre a lista | ✅ código pronto · 🔄 deploy consolidação |
+| T1.9 | cadence-api: aba "API" aponta pro edge tenant (stub, não vaza) → esconder | ✅ auditado + escondido · 🔄 deploy consolidação |
+| **T1.10** | **Menu CAPTAÇÃO: itens quebrados — inspeção vendus×gestao (ex.: Novo Formulário sem "Com IA")** | 🟡 **AUDITADO 07-12 — 8 gaps mapeados** (bloco abaixo). Exemplo do Marcelo CONFIRMADO + 7 outros. Correção = "onda Captação" pós-consolidação. (Errata: minha afirmação anterior de "submenu idêntico" estava ERRADA — era menu top-level, não telas.) |
+| **T1.11** | **Instagram Flows: portado ou não?** | 🔴 **NÃO portado** — a portar (esforço M) |
+| T1.12 | Voz IA: portar as-is (Grok) + anotar ElevenLabs p/ próxima onda | ✅ decidido · `XAI_API_KEY` setada · ⏳ OpenAI · ElevenLabs → Fase 2 |
+| T1.13 | Meta Ads: portar 100% Vendus → NexvyAds | ✅ **veredito ratificado 07-12** (PORT read-product + BUILD escrita/agentes) — ver P3.B |
+| **T1.14** | **Screenshots ANTES×DEPOIS de cada correção visual** | 🟡 **devido** — tooling instável (claude-in-chrome/devtools desconectados); tentando via chrome_control |
+
+**Abertos reais desta trava:** T1.10 (captação — 8 gaps, ver abaixo) · T1.11 (Instagram Flows — portar) · T1.14 (screenshots antes×depois) · decisão Title Case (T1.4). O resto = feito, aguardando o deploy da consolidação.
+
+### 📋 T1.10 — Gaps de Captação (audit 07-12 com evidência de código)
+| # | Gap (Vendus tem → gestao não) | Esforço | Tipo | Prioridade |
+|---|---|---|---|---|
+| **C1** | **"Novo Formulário" sem "Com IA"** (o exemplo do Marcelo) — edge `form-generate-ai` **já existe** | P–M | **UI-only** | 🔥 alta (barato) |
+| **C2** | Form **"Link público em breve"** — botão morto (form que não publica não capta). ⚠️ checar: `/f/:slug`+`platform-form-submit` do PR#26 podem já existir → viraria só fiação | M→P? | edge+rota (ou só wiring) | 🔥 alta |
+| **C3** | **Novo Quiz sem "Com IA"/"Template"** (só diálogo genérico de funil) — edge `quiz-generate-ai` **já existe** | M | UI-only(AI)+porte template | alta |
+| C4 | WhatsApp **"Builder visual" morto** + canal não conectado | G | edge+UI+provider | média (pós-MVP) |
+| C5 | **FormResponseDetail** sem "Chamar IA / Inserir Cadência / Ver Lead" (3 botões) | M | UI+edge | média |
+| C6 | **"Ligação Web" (VoiceCall) inexistente** no gestao | G | feature completa | baixa (overlap Voz IA Fase 2) |
+| C7 | Quiz campo **"Upload" = placeholder** | P | UI+storage | baixa |
+| C8 | Comentário **stale** (Templates/Results/Analytics ditos TODO, mas prontos) | P | errata doc | trivial |
+
+**Scoping:** SEM bug de org_id — captação é product-scoped/super_admin de propósito. **Recomendação:** onda Captação = C1+C3+C5+C7+C8 (UI-only/barato, edges prontas) + checar C2; C4/C6 pós-MVP (C6 encosta no Voz IA da Fase 2).
 
 ---
 

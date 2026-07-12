@@ -4,7 +4,6 @@ import { CadenceList } from './CadenceList';
 import { CadenceWizard } from './CadenceWizard';
 import { CadenceDetail } from './CadenceDetail';
 import { CadenceReports } from './CadenceReports';
-import { CadenceApiKeys } from './CadenceApiKeys';
 import { ContextLibrary } from '../campaigns/ContextLibrary';
 import { usePlatformCrmCadences } from '../data/usePlatformCrmCadences';
 import { usePlatformCrmProduct } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
@@ -51,15 +50,7 @@ export function PlatformCrmCadencesManager({ productId, cadenceId }: PlatformCrm
     ? Object.fromEntries(Object.entries(stats).filter(([id]) => scopedCadences.some((c) => c.id === id)))
     : stats;
 
-  if (view.kind === 'new' || view.kind === 'edit') {
-    return (
-      <CadenceWizard
-        cadenceId={view.kind === 'edit' ? view.id : null}
-        productId={productId}
-        onClose={() => { setView({ kind: 'list' }); refresh(); }}
-      />
-    );
-  }
+  const wizardOpen = view.kind === 'new' || view.kind === 'edit';
 
   if (view.kind === 'detail') {
     return (
@@ -89,7 +80,6 @@ export function PlatformCrmCadencesManager({ productId, cadenceId }: PlatformCrm
           <TabsTrigger value="cadences">Cadências</TabsTrigger>
           {!productId && <TabsTrigger value="library">Biblioteca de Contextos</TabsTrigger>}
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          {!productId && <TabsTrigger value="api">API</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="cadences" className="mt-4">
@@ -111,13 +101,18 @@ export function PlatformCrmCadencesManager({ productId, cadenceId }: PlatformCrm
         <TabsContent value="reports" className="mt-4">
           <CadenceReports cadences={scopedCadences} stats={scopedStats} />
         </TabsContent>
-
-        {!productId && (
-          <TabsContent value="api" className="mt-4">
-            <CadenceApiKeys />
-          </TabsContent>
-        )}
       </Tabs>
+
+      {/* Editor de cadência em Dialog SOBRE a lista (não substitui a árvore). Montado
+          apenas quando aberto → cada abertura recebe uma instância nova (estado limpo). */}
+      {wizardOpen && (
+        <CadenceWizard
+          open
+          onOpenChange={(o) => { if (!o) { setView({ kind: 'list' }); refresh(); } }}
+          cadenceId={view.kind === 'edit' ? view.id : null}
+          productId={productId}
+        />
+      )}
     </div>
   );
 }
