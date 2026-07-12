@@ -153,17 +153,38 @@ export function useProductOnboarding() {
     return !!value && String(value).trim().length > 0;
   }, [currentStep, formData]);
 
-  const optimizeWithAI = useCallback(async (_field: string, currentValue: string) => {
+  const optimizeWithAI = useCallback(async (field: string, currentValue: string) => {
     if (!currentValue.trim()) {
       toast.error('Digite algo antes de otimizar');
       return null;
     }
-    // TODO(edge): `platform-optimize-product-field` ainda não existe — UI completa,
-    // ação informa pendência (padrão da onda D3 Fase 1a).
-    setIsOptimizing(false);
-    toast.info('Otimização com IA: edge ainda não portada nesta fase (TODO(edge)).');
-    return null;
-  }, []);
+    setIsOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-optimize-product-field', {
+        body: { field, value: currentValue, productContext: formData },
+      });
+      if (error) {
+        // FunctionsHttpError esconde a mensagem real no corpo da Response.
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const payload = (data ?? {}) as { optimized?: string; error?: string };
+      if (payload.error) throw new Error(payload.error);
+      return payload.optimized ?? null;
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao otimizar com IA');
+      return null;
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [formData]);
 
   const completeOnboarding = useCallback(async () => {
     try {

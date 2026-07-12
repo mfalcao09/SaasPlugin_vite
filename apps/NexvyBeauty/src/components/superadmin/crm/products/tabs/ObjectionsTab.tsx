@@ -10,7 +10,8 @@ import {
   usePlatformCrmProduct,
   useUpdatePlatformCrmProduct,
 } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { useProductObjections, useCreateProductObjection, todoBackend, type ProductObjection } from '../hooks/useProductHubStubs';
+import { useProductObjections, useCreateProductObjection, type ProductObjection } from '../hooks/useProductHubStubs';
+import { usePlatformHandleObjection, parseObjectionResponse } from '../hooks/usePlatformHandleObjection';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,8 @@ import {
   PenLine,
   Save,
   Loader2,
+  Send,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -170,8 +173,10 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [refiningId, setRefiningId] = useState<string | null>(null);
   const qc = useQueryClient();
   const isMobile = useIsMobile();
+  const { handleObjection } = usePlatformHandleObjection();
 
   const filteredObjections = objections.filter(obj => {
     const matchesSearch = searchQuery === '' ||
@@ -218,8 +223,42 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
       setGenerating(false);
     }
   };
-  // TODO(edge: platform-handle-objection) — refino individual com IA (fora do MAP desta onda)
-  const handleRefineObjection = (_objection: ProductObjection) => todoBackend('Refino de objeção com IA');
+  // Refino individual com IA — edge platform-handle-objection (SSE). Porte 1:1 do
+  // ObjectionsView original: gera com IA, faz parse das 3 seções e ATUALIZA a
+  // objeção direto em platform_crm_objections (product-scoped), invalidando a lista.
+  const handleRefineObjection = async (objection: ProductObjection) => {
+    if (!productId) return;
+    setRefiningId(objection.id);
+    try {
+      const response = await handleObjection(objection.whatTheySay, productId);
+      if (response) {
+        const parsed = parseObjectionResponse(response);
+        const updates: Record<string, string> = {};
+        if (parsed.whatTheyMean) updates.what_they_mean = parsed.whatTheyMean;
+        if (parsed.suggestedResponse) updates.suggested_response = parsed.suggestedResponse;
+        if (parsed.followUpQuestion) updates.follow_up_question = parsed.followUpQuestion;
+
+        if (Object.keys(updates).length > 0) {
+          const { error } = await (supabase as unknown as {
+            from: (t: string) => {
+              update: (u: Record<string, string>) => { eq: (c: string, v: string) => Promise<{ error: unknown }> };
+            };
+          })
+            .from('platform_crm_objections')
+            .update(updates)
+            .eq('id', objection.id);
+          if (error) throw error;
+
+          qc.invalidateQueries({ queryKey: ['platform-crm', 'product-objections', productId] });
+          toast.success('Objeção refinada com IA!');
+        }
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao refinar objeção');
+    } finally {
+      setRefiningId(null);
+    }
+  };
 
   const categories = Object.entries(categoryConfig);
 
@@ -255,26 +294,8 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
             </TabsTrigger>
           </TabsList>
           <TabsContent value="assistant" className="mt-4">
-            {/* Porte compacto do ObjectionAssistant — TODO(edge: handle-objection) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  Assistente de Objeções
-                </CardTitle>
-                <CardDescription>
-                  Cole a objeção do cliente e a IA sugere resposta usando o Cérebro do Produto.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea rows={3} placeholder={'Ex: "Achei caro demais pra começar agora..."'} />
-                <Button onClick={() => todoBackend('Assistente IA de objeções')}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Gerar resposta
-                </Button>
-                {/* TODO(edge: handle-objection) */}
-              </CardContent>
-            </Card>
+            {/* Porte do ObjectionAssistant — edge platform-handle-objection (SSE) */}
+            <ObjectionAssistantPanel productId={productId} productName={productName} />
           </TabsContent>
           <TabsContent value="manual" className="mt-4">
             <ManualObjectionForm productId={productId} />
@@ -419,9 +440,14 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
                                   e.stopPropagation();
                                   handleRefineObjection(objection);
                                 }}
+                                disabled={refiningId !== null}
                                 className={cn('gap-2', isMobile && 'flex-1')}
                               >
-                                <Sparkles size={14} />
+                                {refiningId === objection.id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <Sparkles size={14} />
+                                )}
                                 Refinar com IA
                               </Button>
                             )}
@@ -487,6 +513,135 @@ function ObjectionsView({ objections, productId, productName, showAdminActions }
   );
 }
 
+// ─── ObjectionAssistantPanel (porte de components/objections/ObjectionAssistant.tsx) ──
+// Assistente de objeções product-scoped: cola a objeção do cliente e a IA sugere
+// resposta via edge platform-handle-objection (streaming SSE). Copiar e salvar na
+// base (platform_crm_objections) — mesmo comportamento do original.
+// NOTA de segurança: o original usava dangerouslySetInnerHTML para estilizar os
+// cabeçalhos das seções. Aqui a saída do modelo é tratada como conteúdo NÃO confiável
+// (regra SaaS anti-XSS) e renderizada como texto puro com whitespace-pre-wrap.
+function ObjectionAssistantPanel({ productId, productName }: { productId: string; productName?: string }) {
+  const [objection, setObjection] = useState('');
+  const { handleObjection, isLoading, response, reset } = usePlatformHandleObjection();
+  const createObjection = useCreateProductObjection();
+
+  const handleSubmit = async () => {
+    if (!objection.trim()) {
+      toast.error('Digite a objeção do cliente');
+      return;
+    }
+    try {
+      await handleObjection(objection, productId);
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao processar objeção');
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(response);
+    toast.success('Resposta copiada!');
+  };
+
+  const handleReset = () => {
+    setObjection('');
+    reset();
+  };
+
+  const handleSave = async () => {
+    const parsed = parseObjectionResponse(response);
+    try {
+      await createObjection.mutateAsync({
+        product_id: productId,
+        category: 'thinking', // categoria padrão (mesmo default do original)
+        whatTheySay: objection.trim(),
+        whatTheyMean: parsed.whatTheyMean,
+        suggestedResponse: parsed.suggestedResponse,
+        followUpQuestion: parsed.followUpQuestion,
+      });
+      toast.success('Objeção salva na base!');
+      handleReset();
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao salvar objeção');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Assistente de Objeções
+        </CardTitle>
+        <CardDescription>
+          Cole a objeção do cliente e a IA sugere resposta usando o Cérebro do Produto
+          {productName ? ` — contexto: ${productName}` : ''}.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea
+          rows={3}
+          value={objection}
+          onChange={(e) => setObjection(e.target.value)}
+          disabled={isLoading}
+          placeholder={'Ex: "Achei caro demais pra começar agora..."'}
+        />
+        <div className="flex gap-2">
+          <Button onClick={handleSubmit} disabled={isLoading || !objection.trim()} className="flex-1">
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Gerar resposta
+              </>
+            )}
+          </Button>
+          {response && (
+            <Button variant="outline" size="icon" onClick={handleReset}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {(response || isLoading) && (
+          <div className="rounded-lg border bg-background p-4 space-y-3">
+            {isLoading && !response && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">
+                  Analisando contexto do produto e gerando resposta estratégica...
+                </span>
+              </div>
+            )}
+            {response && (
+              <>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{response}</p>
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
+                    <Copy className="mr-2 h-3 w-3" />
+                    Copiar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleSave} disabled={createObjection.isPending}>
+                    {createObjection.isPending ? (
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-3 w-3" />
+                    )}
+                    Salvar na Base
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── ManualObjectionForm (porte de components/objections/ManualObjectionForm.tsx) ──
 const manualCategories = [
   { value: 'price', label: 'Preço' },
@@ -504,14 +659,27 @@ function ManualObjectionForm({ productId }: { productId: string }) {
   const [suggestedResponse, setSuggestedResponse] = useState('');
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const createObjection = useCreateProductObjection();
+  const { handleObjection, isLoading: isRefiningAll } = usePlatformHandleObjection();
 
-  const handleRefineAll = () => {
+  // "Preencher tudo com IA" — edge platform-handle-objection (SSE). Porte 1:1 do
+  // handleRefineAll original: gera com IA e faz parse das 3 seções nos campos.
+  const handleRefineAll = async () => {
     if (!whatTheySay.trim()) {
       toast.error('Digite a objeção do cliente primeiro');
       return;
     }
-    // TODO(edge: handle-objection)
-    todoBackend('Geração dos campos com IA');
+    try {
+      const response = await handleObjection(whatTheySay, productId);
+      if (response) {
+        const parsed = parseObjectionResponse(response);
+        if (parsed.whatTheyMean) setWhatTheyMean(parsed.whatTheyMean);
+        if (parsed.suggestedResponse) setSuggestedResponse(parsed.suggestedResponse);
+        if (parsed.followUpQuestion) setFollowUpQuestion(parsed.followUpQuestion);
+        toast.success('Todos os campos gerados com IA!');
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao gerar com IA');
+    }
   };
 
   const handleSave = async () => {
@@ -567,8 +735,13 @@ function ManualObjectionForm({ productId }: { productId: string }) {
             </Select>
           </div>
           <div className="flex items-end">
-            <Button variant="outline" className="gap-2 w-full" onClick={handleRefineAll}>
-              <Sparkles className="h-4 w-4" />
+            <Button
+              variant="outline"
+              className="gap-2 w-full"
+              onClick={handleRefineAll}
+              disabled={isRefiningAll || !whatTheySay.trim()}
+            >
+              {isRefiningAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               Preencher tudo com IA
             </Button>
           </div>
