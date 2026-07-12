@@ -90,18 +90,20 @@ export function FollowupKpiCards({ stats, loading }: Props) {
             >
               <Icon className="h-[18px] w-[18px]" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-medium text-muted-foreground leading-snug">
+            <div className="min-w-0 flex-1 flex flex-col">
+              {/* SIMETRIA (Marcelo 07-12): zona do título com altura FIXA (3 linhas)
+                  → valor e subtítulo alinham na mesma guia em todos os cards. */}
+              <p className="text-[12px] font-medium text-muted-foreground leading-snug min-h-[50px]">
                 {it.title}
               </p>
               {loading ? (
-                <Skeleton className="mt-1.5 h-[30px] w-16" />
+                <Skeleton className="mt-1 h-[30px] w-16" />
               ) : (
                 <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none truncate">
                   {it.value}
                 </p>
               )}
-              <p className="mt-1 text-[11px] text-muted-foreground truncate">{it.sub}</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground truncate">{it.sub}</p>
             </div>
           </div>
         );
