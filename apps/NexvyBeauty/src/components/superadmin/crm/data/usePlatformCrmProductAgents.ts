@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import type { ProductAgent } from '@/components/superadmin/crm/agents/types';
+import { syncPlatformCrmAgentConnections } from '@/components/superadmin/crm/data/usePlatformCrmAgentConnections';
 
 const KEY = 'platform-crm';
 
@@ -171,12 +172,18 @@ export function useCreatePlatformCrmProductAgent() {
         .select()
         .single();
       if (error) throw error;
-      // TODO(edge): sincronizar `dedicated_connections` (product_agent_connections
-      // não tem twin platform_crm_* — feito por Edge/canal externo).
+      // Sincroniza as conexões dedicadas (campo transiente `dedicated_connections`)
+      // no twin product-scoped `platform_crm_agent_connections`.
+      await syncPlatformCrmAgentConnections(
+        (data as { id: string }).id,
+        (agentRaw as ProductAgent).dedicated_connections,
+      );
       return data as unknown as ProductAgent;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: [KEY, 'product-agents', data.product_id] });
+      qc.invalidateQueries({ queryKey: [KEY, 'agent-connections', data.id] });
+      qc.invalidateQueries({ queryKey: [KEY, 'agent-connections-summary', data.id] });
       toast.success('Agente criado com sucesso!');
     },
     onError: (error: unknown) => {
@@ -200,12 +207,18 @@ export function useUpdatePlatformCrmProductAgent() {
         .select()
         .single();
       if (error) throw error;
-      // TODO(edge): sincronizar `dedicated_connections`.
+      // Sincroniza as conexões dedicadas (campo transiente `dedicated_connections`).
+      await syncPlatformCrmAgentConnections(
+        id,
+        (updatesRaw as ProductAgent).dedicated_connections,
+      );
       return data as unknown as ProductAgent;
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: [KEY, 'product-agents', data.product_id] });
       qc.invalidateQueries({ queryKey: [KEY, 'product-agent', data.id] });
+      qc.invalidateQueries({ queryKey: [KEY, 'agent-connections', data.id] });
+      qc.invalidateQueries({ queryKey: [KEY, 'agent-connections-summary', data.id] });
       toast.success('Agente atualizado com sucesso!');
     },
     onError: (error: unknown) => {

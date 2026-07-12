@@ -65,10 +65,7 @@ import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlat
 import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
 import { usePlatformCrmMetaWAConnections } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
 import { usePlatformCrmInstagramConnections } from '@/components/superadmin/crm/data/usePlatformCrmInstagram';
-// TODO(edge): product_agent_connections nao tem twin platform_crm_* — conexoes dedicadas
-// ficam vazias (agente atende em qualquer conexao) ate a Edge/tabela existir.
-const useAgentConnections = (_agentId?: string | null) =>
-  ({ data: [] as Array<{ type: 'evolution' | 'meta_whatsapp' | 'instagram'; id: string }> });
+import { usePlatformCrmAgentConnections } from '@/components/superadmin/crm/data/usePlatformCrmAgentConnections';
 import { Globe, Package, Smartphone, Compass, BookOpen, Hand, Instagram, BadgeCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AgentWelcomeMenuTab } from './AgentWelcomeMenuTab';
@@ -153,7 +150,7 @@ export function AgentEditor({
   const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
   const { data: metaConnections } = usePlatformCrmMetaWAConnections();
   const { data: instagramConnections } = usePlatformCrmInstagramConnections();
-  const { data: existingConnections } = useAgentConnections(agent?.id);
+  const { data: existingConnections } = usePlatformCrmAgentConnections(agent?.id);
 
   // Global agent types are forced to no product
   const GLOBAL_TYPES: AgentType[] = ['admin', 'support', 'financial', 'orchestrator'];
