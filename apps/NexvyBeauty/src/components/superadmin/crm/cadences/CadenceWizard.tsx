@@ -8,13 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Plus, Trash2, GripVertical, Rocket, Save, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface Props {
+  /** Controla a visibilidade do Dialog (o wizard abre SOBRE a lista, não a substitui). */
+  open: boolean;
+  /** Callback do Dialog (X / Esc / clique fora) — o manager reseta a view e dá refresh ao fechar. */
+  onOpenChange: (open: boolean) => void;
   cadenceId: string | null;
-  onClose: () => void;
   /** Deep-link do hub do produto (CadenceTab): prefill do product_id ao CRIAR
    *  (platform_crm_cadences.product_id é NOT NULL). Cadências já existentes
    *  mantêm o product_id gravado — não é sobrescrito no update. */
@@ -60,7 +64,7 @@ const STEPS_LABELS = [
   '5. Regras de Execução', '6. Horários', '7. Parada', '8. Ações', '9. Revisão',
 ];
 
-export function CadenceWizard({ cadenceId, onClose, productId }: Props) {
+export function CadenceWizard({ open, onOpenChange, cadenceId, productId }: Props) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!cadenceId);
@@ -241,15 +245,23 @@ export function CadenceWizard({ cadenceId, onClose, productId }: Props) {
     // (Edge Function). Aqui só persistimos o status; o runtime é acionado à parte.
     toast.success(activate ? 'Cadência ativada!' : 'Cadência salva');
     setSaving(false);
-    onClose();
+    onOpenChange(false);
   };
 
-  if (loading) return <div className="p-6">Carregando…</div>;
-
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle>{cadenceId ? 'Editar cadência' : 'Nova cadência'}</DialogTitle>
+          <DialogDescription>{STEPS_LABELS[step]}</DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex-1 overflow-y-auto p-6">Carregando…</div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onClose}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar</Button>
+        <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}><ArrowLeft className="h-4 w-4 mr-2" /> Voltar</Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => save(false)} disabled={saving}>
             <Save className="h-4 w-4 mr-2" /> Salvar rascunho
@@ -261,11 +273,6 @@ export function CadenceWizard({ cadenceId, onClose, productId }: Props) {
           )}
         </div>
       </div>
-
-      <header>
-        <h1 className="text-xl font-semibold">{cadenceId ? 'Editar cadência' : 'Nova cadência'}</h1>
-        <p className="text-sm text-muted-foreground">{STEPS_LABELS[step]}</p>
-      </header>
 
       <div className="flex flex-wrap gap-1.5">
         {STEPS_LABELS.map((l, i) => (
@@ -509,7 +516,10 @@ export function CadenceWizard({ cadenceId, onClose, productId }: Props) {
           Próximo <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
-    </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

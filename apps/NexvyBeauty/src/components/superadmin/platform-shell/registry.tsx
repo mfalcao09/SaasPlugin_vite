@@ -63,6 +63,7 @@ import { PlatformCrmInboxPanel } from '@/components/superadmin/crm/inbox-section
 import { PlatformCrmInboxRadar } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxRadar';
 import { PlatformCrmInboxFollowup } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxFollowup';
 import { PlatformCrmInboxReports } from '@/components/superadmin/crm/inbox-sections/PlatformCrmInboxReports';
+import { PlatformCrmJourneyPage } from '@/components/superadmin/crm/journey/PlatformCrmJourneyPage';
 import { PlatformCrmMia } from '@/components/superadmin/crm/mia/PlatformCrmMia';
 import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/PlatformCrmFinanceiro';
 import { PlatformCrmConnectionsPanel } from '@/components/superadmin/crm/connections/PlatformCrmConnectionsPanel';
@@ -307,6 +308,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Relatórios',
         icon: I.BarChart3,
         render: () => <PlatformCrmInboxReports />,
+      },
+      {
+        id: 'v-jornada',
+        label: 'Jornada do Lead',
+        icon: I.Route,
+        render: () => <PlatformCrmJourneyPage />,
       },
     ],
   },

@@ -35,6 +35,7 @@ import {
   LayoutPanelTop,
   Radar,
   Repeat,
+  Route,
   Webhook,
   Bot,
   Megaphone,
@@ -277,6 +278,7 @@ export const PlatformIcons = {
   LayoutPanelTop,
   Radar,
   Repeat,
+  Route,
   // vendas — automação & ia
   Bot,
   Megaphone,
