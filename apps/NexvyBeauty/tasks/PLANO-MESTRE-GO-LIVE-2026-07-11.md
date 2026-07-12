@@ -39,8 +39,8 @@
 | **P4/P5** paridade fina · débitos | ☐ | |
 | Decolagem: nº Meta API salão-teste | ☐ | |
 | Decolagem: funil E2E | 🔚 por último | ordem Marcelo |
-| 🔄 **07-12 Consolidação (4 ondas)** | 🔄 **verify+deploy em andamento** | Jornada + Radar/Follow-up + quickwins(Throughput/Dialogs) + cadence-hide · **tsc `--noEmit` exit 0** · verify adversarial 3 lentes rodando · deploy ÚNICO gestao.nexvy.tech após verde (+ migration journey) |
-| **P3.D Jornada do Lead** | ✅ **portada 1:1 (tsc 0)** · 🔄 deploy | agente `a04b69b2`: journey/ (lib+hook+10 comp) + migration `20260712_journey_events` (product-scoped, enums consolidados, **NÃO aplicada**) + nav Vendas→Atendimentos · atribuição CTWA plugável no journey_events |
+| ✅ **07-12 Consolidação (4 ondas)** | ✅ **DONE+DEPLOY+PROVADO** | Jornada + Radar/Follow-up + quickwins(Throughput/Dialogs) + cadence-hide · PRs [#31](https://github.com/mfalcao09/SaasPlugin_vite/pull/31)+[#32](https://github.com/mfalcao09/SaasPlugin_vite/pull/32) → main `0ba4dcc` · verify 3 lentes (runtime/migration/security SAFE) + fix RISKY getBottlenecks · **bundle `index-DBdjsTTE.js`** gate anti-fantasma + curl externo 200 · 🐛 build falhou 1x (comentário `*/6` quebrava esbuild, tsc tolerou) → fix #32 · lição [[gate-predeploy-build-nao-so-tsc]] |
+| **P3.D Jornada do Lead** | ✅ **portada 1:1 + DEPLOY** | agente `a04b69b2`: journey/ (lib+hook+10 comp) + migration `20260712_journey_events` **APLICADA** (tabela+8 triggers+RLS, 0 linhas) + nav Vendas→Atendimentos · atribuição CTWA plugável · fast-follow: hardening triggers (wrap BEGIN/EXCEPTION) + COALESCE deal |
 | Voz IA (Fase 2) — chaves | 🟡 XAI setada · ⏳ OpenAI | `XAI_API_KEY` no Supabase (digest `48c44c…`, valor nunca exposto) · `OPENAI_API_KEY` aguarda Marcelo criar conta · módulo code-complete, deploy espera as 2 chaves |
 
 > **Governança de execução (v2, ordem Marcelo 07-11 noite):** sessão = **Opus 4.8 Ultracode** (orquestra+revisa); subagentes = **Sonnet 5** default, **Opus** p/ porte 1:1/merge semântico/auditoria; Fable autorizado se complexidade exigir. Fan-out real via **Workflow**.
