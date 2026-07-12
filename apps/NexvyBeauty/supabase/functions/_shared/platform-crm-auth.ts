@@ -13,6 +13,10 @@ export const platformCrmCorsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  // Explícito (POST já é CORS-safelisted por padrão, mas alguns proxies/CDNs
+  // exigem o header presente). Cobre o invoke cross-origin de gestao.nexvy.tech
+  // (ex.: ads-oauth-callback chamado via supabase.functions.invoke, POST).
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 export interface PlatformAgentUser {

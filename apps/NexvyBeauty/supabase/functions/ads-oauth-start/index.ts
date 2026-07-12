@@ -19,9 +19,13 @@ function json(body: unknown, status = 200) {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // redirect_uri PRECISA ser idêntico no start e no callback (a troca de code
-// pela Graph re-valida esse valor). Deriva do SUPABASE_URL do projeto.
+// pela Graph re-valida esse valor). BRANDED: a Meta REJEITA redirect_uri no
+// domínio cru *.supabase.co (sufixo público não-verificável no App Review) —
+// por isso o callback é servido pela SPA em gestao.nexvy.tech/ads/oauth-return
+// via ADS_OAUTH_REDIRECT_URI. Fallback = domínio cru do Supabase (retrocompat/dev,
+// enquanto a env não estiver setada).
 function callbackUrl(): string {
-  return `${Deno.env.get('SUPABASE_URL')}/functions/v1/ads-oauth-callback`;
+  return Deno.env.get('ADS_OAUTH_REDIRECT_URI') || `${Deno.env.get('SUPABASE_URL')}/functions/v1/ads-oauth-callback`;
 }
 
 Deno.serve(async (req: Request) => {
