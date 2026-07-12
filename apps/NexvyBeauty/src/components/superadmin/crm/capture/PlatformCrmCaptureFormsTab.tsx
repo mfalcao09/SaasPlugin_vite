@@ -74,6 +74,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmCaptureProductField } from './PlatformCrmCaptureProductField';
+import { usePublicAppUrl } from '@/lib/publicUrl';
 
 const statusConfig: Record<
   string,
@@ -104,6 +105,8 @@ export function PlatformCrmCaptureFormsTab() {
   const { data: templates } = usePlatformCrmFormTemplates();
   // Produto ativo GLOBAL (D3 F2): lista filtra pelo ativo e novo form nasce nele.
   const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
+  // Base pública (mesmo hook do Builder>Share) para abrir o link real da lista.
+  const { data: baseUrl } = usePublicAppUrl();
   const createForm = useCreatePlatformCrmForm();
   const createFromTemplate = useCreatePlatformCrmFormFromTemplate();
   const deleteForm = useDeletePlatformCrmForm();
@@ -172,9 +175,10 @@ export function PlatformCrmCaptureFormsTab() {
     setBuilderFormId(formId);
   };
 
-  const openPublicLink = () => {
-    // TODO(edge): runtime público do formulário (página /f/:slug) depende de Edge/rota pública.
-    toast.info('Link público do formulário em breve');
+  const openPublicLink = (slug: string) => {
+    // Abre a rota pública real /f/:slug (cai no fallback PlatformCrmPublicForm),
+    // mesmo comportamento já validado no Builder>Share.
+    window.open(`${baseUrl}/f/${slug}`, '_blank', 'noopener,noreferrer');
   };
 
   const openResponses = (formId: string) => {
@@ -320,7 +324,7 @@ export function PlatformCrmCaptureFormsTab() {
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            openPublicLink();
+                            openPublicLink(form.slug);
                           }}
                         >
                           <ExternalLink className="h-4 w-4 mr-2" /> Link público
