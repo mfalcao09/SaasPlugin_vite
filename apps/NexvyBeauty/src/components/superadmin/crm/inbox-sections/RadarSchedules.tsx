@@ -80,7 +80,7 @@ function fmtTime(h: number, m: number): string {
 }
 
 /** Parse de cron "M[,M] H[,H] * * D" → horários (produto hora×min) + dia-da-semana.
- *  Aceita apenas listas numéricas simples (sem passos/intervalos como */6). */
+ *  Aceita apenas listas numéricas simples (sem passos nem intervalos). */
 function parseCron(cron: string): { times: { h: number; m: number }[]; dow: string } | null {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 5) return null;
