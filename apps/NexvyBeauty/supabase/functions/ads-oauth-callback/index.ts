@@ -28,8 +28,16 @@ function redirect(connected: boolean, extra?: Record<string, string>): Response 
   return Response.redirect(u.toString(), 302);
 }
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+
+// BRANDED: precisa ser idêntico ao redirect_uri usado no ads-oauth-start (a
+// troca de code pela Graph re-valida esse valor) — a Meta REJEITA o domínio
+// cru *.supabase.co (sufixo público não-verificável no App Review). Fallback
+// = domínio cru do Supabase (retrocompat/dev, enquanto a env não existir).
 function callbackUrl(): string {
-  return `${Deno.env.get('SUPABASE_URL')}/functions/v1/ads-oauth-callback`;
+  return Deno.env.get('ADS_OAUTH_REDIRECT_URI') || `${Deno.env.get('SUPABASE_URL')}/functions/v1/ads-oauth-callback`;
 }
 
 // Localiza a conexão do produto (platform=meta) ou cria uma nova. ads_platform_connections
@@ -60,16 +68,38 @@ async function upsertConnection(sb: any, row: Record<string, unknown>): Promise<
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const url = new URL(req.url);
-  const code = url.searchParams.get('code');
-  const stateToken = url.searchParams.get('state') ?? '';
-  const oauthError = url.searchParams.get('error') || url.searchParams.get('error_description');
+  // BRANDED: a SPA (gestao.nexvy.tech/ads/oauth-return) chama esta edge via
+  // supabase.functions.invoke — POST com body JSON. O redirect direto da Meta
+  // (GET, query string) continua funcionando pro domínio cru/retrocompat.
+  const wantsJson = req.method === 'POST';
+
+  let code: string | null;
+  let stateToken: string;
+  let oauthError: string | null;
+
+  if (wantsJson) {
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    code = typeof (body as any)?.code === 'string' ? (body as any).code : null;
+    stateToken = typeof (body as any)?.state === 'string' ? (body as any).state : '';
+    oauthError = typeof (body as any)?.error === 'string' ? (body as any).error : null;
+  } else {
+    const url = new URL(req.url);
+    code = url.searchParams.get('code');
+    stateToken = url.searchParams.get('state') ?? '';
+    oauthError = url.searchParams.get('error') || url.searchParams.get('error_description');
+  }
+
+  // Resposta final: JSON pra SPA (POST) ou redirect 302 pro browser (GET, retrocompat).
+  function finish(connected: boolean, extra?: Record<string, string>): Response {
+    if (wantsJson) return json({ ok: true, ads_connected: connected, ...extra });
+    return redirect(connected, extra);
+  }
 
   // 1) Valida o state HMAC ANTES de qualquer coisa (gate anti-CSRF/forjado).
   const state = await verifyState(stateToken, getStateSecret());
   if (!state) {
     console.error('[ads-oauth-callback] state invalido ou expirado');
-    return redirect(false, { reason: 'invalid_state' });
+    return finish(false, { reason: 'invalid_state' });
   }
 
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -91,7 +121,7 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       console.error('[ads-oauth-callback] upsert(error) falhou', String((e as Error).message ?? e));
     }
-    return redirect(false, { reason: 'oauth_denied' });
+    return finish(false, { reason: 'oauth_denied' });
   }
 
   try {
@@ -150,7 +180,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`[ads-oauth-callback] conexao ativa product=${state.product_id} contas=${ad_accounts.length}`);
-    return redirect(true, { accounts: String(ad_accounts.length) });
+    return finish(true, { accounts: String(ad_accounts.length) });
   } catch (e) {
     // NUNCA logamos o token/secret/code; só a mensagem de erro.
     const msg = String((e as Error).message ?? e);
@@ -160,6 +190,6 @@ Deno.serve(async (req: Request) => {
     } catch (e2) {
       console.error('[ads-oauth-callback] upsert(error) falhou', String((e2 as Error).message ?? e2));
     }
-    return redirect(false, { reason: 'exchange_failed' });
+    return finish(false, { reason: 'exchange_failed' });
   }
 });

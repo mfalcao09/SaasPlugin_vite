@@ -89,7 +89,10 @@ const PUBLIC_EXACT = new Set(['/vendas', '/termos', '/privacidade', '/unsubscrib
 // (Calendly de reunião de venda) — anon fala só com as edges platform-booking-*.
 const PUBLIC_PREFIXES = ['/demo', '/s/', '/f/', '/c/', '/q/', '/agendar/', '/confirmar/', '/reagendar/'];
 // Gate de autenticação → alcançável em qualquer host (porta de entrada do logado).
-const AUTH_EXACT = new Set(['/login', '/reset-password', '/aceitar-convite']);
+// `/ads/oauth-return` entra aqui pelo mesmo motivo: é o pouso do redirect OAuth
+// BRANDED da Meta (NexvyAds) — a edge por trás é verify_jwt=false (confiança vem
+// do state HMAC, não de JWT), então não pode ficar preso à classe 'app' default.
+const AUTH_EXACT = new Set(['/login', '/reset-password', '/aceitar-convite', '/ads/oauth-return']);
 
 /** Em qual classe de host a rota PODE responder. 'any' = sem restrição. */
 export function requiredHostClass(pathname: string): HostClass | 'any' {

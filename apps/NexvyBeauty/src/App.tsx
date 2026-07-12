@@ -82,6 +82,9 @@ const PublicSalaoBooking = lazyWithRetry(() => import("./pages/PublicSalaoBookin
 // Booking público do módulo CRM da plataforma (Calendly de reunião de venda).
 const PlatformCrmPublicBooking = lazyWithRetry(() => import("./pages/PlatformCrmPublicBooking"));
 const PlatformCrmBookingConfirmation = lazyWithRetry(() => import("./pages/PlatformCrmBookingConfirmation"));
+// Pouso do redirect OAuth BRANDED do Meta Ads (NexvyAds F1) — verify_jwt=false
+// na edge por trás, então roda fora de ProtectedRoute/SuperAdminRoute.
+const AdsOAuthReturn = lazyWithRetry(() => import("./pages/AdsOAuthReturn"));
 const PublicSalaoPacotes = lazyWithRetry(() => import("./pages/PublicSalaoPacotes"));
 const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
 const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
@@ -216,6 +219,10 @@ const App = () => (
               <Route path="/f/:slug" element={<PublicForm />} />
               <Route path="/c/:slug" element={<PublicChat />} />
               <Route path="/q/:slug" element={<PublicQuiz />} />
+              {/* Pouso do redirect OAuth BRANDED do Meta Ads (NexvyAds F1).
+                  Público — a edge ads-oauth-callback é verify_jwt=false, a
+                  confiança vem do state HMAC, não de sessão local. */}
+              <Route path="/ads/oauth-return" element={<AdsOAuthReturn />} />
 
               <Route path="/vendas" element={<SalesPage />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
