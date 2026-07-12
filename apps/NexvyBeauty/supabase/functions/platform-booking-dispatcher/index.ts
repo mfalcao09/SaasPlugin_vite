@@ -27,6 +27,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, timingSafeEqual } from '../_shared/meta-graph.ts';
+import { authenticatePlatformAgent } from '../_shared/platform-crm-auth.ts';
 import {
   buildBookingVars,
   renderTemplate,
@@ -243,19 +244,34 @@ Deno.serve(async (req) => {
 
   try {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey);
 
-    // Gate interno: só o portador da service-role key invoca (o gateway JWT
-    // aceitaria até o anon key público — insuficiente para um endpoint que
-    // dispara WhatsApp para convidados).
+    // Parse do body ANTES do gate — precisamos do `action` p/ decidir a auth e do
+    // body p/ o authenticatePlatformAgent (service_role + actorUserId).
+    const body: RequestBody = await req.json().catch(() => ({}));
+    const bookingId = body.booking_id ?? body.bookingId;
+
+    // Gate de auth. O gateway JWT aceitaria até o anon key público — insuficiente
+    // para um endpoint que dispara WhatsApp. A função valida por si:
+    //   • CONFIRMAÇÃO (e default): server-to-server, SÓ service-role key
+    //     (timing-safe) — comportamento legado INTOCADO.
+    //   • CANCELAMENTO (aditivo): também aceita super_admin — o hook
+    //     usePlatformCrmBookings cancela do BROWSER com JWT super_admin. Aceita
+    //     JWT do usuário (getClaims + role super_admin) OU service-role, via
+    //     authenticatePlatformAgent (mesmo padrão dos outros platform-*).
     const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
-    if (!bearer || !timingSafeEqual(bearer, serviceKey)) {
+    const isServiceRole = !!bearer && timingSafeEqual(bearer, serviceKey);
+
+    if (body.action === 'cancellation') {
+      if (!isServiceRole) {
+        const { errorResponse } = await authenticatePlatformAgent(req, supabase, serviceKey, body);
+        if (errorResponse) return errorResponse;
+      }
+    } else if (!isServiceRole) {
+      // Confirmação / default: gate service-role-only original, intocado.
       return json({ error: 'forbidden' }, 403);
     }
 
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey);
-
-    const body: RequestBody = await req.json().catch(() => ({}));
-    const bookingId = body.booking_id ?? body.bookingId;
     if (!bookingId) return json({ error: 'booking_id required' }, 400);
 
     // Base do frontend (rotas /confirmar e /reagendar por token). Mesmo padrão

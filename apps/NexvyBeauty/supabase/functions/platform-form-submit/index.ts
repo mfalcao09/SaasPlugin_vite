@@ -75,6 +75,10 @@ interface SubmitRequest {
 // ------------------------------------------------------------
 // Rate-limit básico por IP (best-effort, in-memory por instância).
 // Janela deslizante simples: no máx. N eventos por IP na janela.
+// TODO(pré-go-live-público): o bucket in-memory é por-instância e some no cold
+// start / escala horizontal — insuficiente contra abuso distribuído. Antes de
+// abrir o embed público em escala, trocar por contador DURÁVEL (ex.: tabela/
+// Redis com janela por IP+form) e/ou CAPTCHA (hCaptcha/Turnstile) no submit.
 // ------------------------------------------------------------
 const RL_WINDOW_MS = 60_000;
 const RL_MAX = 20;
@@ -232,6 +236,15 @@ Deno.serve(async (req) => {
     };
     const isEmpty = (v: unknown) =>
       v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+    // Anti PostgREST-filter-injection (D2): o email do lead é interpolado cru
+    // dentro de `.or('email.eq.<email>,...')`. PostgREST trata vírgula/parênteses/
+    // aspas como metacaracteres de filtro — um email malicioso quebraria/abusaria
+    // do `.or()`. Só usamos o email no filtro se ele casar um regex ESTRITO (chars
+    // seguros de email) E não contiver nenhum metacaractere. Caso contrário, o
+    // ramo de dedup-por-email é PULADO (dedup só por telefone, que já é digits-only).
+    const isEmailSafeForFilter = (email: string): boolean =>
+      /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email) &&
+      !/[,()"'\\*:]/.test(email);
 
     // 1. Fetch form (por id OU slug), ativo. product-scoped via form.product_id.
     let formQ = supabase.from('platform_crm_forms').select('*').eq('status', 'active');
@@ -468,6 +481,38 @@ Deno.serve(async (req) => {
       if (v) leadData.phone = normalizePhoneDigits(v);
     }
 
+    // ------------------------------------------------------------------
+    // D4 — Blindagem das ações ditadas pelo CLIENT no caminho PÚBLICO.
+    // O submitter anônimo envia `selected_actions`, mas o servidor só honra o que
+    // já está CONFIGURADO nas próprias opções do form (server-side:
+    // block.options[].actions). Assim tag_ids/redirect arbitrários do body são
+    // filtrados por allowlist; assignment/roteamento (assigned_to/sdr_id/closer_id)
+    // vindo do client NÃO é honrado — a atribuição legítima vem de
+    // form.distribution_rule (server-side) mais abaixo.
+    // Obs.: as tags de plataforma (platform_crm_lead_tags) são platform-wide, sem
+    // product_id — logo o gate correto é "pertencer ao CONFIG do form", não ao
+    // product_id (que não existe nessa tabela).
+    // ------------------------------------------------------------------
+    const configuredTagIds = new Set<string>();
+    const configuredRedirectUrls = new Set<string>();
+    for (const b of blocks || []) {
+      const opts = Array.isArray(b.options) ? (b.options as any[]) : [];
+      for (const opt of opts) {
+        const acts = Array.isArray(opt?.actions) ? (opt.actions as any[]) : [];
+        for (const act of acts) {
+          if (act?.type === 'add_tags') {
+            (act.tag_ids || []).forEach((id: unknown) => id && configuredTagIds.add(String(id)));
+          } else if (act?.type === 'redirect' && act.url) {
+            configuredRedirectUrls.add(String(act.url));
+          }
+        }
+      }
+    }
+    // O redirect de nível de form (theme.redirect_url) também é config server-side.
+    if ((form.theme as any)?.redirect_url) {
+      configuredRedirectUrls.add(String((form.theme as any).redirect_url));
+    }
+
     // ---- Per-option actions (selected_actions from the client) ----
     let overrideRedirectUrl: string | null = null;
     let overrideRedirectNewTab = false;
@@ -483,17 +528,17 @@ Deno.serve(async (req) => {
       if (!a || typeof a !== 'object') continue;
       switch (a.type) {
         case 'add_tags':
-          (a.tag_ids || []).forEach((id) => id && addTagIds.add(id));
+          // D4: só aplica tag_ids que já estão configurados no próprio form
+          // (allowlist server-side) — ignora tag_ids arbitrários do body público.
+          (a.tag_ids || []).forEach((id) => id && configuredTagIds.has(String(id)) && addTagIds.add(id));
           break;
         case 'assign_sector':
           if (a.sector_id) actionSectorId = a.sector_id;
           break;
         case 'assign_user':
-          if (a.user_id) {
-            if (a.as === 'sdr') actionSdrId = a.user_id;
-            else if (a.as === 'closer') actionCloserId = a.user_id;
-            else actionAssignedUserId = a.user_id;
-          }
+          // D4: assignment/roteamento (assigned_to/sdr_id/closer_id) NÃO é honrado
+          // vindo do CLIENT no caminho público — a atribuição legítima é derivada
+          // de form.distribution_rule (server-side) abaixo. Ignorado de propósito.
           break;
         case 'start_ai_agent':
           if (a.agent_id) actionAgentId = a.agent_id;
@@ -505,7 +550,10 @@ Deno.serve(async (req) => {
           }
           break;
         case 'redirect':
-          if (a.url) {
+          // D4: só honra redirect que esteja no config do form (allowlist),
+          // senão ignora (anti open-redirect ditado pelo client). Fallback
+          // continua sendo theme.redirect_url (server-side) no final.
+          if (a.url && configuredRedirectUrls.has(String(a.url))) {
             overrideRedirectUrl = a.url;
             overrideRedirectNewTab = !!a.new_tab;
           }
@@ -599,25 +647,35 @@ Deno.serve(async (req) => {
       const phoneDigits = leadData.phone ? normalizePhoneDigits(leadData.phone) : '';
       const phoneSuffix = phoneDigits.length >= 9 ? phoneDigits.slice(-9) : phoneDigits;
 
-      if (leadData.email || phoneSuffix) {
-        let query = supabase
-          .from('platform_crm_leads')
-          .select('*')
-          .eq('product_id', form.product_id)
-          .order('created_at', { ascending: false })
-          .limit(20);
+      // Só interpola o email no filtro PostgREST se for seguro (D2). Emails
+      // inseguros/ inválidos ainda batem no match client-side abaixo (comparação
+      // JS, sem injeção), apenas não entram no `.or()`.
+      const emailForFilter =
+        leadData.email && isEmailSafeForFilter(leadData.email) ? leadData.email : null;
 
+      if (emailForFilter || phoneSuffix) {
         const orClauses: string[] = [];
-        if (leadData.email) orClauses.push(`email.eq.${leadData.email}`);
+        if (emailForFilter) orClauses.push(`email.eq.${emailForFilter}`);
         if (phoneSuffix) orClauses.push(`phone.ilike.%${phoneSuffix}%`);
-        query = query.or(orClauses.join(','));
 
-        const { data: found } = await query;
-        existingLead = (found || []).find((l: any) => {
-          if (leadData.email && l.email && l.email.toLowerCase() === leadData.email.toLowerCase()) return true;
-          if (phoneDigits && l.phone && normalizePhoneDigits(l.phone) === phoneDigits) return true;
-          return false;
-        }) || null;
+        // Guard: sem cláusula válida (ex.: email inseguro e telefone ausente),
+        // não roda um `.or('')` malformado.
+        if (orClauses.length > 0) {
+          const query = supabase
+            .from('platform_crm_leads')
+            .select('*')
+            .eq('product_id', form.product_id)
+            .order('created_at', { ascending: false })
+            .limit(20)
+            .or(orClauses.join(','));
+
+          const { data: found } = await query;
+          existingLead = (found || []).find((l: any) => {
+            if (leadData.email && l.email && l.email.toLowerCase() === leadData.email.toLowerCase()) return true;
+            if (phoneDigits && l.phone && normalizePhoneDigits(l.phone) === phoneDigits) return true;
+            return false;
+          }) || null;
+        }
       }
 
       // platform_crm_leads NÃO tem coluna `score` → acumula via metadata.form_score.
