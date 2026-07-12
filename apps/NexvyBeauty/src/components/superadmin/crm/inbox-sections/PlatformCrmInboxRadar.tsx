@@ -157,34 +157,38 @@ export function PlatformCrmInboxRadar({
 
         <TabsContent value="run" className="space-y-4">
           <div className="grid lg:grid-cols-[380px_1fr] gap-4">
-            <ScrollArea className="lg:h-[calc(100vh-280px)]">
-              <div className="space-y-4 pr-2">
-                <RadarFilters value={filters} onChange={setFilters} />
-                <RadarActionsConfig value={actions} onChange={setActions} />
-
-                {/* CTA "Rodar Radar agora" em surface-card lux; botão = assinatura
-                    dourada brand-gradient + brand-glow (ação primária do exemplar). */}
-                <div className="surface-card p-4">
-                  <Button
-                    onClick={handleRun}
-                    className="w-full gap-2 brand-gradient brand-glow text-white border-0 transition-transform duration-200 hover:-translate-y-0.5 disabled:hover:translate-y-0"
-                    disabled={runScan.isPending || !!lastRunning}
-                  >
-                    {runScan.isPending || lastRunning ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {lastRunning ? 'Análise em andamento...' : 'Iniciando...'}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        Rodar Radar agora
-                      </>
-                    )}
-                  </Button>
+            {/* Coluna esquerda: filtros/ações roláveis + CTA FIXO abaixo do box
+                (pedido Marcelo 07-12: botão sempre visível, fora do scroll). */}
+            <div className="flex flex-col gap-4">
+              <ScrollArea className="lg:h-[calc(100vh-372px)]">
+                <div className="space-y-4 pr-2">
+                  <RadarFilters value={filters} onChange={setFilters} />
+                  <RadarActionsConfig value={actions} onChange={setActions} />
                 </div>
+              </ScrollArea>
+
+              {/* CTA "Rodar Radar agora" em surface-card lux; botão = assinatura
+                  dourada brand-gradient + brand-glow (ação primária do exemplar). */}
+              <div className="surface-card p-4">
+                <Button
+                  onClick={handleRun}
+                  className="w-full gap-2 brand-gradient brand-glow text-white border-0 transition-transform duration-200 hover:-translate-y-0.5 disabled:hover:translate-y-0"
+                  disabled={runScan.isPending || !!lastRunning}
+                >
+                  {runScan.isPending || lastRunning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {lastRunning ? 'Análise em andamento...' : 'Iniciando...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Rodar Radar agora
+                    </>
+                  )}
+                </Button>
               </div>
-            </ScrollArea>
+            </div>
 
             <div>
               {displayScanId ? (

@@ -46,12 +46,14 @@ export function KpiCard({ label, value, hint, delta, invertDelta, tone = 'neutra
   const DeltaIcon = showDelta ? (delta === 0 ? Minus : delta! > 0 ? ArrowUpRight : ArrowDownRight) : Minus;
 
   return (
-    <Card className="rounded-2xl border bg-card p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+    <Card className="rounded-2xl border bg-card p-5 shadow-sm h-full">
+      {/* SIMETRIA (Marcelo 07-12): h-full + coluna flex com rodapé em mt-auto →
+          cards da linha têm a mesma altura e o hint/delta alinha no pé de todos. */}
+      <div className="flex h-full items-stretch justify-between gap-3">
+        <div className="min-w-0 flex-1 flex flex-col">
           <p className="text-sm font-medium text-muted-foreground truncate">{label}</p>
           <p className={cn(
-            'mt-2 text-3xl font-bold tabular-nums tracking-tight',
+            'mt-2 text-3xl font-bold tabular-nums tracking-tight leading-tight',
             tone === 'destructive' && 'text-destructive',
             tone === 'amber' && 'text-amber-700 dark:text-amber-300',
             tone === 'success' && 'text-emerald-700 dark:text-emerald-400',
@@ -59,17 +61,15 @@ export function KpiCard({ label, value, hint, delta, invertDelta, tone = 'neutra
           )}>
             {value}
           </p>
-          {(hint || showDelta) && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs">
-              {showDelta && (
-                <span className={cn('inline-flex items-center gap-0.5 font-medium', deltaClass)}>
-                  <DeltaIcon className="h-3.5 w-3.5" />
-                  {delta === 0 ? '0%' : `${delta! > 0 ? '+' : ''}${delta!.toFixed(0)}%`}
-                </span>
-              )}
-              {hint && <span className="text-muted-foreground truncate">{hint}</span>}
-            </div>
-          )}
+          <div className="mt-auto pt-2 flex min-h-[20px] items-center gap-1.5 text-xs">
+            {showDelta && (
+              <span className={cn('inline-flex items-center gap-0.5 font-medium', deltaClass)}>
+                <DeltaIcon className="h-3.5 w-3.5" />
+                {delta === 0 ? '0%' : `${delta! > 0 ? '+' : ''}${delta!.toFixed(0)}%`}
+              </span>
+            )}
+            {hint && <span className="text-muted-foreground truncate">{hint}</span>}
+          </div>
         </div>
         {Icon && (
           <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl shrink-0', toneIconBg[tone])}>
