@@ -22,6 +22,13 @@ verify_jwt = false
 [functions.platform-sales-brain]
 verify_jwt = false
 
+# Runtime PÚBLICO dos formulários de captação da plataforma. Recebe submissão de
+# lead EXTERNO (embed anônimo) e usa SERVICE_ROLE internamente — o gateway não
+# pode exigir JWT, senão o embed público é rejeitado. Auth = pública por design
+# (validação de form ativo + rate-limit + allowlists server-side na própria EF).
+[functions.platform-form-submit]
+verify_jwt = false
+
 # EF DESCARTÁVEL de evals (braço EVALS-V1): régua binária do brain de vendas.
 # Sem JWT — auth real = x-brain-secret (BRAIN_INTERNAL_SECRET) na função. NÃO
 # deployar em produção junto com o resto; roda sob demanda e limpa os efêmeros.

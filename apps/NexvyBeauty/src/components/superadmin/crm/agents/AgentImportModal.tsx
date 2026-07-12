@@ -1,6 +1,7 @@
 // PORTE 1:1 de `.vendus-src-reference/src/components/admin/agents/AgentImportModal.tsx`
 // D3 P1/F1d — importacao de agente. JSON (client-side) 100% funcional grava em
-// platform_crm_product_agents; geracao a partir de documento = // TODO(edge).
+// platform_crm_product_agents; geracao a partir de documento chama a Edge
+// Function `platform-import-agent-from-document` (extrai texto + gera draft via IA).
 import { useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -328,13 +329,75 @@ export function AgentImportModal({ open, onOpenChange, fixedProductId, onDraftRe
 
   const handleImportDoc = async () => {
     if (!docFile) return;
-    // TODO(edge): gerar rascunho de agente a partir de documento chama a Edge
-    // Function `import-agent-from-document`, inexistente na plataforma nesta onda.
-    // Fluxo JSON (client-side) continua 100% funcional. UI do doc fica completa.
-    void fileToBase64;
-    void onDraftReady;
-    toast.info('Geracao a partir de documento em breve', {
-      description: 'A leitura de PDF/DOCX por IA sera liberada quando a Edge Function estiver disponivel. Use a importacao por JSON.',
+    const finalProductId = (fixedProductId ?? null) || (productId === '__global__' ? null : productId);
+
+    setBusy(true);
+    let fileBase64: string;
+    try {
+      fileBase64 = await fileToBase64(docFile);
+    } catch {
+      toast.error('Falha ao ler o arquivo.');
+      setBusy(false);
+      return;
+    }
+
+    // Edge extrai o texto do documento e gera o rascunho via IA (reuso de
+    // platform-process-training-material + platform-generate-agent-ai).
+    const { data, error } = await supabase.functions.invoke('platform-import-agent-from-document', {
+      body: {
+        file_base64: fileBase64,
+        file_name: docFile.name,
+        mime_type: docFile.type || undefined,
+        agent_type: docAgentType,
+        product_id: finalProductId,
+      },
+    });
+
+    if (error) {
+      // Extrai a mensagem real do corpo da resposta da Edge (mesmo padrão do
+      // useGenerateAgentAI): 429/402/500 chegam com { error } no context.
+      let msg = error.message;
+      const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+      try {
+        const b = await ctx?.json?.();
+        if (b?.error) msg = b.error;
+      } catch {
+        /* mantém error.message */
+      }
+      toast.error(msg || 'Erro ao gerar rascunho com IA');
+      setBusy(false);
+      return;
+    }
+
+    if (!data?.agent) {
+      toast.error('Falha ao gerar rascunho do agente.');
+      setBusy(false);
+      return;
+    }
+
+    // O tipo escolhido na UI é a fonte de verdade — a Edge gera para esse tipo.
+    const draft = {
+      ...data.agent,
+      agent_type: docAgentType,
+      product_id: finalProductId,
+      is_default: false,
+    } as Partial<ProductAgent>;
+
+    // Fluxo canônico (idêntico ao JSON): abre o editor preenchido para revisão.
+    if (onDraftReady) {
+      onDraftReady(draft, finalProductId);
+      toast.success('Rascunho gerado! Revise os campos e salve.');
+      close(false);
+      return;
+    }
+
+    // Fallback (consumidor sem editor): cria direto.
+    createAgent.mutate(draft, {
+      onSuccess: () => {
+        toast.success('Agente importado com sucesso!');
+        close(false);
+      },
+      onSettled: () => setBusy(false),
     });
   };
 
