@@ -14,7 +14,6 @@ import {
   type PlatformScanFilters,
   type PlatformActionsConfig,
 } from '../data/usePlatformCrmRadar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 /**
@@ -156,25 +155,18 @@ export function PlatformCrmInboxRadar({
         </TabsList>
 
         <TabsContent value="run" className="space-y-4">
-          {/* Grid rebalanceado (pedido Marcelo 07-12): coluna esquerda mais larga
-              (minmax 440–520px) para não espremer filtros/ações; direita = 1fr. No
-              desktop o grid ocupa a altura útil da viewport para que o CTA cole no
-              rodapé, sem espaço morto abaixo do botão. */}
-          <div className="grid lg:grid-cols-[minmax(440px,520px)_1fr] gap-4 lg:h-[calc(100vh-240px)]">
-            {/* Coluna esquerda = flex-col de altura total: a ScrollArea cresce
-                (flex-1) e o CTA fica FIXO no fundo, fora do scroll. */}
-            <div className="flex flex-col gap-4 lg:min-h-0">
-              <ScrollArea className="lg:flex-1 lg:min-h-0">
-                <div className="space-y-4 pr-3">
-                  <RadarFilters value={filters} onChange={setFilters} />
-                  <RadarActionsConfig value={actions} onChange={setActions} />
-                </div>
-              </ScrollArea>
+          {/* Grid (fix Marcelo 07-12 v2): SEM height fixo (o calc(100vh-240px)
+              espremia verticalmente) e SEM scroll forçado. items-start = colunas em
+              tamanho NATURAL, alinhadas no topo — nada de espremer nem rolar. */}
+          <div className="grid lg:grid-cols-[minmax(440px,520px)_1fr] gap-4 lg:items-start">
+            <div className="flex flex-col gap-4">
+              <div className="space-y-4">
+                <RadarFilters value={filters} onChange={setFilters} />
+                <RadarActionsConfig value={actions} onChange={setActions} />
+              </div>
 
-              {/* CTA "Rodar Radar agora" em surface-card lux; botão = assinatura
-                  dourada brand-gradient + brand-glow (ação primária do exemplar).
-                  shrink-0 = nunca comprime; fica colado no fundo da coluna. */}
-              <div className="surface-card p-4 shrink-0">
+              {/* CTA "Rodar Radar agora" logo abaixo dos filtros (fluxo natural). */}
+              <div className="surface-card p-4">
                 <Button
                   onClick={handleRun}
                   className="w-full gap-2 brand-gradient brand-glow text-white border-0 transition-transform duration-200 hover:-translate-y-0.5 disabled:hover:translate-y-0"
@@ -195,9 +187,8 @@ export function PlatformCrmInboxRadar({
               </div>
             </div>
 
-            {/* Coluna direita: resultados/empty rolam DENTRO da própria coluna no
-                desktop, sem estourar o grid de altura fixa. */}
-            <div className="lg:min-h-0 lg:overflow-y-auto">
+            {/* Coluna direita: altura natural, sem scroll forçado. */}
+            <div>
               {displayScanId ? (
                 <RadarDashboard
                   scanId={displayScanId}
