@@ -41,6 +41,13 @@ interface BotRequest {
   visitor_name?: string;
   /** Agente específico de platform_crm_agent_configs a usar. */
   agent_id?: string;
+  /**
+   * ADITIVO (chat de teste do AgentEditor): agente de produto de
+   * `platform_crm_product_agents`. Quando presente, a persona é montada a
+   * partir dos campos ricos desse agente (name/primary_objective/tone_style/
+   * additional_prompt/…), sem tocar no caminho `agent_id` (agent_configs).
+   */
+  product_agent_id?: string;
   agent_config?: {
     agent_name?: string;
     system_prompt?: string;
@@ -65,6 +72,51 @@ interface PlatformAgent {
   handoff_enabled: boolean;
   typing_delay_ms: number;
   is_active: boolean;
+}
+
+/**
+ * ADITIVO — monta o `persona_prompt` de um agente de PRODUTO
+ * (`platform_crm_product_agents`, a tabela do AgentEditor) a partir dos seus
+ * campos ricos. Espelha o padrão de persona do `platform-sales-brain`, porém
+ * genérico (não amarrado a WhatsApp/venda), pois aqui é o chat de teste do
+ * editor. Não toca no caminho de `platform_crm_agent_configs`.
+ */
+function buildProductAgentPersona(pa: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const arr = (v: unknown) =>
+    Array.isArray(v) ? (v as unknown[]).map((x) => String(x).trim()).filter(Boolean) : [];
+
+  const primaryObjective = str(pa.primary_objective);
+  if (primaryObjective) parts.push(`SEU OBJETIVO PRINCIPAL: ${primaryObjective}`);
+
+  const description = str(pa.description);
+  if (description) parts.push(`SOBRE VOCÊ: ${description}`);
+
+  const toneStyle = str(pa.tone_style);
+  if (toneStyle) parts.push(`TOM E ESTILO: ${toneStyle}`);
+
+  const messageStyle = str(pa.message_style);
+  if (messageStyle) parts.push(`ESTILO DE MENSAGEM: ${messageStyle}`);
+
+  const additionalPrompt = str(pa.additional_prompt);
+  if (additionalPrompt) parts.push(`INSTRUÇÕES ADICIONAIS DA PERSONA:\n${additionalPrompt}`);
+
+  const required = arr(pa.required_phrases);
+  if (required.length) {
+    parts.push(`ELEMENTOS/FRASES OBRIGATÓRIOS (use quando fizer sentido):\n${required.map((p) => `- ${p}`).join('\n')}`);
+  }
+
+  const prohibited = arr(pa.prohibited_phrases);
+  if (prohibited.length) {
+    parts.push(`FRASES PROIBIDAS (NUNCA use):\n${prohibited.map((p) => `- ${p}`).join('\n')}`);
+  }
+
+  if (pa.always_end_with_question === true) {
+    parts.push('Sempre termine sua mensagem com UMA pergunta que avança a conversa.');
+  }
+
+  return parts.join('\n\n');
 }
 
 // ─── Sanitização de saída (1:1 com o original) ──────────────────────────────
@@ -376,29 +428,63 @@ serve(async (req) => {
     // conversation.current_agent_id → primeiro agente ativo.
     // ============================================================
     let activeAgent: PlatformAgent | null = null;
-    try {
-      const candidateId = body.agent_id || conversationRow?.current_agent_id || null;
-      if (candidateId) {
-        const { data } = await supabase
-          .from('platform_crm_agent_configs')
-          .select('*')
-          .eq('id', candidateId)
-          .eq('is_active', true)
+    if (body.product_agent_id) {
+      // ── CAMINHO ADITIVO: agente de PRODUTO (platform_crm_product_agents) ──
+      // Usado pelo chat de teste do AgentEditor. Resolve a persona SOMENTE
+      // deste agente; não faz fallback para agent_configs (seria outro agente).
+      try {
+        const { data: pa } = await supabase
+          .from('platform_crm_product_agents')
+          .select(
+            'id, name, description, agent_type, primary_objective, tone_style, message_style, additional_prompt, prohibited_phrases, required_phrases, always_end_with_question, is_active, can_transfer, message_delay_seconds',
+          )
+          .eq('id', body.product_agent_id)
           .maybeSingle();
-        activeAgent = (data as PlatformAgent) ?? null;
+        if (pa) {
+          activeAgent = {
+            id: String(pa.id),
+            name: String(pa.name ?? 'Agente'),
+            persona_prompt: buildProductAgentPersona(pa as Record<string, unknown>),
+            handoff_enabled: pa.can_transfer === true,
+            typing_delay_ms:
+              typeof pa.message_delay_seconds === 'number' && pa.message_delay_seconds > 0
+                ? pa.message_delay_seconds * 1000
+                : 1200,
+            is_active: pa.is_active !== false,
+          };
+          console.log('[platform-webchat-bot] Using PRODUCT agent persona for:', activeAgent.name);
+        } else {
+          console.warn('[platform-webchat-bot] product_agent_id not found:', body.product_agent_id);
+        }
+      } catch (e) {
+        console.warn('[platform-webchat-bot] product agent lookup failed (non-fatal):', e);
       }
-      if (!activeAgent) {
-        const { data } = await supabase
-          .from('platform_crm_agent_configs')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        activeAgent = (data as PlatformAgent) ?? null;
+    } else {
+      // ── CAMINHO EXISTENTE (intacto): agente de platform_crm_agent_configs ──
+      try {
+        const candidateId = body.agent_id || conversationRow?.current_agent_id || null;
+        if (candidateId) {
+          const { data } = await supabase
+            .from('platform_crm_agent_configs')
+            .select('*')
+            .eq('id', candidateId)
+            .eq('is_active', true)
+            .maybeSingle();
+          activeAgent = (data as PlatformAgent) ?? null;
+        }
+        if (!activeAgent) {
+          const { data } = await supabase
+            .from('platform_crm_agent_configs')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          activeAgent = (data as PlatformAgent) ?? null;
+        }
+      } catch (e) {
+        console.warn('[platform-webchat-bot] active agent lookup failed (non-fatal):', e);
       }
-    } catch (e) {
-      console.warn('[platform-webchat-bot] active agent lookup failed (non-fatal):', e);
     }
 
     // Check FAQ first (1:1 — resposta oficial sem gastar LLM)

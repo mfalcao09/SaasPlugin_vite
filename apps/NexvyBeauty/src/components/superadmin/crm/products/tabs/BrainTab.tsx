@@ -5,6 +5,7 @@
 // catalog-sync-website, transcrição) — aqui cada sub-aba mantém a UI de entrada completa
 // com o envio marcado como pendente (padrão da onda: botão + TODO, zero dado fake).
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Brain,
   FileText,
@@ -30,7 +31,6 @@ import {
   useProductKnowledgeSources,
   useProductKnowledgeSourceStats,
   useCreateProductKnowledgeSource,
-  todoBackend,
 } from '../hooks/useProductHubStubs';
 import { CatalogManager } from './catalog/CatalogManager';
 import { cn } from '@/lib/utils';
@@ -94,11 +94,18 @@ const SOURCE_TYPES = [
 ];
 
 export function BrainTab({ productId }: BrainTabProps) {
+  const queryClient = useQueryClient();
   const { data: sources, isLoading: sourcesLoading } = useProductKnowledgeSources(productId);
   const { data: stats } = useProductKnowledgeSourceStats(productId);
   const createSource = useCreateProductKnowledgeSource();
   const [activeTab, setActiveTab] = useState('overview');
   const [activeSource, setActiveSource] = useState<string | null>(null);
+
+  // Arquivos: sobe pro bucket `product-documents` e a edge
+  // `platform-process-knowledge-source` (ramo 'file') extrai + persiste a fonte.
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
   // FAQ e Treinamento direto: conteúdo textual → insere fonte de conhecimento real.
   // (Arquivos/website/youtube exigem storage/crawl/transcrição — P2.A-2.)
@@ -164,6 +171,68 @@ export function BrainTab({ productId }: BrainTabProps) {
       toast.error((e as Error).message || 'Erro ao processar a fonte');
     } finally {
       setProcessingSource(null);
+    }
+  };
+
+  const handleUploadFile = async () => {
+    if (!selectedFile) {
+      toast.error('Selecione um arquivo');
+      return;
+    }
+    if (selectedFile.size > MAX_FILE_BYTES) {
+      toast.error('Arquivo excede 10MB');
+      return;
+    }
+    setUploadingFile(true);
+    try {
+      // 1) Sobe pro Storage (bucket product-documents — mesmo dos materiais de treino).
+      const fileExt = selectedFile.name.split('.').pop() || 'bin';
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+      const filePath = `platform/knowledge/${productId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-documents')
+        .upload(filePath, selectedFile);
+      if (uploadError) throw uploadError;
+
+      const publicUrl = supabase.storage.from('product-documents').getPublicUrl(filePath).data.publicUrl;
+
+      // 2) A edge extrai (PDF/DOCX/TXT) e INSERE a fonte source_type='file'.
+      const { data, error } = await supabase.functions.invoke('platform-process-knowledge-source', {
+        body: {
+          sourceType: 'file',
+          productId,
+          filePath,
+          fileUrl: publicUrl,
+          title: selectedFile.name.replace(/\.[^/.]+$/, ''),
+          fileType: selectedFile.type || null,
+          fileSize: selectedFile.size,
+        },
+      });
+      if (error) {
+        // FunctionsHttpError esconde a mensagem real no corpo da Response.
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const result = (data ?? {}) as { success?: boolean; error?: string };
+      if (!result.success) throw new Error(result.error ?? 'Falha ao processar o arquivo');
+
+      // A edge persistiu direto — invalida as queries do Cérebro (não passa por createSource).
+      queryClient.invalidateQueries({ queryKey: ['platform-crm', 'product-knowledge-sources', productId] });
+      queryClient.invalidateQueries({ queryKey: ['platform-crm', 'product-knowledge-stats', productId] });
+      toast.success('Arquivo processado e adicionado ao Cérebro!');
+      setSelectedFile(null);
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao enviar o arquivo');
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -374,15 +443,37 @@ export function BrainTab({ productId }: BrainTabProps) {
               <CardDescription>PDFs, DOCs e apresentações viram conhecimento pesquisável para a IA.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div
-                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer border-muted-foreground/25 hover:border-primary/50 transition-colors"
-                onClick={() => todoBackend('Upload de arquivos do Cérebro')}
-              >
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">Arraste arquivos ou clique para selecionar</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, DOC, PPT (máx. 10MB)</p>
+              <div className="border-2 border-dashed rounded-lg p-6 space-y-4 border-muted-foreground/25">
+                <div className="text-center">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Selecione um arquivo para enviar ao Cérebro</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, TXT (máx. 10MB)</p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    disabled={uploadingFile}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleUploadFile} disabled={uploadingFile || !selectedFile}>
+                    {uploadingFile ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-2" />
+                    )}
+                    Enviar
+                  </Button>
+                </div>
+                {selectedFile && (
+                  <p className="text-xs text-muted-foreground truncate text-center">
+                    Selecionado: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                  </p>
+                )}
               </div>
-              {/* TODO(edge): process-training-material · TODO(table: platform_crm_product_knowledge_sources) */}
+              {/* A edge platform-process-knowledge-source (ramo 'file') extrai PDF/DOCX/TXT e
+                  persiste em platform_crm_product_knowledge_sources (source_type='file'). */}
             </CardContent>
           </Card>
         </TabsContent>

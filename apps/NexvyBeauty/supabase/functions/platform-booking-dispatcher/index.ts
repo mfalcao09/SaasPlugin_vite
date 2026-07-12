@@ -49,6 +49,11 @@ interface RequestBody {
   // aceito por conveniência (compat camelCase); o booking_id é a chave canônica —
   // o dispatcher sempre recarrega a row completa por id.
   bookingId?: string;
+  // Ação de entrega. Ausente ou 'confirmation' → caminho legado (confirmação ao
+  // convidado + aviso interno de novo agendamento). 'cancellation' → NOVO caminho
+  // aditivo: entrega o aviso de cancelamento (convidado + vendedor). O caminho de
+  // confirmação NUNCA é tocado por 'cancellation' e vice-versa.
+  action?: 'confirmation' | 'cancellation';
 }
 
 /**
@@ -96,6 +101,143 @@ async function deliverWhatsAppText(
   }
 }
 
+/**
+ * CANCELAMENTO — caminho ADITIVO e independente do fluxo de confirmação.
+ * Entrega o aviso de cancelamento ao convidado (WhatsApp Cloud API) e, quando
+ * configurado, o aviso interno ao vendedor. Idempotente por wamid: o wamid da
+ * mensagem de cancelamento ao convidado é gravado em
+ * `platform_crm_booking_requests.cancellation_message_id`; reinvocação com o
+ * wamid já presente NÃO reenvia (mesma disciplina do whatsapp_message_id da
+ * confirmação). O aviso ao vendedor é best-effort e não bloqueia.
+ *
+ * Pré-condição de dados: a transição de status para 'cancelled' já foi feita por
+ * quem chama (hook usePlatformCrmBookings / platform-booking-token). Esta edge
+ * apenas ENTREGA a notificação; não altera status.
+ */
+async function handleCancellation(
+  supabase: SB,
+  bookingId: string,
+  siteUrl: string,
+): Promise<Response> {
+  // 1) Recarrega o booking (fonte da verdade). Select próprio — não toca o select
+  //    do fluxo de confirmação.
+  const { data: booking, error: bErr } = await supabase
+    .from('platform_crm_booking_requests')
+    .select('id, event_type_id, host_user_id, calendar_event_id, guest_name, guest_email, guest_phone, start_time, end_time, timezone, status, confirmation_token, cancellation_reason, cancellation_message_id')
+    .eq('id', bookingId)
+    .maybeSingle();
+  if (bErr || !booking) return json({ error: 'booking not found' }, 404);
+
+  // 2) Relações (event_type nome + settings de notificação, host, seller notif,
+  //    calendar meet_link) — mesmas fontes do fluxo de confirmação.
+  const [etRes, settingsRes, hostRes, sellerNotifRes, calRes] = await Promise.all([
+    supabase.from('platform_crm_booking_event_types')
+      .select('id, name, confirmation_message')
+      .eq('id', booking.event_type_id).maybeSingle(),
+    supabase.from('platform_crm_booking_notification_settings')
+      .select('send_whatsapp, notify_seller_on_cancel, internal_channel, internal_message_template')
+      .eq('event_type_id', booking.event_type_id).maybeSingle(),
+    supabase.from('profiles')
+      .select('full_name')
+      .eq('id', booking.host_user_id).maybeSingle(),
+    supabase.from('platform_crm_seller_notification_settings')
+      .select('channel, whatsapp_number')
+      .eq('user_id', booking.host_user_id).maybeSingle(),
+    booking.calendar_event_id
+      ? supabase.from('platform_crm_calendar_events').select('meet_link').eq('id', booking.calendar_event_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const eventType = etRes.data;
+  const settings = settingsRes.data;
+  const hostName = (hostRes.data?.full_name as string) ?? 'Vendedor';
+  const sellerNotif = sellerNotifRes.data;
+  const meetLink = (calRes.data?.meet_link as string) ?? null;
+
+  const vars = buildBookingVars({
+    guest_name: booking.guest_name,
+    guest_email: booking.guest_email,
+    guest_phone: booking.guest_phone,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+    timezone: booking.timezone,
+    event_name: eventType?.name,
+    host_name: hostName,
+    meet_link: meetLink,
+    confirmation_url: `${siteUrl}/confirmar/${booking.confirmation_token}`,
+    reschedule_url: `${siteUrl}/reagendar/${booking.confirmation_token}`,
+    cancellation_reason: booking.cancellation_reason,
+  });
+
+  const results: Record<string, unknown> = {};
+
+  // ============================================================
+  // 3) AVISO DE CANCELAMENTO AO CONVIDADO (WhatsApp)
+  //    Idempotência por wamid: cancellation_message_id já gravado → não reenvia.
+  //    Respeita o opt-in send_whatsapp do event_type (mesmo gate da confirmação).
+  // ============================================================
+  const guestPhone = booking.guest_phone;
+  if (guestPhone && booking.cancellation_message_id) {
+    results.guest_whatsapp = { skipped: 'already_sent', wamid: booking.cancellation_message_id };
+  } else if (guestPhone && settings?.send_whatsapp !== true) {
+    results.guest_whatsapp = { skipped: 'send_whatsapp_disabled' };
+  } else if (guestPhone) {
+    const tpl = DEFAULT_TEMPLATES.cancellation_whatsapp;
+    const message = renderTemplate(tpl, vars);
+
+    const { wamid, error } = await deliverWhatsAppText(supabase, guestPhone, message);
+    results.guest_whatsapp = { wamid, error };
+
+    if (wamid) {
+      // Grava o wamid do cancelamento (idempotência) — NÃO altera status nem o
+      // whatsapp_message_id da confirmação.
+      await supabase.from('platform_crm_booking_requests')
+        .update({ cancellation_message_id: wamid, updated_at: new Date().toISOString() })
+        .eq('id', booking.id);
+    }
+
+    await supabase.from('platform_crm_booking_logs').insert({
+      booking_id: booking.id,
+      type: wamid ? 'cancellation_sent' : 'send_failed',
+      channel: 'whatsapp',
+      payload: { target: 'guest', kind: 'cancellation', wamid, phone_digits: String(guestPhone).replace(/\D/g, '') },
+      error: error,
+    });
+  } else {
+    console.log(`[platform-booking-dispatcher] booking ${booking.id}: sem telefone do convidado — cancelamento WhatsApp pulado`);
+    results.guest_whatsapp = { skipped: 'no_guest_phone' };
+  }
+
+  // ============================================================
+  // 4) AVISO INTERNO AO VENDEDOR (WhatsApp)
+  //    Gate: notify_seller_on_cancel (DEFAULT true) + número interno + canal.
+  // ============================================================
+  const sellerWantsCancel = settings?.notify_seller_on_cancel !== false;
+  const sellerChannel = sellerNotif?.channel ?? settings?.internal_channel ?? 'both';
+  const sellerPhone = sellerNotif?.whatsapp_number ?? null;
+
+  if (sellerWantsCancel && sellerPhone && (sellerChannel === 'whatsapp' || sellerChannel === 'both')) {
+    const message = renderTemplate(DEFAULT_TEMPLATES.internal_cancellation_whatsapp, vars);
+    const { wamid, error } = await deliverWhatsAppText(supabase, sellerPhone, message);
+    results.seller_whatsapp = { wamid, error };
+
+    await supabase.from('platform_crm_booking_logs').insert({
+      booking_id: booking.id,
+      type: wamid ? 'notification_sent' : 'send_failed',
+      channel: 'whatsapp',
+      payload: { target: 'seller', kind: 'cancellation', wamid, phone_digits: String(sellerPhone).replace(/\D/g, '') },
+      error: error,
+    });
+  } else {
+    results.seller_whatsapp = {
+      skipped: !sellerWantsCancel ? 'opted_out' : (!sellerPhone ? 'no_seller_phone' : 'channel_not_whatsapp'),
+    };
+  }
+
+  console.log(`[platform-booking-dispatcher] cancelamento ${booking.id} processado`, JSON.stringify(results));
+  return json({ ok: true, booking_id: booking.id, action: 'cancellation', results });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -119,6 +261,13 @@ Deno.serve(async (req) => {
     // Base do frontend (rotas /confirmar e /reagendar por token). Mesmo padrão
     // do booking-dispatcher da fonte.
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.nexvy.tech';
+
+    // ROTEAMENTO ADITIVO: 'cancellation' é um caminho SEPARADO — não passa por
+    // nenhuma linha do fluxo de confirmação abaixo. Ausência de action (ou
+    // 'confirmation') mantém 100% o comportamento legado.
+    if (body.action === 'cancellation') {
+      return await handleCancellation(supabase, bookingId, siteUrl);
+    }
 
     // 1) Recarrega o booking (fonte da verdade — nunca confia no payload).
     const { data: booking, error: bErr } = await supabase

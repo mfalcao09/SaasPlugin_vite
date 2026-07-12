@@ -45,6 +45,7 @@ export function buildBookingVars(input: {
   meet_link?: string | null;
   confirmation_url?: string | null;
   reschedule_url?: string | null;
+  cancellation_reason?: string | null;
 }): BookingVars {
   const tz = input.timezone || "America/Sao_Paulo";
   const start = new Date(input.start_time);
@@ -61,6 +62,7 @@ export function buildBookingVars(input: {
     link_reuniao: input.meet_link || "",
     link_confirmar: input.confirmation_url || "",
     link_reagendar: input.reschedule_url || "",
+    motivo_cancelamento: input.cancellation_reason || "",
   };
 }
 
@@ -78,4 +80,8 @@ export const DEFAULT_TEMPLATES = {
     "Oi {{nome_lead}}, sentimos sua falta na reunião de hoje. Quer reagendar? Responda esta mensagem que te ajudamos.",
   internal_whatsapp:
     "📅 Novo agendamento: {{nome_lead}} — {{nome_evento}} em {{data}} às {{hora}}.",
+  cancellation_whatsapp:
+    "Olá {{nome_lead}}. Sua reunião *{{nome_evento}}* marcada para *{{data}} às {{hora}}* foi *cancelada*.\n\nSe quiser reagendar, é só responder esta mensagem que combinamos um novo horário. 🙏",
+  internal_cancellation_whatsapp:
+    "❌ Agendamento cancelado: {{nome_lead}} — {{nome_evento}} que seria em {{data}} às {{hora}}.",
 } as const;

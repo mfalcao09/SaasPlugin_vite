@@ -93,8 +93,23 @@ export function usePlatformCrmBookings(filter?: PlatformCrmBookingsFilter) {
           .eq('id', data.calendar_event_id);
       }
 
-      // TODO(edge): disparar aviso de cancelamento (email/WhatsApp) depende do
-      // dispatcher server-side (Edge Function) não portado no core.
+      // Dispara o aviso de cancelamento (WhatsApp Cloud API) via edge
+      // `platform-booking-dispatcher` com a ação 'cancellation' (aditiva ao
+      // caminho de confirmação, idempotente por wamid no server). Fire-and-forget
+      // e NON-FATAL: o cancelamento no banco já foi persistido acima — a falha na
+      // notificação nunca reverte o cancelamento nem quebra a UX.
+      try {
+        const { error: dispatchError } = await supabase.functions.invoke(
+          'platform-booking-dispatcher',
+          { body: { booking_id: id, action: 'cancellation' } },
+        );
+        if (dispatchError) {
+          console.error('Cancellation dispatch failed (non-fatal):', dispatchError);
+        }
+      } catch (dispatchErr) {
+        console.error('Cancellation dispatch threw (non-fatal):', dispatchErr);
+      }
+
       return data as PlatformCrmBookingRow;
     },
     onSuccess: () => {
