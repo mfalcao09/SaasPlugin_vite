@@ -160,13 +160,17 @@ export function PlatformCrmInboxRadar({
               tamanho NATURAL, alinhadas no topo — nada de espremer nem rolar. */}
           <div className="grid lg:grid-cols-[minmax(440px,520px)_1fr] gap-4 lg:items-start">
             <div className="flex flex-col gap-4">
-              <div className="space-y-4">
+              {/* Os 2 boxes (filtros + ações) num ÚNICO container com scroll — COMO ERA
+                  ANTES (pedido Marcelo 07-12 v4: o pedido era reajustar SÓ o lateral,
+                  não remover o scroll). Lateral larga (520px) resolve o aperto
+                  horizontal; a direita fica natural (sem scroll). CTA fixo abaixo. */}
+              <div className="space-y-4 overflow-y-auto lg:max-h-[calc(100vh-280px)] pr-1">
                 <RadarFilters value={filters} onChange={setFilters} />
                 <RadarActionsConfig value={actions} onChange={setActions} />
               </div>
 
-              {/* CTA "Rodar Radar agora" logo abaixo dos filtros (fluxo natural). */}
-              <div className="surface-card p-4">
+              {/* CTA "Rodar Radar agora" fixo abaixo do box de scroll. */}
+              <div className="surface-card p-4 shrink-0">
                 <Button
                   onClick={handleRun}
                   className="w-full gap-2 brand-gradient brand-glow text-white border-0 transition-transform duration-200 hover:-translate-y-0.5 disabled:hover:translate-y-0"
