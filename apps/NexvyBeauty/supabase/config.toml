@@ -29,6 +29,13 @@ verify_jwt = false
 [functions.platform-form-submit]
 verify_jwt = false
 
+# Callback público do OAuth de Meta Ads (NexvyAds F1). Recebido pelo REDIRECT do
+# browser após consentimento — não há JWT. Auth real = state ASSINADO (HMAC)
+# validado na própria função (ads-oauth-state.ts). ads-oauth-start e ads-sync
+# NÃO entram aqui: exigem JWT super_admin (verify_jwt=true, o default).
+[functions.ads-oauth-callback]
+verify_jwt = false
+
 # EF DESCARTÁVEL de evals (braço EVALS-V1): régua binária do brain de vendas.
 # Sem JWT — auth real = x-brain-secret (BRAIN_INTERNAL_SECRET) na função. NÃO
 # deployar em produção junto com o resto; roda sob demanda e limpa os efêmeros.
