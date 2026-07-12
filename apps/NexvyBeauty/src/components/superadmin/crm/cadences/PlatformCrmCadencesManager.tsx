@@ -7,11 +7,18 @@ import { CadenceReports } from './CadenceReports';
 import { CadenceApiKeys } from './CadenceApiKeys';
 import { ContextLibrary } from '../campaigns/ContextLibrary';
 import { usePlatformCrmCadences } from '../data/usePlatformCrmCadences';
+import { usePlatformCrmProduct } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
 
 /**
  * CRM de PLATAFORMA (super_admin) — Cadências Inteligentes. Porte 1:1 do
  * `CadencesManager` do CRM de tenant, tocando APENAS `platform_crm_*` e sem
- * organization_id / product_id (a RLS super_admin-only isola os dados).
+ * organization_id (a RLS super_admin-only isola os dados).
+ *
+ * `product_id` (Fase 0, espinha F1/F4/F6) chegou depois neste porte: as
+ * cadências SÃO product-scoped no banco. `productId`/`cadenceId` (deep-link do
+ * hub do produto — CadenceTab) são opcionais: sem eles o comportamento
+ * standalone (seção "Cadências" do CRM, todas as cadências, uso em
+ * registry.tsx) não muda.
  *
  * TODO(migration): o CRM de tenant tem uma 4ª aba "Biblioteca de Contextos"
  * (`ContextLibrary` de campaigns) que depende de tabelas de contexto/campanha
@@ -25,15 +32,30 @@ type View =
   | { kind: 'edit'; id: string }
   | { kind: 'detail'; id: string };
 
-export function PlatformCrmCadencesManager() {
-  const [view, setView] = useState<View>({ kind: 'list' });
+interface PlatformCrmCadencesManagerProps {
+  /** Escopo por produto (deep-link do CadenceTab): filtra a lista e pré-preenche
+   *  o product_id das cadências criadas a partir daqui. */
+  productId?: string;
+  /** Abre direto no editor desta cadência ao montar (botão "Abrir editor" do CadenceTab). */
+  cadenceId?: string;
+}
+
+export function PlatformCrmCadencesManager({ productId, cadenceId }: PlatformCrmCadencesManagerProps = {}) {
+  const [view, setView] = useState<View>(() => (cadenceId ? { kind: 'edit', id: cadenceId } : { kind: 'list' }));
   const [tab, setTab] = useState('cadences');
   const { cadences, stats, refresh } = usePlatformCrmCadences();
+  const { data: scopedProduct } = usePlatformCrmProduct(productId ?? '');
+
+  const scopedCadences = productId ? cadences.filter((c) => c.product_id === productId) : cadences;
+  const scopedStats = productId
+    ? Object.fromEntries(Object.entries(stats).filter(([id]) => scopedCadences.some((c) => c.id === id)))
+    : stats;
 
   if (view.kind === 'new' || view.kind === 'edit') {
     return (
       <CadenceWizard
         cadenceId={view.kind === 'edit' ? view.id : null}
+        productId={productId}
         onClose={() => { setView({ kind: 'list' }); refresh(); }}
       />
     );
@@ -52,41 +74,49 @@ export function PlatformCrmCadencesManager() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Cadências Inteligentes</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {productId ? `Cadências de ${scopedProduct?.name || 'Produto'}` : 'Cadências Inteligentes'}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Jornadas automatizadas em que a IA recebe contexto e cria uma abordagem única para cada lead — nunca mensagens prontas.
+          {productId
+            ? 'Sequências de follow-up automático dos leads deste produto.'
+            : 'Jornadas automatizadas em que a IA recebe contexto e cria uma abordagem única para cada lead — nunca mensagens prontas.'}
         </p>
       </header>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="cadences">Cadências</TabsTrigger>
-          <TabsTrigger value="library">Biblioteca de Contextos</TabsTrigger>
+          {!productId && <TabsTrigger value="library">Biblioteca de Contextos</TabsTrigger>}
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          <TabsTrigger value="api">API</TabsTrigger>
+          {!productId && <TabsTrigger value="api">API</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="cadences" className="mt-4">
           <CadenceList
-            cadences={cadences}
-            stats={stats}
+            cadences={scopedCadences}
+            stats={scopedStats}
             onNew={() => setView({ kind: 'new' })}
             onOpen={(id) => setView({ kind: 'detail', id })}
             onRefresh={refresh}
           />
         </TabsContent>
 
-        <TabsContent value="library" className="mt-4">
-          <ContextLibrary />
-        </TabsContent>
+        {!productId && (
+          <TabsContent value="library" className="mt-4">
+            <ContextLibrary />
+          </TabsContent>
+        )}
 
         <TabsContent value="reports" className="mt-4">
-          <CadenceReports cadences={cadences} stats={stats} />
+          <CadenceReports cadences={scopedCadences} stats={scopedStats} />
         </TabsContent>
 
-        <TabsContent value="api" className="mt-4">
-          <CadenceApiKeys />
-        </TabsContent>
+        {!productId && (
+          <TabsContent value="api" className="mt-4">
+            <CadenceApiKeys />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

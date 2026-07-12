@@ -15,6 +15,10 @@ import { toast } from 'sonner';
 interface Props {
   cadenceId: string | null;
   onClose: () => void;
+  /** Deep-link do hub do produto (CadenceTab): prefill do product_id ao CRIAR
+   *  (platform_crm_cadences.product_id é NOT NULL). Cadências já existentes
+   *  mantêm o product_id gravado — não é sobrescrito no update. */
+  productId?: string;
 }
 
 type StepDraft = {
@@ -56,7 +60,7 @@ const STEPS_LABELS = [
   '5. Regras de Execução', '6. Horários', '7. Parada', '8. Ações', '9. Revisão',
 ];
 
-export function CadenceWizard({ cadenceId, onClose }: Props) {
+export function CadenceWizard({ cadenceId, onClose, productId }: Props) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!cadenceId);
@@ -207,7 +211,8 @@ export function CadenceWizard({ cadenceId, onClose }: Props) {
       // Replace steps
       await supabase.from('platform_crm_cadence_steps').delete().eq('cadence_id', id);
     } else {
-      const { data, error } = await supabase.from('platform_crm_cadences').insert(payload).select('id').single();
+      const insertPayload = productId ? { ...payload, product_id: productId } : payload;
+      const { data, error } = await supabase.from('platform_crm_cadences').insert(insertPayload).select('id').single();
       if (error || !data) { toast.error(error?.message ?? 'Falha ao criar'); setSaving(false); return; }
       id = (data as any).id;
     }

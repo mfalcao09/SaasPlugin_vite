@@ -1,12 +1,13 @@
 // Porte 1:1 de `.vendus-src-reference/src/components/product/AIOptimizeButton.tsx`
 // + `hooks/useOptimizeField.ts` (fundidos: só o hub consome).
-// TODO(edge): `platform-optimize-product-field` não existe ainda — botão presente
-// (UI completa, decisão da onda), clique informa pendência e não chama edge.
+// Edge religada (P2.A): `optimize` invoca `platform-optimize-product-field`
+// (product-scoped, gate super_admin) e trata FunctionsHttpError lendo o corpo real.
 import { useState, useCallback } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OptimizeResult {
   original: string;
@@ -19,21 +20,47 @@ export function useOptimizeField() {
   const [result, setResult] = useState<OptimizeResult | null>(null);
 
   const optimize = useCallback(async (
-    _field: string,
+    field: string,
     value: string,
-    _productContext?: Record<string, any>,
+    productContext?: Record<string, any>,
   ): Promise<OptimizeResult | null> => {
     if (!value.trim()) {
       toast.error('Digite algo antes de otimizar');
       return null;
     }
-    // TODO(edge): invocar `platform-optimize-product-field` quando a edge existir:
-    // const { data, error } = await supabase.functions.invoke('platform-optimize-product-field',
-    //   { body: { field, value, productContext } });
-    toast.info('Otimização com IA: edge ainda não portada nesta fase (TODO(edge)).');
-    setIsOptimizing(false);
-    setResult(null);
-    return null;
+    setIsOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('platform-optimize-product-field', {
+        body: { field, value, productContext },
+      });
+      if (error) {
+        // FunctionsHttpError esconde a mensagem real no corpo da Response.
+        let msg = error.message;
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        try {
+          const body = await ctx?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          /* mantém error.message */
+        }
+        throw new Error(msg);
+      }
+      const payload = (data ?? {}) as { optimized?: string; improvements?: string[]; error?: string };
+      if (payload.error) throw new Error(payload.error);
+      const optimizeResult: OptimizeResult = {
+        original: value,
+        optimized: payload.optimized ?? value,
+        improvements: payload.improvements ?? [],
+      };
+      setResult(optimizeResult);
+      return optimizeResult;
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao otimizar com IA');
+      setResult(null);
+      return null;
+    } finally {
+      setIsOptimizing(false);
+    }
   }, []);
 
   const reset = useCallback(() => {
