@@ -159,7 +159,7 @@ export function HealthKpiRow({ kpis, isLoading, isError, onRetry, onNavigate }: 
               <Icon className="h-[18px] w-[18px]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground truncate" title={c.label}>
+              <p className="text-[12px] font-medium text-muted-foreground truncate" title={c.label}>
                 {c.label}
               </p>
               <p className="mt-1 text-[30px] font-semibold tracking-[-0.03em] tabular-nums leading-none">
