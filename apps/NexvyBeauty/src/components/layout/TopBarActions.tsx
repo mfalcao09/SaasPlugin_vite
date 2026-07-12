@@ -38,22 +38,32 @@ export function TopBarActions() {
     await signOut();
   };
 
+  // Central de Ajuda + Novidades ESCONDIDOS (Marcelo 07-12): telas herdadas do Vendus,
+  // hoje VAZIAS (0 artigos) e a de Novidades sem botão de voltar (buraco no sistema).
+  // Código + rotas mantidos; religar (flag = true) quando houver conteúdo. Vale p/
+  // gestao E app.* (esta é a topbar única do sistema).
+  const SHOW_HELP_AND_UPDATES = false;
+
   return (
     <>
-      {/* Help */}
-      <Button variant="ghost" size="icon" onClick={() => navigate('/ajuda')} title="Central de Ajuda">
-        <HelpCircle className="h-5 w-5" />
-      </Button>
+      {SHOW_HELP_AND_UPDATES && (
+        <>
+          {/* Help */}
+          <Button variant="ghost" size="icon" onClick={() => navigate('/ajuda')} title="Central de Ajuda">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
 
-      {/* Updates */}
-      <Button variant="ghost" size="icon" onClick={() => navigate('/novidades')} title="Novidades" className="relative">
-        <Sparkles className="h-5 w-5" />
-        {unreadReleases > 0 && (
-          <Badge variant="default" className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 text-[10px] flex items-center justify-center">
-            {unreadReleases > 9 ? '9+' : unreadReleases}
-          </Badge>
-        )}
-      </Button>
+          {/* Updates */}
+          <Button variant="ghost" size="icon" onClick={() => navigate('/novidades')} title="Novidades" className="relative">
+            <Sparkles className="h-5 w-5" />
+            {unreadReleases > 0 && (
+              <Badge variant="default" className="absolute -top-1 -right-1 h-4 min-w-[1rem] px-1 text-[10px] flex items-center justify-center">
+                {unreadReleases > 9 ? '9+' : unreadReleases}
+              </Badge>
+            )}
+          </Button>
+        </>
+      )}
 
       {/* Theme Toggle */}
       <ThemeToggle />
