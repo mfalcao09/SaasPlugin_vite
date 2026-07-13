@@ -143,6 +143,7 @@ Deno.serve(async (req: Request) => {
         finalidade: 'audiencia_ads',
         qualified: q.qualified,
         segment: q.segment,
+        is_seed: q.is_seed,
         is_infoproduto: q.is_infoproduto,
         phone_is_br: q.phone_is_br,
         geo_country: q.geo_country,

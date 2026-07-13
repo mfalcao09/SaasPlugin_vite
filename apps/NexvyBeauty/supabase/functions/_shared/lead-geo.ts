@@ -96,6 +96,16 @@ export function classifyPhone(raw: string, fromDDI: boolean): PhoneGeo {
     return { e164: null, is_br: false, country: null };
   }
 
+  // D) Número longo (12-15 díg) sem "+" e que NÃO começa em 55 → estrangeiro cru.
+  // BR nacional tem no máx 11 díg; BR com DDI começa em 55 (caso A). Então 12+ díg
+  // sem 55 é estrangeiro — pega Portugal "351…", etc., SEM o "+" colado (errata).
+  if (d.length >= 12 && d.length <= 15) {
+    for (const code of FOREIGN_DDI) {
+      if (d.startsWith(code)) return { e164: d, is_br: false, country: code };
+    }
+    return { e164: d, is_br: false, country: null };
+  }
+
   return { e164: null, is_br: false, country: null };
 }
 
