@@ -55,6 +55,7 @@ import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaig
 import { InstagramAutomationsSection } from '@/components/superadmin/crm/instagram-flows/InstagramAutomationsSection';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmFormsManager } from '@/components/superadmin/crm/capture/PlatformCrmFormsManager';
+import { PlatformProspeccaoManager } from '@/components/superadmin/crm/capture/PlatformProspeccaoManager';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
@@ -363,6 +364,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
     id: 'vendas-captacao',
     label: 'Captação',
     items: [
+      {
+        id: 'v-prospeccao',
+        label: 'Prospecção',
+        icon: I.Radar,
+        render: () => <PlatformProspeccaoManager />,
+      },
       {
         id: 'v-quiz',
         label: 'Quiz',
