@@ -158,3 +158,30 @@ export function useStartExtraction() {
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao disparar a extração'),
   });
 }
+
+/**
+ * Importa uma lista de @handles colados (Porta A por username). Dispara o
+ * profile-scraper do Apify via `leads-import-handles`; o webhook classifica e
+ * preenche o staging (mesmo fluxo assíncrono do keyword search). Custo = conta
+ * Apify do projeto (~$0,0026/perfil).
+ */
+export function useImportHandles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { product_id: string; handles: string[] }) => {
+      const { data, error } = await supabase.functions.invoke('leads-import-handles', {
+        body: { product_id: args.product_id, handles: args.handles },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as { extraction_id: string; run_id: string; handles: number };
+    },
+    onSuccess: (res, args) => {
+      qc.invalidateQueries({ queryKey: ['platform-lead-extractions', args.product_id] });
+      toast.success(`${res.handles} handles enviados`, {
+        description: 'O Apify está detalhando os perfis; os leads aparecem aqui em ~1-2 min.',
+      });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao importar handles'),
+  });
+}
