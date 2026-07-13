@@ -262,9 +262,14 @@ export function buildLeadCard(item: any): LeadCard {
 // ── Qualificação por camadas (C9 F1) ────────────────────────────────────────
 // AND das 4 camadas: ICP (beleza) · idioma (lusófono, tolerante) · GEO (Brasil) ·
 // telefone acionável. Guarda o veredito de cada camada p/ auditar precisão.
+// Limiar de SEMENTE (is_seed) — hub de beleza com audiência p/ minerar (Nível 3).
+// Start conservador (anti-explosão da recursão); baixa pós-governador de orçamento.
+const SEED_FOLLOWERS_MIN = 50_000;
+
 export type LeadQualification = {
   qualified: boolean;          // pronto p/ contato de VENDA (só salao_cliente)
   segment: LeadSegment;        // salao_cliente | afiliado_infoproduto | revisao | descarte
+  is_seed: boolean;            // hub de beleza (≥50k seg.) → dispara mineração do Nível 3
   is_infoproduto: boolean;
   phone_is_br: boolean;
   geo_country: string | null;
@@ -291,9 +296,12 @@ export function qualifyLead(item: any, card: LeadCard): LeadQualification {
   const phonePass = !!card.telefone;
   const isInfoproduto = detectInfoproduto(card.bio, card.name, card.website);
   const seg = classifyLeadSegment({ icp, langPass, geo, hasPhone: phonePass, isInfoproduto });
+  // Semente: hub de beleza com audiência (≥50k) e dentro do mercado (não descarte).
+  const isSeed = (card.seguidores ?? 0) >= SEED_FOLLOWERS_MIN && seg.segment !== 'descarte';
   return {
     qualified: seg.qualified,
     segment: seg.segment,
+    is_seed: isSeed,
     is_infoproduto: isInfoproduto,
     phone_is_br: card.phone_is_br,
     geo_country: geo.country,
