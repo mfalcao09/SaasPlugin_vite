@@ -5,6 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -63,6 +70,7 @@ export function PlatformCrmCaptureWidgetsTab() {
   // visual de funis de canal 'widget' vive na aba Funis (FlowBuilder), então o
   // antigo botão "Abrir builder" (caminho duplicado/circular) foi removido.
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<PlatformCrmWebchatWidget | null>(null);
@@ -74,25 +82,42 @@ export function PlatformCrmCaptureWidgetsTab() {
   const [productId, setProductId] = useState('');
 
   const { data: widgets, isLoading } = usePlatformCrmWebchatWidgets();
-  // Produto ativo GLOBAL (D3 F2): lista filtra pelo ativo e novo widget nasce nele.
+  // Produto ativo GLOBAL (D3 F2): novo widget nasce no ativo. A LISTA usa o filtro
+  // local abaixo (parity Vendus "Widget de Site": seletor "Todos os produtos").
   const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
   const createWidget = useCreatePlatformCrmWebchatWidget();
   const updateWidget = useUpdatePlatformCrmWebchatWidget();
   const toggleWidget = useTogglePlatformCrmWebchatWidget();
   const deleteWidget = useDeletePlatformCrmWebchatWidget();
 
+  // Filtro de PRODUTO local (parity FIEL do WidgetManager tenant + PlatformCrmFormsManager).
+  // Seed = produto ativo GLOBAL para abrir já recortado no D3 F2; a partir daí é um
+  // filtro local independente, como no Vendus. 'all' = "Todos os produtos".
+  const [selectedProductFilter, setSelectedProductFilter] = useState<string>(
+    () => activeProductId ?? 'all',
+  );
+
   // O produto é obrigatório para gravar, EXCETO quando ainda não há produtos
   // cadastrados (aí o backend aplica o default) — espelha a fonte, que só exige
   // o select quando há produtos para escolher.
   const productReady = products.length === 0 || !!productId;
 
+  const productName = (id: string | null | undefined) =>
+    products.find((p) => p.id === id)?.name ?? 'Produto não definido';
+
+  // Filtra: busca + produto (filtro local, parity Vendus) + status. "Todos os
+  // produtos" mostra tudo; concreto mostra os do produto + os sem produto (nunca
+  // somem — recorte de plataforma preservado). O webchat só tem is_active (bool),
+  // então o "status" do funil Vendus vira Ativo/Inativo — honesto ao modelo.
   const filtered = (widgets || []).filter((w) => {
     const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase());
-    // Recorte pelo produto ativo GLOBAL (D3 F2): "Todos" mostra tudo; concreto
-    // mostra os do produto + os sem produto (nunca somem).
     const matchesProduct =
-      !activeProductId || w.product_id === activeProductId || w.product_id == null;
-    return matchesSearch && matchesProduct;
+      selectedProductFilter === 'all' ||
+      w.product_id === selectedProductFilter ||
+      w.product_id == null;
+    const matchesStatus =
+      statusFilter === 'all' || (statusFilter === 'active' ? w.is_active : !w.is_active);
+    return matchesSearch && matchesProduct && matchesStatus;
   });
 
   const resetForm = () => {
@@ -160,7 +185,7 @@ export function PlatformCrmCaptureWidgetsTab() {
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Code2 className="h-5 w-5 text-primary" />
-            Widgets de Webchat
+            Widget de Site
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Bolha de chat embutida em sites externos via snippet{' '}
@@ -173,14 +198,42 @@ export function PlatformCrmCaptureWidgetsTab() {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar widgets..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      {/* Filtros — parity FIEL do Vendus "Widget de Site": busca + "Todos os
+          produtos" + status. Mesmo padrão do PlatformCrmFormsManager (sibling).
+          Status: o webchat só tem is_active (bool) → Ativos/Inativos. */}
+      <div className="flex flex-wrap gap-4">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar widgets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={selectedProductFilter} onValueChange={setSelectedProductFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Produto" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os produtos</SelectItem>
+            {products.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -195,11 +248,11 @@ export function PlatformCrmCaptureWidgetsTab() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Nenhum Widget encontrado</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
-              {searchQuery
-                ? 'Nenhum widget corresponde à busca.'
+              {searchQuery || selectedProductFilter !== 'all' || statusFilter !== 'all'
+                ? 'Nenhum widget corresponde aos filtros.'
                 : 'Crie seu primeiro widget para instalar a bolha de chat em qualquer site.'}
             </p>
-            {!searchQuery && (
+            {!searchQuery && selectedProductFilter === 'all' && statusFilter === 'all' && (
               <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" /> Criar primeiro Widget
               </Button>
@@ -219,6 +272,10 @@ export function PlatformCrmCaptureWidgetsTab() {
                         {w.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
+                    {/* Produto do widget — parity Vendus (card mostra o produto sob o nome). */}
+                    <p className="text-sm text-muted-foreground mb-1 truncate">
+                      {productName(w.product_id)}
+                    </p>
                     {w.welcome_message && (
                       <p className="text-sm text-muted-foreground mb-3 truncate">
                         “{w.welcome_message}”
