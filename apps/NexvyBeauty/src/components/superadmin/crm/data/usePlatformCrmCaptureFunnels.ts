@@ -95,6 +95,10 @@ export function useCreatePlatformCrmCaptureFunnel() {
       channel_type?: string;
       distribution_rule?: string;
       status?: string;
+      // Canal WhatsApp (número/conexão) ao qual o fluxo é atribuído. Par polimórfico:
+      // provider identifica a tabela, connection_id o registro. NULL = fluxo sem canal.
+      whatsapp_provider?: 'meta' | 'evolution' | null;
+      whatsapp_connection_id?: string | null;
       // Sementes de blocos do funil (IA/scratch/template). Default: []
       // preserva o comportamento atual quando não informados.
       flow_blocks?: PlatformCrmCaptureFunnelInsert['flow_blocks'];
@@ -110,6 +114,10 @@ export function useCreatePlatformCrmCaptureFunnel() {
         channel_type: input.channel_type ?? 'chat',
         distribution_rule: input.distribution_rule ?? 'round_robin',
         status: input.status ?? 'draft',
+        // Canal WhatsApp (par polimórfico). Só grava quando ambos presentes; o CHECK
+        // do banco garante consistência (ambos ou nenhum).
+        whatsapp_provider: input.whatsapp_provider ?? null,
+        whatsapp_connection_id: input.whatsapp_connection_id ?? null,
         channels: {
           chat: { enabled: true, slug_override: null },
           form: { enabled: false, slug_override: null },
