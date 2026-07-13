@@ -121,19 +121,19 @@
 | # | Frente | Itens | Esforço |
 |---|---|---|---|
 | P2.A | **Cérebro/conteúdo do agente** (o oco — DELTA §🅱) | 8 tabelas `platform_crm_*` product-scoped + edges twin: knowledge sources, catálogo, pós-venda, objeções estruturadas, materiais, vídeo-aulas, CTAs, email-templates + gerar-agente-IA + chat-teste. Reusa edges org-scoped existentes (troca `org_id`→`product_id`) | ~11-12d |
-| **P2.B — Autopilot venda** (scoping 7 scouts `wpzun2vbd`) | ✅ **runtime JÁ DONE** · 🔧 2 gaps | 🎉 ACHADO: o runtime de venda **já existe e funciona** em `platform-sales-brain` (1255 linhas, product-scoped, NÃO há `agents-engine` neste repo). Já entregues: `computeQcrScore` determinístico (5.1), `founder_status` READ+WRITE (2.4), Duda→Bia + `[PASSAR_BIA]` (5.3), LP `SalesPage`/`/vendas` + CTA wa.me+UTM (F3), atribuição `?src=` (appendSellerRef). **Gaps reais:** (1) brain-connect estruturado (obj/knowledge tabelas P2.A) → **PR [#24](https://github.com/mfalcao09/SaasPlugin_vite/pull/24)** code-complete, **verify adversarial 2/2 SAFE** (no-op enquanto tabelas vazias) — deploy espera goldens; (2) humanizer wire (muda cadência do bot LIVE) → **também no PR #24** (`0d08c59`, fallback-safe, coluna `humanization` confirmada 5/5 agentes) = deploy espera goldens. **HITL Marcelo:** goldens precisam `BRAIN_INTERNAL_SECRET` · 1 pagamento-teste Cakto · oferta LP postergada (não bloqueia) |
+| **P2.B — Autopilot venda** (scoping 7 scouts `wpzun2vbd`) | ✅ **runtime JÁ DONE** · 🔧 2 gaps | 🎉 ACHADO: o runtime de venda **já existe e funciona** em `platform-sales-brain` (1255 linhas, product-scoped, NÃO há `agents-engine` neste repo). Já entregues: `computeQcrScore` determinístico (5.1), `founder_status` READ+WRITE (2.4), Duda→Bia + `[PASSAR_BIA]` (5.3), LP `SalesPage`/`/vendas` + CTA wa.me+UTM (F3), atribuição `?src=` (appendSellerRef). **Gaps reais:** (1) brain-connect estruturado (obj/knowledge tabelas P2.A) → **PR [#24](https://github.com/mfalcao09/SaasPlugin_vite/pull/24)** code-complete, **verify adversarial 2/2 SAFE** (no-op enquanto tabelas vazias) — deploy espera goldens; (2) humanizer wire (muda cadência do bot LIVE) → **também no PR #24** (`0d08c59`, fallback-safe, coluna `humanization` confirmada 5/5 agentes) = deploy espera goldens. **HITL Marcelo:** goldens precisam `BRAIN_INTERNAL_SECRET` (✅ **setada 07-13**, destravado) · 1 pagamento-teste Cakto (**errata: é E2E checkout→provisionamento SEPARADO, NÃO pré-req dos goldens** — os goldens são 100% simulados) · oferta LP postergada (não bloqueia) |
 | **A1 — Composer do atendimento** (scoping `wn2u8jx5o`) | ✅ **JÁ PRONTO** (não era porte) | composer/inbox de plataforma 100% portado + wireado: ChatArea+ChatInput, QuickReplies (`/`), QuickActionBar, InternalNotes (não é disabled), JourneyTimeline, Forward, Schedule, Audio, Media — paridade global **1.92× linhas** (≫0.6). Se sobra incômodo = bug/UX no que existe, não feature faltando · ⏳ aguarda sintoma do Marcelo (ou "ok, pronto") |
 | **B11 — religação (4 grupos)** | ✅ **DONE+DEPLOY+PROVADO** | PR [#25](https://github.com/mfalcao09/SaasPlugin_vite/pull/25) `133f3d4`: generate-agent-ai + objections-SSE (`usePlatformHandleObjection`) + cadence-deeplink + **nova edge `platform-optimize-product-field`** · tsc 0 + build verde + **adversarial 2/2 SAFE** (auth/SSE/escopo/anti-XSS) · edge ACTIVE (401 anon=gate) · **frontend `index-G_YR9pa4.js`** em gestao.nexvy.tech+app · maioria dos "TODO(edge)" eram STALE · 4 bloqueados-externos (CatalogSync/WhatsApp/Google Calendar) NÃO tocados |
 | **B11 — 2ª leva (5 grupos codáveis-já)** | ✅ **DONE+DEPLOY+PROVADO** | PR [#26](https://github.com/mfalcao09/SaasPlugin_vite/pull/26) `0b7bc41`: file-upload Cérebro (`sourceType=file`) · doc-import agente (edge nova) · test-chat (`product_agent_id` no webchat-bot) · booking-cancel (dispatcher `action=cancellation`) · **forms públicos** `/f/:slug` (edge nova `platform-form-submit`) · migration cancelamento APLICADA (coluna+CHECK, tabela vazia) · **adversarial RISKY→4 defeitos corrigidos** (verify_jwt público, injeção PostgREST, 403 cancelamento, ações client-dictated) → re-verificado · 5 edges deployadas · **frontend `index-DJ1QAL5Z.js`** · prova runtime: form-submit público **400** sem auth (não 401), import-agent **401** anon (gate) · TODO pré-go-live: rate-limit durável/captcha na edge pública |
 | **B11 — 3ª leva (3 grupos)** | ✅ **DONE+DEPLOY+PROVADO** | PR [#27](https://github.com/mfalcao09/SaasPlugin_vite/pull/27) `90d9de4`: agent-connections (**tabela `platform_crm_agent_connections` APLICADA** — RLS super_admin/CASCADE/UNIQUE, revisada no banco antes de aplicar — + hook + AgentEditor/AgentCard + sync no create/update) · booking-notif cleanup (removeu controle morto, sem schema) · catalog-uploader (bucket product-documents) · tsc 0 + build verde + **adversarial 2/2 SAFE** (colunas vs tabela, wiring, cleanup, uploader) · **frontend `index-BMibYS0z.js`** · nota pré-existente (fora da leva): self-XSS de href em CatalogManager (super_admin-only, 1-linha) |
 | **AdminExecutivePanel + WidgetFlowTab** | ✅ **DONE+DEPLOY+PROVADO** | PR [#28](https://github.com/mfalcao09/SaasPlugin_vite/pull/28) `bca806f`: **AdminExecutivePanel** (stub→painel) — tabela `platform_crm_admin_monitored_products` **APLICADA** + edge `platform-admin-executive-report` (métricas reais leads/conversas/vendas/pipeline + síntese IA, gate super_admin, fallback determinístico, anti-XSS) · **WidgetFlowTab** — canvas visual plugado (nós+conexões; reusou FlowCanvas funnel-typed, o PlatformCrmFlowCanvas era incompatível) · **CaptureManager**: revertido (Opção A — telas já são menus; ⏳ B disponível) · tsc 0 + build verde + deno 0 + **adversarial 2/2 SAFE** · fix: pipeline usa deals não-terminais (schema não tem 'open') · edge 401 anon=gate · **frontend `index-BuVdnIGW.js`** · débitos: cron do relatório diário · reconciliar PlatformCrmFlowCanvas morto · deals-model sem estado ativo |
 | P2.C | **Arsenal agentes** (Frente 8) | 33 itens playbook §12 (estado-do-contato, abandono→resgate, handoffs, 10 testes de aceitação) — dedup contra o que F2 já entregou antes | G |
-| P2.D | **Operação da dona ∥** (Frente 3) | B3 pós-compra cria instância + e-mail QR (clientes = **Evolution/QR**, confirmado) · F6 pipeline de ingestão (`MESSAGES_SET`→`wa_timestamp`→dedupe→clientes) · C4 watcher de queda · C2/C3 painéis · LGPD onboarding | G |
+| P2.D | **Operação da dona ∥** (Frente 3) · 🗺️ **BLUEPRINT 07-13** | B3 pós-compra cria instância + e-mail QR (clientes = **Evolution/QR**, confirmado) · F6 pipeline de ingestão (`MESSAGES_SET`→`wa_timestamp`→dedupe→clientes) · C4 watcher · C2/C3 painéis · LGPD onboarding · **blueprint aterrado** (workflow 5+1 agentes): 3 pernas NÃO existem (instância Evolution auto · e-mail que sai — **cron da fila pgmq não existe** · ingestão F6) + agente de onboarding (function `platform-onboarding-brain` dedicada) · **Fases 0→3 buildáveis SEM o número do salão** · **4 decisões pendem Marcelo: D1 domínio de e-mail · D2 host da Evolution · D3 canal do agente · D4 janela+consentimento do backfill** | G |
 
 ## P3 — Crescimento + canais + analytics (o "alto fluxo" que você exige)
 | # | Frente | Itens | Esforço | Nota |
 |---|---|---|---|---|
-| P3.A | **Motor de leads (scrap)** — CORE por você | réplica do prospectagram: Apify IG/Maps/TikTok + enrichment + LGPD 3 travas. Gate = PoC F0 | G | ⚠️ novo build; confirmar entrada agora |
+| P3.A | **Motor de leads (C9 scrap)** — CORE · 🔄 **MUITO avançado (07-13)** | Nível 1+2 **LIVE** (keyword + classificador 4 baldes/4 camadas + `is_seed`) · **UI Prospecção** cockpit (keyword search · **colar handles** · **lixeira LGPD-safe** · **WhatsApp manual** · reclassificar · colunas · "porquê") · edges **leads-import-profiles** + **leads-import-handles** (PRs #54/#55/#56, no main+prod) · **859 leads BR-beleza no banco** (258 qualif · 174 afiliado · 47 sementes · 334 c/ WhatsApp) · **vídeo→Gemini→651 leads** · parede = teto mensal da conta MCP (upgrade US$29 à noite → meta 10k) · Nível 3/query-actor **congelados** (pós-receita) | G | pendente: campanha 10k (op) · botão "subir vídeo" (Gemini, backend = import edge, metade pronta) |
 | P3.B | **Ads direcionados** — ✅ ROTA RESOLVIDA: **NexvyAds** (frente própria, sessão `c5663f14`) | F1 = plugar no CRM `gestao.*` (dogfooding, Meta primeiro). **Track paralelo AGORA** pro caminho-crítico humano (App Review Meta = semanas) + infra isolada (`ads_*`, OAuth, edges novas); **gate de montagem na UI = merges do P1.C** (evita colisão com Lux/ProductContext). Consequência: portar `marketing-connect/sync`/`meta-ads-validate` do V5 = **SUPERSEDED** (sai do delta) | — (frente própria) | doc: `_indice-planos/DISCOVERY-NEXVY-ADS-2026-07-11.md` |
 | P3.C | **IG/Messenger** (reduzido — já conectou IG da operação) | `instagram-send` (sender real de DM ⚠️ verificar se outbound já funciona), `instagram-list-media`, `instagram-subscribe-fields` + resto do plano de 6 blocos | M | App Review Meta = gate |
 | P3.D | **Dashboard de Jornada** (DELTA §🅲) | `lib/leadJourney` (760l) + `useLeadJourney` (11 hooks) + 10 componentes `journey/` → analytics origem/campanha/**criativo** | ~2-3d |
@@ -183,6 +183,74 @@
 | 2 | **Corte de lançamento:** Fase 1 completa antes de lançar, ou lançar com P0-P2 e P3-P5 fast-follow? | ritmo |
 | 3 | Afiliados fases 2-5 · Telefonia Salvy — reimplementar ou descartar? | P5 |
 | 4 | **Errata P4/D10** (Utmify → Fase 2 do NexvyAds, atribuição) — ato constitucional, aguarda teu "aprovo" na sessão Ads | NexvyAds F2 |
+
+---
+
+## 🎯 ONBOARDING PÓS-COMPRA — SPEC COMPLETO (Marcelo, 07-13) · HANDOFF-CRÍTICO
+> Fonte-verdade do onboarding. Uma sessão 0-contexto constrói a partir daqui. Supersede o enquadramento do BLUEPRINT do workflow (que tinha um erro conceitual no canal — corrigido abaixo).
+
+### Respostas do Marcelo às decisões D1–D4
+- **D1 — e-mail:** domínio **POR PRODUTO**. Beauty → disparar de **`@nexvybeauty.com.br`**. Integrar **Resend**. TAREFA (Claude): criar o passo-a-passo completo de integração + o que fica pendente com o Marcelo (ver §Passo-a-passo Resend). HITL Marcelo: criar conta Resend + acesso ao DNS de `nexvybeauty.com.br`.
+- **D2 — Evolution:** **continua no KVM4**, sem novidade (já roda lá).
+- **D3 — canal do agente:** ⚠️ **ERRATA da análise anterior.** NÃO é número oficial genérico. O canal é **o MESMO thread da venda**: a cliente comprou usando o número DELA (salão ou pessoal) em contato com NOSSO número de vendas Nexvy. Esse mesmo par (**nosso número ↔ número dela**) continua no onboarding — é um **handoff Duda (vendas) → agente de onboarding (Customer Success) dentro da MESMA conversa**, até a cliente escolher trocar de número. **+ REUSAR o modelo de onboarding de criação de tenant (como admin) do Vendus v5** (já está no código). TAREFA (Claude): pesquisar a fundo e trazer EXATAMENTE como está no Vendus v5, pra analisar com o Marcelo **ANTES de codar**.
+- **D4 — LGPD:** inserir declaração de que a cliente tem **consentimento legítimo** pro uso dos dados pessoais, e que **nós somos OPERADORES e ela é a CONTROLADORA** dos dados.
+
+### O fluxo (8 etapas — exatamente como o Marcelo quer)
+1. **Tela pós-checkout (sucesso) — IMPORTANTÍSSIMA.** Pago → cliente vai pra NOSSA tela de sucesso, com tudo na palma da mão + próximos passos detalhados.
+2. **E-mail** pro endereço do checkout: infos de pagamento + infos do onboarding.
+3. **Mesmo conteúdo por WhatsApp** pro WhatsApp da cliente. Amarrar cliente-WhatsApp × link-de-pagamento. DÚVIDA ABERTA (resolver): telefone pré-preenchido ao clicar no link (é possível?)? pedir o WhatsApp do atendimento? e se ela informar outro?
+4. **Handoff Duda → agente de onboarding (CS)** no disparo por WhatsApp. O agente guia passo-a-passo, envia **prints da tela de onboarding** (imagem "demo" limpa/simulada). **O sistema informa ao agente em que FASE do onboarding a cliente está** (não é monitorar a tela; é saber "ela está na página 5").
+5. **Playbook de dúvidas POR PÁGINA** do onboarding — o agente atende plenamente cada etapa.
+6. **Wizard de onboarding** (plataforma NÃO liberada ainda; ela está só no wizard). **Última página = QR Code da instância Evolution dela** + orientações de leitura. Botão "pular leitura" possível, MAS deixar claro que o negócio "só começa a funcionar" quando o onboarding completo é feito (escanear o QR é parte disso).
+7. **Tela de loading** (frases de incentivo: "estamos preparando tudo pro seu negócio alcançar o próximo nível", "hora do seu salão decolar", "preparando pra suas clientes terem o melhor atendimento"…) **enquanto a Evolution lê as conversas, o sistema reconhece os dados, puxa infos e MONTA o sistema da cliente** (ISTO é o código a fazer = F6). Pronto → **tela de sucesso** ("começar um novo tempo no meu negócio") → clica → wizard fecha. Ao fechar, o agente **explica os menus**, onde estão as funcionalidades, manda prints se houver dúvida.
+8. **Agente acompanha** pós-onboarding. **Definir régua de follow-up de onboarding** — por quanto tempo o agente pergunta se há dúvida antes de considerar o salão **efetivamente implantado**.
+
+### Passo-a-passo Resend (D1) — TAREFA Claude (detalhar/executar)
+Rascunho: (1) conta/projeto Resend; (2) adicionar domínio `nexvybeauty.com.br`; (3) publicar SPF/DKIM/DMARC no DNS (Cloudflare) do `nexvybeauty.com.br`; (4) verificar domínio no Resend; (5) setar `RESEND_API_KEY` no Supabase; (6) criar cron `process-email-queue` (HOJE NÃO EXISTE → e-mail nunca sai); (7) trocar branding Vendus→NexvyBeauty em `send-transactional-email/index.ts:8,12,16`. **PENDENTE Marcelo:** criar a conta Resend + dar acesso ao DNS.
+
+### Erro conceitual corrigido (crítico pro build)
+O agente de onboarding **não é um brain novo genérico num número oficial**. É: (a) o **handoff dentro da conversa de vendas existente** (Duda→CS, mesmo par de números); (b) o **wizard de onboarding in-app** (as 8 telas, com fase rastreável); (c) a **máquina que monta o sistema** (Evolution lê histórico → F6 → carteira). **Reusar o onboarding-de-tenant do Vendus v5** (já no código) como base.
+
+---
+
+## 🔀 PROSPECÇÃO ATIVA — reorg de menu (Marcelo 07-13)
+Transformar "Prospecção" (hoje sob **Captação**) num **menu próprio: "Prospecção Ativa"**, com páginas:
+- **Buscas (ou Scraps)** = a página atual, **exatamente como está** (keyword + colar handles + lixeira + whatsapp-manual, segregado por extração).
+- **Importação por vídeo** = subir o vídeo da IA → analisa/trata/sanitiza → vira leads (o que hoje o Claude faz na mão via Gemini + import edge).
+- **Base consolidada** = TODOS os leads unificados numa base única (mantendo a segregação por scrap como opção/filtro).
+- SUGESTÕES minhas: página **Sementes** (as ≥50k pra minerar) + **Lixeira/Excluídos** global.
+
+**Minha opinião [Provável]:** EXCELENTE ideia — resolve o problema real (hoje o lead vive preso a 1 scrap). Recomendo a **Base consolidada como uma VIEW** que une todos os `platform_crm_extracted_leads` do produto, **dedup por handle/telefone**, preservando o override manual (segment/telefone/exclusão). Detalhar o design na execução.
+
+---
+
+## 🤝 HANDOFF 0-CONTEXTO (2026-07-13) — pra nova sessão controladora (outra conta Anthropic, mesmo Mac)
+> Contexto: o limite semanal desta conta está em ~8% (92% usado) e degrada. Esta seção deixa TUDO pronto pra continuar sem fricção.
+
+### VIVO em prod (NÃO re-fazer)
+- Prospecção (C9) em `gestao.nexvy.tech`: keyword search · colar handles · lixeira LGPD · whatsapp-manual · reclassificar · colunas · "porquê". Bundle atual `index-DIffoox2.js`.
+- Edges no main+prod: `leads-extraction-start/webhook`, `leads-import-profiles`, `leads-import-handles`. PRs #54/#55/#56 merjados.
+- Migrations aplicadas: extracted_leads (qualification_layers/segment/is_seed) + `exclude_lixeira` (coluna `excluded_at` + tabela `platform_crm_lead_excluded`).
+- **859 leads** no banco (product_id `806b5975-e268-402e-a65c-9e9503271041`): 258 qualif · 174 afiliado · 47 sementes · 334 c/ WhatsApp.
+- `BRAIN_INTERNAL_SECRET` setada no Supabase (destrava goldens).
+- Deploy: `ssh vps-hostinger` → `cd /opt/stacks/saasplugin-vite && git pull --ff-only origin main && ./infra/deploy-vps.sh NexvyBeauty nexvy-beauty gestao.nexvy.tech`. Build gate = `npm run build` (NÃO tsc). Edge deploy = `supabase functions deploy <fn> --project-ref fzhlbwhdejumkyqosuvq`.
+
+### PENDÊNCIAS construíveis (respostas do Marcelo 07-13) — ORDEM
+1. **Onboarding pós-compra (B3/B4)** — spec na seção acima. Fases 0→3 buildáveis SEM o número do salão. ✅ **Vendus v5 pesquisado (07-13 · doc `tasks/VENDUS-V5-ONBOARDING-TENANT-RESEARCH-2026-07-13.md` · repo `/Users/marcelosilva/Projects/GitHub/oficial-vendus-v5`):** já EXISTE lá um **`ImplantacaoWizard` (7 etapas: Empresa → Horários → Negócios [c/ "Cérebro": website/YouTube/FAQ/treino] → Agentes IA → Setores → Equipes → Revisão)** — estado em `onboarding_submissions` (`status` draft/submitted/applied/expired + payload jsonb inteiro, autosave 1500ms via RPCs SECURITY DEFINER), termina no edge **`apply-onboarding`** que grava nas tabelas reais + seta `organizations.onboarding_completed_at` + `onboarding_locked=true` (**é o que "libera" a plataforma** — bate com o passo 6 do Marcelo). Rotas `/admin/implantacao` (auth) e `/implantacao/:token` (público, session_token). **NÃO tem** etapa de QR/WhatsApp (só campo texto de contato). **→ PLANO: PORTAR o `ImplantacaoWizard` 1:1 pro NexvyBeauty e ADAPTAR:** (a) +etapa final = **QR da instância Evolution** (spec passo 6); (b) +**rastreio de FASE** exposto pro agente ("ela está na página 5", spec passo 4); (c) +**handoff Duda→CS no MESMO thread** (D3); (d) +**tela loading → F6 (Evolution lê histórico → carteira) → sucesso** (spec passo 7); (e) +declaração LGPD operador/controlador (D4). **ANALISAR o doc COM o Marcelo ANTES de codar.**
+2. **Rodar os goldens** — `BRAIN_INTERNAL_SECRET` já setada. Deploy `tmp-eval-agents` + chamar com `x-brain-secret` + reportar a régua ≥90%. Marcelo quer eliminado LOGO.
+3. **Página "Importação por vídeo"** (era "botão subir vídeo") — dentro do menu Prospecção Ativa. Backend = edge Gemini (extrai handles) → `leads-import-handles` (já existe).
+4. **Base consolidada** — nova página no menu Prospecção Ativa (VIEW dedup).
+5. **Onda Captação** (T1.10) — FINALIZAR DEFINITIVAMENTE (ordem enfática): C1 Novo Formulário "Com IA" (edge `form-generate-ai` existe) · C3 Novo Quiz "Com IA" (edge `quiz-generate-ai` existe) · C5 FormResponseDetail 3 botões.
+6. **Instagram Flows** (T1.11) — portar. FINALIZAR DEFINITIVAMENTE (ordem enfática).
+7. **P2.C Arsenal de Agentes** — Claude deve mapear o que falta (Marcelo perguntou se falta orientação/info) e responder.
+8. **P3.C — ERRATA (Marcelo 07-13):** o envio pelo inbox do IG **já foi validado (envia + recebe)** → o **App Review da Meta NÃO é gate de lançamento**; é melhoria futura. Atualizar o status (deixou de ser bloqueador).
+
+### HITL Marcelo (só ele)
+- **Resend** (D1): criar conta + DNS de `nexvybeauty.com.br`.
+- **Número do salão-teste:** comprado na **Salvy**; visível via API que já temos. Marcelo tem DÚVIDA: qual empresa está cadastrada na Salvy → Claude deve responder via API.
+- **Cakto:** criará produto-teste DEPOIS de tudo pronto → **teste E2E do onboarding** (RADAR: teste final).
+- **Conta MCP** → upgrade US$29 (à noite) → meta 10k leads.
+- **Decisão de corte de lançamento** (Fase 1 completa vs. lançar + fast-follow).
 
 ---
 
