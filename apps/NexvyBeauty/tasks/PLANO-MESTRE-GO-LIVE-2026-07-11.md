@@ -254,6 +254,89 @@ Transformar "Prospecção" (hoje sob **Captação**) num **menu próprio: "Prosp
 
 ---
 
+## 📡 C9 — MOTOR DE LEADS (essencial importado do PLANO-C9 v2 · 07-13)
+> Absorve `_indice-planos/PLANO-C9-MOTOR-EXTRACAO-LEADS-2026-07-12_v2.md` (que recebe errata apontando pra cá). Registro vivo = ESTE doc.
+
+### Arquitetura 3 níveis
+- **Nível 1 — Descoberta (keyword):** ✅ LIVE (acha leads diretos + sementes).
+- **Nível 2 — Classificador de segmento:** ✅ LIVE (4 baldes + 4 camadas).
+- **Nível 3 — Expansão em grafo** (semente → scrape seguidores → classifica → loop): ❄️ CONGELADO (exige conta IG logada/farm).
+
+### 4 segmentos (`_shared/lead-geo.ts::classifyLeadSegment`)
+- 🟢 **salao_cliente** (beleza BR + contato → `qualified`) → venda/ads
+- 🔵 **afiliado_infoproduto** (curso/mentoria: kiwify/hotmart, "X alunas") → recrutamento (ativa quando o programa 30/10 estiver 100% no código)
+- 🟡 **revisao** (beleza sem confirmar BR/contato) → triagem humana
+- ⚪ **descarte** (fora do mercado) → lixeira + TTL (não hoardeia PII estrangeira)
+- **4 camadas AND:** ICP(beleza) · Idioma(lusófono, tolerante) · GEO(BR fino, sem forjar +55) · Telefone(bio + todos os links, wa.me priorizado).
+- **is_seed** ⊥ segmento: `follower_count ≥ 50k` → dispara Nível 3.
+
+### Porta A — multi-vetor de descoberta (dedup por handle)
+- **A1** username/nome → `apify/instagram-scraper` (searchType=user) — PRIMÁRIO (~$0,0027/perfil).
+- **A2** conteúdo da bio (Google SERP) → `easy_scraper/instagram-profiles-finder` — **FÁBRICA DE SEMENTES** (~97% beleza/BR; snippet traz seguidores, não bio → precisa enriquecer). ~$0,0015.
+- **A3** seguidores de semente → follower-scrape (Nível 3, congelado).
+- **Handles colados / vídeo** → `apify/instagram-profile-scraper` (usernames[]) via edge `leads-import-handles`.
+- **DESCARTADOS:** data-slayer Enriched ($0,012, 4,4× caro), Basic+profile ($0,0051, dominado).
+
+### Ranking de assertividade de keyword (dados REAIS do banco · 07-13 · 181 perfis do conjunto-ouro)
+| Tier | Keywords | % que vira salão-cliente qualif |
+|---|---|---|
+| **1 (ouro)** | `salão de beleza` (59%) · `escova progressiva` (54%) · `esmalteria` (48%) | 48-59% |
+| **2 (médio)** | `cabeleireira` | 37% |
+| **3 (FÁBRICA DE AFILIADO)** | `design de sobrancelhas` (27%) · `alongamento de unhas` (26%) · `micropigmentação` (17%) | baixo p/ salão, mas puxam MUITO infoproduto/curso |
+> **A keyword define QUE segmento você pesca:** salões → Tier 1; afiliados (programa 30/10) → `alongamento de unhas`/`micropigmentação`. ⚠️ Amostra pequena (23-28/keyword); a varredura grande (6 grupos temáticos, ~1,6k perfis) está TRAVADA atrás da parede da conta MCP → recalcular os tiers com volume real após upgrade US$29.
+
+### Query-actor (follower-search): ❄️ CONGELADO
+Endpoint `friendships/{id}/followers/?query=` filtra server-side MAS exige `sessionid` autenticado (401 provado ao vivo). Custo real = farm de contas IG logadas + ban-management (ToS), não proxy. Só pós-receita.
+
+### LGPD (base + postura) · Custo MVP
+Art.7º §4 (dados públicos) + finalidade=`audiencia_ads` + opt-out (Art.18, respeitado no staging) + consumo segment-gated + descarte com TTL. Afiliado B2B = base ainda mais sólida.
+Custo (orçamento R$500): A1 bateria ~$0,65 · A2 ~$0,46/run · enriquecimento ~$8 → total scrap **~R$50-70** · sobra **~R$430** p/ Meta ads.
+
+---
+
+## 📥 PROSPECTAGRAM — extração pela TELA (receita PROVADA · 07-13)
+> **Por quê:** o **export CSV do prospectagram corrompe ~47% das linhas** (vírgula sem aspas → colunas embaralhadas, `followerCount` de 5,5 trilhões). Ler o **DOM renderizado sai LIMPO**. Provado 07-13: 134 leads, **78% com telefone íntegro** (vs 63% no CSV limpo).
+
+- **Fonte:** `https://app.prospectagram.com.br/dashboard` (Chrome **LOGADO do Marcelo**). **Ferramenta:** `Control_Chrome` (`execute_javascript`) — o `claude-in-chrome` estava desconectado. Achar a aba com `list_tabs` (ex.: id 1303038085).
+- **⛔ PROIBIDO:** NUNCA clicar em **"Perdido"** e **"Ganho"** (mudam estado do CRM, irreversível). Extração é **100% read-only via JS — zero clique**.
+- **Estrutura:** NÃO é tabela — são **cards `.glass-card`** (600px). Contador "Contato" mostrava **502 leads**. Cada card: @handle (`<a>` cyan) · "Palavras-chave - kw - N" · POSTS/SEGUIDORES/SEGUINDO · nome · bio (contém o telefone) · site · botões. Telefone limpo = `<a href*="wa.me">` (fallback: regex na bio).
+- **⚠️ Lista VIRTUALIZADA** (cards montam/desmontam no scroll) → scroll FINO + acumular num Map por handle + dedup. Scroll grosso pega só ~130.
+- **Control_Chrome NÃO retorna async** → o script guarda em `window.__leadsClean` e a gente lê de volta numa 2ª chamada.
+
+**Fluxo quando o Marcelo der o "vai" (base 100% scrapeada):** `list_tabs` → rodar o acumulador → ler `window.__leadsClean` → **classificar** pelo nosso motor (segmento/geo/qualified) → **dedup contra os 859** (handle/telefone) → importar na **Base consolidada**.
+
+**Script provado (colar no `Control_Chrome.execute_javascript`, depois ler `window.__leadsClean`):**
+```js
+(async () => {
+  const num=s=>{s=(s||'').replace(/[^\d]/g,'');return s?parseInt(s):null;};
+  const BTN=new Set(['Ligar','WhatsApp','E-mail','Email','Direct','Abordei','Perdido','Ganho','Qualificar','Abordar','Indicar','Ferramentas','Pesquisar','Aberto','Sair']);
+  const map=new Map((window.__leadsClean||[]).map(x=>[x.h.toLowerCase(),x]));
+  const grab=()=>document.querySelectorAll('.glass-card').forEach(card=>{
+    const a=card.querySelector('a'); const handle=(a?.innerText||'').trim();
+    if(!/^@[a-z0-9._]{2,30}$/i.test(handle))return;
+    const wa=card.querySelector('a[href*="wa.me"],a[href*="whatsapp"]')?.href||null;
+    const web=[...card.querySelectorAll('a[href^="http"]')].map(x=>x.href).find(h=>!/instagram\.com|wa\.me|whatsapp/.test(h))||null;
+    const L=(card.innerText||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    const kwm=(L.find(l=>/Palavras-chave/i.test(l))||'').match(/Palavras-chave\s*-\s*(.+?)\s*-\s*\d+/i);
+    const idx=t=>L.findIndex(l=>l.toUpperCase()===t); const iF=idx('SEGUIDORES'),iG=idx('SEGUINDO');
+    let bio=null; if(iG>=0){const r=L.slice(iG+2);const st=r.findIndex(l=>BTN.has(l));bio=(st>=0?r.slice(0,st):r).join(' ').trim()||null;}
+    let phone=null; if(wa){const m=wa.match(/(\d{10,13})/);if(m)phone=m[1];}
+    if(!phone&&bio){const m=bio.match(/\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}/);if(m)phone=m[0].replace(/\D/g,'');}
+    map.set(handle.toLowerCase(),{h:handle,k:kwm?kwm[1].trim():null,s:iF>0?num(L[iF-1]):null,p:phone,w:web,n:(iG>=0&&L[iG+1]&&!BTN.has(L[iG+1])?L[iG+1]:null),bio:(bio||'').slice(0,200)});
+  });
+  const sc=document.scrollingElement||document.documentElement;
+  let last=map.size,stable=0;
+  for(let i=0;i<300&&stable<12;i++){grab();sc.scrollTop+=600;await new Promise(r=>setTimeout(r,220));if(map.size===last)stable++;else{stable=0;last=map.size;}}
+  grab(); window.__leadsClean=[...map.values()];
+  window.__grabDone={total:window.__leadsClean.length,comTel:window.__leadsClean.filter(x=>x.p).length};
+  return 'ok';
+})()
+// 2ª chamada p/ ler: JSON.stringify(window.__grabDone)   |   window.__leadsClean = os dados
+```
+> Campos: `h`=@handle · `k`=keyword · `s`=seguidores · `p`=telefone(E.164) · `w`=site · `n`=nome · `bio`. Mapear pro `buildLeadCard`/`qualifyLead` no import.
+
+---
+
 ## Governança (Seção 14)
 - **Este é o registro vivo único.** Novos itens entram AQUI com dono+done+saiu; nada de doc novo paralelo.
 - Docs superseded receberão errata apontando pra cá.
