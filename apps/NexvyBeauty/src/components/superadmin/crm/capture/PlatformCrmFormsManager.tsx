@@ -121,14 +121,13 @@ export function PlatformCrmFormsManager() {
   const { data: templates } = usePlatformCrmFormTemplates();
   // Produto ativo GLOBAL (D3 F2): novo form nasce no ativo. A LISTA usa o filtro
   // local abaixo (parity Vendus: seletor "Todos os produtos" na barra de filtros).
-  const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
+  const { products, effectiveProductId } = useActivePlatformProduct();
 
-  // Filtro de PRODUTO local (parity FIEL do FormsManager tenant). Seed = produto
-  // ativo GLOBAL para a tela abrir já recortada no D3 F2; a partir daí é um filtro
-  // local independente, exatamente como no Vendus. 'all' = "Todos os produtos".
-  const [selectedProductFilter, setSelectedProductFilter] = useState<string>(
-    () => activeProductId ?? 'all',
-  );
+  // Filtro de PRODUTO local (parity FIEL do FormsManager tenant). Default = 'all'
+  // ("Todos os produtos"), 1:1 com o Vendus — abre no zero-state amigável + CTA.
+  // O switcher GLOBAL NÃO sequestra o default (isso quebrava o 1:1 visual do
+  // Vendus, que abre em "Todos os produtos"); ele segue disponível pelo dropdown.
+  const [selectedProductFilter, setSelectedProductFilter] = useState<string>('all');
   const { data: baseUrl } = usePublicAppUrl();
   const createForm = useCreatePlatformCrmForm();
   const createFromTemplate = useCreatePlatformCrmFormFromTemplate();
