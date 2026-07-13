@@ -119,8 +119,16 @@ export function PlatformCrmFormsManager() {
 
   const { data: forms, isLoading } = usePlatformCrmForms();
   const { data: templates } = usePlatformCrmFormTemplates();
-  // Produto ativo GLOBAL (D3 F2): lista filtra pelo ativo e novo form nasce nele.
+  // Produto ativo GLOBAL (D3 F2): novo form nasce no ativo. A LISTA usa o filtro
+  // local abaixo (parity Vendus: seletor "Todos os produtos" na barra de filtros).
   const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
+
+  // Filtro de PRODUTO local (parity FIEL do FormsManager tenant). Seed = produto
+  // ativo GLOBAL para a tela abrir já recortada no D3 F2; a partir daí é um filtro
+  // local independente, exatamente como no Vendus. 'all' = "Todos os produtos".
+  const [selectedProductFilter, setSelectedProductFilter] = useState<string>(
+    () => activeProductId ?? 'all',
+  );
   const { data: baseUrl } = usePublicAppUrl();
   const createForm = useCreatePlatformCrmForm();
   const createFromTemplate = useCreatePlatformCrmFormFromTemplate();
@@ -135,15 +143,18 @@ export function PlatformCrmFormsManager() {
   const productName = (productId: string | null | undefined) =>
     products.find((p) => p.id === productId)?.name ?? 'Produto';
 
-  // Filtra: busca + status + recorte pelo produto ativo GLOBAL (D3 F2). "Todos"
-  // mostra tudo; concreto mostra os do produto + os sem produto (nunca somem).
+  // Filtra: busca + status + produto (filtro local, parity Vendus). "Todos os
+  // produtos" mostra tudo; concreto mostra os do produto + os sem produto (nunca
+  // somem — recorte de plataforma preservado).
   const filteredForms = (forms ?? []).filter((form) => {
     const matchesSearch =
       form.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       form.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || form.status === statusFilter;
     const matchesProduct =
-      !activeProductId || form.product_id === activeProductId || form.product_id == null;
+      selectedProductFilter === 'all' ||
+      form.product_id === selectedProductFilter ||
+      form.product_id == null;
     return matchesSearch && matchesStatus && matchesProduct;
   });
 
@@ -242,6 +253,19 @@ export function PlatformCrmFormsManager() {
             className="pl-9"
           />
         </div>
+        <Select value={selectedProductFilter} onValueChange={setSelectedProductFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Produto" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os produtos</SelectItem>
+            {products.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Status" />
@@ -277,11 +301,11 @@ export function PlatformCrmFormsManager() {
             <FileEdit className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhum formulário encontrado</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchQuery || statusFilter !== 'all'
+              {searchQuery || selectedProductFilter !== 'all' || statusFilter !== 'all'
                 ? 'Tente ajustar os filtros de busca'
                 : 'Crie seu primeiro formulário para começar a captar leads'}
             </p>
-            {!searchQuery && statusFilter === 'all' && (
+            {!searchQuery && selectedProductFilter === 'all' && statusFilter === 'all' && (
               <Button onClick={openCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Formulário

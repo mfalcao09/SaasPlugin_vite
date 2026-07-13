@@ -108,15 +108,45 @@ const statusConfig: Record<
   archived: { label: 'Arquivado', variant: 'destructive' },
 };
 
+/** Opção de canal WhatsApp (número/conexão) para atribuir a um fluxo. */
+type ChannelOption = {
+  key: string; // `${provider}:${id}`
+  provider: 'meta' | 'evolution';
+  id: string;
+  label: string;
+};
+
+/** Chave de canal (`provider:id`) de um fluxo, ou null se não atribuído. */
+function channelKeyOf(f: PlatformCrmCaptureFunnel): string | null {
+  return f.whatsapp_provider && f.whatsapp_connection_id
+    ? `${f.whatsapp_provider}:${f.whatsapp_connection_id}`
+    : null;
+}
+
+/** Decompõe uma chave de canal em provider+id. '' ou inválida → null. */
+function parseChannelKey(
+  key: string,
+): { provider: 'meta' | 'evolution'; id: string } | null {
+  const sep = key.indexOf(':');
+  if (sep <= 0) return null;
+  const provider = key.slice(0, sep);
+  const id = key.slice(sep + 1);
+  if ((provider !== 'meta' && provider !== 'evolution') || !id) return null;
+  return { provider, id };
+}
+
 export function PlatformCrmCaptureWhatsAppTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [settingsFunnel, setSettingsFunnel] = useState<PlatformCrmCaptureFunnel | null>(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  // Canal (número/conexão) do novo fluxo. '' = sem canal (fluxo global).
+  const [createChannelKey, setCreateChannelKey] = useState<string>('');
 
   const { data: funnels, isLoading } = usePlatformCrmCaptureFunnels();
   const createFunnel = useCreatePlatformCrmCaptureFunnel();
@@ -141,24 +171,49 @@ export function PlatformCrmCaptureWhatsAppTab() {
       ? `${connectedEvolution.name}${connectedEvolution.phone_number ? ` — ${connectedEvolution.phone_number}` : ''}`
       : '';
 
+  // Canais WhatsApp disponíveis (número/conexão), unificando Meta oficial + Evolution.
+  // Cada opção carrega provider+id para o par polimórfico gravado no fluxo.
+  const channelOptions: ChannelOption[] = [
+    ...(metaConnections ?? []).map((c) => ({
+      key: `meta:${c.id}`,
+      provider: 'meta' as const,
+      id: c.id,
+      label: `${c.display_name}${c.phone_number ? ` — ${c.phone_number}` : ''}`,
+    })),
+    ...(evolutionInstances ?? []).map((i) => ({
+      key: `evolution:${i.id}`,
+      provider: 'evolution' as const,
+      id: i.id,
+      label: `${i.name}${i.phone_number ? ` — ${i.phone_number}` : ''}`,
+    })),
+  ];
+
   const whatsappFunnels = (funnels ?? []).filter((f) => f.channel_type === 'whatsapp');
 
   const filtered = whatsappFunnels.filter((f) => {
     const ms = f.name.toLowerCase().includes(searchQuery.toLowerCase());
     const mst = statusFilter === 'all' || f.status === statusFilter;
-    return ms && mst;
+    const fk = channelKeyOf(f);
+    const mc =
+      channelFilter === 'all' ||
+      (channelFilter === 'none' ? !fk : fk === channelFilter);
+    return ms && mst && mc;
   });
 
   const handleCreate = async () => {
     if (!name.trim()) return;
+    const parsed = parseChannelKey(createChannelKey);
     await createFunnel.mutateAsync({
       name: name.trim(),
       description: description.trim() || undefined,
       channel_type: 'whatsapp',
+      whatsapp_provider: parsed?.provider ?? null,
+      whatsapp_connection_id: parsed?.id ?? null,
     });
     setIsCreateOpen(false);
     setName('');
     setDescription('');
+    setCreateChannelKey('');
   };
 
   const openBuilder = () => {
@@ -233,6 +288,22 @@ export function PlatformCrmCaptureWhatsAppTab() {
             <SelectItem value="archived">Arquivado</SelectItem>
           </SelectContent>
         </Select>
+        {channelOptions.length > 0 && (
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Canal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os canais</SelectItem>
+              <SelectItem value="none">Sem canal</SelectItem>
+              {channelOptions.map((o) => (
+                <SelectItem key={o.key} value={o.key}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {isLoading ? (
@@ -265,6 +336,10 @@ export function PlatformCrmCaptureWhatsAppTab() {
               | { enabled?: boolean }
               | undefined;
             const status = statusConfig[f.status] ?? statusConfig.draft;
+            const fk = channelKeyOf(f);
+            const channelLabel = fk
+              ? (channelOptions.find((o) => o.key === fk)?.label ?? 'Canal removido')
+              : null;
             return (
               <Card
                 key={f.id}
@@ -277,6 +352,22 @@ export function PlatformCrmCaptureWhatsAppTab() {
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="font-semibold text-foreground truncate">{f.name}</h3>
                         <Badge variant={status.variant}>{status.label}</Badge>
+                        {channelLabel ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 text-emerald-700 border-emerald-500/40"
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            {channelLabel}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-amber-600 border-amber-500/40"
+                          >
+                            Sem canal
+                          </Badge>
+                        )}
                         {wa?.enabled === false && (
                           <Badge variant="outline" className="text-amber-600 border-amber-500">
                             Canal desabilitado
@@ -416,6 +507,30 @@ export function PlatformCrmCaptureWhatsAppTab() {
                 rows={2}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Canal (número WhatsApp)</Label>
+              <Select
+                value={createChannelKey || 'none'}
+                onValueChange={(v) => setCreateChannelKey(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem canal (global)</SelectItem>
+                  {channelOptions.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {channelOptions.length === 0
+                  ? 'Nenhum canal WhatsApp conectado ainda. O fluxo pode ser criado sem canal e atribuído depois.'
+                  : 'O fluxo dispara apenas para o número selecionado. Sem canal = não atribuído.'}
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -434,6 +549,7 @@ export function PlatformCrmCaptureWhatsAppTab() {
           {settingsFunnel && (
             <WhatsAppFunnelSettings
               funnel={settingsFunnel}
+              channelOptions={channelOptions}
               onClose={() => setSettingsFunnel(null)}
             />
           )}
@@ -471,9 +587,11 @@ export function PlatformCrmCaptureWhatsAppTab() {
 
 function WhatsAppFunnelSettings({
   funnel,
+  channelOptions,
   onClose,
 }: {
   funnel: PlatformCrmCaptureFunnel;
+  channelOptions: ChannelOption[];
   onClose: () => void;
 }) {
   const waChannel = ((funnel.channels as Record<string, unknown> | null) ?? {}).whatsapp as
@@ -489,6 +607,8 @@ function WhatsAppFunnelSettings({
     default_temperature: funnel.default_temperature ?? 'warm',
     default_tags: (funnel.default_tags ?? []).join(', '),
     channel_enabled: waChannel?.enabled !== false,
+    // Chave do canal atribuído (`provider:id`) ou '' quando sem canal.
+    channel_key: channelKeyOf(funnel) ?? '',
   });
 
   const updateFunnel = useUpdatePlatformCrmCaptureFunnel();
@@ -503,6 +623,7 @@ function WhatsAppFunnelSettings({
       >),
       whatsapp: { enabled: formData.channel_enabled },
     };
+    const parsedChannel = parseChannelKey(formData.channel_key);
     await updateFunnel.mutateAsync({
       id: funnel.id,
       name: formData.name,
@@ -516,6 +637,9 @@ function WhatsAppFunnelSettings({
         .map((t) => t.trim())
         .filter(Boolean),
       channels: channels as PlatformCrmCaptureFunnel['channels'],
+      // Canal WhatsApp (par polimórfico). '' → limpa a atribuição (ambos NULL).
+      whatsapp_provider: parsedChannel?.provider ?? null,
+      whatsapp_connection_id: parsedChannel?.id ?? null,
     });
     onClose();
   };
@@ -552,6 +676,35 @@ function WhatsAppFunnelSettings({
               onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               rows={2}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Canal (número WhatsApp)</Label>
+            <Select
+              value={formData.channel_key || 'none'}
+              onValueChange={(v) =>
+                setFormData((p) => ({ ...p, channel_key: v === 'none' ? '' : v }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o canal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem canal (global)</SelectItem>
+                {channelOptions.map((o) => (
+                  <SelectItem key={o.key} value={o.key}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+                {/* Canal atribuído mas não mais listado (conexão removida): preserva a opção. */}
+                {formData.channel_key &&
+                  !channelOptions.some((o) => o.key === formData.channel_key) && (
+                    <SelectItem value={formData.channel_key}>Canal removido</SelectItem>
+                  )}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              O fluxo é atribuído a este número. Cada canal pode ter fluxos próprios.
+            </p>
           </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>

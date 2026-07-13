@@ -9835,6 +9835,8 @@ export type Database = {
           total_views: number | null
           updated_at: string | null
           utm_capture: boolean | null
+          whatsapp_connection_id: string | null
+          whatsapp_provider: string | null
           widget_config: Json | null
         }
         Insert: {
@@ -9867,6 +9869,8 @@ export type Database = {
           total_views?: number | null
           updated_at?: string | null
           utm_capture?: boolean | null
+          whatsapp_connection_id?: string | null
+          whatsapp_provider?: string | null
           widget_config?: Json | null
         }
         Update: {
@@ -9899,6 +9903,8 @@ export type Database = {
           total_views?: number | null
           updated_at?: string | null
           utm_capture?: boolean | null
+          whatsapp_connection_id?: string | null
+          whatsapp_provider?: string | null
           widget_config?: Json | null
         }
         Relationships: [
