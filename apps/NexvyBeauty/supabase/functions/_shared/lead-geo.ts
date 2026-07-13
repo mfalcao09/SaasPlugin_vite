@@ -201,6 +201,7 @@ export function detectBioLanguage(text: string | null | undefined): BioLang {
 export type GeoResolution = {
   country: string | null;     // 'BR' | DDI | país textual | null
   is_brazil: boolean;
+  explicit_foreign: boolean;  // true quando há sinal estrangeiro EXPLÍCITO (≠ "sem sinal")
   signals: string[];          // quais sinais bateram (auditoria)
 };
 
@@ -240,8 +241,9 @@ export function resolveGeoCountry(item: any, phone: BestPhone): GeoResolution {
   if (zip.length === 8) { brVotes++; signals.push('zip:8'); }
 
   const is_brazil = brVotes > 0 && brVotes >= foreignVotes;
+  const explicit_foreign = foreignVotes > 0 && !is_brazil;
   const country = is_brazil ? 'BR' : (phone.country ?? (fbCountry || null));
-  return { country, is_brazil, signals };
+  return { country, is_brazil, explicit_foreign, signals };
 }
 
 // ── ICP (é salão/beleza? mata concessionária, salão-de-chá, etc.) ────────────
@@ -250,7 +252,7 @@ const NONBEAUTY_CAT = /(car dealership|autom|ve[íi]c|vehicle|dealership|restaur
 // Categoria explicitamente de beleza → aprova.
 const BEAUTY_CAT = /(hair|nail|beauty|salon|sal[aã]o|cosmetic|barber|spa|est[eé]tic|manicur|makeup|wax|skin|lash|brow)/i;
 // Termo de beleza no texto livre (bio/nome/categoria) → aprova por conteúdo.
-const BEAUTY_TERMS = /(sal[aã]o|salon|cabelo|cabeleire|hair|unhas?|nail|manicur|pedicur|est[eé]tic|beauty|beleza|lash|c[íi]lios|sobrancelha|brow|maquiag|makeup|depila[cç]|wax|podolog|barbe|alongamento|micropigment|design de sobrancelha|hidrata)/i;
+const BEAUTY_TERMS = /(sal[aã]o|salon|cabelo|cabeleire|hair|unhas?|nail|manicur|pedicur|est[eé]tic|beauty|beleza|lash|c[íi]lios|sobrancelha|brow|maquiag|makeup|depila[cç]|wax|podolog|barbe|alongamento|micropigment|design de sobrancelha|hidrata|progressiva|alisamento|mechas|balayage|esmalt|colora[cçt]|capilar|penteado|cut[íi]cula|selagem|botox capilar)/i;
 
 export type IcpVerdict = { pass: boolean; reason: string };
 
@@ -266,4 +268,63 @@ export function matchBeautyIcp(
   const blob = `${category ?? ''} ${bio ?? ''} ${name ?? ''}`;
   if (BEAUTY_TERMS.test(blob)) return { pass: true, reason: 'term:beauty' };
   return { pass: false, reason: 'no-beauty-signal' };
+}
+
+// ── INFOPRODUTO (curso/mentoria de beleza) → segmento afiliado, não salão ─────
+// Sinais fortes de que o perfil VENDE conhecimento (é potencial afiliado com
+// audiência), não presta serviço de salão. Conservador p/ não rotular salão como
+// afiliado (ambos são mantidos, mas roteiam a funis diferentes).
+const INFOPRODUTO_TERMS =
+  /(\bcursos?\b|mentoria|\bmentora\b|te ensino|aprenda a|m[ée]todo\b|forma[cç][aã]o\b|alunas? formad|profissionais formad|\+\s?\d[\d.]*\s?(mil\s)?(alunas|profissionais)|torne-se|seja uma|masterclass|imers[aã]o|treinamento online)/i;
+const INFOPRODUTO_LINK =
+  /(kiwify|hotmart|eduzz|monetizze|kajabi|braip|ticto|cademi|greenn|sunize|pay\.kiwify|checkout)/i;
+
+/** Detecta perfil de infoproduto (curso/mentoria de beleza). */
+export function detectInfoproduto(
+  bio: string | null | undefined,
+  name: string | null | undefined,
+  website: string | null | undefined,
+): boolean {
+  const blob = `${bio ?? ''} ${name ?? ''}`;
+  if (INFOPRODUTO_TERMS.test(blob)) return true;
+  if (website && INFOPRODUTO_LINK.test(website)) return true;
+  return false;
+}
+
+// ── Classificador de SEGMENTO (ICP evoluiu de gate → classificador) ──────────
+export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte';
+
+export type SegmentResult = { segment: LeadSegment; qualified: boolean };
+
+/**
+ * Roteia o lead para 1 dos 4 baldes. `qualified` = pronto p/ contato de VENDA
+ * (só salao_cliente com contato BR). Afiliado é MANTIDO mas não é "qualified de
+ * venda" (funil de recrutamento, ativado quando o programa estiver 100% no código).
+ * "Corta nada dentro do mercado BR-beleza": o beleza-sem-confirmação vira `revisao`,
+ * não descarte. Descarte = só o que é claramente fora do mercado.
+ */
+export function classifyLeadSegment(opts: {
+  icp: IcpVerdict;
+  langPass: boolean;
+  geo: GeoResolution;
+  hasPhone: boolean;
+  isInfoproduto: boolean;
+}): SegmentResult {
+  const { icp, langPass, geo, hasPhone, isInfoproduto } = opts;
+
+  // 1) Fora do mercado (idioma não-PT confiante OU geografia estrangeira explícita).
+  if (!langPass) return { segment: 'descarte', qualified: false };
+  if (geo.explicit_foreign) return { segment: 'descarte', qualified: false };
+
+  // 2) Infoproduto de beleza (BR/indeterminado) → afiliado (mantido; ativado depois).
+  if (isInfoproduto) return { segment: 'afiliado_infoproduto', qualified: false };
+
+  // 3) Sem sinal de beleza e sem ser infoproduto → fora do ICP → descarte.
+  if (!icp.pass) return { segment: 'descarte', qualified: false };
+
+  // 4) Beleza no universo BR: salão-cliente PRONTO precisa de BR confirmado + contato.
+  if (geo.is_brazil && hasPhone) return { segment: 'salao_cliente', qualified: true };
+
+  // 5) Beleza mas faltou confirmar BR ou contato → não descarta, TRIAGEM.
+  return { segment: 'revisao', qualified: false };
 }

@@ -18,8 +18,11 @@ import {
   detectBioLanguage,
   resolveGeoCountry,
   matchBeautyIcp,
+  detectInfoproduto,
+  classifyLeadSegment,
   type BioLang,
   type IcpVerdict,
+  type LeadSegment,
 } from './lead-geo.ts';
 
 export const APIFY_API_BASE = 'https://api.apify.com/v2';
@@ -260,15 +263,18 @@ export function buildLeadCard(item: any): LeadCard {
 // AND das 4 camadas: ICP (beleza) · idioma (lusófono, tolerante) · GEO (Brasil) ·
 // telefone acionável. Guarda o veredito de cada camada p/ auditar precisão.
 export type LeadQualification = {
-  qualified: boolean;
+  qualified: boolean;          // pronto p/ contato de VENDA (só salao_cliente)
+  segment: LeadSegment;        // salao_cliente | afiliado_infoproduto | revisao | descarte
+  is_infoproduto: boolean;
   phone_is_br: boolean;
   geo_country: string | null;
   bio_lang: BioLang;
   filter_verdicts: {
     icp: IcpVerdict;
     lang: { verdict: BioLang; pass: boolean };
-    geo: { is_brazil: boolean; signals: string[] };
+    geo: { is_brazil: boolean; explicit_foreign: boolean; signals: string[] };
     phone: { has_br_phone: boolean };
+    infoproduto: boolean;
   };
 };
 
@@ -283,17 +289,21 @@ export function qualifyLead(item: any, card: LeadCard): LeadQualification {
     phone_any: card.telefone,
   });
   const phonePass = !!card.telefone;
-  const qualified = icp.pass && langPass && geo.is_brazil && phonePass;
+  const isInfoproduto = detectInfoproduto(card.bio, card.name, card.website);
+  const seg = classifyLeadSegment({ icp, langPass, geo, hasPhone: phonePass, isInfoproduto });
   return {
-    qualified,
+    qualified: seg.qualified,
+    segment: seg.segment,
+    is_infoproduto: isInfoproduto,
     phone_is_br: card.phone_is_br,
     geo_country: geo.country,
     bio_lang: lang,
     filter_verdicts: {
       icp,
       lang: { verdict: lang, pass: langPass },
-      geo: { is_brazil: geo.is_brazil, signals: geo.signals },
+      geo: { is_brazil: geo.is_brazil, explicit_foreign: geo.explicit_foreign, signals: geo.signals },
       phone: { has_br_phone: phonePass },
+      infoproduto: isInfoproduto,
     },
   };
 }

@@ -142,6 +142,8 @@ Deno.serve(async (req: Request) => {
         lgpd_basis: 'art7_par4_publico',
         finalidade: 'audiencia_ads',
         qualified: q.qualified,
+        segment: q.segment,
+        is_infoproduto: q.is_infoproduto,
         phone_is_br: q.phone_is_br,
         geo_country: q.geo_country,
         bio_lang: q.bio_lang,
@@ -153,9 +155,12 @@ Deno.serve(async (req: Request) => {
     const rows = Array.from(byHandle.values());
     let withPhone = 0;
     let qualified = 0;
+    const seg: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0 };
     for (const r of rows) {
       if (r.telefone) withPhone++;
       if (r.qualified) qualified++;
+      const s = String(r.segment ?? 'descarte');
+      seg[s] = (seg[s] ?? 0) + 1;
     }
 
     if (rows.length > 0) {
@@ -172,7 +177,7 @@ Deno.serve(async (req: Request) => {
 
     // Só contagens no log (nunca PII).
     console.log(
-      `[leads-extraction-webhook] extraction=${job.id} dataset_items=${items.length} staged=${rows.length} qualified=${qualified} with_phone=${withPhone} opted_out=${optedOut} no_handle=${noHandle}`,
+      `[leads-extraction-webhook] extraction=${job.id} dataset_items=${items.length} staged=${rows.length} qualified=${qualified} cliente=${seg.salao_cliente} afiliado=${seg.afiliado_infoproduto} revisao=${seg.revisao} descarte=${seg.descarte} with_phone=${withPhone} opted_out=${optedOut} no_handle=${noHandle}`,
     );
     return json({
       ok: true,
@@ -180,6 +185,7 @@ Deno.serve(async (req: Request) => {
       dataset_items: items.length,
       staged: rows.length,
       qualified,
+      segments: seg,
       with_phone: withPhone,
       opted_out: optedOut,
     });
