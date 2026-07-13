@@ -99,6 +99,15 @@ Deno.serve(async (req: Request) => {
         .filter(Boolean),
     );
 
+    // Lixeira (anti-recidiva): perfis "excluídos de vez" não voltam pro staging.
+    const { data: excludedRows } = await sb
+      .from('platform_crm_lead_excluded')
+      .select('handle')
+      .eq('product_id', job.product_id);
+    const excludedHandles = new Set(
+      (excludedRows ?? []).map((r: any) => String(r.handle ?? '').replace(/^@/, '')).filter(Boolean),
+    );
+
     const keywords: string[] = Array.isArray(job.keywords) ? job.keywords : [];
 
     // Normaliza + dedup por handle dentro do batch.
@@ -111,7 +120,11 @@ Deno.serve(async (req: Request) => {
         noHandle++;
         continue;
       }
-      if (optoutHandles.has(card.handle) || (card.telefone && optoutPhones.has(card.telefone))) {
+      if (
+        optoutHandles.has(card.handle) ||
+        excludedHandles.has(card.handle) ||
+        (card.telefone && optoutPhones.has(card.telefone))
+      ) {
         optedOut++;
         continue;
       }

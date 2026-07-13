@@ -54,6 +54,7 @@ export interface ExtractedLead {
   geo_country: string | null;
   bio_lang: string | null;
   filter_verdicts: any | null;
+  excluded_at: string | null;
   created_at: string;
 }
 
@@ -84,6 +85,7 @@ export interface LeadFilters {
   segment?: LeadSegment | 'all';
   seedsOnly?: boolean;
   qualifiedOnly?: boolean;
+  excludedOnly?: boolean;
 }
 
 /** Leads classificados de UMA extração, com filtros de segmento/semente/qualificado. */
@@ -95,9 +97,12 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       let q = supabase
         .from('platform_crm_extracted_leads' as never)
         .select(
-          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, created_at',
+          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, excluded_at, created_at',
         )
         .eq('extraction_id', extractionId as string);
+      // Lixeira: por padrão esconde os excluídos; excludedOnly mostra SÓ eles.
+      if (filters.excludedOnly) q = q.not('excluded_at', 'is', null);
+      else q = q.is('excluded_at', null);
       if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment);
       if (filters.seedsOnly) q = q.eq('is_seed', true);
       if (filters.qualifiedOnly) q = q.eq('qualified', true);
@@ -183,5 +188,106 @@ export function useImportHandles() {
       });
     },
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao importar handles'),
+  });
+}
+
+/**
+ * "Excluir de vez" (Lixeira, LGPD-safe): marca excluded_at, SANITIZA a PII do lead
+ * (nome/telefone/bio/raw → null) e grava o @handle numa suppress-list
+ * (platform_crm_lead_excluded) pra o perfil NUNCA mais voltar num scrap.
+ */
+export function useExcludeLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; handle: string | null; productId: string }) => {
+      if (args.handle) {
+        await supabase
+          .from('platform_crm_lead_excluded' as never)
+          .upsert(
+            { product_id: args.productId, handle: args.handle } as never,
+            { onConflict: 'product_id,handle', ignoreDuplicates: true },
+          );
+      }
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({
+          excluded_at: new Date().toISOString(),
+          name: null,
+          primeiro_nome: null,
+          telefone: null,
+          whatsapp_link: null,
+          email: null,
+          bio: null,
+          raw: null,
+        } as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+      toast.success('Excluído da base', { description: 'PII apagada e @ arquivado — não volta em buscas futuras.' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao excluir'),
+  });
+}
+
+/** Restaura da Lixeira (des-esconde + tira da suppress-list). A PII sanitizada não volta. */
+export function useRestoreLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; handle: string | null; productId: string }) => {
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({ excluded_at: null } as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      if (args.handle) {
+        await supabase
+          .from('platform_crm_lead_excluded' as never)
+          .delete()
+          .eq('product_id', args.productId)
+          .eq('handle', args.handle);
+      }
+      return args;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+      toast.success('Restaurado');
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao restaurar'),
+  });
+}
+
+/**
+ * Preenche o WhatsApp MANUALMENTE (ex.: o telefone estava numa imagem do perfil).
+ * Normaliza pra E.164 BR, monta o wa.me, e promove o lead a salao_cliente/qualified
+ * (override humano — o Marcelo confirmou que é um lead de venda).
+ */
+export function useSetLeadPhone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; telefone: string }) => {
+      let digits = args.telefone.replace(/\D/g, '');
+      if (!digits) throw new Error('Telefone vazio');
+      if (!digits.startsWith('55') && digits.length >= 10 && digits.length <= 11) digits = '55' + digits;
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({
+          telefone: digits,
+          whatsapp_link: `https://wa.me/${digits}`,
+          phone_is_br: true,
+          segment: 'salao_cliente',
+          qualified: true,
+        } as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (salão-cliente).' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao salvar telefone'),
   });
 }

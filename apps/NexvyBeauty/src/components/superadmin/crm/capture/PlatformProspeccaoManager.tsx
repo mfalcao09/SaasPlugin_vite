@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,9 @@ import {
   useStartExtraction,
   useReclassifyLead,
   useImportHandles,
+  useExcludeLead,
+  useRestoreLead,
+  useSetLeadPhone,
   type LeadSegment,
   type ExtractedLead,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
@@ -19,8 +22,9 @@ import {
 /**
  * PROSPECÇÃO (C9) — cockpit do motor de extração de leads (super_admin, product-scoped).
  * Dispara a Porta A (keyword search OU colar @handles), classifica por segmento, permite
- * RECLASSIFICAR manualmente (override humano), mostra o PORQUÊ (veredito por camada),
- * colunas mostrar/ocultar, e exporta os qualificados p/ ads.
+ * RECLASSIFICAR manualmente (override humano), preencher WhatsApp na mão, EXCLUIR de vez
+ * (lixeira LGPD-safe), mostra o PORQUÊ (veredito por camada), colunas mostrar/ocultar, e
+ * exporta os qualificados p/ ads.
  */
 
 const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: string }> = {
@@ -80,19 +84,24 @@ export function PlatformProspeccaoManager() {
   const [segment, setSegment] = useState<LeadSegment | 'all'>('all');
   const [seedsOnly, setSeedsOnly] = useState(false);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
+  const [showExcluded, setShowExcluded] = useState(false);
   const [cols, setCols] = useState<Set<string>>(new Set());
   const [showRules, setShowRules] = useState(false);
   const [showColMenu, setShowColMenu] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteText, setPasteText] = useState('');
+  const [editingPhone, setEditingPhone] = useState<{ id: string; value: string } | null>(null);
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
   const activeExtraction =
     selectedExtractionId ?? extractions.find((e) => e.status === 'done')?.id ?? extractions[0]?.id ?? null;
-  const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, seedsOnly, qualifiedOnly });
+  const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, seedsOnly, qualifiedOnly, excludedOnly: showExcluded });
   const start = useStartExtraction();
   const reclassify = useReclassifyLead();
   const importHandles = useImportHandles();
+  const exclude = useExcludeLead();
+  const restore = useRestoreLead();
+  const setPhone = useSetLeadPhone();
   const qc = useQueryClient();
 
   const handleRefresh = () => {
@@ -130,6 +139,11 @@ export function PlatformProspeccaoManager() {
       { product_id: productId, handles: pastedHandles.slice(0, 200) },
       { onSuccess: () => { setPasteText(''); setShowPaste(false); } },
     );
+  };
+
+  const savePhone = () => {
+    if (!editingPhone || !editingPhone.value.trim()) return;
+    setPhone.mutate({ id: editingPhone.id, telefone: editingPhone.value }, { onSuccess: () => setEditingPhone(null) });
   };
 
   const handleExport = () => {
@@ -173,6 +187,8 @@ export function PlatformProspeccaoManager() {
           <p>🔵 <b>Afiliado:</b> curso/mentoria de beleza (kiwify/hotmart, "X alunas formadas"). Guardado p/ recrutamento futuro.</p>
           <p>🟡 <b>Revisão:</b> é beleza mas faltou confirmar Brasil e/ou contato — triagem manual.</p>
           <p>⚪ <b>Descarte:</b> fora do mercado (idioma não-PT, geografia estrangeira, ou sem sinal de beleza). Passe o mouse no segmento pra ver <b>por qual camada</b> caiu.</p>
+          <p>🗑️ <b>Excluir de vez:</b> apaga a PII do lead e arquiva o @ pra nunca mais voltar num scrap (lixeira LGPD-safe). Use nos descartes confirmados.</p>
+          <p>➕ <b>WhatsApp manual:</b> achou o telefone numa imagem do perfil? Preencha na coluna Telefone → o lead vira qualificado (salão-cliente).</p>
           <p>🌱 <b>Semente:</b> perfil de beleza com ≥ 50k seguidores (hub p/ minerar). Você pode marcar/desmarcar manualmente.</p>
         </div>
       )}
@@ -238,6 +254,7 @@ export function PlatformProspeccaoManager() {
 
         <Button variant={seedsOnly ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setSeedsOnly((v) => !v)}><Sprout className="h-4 w-4" /> Sementes</Button>
         <Button variant={qualifiedOnly ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setQualifiedOnly((v) => !v)}><BadgeCheck className="h-4 w-4" /> Qualificados</Button>
+        <Button variant={showExcluded ? 'destructive' : 'outline'} size="sm" className="gap-1" onClick={() => setShowExcluded((v) => !v)}><Trash2 className="h-4 w-4" /> Lixeira</Button>
 
         <div className="relative">
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowColMenu((v) => !v)}><Columns3 className="h-4 w-4" /> Colunas</Button>
@@ -254,6 +271,12 @@ export function PlatformProspeccaoManager() {
 
         <Button variant="outline" size="sm" className="gap-1 ml-auto" onClick={handleExport} disabled={leads.length === 0}><Download className="h-4 w-4" /> Exportar qualificados (CSV)</Button>
       </div>
+
+      {showExcluded && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-muted-foreground">
+          🗑️ <b>Lixeira</b> — perfis excluídos de vez. A PII foi apagada; o @ fica arquivado pra não voltar em buscas. Você pode restaurar (a PII não volta, mas o perfil reaparece nas buscas).
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 text-xs">
         <Badge variant="outline" className={SEG_META.salao_cliente.cls}>🟢 {counts.salao_cliente} salão</Badge>
@@ -285,7 +308,7 @@ export function PlatformProspeccaoManager() {
             <tbody>
               {leadsLoading && <tr><td colSpan={12} className="p-6 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>}
               {!leadsLoading && leads.length === 0 && (
-                <tr><td colSpan={12} className="p-6 text-center text-muted-foreground">{activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
+                <tr><td colSpan={12} className="p-6 text-center text-muted-foreground">{showExcluded ? 'Lixeira vazia.' : activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
               )}
               {leads.map((l) => (
                 <tr key={l.id} className="border-t border-border hover:bg-muted/30">
@@ -295,6 +318,7 @@ export function PlatformProspeccaoManager() {
                         className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment].cls : ''}`}
                         value={l.segment ?? 'descarte'}
                         onChange={(e) => reclassify.mutate({ id: l.id, segment: e.target.value as LeadSegment })}
+                        disabled={showExcluded}
                       >
                         {SEG_KEYS.map((k) => <option key={k} value={k}>{SEG_META[k].dot} {SEG_META[k].label}</option>)}
                       </select>
@@ -303,6 +327,19 @@ export function PlatformProspeccaoManager() {
                         className={`text-sm ${l.is_seed ? '' : 'opacity-30'}`}
                         onClick={() => reclassify.mutate({ id: l.id, is_seed: !l.is_seed })}
                       >🌱</button>
+                      {showExcluded ? (
+                        <button
+                          title="Restaurar da lixeira"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => productId && restore.mutate({ id: l.id, handle: l.handle, productId })}
+                        ><RotateCcw className="h-3.5 w-3.5" /></button>
+                      ) : (
+                        <button
+                          title="Excluir de vez (apaga PII + arquiva)"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => productId && exclude.mutate({ id: l.id, handle: l.handle, productId })}
+                        ><Trash2 className="h-3.5 w-3.5" /></button>
+                      )}
                     </div>
                   </td>
                   <td className="p-2">
@@ -312,7 +349,32 @@ export function PlatformProspeccaoManager() {
                   <td className="p-2 text-right tabular-nums">{fmtNum(l.seguidores)}</td>
                   {has('seguindo') && <td className="p-2 text-right tabular-nums">{fmtNum(l.seguindo)}</td>}
                   {has('posts') && <td className="p-2 text-right tabular-nums">{fmtNum(l.posts)}</td>}
-                  <td className="p-2">{l.whatsapp_link ? <a href={l.whatsapp_link} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">WhatsApp</a> : l.telefone ? l.telefone : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="p-2">
+                    {l.whatsapp_link ? (
+                      <a href={l.whatsapp_link} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">WhatsApp</a>
+                    ) : l.telefone ? (
+                      l.telefone
+                    ) : editingPhone?.id === l.id ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Input
+                          autoFocus
+                          className="h-7 w-32 text-xs"
+                          placeholder="(11) 91234-5678"
+                          value={editingPhone.value}
+                          onChange={(e) => setEditingPhone({ id: l.id, value: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') savePhone(); if (e.key === 'Escape') setEditingPhone(null); }}
+                        />
+                        <button title="Salvar" className="text-green-600" onClick={savePhone} disabled={setPhone.isPending}><Check className="h-3.5 w-3.5" /></button>
+                        <button title="Cancelar" className="text-muted-foreground" onClick={() => setEditingPhone(null)}><X className="h-3.5 w-3.5" /></button>
+                      </span>
+                    ) : showExcluded ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <button className="text-xs text-primary inline-flex items-center gap-0.5 hover:underline" title="Preencher WhatsApp manualmente → vira qualificado" onClick={() => setEditingPhone({ id: l.id, value: '' })}>
+                        <Plus className="h-3 w-3" /> WhatsApp
+                      </button>
+                    )}
+                  </td>
                   {has('email') && <td className="p-2 text-muted-foreground truncate max-w-[160px]">{l.email ?? '—'}</td>}
                   {has('website') && <td className="p-2 truncate max-w-[160px]">{l.website ? <a href={l.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">{l.website.replace(/^https?:\/\//, '')}</a> : '—'}</td>}
                   {has('verified') && <td className="p-2 text-center">{l.is_verified ? '✔' : ''}</td>}
