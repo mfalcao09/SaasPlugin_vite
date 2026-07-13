@@ -182,10 +182,10 @@ export function PlatformCrmCaptureWidgetsTab() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Code2 className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Code2 className="h-6 w-6 text-primary" />
             Widget de Site
-          </h2>
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Bolha de chat embutida em sites externos via snippet{' '}
             <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;script&gt;</code>.
