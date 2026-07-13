@@ -84,18 +84,17 @@ export function PlatformCrmCaptureWidgetsTab() {
   const { data: widgets, isLoading } = usePlatformCrmWebchatWidgets();
   // Produto ativo GLOBAL (D3 F2): novo widget nasce no ativo. A LISTA usa o filtro
   // local abaixo (parity Vendus "Widget de Site": seletor "Todos os produtos").
-  const { products, activeProductId, effectiveProductId } = useActivePlatformProduct();
+  const { products, effectiveProductId } = useActivePlatformProduct();
   const createWidget = useCreatePlatformCrmWebchatWidget();
   const updateWidget = useUpdatePlatformCrmWebchatWidget();
   const toggleWidget = useTogglePlatformCrmWebchatWidget();
   const deleteWidget = useDeletePlatformCrmWebchatWidget();
 
   // Filtro de PRODUTO local (parity FIEL do WidgetManager tenant + PlatformCrmFormsManager).
-  // Seed = produto ativo GLOBAL para abrir já recortado no D3 F2; a partir daí é um
-  // filtro local independente, como no Vendus. 'all' = "Todos os produtos".
-  const [selectedProductFilter, setSelectedProductFilter] = useState<string>(
-    () => activeProductId ?? 'all',
-  );
+  // Default = 'all' ("Todos os produtos"), 1:1 com o Vendus "Widget de Site" — abre no
+  // zero-state amigável + CTA. O switcher GLOBAL não sequestra o default (quebrava o
+  // 1:1 visual); segue disponível pelo dropdown.
+  const [selectedProductFilter, setSelectedProductFilter] = useState<string>('all');
 
   // O produto é obrigatório para gravar, EXCETO quando ainda não há produtos
   // cadastrados (aí o backend aplica o default) — espelha a fonte, que só exige
