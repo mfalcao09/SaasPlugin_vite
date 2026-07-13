@@ -58,7 +58,13 @@ export function PlatformProspeccaoManager() {
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
-  const activeExtraction = selectedExtractionId ?? extractions[0]?.id ?? null;
+  // Default: a extração escolhida pelo usuário; senão a última CONCLUÍDA (que já
+  // tem leads); senão a mais recente. Evita abrir numa 'running' vazia.
+  const activeExtraction =
+    selectedExtractionId ??
+    extractions.find((e) => e.status === 'done')?.id ??
+    extractions[0]?.id ??
+    null;
   const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, {
     segment,
     seedsOnly,
