@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,12 @@ export function PlatformProspeccaoManager() {
     qualifiedOnly,
   });
   const start = useStartExtraction();
+  const qc = useQueryClient();
+
+  const handleRefresh = () => {
+    qc.invalidateQueries({ queryKey: ['platform-lead-extractions', productId] });
+    qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+  };
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0, seeds: 0 };
@@ -93,14 +100,19 @@ export function PlatformProspeccaoManager() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Radar className="h-6 w-6 text-primary" />
-          Prospecção
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Motor de extração de leads (Instagram). Busque por palavra-chave; os perfis vêm classificados por segmento.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Radar className="h-6 w-6 text-primary" />
+            Prospecção
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Motor de extração de leads (Instagram). Busque por palavra-chave; os perfis vêm classificados por segmento.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4" /> Atualizar
+        </Button>
       </div>
 
       {/* Disparo (Porta A — keyword search) */}
