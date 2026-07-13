@@ -102,6 +102,60 @@ export async function startIgActorRun(
   };
 }
 
+// apify/instagram-profile-scraper — usernames[] → profile details (mesmos campos
+// que o keyword scraper devolve, então buildLeadCard/qualifyLead servem igual).
+export const PROFILE_ACTOR_ID = 'dSCLg0C3YEZ83HzYX';
+
+/**
+ * Dispara o profile-scraper (usernames[]) ASSÍNCRONO + webhook ad-hoc (mesmo padrão
+ * do startIgActorRun). Usado por `leads-import-handles` (colar handles / vídeo →
+ * Gemini). O webhook (leads-extraction-webhook) baixa o dataset e classifica igual.
+ */
+export async function startProfileScraperRun(
+  usernames: string[],
+  webhookUrl: string,
+  token: string,
+): Promise<StartRunResult> {
+  const webhooks = [
+    {
+      eventTypes: [
+        'ACTOR.RUN.SUCCEEDED',
+        'ACTOR.RUN.FAILED',
+        'ACTOR.RUN.TIMED_OUT',
+        'ACTOR.RUN.ABORTED',
+      ],
+      requestUrl: webhookUrl,
+    },
+  ];
+  const webhooksB64 = btoa(JSON.stringify(webhooks));
+  const url =
+    `${APIFY_API_BASE}/acts/${PROFILE_ACTOR_ID}/runs` +
+    `?token=${encodeURIComponent(token)}&webhooks=${encodeURIComponent(webhooksB64)}`;
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usernames }),
+  });
+  const bodyText = await resp.text();
+  if (!resp.ok) {
+    throw new Error(`Apify profile run start failed (${resp.status}): ${bodyText.slice(0, 300)}`);
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(bodyText);
+  } catch (_) {
+    throw new Error('Apify run start: resposta não-JSON');
+  }
+  const data = parsed?.data ?? {};
+  if (!data.id) throw new Error('Apify run start: sem run id na resposta');
+  return {
+    runId: String(data.id),
+    datasetId: data.defaultDatasetId ? String(data.defaultDatasetId) : null,
+    status: data.status ? String(data.status) : null,
+  };
+}
+
 /** Baixa os itens do dataset de um run (GET /v2/datasets/<id>/items). */
 export async function fetchDatasetItems(datasetId: string, token: string): Promise<any[]> {
   const url =

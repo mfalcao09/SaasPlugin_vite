@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3 } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,15 +11,16 @@ import {
   usePlatformExtractedLeads,
   useStartExtraction,
   useReclassifyLead,
+  useImportHandles,
   type LeadSegment,
   type ExtractedLead,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
 
 /**
  * PROSPECÇÃO (C9) — cockpit do motor de extração de leads (super_admin, product-scoped).
- * Dispara a Porta A (keyword search), classifica por segmento, permite RECLASSIFICAR
- * manualmente (override humano), mostra o PORQUÊ (veredito por camada), colunas
- * mostrar/ocultar, e exporta os qualificados p/ ads.
+ * Dispara a Porta A (keyword search OU colar @handles), classifica por segmento, permite
+ * RECLASSIFICAR manualmente (override humano), mostra o PORQUÊ (veredito por camada),
+ * colunas mostrar/ocultar, e exporta os qualificados p/ ads.
  */
 
 const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: string }> = {
@@ -82,6 +83,8 @@ export function PlatformProspeccaoManager() {
   const [cols, setCols] = useState<Set<string>>(new Set());
   const [showRules, setShowRules] = useState(false);
   const [showColMenu, setShowColMenu] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState('');
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
   const activeExtraction =
@@ -89,6 +92,7 @@ export function PlatformProspeccaoManager() {
   const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, seedsOnly, qualifiedOnly });
   const start = useStartExtraction();
   const reclassify = useReclassifyLead();
+  const importHandles = useImportHandles();
   const qc = useQueryClient();
 
   const handleRefresh = () => {
@@ -105,6 +109,12 @@ export function PlatformProspeccaoManager() {
     return c;
   }, [leads]);
 
+  // Handles colados → tokens limpos (o edge re-sanitiza @/URL e capa em 200).
+  const pastedHandles = useMemo(
+    () => pasteText.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean),
+    [pasteText],
+  );
+
   const toggleCol = (k: string) => setCols((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const has = (k: string) => cols.has(k);
 
@@ -112,6 +122,14 @@ export function PlatformProspeccaoManager() {
     const kws = keywords.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 20);
     if (!productId || kws.length === 0) return;
     start.mutate({ product_id: productId, keywords: kws, limit });
+  };
+
+  const handleImportHandles = () => {
+    if (!productId || pastedHandles.length === 0) return;
+    importHandles.mutate(
+      { product_id: productId, handles: pastedHandles.slice(0, 200) },
+      { onSuccess: () => { setPasteText(''); setShowPaste(false); } },
+    );
   };
 
   const handleExport = () => {
@@ -133,10 +151,13 @@ export function PlatformProspeccaoManager() {
             <Radar className="h-6 w-6 text-primary" /> Prospecção
           </h1>
           <p className="text-muted-foreground mt-1">
-            Motor de extração de leads (Instagram). Busque por palavra-chave; os perfis vêm classificados por segmento.
+            Motor de extração de leads (Instagram). Busque por palavra-chave ou cole @handles; os perfis vêm classificados por segmento.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <Button variant={showPaste ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setShowPaste((v) => !v)}>
+            <ClipboardPaste className="h-4 w-4" /> Colar handles
+          </Button>
           <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowRules((v) => !v)}>
             <HelpCircle className="h-4 w-4" /> Regras
           </Button>
@@ -153,6 +174,28 @@ export function PlatformProspeccaoManager() {
           <p>🟡 <b>Revisão:</b> é beleza mas faltou confirmar Brasil e/ou contato — triagem manual.</p>
           <p>⚪ <b>Descarte:</b> fora do mercado (idioma não-PT, geografia estrangeira, ou sem sinal de beleza). Passe o mouse no segmento pra ver <b>por qual camada</b> caiu.</p>
           <p>🌱 <b>Semente:</b> perfil de beleza com ≥ 50k seguidores (hub p/ minerar). Você pode marcar/desmarcar manualmente.</p>
+        </div>
+      )}
+
+      {showPaste && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <label className="text-sm font-medium text-foreground">
+            Colar @handles — um por linha, vírgula ou espaço (aceita @perfil, link do Instagram ou usuário cru)
+          </label>
+          <textarea
+            className="w-full h-28 rounded-md border border-border bg-background p-2 text-sm font-mono resize-y"
+            placeholder={'@salaobelo\ninstagram.com/estudio.rosa\nmanicure.sp'}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {pastedHandles.length} handle(s){pastedHandles.length > 200 ? ' · só os 200 primeiros' : ''} · usa a conta Apify do projeto (~US$0,0026/perfil)
+            </span>
+            <Button onClick={handleImportHandles} disabled={importHandles.isPending || !productId || pastedHandles.length === 0} className="gap-2 ml-auto">
+              {importHandles.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPaste className="h-4 w-4" />} Importar handles
+            </Button>
+          </div>
         </div>
       )}
 
