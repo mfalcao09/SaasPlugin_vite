@@ -54,6 +54,8 @@ import { PlatformCrmProductAgentsManager } from '@/components/superadmin/crm/age
 import { PlatformCrmCampaignsManager } from '@/components/superadmin/crm/campaigns/PlatformCrmCampaignsManager';
 import { InstagramAutomationsSection } from '@/components/superadmin/crm/instagram-flows/InstagramAutomationsSection';
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
+import { PlatformCrmFormsManager } from '@/components/superadmin/crm/capture/PlatformCrmFormsManager';
+import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
 import { PlatformCrmSellerFormSection } from '@/components/superadmin/crm/capture/PlatformCrmSellerFormSection';
@@ -371,7 +373,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-formularios',
         label: 'Formulários',
         icon: I.FormInput,
-        render: () => <PlatformCrmCaptureManager initialTab="forms" />,
+        render: () => <PlatformCrmFormsManager />,
       },
       {
         id: 'v-form-vendedores',
@@ -389,7 +391,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-widget',
         label: 'Widget',
         icon: I.MousePointerClick,
-        render: () => <PlatformCrmCaptureManager initialTab="widgets" />,
+        render: () => <PlatformCrmCaptureWidgetsTab />,
       },
       {
         id: 'v-whatsapp',
