@@ -117,13 +117,24 @@ Deno.serve(async (req: Request) => {
       (optoutRows ?? []).map((r: any) => (r.handle ? String(r.handle).replace(/^@/, '') : null)).filter(Boolean),
     );
 
+    // Lixeira (anti-recidiva): perfis "excluídos de vez" não voltam pro staging.
+    const { data: excludedRows } = await sb
+      .from('platform_crm_lead_excluded').select('handle').eq('product_id', productId);
+    const excludedHandles = new Set(
+      (excludedRows ?? []).map((r: any) => String(r.handle ?? '').replace(/^@/, '')).filter(Boolean),
+    );
+
     // Normaliza + dedup por handle dentro do batch (mesma lógica do webhook).
     const byHandle = new Map<string, Record<string, unknown>>();
     let optedOut = 0, noHandle = 0;
     for (const item of profiles) {
       const card = buildLeadCard(item);
       if (!card.handle) { noHandle++; continue; }
-      if (optoutHandles.has(card.handle) || (card.telefone && optoutPhones.has(card.telefone))) {
+      if (
+        optoutHandles.has(card.handle) ||
+        excludedHandles.has(card.handle) ||
+        (card.telefone && optoutPhones.has(card.telefone))
+      ) {
         optedOut++;
         continue;
       }
