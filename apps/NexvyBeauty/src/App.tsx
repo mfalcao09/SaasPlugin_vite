@@ -88,6 +88,10 @@ const AdsOAuthReturn = lazyWithRetry(() => import("./pages/AdsOAuthReturn"));
 const PublicSalaoPacotes = lazyWithRetry(() => import("./pages/PublicSalaoPacotes"));
 const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
 const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
+// Onboarding pós-compra: tela de sucesso (pós-checkout) + wizard de implantação (porte Vendus v5).
+const OnboardingWelcome = lazyWithRetry(() => import("./pages/OnboardingWelcome"));
+const AdminImplantacao = lazyWithRetry(() => import("./pages/AdminImplantacao"));
+const ImplantacaoPublic = lazyWithRetry(() => import("./pages/ImplantacaoPublic"));
 
 const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
 
@@ -255,6 +259,12 @@ const App = () => (
               <Route path="/reagendar/:token" element={<PlatformCrmBookingConfirmation />} />
               <Route path="/unsubscribe" element={<Unsubscribe />} />
 
+              {/* Onboarding pós-compra (públicas — cliente ainda sem login).
+                  /bem-vindo = tela de sucesso pós-checkout (Cakto redireciona).
+                  /implantacao/:token = wizard via link público com trava de sessão. */}
+              <Route path="/bem-vindo" element={<OnboardingWelcome />} />
+              <Route path="/implantacao/:token" element={<ImplantacaoPublic />} />
+
               {/* Jurídico público (sem login) */}
               <Route path="/termos" element={<Termos />} />
               <Route path="/privacidade" element={<Privacidade />} />
@@ -353,13 +363,22 @@ const App = () => (
                 path="/novidades" 
                 element={<ProtectedRoute><Updates /></ProtectedRoute>} 
               />
-              <Route 
-                path="/admin" 
+              <Route
+                path="/admin"
                 element={
                   <ProtectedRoute>
                     <Admin />
                   </ProtectedRoute>
-                } 
+                }
+              />
+              {/* Wizard de implantação (onboarding pós-compra) — admin logado. */}
+              <Route
+                path="/admin/implantacao"
+                element={
+                  <ProtectedRoute>
+                    <AdminImplantacao />
+                  </ProtectedRoute>
+                }
               />
               {/* ERP Salão (NexvyBeauty) */}
               <Route path="/salao" element={<ProtectedRoute><SalaoDashboard /></ProtectedRoute>} />
