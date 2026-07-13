@@ -337,6 +337,30 @@ Custo (orçamento R$500): A1 bateria ~$0,65 · A2 ~$0,46/run · enriquecimento ~
 
 ---
 
+## 🎯 HANDOFF EXTRAÇÃO DE LEADS — orientações pra SESSÃO NOVA (07-13 · OFICIAL)
+> O Marcelo monta a base por **3 vetores em paralelo**. TODOS convergem pro MESMO pipeline: extrair (limpo) → classificar (nosso motor) → dedup vs base → **Base consolidada**. NÃO refazer o que já roda.
+
+### Vetor 1 — Prospectagram (⏸️ AGUARDANDO o "vai" do Marcelo)
+- **STATUS: BLOQUEADO no sinal do Marcelo.** Ele ainda está scrapeando a base do prospectagram. Quando terminar, ele dá o **"vai"**. **SÓ AÍ baixar** — não antecipar.
+- **Como:** seguir a receita da seção **"📥 PROSPECTAGRAM"** (acima) — `Control_Chrome` (não `claude-in-chrome`, que caiu), cards `.glass-card`, **scroll fino acumulador** (lista virtualizada), ⛔ **NUNCA clicar "Perdido"/"Ganho"**. Ler de `window.__leadsClean`.
+- Depois: classificar + dedup vs 859 (handle/telefone) + importar na Base consolidada. Já provado 07-13: 78% com telefone, DOM sai limpo (CSV corrompe 47%).
+
+### Vetor 2 — Screenshots dos GRANDES usuários / sementes (mineração de grafo à mão)
+- O Marcelo tira **prints do conteúdo dos perfis grandes** (≥50k, as sementes) — lista de seguidores, comentários, marcados — pra colher @handles. **É o Nível 3 (expansão em grafo) feito à mão** (a versão automática está congelada por exigir farm de contas).
+- **Como a sessão nova processa um print:**
+  1. **Ler a imagem (visão)** → extrair TODOS os @handles visíveis (o Marcelo anexa os prints no chat; ler o arquivo).
+  2. **Sanitizar + dedup** (tirar @, dedup interno, dedup vs os 859 já na base).
+  3. **POST no edge `leads-import-handles`** `{product_id:'806b5975-e268-402e-a65c-9e9503271041', handles:[...]}` → ele dispara o profile-scraper Apify (usernames[]) + o webhook classifica e estagia. **É o MESMO caminho do "colar handles" / vídeo→Gemini** — não inventar fluxo novo.
+  - Vários prints → juntar handles, dedup, POSTs de até **200/chamada** (teto do edge). ⚠️ Consome a conta Apify do PROJETO (APIFY_TOKEN) — barato (~US$0,0026/perfil), mas avisar volume alto.
+
+### Vetor 3 — Scrap keyword/vídeo (já VIVO em prod)
+- Keyword search + colar handles + import de vídeo já rodam na Prospecção. Conta MCP na parede mensal → upgrade US$29 destrava a meta 10k.
+
+### Pipeline comum (todo vetor termina aqui)
+`extrair limpo → buildLeadCard + qualifyLead (_shared/apify-leads.ts + lead-geo.ts) → dedup por handle/telefone → Base consolidada (product_id 806b5975-…)`. Respeita opt-out + lixeira (`excluded`). LGPD: Art.7º§4 + finalidade=audiencia_ads. Segmento define o funil (salão→ads; afiliado→programa 30/10).
+
+---
+
 ## Governança (Seção 14)
 - **Este é o registro vivo único.** Novos itens entram AQUI com dono+done+saiu; nada de doc novo paralelo.
 - Docs superseded receberão errata apontando pra cá.
