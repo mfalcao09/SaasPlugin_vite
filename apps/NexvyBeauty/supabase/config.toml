@@ -56,3 +56,11 @@ verify_jwt = false
 # deployar em produção junto com o resto; roda sob demanda e limpa os efêmeros.
 [functions.tmp-eval-agents]
 verify_jwt = false
+
+# Aplica o payload do wizard de onboarding nas tabelas reais (empresa/horários/setores/
+# negócios/agentes/equipes). Chamada com token PÚBLICO + session_token (empresa externa via
+# link), então o gateway não pode exigir JWT. Auth real na função = token_hash (SHA-256 do
+# token) casa com onboarding_submissions.token_hash + session_token + org não travada. O fluxo
+# autenticado (submission_id + Bearer) valida o JWT dentro da própria função.
+[functions.apply-onboarding]
+verify_jwt = false
