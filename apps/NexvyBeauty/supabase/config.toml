@@ -36,6 +36,14 @@ verify_jwt = false
 [functions.ads-oauth-callback]
 verify_jwt = false
 
+# Webhook público do Apify (C9 F0 — motor de extração de leads IG). Apify chama de
+# volta ao fim do run, sem JWT. Auth real na função = extraction_id (query) casa com
+# o job + run id do payload casa com apify_run_id gravado + dataset só é lido com o
+# APIFY_TOKEN do projeto (prova de posse). leads-extraction-start NÃO entra aqui:
+# exige JWT super_admin (verify_jwt=true, o default).
+[functions.leads-extraction-webhook]
+verify_jwt = false
+
 # EF DESCARTÁVEL de evals (braço EVALS-V1): régua binária do brain de vendas.
 # Sem JWT — auth real = x-brain-secret (BRAIN_INTERNAL_SECRET) na função. NÃO
 # deployar em produção junto com o resto; roda sob demanda e limpa os efêmeros.
