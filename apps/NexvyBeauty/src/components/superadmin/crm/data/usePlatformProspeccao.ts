@@ -36,16 +36,24 @@ export interface ExtractedLead {
   handle: string | null;
   name: string | null;
   seguidores: number | null;
+  seguindo: number | null;
+  posts: number | null;
   telefone: string | null;
   whatsapp_link: string | null;
+  email: string | null;
   instagram_url: string | null;
+  website: string | null;
   categoria: string | null;
   bio: string | null;
   segment: LeadSegment | null;
   qualified: boolean | null;
   is_seed: boolean | null;
   is_infoproduto: boolean | null;
+  is_verified: boolean | null;
+  is_private: boolean | null;
   geo_country: string | null;
+  bio_lang: string | null;
+  filter_verdicts: any | null;
   created_at: string;
 }
 
@@ -87,7 +95,7 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       let q = supabase
         .from('platform_crm_extracted_leads' as never)
         .select(
-          'id, extraction_id, handle, name, seguidores, telefone, whatsapp_link, instagram_url, categoria, bio, segment, qualified, is_seed, is_infoproduto, geo_country, created_at',
+          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, created_at',
         )
         .eq('extraction_id', extractionId as string);
       if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment);
@@ -97,6 +105,35 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       if (error) throw error;
       return (data ?? []) as unknown as ExtractedLead[];
     },
+  });
+}
+
+/**
+ * Reclassificação MANUAL de um lead (override humano do classificador automático).
+ * Muda o segmento e/ou marca semente. Ao mover para/de salao_cliente, o `qualified`
+ * segue o segmento (só salao_cliente é "qualificado de venda"). RLS super_admin.
+ */
+export function useReclassifyLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; segment?: LeadSegment; is_seed?: boolean }) => {
+      const patch: Record<string, unknown> = {};
+      if (args.segment !== undefined) {
+        patch.segment = args.segment;
+        patch.qualified = args.segment === 'salao_cliente';
+      }
+      if (args.is_seed !== undefined) patch.is_seed = args.is_seed;
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update(patch as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao reclassificar'),
   });
 }
 
