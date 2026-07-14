@@ -120,10 +120,16 @@ function extractQr(obj: any): string | null {
 
 // Events that the evolution-webhook function actually handles (v2.3.7 names).
 // Keep in sync with evolution-webhook/index.ts normalizePayload().
+// MESSAGES_SET/CHATS_SET/CONTACTS_SET = chunks de HISTÓRICO (syncFullHistory)
+// — o evolution-webhook encaminha pra evolution-history-sync, que monta a
+// carteira de clientes do salão (F6).
 const WEBHOOK_EVENTS = [
+  "MESSAGES_SET",
   "MESSAGES_UPSERT",
   "MESSAGES_UPDATE",
   "MESSAGES_DELETE",
+  "CHATS_SET",
+  "CONTACTS_SET",
   "CONNECTION_UPDATE",
   "QRCODE_UPDATED",
   "SEND_MESSAGE",
@@ -323,6 +329,10 @@ Deno.serve(async (req) => {
       // Evolution API v2.3.7 requires { instanceName, integration, token }.
       // We generate a token as a fallback; the server returns the real instance
       // apikey in `body.hash` (top-level string).
+      // syncFullHistory=true (F6): ao parear, o Baileys puxa o HISTÓRICO do
+      // aparelho e o servidor emite MESSAGES_SET/CHATS_SET/CONTACTS_SET → vira
+      // a carteira de clientes. Retrocompatível: servidores que não conhecem o
+      // campo simplesmente o ignoram.
       const generatedToken = crypto.randomUUID();
       console.log(`[create_instance] -> POST /instance/create instanceName="${name}" org=${targetOrgId} token=${maskKey(generatedToken)}`);
       const createRes = await evoFetch(config, "/instance/create", {
@@ -331,6 +341,7 @@ Deno.serve(async (req) => {
           instanceName: name,
           integration: "WHATSAPP-BAILEYS",
           token: generatedToken,
+          syncFullHistory: true,
         }),
       });
       console.log(
@@ -502,12 +513,16 @@ Deno.serve(async (req) => {
 
       const generatedToken = crypto.randomUUID();
       console.log(`[create_instance_self] -> POST /instance/create instanceName="${finalName}" org=${orgId} token=${maskKey(generatedToken)}`);
+      // syncFullHistory=true (F6): histórico do aparelho → MESSAGES_SET/CHATS_SET/
+      // CONTACTS_SET → carteira de clientes. Retrocompatível (campo ignorado por
+      // servidores que não o suportam).
       const createRes = await evoFetch(config, "/instance/create", {
         method: "POST",
         body: JSON.stringify({
           instanceName: finalName,
           integration: "WHATSAPP-BAILEYS",
           token: generatedToken,
+          syncFullHistory: true,
         }),
       });
       console.log(

@@ -55,7 +55,7 @@ export const SalaoProfissionaisStep: FC<StepProps> = ({ onNext, onSkip, onBack }
         <div>
           <h2 className="text-lg font-semibold text-foreground">Quem atende no seu negócio?</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Adicione os profissionais (cabeleireiro, manicure, esteticista…). Cada um terá a própria agenda.
+            Adicione os profissionais (cabelo, unhas, estética…). Cada um terá a própria agenda.
           </p>
         </div>
       </div>

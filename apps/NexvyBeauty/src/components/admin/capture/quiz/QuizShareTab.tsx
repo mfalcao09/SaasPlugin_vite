@@ -13,7 +13,7 @@ interface Props { funnel: Funnel; }
 
 export function QuizShareTab({ funnel }: Props) {
   const [copied, setCopied] = useState<string | null>(null);
-  const { data: baseUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: baseUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
   const editor = typeof window !== 'undefined' && isEditorHost();
 
   const slug = (funnel.channels as any)?.quiz?.slug_override || funnel.slug;

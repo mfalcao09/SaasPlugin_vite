@@ -28,12 +28,13 @@ import {
  */
 
 const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: string }> = {
-  salao_cliente: { label: 'Salão-cliente', dot: '🟢', cls: 'bg-green-500/15 text-green-600 border-green-500/30' },
+  salao_cliente: { label: 'Espaço-cliente', dot: '🟢', cls: 'bg-green-500/15 text-green-600 border-green-500/30' },
   afiliado_infoproduto: { label: 'Afiliado', dot: '🔵', cls: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
   revisao: { label: 'Revisão', dot: '🟡', cls: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30' },
   descarte: { label: 'Descarte', dot: '⚪', cls: 'bg-muted text-muted-foreground border-border' },
+  acionamento_via_instagram: { label: 'Instagram (DM)', dot: '🟣', cls: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
 };
-const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao', 'descarte'];
+const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao', 'descarte', 'acionamento_via_instagram'];
 
 const SUGGESTED = 'cabeleireira, escova progressiva, alongamento de unhas, design de sobrancelhas, esmalteria, micropigmentação, salão de beleza';
 
@@ -110,7 +111,7 @@ export function PlatformProspeccaoManager() {
   };
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0, seeds: 0 };
+    const c: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0, acionamento_via_instagram: 0, seeds: 0 };
     for (const l of leads) {
       if (l.segment) c[l.segment] = (c[l.segment] ?? 0) + 1;
       if (l.is_seed) c.seeds++;
@@ -183,12 +184,13 @@ export function PlatformProspeccaoManager() {
 
       {showRules && (
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground space-y-1">
-          <p>🟢 <b>Salão-cliente (Qualificado):</b> beleza + Brasil + <b>telefone BR presente</b>. É o que entra no export/ads.</p>
+          <p>🟢 <b>Espaço-cliente (Qualificado):</b> beleza + Brasil + <b>telefone BR presente</b>. É o que entra no export/ads.</p>
+          <p>🟣 <b>Instagram (DM):</b> beleza/BR sem telefone mesmo após enriquecimento — acionamento via direct do Instagram (o @ basta).</p>
           <p>🔵 <b>Afiliado:</b> curso/mentoria de beleza (kiwify/hotmart, "X alunas formadas"). Guardado p/ recrutamento futuro.</p>
           <p>🟡 <b>Revisão:</b> é beleza mas faltou confirmar Brasil e/ou contato — triagem manual.</p>
           <p>⚪ <b>Descarte:</b> fora do mercado (idioma não-PT, geografia estrangeira, ou sem sinal de beleza). Passe o mouse no segmento pra ver <b>por qual camada</b> caiu.</p>
           <p>🗑️ <b>Excluir de vez:</b> apaga a PII do lead e arquiva o @ pra nunca mais voltar num scrap (lixeira LGPD-safe). Use nos descartes confirmados.</p>
-          <p>➕ <b>WhatsApp manual:</b> achou o telefone numa imagem do perfil? Preencha na coluna Telefone → o lead vira qualificado (salão-cliente).</p>
+          <p>➕ <b>WhatsApp manual:</b> achou o telefone numa imagem do perfil? Preencha na coluna Telefone → o lead vira qualificado (espaço-cliente).</p>
           <p>🌱 <b>Semente:</b> perfil de beleza com ≥ 50k seguidores (hub p/ minerar). Você pode marcar/desmarcar manualmente.</p>
         </div>
       )}
@@ -245,7 +247,8 @@ export function PlatformProspeccaoManager() {
           <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os segmentos</SelectItem>
-            <SelectItem value="salao_cliente">🟢 Salão-cliente</SelectItem>
+            <SelectItem value="salao_cliente">🟢 Espaço-cliente</SelectItem>
+            <SelectItem value="acionamento_via_instagram">🟣 Instagram (DM)</SelectItem>
             <SelectItem value="afiliado_infoproduto">🔵 Afiliado</SelectItem>
             <SelectItem value="revisao">🟡 Revisão</SelectItem>
             <SelectItem value="descarte">⚪ Descarte</SelectItem>
@@ -315,7 +318,7 @@ export function PlatformProspeccaoManager() {
                   <td className="p-2" title={whyText(l)}>
                     <div className="flex items-center gap-1">
                       <select
-                        className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment].cls : ''}`}
+                        className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment]?.cls ?? '' : ''}`}
                         value={l.segment ?? 'descarte'}
                         onChange={(e) => reclassify.mutate({ id: l.id, segment: e.target.value as LeadSegment })}
                         disabled={showExcluded}

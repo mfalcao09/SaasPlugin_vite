@@ -1,15 +1,36 @@
-import { useMemo, useState } from 'react';
-import { Building2, Clock, Package, Bot, Tag, Users, CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Upload, X } from 'lucide-react';
+// ─── Wizard de implantação NexvyBeauty (9 steps, labels aprovados) ──────────
+// Portado do Vendus e adaptado: copy PT-BR friendly, linguagem neutra ("seu
+// espaço", nunca "salão"). Máquina de estados:
+//   steps 1-7 (dados) → submit (apply-onboarding) → step 8 (Conectar WhatsApp)
+//   → step 9 (Montando seu Espaço) → onFinish (Home).
+// O slug do link de agendamento foi portado do IdentityStep do
+// GuidedOnboarding: sanitização, preview {publicBase}/s/{slug} e derivação
+// viva a partir do nome até o usuário tocar no campo. A gravação com retry de
+// colisão (23505) acontece no apply — aqui só mantemos o slug sanitizado no
+// payload.
+
+import { useEffect, useState } from 'react';
+import {
+  Store, Clock, Scissors, Users, Bot, KeyRound, CheckCircle2, Smartphone,
+  Sparkles, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Upload, X, Link2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ImplantacaoPayload, uploadOnboardingFile } from '@/hooks/useImplantacao';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  ImplantacaoPayload,
+  uploadOnboardingFile,
+  DEFAULT_PRIMARY_COLOR,
+} from '@/hooks/useImplantacao';
+import { getPublicAppUrl } from '@/lib/publicUrl';
+import { ConectarWhatsAppStep } from './steps/ConectarWhatsAppStep';
+import { MontandoEspacoStep } from './steps/MontandoEspacoStep';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -18,59 +39,125 @@ interface Props {
   saving: boolean;
   organizationId: string;
   onChange: <K extends keyof ImplantacaoPayload>(key: K, value: ImplantacaoPayload[K]) => void;
+  /** Aplica os dados dos steps 1-7 (apply-onboarding). */
   onSubmit: () => Promise<boolean>;
+  /** Fim do step 9 — navega pra Home (e marca o onboarding como concluído). */
+  onFinish: () => void;
   onSkip?: () => void;
   skipsRemaining?: number;
+  /** Telemetria de fase (handoff Duda→CS): chamada a cada mudança de página. */
+  onStepChange?: (stepIndex: number, stepId: string) => void;
 }
 
+// Labels EXATOS aprovados pelo Marcelo — não parafrasear.
 const STEPS = [
-  { id: 'empresa', title: 'Empresa', icon: Building2 },
-  { id: 'horarios', title: 'Horários', icon: Clock },
-  { id: 'negocios', title: 'Negócios', icon: Package },
-  { id: 'agentes', title: 'Agentes IA', icon: Bot },
-  { id: 'setores', title: 'Setores', icon: Tag },
-  { id: 'equipes', title: 'Equipes', icon: Users },
-  { id: 'revisao', title: 'Revisão', icon: CheckCircle2 },
+  { id: 'espaco', title: 'Seu espaço', icon: Store },
+  { id: 'horarios', title: 'Horários de Funcionamento', icon: Clock },
+  { id: 'servicos', title: 'Serviços', icon: Scissors },
+  { id: 'profissionais', title: 'Seus profissionais', icon: Users },
+  { id: 'equipia', title: 'Sua EquipIA', icon: Bot },
+  { id: 'usuarios', title: 'Seus usuários da Plataforma', icon: KeyRound },
+  { id: 'resumo', title: 'Resumo', icon: CheckCircle2 },
+  { id: 'whatsapp', title: 'Conectar seu WhatsApp', icon: Smartphone },
+  { id: 'montando', title: 'Montando seu Espaço 💆🏻‍♀️💅🏻💄', icon: Sparkles },
 ] as const;
 
-const DAYS: Array<[keyof NonNullable<ImplantacaoPayload['horarios']['schedule']>, string]> = [
-  ['monday','Segunda'],['tuesday','Terça'],['wednesday','Quarta'],['thursday','Quinta'],
-  ['friday','Sexta'],['saturday','Sábado'],['sunday','Domingo'],
+// Último step de DADOS (Resumo). Depois dele vem o pós-apply (WhatsApp/Montagem).
+const LAST_DATA_STEP = 6;
+
+const DAYS: Array<[string, string]> = [
+  ['monday', 'Segunda'], ['tuesday', 'Terça'], ['wednesday', 'Quarta'], ['thursday', 'Quinta'],
+  ['friday', 'Sexta'], ['saturday', 'Sábado'], ['sunday', 'Domingo'],
 ];
 
-export function ImplantacaoWizard({ payload, status, saving, organizationId, onChange, onSubmit, onSkip, skipsRemaining }: Props) {
+// Paleta canônica do espaço (espelha CompanySettings/GuidedOnboarding).
+const PRESET_COLORS = [
+  '#F97316', '#EC4899', '#8B5CF6', '#10B981',
+  '#3B82F6', '#EF4444', '#F59E0B', '#14B8A6',
+];
+
+// Sanitização canônica do slug (a MESMA do IdentityStep do GuidedOnboarding):
+// lowercase, sem acento, só [a-z0-9-], sem hífens duplicados nem nas pontas.
+const sanitizeSlug = (v: string) =>
+  v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+// Variante "de digitação": igual à canônica MAS preserva hífen no fim pra não
+// engolir o "-" enquanto o usuário digita. O onBlur aplica a canônica.
+const sanitizeSlugTyping = (v: string) =>
+  v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-/, '');
+
+export function ImplantacaoWizard({
+  payload, status, saving, organizationId, onChange, onSubmit, onFinish, onSkip, skipsRemaining,
+  onStepChange,
+}: Props) {
   const [step, setStep] = useState(0);
+
+  // Reporta a página atual (1-based na RPC) em TODA transição — pills, Voltar,
+  // Continuar e os saltos pós-apply (8/9). Fire-and-forget; cobre também o
+  // primeiro render quando o submission carrega (identidade de onStepChange muda).
+  useEffect(() => { onStepChange?.(step, STEPS[step].id); }, [step, onStepChange]);
   const [submitting, setSubmitting] = useState(false);
+  // true depois do apply DESTA sessão — libera os steps 8/9 e congela os 1-7.
+  const [postSubmit, setPostSubmit] = useState(false);
+  const [lgpdAccepted, setLgpdAccepted] = useState(false);
+  // ID da instância WhatsApp conectada no step 8 (null = pulou).
+  const [instanceId, setInstanceId] = useState<string | null>(null);
+  // Slug já editado à mão (ou já existente) → para de derivar do nome.
+  const [slugTouched, setSlugTouched] = useState(() => !!payload.empresa?.slug);
+
   const pct = Math.round(((step + 1) / STEPS.length) * 100);
   const StepIcon = STEPS[step].icon;
   const isApplied = status === 'applied';
+  const publicBase = getPublicAppUrl();
 
-  const updateEmpresa = (patch: any) => onChange('empresa', { ...payload.empresa, ...patch });
-  const updateEndereco = (patch: any) => onChange('empresa', { ...payload.empresa, endereco: { ...payload.empresa?.endereco, ...patch } });
+  const updateEmpresa = (patch: Partial<ImplantacaoPayload['empresa']>) =>
+    onChange('empresa', { ...payload.empresa, ...patch });
+  const updateEndereco = (patch: any) =>
+    onChange('empresa', { ...payload.empresa, endereco: { ...payload.empresa?.endereco, ...patch } });
   const updateHorarios = (patch: any) => onChange('horarios', { ...payload.horarios, ...patch });
+  const updateEquipia = (patch: Partial<ImplantacaoPayload['equipia']>) =>
+    onChange('equipia', { ...payload.equipia, ...patch });
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    await onSubmit();
-    setSubmitting(false);
+  // Nome do espaço: enquanto o usuário não tocar no slug, ele deriva vivo do
+  // nome (mesmo comportamento do IdentityStep do GuidedOnboarding).
+  const handleNomeChange = (v: string) => {
+    const patch: Partial<ImplantacaoPayload['empresa']> = { nome_fantasia: v };
+    if (!slugTouched) patch.slug = sanitizeSlug(v);
+    updateEmpresa(patch);
   };
 
-  if (isApplied) {
+  const previewSlug = sanitizeSlug(payload.empresa?.slug ?? '') || 'seu-espaco';
+  const cor = payload.empresa?.cor_principal || DEFAULT_PRIMARY_COLOR;
+
+  const handleApply = async () => {
+    setSubmitting(true);
+    const ok = await onSubmit();
+    setSubmitting(false);
+    if (ok) {
+      setPostSubmit(true);
+      setStep(LAST_DATA_STEP + 1); // → Conectar seu WhatsApp
+    }
+  };
+
+  // Reentrada com implantação JÁ aplicada (fora do fluxo desta sessão).
+  if (isApplied && !postSubmit) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-4">
         <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
           <CheckCircle2 className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold">Implantação concluída</h1>
-        <p className="text-muted-foreground">Suas configurações já estão ativas. Você pode editá-las nas configurações da empresa.</p>
-        <Button onClick={() => window.location.href = '/admin'}>Ir para o painel</Button>
+        <h1 className="text-3xl font-bold">Seu espaço já está montado</h1>
+        <p className="text-muted-foreground">Essas configurações já estão ativas. Você pode ajustar tudo quando quiser nas configurações do seu espaço.</p>
+        <Button onClick={onFinish}>Ir para o início</Button>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 relative">
-      {onSkip && (
+      {onSkip && !postSubmit && (
         <button
           onClick={onSkip}
           className="absolute top-4 right-4 z-10 h-9 w-9 rounded-full bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition"
@@ -81,17 +168,17 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
         </button>
       )}
       <div className="text-center space-y-3">
-        <Badge variant="outline" className="px-4 py-1 text-sm">Implantação</Badge>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Configure sua operação</h1>
-        <p className="text-muted-foreground">Preencha cada etapa para configurarmos sua operação completa.</p>
-        {typeof skipsRemaining === 'number' && skipsRemaining > 0 && (
+        <Badge variant="outline" className="px-4 py-1 text-sm">Primeiros passos</Badge>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Vamos montar seu espaço</h1>
+        <p className="text-muted-foreground">Conta pra gente como seu espaço funciona — em poucos minutos deixamos tudo pronto.</p>
+        {typeof skipsRemaining === 'number' && skipsRemaining > 0 && !postSubmit && (
           <p className="text-xs text-muted-foreground">Você pode adiar e voltar depois ({skipsRemaining} {skipsRemaining === 1 ? 'vez restante' : 'vezes restantes'}).</p>
         )}
       </div>
 
       <div className="space-y-3">
         <div className="flex justify-between text-sm font-medium">
-          <span className="text-muted-foreground">Seção {step + 1} de {STEPS.length}</span>
+          <span className="text-muted-foreground">Etapa {step + 1} de {STEPS.length}</span>
           <span className="text-muted-foreground">{pct}% {saving && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}</span>
         </div>
         <Progress value={pct} className="h-2" />
@@ -100,13 +187,18 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
             const Icon = s.icon;
             const done = i < step;
             const active = i === step;
+            // Navegação livre só entre os steps de dados e ANTES do apply.
+            // Depois do apply os dados estão gravados; 8/9 seguem o fluxo.
+            const clickable = !postSubmit && i <= LAST_DATA_STEP && step <= LAST_DATA_STEP;
             return (
-              <button key={s.id} type="button" onClick={() => setStep(i)}
+              <button key={s.id} type="button" disabled={!clickable}
+                onClick={() => clickable && setStep(i)}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-medium whitespace-nowrap transition-colors",
                   active && "bg-primary text-primary-foreground border-primary",
                   done && !active && "bg-primary/10 border-primary/30 text-primary",
                   !active && !done && "bg-muted border-border text-muted-foreground",
+                  !clickable && !active && "cursor-default",
                 )}>
                 <Icon className="w-3.5 h-3.5" />{i + 1}. {s.title}
               </button>
@@ -123,21 +215,71 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
           <h2 className="text-xl font-bold">{STEPS[step].title}</h2>
         </div>
 
+        {/* ── 1. Seu espaço ── */}
         {step === 0 && (
           <div className="space-y-6">
             <div>
-              <Label>Logo da empresa</Label>
+              <Label>Logo do seu espaço</Label>
               <LogoUpload value={payload.empresa?.logo_url} organizationId={organizationId}
                 onChange={(url) => updateEmpresa({ logo_url: url })} />
             </div>
             <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Razão Social"><Input value={payload.empresa?.razao_social ?? ''} onChange={e => updateEmpresa({ razao_social: e.target.value })} placeholder="Ex: GRC Soluções LTDA" /></Field>
-              <Field label="Nome fantasia"><Input value={payload.empresa?.nome_fantasia ?? ''} onChange={e => updateEmpresa({ nome_fantasia: e.target.value })} placeholder="Ex: Vendus" /></Field>
-              <Field label="CNPJ"><Input value={payload.empresa?.cnpj ?? ''} onChange={e => updateEmpresa({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></Field>
-              <Field label="Telefone comercial"><Input value={payload.empresa?.telefone ?? ''} onChange={e => updateEmpresa({ telefone: e.target.value })} placeholder="(00) 00000-0000" /></Field>
-              <Field label="Instagram"><Input value={payload.empresa?.instagram ?? ''} onChange={e => updateEmpresa({ instagram: e.target.value })} placeholder="@suaempresa" /></Field>
-              <Field label="Site"><Input value={payload.empresa?.site ?? ''} onChange={e => updateEmpresa({ site: e.target.value })} placeholder="https://..." /></Field>
+              <Field label="Nome do seu espaço"><Input value={payload.empresa?.nome_fantasia ?? ''} onChange={e => handleNomeChange(e.target.value)} placeholder="Ex: Espaço Bella Vita" maxLength={120} /></Field>
+              <Field label="CNPJ (opcional)"><Input value={payload.empresa?.cnpj ?? ''} onChange={e => updateEmpresa({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></Field>
+              <Field label="Telefone"><Input value={payload.empresa?.telefone ?? ''} onChange={e => updateEmpresa({ telefone: e.target.value })} placeholder="(00) 00000-0000" /></Field>
+              <Field label="Instagram"><Input value={payload.empresa?.instagram ?? ''} onChange={e => updateEmpresa({ instagram: e.target.value })} placeholder="@seuespaco" /></Field>
             </div>
+
+            <div className="pt-4 border-t">
+              <Label className="mb-2 flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                Link de agendamento
+              </Label>
+              <div className="flex items-stretch rounded-md border focus-within:ring-1 focus-within:ring-ring overflow-hidden">
+                <span className="hidden sm:flex items-center px-3 bg-muted text-xs text-muted-foreground border-r whitespace-nowrap">
+                  {publicBase}/s/
+                </span>
+                <Input
+                  value={payload.empresa?.slug ?? ''}
+                  onChange={e => {
+                    setSlugTouched(true);
+                    updateEmpresa({ slug: sanitizeSlugTyping(e.target.value) });
+                  }}
+                  onBlur={() => updateEmpresa({ slug: sanitizeSlug(payload.empresa?.slug ?? '') })}
+                  placeholder="seu-espaco"
+                  className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 break-all">
+                Suas clientes agendam por aqui: <span className="font-medium text-foreground">{publicBase}/s/{previewSlug}</span>
+              </p>
+            </div>
+
+            <div className="pt-4 border-t">
+              <Label className="mb-2 block">Cor principal</Label>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => updateEmpresa({ cor_principal: c })}
+                    className={cn(
+                      'w-10 h-10 rounded-lg border-2 transition-all',
+                      cor.toLowerCase() === c.toLowerCase() ? 'border-foreground scale-110' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: c }}
+                    aria-label={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={cor}
+                  onChange={(e) => updateEmpresa({ cor_principal: e.target.value })}
+                  className="w-10 h-10 rounded-lg cursor-pointer border"
+                />
+              </div>
+            </div>
+
             <div className="pt-4 border-t">
               <h3 className="font-semibold mb-3">Endereço</h3>
               <div className="grid md:grid-cols-3 gap-4">
@@ -153,6 +295,7 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
           </div>
         )}
 
+        {/* ── 2. Horários de Funcionamento ── */}
         {step === 1 && (
           <div className="space-y-6">
             <Field label="Fuso horário">
@@ -167,7 +310,7 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
               </Select>
             </Field>
             <div>
-              <Label className="mb-3 block">Horários de atendimento</Label>
+              <Label className="mb-3 block">Em quais dias e horários seu espaço atende?</Label>
               <div className="space-y-2">
                 {DAYS.map(([key, label]) => {
                   const day = (payload.horarios?.schedule ?? {})[key] ?? { enabled: false, start: '08:00', end: '18:00' };
@@ -188,156 +331,170 @@ export function ImplantacaoWizard({ payload, status, saving, organizationId, onC
           </div>
         )}
 
+        {/* ── 3. Serviços ── */}
         {step === 2 && (
-          <Repeater
-            items={payload.negocios ?? []} onChange={items => onChange('negocios', items)}
-            label="negócio" addLabel="+ Adicionar negócio"
-            renderItem={(n, update) => (
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-3">
-                  <Field label="Nome"><Input value={n.nome ?? ''} onChange={e => update({ nome: e.target.value })} /></Field>
-                  <Field label="Status">
-                    <Select value={n.status ?? 'Rascunho'} onValueChange={v => update({ status: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Rascunho">Rascunho</SelectItem>
-                        <SelectItem value="Em Revisão">Em Revisão</SelectItem>
-                        <SelectItem value="Publicado">Publicado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Categoria"><Input value={n.categoria ?? ''} onChange={e => update({ categoria: e.target.value })} placeholder="Ex: SaaS, Serviço local..." /></Field>
-                  <Field label="Descrição curta"><Input value={n.descricao_curta ?? ''} onChange={e => update({ descricao_curta: e.target.value })} /></Field>
-                </div>
-                <Field label="Descrição completa"><Textarea value={n.descricao_completa ?? ''} onChange={e => update({ descricao_completa: e.target.value })} rows={3} /></Field>
-                <Field label="Informações personalizadas"><Textarea value={n.personalizadas ?? ''} onChange={e => update({ personalizadas: e.target.value })} rows={2} placeholder="Valor de setup, links, regras comerciais..." /></Field>
-                <div className="grid md:grid-cols-2 gap-3">
-                  <Field label="ICP — Perfil de cliente ideal"><Textarea value={n.icp ?? ''} onChange={e => update({ icp: e.target.value })} rows={2} /></Field>
-                  <Field label="Diferenciais (1 por linha)"><Textarea value={n.diferenciais ?? ''} onChange={e => update({ diferenciais: e.target.value })} rows={2} /></Field>
-                </div>
-                <div className="pt-3 border-t space-y-3">
-                  <h4 className="font-semibold text-sm">Cérebro</h4>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <Field label="Websites (1 por linha)"><Textarea value={n.websites ?? ''} onChange={e => update({ websites: e.target.value })} rows={2} /></Field>
-                    <Field label="Vídeos YouTube"><Textarea value={n.videos ?? ''} onChange={e => update({ videos: e.target.value })} rows={2} /></Field>
-                    <Field label="FAQ"><Textarea value={n.faq ?? ''} onChange={e => update({ faq: e.target.value })} rows={3} placeholder="Pergunta: ...\nResposta: ..." /></Field>
-                    <Field label="Dados / Tabelas"><Textarea value={n.dados ?? ''} onChange={e => update({ dados: e.target.value })} rows={3} /></Field>
-                    <Field label="Treinamento"><Textarea value={n.treinamento ?? ''} onChange={e => update({ treinamento: e.target.value })} rows={2} /></Field>
-                    <Field label="Catálogo"><Textarea value={n.catalogo ?? ''} onChange={e => update({ catalogo: e.target.value })} rows={2} /></Field>
-                  </div>
-                </div>
-              </div>
-            )}
-          />
-        )}
-
-        {step === 3 && (
-          <Repeater
-            items={payload.agentes ?? []} onChange={items => onChange('agentes', items)}
-            label="agente" addLabel="+ Criar agente"
-            renderItem={(a, update) => (
-              <div className="space-y-3">
-                <div className="grid md:grid-cols-2 gap-3">
-                  <Field label="Tipo de agente">
-                    <Select value={a.tipo ?? 'SDR — Qualifica'} onValueChange={v => update({ tipo: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SDR — Qualifica">SDR — Qualifica</SelectItem>
-                        <SelectItem value="Closer — Fecha a venda">Closer — Fecha a venda</SelectItem>
-                        <SelectItem value="Suporte">Suporte</SelectItem>
-                        <SelectItem value="Financeiro">Financeiro</SelectItem>
-                        <SelectItem value="Administrativo">Administrativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Nome do agente"><Input value={a.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Sônia, Maria..." /></Field>
-                </div>
-                <Field label="Missão principal"><Textarea value={a.missao ?? ''} onChange={e => update({ missao: e.target.value })} rows={2} placeholder="Qualificar leads, tirar dúvidas, vender..." /></Field>
-                <Field label="Tom de voz">
-                  <Select value={a.tom ?? 'Consultivo'} onValueChange={v => update({ tom: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Formal">Formal</SelectItem>
-                      <SelectItem value="Consultivo">Consultivo</SelectItem>
-                      <SelectItem value="Amigável">Amigável</SelectItem>
-                      <SelectItem value="Técnico">Técnico</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-            )}
-          />
-        )}
-
-        {step === 4 && (
-          <Repeater
-            items={payload.setores ?? []} onChange={items => onChange('setores', items)}
-            label="setor" addLabel="+ Adicionar setor"
-            renderItem={(s, update) => (
-              <div className="grid md:grid-cols-2 gap-3">
-                <Field label="Nome do setor"><Input value={s.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Comercial, Suporte..." /></Field>
-                <Field label="Ordem"><Input type="number" min={1} value={s.ordem ?? ''} onChange={e => update({ ordem: parseInt(e.target.value) || 1 })} /></Field>
-              </div>
-            )}
-          />
-        )}
-
-        {step === 5 && (
-          <Repeater
-            items={payload.equipes ?? []} onChange={items => onChange('equipes', items)}
-            label="usuário" addLabel="+ Adicionar usuário"
-            renderItem={(u, update) => (
-              <div className="space-y-3">
-                <div className="grid md:grid-cols-2 gap-3">
-                  <Field label="Nome"><Input value={u.nome ?? ''} onChange={e => update({ nome: e.target.value })} /></Field>
-                  <Field label="Perfil">
-                    <Select value={u.perfil ?? 'seller'} onValueChange={v => update({ perfil: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="manager">Gestor</SelectItem>
-                        <SelectItem value="seller">Vendedor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="E-mail"><Input type="email" value={u.email ?? ''} onChange={e => update({ email: e.target.value })} /></Field>
-                  <Field label="WhatsApp"><Input value={u.whatsapp ?? ''} onChange={e => update({ whatsapp: e.target.value })} placeholder="(00) 00000-0000" /></Field>
-                </div>
-                <p className="text-xs text-muted-foreground">A senha é definida pelo próprio usuário através do convite enviado por e-mail.</p>
-              </div>
-            )}
-          />
-        )}
-
-        {step === 6 && (
           <div className="space-y-4">
-            <h3 className="font-semibold">Revisão</h3>
-            <p className="text-sm text-muted-foreground">Confira o resumo abaixo. Ao enviar, todas as configurações serão aplicadas automaticamente.</p>
-            <div className="grid md:grid-cols-2 gap-3">
-              <SummaryCard label="Empresa" value={payload.empresa?.nome_fantasia || payload.empresa?.razao_social || '—'} />
-              <SummaryCard label="Fuso horário" value={payload.horarios?.timezone ?? '—'} />
-              <SummaryCard label="Negócios" value={`${payload.negocios?.length ?? 0} cadastrados`} />
-              <SummaryCard label="Agentes IA" value={`${payload.agentes?.length ?? 0} cadastrados`} />
-              <SummaryCard label="Setores" value={`${payload.setores?.length ?? 0} cadastrados`} />
-              <SummaryCard label="Equipe" value={`${payload.equipes?.length ?? 0} convites`} />
+            <p className="text-sm text-muted-foreground">O que suas clientes encontram no seu espaço. Dá pra ajustar tudo depois.</p>
+            <Repeater
+              items={payload.servicos ?? []} onChange={items => onChange('servicos', items)}
+              label="serviço" addLabel="+ Adicionar serviço"
+              renderItem={(s, update) => (
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Field label="Nome do serviço"><Input value={s.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Corte feminino" /></Field>
+                  <Field label="Categoria"><Input value={s.categoria ?? ''} onChange={e => update({ categoria: e.target.value })} placeholder="Ex: Cabelo, Unhas, Estética..." /></Field>
+                  <Field label="Duração (min)"><Input type="number" min={0} value={s.duracao_min ?? ''} onChange={e => update({ duracao_min: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })} placeholder="60" /></Field>
+                  <Field label="Preço (R$)"><Input type="number" min={0} step="0.01" value={s.preco ?? ''} onChange={e => update({ preco: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })} placeholder="120" /></Field>
+                </div>
+              )}
+            />
+          </div>
+        )}
+
+        {/* ── 4. Seus profissionais ── */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Quem atende no seu espaço — esses nomes aparecem na agenda.</p>
+            <Repeater
+              items={payload.profissionais ?? []} onChange={items => onChange('profissionais', items)}
+              label="profissional" addLabel="+ Adicionar profissional"
+              renderItem={(p, update) => (
+                <div className="grid md:grid-cols-2 gap-3">
+                  <Field label="Nome"><Input value={p.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Ana Paula" /></Field>
+                  <Field label="Especialidade"><Input value={p.especialidade ?? ''} onChange={e => update({ especialidade: e.target.value })} placeholder="Ex: Cabeleireira, Manicure, Esteticista..." /></Field>
+                </div>
+              )}
+            />
+          </div>
+        )}
+
+        {/* ── 5. Sua EquipIA ── */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              A EquipIA é a equipe de inteligência artificial do seu espaço — ela atende suas clientes no WhatsApp.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Nome da sua atendente IA">
+                <Input value={payload.equipia?.nome ?? ''} onChange={e => updateEquipia({ nome: e.target.value })} placeholder="Lia" />
+              </Field>
+              <Field label="Tom de voz">
+                <Select value={payload.equipia?.tom ?? 'Amigável'} onValueChange={v => updateEquipia({ tom: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Amigável">Amigável</SelectItem>
+                    <SelectItem value="Consultivo">Consultivo</SelectItem>
+                    <SelectItem value="Formal">Formal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
             </div>
           </div>
         )}
 
-        <div className="flex justify-between items-center pt-4 border-t">
-          <Button variant="outline" disabled={step === 0} onClick={() => setStep(s => Math.max(0, s - 1))}>
-            <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-          </Button>
-          {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}>
-              Continuar <ChevronRight className="w-4 h-4 ml-1" />
+        {/* ── 6. Seus usuários da Plataforma ── */}
+        {step === 5 && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Aqui você convida quem vai ter <strong>login na plataforma</strong> (recepção, sócia, gerente) — não são
+              os profissionais que atendem, esses você já cadastrou na etapa anterior. Se preferir, pule e convide depois.
+            </p>
+            <Repeater
+              items={payload.usuarios ?? []} onChange={items => onChange('usuarios', items)}
+              label="usuário" addLabel="+ Adicionar usuário"
+              renderItem={(u, update) => (
+                <div className="space-y-3">
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <Field label="Nome"><Input value={u.nome ?? ''} onChange={e => update({ nome: e.target.value })} /></Field>
+                    <Field label="E-mail"><Input type="email" value={u.email ?? ''} onChange={e => update({ email: e.target.value })} /></Field>
+                    <Field label="Perfil">
+                      <Select value={u.perfil ?? 'attendant'} onValueChange={v => update({ perfil: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="manager">Gestor</SelectItem>
+                          <SelectItem value="attendant">Atendente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                  <p className="text-xs text-muted-foreground">A senha é definida pela própria pessoa através do convite enviado por e-mail.</p>
+                </div>
+              )}
+            />
+          </div>
+        )}
+
+        {/* ── 7. Resumo ── */}
+        {step === 6 && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Confira se está tudo certo. Ao confirmar, a gente aplica essas configurações e começa a montar seu espaço.</p>
+            <div className="grid md:grid-cols-2 gap-3">
+              <SummaryCard label="Seu espaço" value={payload.empresa?.nome_fantasia || '—'} />
+              <SummaryCard label="Link de agendamento" value={`${publicBase}/s/${previewSlug}`} />
+              <SummaryCard label="Fuso horário" value={payload.horarios?.timezone ?? '—'} />
+              <SummaryCard label="Serviços" value={`${payload.servicos?.length ?? 0} cadastrado(s)`} />
+              <SummaryCard label="Profissionais" value={`${payload.profissionais?.length ?? 0} cadastrado(s)`} />
+              <SummaryCard label="EquipIA" value={payload.equipia?.nome ? `${payload.equipia.nome} · ${payload.equipia?.tom ?? 'Amigável'}` : '—'} />
+              <SummaryCard label="Usuários da Plataforma" value={`${payload.usuarios?.length ?? 0} convite(s)`} />
+            </div>
+
+            {/* LGPD via-1 — obrigatório pra enviar */}
+            <div className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
+              <Checkbox
+                id="lgpd-consent"
+                checked={lgpdAccepted}
+                onCheckedChange={(c) => setLgpdAccepted(c === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="lgpd-consent" className="text-sm leading-relaxed cursor-pointer">
+                Li e concordo com os{' '}
+                <a href="/termos" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>Termos de Uso</a>
+                {' '}e a{' '}
+                <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>Política de Privacidade</a>
+                {' '}— meus dados são tratados pela Nexvy como Controladora
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* ── 8. Conectar seu WhatsApp (pós-apply) ── */}
+        {step === 7 && (
+          <ConectarWhatsAppStep
+            organizationId={organizationId}
+            onConnected={(id) => { setInstanceId(id); setStep(8); }}
+            onSkip={() => { setInstanceId(null); setStep(8); }}
+          />
+        )}
+
+        {/* ── 9. Montando seu Espaço (pós-apply) ── */}
+        {step === 8 && (
+          <MontandoEspacoStep
+            organizationId={organizationId}
+            instanceId={instanceId}
+            onFinish={onFinish}
+          />
+        )}
+
+        {/* Footer de navegação — só nos steps de dados (1-7). Os steps 8/9 têm
+            os próprios CTAs (onConnected/onSkip/onFinish). */}
+        {step <= LAST_DATA_STEP && (
+          <div className="flex justify-between items-center pt-4 border-t">
+            <Button variant="outline" disabled={step === 0} onClick={() => setStep(s => Math.max(0, s - 1))}>
+              <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
             </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : <>Enviar implantação <CheckCircle2 className="w-4 h-4 ml-1" /></>}
-            </Button>
-          )}
-        </div>
+            {step < LAST_DATA_STEP ? (
+              <Button onClick={() => setStep(s => Math.min(LAST_DATA_STEP, s + 1))}>
+                Continuar <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleApply} disabled={submitting || !lgpdAccepted}>
+                {submitting
+                  ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Montando...</>
+                  : <>Confirmar e montar meu espaço <CheckCircle2 className="w-4 h-4 ml-1" /></>}
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

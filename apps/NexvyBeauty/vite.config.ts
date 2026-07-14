@@ -6,7 +6,8 @@ import path from "path";
 export default defineConfig(() => ({
   server: {
     host: "::",
-    port: 8080,
+    // PORT vem do harness de preview (autoPort) quando 8080 já está ocupada.
+    port: Number(process.env.PORT) || 8080,
   },
   plugins: [
     react(),

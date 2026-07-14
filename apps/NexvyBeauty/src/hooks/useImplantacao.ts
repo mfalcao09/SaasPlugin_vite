@@ -3,15 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
+// Cor default do espaço (laranja canônico — espelha CompanySettings/GuidedOnboarding).
+export const DEFAULT_PRIMARY_COLOR = '#F97316';
+
+// ─── Contrato NexvyBeauty (labels aprovados pelo Marcelo) ───────────────────
+// A key `empresa` é mantida (compat com autosave/apply); na UI o step chama-se
+// "Seu espaço". Campos novos: slug (link de agendamento) e cor_principal.
+// Os nomes das RPCs NÃO mudam (save_onboarding_draft*, submit_onboarding*,
+// apply-onboarding).
 export interface ImplantacaoPayload {
   empresa: {
-    razao_social?: string;
     nome_fantasia?: string;
     cnpj?: string;
     telefone?: string;
     instagram?: string;
-    site?: string;
     logo_url?: string;
+    /** Link de agendamento público: {publicBase}/s/{slug}. Mantido sanitizado. */
+    slug?: string;
+    /** Cor principal do espaço (hex). */
+    cor_principal?: string;
     endereco?: {
       cep?: string; rua?: string; numero?: string; complemento?: string;
       bairro?: string; cidade?: string; uf?: string;
@@ -21,10 +31,10 @@ export interface ImplantacaoPayload {
     timezone?: string;
     schedule?: Record<string, { enabled: boolean; start: string; end: string }>;
   };
-  negocios: Array<any>;
-  agentes: Array<any>;
-  setores: Array<any>;
-  equipes: Array<any>;
+  servicos: Array<{ nome?: string; categoria?: string; duracao_min?: number; preco?: number }>;
+  profissionais: Array<{ nome?: string; especialidade?: string }>;
+  equipia: { nome?: string; tom?: string };
+  usuarios: Array<{ nome?: string; email?: string; perfil?: string }>;
 }
 
 export const EMPTY_PAYLOAD: ImplantacaoPayload = {
@@ -41,10 +51,10 @@ export const EMPTY_PAYLOAD: ImplantacaoPayload = {
       sunday: { enabled: false, start: '08:00', end: '12:00' },
     },
   },
-  negocios: [],
-  agentes: [],
-  setores: [],
-  equipes: [],
+  servicos: [],
+  profissionais: [],
+  equipia: { nome: 'Lia', tom: 'Amigável' },
+  usuarios: [],
 };
 
 interface UseImplantacaoOptions {
@@ -105,8 +115,10 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
           ? { ...EMPTY_PAYLOAD, ...data.payload }
           : EMPTY_PAYLOAD;
         if (!loaded.empresa?.nome_fantasia) {
-          const { data: org } = await supabase.from('organizations')
-            .select('name,cnpj,phone,instagram,website,logo_url,address')
+          // slug/settings podem não estar nos types gerados → cast (mesmo
+          // padrão do IdentityStep do GuidedOnboarding).
+          const { data: org } = await (supabase as any).from('organizations')
+            .select('name,cnpj,phone,instagram,logo_url,address,slug,settings')
             .eq('id', data.organization_id).maybeSingle();
           if (org) {
             loaded.empresa = {
@@ -114,9 +126,14 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
               nome_fantasia: loaded.empresa?.nome_fantasia || org.name || '',
               cnpj: loaded.empresa?.cnpj || org.cnpj || '',
               telefone: loaded.empresa?.telefone || org.phone || '',
-              instagram: loaded.empresa?.instagram || (org as any).instagram || '',
-              site: loaded.empresa?.site || (org as any).website || '',
+              instagram: loaded.empresa?.instagram || org.instagram || '',
               logo_url: loaded.empresa?.logo_url || org.logo_url || '',
+              // Slug/cor que a org JÁ tem (backfill) — respeitados como ponto
+              // de partida; o wizard deriva do nome só enquanto não há slug.
+              slug: loaded.empresa?.slug || org.slug || '',
+              cor_principal: loaded.empresa?.cor_principal
+                || org.settings?.primary_color
+                || DEFAULT_PRIMARY_COLOR,
               endereco: loaded.empresa?.endereco || (() => {
                 const a: any = org.address || {};
                 return {
@@ -174,6 +191,18 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
     scheduleSave({ ...payload, [key]: value });
   }, [payload, scheduleSave]);
 
+  // Fase do wizard (telemetria p/ handoff Duda→CS — RPC barata, fire-and-forget,
+  // sem debounce; a CS lê current_step p/ saber "em que página ela está").
+  // RPCs criadas na migration 20260714_onboarding_fase_handoff (fora dos types → cast).
+  const reportStep = useCallback((stepIndex: number, stepId: string) => {
+    if (!submissionId) return;
+    const args = token && sessionToken
+      ? { fn: 'set_onboarding_step_public', params: { _token: token, _session_token: sessionToken, _step: stepIndex + 1, _step_id: stepId } }
+      : { fn: 'set_onboarding_step', params: { _submission_id: submissionId, _step: stepIndex + 1, _step_id: stepId } };
+    void (supabase.rpc as any)(args.fn, args.params)
+      .then(({ error: e }: { error: unknown }) => { if (e) console.warn('set_onboarding_step', e); });
+  }, [submissionId, token, sessionToken]);
+
   const submit = useCallback(async () => {
     if (!submissionId) return false;
     try {
@@ -225,7 +254,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   return {
     submissionId, organizationId, payload, status,
     loading, saving, error,
-    updateSection, submit,
+    updateSection, submit, reportStep,
   };
 }
 

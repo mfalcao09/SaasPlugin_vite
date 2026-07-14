@@ -17,7 +17,7 @@ import { toast } from 'sonner';
  */
 
 export type LeadExtractionStatus = 'pending' | 'running' | 'done' | 'error';
-export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte';
+export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte' | 'acionamento_via_instagram';
 
 export interface LeadExtraction {
   id: string;
@@ -286,7 +286,7 @@ export function useSetLeadPhone() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
-      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (salão-cliente).' });
+      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (espaço-cliente).' });
     },
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao salvar telefone'),
   });

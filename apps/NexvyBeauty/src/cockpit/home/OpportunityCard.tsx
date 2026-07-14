@@ -1,19 +1,30 @@
-// ─── Card de oportunidade (TOP-3) ───────────────────────────────────────
-// Mostra a cliente, o porquê (reason) e a mensagem pronta que a IA escreveu,
-// num box em itálico. Botão real de reativação vem do WS3 (ReactivationButton).
-// Em seed-mode (exemplo) o botão vira "Conecte pra disparar" (link p/ conexões)
-// — ou, no demo público, um CTA de conversão via onSeedCta. Chamado por
-// HomeDeValor.tsx (app logado) e DemoCockpitHome.tsx (demo público).
+// ─── Card de oportunidade (TOP-3) — padrão "tá aqui o dinheiro" ──────────
+// Visual da LP aprovada (mock "Oportunidades"): tag versalete rosé de
+// prioridade ("PRIORIDADE ALTA"), headline em bold com o FATO da oportunidade
+// (nome + motivo), linha de apoio "Mensagem personalizada pronta para o seu
+// WhatsApp:" + a mensagem, e chip pill rosé-soft "Impacto estimado · +R$ X".
+// O motivo vem do scan em texto livre — "{nome}: {motivo}" encaixa qualquer
+// frase sem depender de gênero do nome. Dados/hooks inalterados: botão real
+// de reativação vem do WS3 (ReactivationButton); em seed-mode o botão vira
+// "Conecte para disparar" (link p/ conexões) — ou, no demo público, um CTA de
+// conversão via onSeedCta. Chamado por HomeDeValor.tsx (app logado) e
+// DemoCockpitHome.tsx (demo público).
 
 import { Link } from 'react-router-dom'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MessageCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { ReactivationButton } from '@/cockpit/reactivation/ReactivationButton'
 import type { OpportunityCardData } from '@/cockpit/types'
-import { formatBRL, CLASS_LABEL, CLASS_ACCENT } from './format'
+import { formatBRLWhole, CLASS_TAG } from './format'
+
+// "Sumiu há 32 dias." → "sumiu há 32 dias" pra encaixar após "{nome}: ".
+// Só descapitaliza padrão Frase (maiúscula + minúscula) — preserva siglas.
+function asClause(reason: string): string {
+  const trimmed = reason.trim().replace(/\.+$/, '')
+  return /^[A-ZÀ-Ü][a-zà-ü]/.test(trimmed)
+    ? trimmed.charAt(0).toLocaleLowerCase('pt-BR') + trimmed.slice(1)
+    : trimmed
+}
 
 interface OpportunityCardProps {
   card: OpportunityCardData
@@ -23,57 +34,55 @@ interface OpportunityCardProps {
   /** demo público: clicar no card chama isto (ex.: abrir captura de lead) em
    *  vez de linkar p/ a área logada. Só usado quando seed=true. */
   onSeedCta?: () => void
-  /** rótulo do CTA do card no demo (default: "Quero isso no meu salão"). */
+  /** rótulo do CTA do card no demo (default: "Quero isso no meu negócio"). */
   seedCtaLabel?: string
 }
 
 export function OpportunityCard({ card, onSent, seed, onSeedCta, seedCtaLabel }: OpportunityCardProps) {
   return (
-    <Card>
-      <CardContent className="py-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-medium text-foreground truncate">{card.name}</div>
-            {card.reason && (
-              <p className="text-sm text-muted-foreground mt-0.5">{card.reason}</p>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className="text-sm font-semibold text-foreground">
-              {formatBRL(card.dealValue)}
-            </span>
-            <Badge variant="outline" className={cn('text-[10px]', CLASS_ACCENT[card.classification])}>
-              {CLASS_LABEL[card.classification]}
-            </Badge>
-          </div>
-        </div>
+    <article className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm space-y-2">
+      <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+        {CLASS_TAG[card.classification]}
+      </span>
 
-        {card.followupMessage && (
-          <div className="rounded-lg bg-muted/50 border border-border p-3 text-sm italic text-muted-foreground">
+      <h3 className="text-base font-semibold leading-snug text-foreground">
+        {card.name}
+        {card.reason ? <>: {asClause(card.reason)}</> : null}
+      </h3>
+
+      {card.followupMessage && (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Mensagem personalizada pronta para o seu WhatsApp:
+          </p>
+          <blockquote className="border-l-2 border-primary/30 pl-3 text-sm italic text-muted-foreground">
             "{card.followupMessage}"
-          </div>
-        )}
+          </blockquote>
+        </>
+      )}
 
-        <div className="flex justify-end">
-          {seed ? (
-            onSeedCta ? (
-              <Button onClick={onSeedCta} size="sm" className="gap-1.5">
-                <MessageCircle className="h-3.5 w-3.5" />
-                {seedCtaLabel ?? 'Quero isso no meu negócio'}
-              </Button>
-            ) : (
-              <Button asChild variant="outline" size="sm" className="gap-1.5">
-                <Link to="/conexoes">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Conecte para disparar
-                </Link>
-              </Button>
-            )
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
+        <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+          Impacto estimado · +{formatBRLWhole(card.dealValue)}
+        </span>
+        {seed ? (
+          onSeedCta ? (
+            <Button onClick={onSeedCta} size="sm" className="gap-1.5">
+              <MessageCircle className="h-3.5 w-3.5" />
+              {seedCtaLabel ?? 'Quero isso no meu negócio'}
+            </Button>
           ) : (
-            <ReactivationButton item={card} onSent={onSent} />
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link to="/conexoes">
+                <MessageCircle className="h-3.5 w-3.5" />
+                Conecte para disparar
+              </Link>
+            </Button>
+          )
+        ) : (
+          <ReactivationButton item={card} onSent={onSent} />
+        )}
+      </div>
+    </article>
   )
 }

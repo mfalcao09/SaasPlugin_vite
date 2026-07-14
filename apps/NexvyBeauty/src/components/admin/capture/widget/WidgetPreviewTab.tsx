@@ -11,7 +11,7 @@ export function WidgetPreviewTab({ funnel }: Props) {
   const [device, setDevice] = useState<'mobile' | 'desktop'>('desktop');
   const [reloadKey, setReloadKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { data: baseUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: baseUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
   const isActive = funnel.status === 'active';
 
   // Página fake hospedando o widget para simular como ficaria em um site externo.

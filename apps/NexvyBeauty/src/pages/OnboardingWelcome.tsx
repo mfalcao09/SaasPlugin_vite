@@ -51,7 +51,7 @@ export default function OnboardingWelcome() {
     {
       icon: Rocket,
       title: 'Complete a implantação',
-      desc: 'Um assistente rápido configura seu salão: dados, horários, serviços e sua equipe.',
+      desc: 'Um assistente rápido configura seu espaço: dados, horários, serviços e sua equipe.',
     },
     {
       icon: QrCode,

@@ -72,7 +72,7 @@ export default function PublicSalaoPacotes() {
                   </div>
                   <div className="mt-4 text-2xl font-bold text-foreground">{fmtMoney(p.valor)}</div>
                   {/* Compra online desativada — pagamento de pacote é presencial no salão. */}
-                  <div className="mt-4 border-t pt-3 text-sm text-muted-foreground">💖 Adquira este pacote diretamente no salão.</div>
+                  <div className="mt-4 border-t pt-3 text-sm text-muted-foreground">💖 Adquira este pacote diretamente no seu espaço.</div>
                 </CardContent>
               </Card>
             ))}

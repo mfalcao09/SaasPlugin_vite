@@ -163,7 +163,7 @@ export default function HomeDeValor() {
       {running && !isSeed && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin text-primary" />
-          Sua IA está atualizando a análise…
+          Sua EquipIA está atualizando a análise…
         </div>
       )}
 
@@ -173,7 +173,7 @@ export default function HomeDeValor() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <h2 className="text-base font-semibold text-foreground">
             {isSeed
-              ? 'Exemplos de oportunidades que sua IA encontra'
+              ? 'Exemplos de oportunidades que sua EquipIA encontra'
               : 'As 3 melhores oportunidades de hoje'}
           </h2>
           {isSeed ? (
@@ -215,7 +215,7 @@ function Header({ greeting }: { greeting: string }) {
       <h1 className="text-2xl font-bold tracking-tight text-foreground">{greeting}</h1>
       <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Sparkles className="h-4 w-4 text-primary" />
-        Sua IA trabalhou enquanto você dormia.
+        Sua EquipIA trabalhou enquanto você dormia.
       </p>
     </div>
   )
@@ -242,8 +242,8 @@ function SeedBanner({
           </div>
           <p className="text-sm text-muted-foreground max-w-prose">
             {running
-              ? 'Sua IA está analisando suas conversas… em instantes os números reais aparecem aqui.'
-              : 'Conecte seu WhatsApp para sua IA varrer suas conversas e mostrar quanto VOCÊ pode recuperar de verdade.'}
+              ? 'Sua EquipIA está analisando suas conversas… em instantes os números reais aparecem aqui.'
+              : 'Conecte seu WhatsApp para sua EquipIA varrer suas conversas e mostrar quanto VOCÊ pode recuperar de verdade.'}
           </p>
         </div>
         {running ? (

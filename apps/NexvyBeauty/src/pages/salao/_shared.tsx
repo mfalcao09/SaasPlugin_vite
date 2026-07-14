@@ -1,11 +1,11 @@
 import { ReactNode } from 'react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  LayoutDashboard, Users, Sparkles, CalendarDays, DollarSign, LayoutGrid,
+  LayoutDashboard, Users, Sparkles, CalendarDays, DollarSign, LayoutGrid, LogIn,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { AppTopBar } from '@/components/layout/AppTopBar'
+import { Button } from '@/components/ui/button'
 import { UnifiedShell } from '@/components/layout/UnifiedShell'
 
 // ---- helpers (mesmo contrato do ERP, reusados pelas telas de salão) ----
@@ -51,8 +51,28 @@ export function SalaoLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Topbar canônica do sistema (mesma de todos os módulos pós-login). */}
-      <AppTopBar title="Gestão do Negócio" />
+      {/* Topbar PÚBLICA do demo — nunca a AppTopBar logada: ela traz o menu
+          de conta ("Meu Perfil"/Configurações) e vazaria a área autenticada
+          a partir de uma rota pública. */}
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
+        <div className="flex items-center justify-between h-14 px-6">
+          <div className="flex items-center gap-2 font-semibold text-foreground">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            Gestão do Negócio
+            <span className="text-sm font-normal text-muted-foreground">· demonstração</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="gap-1.5">
+              <Link to="/login"><LogIn className="h-4 w-4" /> Entrar</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/vendas">Começar grátis</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
       <div className="flex flex-1 min-h-0">
         <aside className="w-60 shrink-0 bg-card border-r flex flex-col">
           <nav className="flex-1 p-3 space-y-1">

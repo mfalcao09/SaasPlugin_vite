@@ -430,7 +430,7 @@ export const adminPages: DocPage[] = [
 
         <p>Adicione um chat/quiz/formulário em qualquer site externo (WordPress, Webflow, código próprio).</p>
         <h2>Instalação</h2>
-        <CodeBlock lang="html">{`<script src="https://app.vendus.com.br/funnel-widget.js"
+        <CodeBlock lang="html">{`<script src="https://app.nexvybeauty.com.br/funnel-widget.js"
   data-funnel="seu-slug-aqui"
   data-tags="origem-site,landing-home"
   data-score="10"

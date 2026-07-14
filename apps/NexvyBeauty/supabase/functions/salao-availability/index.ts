@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: org } = await sb.from('organizations').select('id').eq('slug', slug).maybeSingle();
-    if (!org) return json({ error: 'Salão não encontrado' }, 404);
+    if (!org) return json({ error: 'Espaço não encontrado' }, 404);
 
     const [profRes, servRes] = await Promise.all([
       sb.from('profissionais').select('id, hora_inicio, hora_fim, dias_atendimento')

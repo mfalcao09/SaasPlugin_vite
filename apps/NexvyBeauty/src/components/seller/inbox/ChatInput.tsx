@@ -91,7 +91,7 @@ export function ChatInput({
   const { upload, isUploading, progress, error: uploadError, reset: resetUpload } = useMediaUpload();
   const { toast } = useToast();
   const { profile } = useAuth();
-  const { data: publicAppUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: publicAppUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
 
   // Fill input with AI suggestion
   useEffect(() => {

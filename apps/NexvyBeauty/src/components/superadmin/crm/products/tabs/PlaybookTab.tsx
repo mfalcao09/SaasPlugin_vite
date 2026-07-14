@@ -353,7 +353,7 @@ function OfferPlaybookEditor({ productId }: { productId: string }) {
             value={formData.knowledge_base}
             onChange={(e) => setFormData({ ...formData, knowledge_base: e.target.value })}
             rows={12}
-            placeholder={'Ex: Oferta vigente — Plano Anual com 3 meses grátis...\nMecanismo: automação de recuperação de leads via WhatsApp...\nProvas: 120+ salões usando, ticket médio +32%...'}
+            placeholder={'Ex: Oferta vigente — Plano Anual com 3 meses grátis...\nMecanismo: automação de recuperação de leads via WhatsApp...\nProvas: 120+ espaços usando, ticket médio +32%...'}
           />
         </CardContent>
       </Card>

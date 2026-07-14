@@ -400,7 +400,7 @@ export const devPages: DocPage[] = [
     content: (
       <>
         <PageHero eyebrow="Widget" icon={Globe} title="Widget JS embedável" />
-        <CodeBlock lang="html">{`<script src="https://app.vendus.com.br/funnel-widget.js"
+        <CodeBlock lang="html">{`<script src="https://app.nexvybeauty.com.br/funnel-widget.js"
   data-funnel="seu-slug"
   data-tags="tag1,tag2"
   data-score="10"

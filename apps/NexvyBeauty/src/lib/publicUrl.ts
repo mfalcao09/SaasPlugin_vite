@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { readCachedBrandingSync } from '@/hooks/usePlatformBranding';
 
-const DEFAULT_PUBLIC_APP_URL = 'https://app.vendus.com.br';
-const FALLBACK_PUBLIC_APP_URL = 'https://sales-guide-buddy-11.lovable.app';
+const DEFAULT_PUBLIC_APP_URL = 'https://app.nexvybeauty.com.br';
 
 function normalizeUrl(value?: string | null): string | null {
   const raw = value?.trim().replace(/\/+$/, '');
@@ -110,14 +109,14 @@ export function getPublicAppUrl(configuredUrl?: string | null): string {
   const configured = normalizeUrl(configuredUrl) || normalizeUrl((readCachedBrandingSync() as any)?.public_app_url);
 
   if (typeof window === 'undefined') {
-    return configured || DEFAULT_PUBLIC_APP_URL || FALLBACK_PUBLIC_APP_URL;
+    return configured || DEFAULT_PUBLIC_APP_URL;
   }
 
   if (!isEditorHost(window.location.hostname)) {
     return window.location.origin;
   }
 
-  return configured || DEFAULT_PUBLIC_APP_URL || FALLBACK_PUBLIC_APP_URL;
+  return configured || DEFAULT_PUBLIC_APP_URL;
 }
 
 export function usePublicAppUrl() {

@@ -1,9 +1,16 @@
 // Aplica o payload da submission nas tabelas reais. Idempotente via applied_refs.
 // Autenticado via token público + session_token (para empresas externas) OU usuário admin logado.
 //
-// PORTE 1:1 do Vendus v5 (supabase/functions/apply-onboarding/index.ts), adaptado ao schema real
-// do NexvyBeauty. Divergências de coluna estão marcadas com "[BEAUTY]" abaixo. Nenhuma coluna foi
-// inventada: campos do Vendus que não existem no Beauty foram omitidos ou mapeados ao equivalente real.
+// CONTRATO NOVO (wizard NexvyBeauty — espelha ImplantacaoPayload de src/hooks/useImplantacao.ts):
+//   empresa      → organizations (name/cnpj/phone/instagram/website/logo_url/address/slug/settings.primary_color)
+//   horarios     → business_hours (timezone + schedule)
+//   servicos     → products tipo='servico' (servico_catalogo é VIEW sobre products; grava-se DIRETO
+//                  em products com settings.preco_base/duracao_minutos — NUNCA sem tipo, senão o
+//                  default do banco ('oferta') torna o serviço invisível pra Agenda/Booking/IA)
+//   profissionais→ profissionais (shape de SalaoProfissionaisStep/Profissionais.tsx)
+//   equipia      → product_agents (recepcionista IA; shape de useCreateAgent em useProductAgents.ts)
+//   usuarios     → create-team-member (tolerante; Administrador/Gestor/Atendente → admin/manager/seller)
+// Os blocos antigos do Vendus (negocios/agentes/setores/equipes) foram REMOVIDOS deste contrato.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -16,12 +23,23 @@ const json = (body: any, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
 type Payload = {
-  empresa?: any;
+  empresa?: {
+    razao_social?: string;
+    nome_fantasia?: string;
+    cnpj?: string;
+    telefone?: string;
+    instagram?: string;
+    site?: string;
+    logo_url?: string;
+    slug?: string;
+    cor_principal?: string;
+    endereco?: any;
+  };
   horarios?: { timezone?: string; schedule?: any };
-  negocios?: any[];
-  agentes?: any[];
-  setores?: any[];
-  equipes?: any[];
+  servicos?: Array<{ nome?: string; categoria?: string; duracao_min?: number; preco?: number }>;
+  profissionais?: Array<{ nome?: string; especialidade?: string }>;
+  equipia?: { nome?: string; tom?: string };
+  usuarios?: Array<{ nome?: string; email?: string; perfil?: string }>;
 };
 
 const DEFAULT_SCHEDULE = {
@@ -39,6 +57,33 @@ async function sha256Hex(input: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// Mesmo sanitizeSlug do GuidedOnboarding.tsx:253-255 (campo, preview e valor salvo idênticos).
+function sanitizeSlug(v: string): string {
+  return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+// Normalização acento-insensível pra mapas PT→EN (tom do agente, perfil de usuário).
+function normalizeKey(v: string): string {
+  return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+// Espelha TONE_MAP de src/components/admin/agents/AgentImportModal.tsx:47-52 (vocabulário
+// canônico ToneStyle de src/types/agents.ts: formal|consultive|friendly|technical).
+const TONE_MAP: Record<string, string> = {
+  amigavel: "friendly", friendly: "friendly",
+  formal: "formal",
+  consultivo: "consultive", consultive: "consultive",
+  tecnico: "technical", technical: "technical",
+};
+
+// Perfis do wizard → roles reais do create-team-member.
+const PERFIL_MAP: Record<string, string> = {
+  administrador: "admin", admin: "admin",
+  gestor: "manager", manager: "manager",
+  atendente: "seller", seller: "seller", vendedor: "seller",
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -111,6 +156,12 @@ serve(async (req) => {
     // ===== 1. EMPRESA =====
     try {
       const e = payload.empresa ?? {};
+
+      // Read-merge das settings (padrão GuidedOnboarding.tsx:351-359): NÃO
+      // sobrescreve outras chaves — só grava primary_color por cima.
+      const { data: orgRow } = await admin.from("organizations")
+        .select("settings, slug").eq("id", orgId).maybeSingle();
+
       const orgUpdate: any = {};
       if (e.nome_fantasia || e.razao_social) orgUpdate.name = e.nome_fantasia || e.razao_social;
       if (e.cnpj) orgUpdate.cnpj = e.cnpj;
@@ -130,9 +181,34 @@ serve(async (req) => {
           state: en.state ?? en.uf ?? undefined,
         };
       }
+      if (e.cor_principal) {
+        orgUpdate.settings = { ...(orgRow?.settings ?? {}), primary_color: e.cor_principal };
+      }
       orgUpdate.onboarding_completed_at = new Date().toISOString();
       orgUpdate.onboarding_locked = true;
-      await admin.from("organizations").update(orgUpdate).eq("id", orgId);
+      const { error: upErr } = await admin.from("organizations").update(orgUpdate).eq("id", orgId);
+      if (upErr) errors.push(`empresa: ${upErr.message}`);
+
+      // Slug em escrita separada, com tratamento de colisão (porte do saveSlug de
+      // GuidedOnboarding.tsx:316-337): tenta o slug pedido; se unique violation
+      // (23505), anexa sufixo curto e tenta 1x mais. Colisão persistente vira aviso.
+      const desired = sanitizeSlug(e.slug ?? "");
+      if (desired && desired !== orgRow?.slug) {
+        const first = await admin.from("organizations").update({ slug: desired }).eq("id", orgId);
+        if (first.error) {
+          if (first.error.code !== "23505") {
+            errors.push(`empresa (slug): ${first.error.message}`);
+          } else {
+            const retrySlug = `${desired}-${Date.now().toString(36).slice(-4)}`;
+            const second = await admin.from("organizations").update({ slug: retrySlug }).eq("id", orgId);
+            if (second.error) {
+              errors.push(second.error.code === "23505"
+                ? `empresa (slug): o link "${desired}" já está em uso e não foi possível reservar uma variação`
+                : `empresa (slug): ${second.error.message}`);
+            }
+          }
+        }
+      }
     } catch (err: any) { errors.push(`empresa: ${err.message}`); }
 
     // ===== 2. HORÁRIOS =====
@@ -146,124 +222,221 @@ serve(async (req) => {
       } else {
         await admin.from("business_hours").insert({ organization_id: orgId, timezone: tz, schedule, out_of_hours_enabled: false, out_of_hours_message: "" });
       }
-      // [BEAUTY] Vendus grava organizations.timezone (linha 145 do original). No Beauty a tabela
-      // organizations NÃO tem coluna `timezone` — o fuso vive só em business_hours.timezone (acima).
-      // Omitido para não inventar coluna.
+      // [BEAUTY] organizations NÃO tem coluna `timezone` — o fuso vive só em business_hours.timezone.
     } catch (err: any) { errors.push(`horarios: ${err.message}`); }
 
-    // ===== 3. SETORES =====
-    refs.sectors = refs.sectors ?? [];
+    // ===== 3. SERVIÇOS =====
+    // servico_catalogo é uma VIEW sobre products (não versionada; só existe no banco).
+    // Grava-se DIRETO em products com tipo='servico' — sem `tipo` o default do banco
+    // ('oferta') deixa o serviço invisível pra Agenda/Booking/IA (bug histórico).
+    // DEDUPE por organization_id + lower(name) + tipo='servico': o provisioning já
+    // seeda 10 serviços-template (cakto-plan-provisioning.ts:443) e o wizard NÃO pode
+    // duplicá-los — match existente vira UPDATE de settings/category.
+    refs.servicos = refs.servicos ?? [];
     try {
-      for (const s of payload.setores ?? []) {
-        if (!s?.nome) continue;
-        const { data: existing } = await admin.from("sectors").select("id")
-          .eq("organization_id", orgId).eq("name", s.nome).maybeSingle();
-        if (existing?.id) { refs.sectors.push(existing.id); continue; }
-        // [BEAUTY] Vendus usa sectors.order_index; no Beauty a coluna equivalente é `bot_order`.
-        const { data: ins } = await admin.from("sectors").insert({
-          organization_id: orgId, name: s.nome, bot_order: s.ordem ?? 1, is_active: true,
-        }).select("id").maybeSingle();
-        if (ins?.id) refs.sectors.push(ins.id);
+      const { data: existingRows } = await admin.from("products")
+        .select("id, name, category, settings")
+        .eq("organization_id", orgId).eq("tipo", "servico");
+      const byName = new Map<string, any>();
+      for (const row of existingRows ?? []) {
+        if (row?.name) byName.set(String(row.name).trim().toLowerCase(), row);
       }
-    } catch (err: any) { errors.push(`setores: ${err.message}`); }
 
-    // ===== 4. NEGÓCIOS =====
-    refs.products = refs.products ?? [];
-    refs.knowledge_sources = refs.knowledge_sources ?? [];
-    try {
-      for (const n of payload.negocios ?? []) {
-        if (!n?.nome) continue;
-        const { data: prod, error: pErr } = await admin.from("products").insert({
+      for (const s of payload.servicos ?? []) {
+        const nome = s?.nome?.trim();
+        if (!nome) continue;
+        const key = nome.toLowerCase();
+        const found = byName.get(key);
+
+        if (found) {
+          // Já existe (template do provisioning ou repetição no payload):
+          // atualiza só o que o wizard trouxe, preservando as demais settings.
+          const newSettings: any = { ...(found.settings ?? {}) };
+          if (s.preco != null) newSettings.preco_base = s.preco;
+          if (newSettings.preco_base == null) newSettings.preco_base = 0;
+          if (s.duracao_min != null) newSettings.duracao_minutos = s.duracao_min;
+          if (newSettings.duracao_minutos == null) newSettings.duracao_minutos = 30;
+          const upd: any = { settings: newSettings, status: "published" };
+          if (s.categoria) upd.category = s.categoria;
+          const { error: uErr } = await admin.from("products").update(upd).eq("id", found.id);
+          if (uErr) { errors.push(`servico ${nome}: ${uErr.message}`); continue; }
+          found.settings = newSettings;
+          if (!refs.servicos.includes(found.id)) refs.servicos.push(found.id);
+          continue;
+        }
+
+        const { data: ins, error: iErr } = await admin.from("products").insert({
           organization_id: orgId,
-          name: n.nome,
-          status: (n.status || "draft").toString().toLowerCase() === "publicado" ? "published" : "draft",
-          category: n.categoria ?? null,
-          short_description: n.descricao_curta ?? null,
-          description: n.descricao_completa ?? null,
-          custom_info: n.personalizadas ?? null,
-          icp: n.icp ?? null,
-          differentials: Array.isArray(n.diferenciais) ? n.diferenciais : (n.diferenciais ? String(n.diferenciais).split("\n").map((s: string) => s.trim()).filter(Boolean) : []),
+          name: nome,
+          tipo: "servico",
+          status: "published",
+          category: s.categoria ?? null,
+          settings: { preco_base: s.preco ?? 0, duracao_minutos: s.duracao_min ?? 30 },
           created_by: createdBy,
         }).select("id").maybeSingle();
-        if (pErr) { errors.push(`negocio ${n.nome}: ${pErr.message}`); continue; }
-        if (!prod?.id) continue;
-        refs.products.push(prod.id);
-
-        // [BEAUTY] product_knowledge_sources.source_type tem CHECK: file|website|youtube|faq|data|training.
-        // Vendus usa "text" para Treinamento e Catálogo — inexistente no Beauty; mapeado para "training".
-        const ks: any[] = [];
-        (n.websites ? String(n.websites).split("\n").map((s: string) => s.trim()).filter(Boolean) : []).forEach((url: string) => {
-          ks.push({ product_id: prod.id, organization_id: orgId, source_type: "website", title: url, source_url: url, processing_status: "pending", is_active: true, created_by: createdBy });
-        });
-        (n.videos ? String(n.videos).split("\n").map((s: string) => s.trim()).filter(Boolean) : []).forEach((url: string) => {
-          ks.push({ product_id: prod.id, organization_id: orgId, source_type: "youtube", title: url, source_url: url, processing_status: "pending", is_active: true, created_by: createdBy });
-        });
-        if (n.faq) ks.push({ product_id: prod.id, organization_id: orgId, source_type: "faq", title: "FAQ", raw_content: n.faq, processing_status: "completed", is_active: true, created_by: createdBy });
-        if (n.dados) ks.push({ product_id: prod.id, organization_id: orgId, source_type: "data", title: "Dados", raw_content: n.dados, processing_status: "completed", is_active: true, created_by: createdBy });
-        if (n.treinamento) ks.push({ product_id: prod.id, organization_id: orgId, source_type: "training", title: "Treinamento", raw_content: n.treinamento, processing_status: "completed", is_active: true, created_by: createdBy });
-        if (n.catalogo) ks.push({ product_id: prod.id, organization_id: orgId, source_type: "training", title: "Catálogo", raw_content: n.catalogo, processing_status: "completed", is_active: true, created_by: createdBy });
-        (n.arquivos ?? []).forEach((f: any) => {
-          if (!f?.url) return;
-          ks.push({ product_id: prod.id, organization_id: orgId, source_type: "file", title: f.name ?? "Arquivo", file_url: f.url, file_type: f.type ?? null, file_size: f.size ?? null, processing_status: "pending", is_active: true, created_by: createdBy });
-        });
-        if (ks.length) {
-          const { data: ksIns } = await admin.from("product_knowledge_sources").insert(ks).select("id");
-          (ksIns ?? []).forEach((r: any) => refs.knowledge_sources.push(r.id));
+        if (iErr) { errors.push(`servico ${nome}: ${iErr.message}`); continue; }
+        if (ins?.id) {
+          refs.servicos.push(ins.id);
+          byName.set(key, {
+            id: ins.id, name: nome, category: s.categoria ?? null,
+            settings: { preco_base: s.preco ?? 0, duracao_minutos: s.duracao_min ?? 30 },
+          });
         }
       }
-    } catch (err: any) { errors.push(`negocios: ${err.message}`); }
+    } catch (err: any) { errors.push(`servicos: ${err.message}`); }
 
-    // ===== 5. AGENTES =====
+    // ===== 4. PROFISSIONAIS =====
+    // Shape das telas reais: SalaoProfissionaisStep.tsx:38 ({organization_id, nome,
+    // ativo}) + Profissionais.tsx:115 (especialidades: string[]). Dedupe por
+    // (organization_id, lower(nome)).
+    refs.profissionais = refs.profissionais ?? [];
+    try {
+      const { data: existingProfs } = await admin.from("profissionais")
+        .select("id, nome").eq("organization_id", orgId);
+      const profByName = new Map<string, string>();
+      for (const row of existingProfs ?? []) {
+        if (row?.nome) profByName.set(String(row.nome).trim().toLowerCase(), row.id);
+      }
+
+      for (const p of payload.profissionais ?? []) {
+        const nome = p?.nome?.trim();
+        if (!nome) continue;
+        const key = nome.toLowerCase();
+        const existingId = profByName.get(key);
+        if (existingId) {
+          if (!refs.profissionais.includes(existingId)) refs.profissionais.push(existingId);
+          continue;
+        }
+        const { data: ins, error: iErr } = await admin.from("profissionais").insert({
+          organization_id: orgId,
+          nome,
+          ativo: true,
+          especialidades: p.especialidade?.trim() ? [p.especialidade.trim()] : [],
+        }).select("id").maybeSingle();
+        if (iErr) { errors.push(`profissional ${nome}: ${iErr.message}`); continue; }
+        if (ins?.id) {
+          refs.profissionais.push(ins.id);
+          profByName.set(key, ins.id);
+        }
+      }
+    } catch (err: any) { errors.push(`profissionais: ${err.message}`); }
+
+    // ===== 5. EQUIPE IA (recepcionista) =====
+    // Segue o shape de criação do tenant (useCreateAgent em src/hooks/useProductAgents.ts:90-196:
+    // defaults explícitos + is_default automático no 1º agente do produto). O AgentEditor do
+    // tenant (src/components/admin/agents/AgentEditor.tsx:142,171) exige produto-âncora pra
+    // tipos não-globais → ancora no 1º product tipo='servico' da org (inclui os do bloco 3;
+    // se não houver nenhum, product_id=null — o schema aceita, é como useCreateAgent grava
+    // agentes globais). Idempotente: se a org já tem agente ATIVO com o mesmo nome, só
+    // atualiza o tom.
     refs.agents = refs.agents ?? [];
     try {
-      const targetProductId = refs.products[0] ?? null;
-      for (const a of payload.agentes ?? []) {
-        if (!a?.nome) continue;
-        const tipoMap: Record<string, string> = {
-          "SDR — Qualifica": "sdr", "Closer — Fecha a venda": "closer",
-          "Suporte": "support", "Financeiro": "financial", "Administrativo": "admin",
-        };
-        const tomMap: Record<string, string> = { "Formal": "formal", "Consultivo": "consultative", "Amigável": "friendly", "Técnico": "technical" };
-        // [BEAUTY] product_agents.primary_objective é NOT NULL. Vendus grava `a.missao ?? null`,
-        // que violaria a constraint quando a missão vem vazia — usa-se "" (string vazia) como fallback
-        // null-safe, sem inventar conteúdo.
-        const { data: ag } = await admin.from("product_agents").insert({
+      const eq = payload.equipia ?? {};
+      const agentName = eq.nome?.trim() || "Lia";
+      const tone = TONE_MAP[normalizeKey(eq.tom || "amigavel")] ?? "friendly";
+
+      const { data: existingAgent } = await admin.from("product_agents")
+        .select("id").eq("organization_id", orgId).eq("is_active", true)
+        .ilike("name", agentName).maybeSingle();
+
+      if (existingAgent?.id) {
+        const { error: uErr } = await admin.from("product_agents")
+          .update({ tone_style: tone }).eq("id", existingAgent.id);
+        if (uErr) errors.push(`equipe IA ${agentName}: ${uErr.message}`);
+        if (!refs.agents.includes(existingAgent.id)) refs.agents.push(existingAgent.id);
+      } else {
+        // Produto-âncora: 1º serviço da org.
+        const { data: anchor } = await admin.from("products")
+          .select("id").eq("organization_id", orgId).eq("tipo", "servico")
+          .order("created_at", { ascending: true }).limit(1).maybeSingle();
+        const anchorId = anchor?.id ?? null;
+
+        // is_default automático no 1º agente do produto (espelha useCreateAgent).
+        let isDefault = false;
+        if (anchorId) {
+          const { count } = await admin.from("product_agents")
+            .select("id", { count: "exact", head: true }).eq("product_id", anchorId);
+          isDefault = (count ?? 0) === 0;
+        }
+
+        const { data: ag, error: aErr } = await admin.from("product_agents").insert({
+          name: agentName,
+          product_id: anchorId,
           organization_id: orgId,
-          product_id: targetProductId,
-          name: a.nome,
-          agent_type: tipoMap[a.tipo] ?? "sdr",
-          primary_objective: a.missao ?? "",
-          tone_style: tomMap[a.tom] ?? "consultative",
-          is_active: true,
           created_by: createdBy,
+          // primary_objective é NOT NULL; useCreateAgent usa `|| ''` quando não há
+          // missão — o wizard não coleta missão, então segue o mesmo fallback.
+          primary_objective: "",
+          agent_type: "custom",
+          can_do: [],
+          cannot_do: [],
+          handoff_triggers: [],
+          end_conversation_triggers: [],
+          tone_style: tone,
+          message_style: "balanced",
+          always_end_with_question: true,
+          required_phrases: [],
+          prohibited_phrases: [],
+          auto_tag_leads: true,
+          default_tags: [],
+          can_update_pipeline: true,
+          can_create_tasks: true,
+          can_schedule_meetings: true,
+          can_apply_tags: false,
+          can_update_lead: false,
+          can_send_emails: false,
+          can_send_materials: false,
+          can_trigger_flows: false,
+          can_transfer: false,
+          can_notify: false,
+          can_add_notes: false,
+          can_start_cadence: false,
+          can_qualify: false,
+          tool_configs: {},
+          active_in_funnels: true,
+          active_in_chat: true,
+          active_in_widget: true,
+          active_in_inbox: true,
+          active_in_copilot: false,
+          active_in_whatsapp: true,
+          active_in_instagram: true,
+          active_in_facebook: true,
+          is_active: true,
+          is_default: isDefault,
+          activation_keywords: [],
+          activation_phrases: [],
+          activation_priority: 0,
+          activation_scope: "all",
+          takeover_on_match: true,
+          evolution_instance_id: null,
+          humanization: {},
         }).select("id").maybeSingle();
+        if (aErr) errors.push(`equipe IA ${agentName}: ${aErr.message}`);
         if (ag?.id) refs.agents.push(ag.id);
       }
-    } catch (err: any) { errors.push(`agentes: ${err.message}`); }
+    } catch (err: any) { errors.push(`equipe IA: ${err.message}`); }
 
-    // ===== 6. EQUIPES =====
-    // [BEAUTY] A EF create-team-member EXISTE no Beauty, mas o contrato diverge do Vendus:
-    //   - exige `password` (obrigatório) — o onboarding não coleta senha;
-    //   - autentica o CHAMADOR via getUser() do Authorization header (não aceita service-role como
-    //     usuário) e deriva organization_id do profile do chamador — no fluxo público não há chamador;
-    //   - retorna { success, user_id }, não { invitation_id }.
-    // Mantém-se a chamada 1:1 (tolerante, try/catch) com os campos adaptados ao contrato do Beauty
-    // (recovery_whatsapp em vez de phone; lê user_id OU invitation_id). Na prática este bloco NÃO
-    // provisiona membros no fluxo público — ver RELATÓRIO. Falhas são registradas em errors[].
+    // ===== 6. USUÁRIOS =====
+    // Bloco tolerante via create-team-member. [BEAUTY] O contrato dessa EF exige
+    // `password` (o onboarding não coleta senha) e autentica o CHAMADOR via getUser()
+    // — no fluxo público não há chamador. Na prática este bloco NÃO provisiona membros
+    // no fluxo público; as falhas ficam em errors[] pro admin completar depois pela
+    // tela de equipe. Mantido 1:1 com o comportamento anterior, só remapeando o
+    // contrato novo (nome/email/perfil).
     refs.invitations = refs.invitations ?? [];
     try {
-      for (const m of payload.equipes ?? []) {
+      for (const m of payload.usuarios ?? []) {
         if (!m?.email) continue;
-        const role = (m.perfil || "seller").toLowerCase();
-        const validRole = ["admin","manager","seller"].includes(role) ? role : "seller";
+        const role = PERFIL_MAP[normalizeKey(m.perfil || "")] ?? "seller";
         try {
           const resp = await fetch(`${SUPABASE_URL}/functions/v1/create-team-member`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE}` },
             body: JSON.stringify({
-              email: m.email, full_name: m.nome ?? m.email,
-              recovery_whatsapp: m.whatsapp ?? null, role: validRole,
-              organization_id: orgId, sector_ids: m.setores ?? [],
+              email: m.email,
+              full_name: m.nome ?? m.email,
+              role,
+              organization_id: orgId,
             }),
           });
           if (resp.ok) {
@@ -272,11 +445,11 @@ serve(async (req) => {
             if (memberRef) refs.invitations.push(memberRef);
           } else {
             const t = await resp.text().catch(() => "");
-            errors.push(`equipe ${m.email}: create-team-member ${resp.status} ${t}`);
+            errors.push(`usuario ${m.email}: create-team-member ${resp.status} ${t}`);
           }
-        } catch (e: any) { errors.push(`equipe ${m.email}: ${e.message}`); }
+        } catch (e: any) { errors.push(`usuario ${m.email}: ${e.message}`); }
       }
-    } catch (err: any) { errors.push(`equipes: ${err.message}`); }
+    } catch (err: any) { errors.push(`usuarios: ${err.message}`); }
 
     // ===== Finaliza =====
     await admin.from("onboarding_submissions").update({
@@ -307,8 +480,7 @@ serve(async (req) => {
     } catch { /* ignore */ }
 
     // [BEAUTY] admin_notifications no Beauty não tem severity/category/is_read (omitidos) e `type` é
-    // enum notification_type (cadence|urgency|opportunity|audit|system) — "onboarding_completed" não é
-    // válido; usa-se "system". scope tem default 'all'.
+    // enum notification_type (cadence|urgency|opportunity|audit|system) — usa-se "system".
     try {
       await admin.from("admin_notifications").insert({
         organization_id: orgId,
