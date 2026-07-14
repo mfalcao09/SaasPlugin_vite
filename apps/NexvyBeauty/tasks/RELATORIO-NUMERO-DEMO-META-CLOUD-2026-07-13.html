@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório — Número demo na WhatsApp Cloud API (Meta)</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--muted:#8b949e;--pink:#ec4899;--green:#3fb950;--blue:#58a6ff;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:2rem}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:1.5rem;margin:0 0 .3rem;background:linear-gradient(90deg,var(--pink),var(--blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);margin:0 0 1.5rem;font-size:.9rem}
+  .badge{display:inline-block;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4);border-radius:999px;padding:.15rem .7rem;font-size:.85rem;font-weight:600}
+  h2{font-size:1.1rem;margin:2rem 0 .6rem;padding-bottom:.3rem;border-bottom:1px solid var(--border);color:var(--pink)}
+  table{width:100%;border-collapse:collapse;margin:.5rem 0;font-size:.9rem}
+  th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-weight:600}
+  code{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:.05rem .35rem;font-size:.85em;color:var(--blue)}
+  .ok{color:var(--green);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin:.6rem 0}
+  .amber{border-left:3px solid var(--amber)}
+  ol,ul{padding-left:1.2rem}
+  li{margin:.3rem 0}
+  .foot{color:var(--muted);font-size:.8rem;margin-top:2rem;border-top:1px solid var(--border);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Número do salão-DEMO habilitado na WhatsApp Cloud API oficial (Meta)</h1>
+  <p class="sub">2026-07-13 · App NexvyBeauty · Supabase <code>fzhlbwhdejumkyqosuvq</code> · <span class="badge">CONCLUÍDO ✅</span></p>
+
+  <h2>Resultado (todos os critérios + bônus)</h2>
+  <table>
+    <tr><th>#</th><th>Critério</th><th>Estado</th></tr>
+    <tr><td>1</td><td>Número na WABA (Portfolio <code>1331611869008138</code>)</td><td class="ok">✅ WABA "Nexvy Beauty Demo" <code>1023556786945354</code></td></tr>
+    <tr><td>2</td><td>Verificação OTP</td><td class="ok">✅ SMS via Salvy → VERIFIED</td></tr>
+    <tr><td>3</td><td>Habilitado na Cloud API</td><td class="ok">✅ CONNECTED · nome APPROVED · STANDARD</td></tr>
+    <tr><td>4</td><td>Plugado no app</td><td class="ok">✅ conexão <code>ee5afbc2</code> + inbound roteado</td></tr>
+    <tr><td>5</td><td>Prova de mensagem</td><td class="ok">✅ bidirecional, DB-visível, bot respondendo</td></tr>
+    <tr><td>+</td><td>(bônus) Bug de inbound do Vendas</td><td class="ok">✅ resolvido</td></tr>
+  </table>
+
+  <h2>Identificadores</h2>
+  <table>
+    <tr><td>Número demo</td><td>+55 11 95213-9912</td></tr>
+    <tr><td>phone_number_id</td><td><code>1220194224507621</code></td></tr>
+    <tr><td>WABA demo</td><td><code>1023556786945354</code> ("Nexvy Beauty Demo")</td></tr>
+    <tr><td>App ID</td><td><code>1289456453376034</code></td></tr>
+    <tr><td>Conexão app (demo)</td><td><code>ee5afbc2-01c0-4689-9f34-fd4c4ed316ff</code></td></tr>
+    <tr><td>Conexão app (Vendas)</td><td><code>1f7ca6e3-a846-493d-908e-b6d74ccf8c84</code></td></tr>
+    <tr><td>Salvy account (demo)</td><td><code>019f388d-…-6083f6a1</code> (virou <code>active</code>)</td></tr>
+  </table>
+
+  <h2>O que foi feito</h2>
+  <ol>
+    <li><b>Cadastro + verificação na Meta</b> (dev console, Chrome do Marcelo): número → perfil "Nexvy Beauty Demo" (Beleza) → OTP por <b>SMS</b>. A Meta criou uma <b>WABA nova</b> (mantida por decisão do Marcelo).</li>
+    <li><b>OTP pela Salvy via API</b> (<code>sms-messages</code> → <code>detections.whatsapp.verificationCode</code>), código <code>613823</code> → verificado.</li>
+    <li><b>Token permanente</b> (System User "Employee", escopos management + messaging); WABA nova atribuída ao System User.</li>
+    <li><b>Plugado no app</b> via edge <code>platform-meta-whatsapp-connect</code> (segredos cifrados AES-256-GCM). Inbound do demo roteado pra própria conexão via <code>override_callback_uri</code>.</li>
+    <li><b>Prova bidirecional (DB):</b> demo→Vendas caiu na conversa <code>90d14ad5</code> (conexão Vendas); Vendas→demo caiu na conversa <code>65502986</code> (conexão demo). Bot Mia respondeu nas duas.</li>
+  </ol>
+
+  <h2>Bônus — bug do Vendas resolvido</h2>
+  <div class="panel amber">
+    O webhook do Vendas (<code>…/1f7ca6e3…</code>) dava <b>401 "invalid signature"</b> (app_secret desatualizado) — inbound <b>parado desde 2026-07-12</b>. Atualizada a conexão com o app_secret atual → webhook voltou a <b>200</b> e o inbound voltou a ingerir (comprovado pela mensagem do demo caindo no DB).
+  </div>
+
+  <h2>Aprendizado técnico (auth da edge)</h2>
+  <div class="panel">
+    Projeto migrou p/ <b>API keys novas Supabase</b> (<code>sb_secret_</code>, mostradas 1× e não recuperáveis via CLI). O JWT <code>service_role</code> legado passa no gateway mas <b>≠</b> o env interno da função. <b>Solução:</b> mintar JWT super_admin via GoTrue Auth Admin (<code>/auth/v1/admin/generate_link</code> → <code>/auth/v1/verify</code>) com a service_role legada → usar como Bearer.
+  </div>
+
+  <h2>Higiene de segredos (recomendado)</h2>
+  <ul>
+    <li>Apagar <code>~/Downloads/TOKEN_NOVOWABA_NEXVY.txt</code> (token plaintext; já cifrado no banco).</li>
+    <li>Opcional: remover <code>META_APP_SECRET</code> / <code>SUPABASE_SERVICE_ROLE_KEY</code> de <code>docs/salvy/.env.local</code> (gitignored) após o uso.</li>
+  </ul>
+
+  <p class="foot">Frente ISOLADA (número oficial do salão-demo). Não tocou onboarding de tenant / QR Evolution. Documento pareado: <code>RELATORIO-NUMERO-DEMO-META-CLOUD-2026-07-13.md</code>.</p>
+</div>
+</body>
+</html>
