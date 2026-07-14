@@ -3,7 +3,7 @@
 // embutidas. CARREGA os 2 gates que antes viviam no ModuleHub (senão o 1º
 // acesso para de funcionar silenciosamente):
 //   (a) super-admin sem setup → /super-admin
-//   (b) onboarding guiado do admin de salão (1º acesso) → modal
+//   (b) onboarding do admin (1º acesso) → wizard de implantação in-shell
 // Admin (/admin) e Super-admin (/super-admin) seguem intactos como rotas.
 
 import { Suspense } from 'react'
@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useSuperAdminFirstAccess } from '@/hooks/useSuperAdminFirstAccess'
 import { useGuidedOnboarding } from '@/hooks/useGuidedOnboarding'
 import { UnifiedShell } from '@/components/layout/UnifiedShell'
-import { GuidedOnboarding } from '@/components/onboarding/GuidedOnboarding'
+import AdminImplantacao from '@/pages/AdminImplantacao'
 import { WheelLoader } from '@/components/brand/WheelLoader'
 import { COCKPIT_NAV } from './nav'
 
@@ -40,13 +40,14 @@ export default function CockpitShell() {
 
   return (
     <UnifiedShell nav={COCKPIT_NAV} title={firstName ? `Olá, ${firstName}` : 'NexvyBeauty'}>
-      {/* Gate (b): onboarding guiado do admin de salão (1º acesso). V3 in-shell:
-          o wizard É o conteúdo principal (não modal) — a sidebar segue visível.
+      {/* Gate (b): onboarding do admin (1º acesso). O wizard de implantação
+          (ImplantacaoWizard, 9 steps) absorveu o antigo GuidedOnboarding e É o
+          conteúdo principal (não modal) — a sidebar segue visível.
           Concluir/pular revela a Home (HomeDeValor) atrás, que entrega o AHA.
           Exceção: a rota /configurar É o próprio wizard (acesso direto / retomar
           após pular) — nesse path renderiza o <Outlet/> pra não duplicar o wizard. */}
       {showOnboarding && location.pathname !== '/configurar' ? (
-        <GuidedOnboarding onComplete={markCompleted} onSkipAll={markSkipped} />
+        <AdminImplantacao embedded onComplete={markCompleted} onSkip={markSkipped} />
       ) : (
         <Suspense fallback={<div className="py-16 flex justify-center"><WheelLoader size={48} /></div>}>
           <Outlet />

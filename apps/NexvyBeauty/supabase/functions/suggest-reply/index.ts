@@ -73,7 +73,7 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "Você é a recepcionista de um salão de beleza falando no WhatsApp. Escreva UMA resposta curta, calorosa e profissional (1-3 frases) para enviar AGORA ao cliente, com base na conversa. Sem colchetes, sem placeholders, sem 'Olá [nome]'. Responda apenas com a mensagem pronta para enviar.",
+              "Você é a recepcionista de um espaço de beleza falando no WhatsApp. Escreva UMA resposta curta, calorosa e profissional (1-3 frases) para enviar AGORA ao cliente, com base na conversa. Sem colchetes, sem placeholders, sem 'Olá [nome]'. Responda apenas com a mensagem pronta para enviar.",
           },
           {
             role: "user",

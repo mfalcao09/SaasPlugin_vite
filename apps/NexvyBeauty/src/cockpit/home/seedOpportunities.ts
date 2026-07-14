@@ -21,13 +21,13 @@ export const SEED_OPPORTUNITIES: OpportunityCardData[] = [
   {
     id: 'exemplo-2',
     leadId: null,
-    name: 'Marcos R. (exemplo)',
+    name: 'Carla S. (exemplo)',
     phone: null,
     classification: 'hot',
     dealValue: 150,
-    reason: 'Pediu orçamento e não voltou',
+    reason: 'Pediu orçamento das mechas e não voltou',
     followupMessage:
-      'Oi Marcos! Vi que você se interessou no combo corte + barba. Ainda quer fechar? Consigo te encaixar ainda essa semana 😉',
+      'Oi Carla! Vi que você se interessou no pacote de mechas ✨ Ainda quer fechar? Consigo te encaixar ainda essa semana 😉',
   },
   {
     id: 'exemplo-3',

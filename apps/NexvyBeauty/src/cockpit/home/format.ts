@@ -6,10 +6,20 @@
 import type { OpportunityClass } from '@/cockpit/types'
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const BRL_WHOLE = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+  maximumFractionDigits: 0,
+})
 
 /** Formata um número em Real brasileiro (R$ 1.234,56). */
 export function formatBRL(value: number): string {
   return BRL.format(value || 0)
+}
+
+/** BRL sem centavos (R$ 720) — chip de impacto do bilhete da EquipIA. */
+export function formatBRLWhole(value: number): string {
+  return BRL_WHOLE.format(value || 0)
 }
 
 // Vocabulário lay: nada de "hot/warm/cold" cru pra dona do salão.
@@ -26,6 +36,14 @@ export const CLASS_HINT: Record<OpportunityClass, string> = {
   warm: 'Um carinho reacende',
   cold: 'Sumiram faz tempo',
   lost: 'Já foram embora',
+}
+
+/** Tag versalete do card de oportunidade (padrão LP: "PRIORIDADE ALTA"). */
+export const CLASS_TAG: Record<OpportunityClass, string> = {
+  hot: 'Prioridade alta',
+  warm: 'Oportunidade',
+  cold: 'Vale resgatar',
+  lost: 'Reconquista',
 }
 
 // Acentos de temperatura no padrão da Agenda (border/bg/text + dark).

@@ -861,6 +861,49 @@ Deno.serve(async (req) => {
     const rawInstance = extractInstance(payload);
     console.log("[evolution-webhook] raw event:", rawEvent, "instance:", rawInstance || "<MISSING>");
 
+    // ---- F6: HISTÓRICO (syncFullHistory) → carteira de clientes ----
+    // Chunks de histórico (MESSAGES_SET/CHATS_SET/CONTACTS_SET) são volumosos
+    // e não são mensagens ao vivo: delega pra function dedicada
+    // evolution-history-sync (server-to-server com service role — ela resolve
+    // instância→org e faz o upsert batch em `clientes`) e responde 200 na hora
+    // pro Evolution não re-tentar. Processa em background via waitUntil quando
+    // o runtime suporta.
+    const HISTORY_EVENTS = new Set([
+      "messages.set", "MESSAGES_SET",
+      "chats.set", "CHATS_SET",
+      "contacts.set", "CONTACTS_SET",
+      "messaging-history.set", "MESSAGING_HISTORY_SET",
+    ]);
+    if (typeof rawEvent === "string" && HISTORY_EVENTS.has(rawEvent)) {
+      const historyForward = fetch(
+        `${Deno.env.get("SUPABASE_URL")!}/functions/v1/evolution-history-sync`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      ).then(async (r) => {
+        const t = await r.text().catch(() => "");
+        console.log(`[evolution-webhook] history-sync forward: ${r.status} ${t.slice(0, 300)}`);
+      }).catch((e) => {
+        console.error("[evolution-webhook] history-sync forward failed:", (e as any)?.message || String(e));
+      });
+
+      const edgeRuntime = (globalThis as any).EdgeRuntime;
+      if (edgeRuntime?.waitUntil) {
+        edgeRuntime.waitUntil(historyForward);
+      } else {
+        await historyForward;
+      }
+
+      return new Response(JSON.stringify({ ok: true, forwarded: "history_sync" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const norm = normalizePayload(payload);
     if (!norm) {
       // Log full payload (truncated) so we can identify where the instance name lives

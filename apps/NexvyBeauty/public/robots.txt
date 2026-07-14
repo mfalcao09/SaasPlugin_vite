@@ -13,5 +13,5 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://app.vendus.com.br/sitemap.xml
+Sitemap: https://nexvybeauty.com.br/sitemap.xml
 

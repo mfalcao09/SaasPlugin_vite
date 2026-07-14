@@ -42,7 +42,7 @@ function normPhone(raw: string | null | undefined): string | null {
 function defaultMsg(tipo: Tipo, nome: string | null | undefined): string {
   const p = firstName(nome)
   switch (tipo) {
-    case 'aniversario': return `Oi ${p}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no salão. Vem buscar? 🎂`
+    case 'aniversario': return `Oi ${p}! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui no nosso espaço. Vem buscar? 🎂`
     case 'pacote_vencendo': return `Oi ${p}! Seu pacote está quase no fim — bora renovar e manter seu cuidado em dia? Posso já deixar separado 😉`
     case 'agendamento_24h': return `Oi ${p}! Passando pra confirmar seu horário de amanhã 💕 Posso te esperar? Qualquer coisa, me avisa.`
     case 'retorno_inativo': return `Oi ${p}! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana? Tenho um mimo te esperando 🎁`

@@ -49,7 +49,7 @@ export function HomeEmpty({
         </div>
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground">
-            Sua IA ainda não rodou a primeira análise
+            Sua EquipIA ainda não rodou a primeira análise
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Ela vai ler suas conversas e mostrar quais clientes dá para reconquistar —
@@ -83,7 +83,7 @@ export function HomeAnalyzing() {
         <div className="space-y-1">
           <p className="font-medium text-foreground">Analisando suas conversas…</p>
           <p className="text-sm text-muted-foreground">
-            Sua IA está lendo cada conversa. As oportunidades aparecem aqui em instantes.
+            Sua EquipIA está lendo cada conversa. As oportunidades aparecem aqui em instantes.
           </p>
         </div>
       </CardContent>

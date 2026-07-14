@@ -13,7 +13,7 @@ export function PlatformCrmSection() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Vendas da Plataforma</h1>
         <p className="text-muted-foreground">
-          Funil de venda de SaaS — prospecção e conversão de salões em assinantes.
+          Funil de venda de SaaS — prospecção e conversão de espaços de beleza em assinantes.
         </p>
       </div>
       <Tabs defaultValue="funil">

@@ -17,7 +17,7 @@ export default function ImplantacaoPublic() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
-  const { payload, status, saving, loading, error, organizationId, updateSection, submit } = useImplantacao({ token });
+  const { payload, status, saving, loading, error, organizationId, updateSection, submit, reportStep } = useImplantacao({ token });
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -45,6 +45,8 @@ export default function ImplantacaoPublic() {
         payload={payload} status={status} saving={saving}
         organizationId={organizationId}
         onChange={updateSection} onSubmit={submit}
+        onFinish={() => navigate('/')}
+        onStepChange={reportStep}
       />
     </div>
   );

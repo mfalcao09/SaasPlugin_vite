@@ -2342,7 +2342,7 @@ Exemplo CORRETO: Cliente pergunta "quantos usuários suporta?" e a FAQ diz "300 
 
         const umProfissional = salaoProfissionais.length === 1;
         const profStep = umProfissional
-          ? `O salão tem só um profissional disponível (${salaoProfissionais[0].nome}) — use o profissional_id dele direto, NÃO pergunte.`
+          ? `O espaço tem só um profissional disponível (${salaoProfissionais[0].nome}) — use o profissional_id dele direto, NÃO pergunte.`
           : `PERGUNTE com qual profissional o cliente prefere ser atendido (liste os nomes). Use o profissional_id correspondente.`;
 
         systemPrompt += `\n\n💅 AGENDAMENTO DE ATENDIMENTO (SALÃO):
@@ -2357,7 +2357,7 @@ ${profissionaisLista}
 Você possui 2 ferramentas:
 1. check_available_slots: consulta os horários livres de um SERVIÇO + PROFISSIONAL numa DATA.
    - Use SOMENTE depois de saber qual serviço, qual profissional e qual dia o cliente quer.
-2. schedule_meeting: confirma o agendamento na agenda do salão.
+2. schedule_meeting: confirma o agendamento na agenda do espaço.
    - Use IMEDIATAMENTE quando o cliente escolher um horário oferecido E você tiver nome + telefone.
 
 🛑 REGRAS ABSOLUTAS — VIOLAR QUEBRA O SISTEMA:
@@ -2398,7 +2398,7 @@ FLUXO OBRIGATÓRIO:
               properties: {
                 servico_id: { type: "string", description: `UUID do serviço escolhido. Opções: ${salaoServicos.map((s) => `${s.nome}=${s.id}`).join('; ')}` },
                 profissional_id: { type: "string", description: `UUID do profissional escolhido. Opções: ${salaoProfissionais.map((p) => `${p.nome}=${p.id}`).join('; ')}` },
-                data: { type: "string", description: "Data desejada no formato YYYY-MM-DD (horário local do salão)" }
+                data: { type: "string", description: "Data desejada no formato YYYY-MM-DD (horário local do espaço)" }
               },
               required: ["servico_id", "profissional_id", "data"]
             }
@@ -2409,7 +2409,7 @@ FLUXO OBRIGATÓRIO:
           type: "function",
           function: {
             name: "schedule_meeting",
-            description: "Confirmar o agendamento do atendimento na agenda do salão APÓS o cliente escolher um horário oferecido.",
+            description: "Confirmar o agendamento do atendimento na agenda do espaço APÓS o cliente escolher um horário oferecido.",
             parameters: {
               type: "object",
               properties: {

@@ -55,7 +55,7 @@ export function FormsManager() {
   const deleteForm = useDeleteForm();
   const duplicateForm = useDuplicateForm();
   const toggleStatus = useToggleFormStatus();
-  const { data: publicAppUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: publicAppUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
   
   // Filter forms
   const filteredForms = forms?.filter(form => {

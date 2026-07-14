@@ -137,7 +137,7 @@ export function QuickActionBar({
               Agendar
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Agendar um atendimento na agenda do salão</TooltipContent>
+          <TooltipContent>Agendar um atendimento na agenda do seu espaço</TooltipContent>
         </Tooltip>
       )}
 

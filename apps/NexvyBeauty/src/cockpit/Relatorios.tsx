@@ -677,7 +677,7 @@ export const DEMO_RELATORIOS: RelatoriosData = {
   ],
   receitaPorProfissional: [
     { nome: 'Ana', valor: 28400 }, { nome: 'Bruna', valor: 22150 }, { nome: 'Carla', valor: 18900 },
-    { nome: 'Diego', valor: 14600 }, { nome: 'Elaine', valor: 12370 },
+    { nome: 'Daniela', valor: 14600 }, { nome: 'Elaine', valor: 12370 },
   ],
   faturamentoPorServico: [
     { name: 'Alongamento de cílios', valor: 26800 }, { name: 'Coloração', valor: 19420 }, { name: 'Esmaltação em gel', valor: 16200 },

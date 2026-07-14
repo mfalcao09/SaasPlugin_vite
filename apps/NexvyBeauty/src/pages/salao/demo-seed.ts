@@ -27,7 +27,7 @@ export const DEMO_DASHBOARD: DashboardData = {
     { nome: 'Ana', valor: 6200 },
     { nome: 'Bruna', valor: 4850 },
     { nome: 'Carla', valor: 3900 },
-    { nome: 'Diego', valor: 2400 },
+    { nome: 'Daniela', valor: 2400 },
     { nome: 'Elaine', valor: 1400 },
   ],
   proximos: [

@@ -231,7 +231,7 @@ export function PlatformSettings() {
                   <Input
                     value={formData.public_app_url}
                     onChange={(e) => update({ public_app_url: e.target.value })}
-                    placeholder="https://app.vendus.com.br"
+                    placeholder="https://app.nexvybeauty.com.br"
                   />
                   <p className="text-xs text-muted-foreground">
                     Usada para gerar links públicos de canais, convites, widgets e agendamentos.
@@ -647,7 +647,7 @@ export function PlatformSettings() {
                   <Input
                     value={formData.twitter_handle}
                     onChange={(e) => update({ twitter_handle: e.target.value })}
-                    placeholder="@vendus"
+                    placeholder="@nexvybeauty"
                   />
                 </div>
                 <div className="space-y-2">

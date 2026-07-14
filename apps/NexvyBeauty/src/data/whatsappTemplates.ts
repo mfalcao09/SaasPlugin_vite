@@ -41,7 +41,7 @@ const btn = (label: string, variable_name: string, options: string[]) =>
 // ───────────── CAPTAÇÃO ─────────────
 function tplBoasVindas() {
   return chain(
-    block('message', { content: 'Oi! 👋 Que bom te ver por aqui. Sou a assistente do salão e já te ajudo.' }),
+    block('message', { content: 'Oi! 👋 Que bom te ver por aqui. Sou a assistente do espaço e já te ajudo.' }),
     btn('O que você procura hoje?', 'interesse', ['Agendar um horário', 'Saber preços', 'Falar com alguém']),
     block('create_lead', { content: 'Perfeito! Já anotei seu contato. 💖' }),
     block('end', { content: 'Em instantes alguém da equipe fala com você. Obrigada! 🌸' }),
@@ -161,7 +161,7 @@ export const WHATSAPP_TEMPLATES: WhatsAppTemplate[] = [
   {
     id: 'wa-atendimento-beleza',
     name: 'Atendimento Beleza',
-    description: 'Recebe a cliente, descobre o serviço e passa pra equipe — com a cara do salão.',
+    description: 'Recebe a cliente, descobre o serviço e passa pra equipe — com a cara do seu espaço.',
     category: 'nichos',
     icon: '💅',
     cover_gradient: 'from-purple-400 to-fuchsia-500',

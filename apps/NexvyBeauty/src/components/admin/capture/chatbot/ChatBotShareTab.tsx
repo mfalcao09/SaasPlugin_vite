@@ -15,7 +15,7 @@ interface Props {
 
 export function ChatBotShareTab({ funnel }: Props) {
   const [copied, setCopied] = useState<string | null>(null);
-  const { data: baseUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: baseUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
   const editor = typeof window !== 'undefined' && isEditorHost();
 
   const slug = funnel.channels.chat?.slug_override || funnel.slug;

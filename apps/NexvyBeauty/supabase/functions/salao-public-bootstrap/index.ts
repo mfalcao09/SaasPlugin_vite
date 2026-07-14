@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       .select('id, name, logo_url, phone, address, slug')
       .eq('slug', slug)
       .maybeSingle();
-    if (!org) return json({ error: 'Salão não encontrado' }, 404);
+    if (!org) return json({ error: 'Espaço não encontrado' }, 404);
 
     const [servicos, profissionais, pacotes] = await Promise.all([
       sb.from('servico_catalogo')

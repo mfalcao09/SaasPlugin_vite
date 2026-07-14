@@ -14,7 +14,7 @@ interface SnippetCardProps {
 export function SnippetCard({ widgetId, productId }: SnippetCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const { data: currentDomain = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: currentDomain = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
 
   const snippet = `<!-- WebChat Widget -->
 <script 

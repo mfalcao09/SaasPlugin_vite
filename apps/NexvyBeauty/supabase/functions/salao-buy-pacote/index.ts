@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: org } = await sb.from('organizations').select('id').eq('slug', slug).maybeSingle();
-    if (!org) return json({ error: 'Salão não encontrado' }, 404);
+    if (!org) return json({ error: 'Espaço não encontrado' }, 404);
 
     const { data: pac } = await sb.from('pacotes')
       .select('id, nome, total_sessoes, valor, validade_dias')

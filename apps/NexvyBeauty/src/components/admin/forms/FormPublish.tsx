@@ -17,7 +17,7 @@ interface FormPublishProps {
 export function FormPublish({ form }: FormPublishProps) {
   const [copied, setCopied] = useState<string | null>(null);
 
-  const { data: baseUrl = 'https://app.vendus.com.br' } = usePublicAppUrl();
+  const { data: baseUrl = 'https://app.nexvybeauty.com.br' } = usePublicAppUrl();
   const publicUrl = `${baseUrl}/f/${form.slug}`;
   const embedUrl = `${baseUrl}/embed/form/${form.id}`;
   

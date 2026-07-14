@@ -7,6 +7,18 @@ verify_jwt = false
 [functions.platform-evolution-webhook]
 verify_jwt = false
 
+# Webhook público do Evolution (servidor externo -> TENANT/salão). Sem JWT no
+# gateway (a Evolution não manda Authorization). Auth real na função = a
+# instância do payload PRECISA existir em evolution_instances (payload de
+# instância desconhecida é ignorado). Já rodava assim em prod (deploy com
+# --no-verify-jwt); o bloco aqui torna isso determinístico em redeploys.
+# Eventos de HISTÓRICO (MESSAGES_SET/CHATS_SET/CONTACTS_SET, F6) são
+# encaminhados server-to-server pra evolution-history-sync — que fica DE FORA
+# deste arquivo de propósito: lá o gateway exige JWT (default) e a função ainda
+# valida Bearer == service_role + apikey do payload vs instance_token.
+[functions.evolution-webhook]
+verify_jwt = false
+
 # Webhook público da WhatsApp Cloud API (Meta -> plataforma, número de vendas).
 # Auth real = X-Hub-Signature-256 (HMAC do app_secret) validada na função.
 [functions.platform-meta-whatsapp-webhook]
