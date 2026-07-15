@@ -60,6 +60,7 @@ import {
   Clock,
   Package,
   Instagram,
+  Video,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
@@ -286,6 +287,8 @@ export const PlatformIcons = {
   Send,
   Webhook,
   Instagram,
+  // vendas — prospecção ativa
+  Video,
   // vendas — captação
   FileQuestion,
   FormInput,

@@ -56,6 +56,13 @@ import { InstagramAutomationsSection } from '@/components/superadmin/crm/instagr
 import { PlatformCrmCaptureManager } from '@/components/superadmin/crm/capture';
 import { PlatformCrmFormsManager } from '@/components/superadmin/crm/capture/PlatformCrmFormsManager';
 import { PlatformProspeccaoManager } from '@/components/superadmin/crm/capture/PlatformProspeccaoManager';
+
+// ── Prospecção Ativa (grupo próprio) ──
+import { PlatformProspeccaoBaseConsolidada } from '@/components/superadmin/crm/prospeccao/PlatformProspeccaoBaseConsolidada';
+import { ProspeccaoCampanhasStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoCampanhasStub';
+import { ProspeccaoDashboardStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoDashboardStub';
+import { ProspeccaoEnriquecimentoStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoEnriquecimentoStub';
+import { ProspeccaoVideoImportStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoVideoImportStub';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
@@ -361,15 +368,51 @@ const VENDAS_NAV: PlatformNavGroup[] = [
     ],
   },
   {
-    id: 'vendas-captacao',
-    label: 'Captação',
+    id: 'vendas-prospeccao-ativa',
+    label: 'Prospecção Ativa',
     items: [
       {
-        id: 'v-prospeccao',
-        label: 'Prospecção',
+        id: 'v-prospeccao-buscas',
+        label: 'Buscas',
         icon: I.Radar,
         render: () => <PlatformProspeccaoManager />,
       },
+      {
+        id: 'v-prospeccao-base',
+        label: 'Base consolidada',
+        icon: I.Layers,
+        render: () => <PlatformProspeccaoBaseConsolidada />,
+      },
+      {
+        id: 'v-prospeccao-campanhas',
+        label: 'Campanhas de disparo',
+        icon: I.Send,
+        render: () => <ProspeccaoCampanhasStub />,
+      },
+      {
+        id: 'v-prospeccao-dashboard',
+        label: 'Dashboard de prospecção',
+        icon: I.BarChart3,
+        render: () => <ProspeccaoDashboardStub />,
+      },
+      {
+        id: 'v-prospeccao-enriquecimento',
+        label: 'Enriquecimento (UI)',
+        icon: I.Sparkles,
+        render: () => <ProspeccaoEnriquecimentoStub />,
+      },
+      {
+        id: 'v-prospeccao-video',
+        label: 'Importação por vídeo',
+        icon: I.Video,
+        render: () => <ProspeccaoVideoImportStub />,
+      },
+    ],
+  },
+  {
+    id: 'vendas-captacao',
+    label: 'Captação',
+    items: [
       {
         id: 'v-quiz',
         label: 'Quiz',
