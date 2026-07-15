@@ -65,11 +65,16 @@ export async function handoffConversationToOnboarding(
     let conversationId: string | null = null;
     const variants = phoneVariantsBR(args.customerPhone);
     if (variants.length) {
-      const list = variants.join(',');
+      // Os webhooks inbound/outbound gravam visitor_whatsapp/visitor_phone como
+      // "+E.164" (platform-meta-whatsapp-webhook:185-186); phoneVariantsBR gera
+      // só-dígitos. Cobrimos os dois formatos (match .in. é exato).
+      const withPlus = variants.map((v) => `+${v}`);
+      const list = [...variants, ...withPlus].join(',');
       const { data: convs, error: convErr } = await admin
         .from('platform_crm_conversations')
         .select('id, last_message_at')
         .eq('channel', 'whatsapp')
+        .eq('product_id', csAgent.product_id)
         .or(`visitor_whatsapp.in.(${list}),visitor_phone.in.(${list})`)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(1);
@@ -94,6 +99,7 @@ export async function handoffConversationToOnboarding(
         .from('platform_crm_conversations')
         .select('id, last_message_at')
         .eq('channel', 'whatsapp')
+        .eq('product_id', csAgent.product_id)
         .or(orParts.join(','))
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(1);
