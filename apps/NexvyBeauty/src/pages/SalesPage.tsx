@@ -32,15 +32,13 @@ const GRADIENT_TEXT = 'bg-gradient-to-r from-[#8c041d] via-[#c54b60] to-[#c4755b
 // qualquer CTA que abra o WhatsApp deriva daqui. Formato E.164 sem '+' (padrão wa.me).
 const SALES_WHATSAPP = '5511955021205';
 
-// Monta o link wa.me do CTA de vendas com mensagem pré-pronta + sufixo de origem
+// Monta o link wa.me do CTA do piloto com mensagem pré-pronta + sufixo de origem
 // compacto. Lê utm_source/medium/campaign da URL ATUAL (quando existirem) e anexa
 // de forma curta — o handoff LP→WhatsApp carrega o contexto do lead pro atendente.
-// A origem 'lp-piloto' é MANTIDA (rótulo de rastreio interno, não é ref_code de
-// atribuição — ver R7 do pacote); só a mensagem visível troca "Piloto" por marca.
 // Client-only: guardado por typeof window (a LP nunca é SSR, mas o guard evita
 // crash caso o bundle rode em contexto sem window).
 function buildPilotoWhatsAppUrl(): string {
-  const base = 'Oi! Quero saber mais sobre o NexvyBeauty 💅';
+  const base = 'Oi! Quero saber mais sobre o Piloto Fundadora 💅';
   const params =
     typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   // origem sempre presente ('lp-piloto'); UTMs só entram se existirem (sufixo enxuto).
@@ -475,18 +473,19 @@ export default function SalesPage() {
         </div>
       </section>
 
-      {/* OFERTA DE LANÇAMENTO — recuperação de carteira ancorada no PREÇO DE
-          LANÇAMENTO (sobe em breve). Sem Piloto, sem garantia de devolução, sem
-          vagas. CTA principal abre o WhatsApp de vendas (funil autopilot);
-          LeadCaptureModal fica como fallback secundário ("prefiro deixar meu
-          contato"). */}
+      {/* PILOTO FUNDADORA (F3.1 lancamento-v3) — oferta de entrada com garantia.
+          Escassez REAL: 15 vagas totais, abertas 5 por semana (capacidade de
+          acompanhamento 1-a-1 do time) — sem relógio falso. CTA principal abre o
+          WhatsApp de vendas (funil autopilot); LeadCaptureModal fica como fallback
+          secundário ("prefiro deixar meu contato"). */}
       <section id="piloto" className="px-6 py-24">
         <div className="mx-auto max-w-4xl">
           <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-[#c54b60]/20">
             <CardContent className="p-10 md:p-12">
-              <Badge className={`${GRADIENT} text-white shadow-lg`}>Preço de lançamento · sobe em breve</Badge>
+              <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 30 vagas em 30 dias</Badge>
               <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
-                Recupere o <span className={GRADIENT_TEXT}>dinheiro parado</span> na sua carteira
+                Cliente de Volta — <span className={GRADIENT_TEXT}>30 dias</span> para recuperar
+                dinheiro parado na sua carteira
               </h2>
               <p className="mt-4 text-lg text-zinc-300">
                 Para salões, nails, lash, sobrancelhas, podologia e estética: a IA varre sua
@@ -497,8 +496,8 @@ export default function SalesPage() {
                 {[
                   'Setup feito por nós em 30 min (sem trocar de número)',
                   'Primeiro R$ recuperável identificado na primeira sessão',
-                  'Você aprova cada mensagem antes de disparar',
-                  'Recuperando 2-3 clientes por mês, o sistema já se paga',
+                  'Painel "Recuperado (30 dias)" — você vê o retorno em R$',
+                  'Linha direta com o fundador durante o piloto',
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2 text-sm text-zinc-200">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#d9718a]" />
@@ -507,14 +506,15 @@ export default function SalesPage() {
                 ))}
               </ul>
               <div className="mt-8 rounded-xl border border-[#d9718a]/30 bg-[#c54b60]/10 p-5">
-                <p className="text-sm font-semibold text-[#e6a2b3]">Decida com o R$ na tela</p>
+                <p className="text-sm font-semibold text-[#e6a2b3]">Garantia do piloto</p>
                 <p className="mt-1 text-zinc-200">
-                  Antes de decidir, você vê uma <strong>demonstração na sua própria carteira</strong> — o
-                  dinheiro recuperável aparece na tela. E ainda tem o <strong>direito de arrependimento de
-                  7 dias</strong> do checkout, garantido por lei.
+                  Se em 30 dias corridos <strong>a partir do seu setup</strong> o painel não mostrar
+                  clientes recuperadas somando mais que a sua mensalidade,
+                  <strong> devolvemos 100% do que você pagou</strong> — e o seu link de agendamento
+                  fica configurado.
                 </p>
               </div>
-              {/* CTA principal de vendas: WhatsApp direto (funil autopilot).
+              {/* CTA principal do piloto: WhatsApp direto de vendas (funil autopilot).
                   Link real (Button asChild → <a>) para abrir em nova aba com a msg
                   pré-pronta + origem/UTM. Fallback secundário (link menor) mantém o
                   LeadCaptureModal pra quem prefere deixar o contato. Os CTAs de PLANOS
@@ -522,12 +522,13 @@ export default function SalesPage() {
               <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className={`${GRADIENT} px-8 text-white hover:opacity-90`}>
                   <a href={buildPilotoWhatsAppUrl()} target="_blank" rel="noopener noreferrer">
-                    Quero pegar o preço de lançamento <ArrowRight className="ml-2 h-4 w-4" />
+                    Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
                 <p className="text-sm text-zinc-400">
-                  O valor de agora é o <strong className="text-zinc-200">preço de lançamento</strong> — vai
-                  subir para o preço de tabela em breve. Quem entra agora trava o melhor valor.
+                  Entra no máximo <strong className="text-zinc-200">1 negócio novo por dia</strong> — é o
+                  limite real do acompanhamento 1-a-1. Vaga do dia não vendida não acumula. Depois das 30,
+                  o NexvyBeauty continua aberto — sem as condições de fundadora.
                 </p>
               </div>
               <button

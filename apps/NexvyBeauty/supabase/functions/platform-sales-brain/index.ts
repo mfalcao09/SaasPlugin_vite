@@ -855,11 +855,14 @@ Deno.serve(async (req) => {
         // list_price_monthly = preço de tabela (de-para do lançamento em LINKS DE PAGAMENTO).
         supabase
           .from('public_plans')
-          .select('name, slug, price_monthly, list_price_monthly, checkout_url')
+          .select('name, slug, price_monthly, list_price_monthly, checkout_url, is_public')
           .order('price_monthly', { ascending: true }),
       ]);
       product = (productRes.data as Record<string, any> | null) ?? null;
-      plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url);
+      // R5: só planos PÚBLICOS entram na venda. A view public_plans traz Trial/Teste
+      // (is_public=false); sem is_public no filtro, o "Teste E2E" R$10 com checkout LIVE
+      // vazaria como link ofertável a um lead real. Exige checkout_url + is_public=true.
+      plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url && p.is_public);
     }
 
     // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
