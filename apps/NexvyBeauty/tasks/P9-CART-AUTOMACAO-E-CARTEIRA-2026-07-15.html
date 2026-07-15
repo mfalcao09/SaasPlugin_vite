@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P9 + Agente de Carteira — Blueprint NexvyBeauty 2026-07-15</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--bd:#2a2f3a;--tx:#e6e8ee;--mut:#9aa3b2;--rose:#c54b60;--grn:#3fb950;--yel:#d9a441;--red:#e5534b;--blu:#4b8fd9;--pur:#a970d9;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--bd);color:#fff}
+  h3{font-size:15.5px;margin:20px 0 8px;color:#fff}
+  .sub{color:var(--mut);font-size:13.5px;margin-bottom:16px}
+  p{margin:10px 0}
+  .lead{background:rgba(197,75,96,.08);border:1px solid rgba(197,75,96,.28);border-left:4px solid var(--rose);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .good{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);border-radius:10px;padding:14px 18px;margin:12px 0}
+  .warn{background:rgba(217,164,65,.08);border:1px solid rgba(217,164,65,.28);border-radius:10px;padding:14px 18px;margin:12px 0}
+  .box{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin:12px 0}
+  .tblwrap{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;background:var(--card);margin:12px 0}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{background:var(--card2);color:#fff;font-weight:600}
+  tr:last-child td{border-bottom:0}
+  code{background:#0b0d11;border:1px solid var(--bd);border-radius:4px;padding:1px 5px;font-size:12px;color:#cdd3de;white-space:nowrap}
+  pre{background:#0b0d11;border:1px solid var(--bd);border-radius:10px;padding:16px;overflow-x:auto;font-size:12px;line-height:1.5;color:#cdd3de}
+  pre code{background:none;border:0;padding:0;white-space:pre}
+  .g{color:var(--grn)}.y{color:var(--yel)}.r{color:var(--red)}.b{color:var(--blu)}.pu{color:var(--pur)}
+  strong{color:#fff}
+  .id{font-weight:700;color:var(--rose);white-space:nowrap}
+  .ok{color:var(--grn);font-weight:600}
+  ul,ol{margin:8px 0;padding-left:22px}li{margin:5px 0}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;border:1px solid var(--bd);color:var(--mut)}
+  .pill.new{color:var(--red);border-color:rgba(229,83,75,.4)}
+  .pill.reuse{color:var(--grn);border-color:rgba(63,185,80,.4)}
+  .pill.ext{color:var(--yel);border-color:rgba(217,164,65,.4)}
+  .foot{color:var(--mut);font-size:12.5px;margin-top:28px;border-top:1px solid var(--bd);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🤖 P9 + Agente de Gestão de Carteira — Blueprint</h1>
+  <div class="sub">NexvyBeauty · 2026-07-15 · <strong>READ-ONLY + design</strong> (nada de código/banco editado) · banco <code>fzhlbwhdejumkyqosuvq</code> · voz conselheiro</div>
+
+  <h2>A resposta desconfortável, primeiro</h2>
+  <div class="lead">
+    <p>A venda promete <strong>"piloto automático"</strong>. Hoje ele <strong class="r">roda 0%</strong> — e não por falta de motor. O motor existe, está deployado, o cron dispara todo dia às 8h. Ele envia <strong>zero</strong> porque <strong>nenhum salão ligou uma receita</strong>, e ninguém liga porque a decisão foi empurrada 100% pro dono, num toggle que ele nunca visita. Prova no banco: <code>salon_automation_rules</code> = 2 linhas, <strong class="r">0 com enabled=true</strong>; <code>salon_automation_log</code> = <strong class="r">0 linhas</strong> — o motor nunca disparou de verdade uma única vez.</p>
+    <p>O Agente de Carteira que você descreveu (varre → detecta buraco → anota pendência → pergunta na próxima abordagem → grava a resposta) <strong>não existe em nenhuma das duas metades</strong>. Existe a que <em>mede</em> (agregado) e a que <em>dispara sem escutar</em> (mão-única). O elo que fecha o ciclo — <strong>ler a resposta e gravar no cadastro</strong> — é código que ainda não foi escrito.</p>
+    <p>A boa notícia: <strong class="g">~75% da infraestrutura já está no repo</strong>, em pontos que só precisam ser costurados, não reinventados.</p>
+  </div>
+
+  <h2>[Fact-Forcing Gate] — os 4 fatos, reexecutados NA HORA</h2>
+  <div class="tblwrap"><table>
+    <tr><th>#</th><th>Fato assumido</th><th>Reexecução agora (prova)</th><th>Veredito</th></tr>
+    <tr><td class="id">1</td><td>Motor 4 receitas + cron 11h UTC, mas DESLIGADO (0 rules, 0 log).</td><td><code>rules_total=2</code>, <code>rules_enabled=0</code>, <code>log_total=0</code>. Cron <code>jobid=18</code> <code>'0 11 * * *'</code> <strong>active=true</strong>. Nasce <code>enabled=false</code> (foundation.sql:9).</td><td class="ok">✅ Cron roda; envia 0.</td></tr>
+    <tr><td class="id">2</td><td>Mão-única: dispara e não lê a resposta (sem on-response no salão).</td><td><code>salon-automation-run:188</code> só chama <code>evolution-send</code>. Nenhuma edge <code>salon-*-on-response</code>. Webhook faz fan-out só p/ CRM leads.</td><td class="ok">✅ Nada escuta o cliente.</td></tr>
+    <tr><td class="id">3</td><td>clientHygiene=agregado; clientActions=fila por-cliente (manual); webhook grava inbound mas ninguém interpreta.</td><td><code>clientHygiene.ts:43</code> = % por campo. <code>clientActions.ts:41</code> = fila por-cliente, sem persistência. Inbound (34 msgs reais) gravado + fan-out, <strong>sem consumidor que extraia campo</strong>.</td><td class="ok">✅ Confirmado.</td></tr>
+    <tr><td class="id">4</td><td>Clientes.tsx = único write de nascimento; ~10% têm data_nascimento.</td><td><code>clientes_total=10</code>, <code>nascimento=1</code> (<strong>10%</strong>), <code>endereco=0</code> (<strong>0%</strong>), <code>email=2</code>, <code>telefone=10</code> (100%).</td><td class="ok">✅ Nasc. 10%, end. 0%.</td></tr>
+  </table></div>
+
+  <div class="good">
+    <strong>Fatos extras descobertos (reforçam o desenho):</strong>
+    <ul>
+      <li><strong>Ponto de carona JÁ EXISTE e está costurado.</strong> <code>evolution-webhook:2180-2193</code> dispara fire-and-forget p/ <code>campaign-on-response</code> E <code>cadence-on-response</code> a cada inbound, passando <code>{conversation_id, organization_id}</code>. Plugar <code>salon-collect-inbound</code> ali = replicar 4 linhas de um padrão idêntico.</li>
+      <li><strong>Consentimento LGPD já tem fundação.</strong> <code>20260619_lgpd_consents.sql</code> = tabela imutável (identidade, IP, consent_text, scope). Reusar com scope novo <code>salon_client_field_collection</code>.</li>
+      <li><strong>Endereço é estruturado</strong> (<code>cep, logradouro, numero, bairro, cidade, uf</code>, 0% preenchido) → captura via CEP + BrasilAPI.</li>
+      <li><strong>Matéria-prima real:</strong> 8 conversas WhatsApp, <strong>34 msgs inbound</strong> já gravadas.</li>
+      <li><strong>Duda = IA de VENDAS da plataforma</strong> (leads/CRM) — domínio errado pro cliente-do-salão (Decisão 3).</li>
+    </ul>
+  </div>
+
+  <h2>1. Estado real — o que roda vs. os 0%</h2>
+  <div class="good">
+    <strong>Já roda (verde):</strong>
+    <ul>
+      <li><strong>Motor</strong> <code>salon-automation-run</code> (211 ln): 4 receitas — <code>aniversario</code> (:119), <code>pacote_vencendo</code> (:127), <code>agendamento_24h</code> (:138), <code>retorno_inativo</code> (:150). Idempotência (unique index), guarda de homônimo (:106), throttle 1,5s (:196), dry-run default (:76).</li>
+      <li><strong>UI</strong> <code>Automacoes.tsx</code>: liga/desliga + editor + prévia (não envia).</li>
+      <li><strong>Cron</strong> jobid 18 (<code>0 11 * * *</code>, active) em modo-envio.</li>
+      <li><strong>Higiene agregada</strong> <code>clientHygiene.ts</code> · <strong>Fila por-cliente</strong> <code>clientActions.ts</code> · <strong>Inbound gravado</strong> <code>evolution-webhook</code>.</li>
+    </ul>
+  </div>
+  <div class="tblwrap"><table>
+    <tr><th>Buraco (roda 0%)</th><th>Prova</th><th>Consequência</th></tr>
+    <tr><td>Nenhuma receita ligada</td><td><code>rules_enabled=0</code></td><td>Cron dispara → 0 envios</td></tr>
+    <tr><td>Motor nunca executou envio real</td><td><code>log_total=0</code></td><td>"Piloto automático" = teoria</td></tr>
+    <tr><td>Sem escuta da resposta do salão</td><td>Não existe <code>salon-*-on-response</code></td><td>Resposta do cliente é descartada</td></tr>
+    <tr><td>Sem tabela de pendências</td><td><code>salon_client_field_requests</code> não existe</td><td>Auditor não tem onde anotar</td></tr>
+    <tr><td>Sem captura conversacional</td><td><code>salon-collect-inbound</code> não existe</td><td>Nascimento fica em 10% pra sempre</td></tr>
+    <tr><td>Dado faltante descartado em silêncio</td><td><code>index.ts:122</code> (<code>continue</code>)</td><td>Aniversário nunca cobre 90% da base</td></tr>
+  </table></div>
+  <div class="warn">
+    <strong>Aniversário com 10% de nascimento degrada gracioso?</strong> Sim e é seguro (<code>index.ts:122</code> pula quem não tem, sem erro) — mas <strong>inútil sem o Auditor</strong>. Ligar hoje contata 1 de 10. Por isso o Agente de Carteira é <strong>pré-requisito</strong>: ele é a usina que enche <code>data_nascimento</code>/<code>endereco</code> pra cobrir a base inteira, não 10% dela.
+  </div>
+
+  <h2>2. Arquitetura — reuso vs. criar</h2>
+  <p>Costurar, não reinventar. Regra da casa: <strong>cliente-do-salão (<code>clientes</code>) ≠ lead-do-CRM (<code>leads</code>)</strong> — nunca misturar as malhas.</p>
+  <div class="tblwrap"><table>
+    <tr><th>Componente</th><th>Ação</th><th>Onde / Molde</th><th>% pronto</th></tr>
+    <tr><td>Motor cron de receitas</td><td><span class="pill reuse">REUSAR</span></td><td><code>salon-automation-run</code> + cron 18</td><td class="g">100%</td></tr>
+    <tr><td>UI liga/desliga</td><td><span class="pill reuse">REUSAR+</span></td><td><code>Automacoes.tsx</code> (default onboarding)</td><td class="g">90%</td></tr>
+    <tr><td>Varredura por-cliente (detecta buraco)</td><td><span class="pill ext">ESTENDER</span></td><td><code>clientActions.ts:41</code></td><td class="y">60%</td></tr>
+    <tr><td>Higiene agregada (dashboard Auditor)</td><td><span class="pill reuse">REUSAR</span></td><td><code>clientHygiene.ts:43</code></td><td class="g">100%</td></tr>
+    <tr><td>Tabela de pendências</td><td><span class="pill new">CRIAR</span></td><td><code>salon_client_field_requests</code> (§3)</td><td class="r">0%</td></tr>
+    <tr><td>Escrita da pendência</td><td><span class="pill new">CRIAR</span></td><td><code>salon-audit-run</code> (molde motor)</td><td class="r">0%</td></tr>
+    <tr><td>Gatilho de captura (inbound)</td><td><span class="pill reuse">REUSAR</span></td><td><code>evolution-webhook:2180-2193</code></td><td class="g">100%</td></tr>
+    <tr><td>Captura conversacional</td><td><span class="pill new">CRIAR</span></td><td><code>salon-collect-inbound</code> · molde <code>cadence-on-response</code></td><td class="y">0% (molde 80%)</td></tr>
+    <tr><td>Extração de valor (regex + LLM)</td><td><span class="pill reuse">REUSAR</span></td><td><code>suggest-reply</code> / <code>analyze-conversation</code></td><td class="y">70%</td></tr>
+    <tr><td>Carona da pergunta</td><td><span class="pill ext">ESTENDER</span></td><td><code>compose()</code> <code>index.ts:51</code></td><td class="y">50%</td></tr>
+    <tr><td>Consentimento LGPD</td><td><span class="pill reuse">REUSAR+</span></td><td><code>lgpd_consents</code> (novo scope)</td><td class="g">80%</td></tr>
+    <tr><td>CEP → endereço</td><td><span class="pill reuse">REUSAR</span></td><td>BrasilAPI</td><td>n/a</td></tr>
+  </table></div>
+  <div class="box">
+    <strong>Contagem honesta:</strong> dos ~12 componentes do ciclo, <strong class="g">6 estão 100% prontos</strong>, 3 são extensões de molde (50-70%), e só <strong class="r">3 são código novo de verdade</strong> (tabela + <code>salon-audit-run</code> + <code>salon-collect-inbound</code>). O elo que falta é pequeno; o que faltava era o desenho de como pendurar.
+  </div>
+  <pre><code>JÁ PRONTO (reusar)            ESTENDER (molde existe)        CRIAR (novo)
+─────────────────            ──────────────────────         ────────────
+salon-automation-run  ✓      clientActions (varredura)      salon_client_field_requests
+cron jobid 18         ✓      compose() +pergunta carona     salon-audit-run
+evolution-webhook fan ✓      onboarding liga default        salon-collect-inbound
+lgpd_consents         ✓      suggest-reply→extração
+clientHygiene         ✓
+Automacoes UI         ✓</code></pre>
+
+  <h2>3. Modelo de dados — a tabela de pendências</h2>
+  <p>Uma linha = "falta o campo X do cliente Y, e é isto que já fizemos a respeito". É o <strong>caderninho do Auditor</strong> e o <strong>estado do follow-up</strong> na mesma tabela ("um registro só").</p>
+  <pre><code>-- PROPOSTA (não aplicada). Mecanismo dedicado, isolado do fluxo de dinheiro.
+create table public.salon_client_field_requests (
+  id              uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  cliente_id      uuid not null references public.clientes(id) on delete cascade,
+  campo           text not null check (campo in
+                    ('data_nascimento','endereco','email','cpf_cnpj')),
+  status          text not null default 'pending' check (status in
+                    ('pending',     -- Auditor detectou o buraco
+                     'asked',       -- follow-up perguntou (carona saiu)
+                     'answered',    -- respondeu, valor extraído e GRAVADO
+                     'declined',    -- recusou / opt-out -> não pergunta mais
+                     'unreachable', -- sem telefone válido / ambíguo
+                     'skipped')),   -- resolvido por outra via (form manual)
+  valor_pendente  text,            -- valor bruto extraído, aguardando gravação
+  asked_at        timestamptz,
+  answered_at     timestamptz,
+  ask_count       int not null default 0,   -- cap p/ não insistir
+  last_channel    text,
+  source_message_id uuid,          -- webchat_messages.id da resposta (trilha)
+  extraction_confidence numeric,   -- 0..1 (regex=1.0; LLM=score) -> gate confirmação
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  -- IDEMPOTÊNCIA: 1 pendência viva por (cliente, campo). Não pergunta 2x.
+  unique (organization_id, cliente_id, campo)
+);
+create index idx_scfr_org_status on public.salon_client_field_requests(organization_id, status);
+create index idx_scfr_cliente     on public.salon_client_field_requests(cliente_id);
+alter table public.salon_client_field_requests enable row level security;
+create policy "org reads scfr" on public.salon_client_field_requests
+  for select using (organization_id = get_user_organization(auth.uid()));</code></pre>
+  <div class="box">
+    <ul>
+      <li><strong><code>unique(org,cliente,campo)</code></strong> = idempotência: Auditor faz <code>upsert</code>, nunca duplica, nunca reabre <code>answered</code>/<code>declined</code>.</li>
+      <li><strong><code>ask_count</code> + cap</strong> (máx ~2) evita virar chateação.</li>
+      <li><strong><code>extraction_confidence</code></strong> decide o gate: regex casou (1.0) → grava direto; LLM 0.6 → confirma antes.</li>
+      <li><strong><code>source_message_id</code></strong> = trilha (prova de qual mensagem veio o dado — LGPD §4).</li>
+      <li>Grava em <code>clientes.&lt;campo&gt;</code> só no <code>answered</code>: pendência = diário, <code>clientes</code> = verdade.</li>
+    </ul>
+  </div>
+
+  <h2>4. Fluxo E2E — varredura → pendência → carona → captura → grava</h2>
+  <pre><code>┌─ (A) AUDITOR — cron diário (reusa jobid 18 OU novo) ───────────────────────┐
+│  clientes (por org) ─varre─► campo faltando?  (estende clientActions.ts)    │
+│    ▼  GUARDA: telefone válido? homônimo?  (reusa normPhone + ambiguidade)    │
+│    │  não ► status='unreachable' (não vira alvo)                            │
+│    ▼ sim                                                                     │
+│  upsert salon_client_field_requests (org,cliente,campo) 'pending'           │
+│    └── idempotente: não duplica, não reabre answered/declined               │
+└─────────────────────────────────────────────────────────────────────────────┘
+        │  1 campo por vez · prioridade nascimento > endereço
+        ▼
+┌─ (B1) CARONA — NUNCA conversa fria só pra pedir dado ──────────────────────┐
+│  Uma receita JÁ IA sair? (lembrete 24h / pós-atendimento / aniversário)     │
+│    │ sim ► compose() anexa 1 pergunta gentil:                               │
+│    │   "...te espero amanhã! 💕 Ah, e qual sua data de nascimento?          │
+│    │    Quero te preparar um mimo 🎂"                                        │
+│    ▼  evolution-send (reusa) → pendência 'asked', ask_count++               │
+│  registra lgpd_consents (scope='salon_client_field_collection')             │
+│    │ nada sairá hoje ► NÃO pergunta (espera a próxima carona)               │
+└─────────────────────────────────────────────────────────────────────────────┘
+        │  cliente responde ("minha data é 12/03")
+        ▼
+┌─ (B2) CAPTURA — salon-collect-inbound (NOVO, molde cadence-on-response) ────┐
+│  evolution-webhook:2180-2193 ─fan-out─► salon-collect-inbound (+4 linhas)   │
+│    ▼  conversation → telefone → cliente_id → pendência 'asked' aberta?      │
+│    │ não ► sai (nada perguntado a este cliente)                            │
+│    ▼ sim                                                                     │
+│  EXTRAI: regex primeiro (data/CEP/email = 1.0)                              │
+│          falhou? ► LLM fallback (gateway _shared/ai.ts, structured output)  │
+│    ▼                                                                         │
+│  confiança alta ► GRAVA clientes.&lt;campo&gt; + 'answered' + trilha            │
+│  confiança média ► confirma ("Anotei 12/03, confirma? 👍") → loop B2        │
+│    ▼  clientes.data_nascimento preenchido → próximo aniversário JÁ dispara   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+RESULTADO: o buraco de 90% vira matéria-prima. A automação que só cobria 10%
+passa a cobrir a base inteira — sozinha, 1 pergunta por vez, pegando carona.</code></pre>
+  <div class="box">
+    <strong>Políticas gravadas no fluxo (verbatim do briefing):</strong>
+    <ul>
+      <li><strong>1 campo por vez</strong> — nunca despeja formulário no WhatsApp.</li>
+      <li><strong>Sempre carona</strong> — só pergunta pendurado num toque que já ia sair. Zero conversa fria.</li>
+      <li><strong>Idempotência</strong> — <code>unique(org,cliente,campo)</code> + status/ask_count: nunca pergunta 2× nem regrava.</li>
+      <li><strong>Confirmação sob dúvida</strong> — regex grava direto; LLM inferido confirma antes.</li>
+    </ul>
+  </div>
+
+  <h2>5. Decisões pro Marcelo (com recomendação)</h2>
+
+  <h3>Decisão 1 — Receitas: default ligado vs. opt-in</h3>
+  <p>Enquanto ligar depender do dono, fica 0% (o DB prova). O toggle não é "empoderamento", é o ralo por onde o valor vaza.</p>
+  <div class="tblwrap"><table>
+    <tr><th>Opção</th><th>Implicação</th><th>LGPD</th></tr>
+    <tr><td>(a) Opt-in puro (hoje)</td><td class="r">0% de adoção comprovado</td><td>Conservador</td></tr>
+    <tr><td><strong class="g">(b) Ligado por default no onboarding</strong> + prévia + kill-switch</td><td class="g">Automação de verdade desde o dia 1</td><td>OK: legítimo interesse + relacionamento existente; dono vê e desliga</td></tr>
+    <tr><td>(c) Default só as "seguras" (lembrete 24h, pós-atendimento)</td><td class="y">Meio-termo</td><td>Mais conservador</td></tr>
+  </table></div>
+  <div class="good"><strong>Recomendação: (b) com salvaguardas.</strong> Ligar as 4 receitas por default no <code>apply-onboarding</code>, com a tela mostrando "3 receitas ligadas, ver prévia" + kill-switch visível. O dono nunca precisa <em>ligar</em>; pode <em>desligar</em>. Isso sozinho move de 0% pra funcional. Conservador no lançamento? Comece em (c), promova pra (b) após 1 semana. <strong>Risco de (b):</strong> base suja → mensagem torta — mitigado pelo Auditor + prévia.</div>
+
+  <h3>Decisão 2 — Campos prioritários</h3>
+  <div class="box">
+    <strong>Ordem: <code>data_nascimento</code> &gt; <code>telefone</code> (já 100%, ignora) &gt; <code>endereco</code> &gt; <code>email</code> &gt; <code>cpf_cnpj</code>.</strong>
+    <ul>
+      <li><strong>Nascimento primeiro</strong> — destrava a receita de maior carinho/ROI (aniversário), hoje em 10%. Maior alavanca.</li>
+      <li><strong>Endereço depois</strong> — 0% hoje; só prioriza se há entrega/atendimento em casa. Via CEP (1 pergunta) + BrasilAPI auto-completa o resto (minimização).</li>
+      <li><strong>CPF por último</strong> — sensível, alto atrito, baixo uso. Só se emite nota. Não perseguir por carona.</li>
+    </ul>
+  </div>
+
+  <h3>Decisão 3 — O agente de follow-up: Duda / Nina / novo?</h3>
+  <div class="good"><strong>Recomendação: nenhum agente-persona novo. Follow-up = motor de receitas (carona) + <code>salon-collect-inbound</code> (captura). NÃO é a Duda.</strong></div>
+  <ul>
+    <li><strong>Por que não a Duda:</strong> é a IA de <strong>vendas da plataforma</strong> — atende <strong>leads</strong> (<code>bot_active</code>, CRM). Domínio errado: cliente-do-salão vive em <code>clientes</code>, não em <code>leads</code>. Plugar aqui repete o erro "Booking CRM ≠ agenda salão".</li>
+    <li><strong>Por que não a Nina (P2):</strong> é um dos 3 agentes-casca em construção (prompt vazio). Herdar uma persona conversacional inteira pra perguntar 1 data é canhão pra mosquito + acopla frentes.</li>
+    <li><strong>Por que "sem persona nova" é o certo:</strong> o menor loop <strong>não precisa</strong> de bot conversacional — precisa do motor determinístico anexar 1 pergunta + 1 edge que leia a resposta. É captura estruturada, não diálogo. <strong>Fase 2 opcional:</strong> se o tenant tiver bot recepcionista ativo (<code>webchat-bot</code>), ele pode perguntar conversacional — enfeite, não MVP.</li>
+  </ul>
+
+  <h2>6. Fases + check binário (MVP = menor loop fechado)</h2>
+  <div class="warn"><strong>MVP:</strong> 1 campo (<code>data_nascimento</code>) perguntado por carona num lembrete que já ia sair → respondido → extraído por regex → <strong>gravado em <code>clientes.data_nascimento</code></strong>. Prova: 1 linha <code>answered</code> + o campo preenchido.</div>
+  <div class="tblwrap"><table>
+    <tr><th>Fase</th><th>Entrega</th><th>Check binário</th></tr>
+    <tr><td class="id">F0</td><td>Ligar o que já existe</td><td><code>enabled=true</code> p/ 1 org teste → <code>salon_automation_log</code> ganha ≥1 <code>sent</code>. <strong>Prova de que o motor envia.</strong></td></tr>
+    <tr><td class="id">F1</td><td>Auditor (A): tabela + <code>salon-audit-run</code></td><td>Audit numa org → nº <code>pending</code> = nº clientes sem nascimento (9 de 10). Homônimo/sem-tel → <code>unreachable</code>.</td></tr>
+    <tr><td class="id">F2</td><td>Carona (B1): <code>compose()</code> anexa pergunta + registra <code>asked</code></td><td>Cliente c/ pendência recebe lembrete 24h → msg contém a pergunta; vira <code>asked</code>, <code>ask_count=1</code>; +1 linha <code>lgpd_consents</code>. Sem receita saindo → 0 perguntas.</td></tr>
+    <tr><td class="id b">F3</td><td><strong>Captura (B2) — MVP fecha aqui:</strong> <code>salon-collect-inbound</code> + regex</td><td>Responde "12/03/1990" → <code>clientes.data_nascimento</code> gravado, pendência <code>answered</code>, <code>source_message_id</code> preenchido. <strong>Loop fechado.</strong> Repergunta = 0.</td></tr>
+    <tr><td class="id">F4</td><td>LLM fallback + confirmação</td><td>Resposta torta ("nasci em março, dia 12") → confiança &lt;1.0 → pede confirmação; grava só no "sim".</td></tr>
+    <tr><td class="id">F5</td><td>Default no onboarding + endereço via CEP</td><td>Novo tenant nasce com receitas <code>enabled=true</code>; auditor cobre <code>endereco</code>; CEP auto-completa.</td></tr>
+    <tr><td class="id">F6</td><td>Dashboard do Auditor (reusa <code>clientHygiene</code>)</td><td>Dono vê base subindo 10%→X% sem planilha.</td></tr>
+  </table></div>
+  <div class="box"><strong>Ordem de ataque:</strong> F0 (prova o motor hoje, ~1 dia) → F1+F3 (loop mínimo, pula F2 com disparo manual de teste) → F2 (carona) → F4/F5/F6. F0 é barato e mata a dúvida "será que envia?" antes de investir no resto.</div>
+
+  <h2>LGPD — base jurídica do Agente de Carteira</h2>
+  <div class="box">
+    <p><strong>Papéis:</strong> salão = <strong>controlador</strong>; NexvyBeauty = <strong>operador</strong>. Nascimento + endereço do cliente-do-salão = <strong>dado de terceiro</strong> — a NexvyBeauty só processa sob instrução.</p>
+    <ul>
+      <li><strong>Base legal (Art. 7):</strong> <code>data_nascimento</code> → <strong>legítimo interesse</strong> (VII) apoiado em relacionamento pré-existente (+ teste de proporcionalidade + opt-out fácil). <code>endereco</code> → <strong>execução de contrato</strong> (V) se há entrega; senão <strong>consentimento</strong>. <code>cpf_cnpj</code> → <strong>obrigação legal/fiscal</strong> (II) se emite nota; fora disso, não coletar.</li>
+      <li><strong>Minimização (Art. 6 III):</strong> 1 campo por vez; endereço via CEP (pede menos, deduz o resto).</li>
+      <li><strong>Aviso na 1ª interação:</strong> pergunta-carona vem com o porquê; evento em <code>lgpd_consents</code> (scope <code>salon_client_field_collection</code>, <code>consent_text</code> exato, <code>source_message_id</code>). Recusa (<code>declined</code>) é honrada, nunca reperguntada.</li>
+      <li><strong>Trilha (Art. 37):</strong> <code>source_message_id</code> prova de qual mensagem/quando/qual aviso.</li>
+      <li class="y"><strong>Gap a sinalizar:</strong> não há coluna de opt-out por-cliente em <code>clientes</code>. <code>declined</code> cobre o campo, mas um "não perturbe" global (Art. 18) precisa de lugar próprio — recomendo flag <code>clientes.marketing_opt_out boolean</code> no PR do F5.</li>
+    </ul>
+  </div>
+
+  <h2>Anexo — evidências (queries read-only)</h2>
+  <pre><code>salon_automation_rules:  total=2   enabled=0
+salon_automation_log:    total=0
+cron.job:                salon-automation-daily  jobid=18  '0 11 * * *'  active=true
+clientes:                total=10  nascimento=1 (10%)  endereco=0 (0%)  email=2  telefone=10 (100%)
+agendamentos=39  pacote_clientes=2  webchat_conversations(wa)=8  webchat_messages(inbound)=34
+lgpd_consents:           existe (20260619_lgpd_consents.sql, scope 'lead_capture')
+clientes cols endereço:  cep, logradouro, numero, complemento, bairro, cidade, uf (+ endereco legado)</code></pre>
+
+  <div class="foot">
+    Blueprint pareado com <code>P9-CART-AUTOMACAO-E-CARTEIRA-2026-07-15.md</code> · NexvyBeauty · 2026-07-15 · READ-ONLY + design (nada aplicado no código/banco).
+  </div>
+
+</div>
+</body>
+</html>

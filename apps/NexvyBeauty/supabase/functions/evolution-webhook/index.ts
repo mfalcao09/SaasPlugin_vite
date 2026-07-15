@@ -2191,6 +2191,13 @@ Deno.serve(async (req) => {
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKeyEnv}` },
               body: JSON.stringify({ conversation_id: conversationId, organization_id: instance.organization_id }),
             }).catch((e) => console.error("[evolution-webhook] cadence-on-response non-fatal:", e));
+            // Agente de Carteira — captura de campo do cadastro (P9/CART, fire-and-forget):
+            // se este cliente tem pendência 'asked', extrai o valor da resposta e grava.
+            fetch(`${supabaseUrlEnv}/functions/v1/salon-collect-inbound`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKeyEnv}` },
+              body: JSON.stringify({ conversation_id: conversationId, organization_id: instance.organization_id }),
+            }).catch((e) => console.error("[evolution-webhook] salon-collect-inbound non-fatal:", e));
           }
         } catch (e) {
           console.error("[evolution-webhook] campaign/cadence-on-response wrap non-fatal:", e);
