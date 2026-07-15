@@ -100,3 +100,9 @@ JOIN agg a ON a.product_id = w.product_id AND a.handle_key = lower(w.handle);
 
 COMMENT ON VIEW public.platform_crm_consolidated_leads IS
   'Prospecção Ativa · Base consolidada. 1 linha por (product_id, lower(handle)) com merge por COALESCE (nada se descarta). security_invoker=on herda a RLS super_admin_only da tabela base. Read-only; ações globais gravam direto em platform_crm_extracted_leads por (product_id, handle).';
+
+-- GRANT obrigatório: o PostgREST acessa via role `authenticated`. Sem isto,
+-- `.from('platform_crm_consolidated_leads')` retorna 42501 (permission denied)
+-- MESMO para super_admin. `security_invoker=on` cuida da RLS, NÃO do privilégio de
+-- tabela. (CREATE OR REPLACE VIEW pode dropar grants — reafirmar sempre.)
+GRANT SELECT ON public.platform_crm_consolidated_leads TO authenticated;

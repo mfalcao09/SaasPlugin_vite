@@ -349,7 +349,10 @@ export function usePlatformConsolidatedLeads(productId: string | null, filters: 
       if (filters.withPhone === 'without') q = q.is('telefone', null);
       if (filters.seedsOnly) q = q.eq('is_seed', true);
       if (filters.qualifiedOnly) q = q.eq('qualified', true);
-      const { data, error } = await q.order('seguidores', { ascending: false, nullsFirst: false }).limit(1000);
+      // Base ÚNICA: o teto tem de cobrir TODA a base consolidada (F2), senão as
+      // ações globais só alcançam os top-N por seguidores. Hoje ~4k handles; 10k dá
+      // folga de crescimento. Se um dia passar disso, migrar para paginação real.
+      const { data, error } = await q.order('seguidores', { ascending: false, nullsFirst: false }).limit(10000);
       if (error) throw error;
       return (data ?? []) as unknown as ConsolidatedLead[];
     },
