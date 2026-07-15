@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { GRAPH_BASE } from './meta-graph.ts';
 import { decryptSecret } from './meta-crypto.ts';
 import { normalizePhoneBR } from './phone.ts';
+import { handoffConversationToOnboarding } from './onboarding-handoff.ts';
 
 export interface CaktoOrderLike {
   cakto_id?: string | null;
@@ -561,6 +562,22 @@ export async function provisionFromOrder(
       fullName: order.customer_name ?? null,
       planName: plan?.name ?? null,
     });
+
+    // HANDOFF Duda→CS pós-compra (gated por ONBOARDING_HANDOFF_ENABLED, default
+    // OFF): a conversa de VENDA da compradora passa pro agente de CS/implantação
+    // e ganha o vínculo conversa↔org (provisioned_organization_id) que liga o
+    // modo implantação do platform-sales-brain. Non-fatal por design (a função
+    // nunca lança); try/catch de cinto-e-suspensório — jamais derruba quem pagou.
+    try {
+      const handoff = await handoffConversationToOnboarding(admin, {
+        organizationId: planRes.organization_id,
+        customerPhone: order.customer_phone ?? null,
+        customerEmail: order.customer_email ?? null,
+      });
+      console.log('[cakto-provisioning] onboarding handoff:', JSON.stringify(handoff));
+    } catch (e) {
+      console.warn('[cakto-provisioning] onboarding handoff (non-fatal):', String(e).slice(0, 200));
+    }
   }
 
   return {

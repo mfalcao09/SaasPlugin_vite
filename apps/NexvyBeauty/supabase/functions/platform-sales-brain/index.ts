@@ -653,6 +653,96 @@ function recurrenceScoreForSubVertical(subVertical: string): number {
   return 0; // não reconhecido — não pontua (a Duda ainda descobre a área)
 }
 
+// ─── MODO IMPLANTAÇÃO (pós-compra) — gated, default OFF ─────────────────────
+// GATE DUPLO: só entra no prompt quando (1) ONBOARDING_HANDOFF_ENABLED=true no
+// env E (2) a conversa carrega provisioned_organization_id (vínculo gravado
+// pelo handoff pós-compra em _shared/onboarding-handoff.ts). Conversas de
+// venda normais: as duas condições falham → strings vazias → prompt
+// byte-idêntico ao de hoje. Nada abaixo roda sem a flag.
+
+/** Regra 7 substituta no modo implantação: a venda ACABOU — papel é CS. */
+const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
+
+/** Playbook das 9 páginas do wizard de implantação: o que a cliente vê ·
+ *  dúvidas comuns · o que orientar. Tom Duda amigável, "seu espaço" sempre. */
+const WIZARD_PAGES: Array<{ n: number; titulo: string; guia: string }> = [
+  {
+    n: 1,
+    titulo: 'Seu espaço',
+    guia: 'Ela vê: nome do espaço, logo, telefone, Instagram e endereço. Dúvidas comuns: "preciso de CNPJ/logo agora?" — não, dá pra completar depois nas configurações. Oriente: preencher o nome do jeito que as clientes conhecem; só isso já destrava a página.',
+  },
+  {
+    n: 2,
+    titulo: 'Horários de Funcionamento',
+    guia: 'Ela vê: dias da semana com liga/desliga e horário de início/fim (+ fuso). Dúvidas: "atendo só com hora marcada / horário quebrado". Oriente: marcar os dias em que ATENDE e o intervalo geral; almoço e exceções se afinam depois — isso alimenta a agenda e a atendente virtual.',
+  },
+  {
+    n: 3,
+    titulo: 'Serviços',
+    guia: 'Ela vê: lista de serviços com nome, duração e preço (já vem um catálogo-modelo pra ajustar). Dúvidas: "meu preço varia por cliente", "faço pacotes". Oriente: cadastrar os principais do dia-a-dia com o preço base; dá pra editar e criar pacotes depois. Sem serviço cadastrado a agenda não funciona.',
+  },
+  {
+    n: 4,
+    titulo: 'Seus profissionais',
+    guia: 'Ela vê: quem atende no espaço (nome e quais serviços executa). Dúvidas: "trabalho sozinha, cadastro o quê?" — ela mesma é a profissional. Oriente: cadastrar quem atende hoje; equipe nova entra a qualquer momento depois.',
+  },
+  {
+    n: 5,
+    titulo: 'Sua EquipIA',
+    guia: 'Ela vê: a atendente virtual do espaço (nome, tom de voz, o que pode responder). Dúvidas: "vai responder minhas clientes sozinha?" — responde pelo WhatsApp conectado, com o tom que ela escolher, e dá pra ajustar ou pausar quando quiser. Oriente: escolher um nome e um tom com a cara do espaço.',
+  },
+  {
+    n: 6,
+    titulo: 'Seus usuários da Plataforma',
+    guia: 'Ela vê: convites de acesso ao painel (nome, e-mail, perfil admin/gestor/vendedor). Dúvidas: "preciso convidar alguém?" — não, o acesso dela já existe. Oriente: convidar só quem vai USAR o painel; cada convidado define a própria senha pelo link do e-mail.',
+  },
+  {
+    n: 7,
+    titulo: 'Resumo (LGPD)',
+    guia: 'Ela vê: revisão de tudo que preencheu + aceite de tratamento de dados (LGPD). Dúvidas: "meus dados e os das minhas clientes estão seguros?" — sim: uso restrito à operação do espaço, conforme a LGPD. Oriente: conferir com calma e enviar; nada é definitivo, tudo se edita depois.',
+  },
+  {
+    n: 8,
+    titulo: 'Conectar seu WhatsApp (QR)',
+    guia: 'Ela vê: um QR code pra conectar o WhatsApp do espaço. Dúvidas: onde escanear (WhatsApp > Configurações > Aparelhos conectados > Conectar aparelho), QR expirado (é só gerar de novo), "vou perder meu número?" — não perde: o WhatsApp continua normal no celular dela. Oriente passo a passo, UM passo por mensagem; se não conectar após 2 tentativas, escale.',
+  },
+  {
+    n: 9,
+    titulo: 'Montando seu Espaço',
+    guia: 'Ela vê: tela de progresso enquanto tudo é criado automaticamente. Dúvidas: "travou?" — leva alguns instantes; recarregar não perde nada. Oriente: quando concluir, o painel está pronto — comemore e mostre o primeiro passo (abrir a agenda e conhecer o painel).',
+  },
+];
+
+/**
+ * Bloco curto de fase pro prompt: onde a cliente está no wizard + o playbook
+ * das 9 páginas. `sub` = linha mais recente de onboarding_submissions da org
+ * vinculada (ou null se ela ainda não abriu o assistente).
+ */
+function buildOnboardingPhaseContext(sub: Record<string, any> | null): string {
+  const step = sub && typeof sub.current_step === 'number' ? sub.current_step : null;
+  const stepId = typeof sub?.current_step_id === 'string' && sub.current_step_id ? sub.current_step_id : null;
+  const status = typeof sub?.status === 'string' ? sub.status : null;
+
+  let fase: string;
+  if (!sub) {
+    fase = 'Ela ainda NÃO abriu o assistente de implantação. Dê boas-vindas pela compra e convide-a a começar (o acesso chegou no e-mail dela).';
+  } else if (status === 'applied' && (step == null || step >= 9)) {
+    fase = 'Implantação CONCLUÍDA — o espaço dela já está no ar. Parabenize e oriente os primeiros passos no painel (agenda, atendente virtual).';
+  } else if (step != null) {
+    const pg = WIZARD_PAGES.find((p) => p.n === step);
+    fase = `Ela está na PÁGINA ${step} de 9${pg ? ` — "${pg.titulo}"` : ''}${stepId ? ` (id: ${stepId})` : ''}. Oriente a partir DESSA página.`;
+  } else {
+    fase = 'Ela abriu o assistente, mas a página atual ainda não foi registrada — pergunte com leveza em que tela ela está.';
+  }
+
+  const playbook = WIZARD_PAGES.map((p) => `${p.n}. ${p.titulo}: ${p.guia}`).join('\n');
+  return (
+    `\n═══════════════════════════════════════\nFASE DA IMPLANTAÇÃO (pós-compra — MODO IMPLANTAÇÃO ATIVO)\n═══════════════════════════════════════\n` +
+    `A cliente JÁ COMPROU e agora monta o espaço dela no assistente de implantação (9 páginas).\nFASE ATUAL: ${fase}\n\n` +
+    `PLAYBOOK DO ASSISTENTE (por página: o que ela vê · dúvidas comuns · como orientar):\n${playbook}\n`
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -838,6 +928,39 @@ Deno.serve(async (req) => {
         .eq('id', conversationId);
     }
 
+    // 7.5) MODO IMPLANTAÇÃO (gated, default OFF — ver bloco de consts acima).
+    //     SELECT separado do principal DE PROPÓSITO (deploy-safe): se a
+    //     migration 20260714 ainda não criou provisioned_organization_id, só
+    //     ESTE select falha (catch abaixo) e o fluxo de venda segue idêntico.
+    let onboardingActive = false;
+    let onboardingPhaseContext = '';
+    const onboardingFlagOn =
+      (Deno.env.get('ONBOARDING_HANDOFF_ENABLED') ?? '').toLowerCase() === 'true';
+    if (onboardingFlagOn) {
+      try {
+        const { data: convLink, error: linkErr } = await supabase
+          .from('platform_crm_conversations')
+          .select('provisioned_organization_id')
+          .eq('id', conversationId)
+          .maybeSingle();
+        if (linkErr) throw linkErr;
+        const provisionedOrgId = (convLink as Record<string, any> | null)?.provisioned_organization_id ?? null;
+        if (provisionedOrgId) {
+          const { data: sub } = await supabase
+            .from('onboarding_submissions')
+            .select('current_step, current_step_id, status, updated_at')
+            .eq('organization_id', provisionedOrgId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          onboardingActive = true;
+          onboardingPhaseContext = buildOnboardingPhaseContext((sub as Record<string, any> | null) ?? null);
+        }
+      } catch (e) {
+        console.warn('[platform-sales-brain] contexto de implantação falhou (non-fatal):', String(e).slice(0, 200));
+      }
+    }
+
     // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
     let product: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
@@ -869,9 +992,12 @@ Deno.serve(async (req) => {
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
     // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
     // persona já é não-nula aqui (guard acima); fallback 'duda' se o nome vier vazio.
+    // MODO IMPLANTAÇÃO: SEM links de pagamento nem regra de preço — a cliente já
+    // comprou; instruções de "mande o link" corromperiam o papel de CS. Com
+    // onboardingActive=false (todo fluxo de venda), a expressão é IDÊNTICA à atual.
     const knowledgeContext = buildKnowledgeContext(product)
-      + buildCheckoutContext(plans, persona.name ?? 'duda')
-      + (plans.length ? PRICE_RULE_BLOCK : '');
+      + (onboardingActive ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
+      + (plans.length ? PRICE_RULE_BLOCK : ''));
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;
 
@@ -899,7 +1025,7 @@ ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
 ${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
-${leadMemoryContext}${knowledgeContext}
+${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}
 
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
@@ -910,7 +1036,7 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
+${onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
 8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
