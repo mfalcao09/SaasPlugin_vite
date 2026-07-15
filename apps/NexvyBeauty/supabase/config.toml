@@ -76,3 +76,16 @@ verify_jwt = false
 # autenticado (submission_id + Bearer) valida o JWT dentro da própria função.
 [functions.apply-onboarding]
 verify_jwt = false
+
+# Envio WhatsApp via Evolution BURNER platform-side (cold outreach). Chamada
+# server-to-server pelo motor platform-cold-outreach. Sem JWT no gateway; auth
+# real na função = Bearer == SERVICE_ROLE_KEY. Twin do tenant evolution-send.
+[functions.platform-evolution-send]
+verify_jwt = false
+
+# Motor de cold outreach (enqueue/tick/on-inbound/status). Chamado por pg_cron
+# (service_role via vault) e por wiring de inbound. Sem JWT no gateway; auth real
+# na função = Bearer == SERVICE_ROLE_KEY OU x-cold-secret (COLD_OUTREACH_SECRET).
+# DUPLO GATE de envio: campaign.dry_run (default true) + env COLD_OUTREACH_ENABLED.
+[functions.platform-cold-outreach]
+verify_jwt = false
