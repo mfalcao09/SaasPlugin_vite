@@ -73,6 +73,9 @@ CREATE TABLE IF NOT EXISTS public.platform_crm_cold_outreach_queue (
   handle            text,
   telefone          text,
   tier              text CHECK (tier IN ('semente_limpa','is_seed','massa')),
+  -- rank NUMÉRICO da onda (0=semente-limpa,1=is_seed,2=massa) — ordena o disparo
+  -- corretamente (tier é texto: alfabético inverteria a ordem 26→66→massa).
+  tier_rank         int NOT NULL DEFAULT 2,
   variant           jsonb NOT NULL DEFAULT '{}'::jsonb,   -- A/B assignment
   status            text NOT NULL DEFAULT 'queued'
     CHECK (status IN ('queued','sending','sent','replied','opted_out','handed_off','failed','skipped')),

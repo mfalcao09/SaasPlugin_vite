@@ -57,7 +57,7 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
       clearFollowups: true,
       handoff: false,
       silenceConversation: !!ctx.conversation_id,
-      journey: { type: "conversation_closed_lost", category: "contact", title: "Cold: opt-out (SAIR/PARE)", matched: verdict.matched },
+      journey: { type: "customer_lost", category: "contact", title: "Cold: opt-out (SAIR/PARE)", matched: verdict.matched },
     };
   }
 

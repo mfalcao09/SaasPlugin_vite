@@ -21,11 +21,13 @@ import {
   warmupDayFromFirstSend,
 } from "../_shared/cold-outreach/anti-ban.ts";
 import {
+  type DispatchTier,
   type GateLead,
   passesInstagramGate,
   passesWhatsappGate,
   selectAndOrderForDispatch,
   dispatchTier,
+  TIER_ORDER,
 } from "../_shared/cold-outreach/segment-gate.ts";
 import { assignVariant, type Channel, renderOpening, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
@@ -139,7 +141,7 @@ async function actionEnqueue(sb: SupabaseClient, campaignId: string, limit: numb
   let enqueued = 0;
   const byTier: Record<string, number> = { semente_limpa: 0, is_seed: 0, massa: 0 };
   for (const l of ordered) {
-    const tier = channel === "instagram" ? "massa" : dispatchTier(l as GateLead);
+    const tier: DispatchTier = channel === "instagram" ? "massa" : dispatchTier(l as GateLead);
     const row = {
       campaign_id: campaignId,
       product_id: productId,
@@ -147,6 +149,7 @@ async function actionEnqueue(sb: SupabaseClient, campaignId: string, limit: numb
       handle: l.handle ?? null,
       telefone: l.telefone ?? null,
       tier,
+      tier_rank: TIER_ORDER[tier], // 0=semente-limpa,1=is_seed,2=massa (ordem correta)
       variant: assignVariant(l.id),
       status: "queued",
       step: 0,
@@ -236,7 +239,7 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     .select("*")
     .eq("campaign_id", c.id).eq("status", "queued")
     .or(`scheduled_for.is.null,scheduled_for.lte.${now.toISOString()}`)
-    .order("tier", { ascending: true })
+    .order("tier_rank", { ascending: true }) // 26 semente-limpa → 66 is_seed → massa
     .order("created_at", { ascending: true })
     .limit(1).maybeSingle();
   if (!due) return { campaign: c.id, action: "idle", reason: "no_due_queued", remaining: gate.remaining, followups: followupResult };
@@ -275,6 +278,10 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     // Jitter: espaça a PRÓXIMA abertura da fila.
     await scheduleNext(sb, c.id, now, jitterMs(jitterCfg));
     return { campaign: c.id, action: dryRun ? "sent_dry" : "sent", lead: due.id, remaining: gate.remaining - 1, followups: followupResult };
+  } else if (sendRes.manual) {
+    // IG cold (sem PSID): não é falha — fica pronto pra DM manual, sem tripar kill-switch.
+    await sb.from("platform_crm_cold_outreach_queue").update({ status: "skipped", skip_reason: sendRes.error, updated_at: now.toISOString() }).eq("id", due.id);
+    return { campaign: c.id, action: "ig_manual", lead: due.id, followups: followupResult };
   } else {
     const consec = (health?.consecutive_failures ?? 0) + 1;
     await sb.from("platform_crm_cold_outreach_queue").update({ status: "failed", last_error: sendRes.error?.slice(0, 400), updated_at: now.toISOString() }).eq("id", due.id);
@@ -312,6 +319,9 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
         campaign_id: c.id, step, tier: f.tier, handle: f.handle, dry_run: dryRun,
       });
       sent++;
+    } else if (res.manual) {
+      // IG manual: para a cadência automática (o operador segue o DM na mão).
+      await sb.from("platform_crm_cold_outreach_queue").update({ next_followup_at: null, skip_reason: res.error, updated_at: now.toISOString() }).eq("id", f.id);
     }
   }
   return { processed: (dueFollowups ?? []).length, sent };
@@ -321,7 +331,7 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
 async function deliver(
   sb: SupabaseClient,
   a: { channel: Channel; dryRun: boolean; productId: string; instanceId: string | null; to: string | null; handle: string | null; text: string },
-): Promise<{ ok: boolean; error?: string; conversationId?: string | null }> {
+): Promise<{ ok: boolean; error?: string; manual?: boolean; conversationId?: string | null }> {
   if (a.dryRun) {
     console.log(`[cold-outreach][DRY] ${a.channel} -> ${a.handle ?? a.to}: ${a.text.slice(0, 80)}...`);
     return { ok: true, conversationId: null };
@@ -335,12 +345,13 @@ async function deliver(
       if (error || (data && (data as any).ok === false)) return { ok: false, error: error?.message ?? JSON.stringify(data) };
       return { ok: true };
     } else {
-      // Instagram DM: platform-ig-send (janela 24h + regras próprias tratadas lá).
-      const { data, error } = await sb.functions.invoke("platform-ig-send", {
-        body: { product_id: a.productId, type: "dm", recipient_handle: a.handle, message: a.text },
-      });
-      if (error || (data && (data as any).ok === false)) return { ok: false, error: error?.message ?? JSON.stringify(data) };
-      return { ok: true };
+      // Instagram DM: a Graph API (platform-ig-send) precisa do PSID do
+      // destinatário — que NÃO existe pra @handle raspado a frio (só se obtém
+      // depois que a lead te manda DM). Logo cold IG = render + instrumentar +
+      // DM MANUAL (1/sessão, COLD-OUTREACH §2B). NÃO auto-envia; sinaliza manual
+      // (não é falha → não conta pro kill-switch). O texto renderizado fica na
+      // fila (status skipped/ig_manual) pra o operador copiar e enviar 1 a 1.
+      return { ok: false, manual: true, error: "ig_manual_required: sem PSID p/ @handle raspado (DM manual 1/sessão)" };
     }
   } catch (e: any) {
     return { ok: false, error: String(e?.message ?? e) };
@@ -454,11 +465,12 @@ async function handoffToDuda(sb: SupabaseClient, productId: string | undefined, 
   return { ok: true, to_agent_id: duda.id };
 }
 
-/** Silencia o brain nesta conversa sem editar o brain: status != 'bot_active'. */
+/** Silencia o brain nesta conversa sem editar o brain: 'closed' (≠ 'bot_active').
+ * Valores válidos do enum platform_crm_conversation_status: bot_active|closed|human_active|waiting_human. */
 async function silenceConversation(sb: SupabaseClient, conversationId: string) {
   try {
-    await sb.from("platform_crm_conversations").update({ status: "opted_out", updated_at: new Date().toISOString() }).eq("id", conversationId);
-  } catch (_e) { /* coluna/valor pode diferir; best-effort */ }
+    await sb.from("platform_crm_conversations").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", conversationId);
+  } catch (_e) { /* best-effort */ }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
