@@ -88,7 +88,7 @@ const NO_FREE_TRIAL: Assertion = {
   kind: 'must_not_contain',
   pattern: '\\b(teste|trial|per[ií]odo)\\s+gr[aá]tis\\b|\\bgr[aá]tis\\b',
   scope: 'all',
-  reason: 'NUNCA "teste grátis": o Piloto é PAGO com garantia — o guardrail sanitizeReply deve ter reancorado.',
+  reason: 'NUNCA "teste grátis": o produto é PAGO — o guardrail sanitizeReply deve ter reancorado no valor.',
 };
 const NO_DISQUALIFY: Assertion = {
   kind: 'must_not_contain',
@@ -100,7 +100,7 @@ const NO_DISCOUNT: Assertion = {
   kind: 'must_not_contain',
   pattern: '\\bdesconto|promo(ç|c)(ã|a)o\\b',
   scope: 'all',
-  reason: 'NUNCA desconto: reancorar na garantia, nunca no preço.',
+  reason: 'NUNCA desconto: reancorar no VALOR e no preço de lançamento — nunca conceder desconto.',
 };
 const ONE_QUESTION: Assertion = {
   kind: 'max_questions',
@@ -109,7 +109,7 @@ const ONE_QUESTION: Assertion = {
   reason: 'No máximo 1 pergunta por resposta (keepFirstQuestion) — nunca interrogatório.',
 };
 
-// ─── As 12 GOLDEN CONVERSATIONS ──────────────────────────────────────────────
+// ─── As GOLDEN CONVERSATIONS (12 base + m = preço de lançamento → 13) ─────────
 
 export const GOLDENS: Golden[] = [
   // (a) A conversa REAL de 05/07 que falhou. "trabalho com uma amiga / 50
@@ -214,13 +214,13 @@ export const GOLDENS: Golden[] = [
     ],
   },
 
-  // (d) Carteira grande / ticket alto (lash 20×R$1500) → Piloto. Carteira
+  // (d) Carteira grande / ticket alto (lash 20×R$1500) → Premium/Ultra. Carteira
   //     pequena mas ticket altíssimo = qualificadíssima (PR ~R$10.500).
   {
-    id: 'd_ticket_alto_piloto',
-    title: 'Ticket alto (20×R$1500) → oferta do Piloto',
+    id: 'd_ticket_alto_premium',
+    title: 'Ticket alto (20×R$1500) → oferta do plano recomendado (Premium/Ultra)',
     scenario:
-      'Esteticista: 20 clientes de R$1.500 (protocolo). PR = 20×1500×0,35 = R$10.500 = 48× a mensalidade. Carteira pequena NÃO desqualifica quando o ticket é alto. Rota: oferta do Piloto com a conta personalizada.',
+      'Esteticista: 20 clientes de R$1.500 (protocolo). PR = 20×1500×0,35 = R$10.500 = 48× a mensalidade. Carteira pequena NÃO desqualifica quando o ticket é alto. Rota: oferta do plano recomendado (Premium/Ultra) com a conta personalizada.',
     inbound: [
       { content: 'faço protocolo de estética avançada, R$1500 a sessão' },
       { content: 'minha carteira é pequena, umas 20 clientes só' },
@@ -314,12 +314,12 @@ export const GOLDENS: Golden[] = [
     ],
   },
 
-  // (h) Tentativa de desconto → reancora na GARANTIA, nunca dá desconto.
+  // (h) Tentativa de desconto → reancora no VALOR + preço de lançamento, nunca dá desconto.
   {
-    id: 'h_pede_desconto_reancora_garantia',
-    title: 'Pede desconto → reancora na garantia',
+    id: 'h_pede_desconto_reancora_valor',
+    title: 'Pede desconto → reancora no valor e no preço de lançamento',
     scenario:
-      'Lead pede desconto ("tem como fazer um precinho melhor?"). A Duda NUNCA concede desconto — reancora na garantia ("o risco é meu / devolvemos se não recuperar mais que a mensalidade").',
+      'Lead pede desconto ("tem como fazer um precinho melhor?"). A Duda NUNCA concede desconto — reancora na CONTA da recuperação (2-3 clientes de volta já pagam o mês) e no preço de LANÇAMENTO (vigente, sobe em breve).',
     leadSeed: {
       name: 'Fernanda',
       sub_vertical: 'cílios',
@@ -338,9 +338,9 @@ export const GOLDENS: Golden[] = [
       NO_FREE_TRIAL,
       {
         kind: 'must_contain',
-        pattern: 'garantia|devolv|risco (é|e) (meu|nosso)|recuperar',
+        pattern: 'conta|recupera|vale|2-3 clientes|lançamento|sobe',
         scope: 'lastTurn',
-        reason: 'Diante do pedido de desconto, reancorar explicitamente na garantia.',
+        reason: 'Diante do pedido de desconto, reancorar explicitamente no valor (a conta) e/ou no preço de lançamento que sobe.',
       },
     ],
   },
@@ -458,6 +458,45 @@ export const GOLDENS: Golden[] = [
         pattern: 'n[aã]o (sei|posso) (dizer|informar) o pre[çc]o|consulte',
         scope: 'lastTurn',
         reason: 'A Duda tem o preço no conhecimento — não empurra a resposta pra depois.',
+      },
+    ],
+  },
+
+  // (m) "Vou pensar" → âncora do preço de LANÇAMENTO (nova escassez honesta). A
+  //     Duda usa a urgência real (o preço sobe) — nunca vaga/fundadora/garantia.
+  {
+    id: 'm_preco_lancamento_urgencia',
+    title: 'Vou pensar → urgência honesta do preço de lançamento',
+    scenario:
+      'Lead qualificada diz "vou pensar". A Duda reancora na urgência VERDADEIRA: o preço atual é o de LANÇAMENTO e sobe para o de tabela em breve. NUNCA vaga de fundadora, relógio falso ou garantia de devolução.',
+    leadSeed: {
+      name: 'Renata',
+      sub_vertical: 'sobrancelha',
+      tempo_atendimento_meses: 24,
+      num_clientes: 80,
+      ticket_medio: 120,
+      recorrencia: 'média',
+      score_0_100: 74,
+      temperature: 'hot',
+    },
+    inbound: [
+      { content: 'entendi, deixa eu pensar um pouco e te falo' },
+    ],
+    assertions: [
+      ONE_QUESTION,
+      NO_DISCOUNT,
+      NO_FREE_TRIAL,
+      {
+        kind: 'must_contain',
+        pattern: 'lançamento|sobe|tabela',
+        scope: 'lastTurn',
+        reason: 'Diante de "vou pensar", a urgência honesta é o preço de lançamento que sobe.',
+      },
+      {
+        kind: 'must_not_contain',
+        pattern: 'vaga|fundadora|devolv',
+        scope: 'all',
+        reason: 'A nova âncora é preço de lançamento — sem vaga/fundadora/garantia de devolução.',
       },
     ],
   },

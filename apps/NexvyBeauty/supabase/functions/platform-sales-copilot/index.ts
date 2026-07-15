@@ -6,8 +6,8 @@
 //     direto (contrato do original), útil para follow-ups do vendedor.
 //   * Contexto de produto: DINÂMICO — lê `product_id` da conversa e monta o
 //     bloco de conhecimento de `platform_crm_products` (playbook: oferta,
-//     preços, garantia, objeções, pitches) + escassez real da view
-//     `founder_campaign_status`. Sem product_id (webchat antigo) cai no
+//     preços, objeções, pitches). A escassez é o preço de lançamento (vem das
+//     colunas do produto). Sem product_id (webchat antigo) cai no
 //     fallback fixo PLATFORM_KNOWLEDGE_CONTEXT — nada quebra.
 //   * LLM: gateway OpenRouter via env `AI_API_KEY` (+ `AI_GATEWAY_URL` opcional,
 //     default https://openrouter.ai/api/v1). Modelo: google/gemini-2.5-flash
@@ -135,31 +135,22 @@ Deno.serve(async (req) => {
 
     // ── Conhecimento dinâmico do playbook (mesmo padrão do sales-copilot do
     // tenant: seções tituladas, texto puro). Ordem deliberada: OFERTA/
-    // knowledge_base primeiro (contém o vocabulário obrigatório — "piloto" ≠
-    // "teste gratuito"), depois preços, garantia, desconto, objeções, pitches,
+    // knowledge_base primeiro (contém o vocabulário obrigatório — produto PAGO,
+    // sem "teste gratuito"), depois preços, garantia, desconto, objeções, pitches,
     // ICP, diferenciais. Qualquer falha aqui degrada para o fallback fixo. ──
     let knowledgeContext = PLATFORM_KNOWLEDGE_CONTEXT;
     let productName = 'NexvyBeauty';
 
     if (productId) {
-      const [productRes, campaignRes] = await Promise.all([
-        supabase
-          .from('platform_crm_products')
-          .select(
-            'name, description, pitch_15s, pitch_30s, pitch_2min, icp, objections, benefits, differentials, guarantee, discount_policy, plans, pricing, knowledge_base, custom_info',
-          )
-          .eq('id', productId)
-          .maybeSingle(),
-        // View de 1 linha derivada de organizations (30 − fundadoras ativas):
-        // escassez VERDADEIRA lida do banco em tempo real, nunca inventada.
-        supabase
-          .from('founder_campaign_status')
-          .select('total_vagas, fundadoras_ativas, slots_left, campanha_encerrada')
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const { data: productData } = await supabase
+        .from('platform_crm_products')
+        .select(
+          'name, description, pitch_15s, pitch_30s, pitch_2min, icp, objections, benefits, differentials, guarantee, discount_policy, plans, pricing, knowledge_base, custom_info',
+        )
+        .eq('id', productId)
+        .maybeSingle();
 
-      const product = productRes.data as Record<string, any> | null;
+      const product = productData as Record<string, any> | null;
       if (!product) {
         console.warn(
           '[platform-sales-copilot] product_id sem produto correspondente — usando fallback fixo:',
@@ -173,15 +164,6 @@ Deno.serve(async (req) => {
 
         if (product.knowledge_base) {
           ctx += `\n## OFERTA E BASE DE CONHECIMENTO\n${product.knowledge_base}\n`;
-        }
-
-        // Escassez da campanha fundadora: só entra se a view respondeu (erro
-        // na view não pode derrubar a sugestão — non-fatal por construção).
-        const campaign = campaignRes.data as Record<string, any> | null;
-        if (campaign) {
-          ctx += campaign.campanha_encerrada
-            ? `\nCAMPANHA FUNDADORA AGORA: campanha encerrada — as ${campaign.total_vagas} vagas de fundadora foram preenchidas. NÃO ofertar condições de fundadora.\n`
-            : `\nCAMPANHA FUNDADORA AGORA: restam ${campaign.slots_left} de ${campaign.total_vagas} vagas de fundadora (dado real do banco, neste momento).\n`;
         }
 
         if (product.plans || product.pricing) {

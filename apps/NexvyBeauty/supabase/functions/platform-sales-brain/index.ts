@@ -1,6 +1,6 @@
 // platform-sales-brain — F2 "O CÉREBRO": motor de resposta automática do
 // WhatsApp de VENDAS da PLATAFORMA (número oficial Cloud API). É a peça que faz
-// o funil de fundadoras vender sozinho.
+// o funil de vendas rodar sozinho.
 //
 // Fluxo (server-to-server; o webhook chama isto DEPOIS que o orquestrador liga o
 // gatilho — este arquivo NÃO toca o webhook):
@@ -21,9 +21,10 @@
 //      um agente ativo, é ELE quem fala (a Bia continua o que a Duda passou);
 //      senão a Duda (SDR) abre e persistimos current_agent_id=duda.id.
 //   8. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
-//      + escassez REAL da view founder_campaign_status.
-//   9. Regras fixas: nunca desconto; piloto = Piloto Fundadora PAGO; escassez só
-//      a real; humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
+//      + preço de LANÇAMENTO (de-para em LINKS DE PAGAMENTO, do banco).
+//   9. Regras fixas: nunca desconto; SEM Piloto Fundadora e SEM garantia de
+//      devolução (risco reduzido por PROVA + arrependimento 7d); escassez só a
+//      real (preço de lançamento sobe); humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
 //      p/ pedido de humano/caso sensível — venda NUNCA é rejeitada (diretiva
 //      Marcelo 05/07: "pagou é cliente"; score roteia OFERTA, não aceite/rejeite).
 //      Só a Duda (SDR): score ≥70 + intenção → [PASSAR_BIA] (passagem interna
@@ -151,12 +152,12 @@ async function deliverViaWhatsAppCloud(
 /**
  * Monta o bloco de conhecimento do produto — MESMO builder do platform-sales-copilot
  * (ordem deliberada: knowledge_base primeiro, contém o vocabulário obrigatório).
- * Escassez real via view founder_campaign_status (nunca inventada). Non-fatal:
- * qualquer falha aqui degrada, mas não derruba a resposta.
+ * A escassez agora é o PREÇO DE LANÇAMENTO (via de-para em LINKS DE PAGAMENTO),
+ * não vagas de campanha. Non-fatal: qualquer falha aqui degrada, mas não derruba
+ * a resposta.
  */
 function buildKnowledgeContext(
   product: Record<string, any> | null,
-  campaign: Record<string, any> | null,
 ): string {
   if (!product) return '';
   let ctx = `\n## PRODUTO: ${product.name}\n`;
@@ -164,12 +165,6 @@ function buildKnowledgeContext(
 
   if (product.knowledge_base) {
     ctx += `\n## OFERTA E BASE DE CONHECIMENTO\n${product.knowledge_base}\n`;
-  }
-
-  if (campaign) {
-    ctx += campaign.campanha_encerrada
-      ? `\nCAMPANHA: campanha encerrada — as ${campaign.total_vagas} vagas de fundadora foram preenchidas. NÃO ofertar condições de fundadora.\n`
-      : `\nCAMPANHA: restam ${campaign.slots_left} de ${campaign.total_vagas} vagas de fundadora (dado real do banco, neste momento).\n`;
   }
 
   if (product.plans || product.pricing) {
@@ -227,7 +222,13 @@ function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: st
   if (!plans.length) return '';
   let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
   for (const p of plans) {
-    ctx += `- ${p.name} (R$${p.price_monthly}): ${appendSellerRef(p.checkout_url, personaName)}\n`;
+    const url = appendSellerRef(p.checkout_url, personaName);
+    // De-para do preço de lançamento: quando há preço de TABELA (list_price_monthly)
+    // acima do vigente (price_monthly), renderiza "de R$X por R$Y — lançamento".
+    const priceLabel = Number(p.list_price_monthly) > Number(p.price_monthly)
+      ? `de R$${p.list_price_monthly} por R$${p.price_monthly} — preço de lançamento, sobe em breve`
+      : `R$${p.price_monthly}`;
+    ctx += `- ${p.name} (${priceLabel}): ${url}\n`;
   }
   ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. Só passe para a Bia o cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO e precisa entender o valor — nunca o que já quer fechar.\n`;
   return ctx;
@@ -248,6 +249,9 @@ const PRICE_RULE_BLOCK =
   `  LINKS DE PAGAMENTO. Nada de arredondar, "por volta de", "a partir de".\n` +
   `- Se um plano NÃO está em LINKS DE PAGAMENTO, ele não tem preço público — não invente:\n` +
   `  diga que confirma o valor e siga, sem chutar.\n` +
+  `- Quando um plano aparecer como "de R$X por R$Y", X é o preço de TABELA (futuro) e Y é o\n` +
+  `  de LANÇAMENTO (vigente — o que a cliente paga hoje): cite Y como o preço e X só como\n` +
+  `  referência de que o valor vai subir. Nunca troque os dois.\n` +
   `- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).\n` +
   `Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.\n`;
 
@@ -258,7 +262,7 @@ function isSdrAgent(a: Record<string, any> | null): boolean {
   return hay.includes('sdr') || hay.includes('qualifica') || hay.includes('duda');
 }
 
-/** É o agente closer (Bia) — recebe o dossiê e FECHA o piloto? */
+/** É o agente closer (Bia) — recebe o dossiê e FECHA a venda? */
 function isCloserAgent(a: Record<string, any> | null): boolean {
   if (!a) return false;
   const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
@@ -339,11 +343,11 @@ function buildScoreFactBlock(q: Record<string, any>): string {
   const rota = typeof q.rota === 'string' ? q.rota : null;
 
   const rotaGuidance: Record<string, string> = {
-    oferta_piloto: 'carteira robusta → conduza para o Piloto Fundadora (a conta da recuperação fecha).',
+    premium: 'carteira robusta → conduza para o plano recomendado (Premium/Ultra) com a conta da recuperação.',
     aprofundar: provisorio
       ? 'FALTAM dados de carteira/ticket → descubra-os naturalmente antes de ofertar; se já sabe e ela está cética, mostre VALOR.'
-      : 'lead qualificada mas indecisa/cética → aprofunde o VALOR (garantia, conta personalizada) antes de fechar.',
-    essencial: 'carteira pequena/começando → recomende o plano de ENTRADA com a conta honesta e convide pro Piloto quando ela crescer. NUNCA rejeite.',
+      : 'lead qualificada mas indecisa/cética → aprofunde o VALOR (a conta personalizada + PROVA na carteira) antes de fechar.',
+    essencial: 'carteira pequena/começando → recomende o plano de ENTRADA com a conta honesta. NUNCA rejeite.',
   };
   const rotaLine = rota && rotaGuidance[rota] ? `\nCONDUTA SUGERIDA (${rota}): ${rotaGuidance[rota]}` : '';
 
@@ -365,20 +369,21 @@ function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | nul
 // ─── Guardrails de forma ─────────────────────────────────────────────────────
 
 /**
- * Censura de vocabulário: o piloto é PAGO. Se o modelo escorregar em "teste
- * grátis / desconto / promoção" em contexto de oferta, reancoramos na garantia.
- * Retorna { text, sanitized }.
+ * Censura de vocabulário: o produto é PAGO e NÃO tem garantia de devolução. Se o
+ * modelo escorregar em "teste grátis / desconto / promoção" em contexto de oferta,
+ * reancoramos no VALOR (a conta da recuperação) e no preço de lançamento — nunca
+ * em garantia ou promo. Retorna { text, sanitized }.
  */
 function sanitizeReply(input: string): { text: string; sanitized: boolean } {
   let text = input;
   let sanitized = false;
   const pairs: Array<[RegExp, string]> = [
-    // "teste grátis / trial grátis / período grátis" → reancoragem na garantia.
-    [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'Piloto Fundadora com garantia (o risco é nosso)'],
-    [/\bgr[aá]tis\b/gi, 'com garantia de devolução'],
-    // desconto / promoção → reancoragem na garantia, nunca no preço.
-    [/\b(desconto|descontos)\b/gi, 'a garantia (se não recuperar mais que a mensalidade, devolvemos)'],
-    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'a condição de fundadora (preço travado + garantia)'],
+    // "teste grátis / trial grátis / período grátis" → reancoragem no VALOR (produto pago).
+    [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'um produto pago — o valor se paga recuperando 2-3 clientes (o time confirma condições)'],
+    [/\bgr[aá]tis\b/gi, 'um produto pago (o valor se paga recuperando 2-3 clientes)'],
+    // desconto / promoção → reancoragem no VALOR e no preço de lançamento, nunca em garantia/promo.
+    [/\b(desconto|descontos)\b/gi, 'a conta da recuperação (2-3 clientes de volta já pagam a mensalidade) e o preço de lançamento, que sobe em breve'],
+    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço de lançamento (vigente, sobe em breve)'],
   ];
   for (const [re, rep] of pairs) {
     if (re.test(text)) {
@@ -511,7 +516,7 @@ function toNum(v: unknown): number | null {
 // hardcoded. Se o preço do Essencial mudar no super-admin, o score recalibra
 // sozinho. Fallback numérico só existe se `plans` vier vazio (ver resolveAnchor).
 const ENTRY_PLAN_SLUG = 'starter'; // Essencial = plano de entrada (menor price_monthly público)
-const QCRV_ANCHOR_FALLBACK = 217; // FALLBACK documentado: preço do Essencial em 2026-07-05 (só se public_plans vier vazio)
+const QCRV_ANCHOR_FALLBACK = 275; // FALLBACK documentado: preço do Essencial (lançamento) em 2026-07-14 (só se public_plans vier vazio)
 
 /**
  * resolveAnchor — deriva o preço-âncora do plano de entrada a partir dos `plans`
@@ -531,7 +536,7 @@ function resolveAnchor(plans: Array<Record<string, any>>): number {
 }
 
 /** Resultado do score determinístico — vira FATO no prompt e estado no lead. */
-type QcrRota = 'oferta_piloto' | 'aprofundar' | 'essencial';
+type QcrRota = 'premium' | 'aprofundar' | 'essencial';
 interface QcrScore {
   score: number;          // 0-100 (soma das dimensões pontuadas)
   provisorio: boolean;    // true quando falta carteira OU ticket (D1 incompleta)
@@ -557,10 +562,10 @@ interface QcrScore {
  *       · 1→5 · 0→0.
  *
  * Rota (sugestão de OFERTA, jamais gate de aceite): score>=70 & !provisorio →
- * 'oferta_piloto' (carteira robusta, convém o Piloto Fundadora); 40-69 OU
+ * 'premium' (carteira robusta → plano recomendado Premium/Ultra); 40-69 OU
  * provisório → 'aprofundar' (falta dado/valor — a Duda cava mais / a Bia mostra
  * valor); <40 → 'essencial' (carteira pequena/começando → plano de entrada com a
- * conta honesta, convite pro Piloto quando crescer). NUNCA rejeita a venda.
+ * conta honesta). NUNCA rejeita a venda.
  */
 function computeQcrScore(facts: {
   num_clientes?: number | null;
@@ -615,9 +620,9 @@ function computeQcrScore(facts: {
   const score = d1 + d2 + d3 + d4;
 
   // Rota: sugestão de OFERTA (nunca aceite/rejeite). Provisório nunca vai direto
-  // pro 'oferta_piloto' (falta a conta da carteira) — cai em 'aprofundar'.
+  // pro 'premium' (falta a conta da carteira) — cai em 'aprofundar'.
   let rota: QcrRota;
-  if (!provisorio && score >= 70) rota = 'oferta_piloto';
+  if (!provisorio && score >= 70) rota = 'premium';
   else if (score >= 40 || provisorio) rota = 'aprofundar';
   else rota = 'essencial';
 
@@ -833,12 +838,11 @@ Deno.serve(async (req) => {
         .eq('id', conversationId);
     }
 
-    // 8) CONHECIMENTO do produto + escassez real da campanha fundadora.
+    // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
     let product: Record<string, any> | null = null;
-    let campaign: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
     if (conversation.product_id) {
-      const [productRes, campaignRes, plansRes] = await Promise.all([
+      const [productRes, plansRes] = await Promise.all([
         supabase
           .from('platform_crm_products')
           .select(
@@ -846,30 +850,26 @@ Deno.serve(async (req) => {
           )
           .eq('id', conversation.product_id)
           .maybeSingle(),
-        // View de 1 linha derivada de organizations (30 − fundadoras ativas):
-        // escassez VERDADEIRA lida do banco em tempo real, nunca inventada.
-        supabase
-          .from('founder_campaign_status')
-          .select('total_vagas, fundadoras_ativas, slots_left, campanha_encerrada')
-          .limit(1)
-          .maybeSingle(),
         // Planos + LINK DE CHECKOUT reais (a "maquininha" da Duda): quando o
         // cliente DECIDE, ela mesma manda o link — não precisa de closer.
+        // list_price_monthly = preço de tabela (de-para do lançamento em LINKS DE PAGAMENTO).
         supabase
           .from('public_plans')
-          .select('name, slug, price_monthly, checkout_url')
+          .select('name, slug, price_monthly, list_price_monthly, checkout_url, is_public')
           .order('price_monthly', { ascending: true }),
       ]);
       product = (productRes.data as Record<string, any> | null) ?? null;
-      campaign = (campaignRes.data as Record<string, any> | null) ?? null;
-      plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url);
+      // R5: só planos PÚBLICOS entram na venda. A view public_plans traz Trial/Teste
+      // (is_public=false); sem is_public no filtro, o "Teste E2E" R$10 com checkout LIVE
+      // vazaria como link ofertável a um lead real. Exige checkout_url + is_public=true.
+      plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url && p.is_public);
     }
 
     // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
     // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
     // persona já é não-nula aqui (guard acima); fallback 'duda' se o nome vier vazio.
-    const knowledgeContext = buildKnowledgeContext(product, campaign)
+    const knowledgeContext = buildKnowledgeContext(product)
       + buildCheckoutContext(plans, persona.name ?? 'duda')
       + (plans.length ? PRICE_RULE_BLOCK : '');
     const productName = product?.name ?? 'NexvyBeauty';
@@ -888,7 +888,7 @@ Deno.serve(async (req) => {
     // SABEMOS DA LEAD" abaixo é o dossiê; a Bia confirma 1 detalhe e conduz ao
     // fechamento. Só entra quando a persona ativa é o closer.
     const closerContinuityContext = personaIsCloser
-      ? `\n═══════════════════════════════════════\nVOCÊ ESTÁ ASSUMINDO UMA CONVERSA (HANDOFF DA DUDA)\n═══════════════════════════════════════\nA Duda te passou o dossiê desta lead — tudo que vocês precisam já está em "O QUE JÁ SABEMOS DA LEAD". NUNCA se apresente do zero nem recomece a descoberta. Valide UM detalhe do que ela já disse ("vi aqui que você trabalha com X há Y, certo?") e conduza direto para a demonstração/fechamento do Piloto Fundadora. Você é a especialista que fecha: apresente a oferta com a conta da recuperação, trate a objeção mais provável e vá pro checkout como próximo passo concreto.\n`
+      ? `\n═══════════════════════════════════════\nVOCÊ ESTÁ ASSUMINDO UMA CONVERSA (HANDOFF DA DUDA)\n═══════════════════════════════════════\nA Duda te passou o dossiê desta lead — tudo que vocês precisam já está em "O QUE JÁ SABEMOS DA LEAD". NUNCA se apresente do zero nem recomece a descoberta. Valide UM detalhe do que ela já disse ("vi aqui que você trabalha com X há Y, certo?") e conduza direto para a demonstração/fechamento do plano recomendado. Você é a especialista que fecha: apresente a oferta com a conta da recuperação, trate a objeção mais provável e vá pro checkout como próximo passo concreto.\n`
       : '';
 
     // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
@@ -904,14 +904,14 @@ ${leadMemoryContext}${knowledgeContext}
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
 ═══════════════════════════════════════
-1. NUNCA ofereça desconto. Se pedirem, reancore na garantia ("o risco é meu") — não no preço.
-2. "piloto" = Piloto Fundadora — programa PAGO com acompanhamento 1-a-1 e garantia de devolução. NUNCA descreva como "teste gratuito", "trial" ou "demonstração".
-3. Escassez SÓ a real (o dado da campanha acima, quando presente). NUNCA invente urgência falsa.
+1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no preço de LANÇAMENTO (vigente, sobe em breve) — nunca em garantia nem desconto.
+2. NÃO existe "Piloto Fundadora" nem garantia de devolução por resultado. A redução de risco é honesta: PROVA (demonstração de ~20 min na carteira da própria cliente) + direito de arrependimento de 7 dias do checkout (lei). NUNCA prometa "devolvo se não recuperar", "risco é meu/nosso" ou "painel-juiz". O produto é PAGO — nunca o descreva como "teste gratuito" ou "trial".
+3. Escassez SÓ a real: o preço de LANÇAMENTO (vigente) sobe para o de tabela em breve — está em LINKS DE PAGAMENTO. NUNCA invente urgência (vagas, relógio).
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
-5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta e convite pro Piloto quando crescer). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
+5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
 ${personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
-8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, use a garantia como transferência de risco ("o risco é meu"), traga a conta personalizada e a escassez real. NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
+8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
 ═══════════════════════════════════════
