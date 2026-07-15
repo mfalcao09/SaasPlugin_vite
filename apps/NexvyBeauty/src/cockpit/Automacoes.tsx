@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Cake, CalendarClock, PackageCheck, UserMinus, Eye, Loader2, Send, type LucideIcon,
+  Cake, CalendarClock, PackageCheck, UserMinus, Eye, Loader2, Send, Power, type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
@@ -134,8 +134,29 @@ interface PreviewEvento { tipo: string; cliente_nome: string; telefone: string |
 
 export default function Automacoes({ demo }: { demo?: boolean } = {}) {
   const organizationId = useOrganizationId()
+  const qc = useQueryClient()
   const [previewing, setPreviewing] = useState(false)
   const [preview, setPreview] = useState<PreviewEvento[] | null>(null)
+  // Bumpar este nonce força os ReceitaCards a remontarem (re-lendo enabled do DB)
+  // depois do kill-switch mestre — sem remontar em toggles individuais.
+  const [bulkNonce, setBulkNonce] = useState(0)
+
+  // Kill-switch mestre: pausa TODAS as receitas de uma vez (LGPD/controle da dona).
+  const pauseAll = useMutation({
+    mutationFn: async () => {
+      if (demo || !organizationId) return
+      const { error } = await supabase.from('salon_automation_rules')
+        .update({ enabled: false, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      if (organizationId) qc.invalidateQueries({ queryKey: ['salon-rules', organizationId] })
+      setBulkNonce((n) => n + 1)
+      toast.success('Todas as receitas foram pausadas')
+    },
+    onError: () => toast.error('Não deu pra pausar agora — tenta de novo'),
+  })
 
   const { data: rules = [] } = useQuery({
     queryKey: ['salon-rules', organizationId],
@@ -189,14 +210,31 @@ export default function Automacoes({ demo }: { demo?: boolean } = {}) {
 
       <PageHeader
         title="Automações"
-        description="Receitas que mandam o WhatsApp sozinhas, na hora certa. Você liga as que quiser — e vê a prévia antes."
+        description="Receitas que mandam o WhatsApp sozinhas, na hora certa. Já vêm ligadas — você vê a prévia e desliga o que quiser."
       />
+
+      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+        As receitas já vêm <strong>ligadas</strong> pra sua conta trabalhar sozinha desde o dia 1.
+        Rode a prévia pra ver quem seria contatado hoje, e desligue qualquer uma no botão de cada card —
+        ou pause todas de uma vez.
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Button size="sm" onClick={rodarPrevia} disabled={previewing} className="gap-1.5">
           {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
           Ver prévia (não envia)
         </Button>
+        {ligadas > 0 && (
+          <Button
+            size="sm" variant="outline"
+            onClick={() => pauseAll.mutate()} disabled={pauseAll.isPending}
+            className="gap-1.5 text-muted-foreground"
+          >
+            {pauseAll.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <Power className="h-3.5 w-3.5" />
+            Pausar todas
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground">
           {ligadas > 0 ? `${ligadas} receita${ligadas === 1 ? '' : 's'} ligada${ligadas === 1 ? '' : 's'}.` : 'Nenhuma receita ligada ainda.'}
         </span>
@@ -228,7 +266,7 @@ export default function Automacoes({ demo }: { demo?: boolean } = {}) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {RECEITAS.map((r) => (
-          <ReceitaCard key={r.tipo} receita={r} rule={ruleOf(r.tipo)} orgId={organizationId} demo={demo} />
+          <ReceitaCard key={`${r.tipo}-${bulkNonce}`} receita={r} rule={ruleOf(r.tipo)} orgId={organizationId} demo={demo} />
         ))}
       </div>
 

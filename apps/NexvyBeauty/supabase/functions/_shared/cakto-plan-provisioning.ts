@@ -441,9 +441,12 @@ const SALON_SERVICE_TEMPLATE = [
 /**
  * B6 — as 4 regras que `salon-automation-run` de fato consome (CHECK do schema:
  * aniversario | pacote_vencendo | agendamento_24h | retorno_inativo). Nascem
- * enabled=false (decisão Marcelo 2026-07-06): a dona revê o template e conecta o
- * WhatsApp antes de ligar cada uma — conta recém-provisionada não sai mandando
- * mensagem sozinha. antecedencia_dias segue a semântica de cada tipo.
+ * enabled=TRUE (decisão Marcelo P9/CART 2026-07-15 — substitui a de 2026-07-06):
+ * o opt-in puro produzia 0% de adoção comprovado (0 regras ligadas em produção),
+ * então as 4 receitas nascem LIGADAS por default, com prévia + kill-switch visível
+ * na tela de Automações (a dona nunca precisa LIGAR; pode DESLIGAR). Base LGPD:
+ * legítimo interesse (Art.7 VII) sobre relacionamento comercial pré-existente.
+ * antecedencia_dias segue a semântica de cada tipo.
  */
 const SALON_AUTOMATION_SEED: Array<{ tipo: string; antecedencia_dias: number }> = [
   { tipo: 'aniversario', antecedencia_dias: 0 },
@@ -493,7 +496,7 @@ async function seedSalonDataForNewOrg(
     const rows = SALON_AUTOMATION_SEED.map((r) => ({
       organization_id: organizationId,
       tipo: r.tipo,
-      enabled: false,
+      enabled: true, // P9/CART: ligadas por default (kill-switch na UI de Automações)
       antecedencia_dias: r.antecedencia_dias,
     }));
     const { error } = await admin
