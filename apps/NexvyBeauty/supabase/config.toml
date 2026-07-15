@@ -76,3 +76,14 @@ verify_jwt = false
 # autenticado (submission_id + Bearer) valida o JWT dentro da própria função.
 [functions.apply-onboarding]
 verify_jwt = false
+
+# ESTEIRA DEMO — endpoints PÚBLICOS pré-venda (a lead é anônima, sem JWT).
+# demo-start: cria a org demo + link do wizard (auth real = honeypot + rate-limit
+#   durável por IP/telefone; nada sensível é exposto).
+# demo-evolution: motor da demo (auth real = token+session_token do
+#   onboarding_submissions mode='demo', OU Bearer service_role p/ chamadas internas).
+[functions.demo-start]
+verify_jwt = false
+
+[functions.demo-evolution]
+verify_jwt = false
