@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cold Outreach NexvyBeauty — Relatório de Build (gated OFF)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#8b949e;
+    --accent:#2ea043; --accent2:#58a6ff; --warn:#e3b341; --danger:#f85149; --mono:'SFMono-Regular',Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; padding:0 0 80px; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
+  header { border-bottom:1px solid var(--border); padding:36px 0 24px; margin-bottom:8px; }
+  h1 { font-size:1.9rem; margin:0 0 8px; }
+  h2 { font-size:1.35rem; margin:34px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  h3 { font-size:1.1rem; margin:22px 0 8px; color:var(--accent2); }
+  .sub { color:var(--muted); font-size:.92rem; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:.78rem; font-weight:600; margin-right:6px; }
+  .pill.ok { background:rgba(46,160,67,.15); color:var(--accent); border:1px solid rgba(46,160,67,.4); }
+  .pill.off { background:rgba(227,179,65,.12); color:var(--warn); border:1px solid rgba(227,179,65,.4); }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:.92rem; display:block; overflow-x:auto; }
+  th,td { border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--panel); }
+  code { font-family:var(--mono); background:var(--panel); padding:1px 6px; border-radius:5px; font-size:.86em; }
+  pre { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; overflow-x:auto; font-family:var(--mono); font-size:.84rem; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin:16px 0; }
+  .warn { border-color:rgba(227,179,65,.5); }
+  .ok-box { border-color:rgba(46,160,67,.4); }
+  ul,ol { padding-left:22px; }
+  li { margin:5px 0; }
+  .muted { color:var(--muted); }
+  .green { color:var(--accent); font-weight:600; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Cold Outreach NexvyBeauty — Relatório de Build</h1>
+  <div class="sub">Sessão autônoma (oneshot+loop) · 2026-07-15 · branch <code>feat/cold-outreach-pipeline</code> (de origin/main b6644d6) · worktree isolado</div>
+  <div style="margin-top:12px">
+    <span class="pill ok">✔ 40/40 deno test</span>
+    <span class="pill ok">✔ deno check verde</span>
+    <span class="pill off">⏸ gated OFF — nada dispara</span>
+  </div>
+</div></header>
+
+<div class="wrap">
+
+<div class="card">
+<strong>Resposta desconfortável primeiro.</strong> Os motores platform-side existentes (<code>platform-cadence-*</code>, <code>platform-campaign-*</code>) são <strong>webchat-only e exigem conversa já aberta</strong> — inúteis para cold (que é contatar quem não tem conversa). O <code>manual-outreach</code> é tenant (lê tabelas vazias). ~55% do necessário não existia: canal-adapter WhatsApp/IG platform-side, warm-up ramp, teto diário, kill-switch, segment-gate no disparo, opt-out runtime. Tudo construído do zero, isolado do #68 (brain), das edges cakto e da esteira <code>demo-*</code>.
+</div>
+
+<h2>O que foi construído (com prova)</h2>
+
+<h3>Núcleo puro anti-ban <code>_shared/cold-outreach/</code> — a maior alavanca</h3>
+<p class="muted">Módulos DB-agnósticos, testáveis por <code>deno test</code> (40/40 verdes). É o que separa 1.200 de 300 leads tocados.</p>
+<table>
+<tr><th>Módulo</th><th>Papel</th><th>Testes</th></tr>
+<tr><td><code>anti-ban.ts</code></td><td>warm-up ramp (~20/dia, dobra a cada 2-3d, cap 200), teto diário, jitter 40-180s, janela 9-18h Seg-Sex (America/Sao_Paulo), dedupe 24h, kill-switch (block&gt;5% / report&gt;2% / falhas consecutivas)</td><td class="green">11</td></tr>
+<tr><td><code>segment-gate.ts</code></td><td>dispara SÓ salao_cliente+qualified+phone_is_br; bloqueia afiliado/revisao/descarte/só-IG; ordem 26 semente-limpa → 66 is_seed → massa</td><td class="green">7</td></tr>
+<tr><td><code>script.ts</code></td><td>copy vencedora WA+IG (abertura + 2 follow-ups + objeções), tokens, A/B determinístico, <strong>guard "zero link na 1ª msg"</strong></td><td class="green">7</td></tr>
+<tr><td><code>opt-out.ts</code> + <code>inbound-plan.ts</code></td><td>classifica SAIR/PARE (prioritário) vs "quero"; planeja opt-out (para cadência) / handoff (Duda)</td><td class="green">11</td></tr>
+<tr><td><code>persona.ts</code></td><td>seletor BDR (prospector) próprio, isolado do <code>agent-routing.ts</code> do #68</td><td class="green">4</td></tr>
+</table>
+
+<h3>Migrations <code>migrations_platform_crm/</code> — prontas p/ apply_migration</h3>
+<ul>
+<li><code>20260715_cold_outreach_engine.sql</code>: <code>platform_crm_cold_{campaigns,outreach_queue,daily_counters,instance_health}</code> + RPC <code>pcrm_cold_bump_counter</code>. RLS super_admin. <strong>dry_run=true por default.</strong></li>
+<li><code>20260715_seed_bdr_prospector.sql</code>: persona BDR "Bento · Prospecção" (<code>agent_type='prospector'</code>, 1º-toque→opt-in, <strong>não vende</strong>, inerte). Idempotente.</li>
+<li><code>20260715_cold_outreach_cron.sql</code>: cron do tick — <strong>passo de ativação</strong>, no-op sem campanha ativa.</li>
+<li>Opt-out reusa <code>platform_crm_lead_optout</code>; instrumentação reusa <code>journey_events</code> + <code>pcrm_log_journey_event</code> — sem tabela nova.</li>
+</ul>
+
+<h3>Edges — deno check verde</h3>
+<ul>
+<li><code>platform-evolution-send/</code>: twin do <code>evolution-send</code> (org→product; <code>platform_crm_evolution_instances</code>). Burner por <code>instance_id</code>; <strong>oficial Meta intocado</strong> (outra tabela).</li>
+<li><code>platform-cold-outreach/</code>: o MOTOR (<code>enqueue</code>/<code>tick</code>/<code>on-inbound</code>/<code>status</code>). <strong>DUPLO GATE</strong>: <code>dry_run</code> + env <code>COLD_OUTREACH_ENABLED</code>. <code>finalidade</code> flipa só no envio real.</li>
+<li><code>config.toml</code>: 2 edges com <code>verify_jwt=false</code> (auth interna na função).</li>
+</ul>
+
+<h3>Frentes por canal + handoff/opt-out</h3>
+<ul>
+<li><strong>WhatsApp</strong>: burner Evolution, script WA (2 follow-ups), gate 1.497.</li>
+<li><strong>Instagram DM (frente SEPARADA)</strong>: segmento <code>acionamento_via_instagram</code> (sem telefone), script IG (1 follow-up, sem breakup), envio via <code>platform-ig-send</code>, <strong>instância própria</strong> (não herda números do WhatsApp).</li>
+<li><strong>Opt-out</strong> "SAIR/PARE" → grava optout + para cadência + silencia conversa. <strong>Handoff</strong> no "quero" → <code>current_agent_id=Duda</code> (padrão P10, mesmo thread). <strong>Zero edição</strong> no brain/#68, webhooks, cakto ou demo-*.</li>
+</ul>
+
+<h2>Prova de funcionamento</h2>
+<pre>deno test --no-check supabase/functions/_shared/cold-outreach/   →  40 passed | 0 failed
+deno check --node-modules-dir=none &lt;6 módulos&gt; &lt;2 edges&gt;         →  EXIT 0</pre>
+<p class="muted">Cobrem: motor anti-ban (1), segment-gate (2), kill-switch (3), script+zero-link (4), ordem de disparo (5), IG separado (6), opt-out para cadência (9), handoff→Duda (8). Instrumentação (7) via journey_events — validável no smoke live.</p>
+
+<h2>Deploy (SEM CI — 3 pipelines manuais)</h2>
+<pre>supabase functions deploy platform-evolution-send --project-ref fzhlbwhdejumkyqosuvq --no-verify-jwt
+supabase functions deploy platform-cold-outreach  --project-ref fzhlbwhdejumkyqosuvq --no-verify-jwt
+
+# MIGRATIONS via MCP apply_migration: engine + seed  (cron só na ativação)
+# FRONT: não há UI de campanha (motor backend-only) — sem deploy VPS.</pre>
+
+<div class="card warn">
+<h2 style="border:0;margin-top:0">⚠️ O que ficou de ATIVAÇÃO do Marcelo (o "único botão")</h2>
+<ol>
+<li>Aplicar as 2 migrations (engine + seed) via <code>apply_migration</code>.</li>
+<li>Deploy dos 2 edges.</li>
+<li>Rodar o smoke dry-run (<code>COLD-OUTREACH-SMOKE-2026-07-15.sql</code>) e conferir verde.</li>
+<li>Provisionar o número <strong>BURNER</strong> (instância Evolution dedicada via <code>platform-evolution-proxy</code>, QR, <code>product_id</code>). <strong>NUNCA</strong> o oficial Meta (11 95213-9912).</li>
+<li>Criar a campanha real em <code>platform_crm_cold_campaigns</code> (agent=Bento, instance=burner, status='warming', <strong>dry_run=true no começo</strong>).</li>
+<li>Ligar o cron (<code>20260715_cold_outreach_cron.sql</code>).</li>
+<li><strong>Start do warm-up (disparo real)</strong>: <code>dry_run=false</code> + <code>COLD_OUTREACH_ENABLED=true</code>. Só então sai mensagem — começando pela <strong>semente-limpa de 26</strong>.</li>
+<li>(Opcional) hook <code>on-inbound</code> no <code>platform-evolution-webhook</code> p/ opt-out instantâneo (hoje ≤ 1 min no tick).</li>
+</ol>
+</div>
+
+<div class="card ok-box">
+<h2 style="border:0;margin-top:0">Review</h2>
+<ul>
+<li><strong>Winner sintetizado, não escolhido:</strong> a alavanca do doc (número não queimar + demo prova valor) virou código testável.</li>
+<li><strong>Isolamento respeitado:</strong> #68, cakto, esteira demo-* e untracked intactos; motor 100% novo self-contained.</li>
+<li><strong>Gated OFF de verdade:</strong> duplo gate (dry_run + env) + número como CONFIG.</li>
+<li><strong>Honestidade de estado:</strong> migrations NÃO aplicadas (banco não abriu) — código pronto, aplicação = ativação. deno check/test verdes provam o verificável sem DB.</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

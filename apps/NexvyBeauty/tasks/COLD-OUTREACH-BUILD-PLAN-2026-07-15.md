@@ -65,4 +65,11 @@ O build está PRONTO quando **todos** os checks binários abaixo estão verdes:
 
 ## Review
 
-_(preenchido ao final)_
+**Todos os 10 checks binários fechados** (código + `deno test`/`deno check`):
+1. ✅ Motor anti-ban (`anti-ban.ts`, 11 testes). 2. ✅ Segment-gate (`segment-gate.ts`, 7). 3. ✅ Kill-switch (dentro do anti-ban). 4. ✅ Script wired + zero-link (`script.ts`, 7). 5. ✅ Ordem 26→66→massa. 6. ✅ IG DM frente separada (channel='instagram' no motor + gate/ script próprios). 7. ✅ Instrumentação (`journey_events` via helper). 8. ✅ Handoff Duda (`handoffToDuda`). 9. ✅ Opt-out runtime (`inbound-plan.ts`, 11 testes). 10. ✅ Deploy dry-run (duplo gate + número CONFIG).
+
+**Entregáveis:** 6 módulos puros + 6 testes (40/40) · 2 edges (`platform-cold-outreach`, `platform-evolution-send`) · 3 migrations · config.toml · relatório `.md`+`.html` · runbook `COLD-OUTREACH-SMOKE-2026-07-15.sql`. 2 commits na branch `feat/cold-outreach-pipeline`.
+
+**Ativação do Marcelo (o "único botão"):** aplicar migrations + deploy edges + rodar smoke + provisionar burner + criar campanha + ligar cron + flip `dry_run=false`/`COLD_OUTREACH_ENABLED=true`. Detalhes no relatório.
+
+**Honestidade:** o banco não abriu na sessão (MCP não autenticado) → migrations NÃO aplicadas e smoke live NÃO rodado por mim; ambos são passos de ativação documentados. O que é verificável sem DB (tipos + lógica pura) está 100% verde.
