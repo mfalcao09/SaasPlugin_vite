@@ -17,7 +17,7 @@ import { toast } from 'sonner';
  */
 
 export type LeadExtractionStatus = 'pending' | 'running' | 'done' | 'error';
-export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte';
+export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte' | 'acionamento_via_instagram';
 
 export interface LeadExtraction {
   id: string;
@@ -286,8 +286,194 @@ export function useSetLeadPhone() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
-      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (salão-cliente).' });
+      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (espaço-cliente).' });
     },
     onError: (e: any) => toast.error(e?.message ?? 'Falha ao salvar telefone'),
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BASE CONSOLIDADA (Prospecção Ativa) — dedup-por-@handle-com-merge + ações GLOBAIS.
+//
+// A tela "Buscas" (PlatformProspeccaoManager) age por `id` numa extração de cada
+// vez (hooks acima, INTOCADOS). A "Base consolidada" lê a VIEW
+// `platform_crm_consolidated_leads` (1 linha por handle, merge por COALESCE) e age
+// por HANDLE em TODAS as origens. Os hooks abaixo são IRMÃOS dos por-id: mesmo
+// payload/normalização, só troca o WHERE (id → product_id+handle) e a query key
+// invalidada passa a incluir a view (mantém as duas telas em sincronia).
+//
+// ⚠️ handle-match por `.eq('handle', handleKey)` (igualdade exata), NÃO `ilike`:
+// handles do Instagram contêm `_`/`.`, que o LIKE/ILIKE trata como curinga (bug).
+// Fatos verificados: 0 handles nulos e 100% já em lowercase → `handle_key` (=
+// lower(handle)) casa exatamente com o `handle` armazenado. Seguro e sem curinga.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Linha da view consolidada: ExtractedLead + metadados de merge por handle. */
+export interface ConsolidatedLead extends ExtractedLead {
+  product_id: string;
+  handle_key: string;
+  is_excluded: boolean;
+  origin_count: number;
+  extraction_ids: string[];
+}
+
+export interface ConsolidatedFilters {
+  extractionId?: string | 'all';
+  segment?: LeadSegment | 'all';
+  withPhone?: 'with' | 'without' | 'all';
+  seedsOnly?: boolean;
+  qualifiedOnly?: boolean;
+  excludedOnly?: boolean;
+}
+
+/**
+ * Lê a VIEW consolidada (super_admin, product-scoped). 1 linha por (product_id,
+ * handle) com campos mesclados de todas as extrações. `security_invoker=on` na view
+ * garante a RLS super_admin_only da tabela base para o caller.
+ */
+export function usePlatformConsolidatedLeads(productId: string | null, filters: ConsolidatedFilters = {}) {
+  return useQuery({
+    queryKey: ['platform-consolidated-leads', productId, filters],
+    enabled: !!productId,
+    queryFn: async () => {
+      let q = supabase
+        .from('platform_crm_consolidated_leads' as never)
+        .select('*')
+        .eq('product_id', productId as string);
+      // Lixeira: por padrão esconde o que foi excluído em QUALQUER origem.
+      if (filters.excludedOnly) q = q.eq('is_excluded', true);
+      else q = q.eq('is_excluded', false);
+      if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment); // preserva acionamento_via_instagram
+      if (filters.extractionId && filters.extractionId !== 'all') q = q.contains('extraction_ids', [filters.extractionId]); // filtro por origem
+      if (filters.withPhone === 'with') q = q.not('telefone', 'is', null);
+      if (filters.withPhone === 'without') q = q.is('telefone', null);
+      if (filters.seedsOnly) q = q.eq('is_seed', true);
+      if (filters.qualifiedOnly) q = q.eq('qualified', true);
+      const { data, error } = await q.order('seguidores', { ascending: false, nullsFirst: false }).limit(1000);
+      if (error) throw error;
+      return (data ?? []) as unknown as ConsolidatedLead[];
+    },
+  });
+}
+
+/** Invalida AS DUAS telas (Buscas + Base consolidada) após uma ação global. */
+function invalidateBothLeadViews(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['platform-consolidated-leads'] });
+  qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
+}
+
+/** Reclassificação GLOBAL por handle (todas as origens). Irmão de useReclassifyLead. */
+export function useReclassifyLeadByHandle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { productId: string; handle: string; segment?: LeadSegment; is_seed?: boolean }) => {
+      const patch: Record<string, unknown> = {};
+      if (args.segment !== undefined) {
+        patch.segment = args.segment;
+        patch.qualified = args.segment === 'salao_cliente';
+      }
+      if (args.is_seed !== undefined) patch.is_seed = args.is_seed;
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update(patch as never)
+        .eq('product_id', args.productId)
+        .eq('handle', args.handle);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => invalidateBothLeadViews(qc),
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao reclassificar'),
+  });
+}
+
+/** WhatsApp manual GLOBAL por handle (promove a qualificado em todas as origens). Irmão de useSetLeadPhone. */
+export function useSetLeadPhoneByHandle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { productId: string; handle: string; telefone: string }) => {
+      let digits = args.telefone.replace(/\D/g, '');
+      if (!digits) throw new Error('Telefone vazio');
+      if (!digits.startsWith('55') && digits.length >= 10 && digits.length <= 11) digits = '55' + digits;
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({
+          telefone: digits,
+          whatsapp_link: `https://wa.me/${digits}`,
+          phone_is_br: true,
+          segment: 'salao_cliente',
+          qualified: true,
+        } as never)
+        .eq('product_id', args.productId)
+        .eq('handle', args.handle);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => {
+      invalidateBothLeadViews(qc);
+      toast.success('WhatsApp salvo', { description: 'Lead promovido a qualificado (espaço-cliente) em todas as origens.' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao salvar telefone'),
+  });
+}
+
+/** Excluir de vez GLOBAL por handle: suppress-list (já global) + sanitiza PII em todas as origens. Irmão de useExcludeLead. */
+export function useExcludeLeadByHandle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { productId: string; handle: string }) => {
+      await supabase
+        .from('platform_crm_lead_excluded' as never)
+        .upsert(
+          { product_id: args.productId, handle: args.handle } as never,
+          { onConflict: 'product_id,handle', ignoreDuplicates: true },
+        );
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({
+          excluded_at: new Date().toISOString(),
+          name: null,
+          primeiro_nome: null,
+          telefone: null,
+          whatsapp_link: null,
+          email: null,
+          bio: null,
+          raw: null,
+        } as never)
+        .eq('product_id', args.productId)
+        .eq('handle', args.handle);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: () => {
+      invalidateBothLeadViews(qc);
+      toast.success('Excluído da base', { description: 'PII apagada e @ arquivado em todas as origens — não volta em buscas futuras.' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao excluir'),
+  });
+}
+
+/** Restaura da Lixeira GLOBAL por handle (des-esconde em todas as origens + tira da suppress-list). Irmão de useRestoreLead. */
+export function useRestoreLeadByHandle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { productId: string; handle: string }) => {
+      const { error } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update({ excluded_at: null } as never)
+        .eq('product_id', args.productId)
+        .eq('handle', args.handle);
+      if (error) throw error;
+      await supabase
+        .from('platform_crm_lead_excluded' as never)
+        .delete()
+        .eq('product_id', args.productId)
+        .eq('handle', args.handle);
+      return args;
+    },
+    onSuccess: () => {
+      invalidateBothLeadViews(qc);
+      toast.success('Restaurado');
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao restaurar'),
   });
 }
