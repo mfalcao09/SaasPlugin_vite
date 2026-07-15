@@ -44,6 +44,16 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+// Comparação de bearer em tempo constante (R11 — evita timing side-channel).
+function timingSafeEq(a: string, b: string): boolean {
+  const ab = new TextEncoder().encode(a);
+  const bb = new TextEncoder().encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
 // Mesmos candidatos do evolution-webhook (mantido enxuto — payloads v2).
 function extractInstance(payload: any): string {
   const candidates = [
@@ -114,7 +124,7 @@ Deno.serve(async (req) => {
 
     // ---- AUTH: somente service role (chamada interna do evolution-webhook) ----
     const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
-    if (!bearer || bearer !== serviceKey) {
+    if (!bearer || !timingSafeEq(bearer, serviceKey)) {
       return json({ error: "Unauthorized" }, 401);
     }
 
@@ -127,19 +137,18 @@ Deno.serve(async (req) => {
       return json({ ok: true, ignored: "missing_instance" });
     }
 
-    // ---- Instância → organização (mesmo padrão do evolution-webhook) ----
-    const { data: instances } = await supabase
-      .from("evolution_instances")
-      .select("id, organization_id, name, instance_id, instance_token, phone_number")
-      .or(`instance_id.eq.${instanceRef},name.eq.${instanceRef}`);
-    let instance = instances?.[0];
-
-    if (!instance) {
-      const { data: byMeta } = await supabase
-        .from("evolution_instances")
-        .select("id, organization_id, name, instance_id, instance_token, phone_number")
-        .or(`metadata->>instance_name.eq.${instanceRef},metadata->>instance_uuid.eq.${instanceRef}`);
-      instance = byMeta?.[0];
+    // ---- Instância → organização (lookup injection-safe: .eq() parametrizado,
+    //      nunca instanceRef interpolado no .or() PostgREST — R11) ----
+    const SEL = "id, organization_id, name, instance_id, instance_token, phone_number";
+    let instance: any = null;
+    for (const q of [
+      supabase.from("evolution_instances").select(SEL).eq("instance_id", instanceRef).limit(1),
+      supabase.from("evolution_instances").select(SEL).eq("name", instanceRef).limit(1),
+      supabase.from("evolution_instances").select(SEL).eq("metadata->>instance_name", instanceRef).limit(1),
+      supabase.from("evolution_instances").select(SEL).eq("metadata->>instance_uuid", instanceRef).limit(1),
+    ]) {
+      const { data } = await q;
+      if (data && data.length) { instance = data[0]; break; }
     }
 
     if (!instance?.organization_id) {
