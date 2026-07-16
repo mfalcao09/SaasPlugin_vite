@@ -48,6 +48,13 @@ import {
   platformCrmCorsHeaders as corsHeaders,
 } from '../_shared/platform-crm-auth.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
+import {
+  isSdrAgent,
+  isCloserAgent,
+  isRetentionAgent,
+  pickSdrPersona,
+  pickPersonaForConversation,
+} from '../_shared/agent-routing.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -255,43 +262,10 @@ const PRICE_RULE_BLOCK =
   `- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).\n` +
   `Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.\n`;
 
-/** É o agente SDR (Duda) — abre/qualifica/recomenda? Base da linha travada. */
-function isSdrAgent(a: Record<string, any> | null): boolean {
-  if (!a) return false;
-  const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
-  return hay.includes('sdr') || hay.includes('qualifica') || hay.includes('duda');
-}
-
-/** É o agente closer (Bia) — recebe o dossiê e FECHA a venda? */
-function isCloserAgent(a: Record<string, any> | null): boolean {
-  if (!a) return false;
-  const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
-  return hay.includes('closer') || hay.includes('bia');
-}
-
-/** Seleciona a persona SDR/qualificação (Duda); senão a primeira ativa (determinístico). */
-function pickSdrPersona(agents: Array<Record<string, any>>): Record<string, any> | null {
-  if (!agents.length) return null;
-  return agents.find(isSdrAgent) ?? agents[0];
-}
-
-/**
- * ROTEAMENTO POR CONVERSA (linha travada Duda→Bia): se a conversa já aponta um
- * agente ativo do produto em current_agent_id, é ELE quem fala (a Bia continua a
- * venda que a Duda passou). Senão, o SDR (Duda) abre. Retorna a persona escolhida
- * — quem persiste current_agent_id é o handler (precisa do id da Duda + supabase).
- */
-function pickPersonaForConversation(
-  agents: Array<Record<string, any>>,
-  currentAgentId: string | null,
-): Record<string, any> | null {
-  if (!agents.length) return null;
-  if (currentAgentId) {
-    const pinned = agents.find((a) => a.id === currentAgentId);
-    if (pinned) return pinned; // agente já em curso na conversa (ativo + WhatsApp)
-  }
-  return pickSdrPersona(agents);
-}
+// ROTEAMENTO de personas (isSdrAgent / isCloserAgent / isRetentionAgent /
+// pickSdrPersona / pickPersonaForConversation) foi EXTRAÍDO para
+// _shared/agent-routing.ts (P2 · PR-B) — funções puras, unit-testadas em
+// agent-routing.test.ts. Importadas no topo. Comportamento idêntico ao inline.
 
 // ─── Memória de qualificação ────────────────────────────────────────────────
 
@@ -663,6 +637,11 @@ function recurrenceScoreForSubVertical(subVertical: string): number {
 /** Regra 7 substituta no modo implantação: a venda ACABOU — papel é CS. */
 const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
 
+// MODO RETENÇÃO (P2 · PR-B) — a Nina cuida de quem JÁ comprou e usa o produto.
+// Espelha o ONBOARDING_RULE_BLOCK (pós-venda, sem venda), mas com foco em cuidado
+// contínuo + salvar a renovação. Entra quando retentionActive (persona = Nina).
+const RETENTION_RULE_BLOCK = `7. MODO RETENÇÃO (pós-venda): esta cliente JÁ COMPROU e já usa o produto — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento, desconto ou condição de fundadora. Seu papel é CUIDAR: resolver a dúvida/dor do dia a dia, destravar o que ela não conseguiu sozinha e lembrá-la do VALOR que ela já tem, pra ela continuar e renovar. Retenção NUNCA é desconto — é resolver e reancorar no valor. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". UM passo por mensagem. Se ela quiser sair, entenda o porquê com calma (1 pergunta) e resolva o que der antes de escalar — nunca prometa reembolso/desconto por conta própria. Cobrança/reembolso, bug que você não resolve, cancelamento formal ou pedido de humano → use ${ESCALATE_TAG}; reclamação grave → use ${HANDOFF_TAG}.`;
+
 /** Playbook das 9 páginas do wizard de implantação: o que a cliente vê ·
  *  dúvidas comuns · o que orientar. Tom Duda amigável, "seu espaço" sempre. */
 const WIZARD_PAGES: Array<{ n: number; titulo: string; guia: string }> = [
@@ -918,6 +897,11 @@ Deno.serve(async (req) => {
     // Papel do agente que vai falar AGORA (condiciona [PASSAR_BIA] e continuidade).
     const personaIsSdr = isSdrAgent(persona);
     const personaIsCloser = isCloserAgent(persona);
+    // MODO RETENÇÃO (P2 · PR-B): a Nina (retention) cuida de quem já comprou —
+    // sem links/preço, regras de cuidado. Tem PRECEDÊNCIA sobre o modo
+    // implantação/venda (a persona pinada é quem manda). Só vira true quando a
+    // persona escolhida é a Nina (por pin do nina-health-scan).
+    const retentionActive = isRetentionAgent(persona);
 
     // PIN INICIAL: se a conversa ainda não tem agente fixado e a Duda vai abrir,
     // grava current_agent_id=duda.id — assim a linha começa ancorada nela.
@@ -992,11 +976,12 @@ Deno.serve(async (req) => {
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
     // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
     // persona já é não-nula aqui (guard acima); fallback 'duda' se o nome vier vazio.
-    // MODO IMPLANTAÇÃO: SEM links de pagamento nem regra de preço — a cliente já
-    // comprou; instruções de "mande o link" corromperiam o papel de CS. Com
-    // onboardingActive=false (todo fluxo de venda), a expressão é IDÊNTICA à atual.
+    // MODO IMPLANTAÇÃO / RETENÇÃO: SEM links de pagamento nem regra de preço — a
+    // cliente já comprou; instruções de "mande o link" corromperiam o papel de CS
+    // (Lia) ou de retenção (Nina). Com onboardingActive=false E retentionActive=
+    // false (todo fluxo de venda), a expressão é IDÊNTICA à atual.
     const knowledgeContext = buildKnowledgeContext(product)
-      + (onboardingActive ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
+      + ((onboardingActive || retentionActive) ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
       + (plans.length ? PRICE_RULE_BLOCK : ''));
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;
@@ -1018,7 +1003,9 @@ Deno.serve(async (req) => {
       : '';
 
     // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
-    const systemPrompt = `Você é ${persona.name}, atendente de VENDAS por WhatsApp do produto ${productName}.
+    //     No modo RETENÇÃO a Nina NÃO é "de vendas" — dizer isso contradiria as
+    //     regras dela; o papel vira Sucesso/Suporte/Retenção.
+    const systemPrompt = `Você é ${persona.name}, ${retentionActive ? 'do time de Sucesso, Suporte e Retenção' : 'atendente de VENDAS'} por WhatsApp do produto ${productName}.
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
@@ -1036,7 +1023,7 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
+${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
 8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 
