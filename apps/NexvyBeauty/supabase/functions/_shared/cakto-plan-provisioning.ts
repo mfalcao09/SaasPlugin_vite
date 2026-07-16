@@ -6,6 +6,7 @@ import { GRAPH_BASE } from './meta-graph.ts';
 import { decryptSecret } from './meta-crypto.ts';
 import { normalizePhoneBR } from './phone.ts';
 import { handoffConversationToOnboarding } from './onboarding-handoff.ts';
+import { sendTelegramAlert } from './platform-alerts.ts';
 
 export interface CaktoOrderLike {
   cakto_id?: string | null;
@@ -18,7 +19,27 @@ export interface CaktoOrderLike {
   cakto_offer_slug?: string | null;
   product_cakto_id?: string | null;
   product_name?: string | null;
+  coupon_code?: string | null;
   raw_payload?: any;
+}
+
+/** Tolerância (em reais) para arredondamento antes de considerar um pedido defasado. */
+export const PRICE_TOLERANCE_REAIS = 0.5;
+
+/**
+ * Decisão PURA (sem I/O): o valor pago está ABAIXO do preço atual do plano além
+ * da tolerância? Rede cinto-e-suspensório contra link de oferta ANTIGA ainda
+ * vendendo por preço defasado. amount nulo/NaN → false (não dá pra afirmar);
+ * preço atual inválido/≤0 → false. amount/currentPrice na MESMA unidade (reais).
+ */
+export function isUnderpaid(
+  paidAmount: number | null | undefined,
+  currentPrice: number | null | undefined,
+  tolerance: number = PRICE_TOLERANCE_REAIS,
+): boolean {
+  if (paidAmount == null || !Number.isFinite(paidAmount)) return false;
+  if (currentPrice == null || !Number.isFinite(currentPrice) || currentPrice <= 0) return false;
+  return paidAmount < currentPrice - tolerance;
 }
 
 /**
@@ -154,6 +175,19 @@ export async function provisionPlatformPlan(
       ok: false,
       skipped: `plan not found (offer=${offerSlug ?? '-'}, product=${order.product_cakto_id ?? '-'})`,
     };
+  }
+
+  // Rede cinto-e-suspensório: pagou ABAIXO do preço atual (sem cupom) sinaliza
+  // link de oferta ANTIGA/defasada ainda vendendo. NUNCA nega quem pagou —
+  // provisiona igual — mas alerta o operador (nunca em silêncio). Cupom explica
+  // legitimamente o desconto → não alerta. sendTelegramAlert é non-fatal.
+  if (!order.coupon_code && isUnderpaid(order.amount, Number(plan.price_monthly))) {
+    await sendTelegramAlert(
+      `⚠️ Cakto: PREÇO DEFASADO / underpay (possível oferta antiga vendendo)\n` +
+        `Comprador: ${email}\nPlano: ${plan.name}\n` +
+        `Pago: R$ ${Number(order.amount).toFixed(2)} < atual: R$ ${Number(plan.price_monthly).toFixed(2)}\n` +
+        `Oferta: ${offerSlug ?? '-'} · provisionando assim mesmo.`,
+    );
   }
 
   // 1) Localiza/cria a organization

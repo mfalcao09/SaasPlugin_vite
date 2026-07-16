@@ -19,6 +19,7 @@ import {
   ensureCaktoToken,
   caktoCreateOffer,
   caktoUpdateOffer,
+  caktoDisableOffer,
   caktoListOffers,
   caktoListProducts,
   buildCaktoCheckoutUrl,
@@ -26,6 +27,7 @@ import {
   type CaktoOfferInput,
   type CaktoProduct,
 } from '../_shared/cakto-client.ts';
+import { pickOffersToDisable } from './pick-offers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +63,9 @@ interface PlanSyncResult {
   status: 'synced' | 'no_product_match' | 'skipped_free' | 'error';
   monthly?: CycleResult;
   yearly?: CycleResult;
+  /** ids das ofertas ANTIGAS/divergentes colapsadas (status→disabled) nesta sync. */
+  disabled_offers?: string[];
+  disabled_count?: number;
   error?: string;
 }
 
@@ -182,7 +187,34 @@ async function syncPlan(
   const { error } = await admin.from('platform_plans').update(update).eq('id', plan.id);
   if (error) throw new Error(`Falha ao gravar plano ${plan.name}: ${error.message}`);
 
-  return { ...head, product_id: productId, product_name: productName, matched_by: matchedBy, status: 'synced', monthly, yearly };
+  // Colapsa as ofertas ANTIGAS/divergentes: toda outra oferta de assinatura ATIVA
+  // do MESMO produto (que não seja a mensal/anual recém-assentadas) tem seu link
+  // aposentado (status=disabled). Sem isso, mudar o preço deixava a oferta velha
+  // ativa vendendo pelo preço defasado para sempre. Best-effort por oferta —
+  // uma falha isolada não derruba a sync.
+  const keepIds = [monthly.slug, yearly.slug];
+  const toDisable = pickOffersToDisable(offers, keepIds);
+  const disabled: string[] = [];
+  for (const offerId of toDisable) {
+    try {
+      const r = await caktoDisableOffer(accessToken, offerId);
+      if (r.status === 'disabled' || r.status === 'already_disabled') disabled.push(offerId);
+    } catch (e: any) {
+      console.warn(`[cakto-sync-offer] falha ao desabilitar oferta ${offerId}:`, String(e?.message ?? e).slice(0, 200));
+    }
+  }
+
+  return {
+    ...head,
+    product_id: productId,
+    product_name: productName,
+    matched_by: matchedBy,
+    status: 'synced',
+    monthly,
+    yearly,
+    disabled_offers: disabled,
+    disabled_count: disabled.length,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -284,6 +316,8 @@ Deno.serve(async (req) => {
       product_id: result.product_id,
       monthly: result.monthly,
       yearly: result.yearly,
+      disabled_offers: result.disabled_offers ?? [],
+      disabled_count: result.disabled_count ?? 0,
     });
   } catch (e: any) {
     return json({ error: String(e?.message ?? e) }, 500);
