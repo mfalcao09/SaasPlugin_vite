@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano-Mestre — ADS NexvyBeauty · 2026-07-16</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--bd:#30363d;--tx:#e6edf3;--mut:#9da7b3;--acc:#39d98a;--acc2:#4aa3ff;--warn:#e3b341;--red:#f85149}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:2.2rem 1rem}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:1.8rem;line-height:1.25;margin:0 0 .3rem;letter-spacing:-.01em}
+  h2{font-size:1.2rem;margin:2.2rem 0 .8rem;padding-bottom:.4rem;border-bottom:1px solid var(--bd);color:var(--acc2)}
+  h3{font-size:1.02rem;margin:1.6rem 0 .5rem;color:var(--tx)}
+  blockquote{color:var(--mut);font-size:.92rem;border-left:3px solid var(--bd);margin:1rem 0;padding:.3rem 0 .3rem 1rem;background:linear-gradient(180deg,#12171f,transparent)}
+  code{background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:.08em .4em;font:.85em ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d7e6}
+  pre{background:#0a0e14;border:1px solid var(--bd);border-radius:10px;padding:1rem;overflow-x:auto}
+  pre code{background:none;border:0;padding:0;color:#c9d7e6;font-size:.82rem;line-height:1.45}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.9rem;overflow-x:auto;display:block}
+  th,td{border:1px solid var(--bd);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600}
+  tr:nth-child(even) td{background:#12171f}
+  a{color:var(--acc2);text-decoration:none}a:hover{text-decoration:underline}
+  ul,ol{padding-left:1.2rem}li{margin:.3rem 0}
+  hr{border:0;border-top:1px solid var(--bd);margin:2rem 0}
+  strong{color:#f0f6fc}
+  .foot{color:var(--mut);font-size:.82rem;margin-top:2.5rem;border-top:1px solid var(--bd);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>PLANO-MESTRE — ADS NexvyBeauty · 2026-07-16</h1>
+<blockquote>
+<p>Consolidação única das <strong>3 camadas</strong> do subsistema de ADS, seu estado real e o roadmap. Companheiro operacional: <code>CHECKLIST-ATIVACAO-ADS-2026-07-16.md</code> (code-pronto vs. OPS). Estratégia inbound: <code>ADS-INBOUND-INSTAGRAM-ESTRATEGIA-2026-07-15.md</code>. Build inbound: <code>ADS-INBOUND-BUILD-2026-07-16.md</code>.
+<strong>Base:</strong> <code>origin/main @ 573819c</code>. <strong>Escopo desta sessão:</strong> 1+2+3 build-only, gated, fast-follow. <strong>Controladora:</strong> GO-LIVE session.</p>
+</blockquote>
+<hr />
+<h2>Mapa: "ADS" são 3 camadas (compartilham só o prefixo <code>ads_</code>/Meta)</h2>
+<table>
+<thead>
+<tr>
+<th>Camada</th>
+<th>Função</th>
+<th>Tabelas</th>
+<th>Edges</th>
+<th>Front</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A1 — Gestão: conexão+sync</strong></td>
+<td>conectar conta Meta (OAuth Login-for-Business) → sincronizar campanhas/métricas</td>
+<td><code>ads_platform_connections</code>, <code>ads_accounts</code>, <code>ads_campaigns</code>, <code>ads_adsets</code>, <code>ads_ads</code>, <code>ads_metrics</code></td>
+<td><code>ads-oauth-start/callback</code>, <code>ads-sync</code></td>
+<td>card de conexão ✅ · <strong>console de campanhas 🔨</strong></td>
+</tr>
+<tr>
+<td><strong>A2 — Gestão: otimização (agente)</strong></td>
+<td>agente lê métricas → recomenda → HITL aprova → aplica na Graph</td>
+<td><code>ads_recommendations</code>, <code>ads_mutations_log</code></td>
+<td><strong><code>ads-optimize</code> 🔨</strong>, <strong><code>ads-apply-recommendation</code> 🔨</strong></td>
+<td><strong>console de recomendações 🔨</strong></td>
+</tr>
+<tr>
+<td><strong>B — Atribuição inbound (CTWA+CAPI)</strong></td>
+<td>clique-p/-WhatsApp → atribui ao anúncio → Duda espelha → devolve conversões</td>
+<td><code>ads_attribution</code>, <code>ads_capi_events</code></td>
+<td><code>platform-meta-whatsapp-webhook</code>(G1), <code>platform-sales-brain</code>(G3), <code>platform-capi-send</code>(G4) ✅</td>
+<td><strong>console de atribuição 🔨</strong></td>
+</tr>
+</tbody>
+</table>
+<p><em>(Adjacente, fora de escopo: camada C prospecção/extração — funcional; <code>facebook-leads-webhook</code> legado tenant-layer.)</em></p>
+<hr />
+<h2>Estado real (verificado no código)</h2>
+<ul>
+<li><strong>A1:</strong> conexão + sync <strong>funcionam</strong>, mas os dados sincronizados <strong>morriam no banco</strong> (nenhuma tela lia). Sync só manual. Depende de App Review Meta p/ dados reais.</li>
+<li><strong>A2:</strong> era <strong>só schema órfão</strong> — zero produtor/consumidor. Esta sessão constrói o motor + UI.</li>
+<li><strong>B:</strong> pipeline G1+G3+G4 <strong>construído/deployado/testado</strong>, porém <strong>gated OFF, sem número, sem UI</strong>. Funil CAPI de 6 eventos só tinha produtor p/ 2 (<code>LeadSubmitted</code>, <code>QualifiedLead</code>).</li>
+</ul>
+<hr />
+<h2>O que esta sessão entrega (1+2+3, build-only, gated)</h2>
+<ol>
+<li><strong>A2 backend</strong> — <code>_shared/ads-optimize-rules.ts</code> (regras puras testáveis) + edge <code>ads-optimize</code> (gera recomendações) + edge <code>ads-apply-recommendation</code> (aplica aprovada → Graph → <code>ads_mutations_log</code>, <strong>gated <code>ADS_MUTATIONS_ENABLED=false</code> → dry-run</strong>).</li>
+<li><strong>Front "Anúncios"</strong> (super-admin, 3 abas): <strong>Atribuição</strong> (B, prioridade) · <strong>Campanhas</strong> (A1) · <strong>Recomendações</strong> (A2-UI). Empty states pré-dados. Padrões da casa (<code>as never</code>, sem regen de types).</li>
+<li><strong>Wire #4 <code>demo_completed</code></strong> (funil 2/6 → 3/6) — coordenado com a controladora (toca <code>demo-*</code>). #5/#6 (cakto) só documentados.</li>
+</ol>
+<p><strong>Fora de escopo (deliberado):</strong> ponte cakto→journey (#5/#6), regen de <code>types.ts</code>, qualquer OPS/Meta (número, App Review, secrets, cron, audiências) — ver CHECKLIST.</p>
+<hr />
+<h2>Roadmap (dependências reais)</h2>
+<pre><code>[OPS Marcelo]                          [Código — esta sessão]
+número Salvy+WABA+Página ──┐
+                           ├─► B capta leads ──► console Atribuição enche
+secrets CAPI + cron ───────┘                        │
+                                                     ▼
+App Review Meta + secrets ADS ─► ads-sync real ─► console Campanhas enche
+                                                     │
+                                                     ▼
+                              ads-optimize gera recs ─► console Recomendações
+                                                     │  (revisão HITL)
+                              flip ADS_MUTATIONS_ENABLED (HITL duro) ─► agente aplica sozinho
+</code></pre>
+<p><strong>Ordem de valor:</strong> B (receita, mais perto) &gt; A1 (visibilidade de gasto) &gt; A2 (automação, mais especulativa e dependente de dados reais).</p>
+<hr />
+<h2>Gates HITL (100% sob a controladora + Marcelo)</h2>
+<p>deploy prod · migration no live · merge · <strong>chamada real à Graph/Meta</strong> · flip de flag (<code>CAPI_ENABLED</code>, <code>ADS_MUTATIONS_ENABLED</code>) · tocar <code>demo-*</code>.</p>
+<h2>Entrega</h2>
+<p>PRs stacked (docs · A2-back · Front) padrão #78-81. Nada mergeado/deployado sem comando da controladora.</p>
+<div class="foot">Documento pareado .md + .html - gerado 2026-07-16 - NexvyBeauty ADS - fonte: arquivo .md irmao.</div>
+</div>
+</body>
+</html>

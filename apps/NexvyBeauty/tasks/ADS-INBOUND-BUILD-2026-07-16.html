@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADS INBOUND — Build Concluído (Caminho B) · 2026-07-16</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--bd:#30363d;--tx:#e6edf3;--mut:#9da7b3;--acc:#39d98a;--acc2:#4aa3ff;--warn:#e3b341;--red:#f85149}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:2.2rem 1rem}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:1.8rem;line-height:1.25;margin:0 0 .3rem;letter-spacing:-.01em}
+  h2{font-size:1.2rem;margin:2.2rem 0 .8rem;padding-bottom:.4rem;border-bottom:1px solid var(--bd);color:var(--acc2)}
+  .sub{color:var(--mut);font-size:.92rem;margin-bottom:1.6rem}
+  .callout{background:linear-gradient(180deg,#1c2330,#161b22);border:1px solid var(--bd);border-left:3px solid var(--warn);border-radius:10px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .callout.ok{border-left-color:var(--acc)}
+  code{background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:.08em .4em;font:.85em ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d7e6}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.9rem;overflow-x:auto;display:block}
+  th,td{border:1px solid var(--bd);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600}
+  tr:nth-child(even) td{background:#12171f}
+  a{color:var(--acc2);text-decoration:none}a:hover{text-decoration:underline}
+  ul{padding-left:1.2rem}li{margin:.3rem 0}
+  .tag{display:inline-block;font-size:.72rem;padding:.12em .55em;border-radius:20px;border:1px solid var(--bd);color:var(--mut);margin-right:.3rem}
+  .green{color:var(--acc);font-weight:600}.warnt{color:var(--warn)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:1rem 0}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:.9rem 1rem}
+  .card b{color:var(--acc2)}
+  .chk{list-style:none;padding-left:0}.chk li{padding-left:1.5rem;position:relative}.chk li::before{content:"\2610";position:absolute;left:0;color:var(--warn)}
+  .foot{color:var(--mut);font-size:.82rem;margin-top:2.5rem;border-top:1px solid var(--bd);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ADS INBOUND — Build Concluído <span class="tag">Caminho B</span></h1>
+  <div class="sub">2026-07-16 · sessão autônoma · base <code>origin/main @ c02d80c</code> (com #68) · worktree isolado</div>
+
+  <div class="callout">
+    <b class="warnt">Resposta desconfortável primeiro.</b> O código do Caminho B está <b>100% pronto, deployado e provado por smoke</b> — mas ele não gera 1 lead sozinho. O que falta é <b>100% ops seu</b> (nenhuma linha de código): provisionar o número, ligar a Página do anúncio, subir criativo e ligar os secrets do CAPI. O build fechou o <i>loop de sinal</i> (G1+G3+G4): a máquina passa a otimizar por dona-que-compra em vez de curioso-que-manda-oi — assim que você plugar o número.
+  </div>
+
+  <h2>O que foi construído — 4 PRs stacked</h2>
+  <table>
+    <tr><th>PR</th><th>Fase</th><th>Gap</th><th>Conteúdo</th></tr>
+    <tr><td><a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/78">#78</a></td><td>1 — Schema</td><td>—</td><td>commit do <code>ads_schema.sql</code> + <code>ads_attribution</code> + <code>ads_capi_events</code> + enum <code>demo_completed</code></td></tr>
+    <tr><td><a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/79">#79</a></td><td>2 — G1</td><td>Captura CTWA</td><td><code>ctwa-attribution.ts</code> (parse puro) + captura no webhook (lead + atribuição + jornada)</td></tr>
+    <tr><td><a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/80">#80</a></td><td>3 — G3</td><td>Duda inbound</td><td>MODO INBOUND no brain (espelha o anúncio, <b>sem 2º SDR</b>)</td></tr>
+    <tr><td><a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/81">#81</a></td><td>4 — G4</td><td>CAPI + funil</td><td><code>capi-payload.ts</code> + edge <code>platform-capi-send</code> (desacoplado, gated OFF) + <code>ads_capi_pending()</code></td></tr>
+  </table>
+  <div class="card"><b>Fluxo E2E:</b> Anúncio CTWA → webhook (G1: grava ctwa_clid/ad_id) → Duda MODO INBOUND (G3: abre espelhando) → qualifica → jornada (funil 6 eventos) → platform-capi-send (G4: devolve conversões ao Meta).</div>
+
+  <h2>Aplicado no LIVE <span class="tag">fzhlbwhdejumkyqosuvq</span></h2>
+  <div class="grid">
+    <div class="card"><b>Migrations</b><br><code>ads_attribution</code> (18 cols) + <code>ads_capi_events</code> (21 cols) + enum <code>demo_completed</code> + CHECK corrigido + <code>ads_capi_pending()</code>. RLS super_admin. Verificadas por introspection.</div>
+    <div class="card"><b>Edges deployados</b><br>webhook (G1, <b>no-op p/ orgânico</b>) · brain (G3, <b>prompt idêntico</b> p/ não-CTWA) · capi-send (G4, <b class="warnt">GATED OFF</b> = dry_run).</div>
+  </div>
+
+  <h2>Prova — Definição de Pronto</h2>
+  <ul>
+    <li><span class="green">&#10003;</span> <code>deno check --node-modules-dir=none</code>: <b>EXIT 0</b> (5 arquivos)</li>
+    <li><span class="green">&#10003;</span> <code>deno test</code>: <b>16/16</b> (5 CTWA + 5 CAPI + 6 roteamento #68 sem regressão)</li>
+    <li><span class="green">&#10003;</span> <b>Smoke E2E por dados semeados</b> (schema + funções + triggers reais, cleanup → prod pristino):</li>
+  </ul>
+  <table>
+    <tr><th>Check</th><th>Resultado</th></tr>
+    <tr><td>lead.source</td><td class="green">ctwa</td></tr>
+    <tr><td>lead.utm_campaign</td><td class="green">120210000000012345 (ad_id)</td></tr>
+    <tr><td>lead.metadata.referral.ctwa_clid</td><td class="green">SMOKECLID_777 (o que a Duda lê)</td></tr>
+    <tr><td>ads_attribution</td><td class="green">1 linha</td></tr>
+    <tr><td>jornada meta_ctwa_received</td><td class="green">1 (evento #2)</td></tr>
+    <tr><td>jornada temperature_changed&rarr;warm</td><td class="green">1 (evento #3, trigger)</td></tr>
+    <tr><td>ads_capi_pending()</td><td class="green">2 eventos c/ ctwa_clid &rarr; LeadSubmitted + QualifiedLead</td></tr>
+  </table>
+
+  <h2>Correções do "verificar &gt; confiar no doc"</h2>
+  <table>
+    <tr><th>#</th><th>Achado</th></tr>
+    <tr><td>1</td><td><b>Gate do #68:</b> começou OPEN (não mergeado). Parei, coordenei, construí só pós-merge — evitou reintroduzir a roleta.</td></tr>
+    <tr><td>2</td><td><b><code>source_ref</code> não existia</b> em <code>platform_crm_leads</code> (blueprint dizia que sim). Atribuição foi p/ <code>metadata.referral</code> + <code>ads_attribution</code>.</td></tr>
+    <tr><td>3</td><td><b>event_name da CAPI</b>: <code>Lead/Qualified/Schedule</code> estavam errados → doc real: <code>LeadSubmitted/QualifiedLead/ViewContent/InitiateCheckout/Purchase</code> + WABA obrigatória.</td></tr>
+    <tr><td>4</td><td><b>Esteira/Cakto fora da base</b> → CAPI <b>desacoplado</b> (consome jornada); eventos #4/#5/#6 acendem quando seus produtores existirem, sem tocar cakto/esteira.</td></tr>
+  </table>
+
+  <h2>⏳ Pendências de OPS do Marcelo <span class="tag">nenhum código</span></h2>
+  <ul class="chk">
+    <li><b>Número novo limpo</b> (Salvy) → WABA <code>1023556786945354</code> + Cloud API (PIN) → wizard <code>platform-meta-whatsapp-connect</code>.</li>
+    <li><b>Decidir a Página do Facebook</b> ligada ao número (gotcha CTWA: o clique abre o número da Página).</li>
+    <li><b>Ligar o CAPI:</b> <code>CAPI_ENABLED=true</code> + <code>META_CAPI_TOKEN</code> + <code>META_CAPI_DATASET_ID</code> + <code>META_CAPI_WABA_ID</code>.</li>
+    <li><b>Cron do <code>platform-capi-send</code></b> (dispatcher) — quando ligar o CAPI.</li>
+    <li><b>Audiências</b> no Ads Manager: <code>CA_ExclusaoLeads</code> (1.919) + <code>CA_Semente_ICP</code> (1.497) + campanha CTWA (C1/C2/C3).</li>
+    <li><b>App Review Meta</b> (<code>ads_read</code>/<code>ads_management</code>) — Caminho C, paralelo (semanas; não bloqueia captar).</li>
+  </ul>
+
+  <div class="foot">Documento pareado <code>.md</code> + <code>.html</code>. Build por sessão autônoma — Fact-Forcing Gate + verificação de estado real no banco vivo antes de cada escrita. Guardrails respeitados: worktree isolado; sem tocar cakto, esteira demo-*, cold-outreach (#75).</div>
+</div>
+</body>
+</html>

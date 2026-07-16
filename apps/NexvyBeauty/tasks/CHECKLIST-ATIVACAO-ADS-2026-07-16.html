@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checklist de Ativação — ADS NexvyBeauty · 2026-07-16</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--bd:#30363d;--tx:#e6edf3;--mut:#9da7b3;--acc:#39d98a;--acc2:#4aa3ff;--warn:#e3b341;--red:#f85149}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:2.2rem 1rem}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:1.8rem;line-height:1.25;margin:0 0 .3rem;letter-spacing:-.01em}
+  h2{font-size:1.2rem;margin:2.2rem 0 .8rem;padding-bottom:.4rem;border-bottom:1px solid var(--bd);color:var(--acc2)}
+  h3{font-size:1.02rem;margin:1.6rem 0 .5rem;color:var(--tx)}
+  blockquote{color:var(--mut);font-size:.92rem;border-left:3px solid var(--bd);margin:1rem 0;padding:.3rem 0 .3rem 1rem;background:linear-gradient(180deg,#12171f,transparent)}
+  code{background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:.08em .4em;font:.85em ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d7e6}
+  pre{background:#0a0e14;border:1px solid var(--bd);border-radius:10px;padding:1rem;overflow-x:auto}
+  pre code{background:none;border:0;padding:0;color:#c9d7e6;font-size:.82rem;line-height:1.45}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.9rem;overflow-x:auto;display:block}
+  th,td{border:1px solid var(--bd);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:600}
+  tr:nth-child(even) td{background:#12171f}
+  a{color:var(--acc2);text-decoration:none}a:hover{text-decoration:underline}
+  ul,ol{padding-left:1.2rem}li{margin:.3rem 0}
+  hr{border:0;border-top:1px solid var(--bd);margin:2rem 0}
+  strong{color:#f0f6fc}
+  .foot{color:var(--mut);font-size:.82rem;margin-top:2.5rem;border-top:1px solid var(--bd);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>CHECKLIST DE ATIVAÇÃO — ADS NexvyBeauty · 2026-07-16</h1>
+<blockquote>
+<p><strong>Objetivo:</strong> separar, sem ambiguidade, <strong>o que é código (pronto/em build nesta sessão)</strong> do <strong>que é OPS do Marcelo (fila HITL)</strong>. Nenhum item de código destrava valor sozinho — o gargalo de valor é OPS/Meta.
+<strong>Base:</strong> <code>origin/main @ 573819c</code>. <strong>Escopo:</strong> fast-follow (não gate de go-live). <strong>Controladora:</strong> GO-LIVE session.</p>
+</blockquote>
+<hr />
+<h2>Resposta desconfortável primeiro</h2>
+<p>O "ADS" tem muito código pronto e <strong>quase nada no ar</strong>. As duas alavancas de valor (atribuição inbound B, e otimização A) estão <strong>travadas em setup Meta/OPS que só o Marcelo faz</strong> — não em código. Esta sessão fecha as lacunas de código restantes (agente A2 + consoles de leitura), mas <strong>elas ficam inertes/vazias até o OPS abaixo ser executado</strong>.</p>
+<hr />
+<h2>Legenda</h2>
+<p>✅ pronto (mergeado) · 🔨 em build nesta sessão (gated OFF) · 🔒 <strong>OPS do Marcelo (HITL)</strong> · 🤝 coordenar com controladora</p>
+<hr />
+<h2>Camada B — Atribuição inbound (CTWA + CAPI) · PRIORIDADE</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Tipo</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Captura CTWA no webhook (G1)</td>
+<td>✅</td>
+<td>mergeado, deployado, no-op p/ orgânico</td>
+</tr>
+<tr>
+<td>Duda MODO INBOUND (G3)</td>
+<td>✅</td>
+<td>mergeado, prompt byte-idêntico p/ não-CTWA</td>
+</tr>
+<tr>
+<td>CAPI dispatcher <code>platform-capi-send</code> (G4)</td>
+<td>✅</td>
+<td>mergeado, <strong>gated OFF</strong> (dry-run)</td>
+</tr>
+<tr>
+<td>Console de Atribuição (aba B: <code>ads_attribution</code>+<code>ads_capi_events</code>)</td>
+<td>🔨</td>
+<td>build desta sessão — dá visibilidade ao funil</td>
+</tr>
+<tr>
+<td>Wire produtor #4 <code>demo_completed</code> (esteira)</td>
+<td>🤝</td>
+<td>esteira #70-74 mergeada → 1 linha <code>pcrm_log_journey_event('demo_completed',…)</code>. <strong>Pingar controladora antes</strong> (toca <code>demo-*</code>). Funil 2/6→3/6</td>
+</tr>
+<tr>
+<td>Produtores #5 <code>checkout_created</code> / #6 <code>sale_completed</code>/<code>pix_paid</code></td>
+<td>🔒</td>
+<td>ponte cakto→journey (toca cakto = tenant-layer). <strong>Só documentado, NÃO construído.</strong></td>
+</tr>
+<tr>
+<td><strong>Número novo limpo (Salvy)</strong> → registrar na WABA <code>1023556786945354</code> + Cloud API (PIN) → wizard <code>platform-meta-whatsapp-connect</code></td>
+<td>🔒</td>
+<td>sem número, o CTWA não abre conversa; herda todo o funil</td>
+</tr>
+<tr>
+<td><strong>Decidir a Página do Facebook</strong> ligada ao número (gotcha CTWA: o clique abre o nº da Página do anúncio)</td>
+<td>🔒</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Ligar o CAPI:</strong> secrets <code>CAPI_ENABLED=true</code> + <code>META_CAPI_TOKEN</code> + <code>META_CAPI_DATASET_ID</code> + <code>META_CAPI_WABA_ID</code> (token com <code>whatsapp_business_management</code> + <code>whatsapp_business_manage_events</code>)</td>
+<td>🔒</td>
+<td>enquanto OFF, <code>platform-capi-send</code> só grava dry_run</td>
+</tr>
+<tr>
+<td><strong>Cron do <code>platform-capi-send</code></strong> (dispatcher periódico, via service-role/x-brain-secret)</td>
+<td>🔒</td>
+<td>só após ligar o CAPI</td>
+</tr>
+<tr>
+<td><strong>Audiências</strong> no Ads Manager: <code>CA_ExclusaoLeads</code> (1.919 tel.) + <code>CA_Semente_ICP</code> (1.497) + campanha CTWA (criativos C1/C2/C3)</td>
+<td>🔒</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Funil CAPI hoje:</strong> produtores existem só p/ <code>LeadSubmitted</code>(#2) e <code>QualifiedLead</code>(#3). Com o wire #4 → 3/6. #5/#6 dependem da ponte cakto (OPS/decisão).</p>
+<hr />
+<h2>Camada A1 — Gestão: conexão + sync + console de campanhas</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Tipo</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OAuth Login-for-Business (<code>ads-oauth-start/callback</code>) + <code>ads-sync</code></td>
+<td>✅</td>
+<td>mergeado, funcional</td>
+</tr>
+<tr>
+<td>Card de conexão Meta Ads (super-admin)</td>
+<td>✅</td>
+<td>mergeado</td>
+</tr>
+<tr>
+<td>Console de Campanhas (aba A1: hierarquia + métricas spend/ctr/cpa/roas)</td>
+<td>🔨</td>
+<td>build desta sessão — hoje os dados do <code>ads-sync</code> entram no banco e <strong>nada exibe</strong></td>
+</tr>
+<tr>
+<td><strong>App Review Meta</strong> (<code>ads_read</code>/<code>ads_management</code>)</td>
+<td>🔒</td>
+<td>sem ele o <code>ads-sync</code> não lê dados reais em prod (leva semanas; paralelo, não bloqueia captar leads)</td>
+</tr>
+<tr>
+<td>Secrets <code>META_ADS_APP_ID/SECRET/LOGIN_CONFIG_ID</code> + <code>STATE_SIGNING_SECRET</code> + <code>ADS_OAUTH_REDIRECT_URI</code>/<code>RETURN_URL</code></td>
+<td>🔒</td>
+<td>necessários p/ o OAuth conectar de fato</td>
+</tr>
+<tr>
+<td>Cron do <code>ads-sync</code> (hoje só botão "Sincronizar agora")</td>
+<td>🔒</td>
+<td>opcional; flip é HITL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Camada A2 — Gestão: agente que otimiza (era só schema)</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Tipo</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ads_recommendations</code> + <code>ads_mutations_log</code> (schema)</td>
+<td>✅</td>
+<td>mergeado (estava órfão)</td>
+</tr>
+<tr>
+<td>Regras puras <code>ads-optimize-rules.ts</code> + edge <code>ads-optimize</code> (gera recomendações pending)</td>
+<td>🔨</td>
+<td>build desta sessão</td>
+</tr>
+<tr>
+<td>Edge <code>ads-apply-recommendation</code> (aplica rec aprovada → Graph → mutations_log)</td>
+<td>🔨</td>
+<td>build desta sessão, <strong>gated <code>ADS_MUTATIONS_ENABLED=false</code> → dry-run</strong></td>
+</tr>
+<tr>
+<td>Console de Recomendações (aba A2-UI: aprovar/rejeitar/aplicar)</td>
+<td>🔨</td>
+<td>build desta sessão</td>
+</tr>
+<tr>
+<td><strong>Flip <code>ADS_MUTATIONS_ENABLED=true</code></strong> (deixa o agente MUTAR a conta Meta real)</td>
+<td>🔒</td>
+<td><strong>HITL duro</strong> — só com conta real + App Review + tua palavra</td>
+</tr>
+<tr>
+<td>Cron do <code>ads-optimize</code> (rodar o agente periodicamente)</td>
+<td>🔒</td>
+<td>flip é HITL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>O que fica sob comando da controladora (não faço sozinho)</h2>
+<p>deploy prod · migration no live · merge dos PRs · <strong>qualquer chamada real à Graph/Meta</strong> · flip de qualquer flag (<code>CAPI_ENABLED</code>, <code>ADS_MUTATIONS_ENABLED</code>) · tocar <code>demo-*</code>.</p>
+<h2>Ordem de ativação sugerida (quando o OPS acontecer)</h2>
+<ol>
+<li>Número Salvy + WABA + Página + wizard connect → <strong>B começa a captar</strong> (mesmo com CAPI OFF).</li>
+<li>Secrets CAPI + cron → <strong>funil de sinal fecha</strong> (otimiza por compra).</li>
+<li>App Review + secrets ADS → <strong>A1 console enche de dados reais</strong>.</li>
+<li>Rodar <code>ads-optimize</code> (gera recomendações) → revisar no console → (muito depois) flip <code>ADS_MUTATIONS_ENABLED</code> p/ o agente aplicar sozinho.</li>
+</ol>
+<div class="foot">Documento pareado .md + .html - gerado 2026-07-16 - NexvyBeauty ADS - fonte: arquivo .md irmao.</div>
+</div>
+</body>
+</html>
