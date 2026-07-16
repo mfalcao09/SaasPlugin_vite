@@ -92,6 +92,10 @@ interface ProvisionResult {
   /** true só quando a organization foi CRIADA nesta invocação — gate de
    *  idempotência do welcome (retry/renovação/reprocesso não reenviam). */
   org_created?: boolean;
+  /** true quando uma org DEMO existente foi PROMOVIDA a paga nesta invocação
+   *  (esteira: a org demo vira a paga in-place). Conta como "primeira ativação"
+   *  para seeds/welcome/handoff (a org demo nunca foi semeada — D5). */
+  promoted?: boolean;
   skipped?: string;
   errors?: string[];
 }
@@ -155,12 +159,48 @@ export async function provisionPlatformPlan(
   // 1) Localiza/cria a organization
   let orgId: string | null = null;
   let orgCreated = false;
+  let promoted = false;
   const orgName = order.customer_name || email;
-  const { data: existingOrg } = await admin
+  let { data: existingOrg } = await admin
     .from('organizations')
     .select('id, slug')
     .eq('cakto_customer_email', email)
     .maybeSingle();
+
+  // Camada 2 (esteira demo): se a Camada 1 não achou (a lead pagou com email
+  // diferente do da demo), casa a org DEMO por email OU telefone e promove
+  // in-place. Consultas separadas (sem interpolar no .or()) = injection-safe.
+  if (!existingOrg) {
+    const { data: byEmail } = await admin
+      .from('organizations')
+      .select('id, slug')
+      .eq('plan_status', 'demo')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    let demoOrg = byEmail?.[0] ?? null;
+    if (!demoOrg) {
+      const phone = normalizePhoneBR(order.customer_phone ?? '');
+      if (phone) {
+        const { data: byPhone } = await admin
+          .from('organizations')
+          .select('id, slug')
+          .eq('plan_status', 'demo')
+          .eq('phone', phone)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        demoOrg = byPhone?.[0] ?? null;
+      }
+    }
+    if (demoOrg) {
+      existingOrg = demoOrg;
+      promoted = true;
+      await admin
+        .from('organizations')
+        .update({ cakto_customer_email: email })
+        .eq('id', demoOrg.id);
+    }
+  }
 
   if (existingOrg) {
     orgId = existingOrg.id;
@@ -211,6 +251,9 @@ export async function provisionPlatformPlan(
       // Módulos do NexvyBeauty são FIXOS — o provisioning é a fonte de verdade.
       // Espelha PRODUCT_MODULES de src/config/modules.ts (não importável aqui: Deno).
       enabled_modules: ['erp_salao', 'crm_vendas', 'atendimento'],
+      // Esteira: cancela o TTL da demo (promoção in-place). Cinto-e-suspensório
+      // com o guard plan_status='demo' do demo-reaper (que já não pegaria 'active').
+      demo_expires_at: null,
     })
     .eq('id', orgId);
   if (planErr) errors.push(`plan update: ${planErr.message}`);
@@ -242,7 +285,7 @@ export async function provisionPlatformPlan(
     }
   }
 
-  return { ok: errors.length === 0, organization_id: orgId ?? undefined, plan_id: plan.id, org_created: orgCreated, errors };
+  return { ok: errors.length === 0, organization_id: orgId ?? undefined, plan_id: plan.id, org_created: orgCreated, promoted, errors };
 }
 
 function randomPassword(): string {
@@ -441,9 +484,12 @@ const SALON_SERVICE_TEMPLATE = [
 /**
  * B6 — as 4 regras que `salon-automation-run` de fato consome (CHECK do schema:
  * aniversario | pacote_vencendo | agendamento_24h | retorno_inativo). Nascem
- * enabled=false (decisão Marcelo 2026-07-06): a dona revê o template e conecta o
- * WhatsApp antes de ligar cada uma — conta recém-provisionada não sai mandando
- * mensagem sozinha. antecedencia_dias segue a semântica de cada tipo.
+ * enabled=TRUE (decisão Marcelo P9/CART 2026-07-15 — substitui a de 2026-07-06):
+ * o opt-in puro produzia 0% de adoção comprovado (0 regras ligadas em produção),
+ * então as 4 receitas nascem LIGADAS por default, com prévia + kill-switch visível
+ * na tela de Automações (a dona nunca precisa LIGAR; pode DESLIGAR). Base LGPD:
+ * legítimo interesse (Art.7 VII) sobre relacionamento comercial pré-existente.
+ * antecedencia_dias segue a semântica de cada tipo.
  */
 const SALON_AUTOMATION_SEED: Array<{ tipo: string; antecedencia_dias: number }> = [
   { tipo: 'aniversario', antecedencia_dias: 0 },
@@ -493,7 +539,7 @@ async function seedSalonDataForNewOrg(
     const rows = SALON_AUTOMATION_SEED.map((r) => ({
       organization_id: organizationId,
       tipo: r.tipo,
-      enabled: false,
+      enabled: true, // P9/CART: ligadas por default (kill-switch na UI de Automações)
       antecedencia_dias: r.antecedencia_dias,
     }));
     const { error } = await admin
@@ -548,10 +594,11 @@ export async function provisionFromOrder(
     planName: plan?.name ?? null,
   });
 
-  // SÓ na primeira ativação (org recém-criada). Retry de webhook, renovação mensal
-  // e reprocesso manual reexecutam provisionFromOrder e NÃO podem duplicar nem o
-  // welcome nem os seeds (idempotência via gate org_created).
-  if (planRes.org_created) {
+  // SÓ na primeira ativação (org recém-criada OU org demo promovida in-place).
+  // Retry de webhook, renovação mensal e reprocesso manual reexecutam
+  // provisionFromOrder e NÃO podem duplicar welcome/seeds (idempotência via gate
+  // org_created). A org demo NUNCA foi semeada (D5) → promoted também dispara aqui.
+  if (planRes.org_created || planRes.promoted) {
     // B5/B6/B7 — org nasce operacional: catálogo de serviços, automações
     // (desligadas) e agenda do Radar. Best-effort, nunca derruba o provisionamento.
     await seedSalonDataForNewOrg(admin, planRes.organization_id);

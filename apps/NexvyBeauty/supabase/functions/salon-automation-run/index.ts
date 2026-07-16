@@ -51,7 +51,18 @@ function defaultMsg(tipo: Tipo, nome: string | null | undefined): string {
 const compose = (tpl: string | null, tipo: Tipo, nome: string | null | undefined) =>
   tpl && tpl.trim() ? tpl.replace(/\{nome\}/g, firstName(nome)) : defaultMsg(tipo, nome)
 
-interface Evento { tipo: Tipo; cliente_id: string | null; cliente_nome: string; telefone: string | null; mensagem: string; ref: string }
+// ── CARONA (P9/CART): quando uma receita JÁ vai sair, pega carona e anexa UMA
+// pergunta gentil de coleta (Agente de Carteira). Nunca manda conversa fria só
+// pra pedir dado. Prioridade: nascimento > endereço > email (cpf não persegue).
+type CampoCarona = 'data_nascimento' | 'endereco' | 'email'
+const CARONA_PRIORIDADE: CampoCarona[] = ['data_nascimento', 'endereco', 'email']
+const CARONA_PERGUNTA: Record<CampoCarona, string> = {
+  data_nascimento: ' Ah, e me conta: qual a sua data de nascimento? Quero te preparar um mimo especial 🎂',
+  endereco: ' Ah, e qual o seu CEP? Assim já deixo tudo certinho pra você 📍',
+  email: ' E qual o seu melhor e-mail? Pra te mandar novidades e recibinhos 💌',
+}
+
+interface Evento { tipo: Tipo; cliente_id: string | null; cliente_nome: string; telefone: string | null; mensagem: string; ref: string; carona?: { reqId: string; campo: CampoCarona } }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -175,6 +186,35 @@ Deno.serve(async (req) => {
     }
     const pendentes = candidatos.filter((c) => !jaEnviados.has(c.ref))
 
+    // ── CARONA: anexa 1 pergunta de coleta aos eventos que já vão sair, pro
+    // cliente que o Auditor marcou como 'pending'. GUARDADO em try/catch: se a
+    // tabela salon_client_field_requests ainda não existir (migration não
+    // aplicada), o motor segue exatamente como hoje, sem carona e sem quebrar.
+    try {
+      const { data: pend } = await db.from('salon_client_field_requests')
+        .select('id, cliente_id, campo').eq('organization_id', orgId).eq('status', 'pending')
+      if (pend && pend.length) {
+        const topByCli = new Map<string, { reqId: string; campo: CampoCarona }>()
+        for (const p of pend as Array<{ id: string; cliente_id: string; campo: string }>) {
+          const campo = p.campo as CampoCarona
+          if (!CARONA_PRIORIDADE.includes(campo)) continue
+          const cur = topByCli.get(p.cliente_id)
+          if (!cur || CARONA_PRIORIDADE.indexOf(campo) < CARONA_PRIORIDADE.indexOf(cur.campo)) {
+            topByCli.set(p.cliente_id, { reqId: p.id, campo })
+          }
+        }
+        const jaCaronou = new Set<string>()
+        for (const ev of pendentes) {
+          if (!ev.cliente_id || !ev.telefone || jaCaronou.has(ev.cliente_id)) continue
+          const top = topByCli.get(ev.cliente_id)
+          if (!top) continue
+          ev.mensagem += CARONA_PERGUNTA[top.campo] // aparece na prévia E no envio
+          ev.carona = top
+          jaCaronou.add(ev.cliente_id)
+        }
+      }
+    } catch (_e) { /* tabela ausente → sem carona, motor intacto */ }
+
     let enviados = 0, falhas = 0
     const pulados = jaEnviados.size
     if (!dryRun) {
@@ -192,6 +232,21 @@ Deno.serve(async (req) => {
           })
           const ok = resp.ok
           await logSafe({ organization_id: orgId, tipo: ev.tipo, cliente_id: ev.cliente_id, cliente_nome: ev.cliente_nome, telefone: ev.telefone, mensagem: ev.mensagem, ref: ev.ref, status: ok ? 'sent' : 'failed' })
+          // CARONA saiu junto → marca a pendência como 'asked' e registra a prova
+          // de consentimento LGPD (scope dedicado, texto exato, trilha por cliente).
+          if (ok && ev.carona) {
+            try {
+              await admin.from('salon_client_field_requests').update({
+                status: 'asked', ask_count: 1, asked_at: new Date().toISOString(),
+                last_channel: 'whatsapp', updated_at: new Date().toISOString(),
+              }).eq('id', ev.carona.reqId)
+              await admin.from('lgpd_consents').insert({
+                scope: 'salon_client_field_collection', accepted: true,
+                consent_text: CARONA_PERGUNTA[ev.carona.campo].trim(),
+                metadata: { organization_id: orgId, cliente_id: ev.cliente_id, campo: ev.carona.campo, channel: 'whatsapp' },
+              })
+            } catch (_e) { /* best-effort: não derruba o envio */ }
+          }
           ok ? enviados++ : falhas++
           await new Promise((r) => setTimeout(r, 1500)) // throttle anti-spam
         } catch (_e) {

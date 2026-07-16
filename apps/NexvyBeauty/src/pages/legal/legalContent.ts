@@ -11,6 +11,31 @@ export const PRIVACY_VERSION = '2026-06-19';
 export const CONSENT_TEXT =
   'Li e concordo com os Termos de Uso e com a Política de Privacidade, e autorizo o tratamento dos meus dados para que a NexvyBeauty entre em contato comigo.';
 
+// ─── Esteira de Demonstração — consentimento do scan de WhatsApp (LGPD) ─────
+// Texto VERBATIM cravado no blueprint v2 (§5.2). É o instrumento do art. 39: a
+// lead (Controladora) instrui a NexvyBeauty (Operadora) a acessar o WhatsApp
+// dela nas condições dos 72h. DEVE ser idêntico ao CONSENT_TEXT_DEFAULT da edge
+// `demo-evolution` — o que é MOSTRADO é o que é GRAVADO como prova (scope
+// 'demo_whatsapp_scan', com ip/ua/geo/versões). NÃO editar sem alinhar a edge.
+export const DEMO_SCAN_CONSENT_TEXT =
+  'Ao conectar seu WhatsApp, você autoriza o NexvyBeauty a: (1) acessar seu ' +
+  'histórico de conversas dos últimos meses para identificar clientes que não ' +
+  'retornaram e estimar o valor recuperável; (2) manter esse acesso por até 72 ' +
+  'horas enquanto sua conexão permanecer ativa, analisando inclusive novas ' +
+  'mensagens do período; (3) reter os dados importados por até 72 horas mesmo ' +
+  'que você solicite a exclusão antes — a remoção é agendada para o fim desse ' +
+  'prazo, não imediata; (4) registrar seu IP e localização aproximada como prova ' +
+  'deste consentimento. Você declara ter base legítima para compartilhar os ' +
+  'dados de contato das suas clientes, atuando o NexvyBeauty como operador. A ' +
+  'retenção de 72h é condição informada e aceita deste consentimento.';
+
+// Identificação do Operador exibida na tela do QR (fora do checkbox).
+export const DEMO_OPERATOR_IDENTITY = {
+  razaoSocial: 'Nexvy Tecnologia e Comunicação LTDA-ME',
+  cnpj: '64.930.755/0001-78',
+  dpo: 'dpo@nexvy.tech',
+};
+
 export const TERMOS_MD = `## Termos de Uso — NexvyBeauty
 
 **Última atualização:** 19 de junho de 2026

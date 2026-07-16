@@ -24,6 +24,7 @@ import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { hmacSha256Hex, timingSafeEqual } from '../_shared/meta-graph.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
+import { type CtwaReferral, ctwaUtm, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 
 type Json = Record<string, unknown>;
 
@@ -238,6 +239,95 @@ async function ensureConversation(
   return conversation;
 }
 
+/** G1 — captura de atribuição CTWA. Se a mensagem veio de anúncio (referral),
+ *  grava first-touch no lead (source='ctwa' + utm + metadata.referral, SÓ se o
+ *  lead ainda não foi atribuído), registra a linha durável em ads_attribution
+ *  (dedup por conversa+clid) e emite a jornada meta_ctwa_received. Non-fatal:
+ *  qualquer erro loga e NÃO derruba o processamento da mensagem (o caminho
+ *  orgânico e a captura de anúncio nunca competem). */
+async function captureCtwaAttribution(
+  supabase: ReturnType<typeof getServiceClient>,
+  conversation: Json,
+  referral: CtwaReferral,
+  connectionId: string,
+): Promise<void> {
+  const leadId = (conversation['lead_id'] as string | null) ?? null;
+  const conversationId = String(conversation['id']);
+  const productId = (conversation['product_id'] as string | null) ?? null;
+
+  // 1) First-touch no lead: só carimba se ainda não há atribuição (utm_source null).
+  if (leadId) {
+    try {
+      const { data: lead } = await supabase
+        .from('platform_crm_leads')
+        .select('id, utm_source, metadata')
+        .eq('id', leadId)
+        .maybeSingle();
+      if (lead && !lead['utm_source']) {
+        const meta = (lead['metadata'] as Json | null) ?? {};
+        await supabase
+          .from('platform_crm_leads')
+          .update({
+            source: 'ctwa',
+            ...ctwaUtm(referral),
+            metadata: { ...meta, referral: referral.raw, ctwa_clid: referral.ctwa_clid },
+          })
+          .eq('id', leadId)
+          .is('utm_source', null); // race-safe: não sobrescreve atribuição concorrente
+      }
+    } catch (e) {
+      console.error('[platform-meta-whatsapp-webhook] ctwa lead stamp (non-fatal):', e);
+    }
+  }
+
+  // 2) ads_attribution — linha durável por click (dedup por conversa+clid no índice).
+  //    product_id é NOT NULL: só insere quando a conexão resolveu produto.
+  if (productId) {
+    try {
+      const { error } = await supabase.from('ads_attribution').insert({
+        product_id: productId,
+        lead_id: leadId,
+        conversation_id: conversationId,
+        connection_id: connectionId,
+        ctwa_clid: referral.ctwa_clid,
+        source_id: referral.source_id,
+        source_type: referral.source_type,
+        source_url: referral.source_url,
+        headline: referral.headline,
+        body: referral.body,
+        media_type: referral.media_type,
+        ctwa_channel: 'whatsapp',
+        raw: referral.raw,
+      });
+      // 23505 = re-entrega do mesmo click (índice único parcial) → ok.
+      if (error && !String(error.code).includes('23505')) {
+        console.error('[platform-meta-whatsapp-webhook] ads_attribution insert (non-fatal):', error);
+      }
+    } catch (e) {
+      console.error('[platform-meta-whatsapp-webhook] ads_attribution (non-fatal):', e);
+    }
+  }
+
+  // 3) Jornada — meta_ctwa_received (categoria 'origin', evento #2 do funil).
+  if (productId && leadId) {
+    try {
+      await supabase.rpc('pcrm_log_journey_event', {
+        p_product: productId,
+        p_lead: leadId,
+        p_type: 'meta_ctwa_received',
+        p_category: 'origin',
+        p_channel: 'whatsapp',
+        p_source: 'ctwa',
+        p_title: referral.headline ?? 'Lead veio de anúncio (CTWA)',
+        p_payload: referral.raw,
+        p_conversation: conversationId,
+      });
+    } catch (e) {
+      console.error('[platform-meta-whatsapp-webhook] journey meta_ctwa_received (non-fatal):', e);
+    }
+  }
+}
+
 /** Uma mensagem inbound: dedupe por wamid → conversa/lead → insert → broadcast.
  *  Retorna o id da conversa quando a mensagem foi persistida E a conversa está
  *  bot_active — é o sinal para o gatilho do cérebro de vendas (F2). */
@@ -269,6 +359,14 @@ async function processInboundMessage(
   const conversation = await ensureConversation(supabase, fromDigits, profileName, defaultProductId, connectionId);
   if (!conversation) return null;
 
+  // G1 — atribuição CTWA: se a mensagem veio de anúncio Click-to-WhatsApp,
+  // captura referral/ctwa_clid → lead + ads_attribution + jornada. Non-fatal;
+  // mensagem sem referral (orgânica) segue o caminho intocado.
+  const ctwaReferral = parseCtwaReferral(msg);
+  if (ctwaReferral) {
+    await captureCtwaAttribution(supabase, conversation, ctwaReferral, connectionId);
+  }
+
   const { content, contentType } = extractContent(msg);
   const metadata = (value['metadata'] as Json | undefined) ?? {};
 
@@ -288,6 +386,7 @@ async function processInboundMessage(
         phone_number_id: metadata['phone_number_id'] ?? null,
         wa_timestamp: msg['timestamp'] ?? null,
         wa_type: msg['type'] ?? null,
+        ...(ctwaReferral ? { referral: ctwaReferral.raw } : {}),
       },
     })
     .select()
