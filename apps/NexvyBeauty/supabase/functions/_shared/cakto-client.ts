@@ -151,6 +151,54 @@ export async function caktoRetrieveOffer(token: string, offerId: string): Promis
   return (await caktoGet(token, `/public_api/offers/${offerId}/`)) as CaktoOfferResponse | null;
 }
 
+export interface CaktoDisableResult {
+  offerId: string;
+  /** disabled = viramos agora · already_disabled/not_found = no-op idempotente. */
+  status: 'disabled' | 'already_disabled' | 'not_found';
+}
+
+/**
+ * Desabilita (status=disabled) uma oferta pelo id/slug — SOFT, reversível e
+ * subscriber-safe (a Cakto valida "o status deve ser active ou disabled";
+ * NUNCA usamos delete). Robustez: primeiro busca a oferta e faz PUT de volta
+ * preservando os campos requeridos (name/price/product + recorrência), só
+ * virando o status — um PUT "pelado" pode ser rejeitado pelo OfferUpdateSchema.
+ * Idempotente: já-desabilitada ou inexistente (404) NÃO lança — retorna no-op.
+ */
+export async function caktoDisableOffer(token: string, offerId: string): Promise<CaktoDisableResult> {
+  let current: CaktoOfferResponse | null = null;
+  try {
+    current = await caktoRetrieveOffer(token, offerId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/\[404\]/.test(msg) || /not.?found/i.test(msg)) {
+      return { offerId, status: 'not_found' };
+    }
+    throw e;
+  }
+  if (!current) return { offerId, status: 'not_found' };
+  if (String(current.status).toLowerCase() === 'disabled') {
+    return { offerId, status: 'already_disabled' };
+  }
+
+  // PUT de volta preservando os campos requeridos; só o status muda.
+  const body: Partial<CaktoOfferInput> = {
+    name: current.name,
+    price: Number(current.price),
+    product: String(current.product),
+    status: 'disabled',
+  };
+  if (current.type) body.type = current.type as CaktoOfferInput['type'];
+  if (current.intervalType) body.intervalType = current.intervalType as CaktoOfferInput['intervalType'];
+  if (current.interval != null) body.interval = Number(current.interval);
+  if (current.recurrence_period != null) body.recurrence_period = Number(current.recurrence_period);
+  if (current.quantity_recurrences != null) body.quantity_recurrences = Number(current.quantity_recurrences);
+  if (current.trial_days != null) body.trial_days = Number(current.trial_days);
+
+  await caktoUpdateOffer(token, offerId, body);
+  return { offerId, status: 'disabled' };
+}
+
 /** Lista todas as ofertas de um produto (segue paginação `next`). */
 export async function caktoListOffers(token: string, productId: string): Promise<CaktoOfferResponse[]> {
   const out: CaktoOfferResponse[] = [];
