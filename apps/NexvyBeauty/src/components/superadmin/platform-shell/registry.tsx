@@ -82,6 +82,9 @@ import { PlatformCrmFinanceiro } from '@/components/superadmin/crm/financeiro/Pl
 import { PlatformCrmConnectionsPanel } from '@/components/superadmin/crm/connections/PlatformCrmConnectionsPanel';
 import { PlatformCrmIntegrationsManager } from '@/components/superadmin/crm/integrations/PlatformCrmIntegrationsManager';
 
+// ── Anúncios (NexvyAds) — seção product-scoped: Atribuição / Campanhas / Recomendações ──
+import { PlatformAdsSection } from '@/components/superadmin/crm/ads/PlatformAdsSection';
+
 // ════════════════════════════════════════════════════════════
 // MÓDULO ERP (Gestão) — reusa 100% dos componentes atuais
 // ════════════════════════════════════════════════════════════
@@ -364,6 +367,21 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Webhooks',
         icon: I.Webhook,
         render: () => <PlatformCrmWebhooksManager />,
+      },
+    ],
+  },
+  {
+    id: 'vendas-anuncios',
+    label: 'Anúncios',
+    items: [
+      {
+        // Seção NexvyAds (product-scoped): 3 abas — Atribuição / Campanhas /
+        // Recomendações. super_admin-only (herda a RLS das tabelas ads_* +
+        // a SuperAdminRoute que envolve a PlatformShell).
+        id: 'v-anuncios',
+        label: 'Anúncios',
+        icon: I.Megaphone,
+        render: () => <PlatformAdsSection />,
       },
     ],
   },
