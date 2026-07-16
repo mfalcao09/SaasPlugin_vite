@@ -111,3 +111,16 @@ verify_jwt = false
 # DUPLO GATE de envio: campaign.dry_run (default true) + env COLD_OUTREACH_ENABLED.
 [functions.platform-cold-outreach]
 verify_jwt = false
+
+# NexvyAds A2 (HITL). Ambas super_admin — MESMO padrão do ads-sync (que roda com
+# verify_jwt=true default e re-aplica o gate super_admin em código via
+# authenticatePlatformAgent). Declaradas aqui explicitamente com verify_jwt=true
+# só p/ tornar o gate determinístico em redeploys; NÃO recebem webhook público.
+# ads-optimize: gera recomendações pending (leitura + escrita interna, sem Graph).
+# ads-apply-recommendation: aplica via HITL (exige confirm:true); GATED por
+# ADS_MUTATIONS_ENABLED (default false → dry-run, sem tocar a Graph). Sem cron.
+[functions.ads-optimize]
+verify_jwt = true
+
+[functions.ads-apply-recommendation]
+verify_jwt = true
