@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resend — Runbook de Go-Live (NexvyBeauty)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2430; --border:#30363d;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#e879a6; --accent2:#7ee0c0;
+    --warn:#f2b45e; --ok:#57d38c; --code:#0b0f14; --codetext:#d7e3ee;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
+    padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;margin:32px 0 10px;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:6px}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:20px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  code{background:var(--code);color:var(--codetext);padding:2px 6px;border-radius:5px;
+    font:13px/1.5 "SF Mono",Menlo,Consolas,monospace}
+  pre{background:var(--code);color:var(--codetext);padding:14px 16px;border-radius:8px;
+    border:1px solid var(--border);overflow-x:auto;font:13px/1.5 "SF Mono",Menlo,Consolas,monospace}
+  pre code{background:none;padding:0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:14px 0}
+  .tldr{background:var(--panel2);border-left:4px solid var(--accent)}
+  .warn{background:rgba(242,180,94,.08);border-left:4px solid var(--warn)}
+  .ok{color:var(--ok);font-weight:600}
+  .bad{color:var(--accent);font-weight:600}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:20px;padding:2px 10px;font-size:12px;color:var(--muted);margin-right:6px}
+  strong{color:#fff}
+  a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Resend — Runbook de Go-Live do e-mail transacional</h1>
+  <div class="meta">NexvyBeauty · 2026-07-15 · branch <code>feat/resend-email</code> · Supabase <code>fzhlbwhdejumkyqosuvq</code></div>
+
+  <div class="card tldr">
+    <h2 style="margin-top:0;border:none">TL;DR</h2>
+    <p>O pipeline de e-mail (sender + fila pgmq + cron + consumidor + branding NexvyBeauty) <strong>já existia e já estava deployado</strong> (PR #61). O e-mail não saía por <strong>um</strong> motivo real, agora corrigido:</p>
+    <ul>
+      <li><strong>Bug do 403 (corrigido):</strong> o cron autentica com a chave de service-role do vault, que é a chave <strong>nova opaca <code>sb_secret_…</code></strong> (não é JWT). O check <code>parseJwtClaims(token).role==='service_role'</code> <span class="bad">falhava</span> → <strong>403 a cada minuto</strong> → a fila nunca era consumida (1 e-mail preso há ~7 dias). Agora a auth aceita <code>sb_secret_</code> <em>e</em> o JWT legado.</li>
+      <li><strong>Gate seguro (novo):</strong> o envio real exige um switch EXPLÍCITO. <strong>Default = DRY-RUN</strong> (drena a fila, registra <code>dry_run</code>, <strong>não envia</strong>). O fix do 403 <strong>não liga envio real sozinho</strong>.</li>
+    </ul>
+    <p class="warn card" style="margin-top:12px">⚠️ <strong>Verificado:</strong> a <code>RESEND_API_KEY</code> <strong>JÁ ESTÁ setada em prod</strong> (o dispatcher respondeu <code>dry_run:false</code> antes do gate seguro). O "gate na chave" que o briefing assumia pendente <strong>já foi feito</strong>. Falta <strong>1 flag</strong> + confirmar DNS.</p>
+  </div>
+
+  <h2>✅ Ação do Marcelo — checklist de go-live (nesta ordem)</h2>
+  <ol>
+    <li><strong>Confirmar o domínio <code>nexvybeauty.com.br</code> VERIFICADO na Resend</strong> (Dashboard → Domains). Precisa dos 3 registros DNS verdes:
+      <ul>
+        <li><strong>SPF</strong> (TXT) — <code>include:amazonses.com</code> / o que a Resend indicar (região <code>sa-east-1</code>).</li>
+        <li><strong>DKIM</strong> — os CNAME <code>resend._domainkey…</code> que a Resend gerar.</li>
+        <li><strong>DMARC</strong> (TXT em <code>_dmarc.nexvybeauty.com.br</code>) — começar <code>v=DMARC1; p=none; rua=mailto:…</code>.</li>
+      </ul>
+      Sem domínio verificado, a Resend responde <strong>403 (domain not verified)</strong> → a mensagem vai para a <strong>DLQ</strong> (não entrega). Verificar DNS <strong>antes</strong> de ligar o envio.</li>
+    <li><strong>Ligar o envio real</strong> (a <code>RESEND_API_KEY</code> já existe):
+      <pre><code>supabase secrets set EMAIL_SEND_ENABLED=true --project-ref fzhlbwhdejumkyqosuvq</code></pre>
+      No minuto seguinte o cron passa a enviar de verdade (dry-run desliga sozinho).</li>
+    <li><strong>Validar go-live</strong> (1 e-mail real de teste): dispare um e-mail real e confira:
+      <pre><code>select status, recipient_email, template_name, created_at
+from public.email_send_log
+where created_at &gt; now() - interval '10 minutes'
+order by created_at desc;</code></pre>
+      Esperado: <span class="ok">status = 'sent'</span> (não <code>dry_run</code>/<code>dlq</code>/<code>failed</code>).</li>
+    <li><strong>(Opcional) Limpar a DLQ:</strong> há <strong>1 mensagem</strong> presa há ~7 dias em <code>transactional_emails_dlq</code> (o e-mail travado pelo 403; expirou por TTL e foi para a DLQ ao rodar o dispatcher).
+      <pre><code>select * from pgmq.read('transactional_emails_dlq', 30, 10);   -- inspecionar
+select pgmq.purge_queue('transactional_emails_dlq');            -- limpar</code></pre></li>
+  </ol>
+
+  <h2>⏪ Rollback / desligar o envio</h2>
+  <pre><code># Volta para DRY-RUN (não envia; drena e registra 'dry_run'):
+supabase secrets unset EMAIL_SEND_ENABLED --project-ref fzhlbwhdejumkyqosuvq
+# ou forçar dry-run mesmo com o flag ligado:
+supabase secrets set EMAIL_DRY_RUN=true --project-ref fzhlbwhdejumkyqosuvq</code></pre>
+
+  <h2>Comportamento do gate</h2>
+  <p>Envio <strong>real</strong> exige, cumulativamente: <span class="pill">1. RESEND_API_KEY presente (já setada)</span> <span class="pill">2. EMAIL_SEND_ENABLED=true (pendente)</span> <span class="pill">3. EMAIL_DRY_RUN ≠ true</span></p>
+  <p>Qualquer condição faltando → <strong>DRY-RUN</strong>: lê a fila, registra <code>dry_run</code> e <strong>remove da fila</strong> (drena), <strong>sem chamar a Resend</strong>.</p>
+  <div class="card warn">⚠️ Em DRY-RUN, <strong>e-mails reais (auth/pós-compra) são registrados como <code>dry_run</code> e NÃO entregues</strong>. Ligue o flag (passo 2) no go-live, com o DNS verde. Antes desta entrega esses e-mails também não saíam (o 403 travava tudo) — a diferença é o switch limpo e o cron parar de quebrar.</div>
+
+  <h2>O que foi entregue nesta branch</h2>
+  <ul>
+    <li><code>supabase/functions/process-email-queue/index.ts</code>: fix do 403 (<code>isServiceRoleAuth()</code> aceita <code>sb_secret_…</code> + JWT legado); gate seguro <code>EMAIL_SEND_ENABLED</code>/<code>EMAIL_DRY_RUN</code>/<code>RESEND_API_KEY</code>; Resend como provedor único (removido fallback Lovable); resposta com <code>dry_run</code>.</li>
+    <li><code>supabase/migrations_platform_crm/20260715_email_send_log_status_dry_run.sql</code> (aditiva, <strong>já aplicada via MCP</strong>): amplia o CHECK de <code>email_send_log.status</code> com <code>dry_run</code> e <code>rate_limited</code>.</li>
+    <li>Deploy: <code>process-email-queue</code> <strong>v30</strong> ACTIVE (<code>verify_jwt=true</code>).</li>
+  </ul>
+
+  <h2>Prova (smoke dry-run)</h2>
+  <ul>
+    <li><code>deno check --node-modules-dir=none index.ts</code> → <span class="ok">verde</span>.</li>
+    <li>E-mail fake em <code>transactional_emails</code> → dispatcher → <code>{"processed":1,"dry_run":true}</code> → log <code>status='dry_run'</code> (não <code>sent</code>), fila <strong>drenada</strong>, <strong>nada enviado</strong> → cleanup (resíduo = 0).</li>
+    <li>Auth do cron: probe <code>net.http_post</code> com a chave do vault → <span class="ok">HTTP 200</span> (o 403 acabou).</li>
+  </ul>
+
+  <h2>Branding (verificado — nada a fazer)</h2>
+  <p>Sender e templates já são <strong>NexvyBeauty</strong> / <code>@nexvybeauty.com.br</code> (pt-BR). O "Vendus" no repo é o nome do <strong>CRM portado</strong> (<code>platform_crm</code>), não branding de e-mail.</p>
+</div>
+</body>
+</html>
