@@ -92,3 +92,9 @@ verify_jwt = false
 
 [functions.demo-evolution]
 verify_jwt = false
+
+# Cron da NINA (retenção): varre contas em D-7 de renovação e aciona a Nina.
+# Sem JWT no gateway — auth real na função (service-role bearer/apikey OU
+# x-brain-secret, timing-safe). Gated por NINA_HEALTH_SCAN_ENABLED (default OFF).
+[functions.nina-health-scan]
+verify_jwt = false

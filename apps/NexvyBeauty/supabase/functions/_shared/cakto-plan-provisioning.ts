@@ -603,27 +603,36 @@ export async function provisionFromOrder(
     // (desligadas) e agenda do Radar. Best-effort, nunca derruba o provisionamento.
     await seedSalonDataForNewOrg(admin, planRes.organization_id);
 
-    // Boas-vindas WhatsApp ao comprador — non-fatal.
-    await sendWelcomeWhatsApp(admin, {
-      phone: order.customer_phone ?? null,
-      fullName: order.customer_name ?? null,
-      planName: plan?.name ?? null,
-    });
-
     // HANDOFF Duda→CS pós-compra (gated por ONBOARDING_HANDOFF_ENABLED, default
-    // OFF): a conversa de VENDA da compradora passa pro agente de CS/implantação
-    // e ganha o vínculo conversa↔org (provisioned_organization_id) que liga o
-    // modo implantação do platform-sales-brain. Non-fatal por design (a função
-    // nunca lança); try/catch de cinto-e-suspensório — jamais derruba quem pagou.
+    // OFF): a conversa de VENDA da compradora passa pro agente de CS/implantação,
+    // ganha o vínculo conversa↔org (provisioned_organization_id) que liga o modo
+    // implantação do platform-sales-brain, E a Lia dispara o greeting proativo
+    // (P2 · A4). Roda ANTES do welcome genérico DE PROPÓSITO: se a Lia greetou
+    // (greeted=true), pulamos o welcome pra não dar boas-vindas EM DOBRO. Com a
+    // flag OFF (produção hoje) o handoff é no-op → greeted=false → welcome roda
+    // idêntico a antes. Non-fatal por design (nunca lança); try/catch de reforço.
+    let greeted = false;
     try {
       const handoff = await handoffConversationToOnboarding(admin, {
         organizationId: planRes.organization_id,
         customerPhone: order.customer_phone ?? null,
         customerEmail: order.customer_email ?? null,
       });
+      greeted = handoff.greeted === true;
       console.log('[cakto-provisioning] onboarding handoff:', JSON.stringify(handoff));
     } catch (e) {
       console.warn('[cakto-provisioning] onboarding handoff (non-fatal):', String(e).slice(0, 200));
+    }
+
+    // Boas-vindas WhatsApp genérica — SÓ quando a Lia NÃO greetou (flag OFF, ou
+    // conversa da compradora não encontrada). Garante que a compradora nunca fica
+    // sem nenhuma mensagem pós-compra. Non-fatal.
+    if (!greeted) {
+      await sendWelcomeWhatsApp(admin, {
+        phone: order.customer_phone ?? null,
+        fullName: order.customer_name ?? null,
+        planName: plan?.name ?? null,
+      });
     }
   }
 
