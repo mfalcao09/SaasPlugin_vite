@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useImplantacao } from '@/hooks/useImplantacao';
+import { useImplantacao, type ImplantacaoPayload } from '@/hooks/useImplantacao';
 import { ImplantacaoWizard } from '@/components/onboarding/implantacao/ImplantacaoWizard';
+import { DemoWizard } from '@/components/onboarding/implantacao/demo/DemoWizard';
+import { useDemoEvolution } from '@/hooks/useDemoEvolution';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -17,7 +19,14 @@ export default function ImplantacaoPublic() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
-  const { payload, status, saving, loading, error, organizationId, updateSection, submit, reportStep } = useImplantacao({ token });
+  const {
+    payload, status, saving, loading, error, organizationId,
+    updateSection, submit, reportStep, mode, sessionToken,
+  } = useImplantacao({ token });
+
+  // API da esteira (demo-evolution). Construída SEMPRE (regra de hooks); só é
+  // usada quando mode==='demo'. Com token/session vazios ela nunca é invocada.
+  const demoApi = useDemoEvolution({ token: token ?? '', sessionToken: sessionToken ?? '' });
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -38,6 +47,23 @@ export default function ImplantacaoPublic() {
     );
   }
   if (!organizationId) return null;
+
+  // ── Esteira de Demonstração: mesma rota, wizard próprio discriminado por mode ──
+  if (mode === 'demo' && token && sessionToken) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DemoWizard
+          api={demoApi}
+          empresa={payload.empresa}
+          onEmpresaChange={(patch: Partial<ImplantacaoPayload['empresa']>) =>
+            updateSection('empresa', { ...payload.empresa, ...patch })
+          }
+          reportUrl={typeof window !== 'undefined' ? window.location.href : ''}
+          saving={saving}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
