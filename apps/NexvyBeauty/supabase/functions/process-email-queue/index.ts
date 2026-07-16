@@ -1,4 +1,3 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 interface OutboundEmail {
@@ -16,44 +15,31 @@ interface OutboundEmail {
   message_id?: string
 }
 
-// Envio de email desacoplado do Lovable.
-// Preferência: Resend (quando RESEND_API_KEY existe) — mesmo padrão usado em
-// daily-report-ai / webhook-receiver. Senão, cai no @lovable.dev/email-js com
-// sendUrl env-driven (EMAIL_SEND_URL ?? LOVABLE_SEND_URL) como fallback.
-async function sendEmail(email: OutboundEmail, apiKey: string): Promise<void> {
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  if (resendApiKey) {
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${resendApiKey}`,
-        ...(email.idempotency_key ? { 'Idempotency-Key': email.idempotency_key } : {}),
-      },
-      body: JSON.stringify({
-        from: email.from,
-        to: email.to,
-        subject: email.subject,
-        html: email.html,
-        ...(email.text ? { text: email.text } : {}),
-      }),
-    })
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '')
-      const err = new Error(`Resend ${resp.status}: ${body.slice(0, 300)}`) as Error & { status: number }
-      err.status = resp.status
-      throw err
-    }
-    return
-  }
-
-  // Fallback: Lovable email lib, com sendUrl env-driven.
-  // OutboundEmail.text e opcional; EmailSendRequest exige string -> normaliza p/ '' quando ausente.
-  const lovableEmail = { ...email, text: email.text ?? '' }
-  await sendLovableEmail(lovableEmail, {
-    apiKey,
-    sendUrl: Deno.env.get('EMAIL_SEND_URL') ?? Deno.env.get('LOVABLE_SEND_URL'),
+// Provedor ÚNICO de envio: Resend. O envio real só acontece quando RESEND_API_KEY
+// existe — o gate de dry-run (ver Deno.serve) garante que esta função só é chamada
+// com a chave presente. Idempotency-Key evita duplicidade em retry/replay.
+async function sendEmail(email: OutboundEmail, resendApiKey: string): Promise<void> {
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${resendApiKey}`,
+      ...(email.idempotency_key ? { 'Idempotency-Key': email.idempotency_key } : {}),
+    },
+    body: JSON.stringify({
+      from: email.from,
+      to: email.to,
+      subject: email.subject,
+      html: email.html,
+      ...(email.text ? { text: email.text } : {}),
+    }),
   })
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '')
+    const err = new Error(`Resend ${resp.status}: ${body.slice(0, 300)}`) as Error & { status: number }
+    err.status = resp.status
+    throw err
+  }
 }
 
 const MAX_RETRIES = 5
@@ -63,8 +49,8 @@ const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
 // Check if an error is a rate-limit (429) response.
-// Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
-// falls back to parsing the error message for older versions.
+// Uses the .status set by sendEmail on the thrown Resend error; falls back to
+// parsing the message for '429'.
 function isRateLimited(error: unknown): boolean {
   if (error && typeof error === 'object' && 'status' in error) {
     return (error as { status: number }).status === 429
@@ -81,7 +67,7 @@ function isForbidden(error: unknown): boolean {
   return error instanceof Error && error.message.includes('403')
 }
 
-// Extract Retry-After seconds from a structured EmailAPIError, or default to 60s.
+// Extract Retry-After seconds from a structured error when present, or default to 60s.
 function getRetryAfterSeconds(error: unknown): number {
   if (error && typeof error === 'object' && 'retryAfterSeconds' in error) {
     return (error as { retryAfterSeconds: number | null }).retryAfterSeconds ?? 60
@@ -105,6 +91,18 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+// Aceita autenticação service-role em DOIS formatos:
+//  • Chave nova opaca "sb_secret_..." (server-side, equivalente a service_role). NÃO é
+//    um JWT — parseJwtClaims falharia. O gateway (verify_jwt=true) já validou a chave
+//    contra o projeto antes de chegar aqui, então o prefixo confirma o tier de segredo.
+//    (O cron do dispatcher usa exatamente esta chave via vault → sem isto, dava 403.)
+//  • JWT legado com claim role=service_role.
+// Rejeita anon/publishable ("sb_publishable_...") e qualquer JWT sem role=service_role.
+function isServiceRoleAuth(token: string): boolean {
+  if (token.startsWith('sb_secret_')) return true
+  return parseJwtClaims(token)?.role === 'service_role'
 }
 
 // Move a message to the dead letter queue and log the reason.
@@ -134,17 +132,35 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
-  // Chave do provedor de email para o fallback Lovable (não usada quando Resend está ativo).
-  const apiKey = Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY') ?? ''
-  const hasEmailProvider = Boolean(Deno.env.get('RESEND_API_KEY')) || Boolean(apiKey)
+  const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? ''
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!hasEmailProvider || !supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing required environment variables')
+  // GATE de go-live (req #4): o envio real exige, CUMULATIVAMENTE, três condições:
+  //   (1) RESEND_API_KEY presente;
+  //   (2) EMAIL_SEND_ENABLED='true' — switch de go-live EXPLÍCITO;
+  //   (3) EMAIL_DRY_RUN != 'true'.
+  // Default = DRY-RUN (seguro): sem o switch explícito, o dispatcher drena a fila e
+  // registra cada mensagem como 'dry_run' no email_send_log, mas NÃO chama a Resend
+  // (não envia). Assim, deployar este dispatcher NUNCA liga envio real sozinho — mesmo
+  // com a RESEND_API_KEY já configurada — e o cron não quebra nem entope a fila.
+  // Go-live: Marcelo seta EMAIL_SEND_ENABLED=true (a RESEND_API_KEY já existe em prod)
+  // após confirmar SPF/DKIM/DMARC do domínio na Resend.
+  const sendEnabled = Deno.env.get('EMAIL_SEND_ENABLED') === 'true'
+  const dryRun =
+    Deno.env.get('EMAIL_DRY_RUN') === 'true' || !sendEnabled || !resendApiKey
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing required Supabase environment variables')
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  if (dryRun) {
+    console.log(
+      'process-email-queue em DRY-RUN (falta EMAIL_SEND_ENABLED=true, ou RESEND_API_KEY ausente, ou EMAIL_DRY_RUN=true) — vai drenar e registrar, sem enviar'
     )
   }
 
@@ -160,8 +176,7 @@ Deno.serve(async (req) => {
   // gateway layer. This adds an explicit role check so only service-role
   // callers can trigger queue processing.
   const token = authHeader.slice('Bearer '.length).trim()
-  const claims = parseJwtClaims(token)
-  if (claims?.role !== 'service_role') {
+  if (!isServiceRoleAuth(token)) {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }),
       { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -306,39 +321,48 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendEmail(
-          {
-            run_id: payload.run_id,
+        if (dryRun) {
+          console.log('DRY-RUN: e-mail não enviado', {
+            queue,
+            msg_id: msg.msg_id,
             to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            purpose: payload.purpose,
             label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-            message_id: payload.message_id,
-          },
-          apiKey
-        )
+          })
+        } else {
+          await sendEmail(
+            {
+              run_id: payload.run_id,
+              to: payload.to,
+              from: payload.from,
+              sender_domain: payload.sender_domain,
+              subject: payload.subject,
+              html: payload.html,
+              text: payload.text,
+              purpose: payload.purpose,
+              label: payload.label,
+              idempotency_key: payload.idempotency_key,
+              unsubscribe_token: payload.unsubscribe_token,
+              message_id: payload.message_id,
+            },
+            resendApiKey
+          )
+        }
 
-        // Log success
+        // Registra o desfecho: 'sent' (envio real) ou 'dry_run' (gated, sem enviar).
         await supabase.from('email_send_log').insert({
           message_id: payload.message_id,
           template_name: payload.label || queue,
           recipient_email: payload.to,
-          status: 'sent',
+          status: dryRun ? 'dry_run' : 'sent',
         })
 
-        // Delete from queue
+        // Remove da fila (drena mesmo em dry-run p/ a fila não entupir).
         const { error: delError } = await supabase.rpc('delete_email', {
           queue_name: queue,
           message_id: msg.msg_id,
         })
         if (delError) {
-          console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, error: delError })
+          console.error('Failed to delete processed message from queue', { queue, msg_id: msg.msg_id, error: delError })
         }
         totalProcessed++
       } catch (error) {
@@ -411,7 +435,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ processed: totalProcessed }),
+    JSON.stringify({ processed: totalProcessed, dry_run: dryRun }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
