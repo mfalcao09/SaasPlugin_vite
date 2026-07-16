@@ -28,9 +28,10 @@ export interface LeadExtraction {
   total_found: number | null;
   last_error: string | null;
   created_at: string;
-  /** Portão Prospecção→Base consolidada: NULL = em tratamento, preenchido = base aprovada (entra na view consolidada). */
-  approved_at: string | null;
-  approved_by: string | null;
+  // NOTA: a EXTRAÇÃO não é mais a unidade de aprovação (migrou para o LEAD). As
+  // colunas approved_at/approved_by da tabela platform_crm_lead_extractions ficaram
+  // órfãs (droppable pós-flip) — o front não as lê/escreve mais. Fonte única do
+  // portão = platform_crm_extracted_leads.approved_at (ver ExtractedLead abaixo).
 }
 
 export interface ExtractedLead {
@@ -59,6 +60,9 @@ export interface ExtractedLead {
   filter_verdicts: any | null;
   excluded_at: string | null;
   created_at: string;
+  /** Portão por-LEAD: NULL = "em tratamento"; preenchido = lead aprovado (entra na Base
+   *  consolidada após o flip da view). Opcional: a view consolidada não expõe este campo. */
+  approved_at?: string | null;
 }
 
 /** Jobs de extração do produto (mais recentes primeiro). */
@@ -74,7 +78,7 @@ export function usePlatformLeadExtractions(productId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_crm_lead_extractions' as never)
-        .select('id, product_id, keywords, source, status, total_found, last_error, created_at, approved_at, approved_by')
+        .select('id, product_id, keywords, source, status, total_found, last_error, created_at')
         .eq('product_id', productId as string)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -85,53 +89,114 @@ export function usePlatformLeadExtractions(productId: string | null) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// PORTÃO DE APROVAÇÃO (Prospecção → Base consolidada). Unidade de aprovação = a
-// EXTRAÇÃO (não lead-a-lead). Aprovar seta approved_at=now()/approved_by=user →
-// os leads dessa extração passam a entrar na view consolidada (após o flip da
-// view, passo coordenado). Reabrir zera de volta para "em tratamento".
-// Invalida a lista de extrações (badge) E a base consolidada (o teto muda).
+// PORTÃO DE APROVAÇÃO (Prospecção → Base consolidada). Unidade de aprovação = o
+// LEAD (não a extração). Aprovar seta approved_at=now()/approved_by=user NO LEAD →
+// esse lead passa a entrar na view consolidada (após o flip por-lead da view, passo
+// coordenado). Reabrir zera de volta para "em tratamento". Três modos:
+//   • por IDs selecionados (checkboxes)              → useSetLeadsApproval
+//   • em massa por extração + filtros / base inteira → useSetExtractionLeadsApproval
+//   • contadores por-extração (N aprovados · M trat.) → useExtractionApprovalCounts
+// Aprovar NUNCA toca a lixeira (excluded_at IS NOT NULL). Sempre invalida as duas
+// telas (Buscas + Base consolidada) e os contadores por-extração.
 // ════════════════════════════════════════════════════════════════════════════
 
-/** Aprova a BASE de uma extração (approved_at=now(), approved_by=user atual). */
-export function useApproveExtraction() {
+/** Aprova/reabre um conjunto de leads por ID ("Aprovar/Reabrir selecionados"). */
+export function useSetLeadsApproval() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { id: string; productId: string }) => {
+    mutationFn: async (args: { ids: string[]; approved: boolean; productId: string }) => {
+      if (args.ids.length === 0) return { ...args, count: 0 };
       const { data: auth } = await supabase.auth.getUser();
+      const patch = args.approved
+        ? { approved_at: new Date().toISOString(), approved_by: auth.user?.id ?? null }
+        : { approved_at: null, approved_by: null };
       const { error } = await supabase
-        .from('platform_crm_lead_extractions' as never)
-        .update({ approved_at: new Date().toISOString(), approved_by: auth.user?.id ?? null } as never)
-        .eq('id', args.id);
+        .from('platform_crm_extracted_leads' as never)
+        .update(patch as never)
+        .in('id', args.ids);
       if (error) throw error;
-      return args;
+      return { ...args, count: args.ids.length };
     },
-    onSuccess: (args) => {
-      qc.invalidateQueries({ queryKey: ['platform-lead-extractions', args.productId] });
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
       qc.invalidateQueries({ queryKey: ['platform-consolidated-leads'] });
-      toast.success('Base aprovada', { description: 'Os leads desta extração passam a entrar na Base consolidada.' });
+      qc.invalidateQueries({ queryKey: ['platform-extraction-approval-counts'] });
+      toast.success(res.approved ? `${res.count} lead(s) aprovado(s)` : `${res.count} lead(s) reaberto(s)`, {
+        description: res.approved
+          ? 'Passam a entrar na Base consolidada (após o flip da view).'
+          : 'Voltaram para "em tratamento" e saem da Base consolidada.',
+      });
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Falha ao aprovar a base'),
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao atualizar aprovação'),
   });
 }
 
-/** Reabre uma base aprovada (approved_at=NULL) → volta para "em tratamento". */
-export function useReopenExtraction() {
+/**
+ * Aprova/reabre EM MASSA os leads de uma extração. Sem `filters` (ou tudo em 'all')
+ * = "aprovar/reabrir a base inteira". Com `filters` = "aprovar todos os filtrados"
+ * (mesmos WHEREs da lista: segmento/semente/qualificado). Aprovar SEMPRE exclui a
+ * lixeira (excluded_at). É o bulk server-side que evita aprovar 4.006 um-a-um — age
+ * em TODAS as linhas que batem o filtro, sem o teto do `.limit` da listagem.
+ */
+export function useSetExtractionLeadsApproval() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { id: string; productId: string }) => {
-      const { error } = await supabase
-        .from('platform_crm_lead_extractions' as never)
-        .update({ approved_at: null, approved_by: null } as never)
-        .eq('id', args.id);
+    mutationFn: async (args: { extractionId: string; approved: boolean; productId: string; filters?: LeadFilters }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const patch = args.approved
+        ? { approved_at: new Date().toISOString(), approved_by: auth.user?.id ?? null }
+        : { approved_at: null, approved_by: null };
+      let q = supabase
+        .from('platform_crm_extracted_leads' as never)
+        .update(patch as never)
+        .eq('extraction_id', args.extractionId);
+      // Aprovar nunca toca a lixeira; reabrir pode varrer toda a extração.
+      if (args.approved) q = q.is('excluded_at', null);
+      const f = args.filters;
+      if (f?.segment && f.segment !== 'all') q = q.eq('segment', f.segment);
+      if (f?.seedsOnly) q = q.eq('is_seed', true);
+      if (f?.qualifiedOnly) q = q.eq('qualified', true);
+      const { error } = await q;
       if (error) throw error;
       return args;
     },
     onSuccess: (args) => {
-      qc.invalidateQueries({ queryKey: ['platform-lead-extractions', args.productId] });
+      qc.invalidateQueries({ queryKey: ['platform-extracted-leads'] });
       qc.invalidateQueries({ queryKey: ['platform-consolidated-leads'] });
-      toast.success('Base reaberta', { description: 'A extração voltou para "em tratamento" e saiu da Base consolidada.' });
+      qc.invalidateQueries({ queryKey: ['platform-extraction-approval-counts'] });
+      toast.success(args.approved ? 'Leads aprovados' : 'Leads reabertos', {
+        description: args.approved
+          ? 'Os leads correspondentes entram na Base consolidada (após o flip da view).'
+          : 'Voltaram para "em tratamento" e saem da Base consolidada.',
+      });
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Falha ao reabrir a base'),
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao atualizar aprovação em massa'),
+  });
+}
+
+/** Contadores do portão por-lead de UMA extração (só não-lixeira): total, aprovados, em tratamento. */
+export function useExtractionApprovalCounts(extractionId: string | null) {
+  return useQuery({
+    queryKey: ['platform-extraction-approval-counts', extractionId],
+    enabled: !!extractionId,
+    queryFn: async () => {
+      const { count: total, error: e1 } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .select('id', { count: 'exact', head: true })
+        .eq('extraction_id', extractionId as string)
+        .is('excluded_at', null);
+      if (e1) throw e1;
+      const { count: aprovados, error: e2 } = await supabase
+        .from('platform_crm_extracted_leads' as never)
+        .select('id', { count: 'exact', head: true })
+        .eq('extraction_id', extractionId as string)
+        .is('excluded_at', null)
+        .not('approved_at', 'is', null);
+      if (e2) throw e2;
+      const t = total ?? 0;
+      const a = aprovados ?? 0;
+      return { total: t, aprovados: a, emTratamento: t - a };
+    },
   });
 }
 
@@ -151,7 +216,7 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       let q = supabase
         .from('platform_crm_extracted_leads' as never)
         .select(
-          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, excluded_at, created_at',
+          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, excluded_at, created_at, approved_at',
         )
         .eq('extraction_id', extractionId as string);
       // Lixeira: por padrão esconde os excluídos; excludedOnly mostra SÓ eles.

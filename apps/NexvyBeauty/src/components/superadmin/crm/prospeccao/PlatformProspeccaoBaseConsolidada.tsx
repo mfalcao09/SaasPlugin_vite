@@ -103,7 +103,7 @@ export function PlatformProspeccaoBaseConsolidada() {
           </p>
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <DoorOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-            Mostra apenas <b>bases aprovadas</b>: aprove a extração na aba <b>Buscas</b> (Portão da Base consolidada) para os leads dela aparecerem aqui.
+            Mostra apenas <b>leads aprovados</b>: aprove os leads na aba <b>Buscas</b> (Portão da Base consolidada — por lead selecionado, filtrados ou base inteira) para eles aparecerem aqui.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">

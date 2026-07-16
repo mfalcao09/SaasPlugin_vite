@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,9 @@ import {
   useExcludeLead,
   useRestoreLead,
   useSetLeadPhone,
-  useApproveExtraction,
-  useReopenExtraction,
+  useSetLeadsApproval,
+  useSetExtractionLeadsApproval,
+  useExtractionApprovalCounts,
   type LeadSegment,
   type ExtractedLead,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
@@ -94,6 +95,7 @@ export function PlatformProspeccaoManager() {
   const [showPaste, setShowPaste] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [editingPhone, setEditingPhone] = useState<{ id: string; value: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
   const activeExtraction =
@@ -105,21 +107,20 @@ export function PlatformProspeccaoManager() {
   const exclude = useExcludeLead();
   const restore = useRestoreLead();
   const setPhone = useSetLeadPhone();
-  const approve = useApproveExtraction();
-  const reopen = useReopenExtraction();
+  const approveLeads = useSetLeadsApproval();      // por IDs selecionados
+  const approveBulk = useSetExtractionLeadsApproval(); // por extração + filtros / base
+  const { data: approvalCounts } = useExtractionApprovalCounts(activeExtraction);
   const qc = useQueryClient();
 
-  // Portão de aprovação (unidade = a extração). Objeto da extração selecionada +
-  // contadores (N em tratamento · M aprovadas) — o clean-slate deixa tudo NULL, então
-  // deixar isso explícito evita confusão ("por que a Base consolidada está vazia?").
-  const activeExtractionObj = useMemo(
-    () => extractions.find((e) => e.id === activeExtraction) ?? null,
-    [extractions, activeExtraction],
-  );
-  const approvalCounts = useMemo(() => {
-    const aprovadas = extractions.filter((e) => e.approved_at != null).length;
-    return { aprovadas, emTratamento: extractions.length - aprovadas };
-  }, [extractions]);
+  // Portão por-LEAD: a seleção (checkboxes) é de IDs da extração/visão atual. Limpa
+  // ao trocar de extração ou alternar a lixeira (não faz sentido carregar entre elas).
+  useEffect(() => { setSelectedIds(new Set()); }, [activeExtraction, showExcluded]);
+
+  const allVisibleSelected = leads.length > 0 && leads.every((l) => selectedIds.has(l.id));
+  const toggleSelect = (id: string) =>
+    setSelectedIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleSelectAllVisible = () =>
+    setSelectedIds((s) => (leads.length > 0 && leads.every((l) => s.has(l.id)) ? new Set() : new Set(leads.map((l) => l.id))));
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: ['platform-lead-extractions', productId] });
@@ -161,6 +162,29 @@ export function PlatformProspeccaoManager() {
   const savePhone = () => {
     if (!editingPhone || !editingPhone.value.trim()) return;
     setPhone.mutate({ id: editingPhone.id, telefone: editingPhone.value }, { onSuccess: () => setEditingPhone(null) });
+  };
+
+  // Portão por-LEAD — ações de aprovação/reabertura.
+  const clearSelection = () => setSelectedIds(new Set());
+  const approveSelected = () => {
+    if (!productId || selectedIds.size === 0) return;
+    approveLeads.mutate({ ids: [...selectedIds], approved: true, productId }, { onSuccess: clearSelection });
+  };
+  const reopenSelected = () => {
+    if (!productId || selectedIds.size === 0) return;
+    approveLeads.mutate({ ids: [...selectedIds], approved: false, productId }, { onSuccess: clearSelection });
+  };
+  const approveFiltered = () => {
+    if (!productId || !activeExtraction) return;
+    approveBulk.mutate({ extractionId: activeExtraction, approved: true, productId, filters: { segment, seedsOnly, qualifiedOnly } });
+  };
+  const approveWholeBase = () => {
+    if (!productId || !activeExtraction) return;
+    approveBulk.mutate({ extractionId: activeExtraction, approved: true, productId });
+  };
+  const reopenWholeBase = () => {
+    if (!productId || !activeExtraction) return;
+    approveBulk.mutate({ extractionId: activeExtraction, approved: false, productId });
   };
 
   const handleExport = () => {
@@ -253,7 +277,7 @@ export function PlatformProspeccaoManager() {
           <SelectContent>
             {extractions.map((ex) => (
               <SelectItem key={ex.id} value={ex.id}>
-                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''} · {ex.approved_at ? '✅ aprovada' : '⏳ em tratamento'}
+                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -291,43 +315,58 @@ export function PlatformProspeccaoManager() {
         <Button variant="outline" size="sm" className="gap-1 ml-auto" onClick={handleExport} disabled={leads.length === 0}><Download className="h-4 w-4" /> Exportar qualificados (CSV)</Button>
       </div>
 
-      {/* Portão de aprovação Prospecção → Base consolidada. Unidade = a EXTRAÇÃO (não lead-a-lead).
-          Só bases APROVADAS entram na Base consolidada. Clean slate: tudo começa "em tratamento". */}
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
-        <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
-          <DoorOpen className="h-4 w-4 text-primary" /> Portão da Base consolidada
-        </span>
-        {activeExtractionObj ? (
-          activeExtractionObj.approved_at ? (
+      {/* Portão de aprovação Prospecção → Base consolidada. Unidade = o LEAD (não a extração).
+          Só leads APROVADOS entram na Base consolidada (após o flip da view). Clean slate: tudo
+          começa "em tratamento". Selecione leads (checkboxes) e aprove, ou use o bulk. Oculto na
+          lixeira (não se aprova descarte). Aprovar em massa ignora a lixeira. */}
+      {!showExcluded && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
+          <span className="text-sm font-medium text-foreground flex items-center gap-1.5 mr-1">
+            <DoorOpen className="h-4 w-4 text-primary" /> Portão da Base consolidada
+          </span>
+
+          {selectedIds.size > 0 && (
             <>
-              <Badge variant="outline" className="bg-green-500/15 text-green-600 border-green-500/30">✅ Aprovada</Badge>
-              <Button
-                variant="outline" size="sm" className="gap-1"
-                disabled={reopen.isPending || !productId}
-                onClick={() => productId && reopen.mutate({ id: activeExtractionObj.id, productId })}
-              >
-                {reopen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reabrir
+              <Button size="sm" className="gap-1" disabled={approveLeads.isPending || !productId} onClick={approveSelected}>
+                {approveLeads.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Aprovar selecionados ({selectedIds.size})
               </Button>
-            </>
-          ) : (
-            <>
-              <Badge variant="outline" className="bg-yellow-500/15 text-yellow-600 border-yellow-500/30">⏳ Em tratamento</Badge>
-              <Button
-                size="sm" className="gap-1"
-                disabled={approve.isPending || !productId}
-                onClick={() => productId && approve.mutate({ id: activeExtractionObj.id, productId })}
-              >
-                {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Aprovar base
+              <Button variant="outline" size="sm" className="gap-1" disabled={approveLeads.isPending || !productId} onClick={reopenSelected}>
+                <RotateCcw className="h-4 w-4" /> Reabrir selecionados
               </Button>
+              <span className="h-5 w-px bg-border mx-1" />
             </>
-          )
-        ) : (
-          <span className="text-xs text-muted-foreground">Selecione uma extração acima.</span>
-        )}
-        <span className="text-xs text-muted-foreground ml-auto">
-          {approvalCounts.emTratamento} em tratamento · {approvalCounts.aprovadas} aprovadas · só as aprovadas entram na Base consolidada
-        </span>
-      </div>
+          )}
+
+          <Button
+            variant="outline" size="sm" className="gap-1"
+            disabled={approveBulk.isPending || !productId || !activeExtraction || leads.length === 0}
+            title="Aprova todos os leads que batem os filtros atuais (exceto lixeira)"
+            onClick={approveFiltered}
+          >
+            <BadgeCheck className="h-4 w-4" /> Aprovar todos os filtrados
+          </Button>
+          <Button
+            variant="outline" size="sm" className="gap-1"
+            disabled={approveBulk.isPending || !productId || !activeExtraction}
+            title="Aprova a base inteira desta extração (exceto lixeira)"
+            onClick={approveWholeBase}
+          >
+            <Check className="h-4 w-4" /> Aprovar base inteira
+          </Button>
+          <Button
+            variant="ghost" size="sm" className="gap-1 text-muted-foreground"
+            disabled={approveBulk.isPending || !productId || !activeExtraction}
+            title="Reabre todos os leads desta extração (voltam a 'em tratamento')"
+            onClick={reopenWholeBase}
+          >
+            <RotateCcw className="h-4 w-4" /> Reabrir base
+          </Button>
+
+          <span className="text-xs text-muted-foreground ml-auto">
+            {approvalCounts ? `${approvalCounts.aprovados} aprovados · ${approvalCounts.emTratamento} em tratamento` : '…'} · só os aprovados entram na Base consolidada
+          </span>
+        </div>
+      )}
 
       {showExcluded && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-muted-foreground">
@@ -348,6 +387,16 @@ export function PlatformProspeccaoManager() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
+                <th className="w-8 p-2 text-center">
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar todos os visíveis"
+                    className="align-middle"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                    disabled={showExcluded || leads.length === 0}
+                  />
+                </th>
                 <th className="text-left p-2 font-medium">Segmento (clique p/ mudar)</th>
                 <th className="text-left p-2 font-medium">Perfil</th>
                 <th className="text-right p-2 font-medium">Seguidores</th>
@@ -363,12 +412,26 @@ export function PlatformProspeccaoManager() {
               </tr>
             </thead>
             <tbody>
-              {leadsLoading && <tr><td colSpan={12} className="p-6 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>}
+              {leadsLoading && <tr><td colSpan={13} className="p-6 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>}
               {!leadsLoading && leads.length === 0 && (
-                <tr><td colSpan={12} className="p-6 text-center text-muted-foreground">{showExcluded ? 'Lixeira vazia.' : activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
+                <tr><td colSpan={13} className="p-6 text-center text-muted-foreground">{showExcluded ? 'Lixeira vazia.' : activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
               )}
               {leads.map((l) => (
-                <tr key={l.id} className="border-t border-border hover:bg-muted/30">
+                <tr key={l.id} className={`border-t border-border hover:bg-muted/30 ${l.approved_at ? 'bg-green-500/[0.06]' : ''}`}>
+                  <td className="p-2 text-center align-top">
+                    <div className="flex flex-col items-center gap-0.5 pt-0.5">
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecionar @${l.handle ?? ''}`}
+                        checked={selectedIds.has(l.id)}
+                        onChange={() => toggleSelect(l.id)}
+                        disabled={showExcluded}
+                      />
+                      {l.approved_at && (
+                        <span title="Aprovado — entra na Base consolidada" className="text-[11px] leading-none text-green-600">✓</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-2" title={whyText(l)}>
                     <div className="flex items-center gap-1">
                       <select
