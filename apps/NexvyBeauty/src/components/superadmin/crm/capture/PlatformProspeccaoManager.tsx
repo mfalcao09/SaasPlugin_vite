@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import {
   useExcludeLead,
   useRestoreLead,
   useSetLeadPhone,
+  useApproveExtraction,
+  useReopenExtraction,
   type LeadSegment,
   type ExtractedLead,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
@@ -103,7 +105,21 @@ export function PlatformProspeccaoManager() {
   const exclude = useExcludeLead();
   const restore = useRestoreLead();
   const setPhone = useSetLeadPhone();
+  const approve = useApproveExtraction();
+  const reopen = useReopenExtraction();
   const qc = useQueryClient();
+
+  // Portão de aprovação (unidade = a extração). Objeto da extração selecionada +
+  // contadores (N em tratamento · M aprovadas) — o clean-slate deixa tudo NULL, então
+  // deixar isso explícito evita confusão ("por que a Base consolidada está vazia?").
+  const activeExtractionObj = useMemo(
+    () => extractions.find((e) => e.id === activeExtraction) ?? null,
+    [extractions, activeExtraction],
+  );
+  const approvalCounts = useMemo(() => {
+    const aprovadas = extractions.filter((e) => e.approved_at != null).length;
+    return { aprovadas, emTratamento: extractions.length - aprovadas };
+  }, [extractions]);
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: ['platform-lead-extractions', productId] });
@@ -237,7 +253,7 @@ export function PlatformProspeccaoManager() {
           <SelectContent>
             {extractions.map((ex) => (
               <SelectItem key={ex.id} value={ex.id}>
-                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
+                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''} · {ex.approved_at ? '✅ aprovada' : '⏳ em tratamento'}
               </SelectItem>
             ))}
           </SelectContent>
@@ -273,6 +289,44 @@ export function PlatformProspeccaoManager() {
         </div>
 
         <Button variant="outline" size="sm" className="gap-1 ml-auto" onClick={handleExport} disabled={leads.length === 0}><Download className="h-4 w-4" /> Exportar qualificados (CSV)</Button>
+      </div>
+
+      {/* Portão de aprovação Prospecção → Base consolidada. Unidade = a EXTRAÇÃO (não lead-a-lead).
+          Só bases APROVADAS entram na Base consolidada. Clean slate: tudo começa "em tratamento". */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+        <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+          <DoorOpen className="h-4 w-4 text-primary" /> Portão da Base consolidada
+        </span>
+        {activeExtractionObj ? (
+          activeExtractionObj.approved_at ? (
+            <>
+              <Badge variant="outline" className="bg-green-500/15 text-green-600 border-green-500/30">✅ Aprovada</Badge>
+              <Button
+                variant="outline" size="sm" className="gap-1"
+                disabled={reopen.isPending || !productId}
+                onClick={() => productId && reopen.mutate({ id: activeExtractionObj.id, productId })}
+              >
+                {reopen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reabrir
+              </Button>
+            </>
+          ) : (
+            <>
+              <Badge variant="outline" className="bg-yellow-500/15 text-yellow-600 border-yellow-500/30">⏳ Em tratamento</Badge>
+              <Button
+                size="sm" className="gap-1"
+                disabled={approve.isPending || !productId}
+                onClick={() => productId && approve.mutate({ id: activeExtractionObj.id, productId })}
+              >
+                {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Aprovar base
+              </Button>
+            </>
+          )
+        ) : (
+          <span className="text-xs text-muted-foreground">Selecione uma extração acima.</span>
+        )}
+        <span className="text-xs text-muted-foreground ml-auto">
+          {approvalCounts.emTratamento} em tratamento · {approvalCounts.aprovadas} aprovadas · só as aprovadas entram na Base consolidada
+        </span>
       </div>
 
       {showExcluded && (

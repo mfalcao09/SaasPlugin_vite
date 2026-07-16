@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Layers, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw,
-  Trash2, RotateCcw, Plus, Check, X, Phone, PhoneOff, Users2,
+  Trash2, RotateCcw, Plus, Check, X, Phone, PhoneOff, Users2, DoorOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,6 +100,10 @@ export function PlatformProspeccaoBaseConsolidada() {
           <p className="text-muted-foreground mt-1">
             Uma linha por @handle — dedup + merge de todas as extrações (telefone/e-mail/categoria de quem tiver).
             As ações aqui são globais: valem para o handle em <b>todas</b> as origens. As extrações ficam intactas na aba Buscas.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            <DoorOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+            Mostra apenas <b>bases aprovadas</b>: aprove a extração na aba <b>Buscas</b> (Portão da Base consolidada) para os leads dela aparecerem aqui.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
