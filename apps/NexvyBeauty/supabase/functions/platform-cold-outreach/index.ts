@@ -32,6 +32,7 @@ import {
 import { assignVariant, type Channel, renderOpening, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
 import { pickSdrPersona } from "../_shared/cold-outreach/persona.ts";
+import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -254,6 +255,24 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     .eq("id", due.id).eq("status", "queued").select("id").maybeSingle();
   if (!locked) return { campaign: c.id, action: "raced", followups: followupResult };
 
+  // SEND-BOUNDARY recheck (defense-in-depth): o lead AINDA está aprovado?
+  // O gate de enqueue já filtra approved_at, mas esta linha pode predatar o gate
+  // ou o lead pode ter sido DES-aprovado após enfileirado. Sem approved_at → NÃO
+  // envia: marca 'skipped' (mesmo padrão do skip de deliver abaixo) e segue.
+  const leadId = due.extracted_lead_id as string | null | undefined;
+  let approvedAt: string | null | undefined = null;
+  if (leadId) {
+    const { data: leadApproval } = await sb.from("platform_crm_extracted_leads")
+      .select("approved_at").eq("id", leadId).maybeSingle();
+    approvedAt = leadApproval?.approved_at ?? null;
+  }
+  if (!isApprovedForSend(approvedAt)) {
+    await sb.from("platform_crm_cold_outreach_queue")
+      .update({ status: "skipped", skip_reason: UNAPPROVED_SKIP_REASON, updated_at: now.toISOString() })
+      .eq("id", due.id);
+    return { campaign: c.id, action: "skipped_unapproved", lead: due.id, remaining: gate.remaining, followups: followupResult };
+  }
+
   // Render da abertura (script WIRED).
   const tokens = await buildTokens(sb, c, due);
   const text = renderOpening(channel, tokens, due.variant ?? undefined);
@@ -303,8 +322,27 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
     .lt("followups_sent", maxFollowups)
     .order("next_followup_at", { ascending: true })
     .limit(5);
+
+  // SEND-BOUNDARY recheck (batch, defense-in-depth): quais desses leads seguem
+  // APROVADOS agora? 1 query (.in) evita N+1. Lead des-aprovado após o envio da
+  // abertura NÃO recebe follow-up: para a cadência (next_followup_at=null) + skip_reason.
+  const rowsF = (dueFollowups ?? []) as any[];
+  const leadIds = [...new Set(rowsF.map((f) => f.extracted_lead_id).filter(Boolean) as string[])];
+  const approvedLeadIds = new Set<string>();
+  if (leadIds.length) {
+    const { data: approvedRows } = await sb.from("platform_crm_extracted_leads")
+      .select("id").in("id", leadIds).not("approved_at", "is", null);
+    for (const r of approvedRows ?? []) approvedLeadIds.add(r.id as string);
+  }
+  const { sendable, skip: unapproved } = partitionByApproval(rowsF, approvedLeadIds);
+  for (const f of unapproved) {
+    await sb.from("platform_crm_cold_outreach_queue")
+      .update({ next_followup_at: null, skip_reason: UNAPPROVED_SKIP_REASON, updated_at: now.toISOString() })
+      .eq("id", f.id);
+  }
+
   let sent = 0;
-  for (const f of dueFollowups ?? []) {
+  for (const f of sendable) {
     const step = (f.followups_sent ?? 0) + 1; // 1=D+2, 2=breakup
     const tokens = await buildTokens(sb, c, f);
     const text = renderFollowup(channel, step as 1 | 2, tokens, f.variant ?? undefined);
@@ -327,7 +365,7 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
       await sb.from("platform_crm_cold_outreach_queue").update({ next_followup_at: null, skip_reason: res.error, updated_at: now.toISOString() }).eq("id", f.id);
     }
   }
-  return { processed: (dueFollowups ?? []).length, sent };
+  return { processed: rowsF.length, sent, skippedUnapproved: unapproved.length };
 }
 
 // ── entrega (dry-run curto-circuita o envio real) ────────────────────────────
