@@ -12,6 +12,10 @@ export interface PlatformPlan {
   display_order: number;
 
   price_monthly: number;
+  // Preço "de" (âncora de exibição do de-para, ex.: "de R$383"). NÃO é o preço
+  // cobrado — quem cobra é price_monthly (Cakto). Só exibição; nunca vai à Cakto.
+  // Nullable = plano sem âncora. A coluna existe em platform_plans (default null).
+  list_price_monthly: number | null;
   price_yearly: number;
   trial_days: number;
   grace_period_days: number;
@@ -108,8 +112,8 @@ export type PublicPlan = Pick<PlatformPlan,
   'feature_text_correction_ai' | 'feature_webhooks' | 'feature_external_api' |
   'feature_integrations'> & {
   // Preço "de" (âncora de valor) exposto pela view public_plans — o de-para
-  // 383/599/849 → 275/427/693 da Esteira. Não existe em platform_plans (base do
-  // Pick), por isso entra como interseção. Pode ser null (plano sem âncora).
+  // 383/599/849 → 275/427/693 da Esteira. A coluna existe em platform_plans e no
+  // tipo-base; fica reafirmada aqui porque o Pick acima não a lista. Pode ser null.
   list_price_monthly: number | null;
 };
 
