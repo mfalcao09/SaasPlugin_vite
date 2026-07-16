@@ -22,6 +22,10 @@ export interface ImplantacaoPayload {
     slug?: string;
     /** Cor principal do espaço (hex). */
     cor_principal?: string;
+    /** Esteira demo: segmento/sub-vertical (default por sub-vertical do ticket). */
+    segmento?: string;
+    /** Esteira demo: ticket médio (R$) — insumo da fórmula do dinheiro (sumidos × ticket). */
+    ticket_medio?: number;
     endereco?: {
       cep?: string; rua?: string; numero?: string; complemento?: string;
       bairro?: string; cidade?: string; uf?: string;
@@ -74,6 +78,9 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  // Esteira: discrimina o wizard demo do wizard pago. Vem do validate_onboarding_token
+  // (RPC retorna `mode` — migration 20260716). 'demo' → DemoWizard; senão → paga.
+  const [mode, setMode] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -111,6 +118,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
         setOrganizationId(data.organization_id);
         setStatus(data.status);
         setSessionToken(nextSession);
+        setMode(data.mode ?? null);
         const loaded = data.payload && Object.keys(data.payload).length > 0
           ? { ...EMPTY_PAYLOAD, ...data.payload }
           : EMPTY_PAYLOAD;
@@ -255,6 +263,8 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
     submissionId, organizationId, payload, status,
     loading, saving, error,
     updateSection, submit, reportStep,
+    // Esteira: `mode` roteia demo vs pago; `sessionToken` autentica a lead na edge demo-evolution.
+    mode, sessionToken, token: token ?? null,
   };
 }
 

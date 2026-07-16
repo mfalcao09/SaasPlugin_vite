@@ -106,7 +106,12 @@ export type PublicPlan = Pick<PlatformPlan,
   'feature_forms' | 'feature_internal_chat' | 'feature_ai_agents' |
   'feature_voice_agents' | 'feature_audio_transcription_ai' |
   'feature_text_correction_ai' | 'feature_webhooks' | 'feature_external_api' |
-  'feature_integrations'>;
+  'feature_integrations'> & {
+  // Preço "de" (âncora de valor) exposto pela view public_plans — o de-para
+  // 383/599/849 → 275/427/693 da Esteira. Não existe em platform_plans (base do
+  // Pick), por isso entra como interseção. Pode ser null (plano sem âncora).
+  list_price_monthly: number | null;
+};
 
 export function usePublicPlans() {
   return useQuery({

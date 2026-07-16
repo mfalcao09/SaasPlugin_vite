@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RIPD — Esteira de Demonstração NexvyBeauty (DRAFT)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#9198a1; --accent:#a371f7; --warn:#f0883e; --ok:#3fb950; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:1.7rem; line-height:1.25; margin:0 0 4px; }
+  h2 { font-size:1.15rem; margin:34px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); color:var(--accent); }
+  .sub { color:var(--muted); font-size:.9rem; margin-bottom:18px; }
+  .warn { background:rgba(240,136,62,.1); border:1px solid var(--warn); border-radius:10px; padding:14px 16px; margin:18px 0; }
+  .warn b { color:var(--warn); }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:.92rem; overflow-x:auto; display:block; }
+  th,td { border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--panel); }
+  code { background:var(--panel); border:1px solid var(--border); border-radius:5px; padding:1px 5px; font-size:.85em; }
+  ul { padding-left:20px; } li { margin:4px 0; }
+  .ok { color:var(--ok); } .foot { color:var(--muted); font-size:.85rem; margin-top:40px; border-top:1px solid var(--border); padding-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RIPD — Esteira de Demonstração NexvyBeauty</h1>
+  <div class="sub">Scan pré-venda do WhatsApp · Relatório de Impacto à Proteção de Dados (art. 38, LGPD)</div>
+
+  <div class="warn"><b>⚠️ DRAFT — pendente de sign-off jurídico (B5).</b> Redigido pela sessão autônoma. NÃO publicar nem habilitar tráfego público real sem aprovação do advogado responsável. O link da demo não vai a público até esta ratificação.<br>Data: 2026-07-15 · Versão v1 (draft) · Pareado com <code>RIPD-ESTEIRA-DEMO-2026-07-15.md</code>.</div>
+
+  <h2>1. Identificação</h2>
+  <table>
+    <tr><th>Operador</th><td>Nexvy Tecnologia e Comunicação LTDA-ME · CNPJ 64.930.755/0001-78</td></tr>
+    <tr><th>Controladora</th><td>A lead (dona do salão) que conecta o próprio WhatsApp</td></tr>
+    <tr><th>DPO / Encarregado</th><td>dpo@nexvy.tech</td></tr>
+    <tr><th>Tratamento</th><td>Análise pré-contratual do histórico de WhatsApp da lead para identificar clientes inativas e estimar valor recuperável</td></tr>
+    <tr><th>Sistemas</th><td>Supabase (Postgres + Edge Functions) · Evolution API (Baileys, VPS)</td></tr>
+  </table>
+
+  <h2>2. Papéis e base legal</h2>
+  <ul>
+    <li><b>Lead = Controladora; NexvyBeauty = Operadora.</b> O aceite da tela do QR é o instrumento (instrução documentada — art. 39). Sem ele, a Nexvy escorregaria para controladora (art. 42).</li>
+    <li><b>Acesso (lead → NexvyBeauty):</b> consentimento explícito prévio (art. 7º, I).</li>
+    <li><b>Lead sobre as clientes dela:</b> legítimo interesse da própria lead (art. 7º, IX c/c art. 10). A lead declara ter base legítima. LIA fecha: minimização ✓, expectativa ✓, salvaguardas ✓ (TTL 72h + wipe + nenhum contato com terceiros).</li>
+    <li><b>Nexvy:</b> opera sob instrução. Qualquer uso além disso = desvio de finalidade, proibido por construção.</li>
+  </ul>
+
+  <h2>3. Natureza e volume dos dados</h2>
+  <table>
+    <tr><th>Categoria</th><th>Coletamos</th><th>NÃO coletamos</th></tr>
+    <tr><td>Clientes da lead (terceiros)</td><td>Nome, telefone, timestamp da última interação</td><td><b>Corpo das mensagens NUNCA persiste no Postgres</b> (só metadados)</td></tr>
+    <tr><td>Consentimento (a lead)</td><td>IP, user-agent, geo aproximada (por IP, GeoLite2 local/CDN — o IP não sai para API 3ª), timestamp, texto e versão do termo</td><td>—</td></tr>
+  </table>
+  <p>Volume: potencialmente centenas a milhares de contatos de terceiros por demo → justifica este RIPD (art. 38).</p>
+
+  <h2>4. Ciclo de vida do dado (retenção 72h)</h2>
+  <ul>
+    <li><b>TTL fixo de 72h nos DADOS</b> (<code>demo_expires_at = criação + 72h</code>), independente de pedido de exclusão.</li>
+    <li><b>Análise contínua</b> enquanto a conexão seguir ativa (inclui msgs novas) — explícito no consentimento.</li>
+    <li><b>Botão "Excluir meus dados"</b> (sem "agora"): registra <code>deletion_requested_at</code>, desconecta a instância na hora (minimização), agenda a remoção para o fim das 72h (art. 18).</li>
+    <li><b>Wipe automático (T-0):</b> <code>demo-reaper</code> (cron horário) → <code>wipe-demo-org</code>: deleção verificada da instância no Evolution, storage, e wipe de todas as tabelas org-scoped. Retém prova (art. 16/18): <code>lgpd_consents</code>, <code>platform_audit_logs</code>. Idempotente.</li>
+    <li><b>Aviso T-24h</b> no WhatsApp.</li>
+  </ul>
+
+  <h2>5. Medidas de segurança</h2>
+  <ul>
+    <li>Edge functions server-side; a lead anônima nunca chama o Evolution direto (só via <code>demo-evolution</code> com token+session).</li>
+    <li>Consentimento forense imutável (RLS super_admin-only, sem UPDATE/DELETE).</li>
+    <li>Endpoint público com honeypot + rate-limit durável (IP/telefone).</li>
+    <li>Wipe com guard <code>plan_status='demo'</code> + deleção verificada.</li>
+    <li>Comparações de segredo em tempo constante; lookups injection-safe.</li>
+  </ul>
+
+  <h2>6. Riscos e mitigações</h2>
+  <table>
+    <tr><th>Risco</th><th>Mitigação</th></tr>
+    <tr><td>Wipe incompleto (instância órfã; tabelas sem FK)</td><td>Deleção verificada + RPC que varre todas as base tables org-scoped (replication_role) + retém prova</td></tr>
+    <tr><td>Ban do número (Baileys não-oficial)</td><td>Demo read-only + 1 mensagem (risco ~zero); nunca prometer imunidade</td></tr>
+    <tr><td>Profundidade do histórico não garantida</td><td>Copy "seus últimos meses"; estado honesto quando raso</td></tr>
+    <tr><td>Abuso do endpoint público</td><td>Honeypot + rate-limit; instância lazy; token single-session 72h</td></tr>
+    <tr><td>Vazamento do pairing code</td><td>Exigir QR base64</td></tr>
+  </table>
+
+  <h2>7. Direitos do titular</h2>
+  <ul>
+    <li><b>Lead:</b> acesso, correção, eliminação (botão dedicado; efetiva no T-0), portabilidade, revogação (desconecta a instância).</li>
+    <li><b>Clientes da lead:</b> a Nexvy opera sob instrução; o exercício de direitos flui pela controladora. Nenhum contato com terceiros na demo.</li>
+  </ul>
+
+  <h2>8. Pendências para sign-off (jurídico)</h2>
+  <ul>
+    <li>☐ Ratificar base legal (consentimento + LIA) e texto do termo (§5.2 do blueprint).</li>
+    <li>☐ Aprovar bump de <code>PRIVACY_VERSION</code> com a cláusula do scan de demo.</li>
+    <li>☐ Confirmar geo por GeoLite2 <b>local</b> (IP não vai a API 3ª — B1). Hoje: geo por headers de CDN quando disponíveis; GeoLite2 local completo = pendência de infra.</li>
+    <li>☐ Autorizar o tráfego público real (o link não vai a público até aqui).</li>
+  </ul>
+
+  <div class="foot">Draft gerado automaticamente. A validade jurídica depende da revisão do advogado responsável e do Encarregado (DPO).</div>
+</div>
+</body>
+</html>

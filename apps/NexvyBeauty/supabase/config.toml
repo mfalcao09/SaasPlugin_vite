@@ -34,6 +34,11 @@ verify_jwt = false
 [functions.platform-sales-brain]
 verify_jwt = false
 
+# Dispatcher da Conversions API (Meta) do funil Ads Inbound (G4). Chamada de
+# máquina (cron/manual). Sem JWT. Auth = service-role OU x-brain-secret na função.
+[functions.platform-capi-send]
+verify_jwt = false
+
 # Runtime PÚBLICO dos formulários de captação da plataforma. Recebe submissão de
 # lead EXTERNO (embed anônimo) e usa SERVICE_ROLE internamente — o gateway não
 # pode exigir JWT, senão o embed público é rejeitado. Auth = pública por design
@@ -75,6 +80,23 @@ verify_jwt = false
 # token) casa com onboarding_submissions.token_hash + session_token + org não travada. O fluxo
 # autenticado (submission_id + Bearer) valida o JWT dentro da própria função.
 [functions.apply-onboarding]
+verify_jwt = false
+
+# ESTEIRA DEMO — endpoints PÚBLICOS pré-venda (a lead é anônima, sem JWT).
+# demo-start: cria a org demo + link do wizard (auth real = honeypot + rate-limit
+#   durável por IP/telefone; nada sensível é exposto).
+# demo-evolution: motor da demo (auth real = token+session_token do
+#   onboarding_submissions mode='demo', OU Bearer service_role p/ chamadas internas).
+[functions.demo-start]
+verify_jwt = false
+
+[functions.demo-evolution]
+verify_jwt = false
+
+# Cron da NINA (retenção): varre contas em D-7 de renovação e aciona a Nina.
+# Sem JWT no gateway — auth real na função (service-role bearer/apikey OU
+# x-brain-secret, timing-safe). Gated por NINA_HEALTH_SCAN_ENABLED (default OFF).
+[functions.nina-health-scan]
 verify_jwt = false
 
 # Envio WhatsApp via Evolution BURNER platform-side (cold outreach). Chamada
