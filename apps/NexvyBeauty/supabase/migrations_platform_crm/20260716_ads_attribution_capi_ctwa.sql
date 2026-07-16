@@ -89,7 +89,8 @@ CREATE TABLE IF NOT EXISTS public.ads_capi_events (
   attribution_id   uuid REFERENCES public.ads_attribution(id)            ON DELETE SET NULL,
   journey_event_id uuid REFERENCES public.platform_crm_journey_events(id) ON DELETE SET NULL,
   event_name       text NOT NULL
-    CHECK (event_name IN ('Lead','Qualified','Schedule','InitiateCheckout','Purchase')),
+    -- valores REAIS da CAPI-CTWA (doc Meta Business Messaging, verificada 2026-07-16):
+    CHECK (event_name IN ('LeadSubmitted','QualifiedLead','ViewContent','InitiateCheckout','Purchase')),
   event_id         text NOT NULL,      -- chave de dedup enviada ao Meta (idempotência)
   ctwa_clid        text,               -- atribuição (denormalizado p/ envio)
   action_source    text NOT NULL DEFAULT 'business_messaging'

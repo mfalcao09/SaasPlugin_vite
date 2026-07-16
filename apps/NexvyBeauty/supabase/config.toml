@@ -34,6 +34,11 @@ verify_jwt = false
 [functions.platform-sales-brain]
 verify_jwt = false
 
+# Dispatcher da Conversions API (Meta) do funil Ads Inbound (G4). Chamada de
+# máquina (cron/manual). Sem JWT. Auth = service-role OU x-brain-secret na função.
+[functions.platform-capi-send]
+verify_jwt = false
+
 # Runtime PÚBLICO dos formulários de captação da plataforma. Recebe submissão de
 # lead EXTERNO (embed anônimo) e usa SERVICE_ROLE internamente — o gateway não
 # pode exigir JWT, senão o embed público é rejeitado. Auth = pública por design
