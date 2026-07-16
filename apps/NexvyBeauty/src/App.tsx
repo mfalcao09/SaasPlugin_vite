@@ -114,6 +114,8 @@ const DemoSalaoProfissionais = lazyWithRetry(() => import("./pages/salao/DemoPro
 const DemoSalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/DemoFinanceiro"));
 const DemoSalaoAgenda = lazyWithRetry(() => import("./pages/salao/DemoAgenda"));
 const DemoCockpitHome = lazyWithRetry(() => import("./cockpit/DemoCockpitHome"));
+// Preview DEV do wizard da Esteira (mock) — rota registrada só em import.meta.env.DEV.
+const DemoWizardPreview = lazyWithRetry(() => import("./components/onboarding/implantacao/demo/DemoPreview"));
 const SalaoAgenda = lazyWithRetry(() => import("./pages/salao/Agenda"));
 const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissionais"));
 const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
@@ -264,6 +266,10 @@ const App = () => (
                   /implantacao/:token = wizard via link público com trava de sessão. */}
               <Route path="/bem-vindo" element={<OnboardingWelcome />} />
               <Route path="/implantacao/:token" element={<ImplantacaoPublic />} />
+              {/* Preview DEV do wizard da Esteira (dados mock) — NUNCA em produção. */}
+              {import.meta.env.DEV && (
+                <Route path="/demo/preview" element={<DemoWizardPreview />} />
+              )}
 
               {/* Jurídico público (sem login) */}
               <Route path="/termos" element={<Termos />} />
