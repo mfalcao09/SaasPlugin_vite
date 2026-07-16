@@ -104,14 +104,17 @@ async function actionEnqueue(sb: SupabaseClient, campaignId: string, limit: numb
   const productId = campaign.product_id as string;
 
   // Puxa candidatos por segmento (o gate fino roda no código; o predicado SQL
-  // pré-filtra por segmento/exclusão pra não trazer a base inteira).
+  // pré-filtra por segmento/exclusão/APROVAÇÃO pra não trazer a base inteira).
+  // approved_at IS NOT NULL = portão per-lead da Prospecção (só base aprovada;
+  // espelha `platform_crm_consolidated_leads`). NULL = em tratamento → nunca dispara.
   const wantSegment = channel === "instagram" ? "acionamento_via_instagram" : "salao_cliente";
   const { data: rawLeads, error } = await sb
     .from("platform_crm_extracted_leads")
-    .select("id, product_id, handle, primeiro_nome, telefone, segment, qualified, phone_is_br, is_seed, seguidores, categoria, bio, excluded_at")
+    .select("id, product_id, handle, primeiro_nome, telefone, segment, qualified, phone_is_br, is_seed, seguidores, categoria, bio, excluded_at, approved_at")
     .eq("product_id", productId)
     .eq("segment", wantSegment)
     .is("excluded_at", null)
+    .not("approved_at", "is", null)
     .limit(Math.min(limit, 5000));
   if (error) return json({ error: `query leads: ${error.message}` }, 500);
 
