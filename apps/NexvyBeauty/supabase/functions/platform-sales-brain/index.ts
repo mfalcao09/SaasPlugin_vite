@@ -55,6 +55,7 @@ import {
   pickSdrPersona,
   pickPersonaForConversation,
 } from '../_shared/agent-routing.ts';
+import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -642,6 +643,23 @@ const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente
 // contínuo + salvar a renovação. Entra quando retentionActive (persona = Nina).
 const RETENTION_RULE_BLOCK = `7. MODO RETENÇÃO (pós-venda): esta cliente JÁ COMPROU e já usa o produto — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento, desconto ou condição de fundadora. Seu papel é CUIDAR: resolver a dúvida/dor do dia a dia, destravar o que ela não conseguiu sozinha e lembrá-la do VALOR que ela já tem, pra ela continuar e renovar. Retenção NUNCA é desconto — é resolver e reancorar no valor. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". UM passo por mensagem. Se ela quiser sair, entenda o porquê com calma (1 pergunta) e resolva o que der antes de escalar — nunca prometa reembolso/desconto por conta própria. Cobrança/reembolso, bug que você não resolve, cancelamento formal ou pedido de humano → use ${ESCALATE_TAG}; reclamação grave → use ${HANDOFF_TAG}.`;
 
+// MODO INBOUND (Ads CTWA · gap G3) — a Duda (SDR) abre ESPELHANDO o anúncio de
+// onde a lead veio. NÃO é persona nova nem 2º SDR (o roteamento do #68 continua
+// intacto: a Duda é escolhida por pickSdrPersona). NÃO gata a oferta — Duda de
+// anúncio ainda vende; por isso é um bloco de CONTEXTO adicional (espelho do
+// onboardingPhaseContext), não um swap da regra 7. Entra só quando há referral
+// CTWA (mensagem-gatilho = click atual, ou lead.metadata = first-touch).
+function buildInboundAdContext(ref: CtwaReferral): string {
+  const gancho = ctwaAdSummary(ref);
+  return `\n═══════════════════════════════════════
+LEAD VEIO DE ANÚNCIO (CTWA — MODO INBOUND)
+═══════════════════════════════════════
+Esta lead clicou num anúncio Click-to-WhatsApp e chegou QUENTE${gancho ? ` (o anúncio dela: ${gancho})` : ''}. Ela já quer o "raio-x do WhatsApp" — ver quanto tá parado em cliente que sumiu.
+ABERTURA (só na PRIMEIRA fala): reconheça que ela veio pelo anúncio do raio-x, prometa mostrar em ~2 min, no número real dela, quanto tá parado, e faça JÁ a 1ª pergunta de qualificação. NUNCA abra genérico ("como posso te ajudar?") — isso queima o match do anúncio e derruba a conversão.
+QUALIFICAÇÃO LEVE (no máx 2-3 respostas, UMA pergunta por vez): (a) salão próprio ou atende como autônoma? (b) quantas cadeiras/profissionais? (c) usa algum sistema hoje? (d) qual a maior dor? Depois da 2ª-3ª resposta, PARE de perguntar e DISPARE a isca (o raio-x) — a própria demonstração qualifica o resto (a lead se qualifica sozinha ao ver o próprio dinheiro parado).
+FORA DO ICP (curiosa, concorrente, quer emprego/renda extra): agradeça com carinho e encerre — não insista.`;
+}
+
 /** Playbook das 9 páginas do wizard de implantação: o que a cliente vê ·
  *  dúvidas comuns · o que orientar. Tom Duda amigável, "seu espaço" sempre. */
 const WIZARD_PAGES: Array<{ n: number; titulo: string; guia: string }> = [
@@ -945,6 +963,26 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 7.6) MODO INBOUND (Ads CTWA · gap G3): a lead veio de um anúncio
+    //     Click-to-WhatsApp → a Duda (SDR) abre ESPELHANDO o anúncio + qualifica
+    //     leve → dispara a isca. Detecção pelo referral gravado pelo webhook (G1):
+    //     preferimos a mensagem-gatilho (click ATUAL) e caímos no lead (first-touch).
+    //     Só vale pra Duda abrindo (personaIsSdr) e fora dos modos pós-venda —
+    //     NÃO é persona nova (roteamento do #68 intacto) e NÃO gata a oferta.
+    const ctwaRef: CtwaReferral | null =
+      parseCtwaReferral(
+        triggerInbound?.metadata && typeof triggerInbound.metadata === 'object'
+          ? { referral: (triggerInbound.metadata as Record<string, any>).referral }
+          : null,
+      ) ??
+      parseCtwaReferral(
+        lead?.metadata && typeof lead.metadata === 'object'
+          ? { referral: (lead.metadata as Record<string, any>).referral }
+          : null,
+      );
+    const inboundActive = personaIsSdr && !onboardingActive && !retentionActive && !!ctwaRef;
+    const inboundAdContext = inboundActive ? buildInboundAdContext(ctwaRef!) : '';
+
     // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
     let product: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
@@ -1012,7 +1050,7 @@ ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
 ${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
-${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}
+${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}
 
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
