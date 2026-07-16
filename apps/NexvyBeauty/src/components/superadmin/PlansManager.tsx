@@ -120,7 +120,16 @@ export function PlansManager() {
                           <span className="text-xs text-muted-foreground">{plan.slug}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{formatCurrency(plan.price_monthly)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          {plan.list_price_monthly != null && Number(plan.list_price_monthly) > Number(plan.price_monthly) && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              de {formatCurrency(plan.list_price_monthly)}
+                            </span>
+                          )}
+                          <span>{formatCurrency(plan.price_monthly)}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{plan.max_users}</TableCell>
                       <TableCell>{plan.max_connections}</TableCell>
                       <TableCell>{plan.max_sectors}</TableCell>
