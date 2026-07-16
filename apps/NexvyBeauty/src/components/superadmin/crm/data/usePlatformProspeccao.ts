@@ -28,6 +28,9 @@ export interface LeadExtraction {
   total_found: number | null;
   last_error: string | null;
   created_at: string;
+  /** Portão Prospecção→Base consolidada: NULL = em tratamento, preenchido = base aprovada (entra na view consolidada). */
+  approved_at: string | null;
+  approved_by: string | null;
 }
 
 export interface ExtractedLead {
@@ -71,13 +74,64 @@ export function usePlatformLeadExtractions(productId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_crm_lead_extractions' as never)
-        .select('id, product_id, keywords, source, status, total_found, last_error, created_at')
+        .select('id, product_id, keywords, source, status, total_found, last_error, created_at, approved_at, approved_by')
         .eq('product_id', productId as string)
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
       return (data ?? []) as unknown as LeadExtraction[];
     },
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// PORTÃO DE APROVAÇÃO (Prospecção → Base consolidada). Unidade de aprovação = a
+// EXTRAÇÃO (não lead-a-lead). Aprovar seta approved_at=now()/approved_by=user →
+// os leads dessa extração passam a entrar na view consolidada (após o flip da
+// view, passo coordenado). Reabrir zera de volta para "em tratamento".
+// Invalida a lista de extrações (badge) E a base consolidada (o teto muda).
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Aprova a BASE de uma extração (approved_at=now(), approved_by=user atual). */
+export function useApproveExtraction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; productId: string }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('platform_crm_lead_extractions' as never)
+        .update({ approved_at: new Date().toISOString(), approved_by: auth.user?.id ?? null } as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: (args) => {
+      qc.invalidateQueries({ queryKey: ['platform-lead-extractions', args.productId] });
+      qc.invalidateQueries({ queryKey: ['platform-consolidated-leads'] });
+      toast.success('Base aprovada', { description: 'Os leads desta extração passam a entrar na Base consolidada.' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao aprovar a base'),
+  });
+}
+
+/** Reabre uma base aprovada (approved_at=NULL) → volta para "em tratamento". */
+export function useReopenExtraction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: string; productId: string }) => {
+      const { error } = await supabase
+        .from('platform_crm_lead_extractions' as never)
+        .update({ approved_at: null, approved_by: null } as never)
+        .eq('id', args.id);
+      if (error) throw error;
+      return args;
+    },
+    onSuccess: (args) => {
+      qc.invalidateQueries({ queryKey: ['platform-lead-extractions', args.productId] });
+      qc.invalidateQueries({ queryKey: ['platform-consolidated-leads'] });
+      toast.success('Base reaberta', { description: 'A extração voltou para "em tratamento" e saiu da Base consolidada.' });
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao reabrir a base'),
   });
 }
 
