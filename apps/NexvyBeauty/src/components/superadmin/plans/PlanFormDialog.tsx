@@ -85,6 +85,7 @@ const emptyPlan: PlatformPlanInput = {
   is_default: false,
   display_order: 0,
   price_monthly: 0,
+  list_price_monthly: null, // âncora "de" (exibição). null = sem âncora, nunca 0.
   price_yearly: 0,
   trial_days: 7,
   grace_period_days: 3,
@@ -353,6 +354,28 @@ export function PlanFormBody({
         <TabsContent value="pricing" className="space-y-4 pt-4">
           <div className="grid grid-cols-2 gap-4">
             {numberField('price_monthly', 'Preço mensal (R$)')}
+            {/* Âncora "de" do de-para (exibição). Nullable: vazio => null (sem
+                âncora), nunca 0 — 0 renderizaria um "de R$0" falso. Não é cobrado:
+                quem cobra é o Preço mensal (Cakto). Nunca é enviado à Cakto. */}
+            <div className="space-y-2">
+              <Label className="text-xs">Preço de tabela / âncora "de" (R$)</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Sem âncora"
+                value={(form.list_price_monthly as number | null) ?? ''}
+                onChange={(e) =>
+                  set(
+                    'list_price_monthly',
+                    (e.target.value === '' ? null : Number(e.target.value)) as any,
+                  )
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Preço riscado no "de R$X" (âncora de valor). <strong>Não é cobrado</strong> —
+                quem cobra é o Preço mensal. Vazio = sem âncora.
+              </p>
+            </div>
             {numberField('price_yearly', 'Preço anual (R$)')}
             {numberField('trial_days', 'Dias de trial')}
             {numberField('grace_period_days', 'Carência (dias)')}
