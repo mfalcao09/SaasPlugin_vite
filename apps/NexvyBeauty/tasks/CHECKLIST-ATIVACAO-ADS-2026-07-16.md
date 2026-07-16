@@ -2,6 +2,8 @@
 
 > **Objetivo:** separar, sem ambiguidade, **o que é código (pronto/em build nesta sessão)** do **que é OPS do Marcelo (fila HITL)**. Nenhum item de código destrava valor sozinho — o gargalo de valor é OPS/Meta.
 > **Base:** `origin/main @ 573819c`. **Escopo:** fast-follow (não gate de go-live). **Controladora:** GO-LIVE session.
+>
+> **Atualização 2026-07-16 (pós-build):** os itens 🔨 foram construídos e cortados em **PRs draft stacked** (#86 docs · #87 A2-back · #88 front), verificados (deno 13/13 · Vite build verde), gated OFF — aguardando review/merge do Marcelo. O **#4 `demo_completed` foi ⏸️ PARKED** (ver linha na Camada B — achado: não é 1 linha). **Funil CAPI permanece 2/6** — estado honesto, não débito silencioso.
 
 ---
 
@@ -12,7 +14,7 @@ O "ADS" tem muito código pronto e **quase nada no ar**. As duas alavancas de va
 ---
 
 ## Legenda
-✅ pronto (mergeado) · 🔨 em build nesta sessão (gated OFF) · 🔒 **OPS do Marcelo (HITL)** · 🤝 coordenar com controladora
+✅ pronto (mergeado) · 🔨 construído nesta sessão (PR draft, gated OFF) · ⏸️ **parked** (adiado com motivo) · 🔒 **OPS do Marcelo (HITL)** · 🤝 coordenar com controladora
 
 ---
 
@@ -24,7 +26,7 @@ O "ADS" tem muito código pronto e **quase nada no ar**. As duas alavancas de va
 | Duda MODO INBOUND (G3) | ✅ | mergeado, prompt byte-idêntico p/ não-CTWA |
 | CAPI dispatcher `platform-capi-send` (G4) | ✅ | mergeado, **gated OFF** (dry-run) |
 | Console de Atribuição (aba B: `ads_attribution`+`ads_capi_events`) | 🔨 | build desta sessão — dá visibilidade ao funil |
-| Wire produtor #4 `demo_completed` (esteira) | 🤝 | esteira #70-74 mergeada → 1 linha `pcrm_log_journey_event('demo_completed',…)`. **Pingar controladora antes** (toca `demo-*`). Funil 2/6→3/6 |
+| Wire produtor #4 `demo_completed` (esteira) | ⏸️ **PARKED** | **Achado (2026-07-16): NÃO é 1 linha.** `demo-*` é 100% tenant-org (`organizations`), desacoplado de `platform_crm_leads` — emitir `demo_completed` exige **bridge cross-subsistema** (casar telefone→lead + resolver `product_id`), decisão de design da esteira. **Motivo do park:** ganho = 1 evento num funil CAPI gated OFF; precisa da **sessão-dona da esteira** + funil ao ar. → **PR dedicado futuro.** NÃO tocar `demo-*` agora. |
 | Produtores #5 `checkout_created` / #6 `sale_completed`/`pix_paid` | 🔒 | ponte cakto→journey (toca cakto = tenant-layer). **Só documentado, NÃO construído.** |
 | **Número novo limpo (Salvy)** → registrar na WABA `1023556786945354` + Cloud API (PIN) → wizard `platform-meta-whatsapp-connect` | 🔒 | sem número, o CTWA não abre conversa; herda todo o funil |
 | **Decidir a Página do Facebook** ligada ao número (gotcha CTWA: o clique abre o nº da Página do anúncio) | 🔒 | |
@@ -32,7 +34,7 @@ O "ADS" tem muito código pronto e **quase nada no ar**. As duas alavancas de va
 | **Cron do `platform-capi-send`** (dispatcher periódico, via service-role/x-brain-secret) | 🔒 | só após ligar o CAPI |
 | **Audiências** no Ads Manager: `CA_ExclusaoLeads` (1.919 tel.) + `CA_Semente_ICP` (1.497) + campanha CTWA (criativos C1/C2/C3) | 🔒 | |
 
-**Funil CAPI hoje:** produtores existem só p/ `LeadSubmitted`(#2) e `QualifiedLead`(#3). Com o wire #4 → 3/6. #5/#6 dependem da ponte cakto (OPS/decisão).
+**Funil CAPI hoje: 2/6.** Produtores existem só p/ `LeadSubmitted`(#2) e `QualifiedLead`(#3). **#4 `demo_completed` = ⏸️ parked** (bridge cross-subsistema — ver linha acima). #5/#6 dependem da ponte cakto (OPS/decisão). **2/6 é o estado honesto, não débito silencioso.**
 
 ---
 

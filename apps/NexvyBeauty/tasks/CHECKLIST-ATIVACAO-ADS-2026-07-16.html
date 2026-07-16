@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Checklist de Ativação — ADS NexvyBeauty · 2026-07-16</title>
+<title>Checklist de Ativacao — ADS NexvyBeauty · 2026-07-16</title>
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--bd:#30363d;--tx:#e6edf3;--mut:#9da7b3;--acc:#39d98a;--acc2:#4aa3ff;--warn:#e3b341;--red:#f85149}
   *{box-sizing:border-box}
@@ -33,13 +33,14 @@
 <blockquote>
 <p><strong>Objetivo:</strong> separar, sem ambiguidade, <strong>o que é código (pronto/em build nesta sessão)</strong> do <strong>que é OPS do Marcelo (fila HITL)</strong>. Nenhum item de código destrava valor sozinho — o gargalo de valor é OPS/Meta.
 <strong>Base:</strong> <code>origin/main @ 573819c</code>. <strong>Escopo:</strong> fast-follow (não gate de go-live). <strong>Controladora:</strong> GO-LIVE session.</p>
+<p><strong>Atualização 2026-07-16 (pós-build):</strong> os itens 🔨 foram construídos e cortados em <strong>PRs draft stacked</strong> (#86 docs · #87 A2-back · #88 front), verificados (deno 13/13 · Vite build verde), gated OFF — aguardando review/merge do Marcelo. O <strong>#4 <code>demo_completed</code> foi ⏸️ PARKED</strong> (ver linha na Camada B — achado: não é 1 linha). <strong>Funil CAPI permanece 2/6</strong> — estado honesto, não débito silencioso.</p>
 </blockquote>
 <hr />
 <h2>Resposta desconfortável primeiro</h2>
 <p>O "ADS" tem muito código pronto e <strong>quase nada no ar</strong>. As duas alavancas de valor (atribuição inbound B, e otimização A) estão <strong>travadas em setup Meta/OPS que só o Marcelo faz</strong> — não em código. Esta sessão fecha as lacunas de código restantes (agente A2 + consoles de leitura), mas <strong>elas ficam inertes/vazias até o OPS abaixo ser executado</strong>.</p>
 <hr />
 <h2>Legenda</h2>
-<p>✅ pronto (mergeado) · 🔨 em build nesta sessão (gated OFF) · 🔒 <strong>OPS do Marcelo (HITL)</strong> · 🤝 coordenar com controladora</p>
+<p>✅ pronto (mergeado) · 🔨 construído nesta sessão (PR draft, gated OFF) · ⏸️ <strong>parked</strong> (adiado com motivo) · 🔒 <strong>OPS do Marcelo (HITL)</strong> · 🤝 coordenar com controladora</p>
 <hr />
 <h2>Camada B — Atribuição inbound (CTWA + CAPI) · PRIORIDADE</h2>
 <table>
@@ -73,8 +74,8 @@
 </tr>
 <tr>
 <td>Wire produtor #4 <code>demo_completed</code> (esteira)</td>
-<td>🤝</td>
-<td>esteira #70-74 mergeada → 1 linha <code>pcrm_log_journey_event('demo_completed',…)</code>. <strong>Pingar controladora antes</strong> (toca <code>demo-*</code>). Funil 2/6→3/6</td>
+<td>⏸️ <strong>PARKED</strong></td>
+<td><strong>Achado (2026-07-16): NÃO é 1 linha.</strong> <code>demo-*</code> é 100% tenant-org (<code>organizations</code>), desacoplado de <code>platform_crm_leads</code> — emitir <code>demo_completed</code> exige <strong>bridge cross-subsistema</strong> (casar telefone→lead + resolver <code>product_id</code>), decisão de design da esteira. <strong>Motivo do park:</strong> ganho = 1 evento num funil CAPI gated OFF; precisa da <strong>sessão-dona da esteira</strong> + funil ao ar. → <strong>PR dedicado futuro.</strong> NÃO tocar <code>demo-*</code> agora.</td>
 </tr>
 <tr>
 <td>Produtores #5 <code>checkout_created</code> / #6 <code>sale_completed</code>/<code>pix_paid</code></td>
@@ -108,7 +109,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Funil CAPI hoje:</strong> produtores existem só p/ <code>LeadSubmitted</code>(#2) e <code>QualifiedLead</code>(#3). Com o wire #4 → 3/6. #5/#6 dependem da ponte cakto (OPS/decisão).</p>
+<p><strong>Funil CAPI hoje: 2/6.</strong> Produtores existem só p/ <code>LeadSubmitted</code>(#2) e <code>QualifiedLead</code>(#3). <strong>#4 <code>demo_completed</code> = ⏸️ parked</strong> (bridge cross-subsistema — ver linha acima). #5/#6 dependem da ponte cakto (OPS/decisão). <strong>2/6 é o estado honesto, não débito silencioso.</strong></p>
 <hr />
 <h2>Camada A1 — Gestão: conexão + sync + console de campanhas</h2>
 <table>
