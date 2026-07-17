@@ -1668,6 +1668,12 @@ function Cofounder() {
                 onSubmit={(e) => { e.preventDefault(); if (!sending) void enviar(); }}
               >
                 <h3 className="cof-modal-title">Garanta sua vaga na mentoria</h3>
+                {/* A vaga só fica reservada se este lead casar com a assinatura (por e-mail/telefone).
+                    Dado diferente = vaga que o sistema não enxerga — daí o aviso ser explícito. */}
+                <p className="cof-modal-text">
+                  Use os mesmos dados que você usa (ou vai usar) na assinatura do NexvyBeauty — é assim que a gente
+                  encontra você e reserva sua vaga.
+                </p>
                 <input
                   className="cof-modal-input"
                   type="text"
@@ -1680,7 +1686,7 @@ function Cofounder() {
                 <input
                   className="cof-modal-input"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder="E-mail da assinatura"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -1689,7 +1695,7 @@ function Cofounder() {
                 <input
                   className="cof-modal-input"
                   type="tel"
-                  placeholder="WhatsApp com DDD"
+                  placeholder="WhatsApp da assinatura (com DDD)"
                   autoComplete="tel"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
