@@ -93,7 +93,13 @@ const OnboardingWelcome = lazyWithRetry(() => import("./pages/OnboardingWelcome"
 const AdminImplantacao = lazyWithRetry(() => import("./pages/AdminImplantacao"));
 const ImplantacaoPublic = lazyWithRetry(() => import("./pages/ImplantacaoPublic"));
 
+// SalesPage: LP ANTERIOR. Substituída pela "Clientes de Volta" no apex e em /vendas
+// (decisão do Marcelo, 2026-07-17). Mantida no repo DE PROPÓSITO — vira código
+// não-usado; deletar é decisão futura, não efeito colateral deste porte.
 const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
+// LP "Clientes de Volta" (portada do Lovable) — LP de vendas VIGENTE: serve o apex
+// (nexvybeauty.com.br) e /vendas.
+const ClientesDeVoltaLandingPage = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPage"));
 
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -230,7 +236,10 @@ const App = () => (
                   confiança vem do state HMAC, não de sessão local. */}
               <Route path="/ads/oauth-return" element={<AdsOAuthReturn />} />
 
-              <Route path="/vendas" element={<SalesPage />} />
+              {/* LP de vendas vigente. A rota temporária /lp-clientes-de-volta da Metade A
+                  foi REMOVIDA: com o apex e /vendas servindo a mesma LP, um terceiro
+                  caminho pra ela só criaria URL duplicada (conteúdo duplicado p/ SEO). */}
+              <Route path="/vendas" element={<ClientesDeVoltaLandingPage />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
                   o painel do salão fica em /demo/salao. */}
               <Route path="/demo" element={<Navigate to="/demo/cockpit" replace />} />
@@ -293,7 +302,8 @@ const App = () => (
                       <PlatformShell />
                     </SuperAdminRoute>
                   ) : isApexDomain() ? (
-                    <SalesPage />
+                    // apex (nexvybeauty.com.br / www) → LP "Clientes de Volta".
+                    <ClientesDeVoltaLandingPage />
                   ) : (
                     // app.* → Cockpit (casca única de 7 itens). As rotas-filhas
                     // abaixo renderizam no <Outlet/> do CockpitShell; no gestao/apex
