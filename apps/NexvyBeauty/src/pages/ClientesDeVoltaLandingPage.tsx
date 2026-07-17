@@ -1,23 +1,32 @@
 /**
- * PORTE Metade A — LP "Clientes de Volta" (do Lovable, project 304b956f).
+ * LP "Clientes de Volta" (portada do Lovable, project 304b956f).
  * Extraída de src/routes/index.tsx (TanStack Start) → página React 18.
- * GATED/DRAFT: sem deploy, sem prod. NENHUM placeholder resolvido aqui — todos são TODO da Metade B (integração):
- *   TODO(porte-B P1) checkout dos 3 planos: botões "Assinar agora" href="#" (data-todo="checkout-*")
- *   TODO(porte-B P2) WhatsApp comercial: const WHATSAPP_URL="#whatsapp" (Hero + Raio-X + rodapé)
- *   TODO(porte-B P3) login "Entrar" (Nav) href="#"
- *   TODO(porte-B P4) footer: Termos, Privacidade LGPD, Instagram href="#" (o repo já tem pages Termos/Privacidade)
- *   TODO(porte-B P5) PREÇO hardcoded (Planos 275/427/693 + de-para 450/720/1190 E Calculadora "/427") → trocar por usePublicPlans (public_plans; moeda=BRL, Ladder A live)
- *   TODO(porte-B P6) modal Cofounder: captura de e-mail é NO-OP (botão "Enviar" só fecha)
- *   TODO(porte-B P7) "50 vagas" do Cofounder (×2) — decisão Marcelo: real vs remover
- *   TODO(porte-B P8) og:image / meta social — definir OG própria
- *   TODO(porte-B P9) cookie A/B "nx_lp_var" — ligar a analytics (opcional)
- *   TODO(porte-B BUG) id="como-funciona" DUPLICADO (seções Modulos E ComoFunciona usam o mesmo id) → HTML inválido
- *     e o link do nav "#como-funciona" pula pro PRIMEIRO (Modulos), não pra "Como Funciona". Corrigir TAMBÉM no
- *     Lovable upstream (project 304b956f), senão volta no próximo sync.
- *   TODO(porte-B) rota/domínio final + relação com a SalesPage atual (/vendas). Aqui montada em /lp-clientes-de-volta só pra revisão.
+ * Serve o APEX (nexvybeauty.com.br) e /vendas.
+ *
+ * Metade B (integração) — RESOLVIDO:
+ *   P1 checkout dos 3 planos → checkout_url do plano vindo de usePublicPlans (nunca hardcode).
+ *   P2 WhatsApp comercial → WHATSAPP_URL (NEXVY_VENDAS, número oficial).
+ *   P3 login "Entrar" → APP_URL (app.nexvybeauty.com.br).
+ *   P4 footer → rotas internas /termos e /privacidade + Instagram oficial + WhatsApp.
+ *   P5 PREÇO → 100% de public_plans (cards + calculadora). ZERO preço hardcoded nesta página.
+ *   P6 modal Cofounder → posta no edge público `platform-form-submit` (slug `interesse-cofounder`),
+ *      com loading/sucesso/erro tratados. Block IDs resolvidos em RUNTIME via {action:'load'}.
+ *   BUG id="como-funciona" duplicado → Modulos virou id="modulos"; o nav aponta pra "Como Funciona".
+ *
+ * Metade B — DELIBERADAMENTE NÃO RESOLVIDO (falta insumo/decisão, não código):
+ *   TODO(P7) "50 vagas" do Cofounder (×2) — número de escassez; real vs remover é decisão do Marcelo.
+ *   TODO(P8) og:image / meta social — NÃO existe asset OG próprio (verificado: sem og-* em public/).
+ *      Inventar imagem seria pior que não ter. Falta o ASSET, não o código.
+ *   TODO(P9) cookie A/B "nx_lp_var" — segue gravando o cookie; ligar a analytics é opcional.
+ *
+ * UPSTREAM: o bug do id duplicado também existe no Lovable (project 304b956f). Corrigir lá,
+ * senão volta no próximo sync.
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Instagram } from "lucide-react";
+import { Link } from "react-router-dom";
+import { usePublicPlans, type PublicPlan } from "@/hooks/usePlatformPlans";
+import { supabase } from "@/integrations/supabase/client";
 import "./clientes-de-volta-lp.css";
 
 /* ── formatação BRL (igual ao protótipo) ── */
@@ -27,8 +36,30 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-/* ── link do WhatsApp comercial (mesmo do rodapé) — TODO: URL real ── */
-const WHATSAPP_URL = "#whatsapp";
+/* ── P2: WhatsApp comercial (NEXVY_VENDAS, número oficial) — Hero + Raio-X + rodapé ── */
+const WHATSAPP_URL =
+  "https://wa.me/5511955021205?text=" +
+  encodeURIComponent("Oi! Vim pela página e quero o Raio-X da minha carteira.");
+
+/* ── P3: login "Entrar" → app do salão ── */
+const APP_URL = "https://app.nexvybeauty.com.br";
+
+/* ── P4: Instagram oficial ── */
+const INSTAGRAM_URL = "https://instagram.com/nexvytech";
+
+/* ── P6: form público do Programa Cofounder (platform_crm_forms.slug) ── */
+const COFOUNDER_FORM_SLUG = "interesse-cofounder";
+
+/* ── P5: preço vem SÓ de public_plans. Mapa card-da-LP → slug no banco.
+   ARMADILHA VERIFICADA: os nomes COLIDEM. O card "Premium" da LP é o slug `pro`
+   (o destaque, referência da calculadora), e o card "Ultra" é o slug `premium`.
+   Casar por NOME aqui pegaria o plano errado — por isso o casamento é por SLUG. */
+const PLAN_SLUG = { essencial: "starter", premium: "pro", ultra: "premium" } as const;
+
+/** Acha o plano por slug na lista pública (undefined enquanto carrega / se sumir). */
+function findPlan(plans: PublicPlan[] | undefined, slug: string): PublicPlan | undefined {
+  return (plans ?? []).find((p) => p.slug === slug && p.is_public);
+}
 
 /* ── rotação A/B/C de eyebrow + headline (variante rastreável por cookie) ── */
 const EYEBROWS = [
@@ -165,7 +196,8 @@ function Nav() {
           <a href="#planos">Planos</a>
         </div>
         <div className="nav-cta">
-          <a className="btn btn-quiet btn-sm" href="#">
+          {/* P3: login do salão. */}
+          <a className="btn btn-quiet btn-sm" href={APP_URL}>
             Entrar
           </a>
           <a className="btn btn-rose btn-sm" href="#planos">
@@ -338,7 +370,7 @@ function Hero() {
             te mostra <b>quanto dá para recuperar em 30 dias</b>, com a sua base.
           </p>
           <div className="hero-ctas">
-            <a className="btn btn-rose" href={WHATSAPP_URL} data-todo="whatsapp">
+            <a className="btn btn-rose" href={WHATSAPP_URL}>
               Quero meu Raio-X grátis
             </a>
             <a className="btn btn-quiet" href="#equipia">
@@ -583,7 +615,7 @@ function RaioXDaCarteira() {
           </div>
         </div>
         <div className="hero-ctas rv" style={{ marginTop: 24 }}>
-          <a className="btn btn-rose" href={WHATSAPP_URL} data-todo="whatsapp">
+          <a className="btn btn-rose" href={WHATSAPP_URL}>
             Quero ver o meu número
           </a>
         </div>
@@ -847,10 +879,14 @@ function OQueResolvemos() {
   );
 }
 
-/* ── MÓDULOS (8 sistemas + ícone integração 8-nós) ── */
+/* ── MÓDULOS (8 sistemas + ícone integração 8-nós) ──
+   BUG(corrigido): esta seção usava id="como-funciona", DUPLICANDO o id da seção
+   ComoFunciona → HTML inválido, e o link do nav pulava pra cá (o primeiro no DOM).
+   Agora é id="modulos"; o "#como-funciona" do nav resolve pra ComoFunciona.
+   Corrigir TAMBÉM no Lovable upstream (project 304b956f), senão volta no sync. */
 function Modulos() {
   return (
-    <section className="block" id="como-funciona" style={{ paddingTop: "60px", paddingBottom: "40px" }}>
+    <section className="block" id="modulos" style={{ paddingTop: "60px", paddingBottom: "40px" }}>
       <div className="wrap">
         <span className="eyebrow rv">O que vem dentro</span>
         <div className="h2row rv">
@@ -1171,9 +1207,18 @@ function Calculadora() {
   const [ticket, setTicket] = useState(120);
   const [somem, setSomem] = useState(30);
 
+  // P5(b): a referência do "×mensalidade" é o plano DESTAQUE (card "Premium" da LP
+  // = slug `pro`), lida do banco — NUNCA hardcoded. Se trocássemos só os cards, este
+  // múltiplo continuaria dividindo por um preço velho e mentiria em silêncio.
+  const { data: plans } = usePublicPlans();
+  const refPlan = findPlan(plans, PLAN_SLUG.premium);
+  const refPrice = refPlan?.price_monthly ?? null;
+
   const lost = Math.round(clientes * (somem / 100) * ticket * 4.4);
   const rec = Math.round(lost * 0.3);
-  const mult = Math.max(1, Math.round(rec / 12 / 427)); // 427 = mensalidade Premium (destaque)
+  // Fallback gracioso: sem preço (loading/erro/plano fora do ar) o múltiplo some da
+  // frase em vez de exibir "NaN×" ou um número inventado.
+  const mult = refPrice && refPrice > 0 ? Math.max(1, Math.round(rec / 12 / refPrice)) : null;
 
   return (
     <section className="block" id="calc">
@@ -1236,8 +1281,15 @@ function Calculadora() {
             <div className="co-big serif">{BRL.format(lost)}</div>
             <p className="co-sub">por ano, em clientes que sumiram sem ninguém chamar de volta</p>
             <div className="co-pay">
-              Recuperando só <b>3 em cada 10</b>, a sua EquipIA devolve <b>{BRL.format(rec)}</b>/ano — <b>{mult}×</b> a
-              mensalidade.
+              Recuperando só <b>3 em cada 10</b>, a sua EquipIA devolve <b>{BRL.format(rec)}</b>/ano
+              {mult !== null ? (
+                <>
+                  {" "}
+                  — <b>{mult}×</b> a mensalidade.
+                </>
+              ) : (
+                "."
+              )}
             </div>
             <p className="co-note">
               Estimativa ilustrativa com base nos seus números — o painel real mostra o valor exato, cliente a cliente.
@@ -1300,7 +1352,46 @@ function ComoFunciona() {
 }
 
 /* ── PLANOS (box branco, 3 planos, 1 destaque) — preços reais de lançamento ── */
+/** P5(a)+P1: bloco de preço + CTA de um card. Preço e checkout SÓ do banco.
+ *  - carregando/indisponível → CTA vira WhatsApp (nunca um href="#" morto) e o
+ *    preço não é inventado;
+ *  - list_price_monthly nulo → a âncora "de R$ X" simplesmente não aparece. */
+function PlanoPreco({ plan, loading }: { plan?: PublicPlan; loading: boolean }) {
+  if (loading) return <div className="preco serif"><small>carregando…</small></div>;
+  if (!plan) return null;
+  return (
+    <div className="preco serif">
+      {plan.list_price_monthly != null && plan.list_price_monthly > plan.price_monthly && (
+        <small style={{ display: "block", opacity: 0.55, textDecoration: "line-through", fontSize: 15, marginBottom: 4 }}>
+          de {BRL.format(plan.list_price_monthly)}
+        </small>
+      )}
+      <span style={{ whiteSpace: "nowrap" }}>{BRL.format(plan.price_monthly)}</span>
+      <small>/mês</small>
+    </div>
+  );
+}
+
+function PlanoCta({ plan, className }: { plan?: PublicPlan; className: string }) {
+  // Sem checkout_url ainda (ou plano fora do ar) → manda pro WhatsApp comercial
+  // em vez de um link morto. O checkout NUNCA é hardcoded aqui.
+  const href = plan?.checkout_url || WHATSAPP_URL;
+  return (
+    <a className={className} href={href}>
+      {plan?.checkout_url ? "Assinar agora" : "Falar com a gente"}
+    </a>
+  );
+}
+
 function Planos() {
+  // P5(a): catálogo 100% do banco (view public_plans, SELECT anônimo, já filtrada
+  // por is_active e ordenada). Fetch falho → cards sem preço, página inteira segue
+  // de pé (fallback gracioso, igual à SalesPage).
+  const { data: plans, isLoading } = usePublicPlans();
+  const essencial = findPlan(plans, PLAN_SLUG.essencial);
+  const premium = findPlan(plans, PLAN_SLUG.premium);
+  const ultra = findPlan(plans, PLAN_SLUG.ultra);
+
   return (
     <section className="block planos-wrap" id="planos" style={{ paddingTop: "30px", paddingBottom: "40px" }}>
       <div className="wrap">
@@ -1321,10 +1412,7 @@ function Planos() {
           <div className="planos">
             <div className="plano rv">
               <h3>Essencial</h3>
-              <div className="preco serif">
-                <small style={{ display: "block", opacity: 0.55, textDecoration: "line-through", fontSize: 15, marginBottom: 4 }}>de R$ 450</small>
-                <span style={{ whiteSpace: "nowrap" }}>R$ 275</span><small>/mês</small>
-              </div>
+              <PlanoPreco plan={essencial} loading={isLoading} />
               <p className="p-desc">Para quem atende sozinho: organiza a casa e liga a IA no atendimento.</p>
               <ul className="p-feats">
                 <li>Agentes de IA no WhatsApp (de série)</li>
@@ -1332,17 +1420,13 @@ function Planos() {
                 <li>Carteira de clientes importada do WhatsApp</li>
                 <li>Painel do dinheiro recuperado</li>
               </ul>
-              <a className="btn btn-quiet" href="#" data-todo="checkout-essencial">
-                Assinar agora
-              </a>
+              <PlanoCta plan={essencial} className="btn btn-quiet" />
             </div>
             <div className="plano destaque rv">
               <span className="p-tag">Mais escolhido</span>
               <h3>Premium</h3>
-              <div className="preco serif">
-                <small style={{ display: "block", opacity: 0.55, textDecoration: "line-through", fontSize: 15, marginBottom: 4 }}>de R$ 720</small>
-                <span style={{ whiteSpace: "nowrap" }}>R$ 427</span><small>/mês</small>
-              </div>
+              {/* card "Premium" da LP = slug `pro` no banco (ver PLAN_SLUG). */}
+              <PlanoPreco plan={premium} loading={isLoading} />
               <p className="p-desc">Para espaços com equipe: tudo do Essencial, em escala.</p>
               <ul className="p-feats">
                 <li>Tudo do Essencial</li>
@@ -1351,16 +1435,12 @@ function Planos() {
                 <li>Pacotes &amp; sessões com aviso de vencimento</li>
                 <li>Financeiro &amp; indicadores completos</li>
               </ul>
-              <a className="btn btn-terra" href="#" data-todo="checkout-premium">
-                Assinar agora
-              </a>
+              <PlanoCta plan={premium} className="btn btn-terra" />
             </div>
             <div className="plano rv">
               <h3>Ultra</h3>
-              <div className="preco serif">
-                <small style={{ display: "block", opacity: 0.55, textDecoration: "line-through", fontSize: 15, marginBottom: 4 }}>de R$ 1.190</small>
-                <span style={{ whiteSpace: "nowrap" }}>R$ 693</span><small>/mês</small>
-              </div>
+              {/* card "Ultra" da LP = slug `premium` no banco (ver PLAN_SLUG). */}
+              <PlanoPreco plan={ultra} loading={isLoading} />
               <p className="p-desc">Para operações maiores: crescimento ativo e migração assistida.</p>
               <ul className="p-feats">
                 <li>Tudo do Premium</li>
@@ -1368,9 +1448,7 @@ function Planos() {
                 <li>Migração assistida da sua base</li>
                 <li>Suporte prioritário</li>
               </ul>
-              <a className="btn btn-quiet" href="#" data-todo="checkout-ultra">
-                Assinar agora
-              </a>
+              <PlanoCta plan={ultra} className="btn btn-quiet" />
             </div>
           </div>
         </div>
@@ -1396,18 +1474,117 @@ function ChamadaPosPlanos() {
 }
 
 /* ── COFOUNDER — Programa Fundadora (creme amarelado, mentoria 12×R$387) ── */
+/* P6: bloco público do form (o `load` expõe só id/tipo/label — NÃO expõe maps_to). */
+type LoadedBlock = { id: string; block_type: string; label: string | null; order_index: number };
+
 function Cofounder() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalStep, setModalStep] = useState<"ask" | "email" | "info">("ask");
+  const [modalStep, setModalStep] = useState<"ask" | "email" | "info" | "done">("ask");
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [blocks, setBlocks] = useState<LoadedBlock[] | null>(null);
+  const [sending, setSending] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const openModal = () => {
     setModalStep("ask");
+    setNome("");
     setEmail("");
+    setWhatsapp("");
+    setErro(null);
     setModalOpen(true);
   };
 
   const closeModal = () => setModalOpen(false);
+
+  // P6: os block_id são resolvidos em RUNTIME (action:'load') em vez de hardcodados
+  // — se alguém recriar os blocos no builder, a LP continua postando nos IDs certos.
+  // Só carrega quando o modal abre (nada de fetch no 1º paint da LP).
+  useEffect(() => {
+    if (!modalOpen || blocks) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke("platform-form-submit", {
+        body: { action: "load", slug: COFOUNDER_FORM_SLUG },
+      });
+      if (cancelled) return;
+      if (error || !data?.blocks) {
+        setErro("Não consegui carregar o formulário agora. Tente de novo em instantes.");
+        return;
+      }
+      setBlocks(data.blocks as LoadedBlock[]);
+    })();
+    return () => { cancelled = true; };
+  }, [modalOpen, blocks]);
+
+  // O form tem 3 campos OBRIGATÓRIOS (Nome/E-mail/WhatsApp) — validação é dura no
+  // servidor. Casamos por block_type (há exatamente um de cada).
+  const blockIdOf = (type: string) => blocks?.find((b) => b.block_type === type)?.id;
+
+  const enviar = async () => {
+    setErro(null);
+    const idNome = blockIdOf("text");
+    const idEmail = blockIdOf("email");
+    const idFone = blockIdOf("phone");
+    if (!idNome || !idEmail || !idFone) {
+      setErro("Não consegui carregar o formulário agora. Tente de novo em instantes.");
+      return;
+    }
+    // Pré-checagem local só pra evitar round-trip óbvio; o servidor é a autoridade.
+    if (!nome.trim() || !email.trim() || !whatsapp.trim()) {
+      setErro("Preencha nome, e-mail e WhatsApp.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const { data, error } = await supabase.functions.invoke("platform-form-submit", {
+        body: {
+          action: "submit",
+          slug: COFOUNDER_FORM_SLUG,
+          responses: {
+            [idNome]: nome.trim(),
+            [idEmail]: email.trim(),
+            // só dígitos: o servidor valida telefone BR (10-11 dígitos após o 55).
+            [idFone]: whatsapp.replace(/\D/g, ""),
+          },
+          tracking: {
+            utm_source: q.get("utm_source") || undefined,
+            utm_medium: q.get("utm_medium") || undefined,
+            utm_campaign: q.get("utm_campaign") || undefined,
+            utm_term: q.get("utm_term") || undefined,
+            utm_content: q.get("utm_content") || undefined,
+            referrer_url: document.referrer || undefined,
+            landing_page: window.location.href,
+            user_agent: navigator.userAgent,
+          },
+        },
+      });
+
+      // A edge devolve 400 com {error:"<msg em PT-BR>"}; no supabase-js o corpo
+      // do erro vem em error.context — sem ler isso, a mensagem boa se perde.
+      if (error) {
+        let msg = "Não consegui enviar agora. Tente de novo em instantes.";
+        try {
+          const body = await (error as any)?.context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch { /* corpo não-JSON → mantém a mensagem genérica */ }
+        setErro(msg);
+        return;
+      }
+      if (!data?.success) {
+        setErro(data?.error || "Não consegui enviar agora. Tente de novo em instantes.");
+        return;
+      }
+      setModalStep("done");
+    } catch {
+      setErro("Não consegui enviar agora. Tente de novo em instantes.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <section className="cofounder" id="fundadora">
@@ -1486,20 +1663,65 @@ function Cofounder() {
             )}
 
             {modalStep === "email" && (
-              <div className="cof-modal-step">
-                <h3 className="cof-modal-title">Informe seu e-mail de login</h3>
+              <form
+                className="cof-modal-step"
+                onSubmit={(e) => { e.preventDefault(); if (!sending) void enviar(); }}
+              >
+                <h3 className="cof-modal-title">Garanta sua vaga na mentoria</h3>
+                <input
+                  className="cof-modal-input"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  autoComplete="name"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  disabled={sending}
+                />
                 <input
                   className="cof-modal-input"
                   type="email"
                   placeholder="seu@email.com"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={sending}
                 />
-                <button className="btn" type="button" onClick={closeModal}>
-                  Enviar
+                <input
+                  className="cof-modal-input"
+                  type="tel"
+                  placeholder="WhatsApp com DDD"
+                  autoComplete="tel"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  disabled={sending}
+                />
+                {erro && (
+                  <p className="cof-modal-text" role="alert" style={{ color: "#b3261e" }}>
+                    {erro}
+                  </p>
+                )}
+                <button className="btn" type="submit" disabled={sending || !blocks}>
+                  {sending ? "Enviando…" : "Enviar"}
                 </button>
-                <button className="cof-modal-back" type="button" onClick={() => setModalStep("ask")}>
+                <button
+                  className="cof-modal-back"
+                  type="button"
+                  onClick={() => setModalStep("ask")}
+                  disabled={sending}
+                >
                   ← Voltar
+                </button>
+              </form>
+            )}
+
+            {modalStep === "done" && (
+              <div className="cof-modal-step">
+                <h3 className="cof-modal-title">Recebemos seu interesse!</h3>
+                <p className="cof-modal-text">
+                  A gente entra em contato pelo WhatsApp. Sua vaga fica reservada quando você assinar o NexvyBeauty.
+                </p>
+                <button className="btn" type="button" onClick={closeModal}>
+                  Fechar
                 </button>
               </div>
             )}
@@ -1603,8 +1825,11 @@ function Footer() {
           <div className="foot-col">
             <h4>Redes</h4>
             <div className="fsocial">
-              <a href="#" data-todo="instagram" aria-label="Instagram"><Instagram size={20} /></a>
-              <a href={WHATSAPP_URL} data-todo="whatsapp" aria-label="WhatsApp">
+              {/* P4: Instagram oficial. */}
+              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer noopener" aria-label="Instagram">
+                <Instagram size={20} />
+              </a>
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer noopener" aria-label="WhatsApp">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.134 1.585 5.931L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                 </svg>
@@ -1617,8 +1842,10 @@ function Footer() {
         <div className="fline">
           <p className="copy">© 2026 NexvyBeauty — Sistema premium para negócios de beleza e bem-estar.</p>
           <div className="foot-bottom">
-            <a href="#" data-todo="termos">Termos de Uso</a>
-            <a href="#" data-todo="privacidade-lgpd">Privacidade (LGPD)</a>
+            {/* P4: rotas internas que JÁ existem (App.tsx /termos e /privacidade),
+                servidas pelo mesmo container no apex. <Link> mantém o SPA. */}
+            <Link to="/termos">Termos de Uso</Link>
+            <Link to="/privacidade">Privacidade (LGPD)</Link>
           </div>
         </div>
       </div>
