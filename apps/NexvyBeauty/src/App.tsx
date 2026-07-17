@@ -94,6 +94,9 @@ const AdminImplantacao = lazyWithRetry(() => import("./pages/AdminImplantacao"))
 const ImplantacaoPublic = lazyWithRetry(() => import("./pages/ImplantacaoPublic"));
 
 const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
+// PORTE Metade A — LP "Clientes de Volta" (do Lovable). Montada em /lp-clientes-de-volta só pra revisão;
+// rota/domínio final + relação com a SalesPage = decisão da Metade B / Marcelo.
+const ClientesDeVoltaLandingPage = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPage"));
 
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -231,6 +234,8 @@ const App = () => (
               <Route path="/ads/oauth-return" element={<AdsOAuthReturn />} />
 
               <Route path="/vendas" element={<SalesPage />} />
+              {/* PORTE Metade A — LP "Clientes de Volta" (gated, só revisão). Rota/domínio final = Metade B. */}
+              <Route path="/lp-clientes-de-volta" element={<ClientesDeVoltaLandingPage />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
                   o painel do salão fica em /demo/salao. */}
               <Route path="/demo" element={<Navigate to="/demo/cockpit" replace />} />
