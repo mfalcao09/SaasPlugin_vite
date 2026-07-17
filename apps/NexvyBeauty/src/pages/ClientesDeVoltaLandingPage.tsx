@@ -12,11 +12,12 @@
  *   P6 modal Cofounder → posta no edge público `platform-form-submit` (slug `interesse-cofounder`),
  *      com loading/sucesso/erro tratados. Block IDs resolvidos em RUNTIME via {action:'load'}.
  *   BUG id="como-funciona" duplicado → Modulos virou id="modulos"; o nav aponta pra "Como Funciona".
+ *   P8 og:image / meta social → asset gerado A PARTIR DESTA LP (paleta/Didot/promessa do hero):
+ *      public/og-clientes-de-volta.png (1200×630). As tags og:/twitter: vivem no index.html
+ *      ESTÁTICO (o crawler não executa JS) — NÃO injetar daqui/helmet, senão o preview vem vazio.
  *
  * Metade B — DELIBERADAMENTE NÃO RESOLVIDO (falta insumo/decisão, não código):
  *   TODO(P7) "50 vagas" do Cofounder (×2) — número de escassez; real vs remover é decisão do Marcelo.
- *   TODO(P8) og:image / meta social — NÃO existe asset OG próprio (verificado: sem og-* em public/).
- *      Inventar imagem seria pior que não ter. Falta o ASSET, não o código.
  *   TODO(P9) cookie A/B "nx_lp_var" — segue gravando o cookie; ligar a analytics é opcional.
  *
  * UPSTREAM: o bug do id duplicado também existe no Lovable (project 304b956f). Corrigir lá,
