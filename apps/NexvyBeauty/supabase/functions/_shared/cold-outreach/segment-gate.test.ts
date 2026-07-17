@@ -19,6 +19,7 @@ const cliente = (o: Partial<GateLead> = {}): GateLead => ({
   excluded_at: null,
   seguidores: 1000,
   handle: "salao_x",
+  approved_at: "2026-07-13T00:00:00Z", // aprovado por default
   ...o,
 });
 
@@ -39,6 +40,21 @@ Deno.test("gate WhatsApp: bloqueia sem telefone, não-qualified, excluído, phon
   assertEquals(passesWhatsappGate(cliente({ qualified: false })).ok, false);
   assertEquals(passesWhatsappGate(cliente({ excluded_at: "2026-07-10T00:00:00Z" })).ok, false);
   assertEquals(passesWhatsappGate(cliente({ phone_is_br: false })).ok, false);
+});
+
+Deno.test("gate WhatsApp: BLOQUEIA não-aprovado (approved_at IS NULL) mesmo qualificado", () => {
+  // Portão per-lead da Prospecção: em tratamento (NULL) nunca dispara.
+  assertEquals(passesWhatsappGate(cliente({ approved_at: null })).ok, false);
+  assertEquals(passesWhatsappGate(cliente({ approved_at: undefined })).ok, false);
+  // aprovado explícito continua passando
+  assertEquals(passesWhatsappGate(cliente({ approved_at: "2026-07-13T09:30:00Z" })).ok, true);
+});
+
+Deno.test("selectAndOrder: descarta não-aprovado (só base aprovada dispara)", () => {
+  const aprovado = cliente({ handle: "ok" });
+  const tratamento = cliente({ handle: "pendente", approved_at: null });
+  const out = selectAndOrderForDispatch([aprovado, tratamento]);
+  assertEquals(out.map((l) => l.handle), ["ok"]);
 });
 
 Deno.test("tier: semente-limpa = is_seed ∩ passa-gate; massa = resto", () => {
@@ -65,15 +81,18 @@ Deno.test("selectAndOrder: descarta quem não passa no gate", () => {
   assertEquals(out.map((l) => l.handle), ["ok"]);
 });
 
-Deno.test("gate Instagram: só acionamento_via_instagram com handle (sem exigir telefone)", () => {
+Deno.test("gate Instagram: só acionamento_via_instagram aprovado com handle (sem exigir telefone)", () => {
   const ig: GateLead = {
     segment: "acionamento_via_instagram",
     qualified: false,
     telefone: null,
     handle: "insta_salao",
     excluded_at: null,
+    approved_at: "2026-07-13T00:00:00Z",
   };
   assertEquals(passesInstagramGate(ig).ok, true);
   assertEquals(passesInstagramGate({ ...ig, handle: null }).ok, false);
   assertEquals(passesInstagramGate({ ...ig, segment: "salao_cliente" }).ok, false);
+  // não-aprovado (em tratamento) nunca dispara, mesmo no canal IG
+  assertEquals(passesInstagramGate({ ...ig, approved_at: null }).ok, false);
 });

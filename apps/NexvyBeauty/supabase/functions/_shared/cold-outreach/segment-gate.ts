@@ -40,6 +40,12 @@ export interface GateLead {
   excluded_at?: string | null;
   seguidores?: number | null;
   handle?: string | null;
+  /**
+   * Portão de aprovação PER-LEAD (Prospecção): `NULL` = em tratamento (não
+   * aprovado); preenchido = aprovado. SÓ leads aprovados podem disparar —
+   * espelha `platform_crm_consolidated_leads` (que filtra `approved_at IS NOT NULL`).
+   */
+  approved_at?: string | null;
 }
 
 export interface GateVerdict {
@@ -53,12 +59,15 @@ export function hasPhone(tel: string | null | undefined): boolean {
 }
 
 /**
- * Passa no gate de cold WhatsApp? Espelha o predicado SQL do Explorador 5:
- * segment='salao_cliente' AND qualified AND telefone<>'' AND excluded_at IS NULL.
+ * Passa no gate de cold WhatsApp? Espelha o predicado SQL do Explorador 5 +
+ * portão de aprovação per-lead:
+ * approved_at IS NOT NULL AND segment='salao_cliente' AND qualified AND
+ * telefone<>'' AND excluded_at IS NULL.
  * (optout/excluded são checados no banco via NOT EXISTS — não dá pra provar aqui.)
  */
 export function passesWhatsappGate(lead: GateLead): GateVerdict {
   if (lead.excluded_at) return { ok: false, reason: "excluded (lixeira)" };
+  if (!lead.approved_at) return { ok: false, reason: "não aprovado (approved_at IS NULL)" };
   if (lead.segment !== WHATSAPP_TARGET_SEGMENT) {
     return { ok: false, reason: `segment=${lead.segment ?? "null"} (não é salao_cliente)` };
   }
@@ -116,9 +125,10 @@ export function selectAndOrderForDispatch<T extends GateLead>(leads: T[]): T[] {
 // ── Frente Instagram (segmento próprio, sem telefone) ────────────────────────
 export const IG_TARGET_SEGMENT: LeadSegment = "acionamento_via_instagram";
 
-/** Passa no gate de IG DM? (segmento IG, tem handle; NÃO exige telefone). */
+/** Passa no gate de IG DM? (aprovado, segmento IG, tem handle; NÃO exige telefone). */
 export function passesInstagramGate(lead: GateLead): GateVerdict {
   if (lead.excluded_at) return { ok: false, reason: "excluded (lixeira)" };
+  if (!lead.approved_at) return { ok: false, reason: "não aprovado (approved_at IS NULL)" };
   if (lead.segment !== IG_TARGET_SEGMENT) {
     return { ok: false, reason: `segment=${lead.segment ?? "null"} (não é acionamento_via_instagram)` };
   }
