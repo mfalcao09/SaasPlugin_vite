@@ -26,16 +26,19 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Open Graph -->
-    
-    
+    <!-- Open Graph — o crawler (WhatsApp/Facebook/LinkedIn) NÃO executa JS:
+         estas tags TÊM de viver no HTML estático, nunca injetadas pelo React.
+         og:image exige URL ABSOLUTA — caminho relativo não resolve no crawler. -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icons/icon-512x512.png">
+    <meta property="og:url" content="https://nexvybeauty.com.br/" />
+    <meta property="og:image" content="https://nexvybeauty.com.br/og-clientes-de-volta.png">
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="" />
-    <meta name="twitter:image" content="/icons/icon-512x512.png">
+    <meta name="twitter:image" content="https://nexvybeauty.com.br/og-clientes-de-volta.png">
 
     <!-- Boot styles: prevent white flash before React mounts -->
     <style>
@@ -69,10 +72,11 @@
         border-top-color: #dba341;
       }
     </style>
-    <meta property="og:title" content="NexvyBeauty — Beleza com gestão inteligente">
-  <meta name="twitter:title" content="NexvyBeauty — Beleza com gestão inteligente">
-  <meta property="og:description" content="NexvyBeauty — ERP e CRM com IA para profissionais da beleza">
-  <meta name="twitter:description" content="NexvyBeauty — ERP e CRM com IA para profissionais da beleza">
+    <!-- Título/descrição = a promessa real do hero da LP "Clientes de Volta". -->
+  <meta property="og:title" content="Agenda cheia, sem gastar com anúncio — com quem já é sua cliente.">
+  <meta name="twitter:title" content="Agenda cheia, sem gastar com anúncio — com quem já é sua cliente.">
+  <meta property="og:description" content="Em 5 minutos por dia, a sua EquipIA varre suas conversas de WhatsApp, acha quem sumiu e escreve a mensagem no seu tom — e você só aprova.">
+  <meta name="twitter:description" content="Em 5 minutos por dia, a sua EquipIA varre suas conversas de WhatsApp, acha quem sumiu e escreve a mensagem no seu tom — e você só aprova.">
   <!-- Shell de gestão (gestao.*): tema "Nexvy Lux" (navy + dourado, fundo claro),
        aplicado ANTES do React montar p/ evitar flash. app.*/apex seguem no tema Beauty. -->
   <script>
