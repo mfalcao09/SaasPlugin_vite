@@ -10,6 +10,7 @@ import {
   Heading,
   Html,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -24,18 +25,27 @@ export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps)
     <Preview>Redefinir sua senha do {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Redefinir sua senha</Heading>
-        <Text style={text}>
-          Recebemos uma solicitação para redefinir a senha da sua conta no {siteName}.
-          Clique no botão abaixo para escolher uma nova senha.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Redefinir senha
-        </Button>
-        <Text style={footer}>
-          Se você não solicitou esta redefinição, pode ignorar este e-mail.
-          Sua senha continuará a mesma.
-        </Text>
+        <Section style={header}>
+          <Text style={wordmark}>
+            Nexvy<span style={wordmarkAccent}>Beauty</span>
+          </Text>
+        </Section>
+        <Section style={card}>
+          <Heading style={h1}>Redefinir sua senha</Heading>
+          <Text style={text}>
+            Recebemos uma solicitação para redefinir a senha da sua conta no {siteName}.
+            Clique no botão abaixo para escolher uma nova senha.
+          </Text>
+          <Section style={btnWrap}>
+            <Button style={button} href={confirmationUrl}>
+              Redefinir senha
+            </Button>
+          </Section>
+          <Text style={footer}>
+            Se você não solicitou esta redefinição, pode ignorar este e-mail.
+            Sua senha continuará a mesma.
+          </Text>
+        </Section>
       </Container>
     </Body>
   </Html>
@@ -43,17 +53,25 @@ export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps)
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Inter, Arial, sans-serif' }
-const container = { padding: '24px 28px', maxWidth: '560px' }
-const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: 'hsl(222, 47%, 11%)', margin: '0 0 20px' }
-const text = { fontSize: '14px', color: 'hsl(220, 8%, 46%)', lineHeight: '1.6', margin: '0 0 24px' }
+// ── Estilo da marca NexvyBeauty (LP "Clientes de Volta") ─────────────────────
+const main = { backgroundColor: '#faf7f2', fontFamily: 'Arial, Helvetica, sans-serif', margin: 0, padding: 0 }
+const container = { maxWidth: '600px', margin: '0 auto', padding: '32px 20px' }
+const header = { textAlign: 'center' as const, padding: '8px 0 20px' }
+const wordmark = { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '26px', fontWeight: 700, color: '#2a2124', letterSpacing: '0.3px', margin: 0 }
+const wordmarkAccent = { fontStyle: 'italic' as const, color: '#7c0f24' }
+const card = { backgroundColor: '#ffffff', border: '1px solid #e5d9d0', borderRadius: '16px', padding: '36px 32px' }
+const h1 = { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '22px', fontWeight: 700, color: '#2a2124', margin: '0 0 16px' }
+const text = { fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '15px', lineHeight: '24px', color: '#2a2124', margin: '0 0 20px' }
+const btnWrap = { textAlign: 'center' as const, margin: '4px 0 20px' }
 const button = {
-  backgroundColor: 'hsl(83, 81%, 44%)',
+  backgroundColor: '#7c0f24',
   color: '#ffffff',
-  fontSize: '14px',
-  fontWeight: 'bold' as const,
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: '15px',
+  fontWeight: 700,
   borderRadius: '12px',
-  padding: '12px 22px',
+  padding: '16px 30px',
   textDecoration: 'none',
+  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '32px 0 0' }
+const footer = { fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '13px', color: '#7d6d71', margin: '20px 0 0' }
