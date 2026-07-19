@@ -5,9 +5,8 @@ import {
   Button,
   Container,
   Head,
-  Heading,
-  Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -31,6 +30,20 @@ const COFOUNDER_URL = 'https://nexvybeauty.com.br/f/interesse-cofounder'
 const INSTAGRAM_URL = 'https://instagram.com/nexvytech'
 const WHATSAPP_LABEL = '(11) 95502-1205'
 const WHATSAPP_URL = 'https://wa.me/5511955021205'
+
+// Slices do design Canva "NexvyBeauty - Boas Vindas" (fonte visual da verdade).
+// Hospedadas em apps/NexvyBeauty/public/email/ → servidas pelo front em
+// https://nexvybeauty.com.br/email/* (exigem deploy do front para ficarem públicas).
+const HERO_IMG = 'https://nexvybeauty.com.br/email/hero.jpg'
+const COFOUNDER_IMG = 'https://nexvybeauty.com.br/email/cofounder.jpg'
+const FOOTER_STRIP_IMG = 'https://nexvybeauty.com.br/email/footer-strip.jpg'
+
+// Paleta sampleada do PDF do Canva (200dpi):
+const PINK = '#cf3f6e' // CTA principal rosa/magenta
+const SAGE = '#798a83' // CTA Cofounder verde-sálvia
+const CREAM = '#f3ece7' // faixa creme / fundo geral
+const FOOTER_BG = '#d5d9da' // rodapé cinza-azulado
+const INK = '#2a2124' // texto escuro
 
 const COFOUNDER_PILLARS: Array<{ title: string; body: string }> = [
   {
@@ -66,17 +79,21 @@ const WelcomeAdminAccessEmail = ({
     <Preview>Um novo tempo começou — sua EquipIA já está de plantão</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={header}>
-          <Text style={wordmark}>
-            Nexvy<span style={wordmarkAccent}>Beauty</span>
-          </Text>
+        {/* ── HERO (design Canva: foto full-bleed com tipografia assada) ── */}
+        <Section style={heroSection}>
+          <Img
+            src={HERO_IMG}
+            width="600"
+            alt="Um novo tempo começou! Obrigado por assinar NexvyBeauty — estamos comprometidos em mudar a gestão do seu negócio."
+            style={heroImg}
+          />
         </Section>
 
-        {/* ── Bloco transacional (ação primária: definir senha / 1º acesso) ── */}
-        <Section style={card}>
-          <Heading style={h1}>
-            Bem-vinda{fullName ? `, ${fullName}` : ''}! Um novo tempo começou.
-          </Heading>
+        {/* ── Faixa creme: corpo live (copy real atual) ── */}
+        <Section style={creamBody}>
+          <Text style={greeting}>
+            Bem-vinda{fullName ? `, ${fullName}` : ''}!
+          </Text>
           <Text style={lead}>
             Estamos muito felizes em ter você no universo NexvyBeauty! Sua compra
             {planName ? ` do plano ${planName}` : ''} está confirmada — e agora
@@ -90,9 +107,9 @@ const WelcomeAdminAccessEmail = ({
             painel.
           </Text>
           {recoveryLink ? (
-            <Section style={{ textAlign: 'center', margin: '28px 0 8px' }}>
-              <Button href={recoveryLink} style={button}>
-                Começar meu onboarding
+            <Section style={ctaWrap}>
+              <Button href={recoveryLink} style={pinkButton}>
+                Começar meu Onboarding
               </Button>
             </Section>
           ) : (
@@ -101,54 +118,77 @@ const WelcomeAdminAccessEmail = ({
               <strong> {email}</strong> para criar sua senha de acesso.
             </Text>
           )}
-          <Hr style={hr} />
           <Text style={muted}>
             Se você não reconhece esta compra, basta ignorar este e-mail.
           </Text>
         </Section>
 
-        {/* ── Card Cofounder (secundário, "outra esteira": mentoria) ── */}
-        <Section style={cofounderCard}>
-          <Text style={eyebrow}>Programa Cofounder</Text>
-          <Heading style={cofounderTitle}>
-            Mais do que um sistema: um lugar ao seu lado.
-          </Heading>
-          <Text style={cofounderIntro}>
-            Para um grupo pequeno de fundadoras, o Cofounder é mentoria individual
-            para destravar o seu negócio de dentro pra fora:
-          </Text>
-          {COFOUNDER_PILLARS.map((p) => (
-            <Text key={p.title} style={pillar}>
-              <span style={pillarSpark}>✨</span>{' '}
-              <strong style={pillarTitle}>{p.title}</strong>
-              <br />
-              <span style={pillarBody}>{p.body}</span>
+        {/* ── Bloco Cofounder: 2 colunas (foto | conteúdo), padrão Canva ── */}
+        <Section style={cofounderBlock}>
+          <div style={colPhoto}>
+            <Img
+              src={COFOUNDER_IMG}
+              width="288"
+              alt="Sessão de massagem em um espaço de bem-estar claro e acolhedor"
+              style={cofounderImg}
+            />
+          </div>
+          <div style={colContent}>
+            <Text style={cofounderHeading}>Programa Cofounder</Text>
+            <Text style={cofounderTagline}>
+              Mais do que um sistema: um lugar ao seu lado.
             </Text>
-          ))}
-          <Section style={{ textAlign: 'center', margin: '22px 0 4px' }}>
-            <Button href={COFOUNDER_URL} style={cofounderButton}>
-              Quero conhecer o Cofounder
-            </Button>
-          </Section>
+            <Text style={cofounderIntro}>
+              Para um grupo pequeno de fundadoras, o Cofounder é mentoria
+              individual para destravar o seu negócio de dentro pra fora:
+            </Text>
+            {COFOUNDER_PILLARS.map((p) => (
+              <Text key={p.title} style={pillar}>
+                <span style={pillarSpark}>✨</span>{' '}
+                <strong style={pillarTitle}>{p.title}</strong>
+                <br />
+                <span style={pillarBody}>{p.body}</span>
+              </Text>
+            ))}
+          </div>
         </Section>
 
-        {/* ── Rodapé (marca + contato + dados fiscais) ── */}
+        {/* ── CTA Cofounder verde-sálvia sobre creme ── */}
+        <Section style={sageCtaSection}>
+          <Button href={COFOUNDER_URL} style={sageButton}>
+            Quero conhecer o Cofounder
+          </Button>
+        </Section>
+
+        {/* ── Rodapé cinza-azulado: filete + faixa fotográfica + filete ── */}
         <Section style={footer}>
-          <Text style={footerBrand}>
-            Nexvy<span style={footerAccent}>Beauty</span> — sua EquipIA para
-            transformar clientes de primeira vez em clientes de sempre.
-          </Text>
-          <Text style={footerText}>
+          <div style={filete} />
+          <Img
+            src={FOOTER_STRIP_IMG}
+            width="552"
+            alt=""
+            style={footerStripImg}
+          />
+          <div style={filete} />
+          <Text style={footerContact}>
             <Link href={INSTAGRAM_URL} style={footerLink}>
-              Instagram @nexvytech
+              Instagram: @nexvytech
             </Link>
-            {'  ·  '}
+            <br />
             <Link href={WHATSAPP_URL} style={footerLink}>
-              WhatsApp {WHATSAPP_LABEL}
+              WhatsApp: {WHATSAPP_LABEL}
             </Link>
           </Text>
-          <Text style={footerFiscal}>
-            NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA · CNPJ 64.930.755/0001-78
+          <Text style={footerTagline}>
+            Nexvy<span style={footerTaglineAccent}>Beauty</span> — sua EquipIA
+            para transformar clientes de primeira vez em clientes de sempre.
+          </Text>
+          <Text style={footerCompany}>
+            <strong style={footerCompanyName}>NexvyBeauty</strong>
+            <br />
+            NEXVY TECNOLOGIA E COMUNICAÇÃO LTDA
+            <br />
+            CNPJ: 64.930.755/0001-78
             <br />
             Av. Brig. Faria Lima, 1572 – Sala 1022 · Jardim Paulistano · São
             Paulo/SP
@@ -174,147 +214,196 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-// ── Estilo da marca NexvyBeauty (LP "Clientes de Volta") ─────────────────────
+// ── Estilos (fiéis ao design Canva "NexvyBeauty - Boas Vindas") ──────────────
 const main = {
-  backgroundColor: '#faf7f2',
+  backgroundColor: CREAM,
   fontFamily: 'Arial, Helvetica, sans-serif',
   margin: 0,
   padding: 0,
 }
-const container = { maxWidth: '600px', margin: '0 auto', padding: '32px 20px' }
-const header = { textAlign: 'center' as const, padding: '8px 0 20px' }
-const wordmark = {
-  fontFamily: "Georgia, 'Times New Roman', serif",
-  fontSize: '26px',
-  fontWeight: 700,
-  color: '#2a2124',
-  letterSpacing: '0.3px',
-  margin: 0,
+const container = {
+  maxWidth: '600px',
+  margin: '0 auto',
+  padding: 0,
+  backgroundColor: CREAM,
 }
-const wordmarkAccent = { fontStyle: 'italic' as const, color: '#7c0f24' }
-const card = {
-  backgroundColor: '#ffffff',
-  border: '1px solid #e5d9d0',
-  borderRadius: '16px',
-  padding: '36px 32px',
+
+// Hero
+const heroSection = { padding: 0, backgroundColor: '#c9a691' }
+const heroImg = {
+  width: '100%',
+  maxWidth: '600px',
+  display: 'block',
+  border: 0,
+  outline: 'none',
 }
-const h1 = {
-  fontFamily: "Georgia, 'Times New Roman', serif",
-  fontSize: '24px',
+
+// Faixa creme (corpo)
+const creamBody = {
+  backgroundColor: CREAM,
+  padding: '34px 32px 26px',
+  textAlign: 'center' as const,
+}
+const greeting = {
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: '17px',
   fontWeight: 700,
-  color: '#2a2124',
-  lineHeight: '32px',
-  margin: '0 0 16px',
+  color: INK,
+  margin: '0 0 12px',
 }
 const lead = {
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '16px',
-  lineHeight: '25px',
-  color: '#2a2124',
+  fontSize: '15px',
+  lineHeight: '24px',
+  color: INK,
   margin: '0 0 14px',
 }
 const text = {
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: '15px',
   lineHeight: '24px',
-  color: '#2a2124',
+  color: INK,
   margin: '0 0 12px',
 }
 const muted = {
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '13px',
+  fontSize: '12px',
   color: '#7d6d71',
-  margin: '12px 0 0',
+  margin: '16px 0 0',
 }
-const hr = { borderColor: '#e5d9d0', margin: '28px 0' }
-const button = {
-  backgroundColor: '#7c0f24',
+const ctaWrap = { textAlign: 'center' as const, margin: '26px 0 4px' }
+const pinkButton = {
+  backgroundColor: PINK,
   color: '#ffffff',
   fontFamily: 'Arial, Helvetica, sans-serif',
-  padding: '16px 30px',
-  borderRadius: '12px',
-  fontSize: '15px',
+  fontStyle: 'italic' as const,
   fontWeight: 700,
+  fontSize: '15px',
+  padding: '15px 34px',
+  borderRadius: '999px',
   textDecoration: 'none',
   display: 'inline-block',
 }
 
-// ── Card Cofounder (secundário) ──────────────────────────────────────────────
-const cofounderCard = {
-  backgroundColor: '#f6ece7',
-  border: '1px solid #e7d5cc',
-  borderRadius: '16px',
-  padding: '30px 28px',
-  margin: '20px 0 0',
+// Bloco Cofounder (2 colunas híbridas: empilham no mobile)
+const cofounderBlock = {
+  backgroundColor: '#ffffff',
+  padding: 0,
+  fontSize: 0,
+  textAlign: 'center' as const,
 }
-const eyebrow = {
+const colPhoto = {
+  display: 'inline-block',
+  width: '100%',
+  maxWidth: '288px',
+  verticalAlign: 'middle',
+}
+const cofounderImg = {
+  width: '100%',
+  maxWidth: '288px',
+  display: 'block',
+  border: 0,
+}
+const colContent = {
+  display: 'inline-block',
+  width: '100%',
+  maxWidth: '312px',
+  verticalAlign: 'middle',
+  padding: '22px 24px',
+  boxSizing: 'border-box' as const,
+  textAlign: 'left' as const,
+}
+const cofounderHeading = {
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '12px',
+  fontSize: '17px',
   fontWeight: 700,
-  letterSpacing: '1.4px',
-  textTransform: 'uppercase' as const,
-  color: '#7c0f24',
-  margin: '0 0 8px',
+  color: INK,
+  margin: '0 0 6px',
 }
-const cofounderTitle = {
+const cofounderTagline = {
   fontFamily: "Georgia, 'Times New Roman', serif",
-  fontSize: '20px',
-  fontWeight: 700,
-  color: '#2a2124',
-  lineHeight: '27px',
-  margin: '0 0 12px',
+  fontStyle: 'italic' as const,
+  fontSize: '13px',
+  lineHeight: '18px',
+  color: '#5b4e50',
+  margin: '0 0 10px',
 }
 const cofounderIntro = {
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '15px',
-  lineHeight: '23px',
-  color: '#2a2124',
-  margin: '0 0 18px',
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#5b4e50',
+  margin: '0 0 12px',
 }
 const pillar = {
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '14px',
-  lineHeight: '21px',
-  color: '#2a2124',
-  margin: '0 0 14px',
+  fontSize: '12px',
+  lineHeight: '17px',
+  color: INK,
+  margin: '0 0 10px',
 }
-const pillarSpark = { color: '#b0563a' }
-const pillarTitle = { color: '#2a2124', fontWeight: 700 }
+const pillarSpark = { color: PINK }
+const pillarTitle = { color: INK, fontWeight: 700, fontSize: '13px' }
 const pillarBody = { color: '#5b4e50' }
-const cofounderButton = {
-  backgroundColor: '#b0563a',
+
+// CTA Cofounder
+const sageCtaSection = {
+  backgroundColor: CREAM,
+  textAlign: 'center' as const,
+  padding: '28px 32px',
+}
+const sageButton = {
+  backgroundColor: SAGE,
   color: '#ffffff',
   fontFamily: 'Arial, Helvetica, sans-serif',
-  padding: '13px 26px',
-  borderRadius: '12px',
+  fontWeight: 600,
   fontSize: '14px',
-  fontWeight: 700,
+  padding: '14px 30px',
+  borderRadius: '999px',
   textDecoration: 'none',
   display: 'inline-block',
 }
 
-// ── Rodapé ───────────────────────────────────────────────────────────────────
-const footer = { textAlign: 'center' as const, padding: '24px 16px 8px' }
-const footerBrand = {
-  fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '13px',
-  lineHeight: '20px',
-  color: '#7d6d71',
-  margin: '0 0 12px',
+// Rodapé
+const footer = {
+  backgroundColor: FOOTER_BG,
+  padding: '28px 24px 30px',
+  textAlign: 'center' as const,
 }
-const footerAccent = { fontStyle: 'italic' as const, color: '#7c0f24' }
-const footerText = {
-  fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '13px',
-  lineHeight: '20px',
-  color: '#7d6d71',
-  margin: '0 0 10px',
+const filete = {
+  borderTop: `1px solid ${INK}`,
+  lineHeight: '1px',
+  fontSize: '1px',
 }
-const footerLink = { color: '#7c0f24', textDecoration: 'none', fontWeight: 700 }
-const footerFiscal = {
+const footerStripImg = {
+  width: '100%',
+  maxWidth: '552px',
+  display: 'block',
+  border: 0,
+  margin: '10px 0',
+}
+const footerContact = {
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: '14px',
+  lineHeight: '22px',
+  color: INK,
+  margin: '18px 0 10px',
+}
+const footerLink = { color: INK, textDecoration: 'none', fontWeight: 600 }
+const footerTagline = {
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: '11px',
   lineHeight: '17px',
-  color: '#9a8c8f',
-  margin: 0,
+  color: '#5b6165',
+  margin: '0 0 18px',
 }
+const footerTaglineAccent = { fontStyle: 'italic' as const }
+const footerCompany = {
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: '11px',
+  lineHeight: '17px',
+  color: '#4a5054',
+  margin: 0,
+  textAlign: 'left' as const,
+}
+const footerCompanyName = { fontSize: '14px', color: INK }
