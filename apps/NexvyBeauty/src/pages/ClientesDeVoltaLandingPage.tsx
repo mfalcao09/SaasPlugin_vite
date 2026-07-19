@@ -28,6 +28,7 @@ import { Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePublicPlans, type PublicPlan } from "@/hooks/usePlatformPlans";
 import { supabase } from "@/integrations/supabase/client";
+import { captureTrackingFromUrl, getTracking } from "@/lib/tracking";
 import "./clientes-de-volta-lp.css";
 
 /* ── formatação BRL (igual ao protótipo) ── */
@@ -57,6 +58,33 @@ const COFOUNDER_FORM_SLUG = "interesse-cofounder";
    Casar por NOME aqui pegaria o plano errado — por isso o casamento é por SLUG. */
 const PLAN_SLUG = { essencial: "starter", premium: "pro", ultra: "premium" } as const;
 
+/* ── R1: atribuição de anúncio ─────────────────────────────────────────────
+   O tracking (ref/UTM/fbclid→fbc/fbp) é capturado no mount e vive no cookie
+   1st-party nxv_track (src/lib/tracking.ts). Aqui ele é REPASSADO adiante: sem
+   isso a venda chega no Cakto sem saber de qual criativo veio — o furo R1 da
+   auditoria (tráfego pago cego, sem CAC por criativo, sem retargeting). */
+
+/** Anexa os params de tracking ao checkout, sem sobrescrever o que a URL já traz. */
+function withTracking(url: string): string {
+  try {
+    const u = new URL(url);
+    for (const [k, v] of Object.entries(getTracking())) {
+      if (v && !u.searchParams.has(k)) u.searchParams.set(k, String(v).slice(0, 200));
+    }
+    return u.toString();
+  } catch {
+    return url; // URL relativa/inválida → segue sem tracking (CTA nunca quebra)
+  }
+}
+
+/** Dispara evento do Pixel se ele existir. Sem pixel = no-op silencioso. */
+function fbqTrack(event: string, params?: Record<string, unknown>): void {
+  try {
+    const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
+    if (typeof fbq === "function") fbq("track", event, params ?? {});
+  } catch { /* rastreamento nunca pode quebrar o CTA */ }
+}
+
 /** Acha o plano por slug na lista pública (undefined enquanto carrega / se sumir). */
 function findPlan(plans: PublicPlan[] | undefined, slug: string): PublicPlan | undefined {
   return (plans ?? []).find((p) => p.slug === slug && p.is_public);
@@ -81,6 +109,12 @@ const HEADS: Seg[][] = [
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+
+  /* R1: captura ref/UTM/fbclid da URL no cookie 1st-party JÁ no mount — tem que ser
+     antes de qualquer clique, senão o hop LP→checkout/WhatsApp perde a origem. */
+  useEffect(() => {
+    captureTrackingFromUrl();
+  }, []);
 
   /* PORTE: injeta a webfont + título de forma ESCOPADA à LP (sem tocar o index.html global).
      VERIFICADO na lp.css (não é suposição): o corpo usa fontes de SISTEMA (-apple-system/SF Pro/Segoe UI/Roboto)
@@ -1376,9 +1410,20 @@ function PlanoPreco({ plan, loading }: { plan?: PublicPlan; loading: boolean }) 
 function PlanoCta({ plan, className }: { plan?: PublicPlan; className: string }) {
   // Sem checkout_url ainda (ou plano fora do ar) → manda pro WhatsApp comercial
   // em vez de um link morto. O checkout NUNCA é hardcoded aqui.
-  const href = plan?.checkout_url || WHATSAPP_URL;
+  // R1: o checkout leva o tracking junto → o Cakto passa a saber a origem da venda.
+  const href = plan?.checkout_url ? withTracking(plan.checkout_url) : WHATSAPP_URL;
   return (
-    <a className={className} href={href}>
+    <a
+      className={className}
+      href={href}
+      onClick={() =>
+        fbqTrack(plan?.checkout_url ? "InitiateCheckout" : "Contact", {
+          content_name: plan?.slug ?? "sem-plano",
+          value: plan?.price_monthly ?? undefined,
+          currency: "BRL",
+        })
+      }
+    >
       {plan?.checkout_url ? "Assinar agora" : "Falar com a gente"}
     </a>
   );
