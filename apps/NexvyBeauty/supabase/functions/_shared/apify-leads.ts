@@ -412,8 +412,12 @@ export function qualifyLead(item: any, card: LeadCard): LeadQualification {
   const hasContact = !!card.telefone || !!card.whatsapp_link;
   const isInfoproduto = detectInfoproduto(card.bio, card.name, card.website);
   const seg = classifyLeadSegment({ icp, langPass, geo, hasPhone: hasContact, isInfoproduto });
-  // Semente: hub de beleza com audiência (≥50k) e dentro do mercado (não descarte).
-  const isSeed = (card.seguidores ?? 0) >= SEED_FOLLOWERS_MIN && seg.segment !== 'descarte';
+  // Semente: hub de beleza com audiência (≥50k) e DENTRO do mercado. Allowlist
+  // positivo (não `!== 'descarte'`): o contrato 3-cat de 2026-07-19 não emite mais
+  // `descarte` (virou `revisao`, que absorve estrangeiro/não-PT). Só os 2 segmentos
+  // in-market merecem virar seed; `revisao` (triagem/fora-do-mercado) nunca.
+  const inMarket = seg.segment === 'salao_cliente' || seg.segment === 'afiliado_infoproduto';
+  const isSeed = (card.seguidores ?? 0) >= SEED_FOLLOWERS_MIN && inMarket;
   return {
     qualified: seg.qualified,
     segment: seg.segment,
