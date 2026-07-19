@@ -88,7 +88,16 @@ export function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
-export function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+/**
+ * Tokeniza o CSV em linhas de campos CRUS (sem casar com o header).
+ *
+ * Separado do `parseCsv` porque nem todo CSV pode ser mapeado por índice a partir
+ * do INÍCIO: o export do Prospectagram não escapa vírgulas nos campos de texto, então
+ * ~16% das linhas vêm com MAIS campos que o header e precisam de mapeamento ancorado
+ * nas DUAS pontas (ver `superadmin/crm/prospeccao/prospectagram-csv.ts`). O tokenizador
+ * é o mesmo nos dois casos — só a estratégia de mapeamento muda.
+ */
+export function tokenizeCsv(text: string): string[][] {
   // Minimal CSV parser supporting quoted fields and commas
   const lines: string[][] = [];
   let cur: string[] = [];
@@ -112,7 +121,11 @@ export function parseCsv(text: string): { headers: string[]; rows: Record<string
     }
   }
   if (val.length > 0 || cur.length > 0) { cur.push(val); lines.push(cur); }
+  return lines;
+}
 
+export function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+  const lines = tokenizeCsv(text);
   const headers = (lines.shift() || []).map((h) => h.trim());
   const rows = lines
     .filter((r) => r.some((c) => c && c.trim() !== ''))
