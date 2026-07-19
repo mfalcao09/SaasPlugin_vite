@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Tables } from '@/integrations/supabase/types';
 
-export type AgentType = 'sdr' | 'closer' | 'support' | 'financial' | 'admin' | 'orchestrator' | 'custom';
+export type AgentType = 'sdr' | 'closer' | 'support' | 'financial' | 'admin' | 'orchestrator' | 'custom' | 'prospector' | 'retention';
 export type ToneStyle = 'formal' | 'consultive' | 'friendly' | 'technical';
 export type MessageStyle = 'short' | 'balanced' | 'detailed';
 
@@ -148,6 +148,8 @@ export const AGENT_TYPE_LABELS: Record<AgentType, string> = {
   admin: 'Administrativo',
   orchestrator: 'Orquestrador',
   custom: 'Personalizado',
+  prospector: 'Prospector',
+  retention: 'Retenção & Sucesso',
 };
 
 export const TONE_STYLE_LABELS: Record<ToneStyle, string> = {
@@ -317,6 +319,45 @@ export const AGENT_TEMPLATES: Record<AgentType, AgentTemplate> = {
     can_do: [],
     cannot_do: [],
     handoff_triggers: [],
+    tone_style: 'friendly',
+    message_style: 'balanced',
+  },
+  // Tipos que JÁ EXISTIAM no banco (Bento/prospector, Nina/retention) mas não no
+  // mapa — a ausência derrubava a Hierarquia inteira via undefined.icon (2026-07-19).
+  prospector: {
+    name: 'Prospector',
+    description: 'Prospecção ativa: inicia conversas com leads frios (outbound)',
+    icon: '🔭',
+    primary_objective: 'Abrir conversas com leads frios e despertar interesse real',
+    can_do: [
+      'Iniciar contato outbound',
+      'Despertar interesse com contexto do lead',
+      'Encaminhar interessados para a SDR',
+    ],
+    cannot_do: [
+      'Falar de preço fechado',
+      'Fechar vendas',
+      'Insistir após desinteresse claro',
+    ],
+    handoff_triggers: ['Interesse demonstrado', 'Pedido de mais informações'],
+    tone_style: 'friendly',
+    message_style: 'short',
+  },
+  retention: {
+    name: 'Sucesso & Retenção',
+    description: 'Sucesso do cliente, suporte contínuo e retenção pós-venda',
+    icon: '💜',
+    primary_objective: 'Reter e encantar clientes ativos, prevenindo churn',
+    can_do: [
+      'Acompanhar saúde do cliente',
+      'Resolver dúvidas de uso',
+      'Ações de reengajamento e aniversário',
+    ],
+    cannot_do: [
+      'Prometer funcionalidades inexistentes',
+      'Dar descontos sem aprovação',
+    ],
+    handoff_triggers: ['Risco de cancelamento', 'Problema técnico grave'],
     tone_style: 'friendly',
     message_style: 'balanced',
   },
