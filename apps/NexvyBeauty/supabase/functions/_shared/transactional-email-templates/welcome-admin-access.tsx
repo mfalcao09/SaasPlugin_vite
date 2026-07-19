@@ -36,7 +36,6 @@ const WHATSAPP_URL = 'https://wa.me/5511955021205'
 // https://nexvybeauty.com.br/email/* (exigem deploy do front para ficarem públicas).
 const HERO_IMG = 'https://nexvybeauty.com.br/email/hero.jpg'
 const COFOUNDER_IMG = 'https://nexvybeauty.com.br/email/cofounder.jpg'
-const FOOTER_STRIP_IMG = 'https://nexvybeauty.com.br/email/footer-strip.jpg'
 
 // Paleta sampleada do PDF do Canva (200dpi):
 const PINK = '#cf3f6e' // CTA principal rosa/magenta
@@ -89,22 +88,21 @@ const WelcomeAdminAccessEmail = ({
           />
         </Section>
 
-        {/* ── Faixa creme: corpo live (copy real atual) ── */}
+        {/* ── Faixa creme: corpo verbatim do Canva v2 ── */}
         <Section style={creamBody}>
-          <Text style={greeting}>
-            Bem-vinda{fullName ? `, ${fullName}` : ''}!
-          </Text>
           <Text style={lead}>
-            Estamos muito felizes em ter você no universo NexvyBeauty! Sua compra
-            {planName ? ` do plano ${planName}` : ''} está confirmada — e agora
-            começa o seu onboarding, acompanhado pela sua EquipIA (sim, também
-            temos a nossa!).
+            Estamos muito felizes em ter você no universo NexvyBeauty! Agora
+            começa o seu onboarding, que vai ser acompanhado com nossa Equip(IA)
+            - sim, também temos a nossa!
           </Text>
           <Text style={text}>
-            Nosso desejo é ajudar você a trazer suas clientes de volta,
-            fidelizá-las e atendê-las com qualidade e agilidade no dia a dia.
-            Falta um único passo: defina sua senha e faça o primeiro acesso ao seu
-            painel.
+            Nosso desejo é ajudá-la a trazer suas clientes de volta,
+            fidelizá-las; além de atendê-las virtualmente no dia-a-dia com
+            qualidade e agilidade!
+          </Text>
+          <Text style={text}>
+            Prepare-se para transformar a experiência no seu salão e impulsionar
+            o sucesso do seu negócio com inteligência e sofisticação.
           </Text>
           {recoveryLink ? (
             <Section style={ctaWrap}>
@@ -160,15 +158,16 @@ const WelcomeAdminAccessEmail = ({
           </Button>
         </Section>
 
-        {/* ── Rodapé cinza-azulado: filete + faixa fotográfica + filete ── */}
+        {/* ── Rodapé cinza-azulado: filete + wordmark/slogan + filete ── */}
         <Section style={footer}>
           <div style={filete} />
-          <Img
-            src={FOOTER_STRIP_IMG}
-            width="552"
-            alt=""
-            style={footerStripImg}
-          />
+          <Text style={footerWordmark}>
+            Nexvy<span style={footerWordmarkBeauty}>Beauty</span>
+          </Text>
+          <Text style={footerSlogan}>
+            sua EquipIA para transformar clientes de primeira vez em clientes de
+            sempre.
+          </Text>
           <div style={filete} />
           <Text style={footerContact}>
             <Link href={INSTAGRAM_URL} style={footerLink}>
@@ -178,10 +177,6 @@ const WelcomeAdminAccessEmail = ({
             <Link href={WHATSAPP_URL} style={footerLink}>
               WhatsApp: {WHATSAPP_LABEL}
             </Link>
-          </Text>
-          <Text style={footerTagline}>
-            Nexvy<span style={footerTaglineAccent}>Beauty</span> — sua EquipIA
-            para transformar clientes de primeira vez em clientes de sempre.
           </Text>
           <Text style={footerCompany}>
             <strong style={footerCompanyName}>NexvyBeauty</strong>
@@ -243,13 +238,6 @@ const creamBody = {
   backgroundColor: CREAM,
   padding: '34px 32px 26px',
   textAlign: 'center' as const,
-}
-const greeting = {
-  fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '17px',
-  fontWeight: 700,
-  color: INK,
-  margin: '0 0 12px',
 }
 const lead = {
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -375,12 +363,21 @@ const filete = {
   lineHeight: '1px',
   fontSize: '1px',
 }
-const footerStripImg = {
-  width: '100%',
-  maxWidth: '552px',
-  display: 'block',
-  border: 0,
-  margin: '10px 0',
+const footerWordmark = {
+  fontFamily: "Georgia, 'Times New Roman', serif",
+  fontSize: '25px',
+  fontWeight: 700,
+  lineHeight: '30px',
+  color: INK,
+  margin: '18px 0 6px',
+}
+const footerWordmarkBeauty = { fontStyle: 'italic' as const }
+const footerSlogan = {
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#5b6165',
+  margin: '0 0 18px',
 }
 const footerContact = {
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -390,14 +387,6 @@ const footerContact = {
   margin: '18px 0 10px',
 }
 const footerLink = { color: INK, textDecoration: 'none', fontWeight: 600 }
-const footerTagline = {
-  fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: '11px',
-  lineHeight: '17px',
-  color: '#5b6165',
-  margin: '0 0 18px',
-}
-const footerTaglineAccent = { fontStyle: 'italic' as const }
 const footerCompany = {
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: '11px',
