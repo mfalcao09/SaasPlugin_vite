@@ -39,6 +39,7 @@ const WHATSAPP_URL = 'https://wa.me/5511955021205'
 // para sempre (lição de 2026-07-19: hero/cofounder novos "não populavam").
 const HERO_IMG = 'https://nexvybeauty.com.br/email/hero-v2.jpg'
 const COFOUNDER_IMG = 'https://nexvybeauty.com.br/email/cofounder-v2.jpg'
+const LOGO_IMG = 'https://nexvybeauty.com.br/email/logo-v1.png'
 
 // Paleta sampleada do PDF do Canva (200dpi):
 const PINK = '#cf3f6e' // CTA principal rosa/magenta
@@ -164,9 +165,14 @@ const WelcomeAdminAccessEmail = ({
         {/* ── Rodapé cinza-azulado: filete + wordmark/slogan + filete ── */}
         <Section style={footer}>
           <div style={filete} />
-          <Text style={footerWordmark}>
-            Nexvy<span style={footerWordmarkBeauty}>Beauty</span>
-          </Text>
+          {/* Logo OFICIAL (símbolo N + gota, arquivo do Marcelo 2026-07-19).
+              PNG transparente 722×163 → 240px de exibição (~3x retina). */}
+          <Img
+            alt="NexvyBeauty"
+            src={LOGO_IMG}
+            width="240"
+            style={footerLogo}
+          />
           <Text style={footerSlogan}>
             sua EquipIA para transformar clientes de primeira vez em clientes de
             sempre.
@@ -366,15 +372,12 @@ const filete = {
   lineHeight: '1px',
   fontSize: '1px',
 }
-const footerWordmark = {
-  fontFamily: "Georgia, 'Times New Roman', serif",
-  fontSize: '25px',
-  fontWeight: 700,
-  lineHeight: '30px',
-  color: INK,
-  margin: '18px 0 6px',
+const footerLogo = {
+  display: 'block',
+  margin: '18px auto 8px',
+  maxWidth: '240px',
+  width: '100%',
 }
-const footerWordmarkBeauty = { fontStyle: 'italic' as const }
 const footerSlogan = {
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: '12px',
