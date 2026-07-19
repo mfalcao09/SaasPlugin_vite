@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import {
   usePlatformLeadExtractions,
   usePlatformExtractedLeads,
+  useStartExtraction,
   useReclassifyLead,
   useImportHandles,
   useExcludeLead,
@@ -22,7 +23,6 @@ import {
   type WhatsappTab,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
 import { SOURCE_META, leadSourceOf, type LeadSource } from '@/components/superadmin/crm/prospeccao/_shared';
-import { KeywordSearchBlock } from '@/components/superadmin/crm/prospeccao/KeywordSearchBlock';
 
 /**
  * PROSPECÇÃO (C9) — cockpit do motor de extração de leads (super_admin, product-scoped).
@@ -38,6 +38,8 @@ const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: string }>
   revisao: { label: 'Revisão', dot: '🟡', cls: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30' },
 };
 const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao'];
+
+const SUGGESTED = 'cabeleireira, escova progressiva, alongamento de unhas, design de sobrancelhas, esmalteria, micropigmentação, salão de beleza';
 
 // Abas de canal WhatsApp — DERIVADAS das colunas (telefone/whatsapp_link), nunca armazenadas.
 // Preencheu o telefone → o lead muda de aba sozinho (mata o "lead preso na lista errada").
@@ -89,10 +91,13 @@ export function PlatformProspeccaoManager() {
   const { effectiveProductId } = useActivePlatformProduct();
   const productId = effectiveProductId ?? null;
 
+  const [keywords, setKeywords] = useState('');
+  const [limit, setLimit] = useState(30);
   const [selectedExtractionId, setSelectedExtractionId] = useState<string | null>(null);
   const [segment, setSegment] = useState<LeadSegment | 'all'>('all');
   const [waFilter, setWaFilter] = useState<WhatsappTab | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
+  const [showEngine, setShowEngine] = useState(false);
   const [seedsOnly, setSeedsOnly] = useState(false);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
@@ -122,6 +127,7 @@ export function PlatformProspeccaoManager() {
     (selectedExtractionId && shownExtractions.some((e) => e.id === selectedExtractionId) ? selectedExtractionId : null)
     ?? shownExtractions.find((e) => e.status === 'done')?.id ?? shownExtractions[0]?.id ?? null;
   const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, waTab: waFilter, seedsOnly, qualifiedOnly, excludedOnly: showExcluded });
+  const start = useStartExtraction();
   const reclassify = useReclassifyLead();
   const importHandles = useImportHandles();
   const exclude = useExcludeLead();
@@ -164,6 +170,12 @@ export function PlatformProspeccaoManager() {
 
   const toggleCol = (k: string) => setCols((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const has = (k: string) => cols.has(k);
+
+  const handleStart = () => {
+    const kws = keywords.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 20);
+    if (!productId || kws.length === 0) return;
+    start.mutate({ product_id: productId, keywords: kws, limit });
+  };
 
   const handleImportHandles = () => {
     if (!productId || pastedHandles.length === 0) return;
@@ -317,11 +329,37 @@ export function PlatformProspeccaoManager() {
           </span>
         </div>
 
-        {/* Motor de keyword-search — EXTRAÍDO p/ componente reusável: a página "Nova
-            Importação" monta o MESMO bloco em variant="card". Aqui fica recolhido, porque
-            keyword é só mais uma fonte. Sai desta tela só quando a página nova estiver no
-            ar E o Marcelo confirmar (senão ele fica sem lugar nenhum p/ disparar). */}
-        <KeywordSearchBlock productId={productId} variant="collapsed" />
+        {/* Motor de keyword-search — RECOLHIDO e explicado (antes ficava solto no topo,
+            sem dizer o que fazia). Responde "roda onde? traz o quê?" dentro da própria UI. */}
+        <div className="border-t border-border pt-3">
+          <button
+            type="button"
+            onClick={() => setShowEngine((v) => !v)}
+            className="flex w-full items-center gap-2 text-left text-sm font-medium text-foreground hover:text-primary"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${showEngine ? '' : '-rotate-90'}`} />
+            ➕ Nova busca por palavra-chave (Apify)
+          </button>
+          <p className="text-xs text-muted-foreground mt-1 pl-6">
+            Roda o <b>keyword-search do Apify</b> no Instagram e cria uma busca NOVA aqui.
+            Hoje a maior parte dos leads <b>não vem daqui</b> — vem das importações (Prospectagram · Server API · Vídeo).
+          </p>
+          {showEngine && (
+            <div className="mt-3 space-y-3 pl-6">
+              <label className="text-sm font-medium text-foreground">Palavras-chave (separadas por vírgula)</label>
+              <Input placeholder={SUGGESTED} value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="text-xs text-primary underline" onClick={() => setKeywords(SUGGESTED)}>usar conjunto-ouro</button>
+                <span className="text-xs text-muted-foreground">·</span>
+                <label className="text-xs text-muted-foreground">perfis/keyword:</label>
+                <Input type="number" className="w-20 h-8" min={5} max={100} value={limit} onChange={(e) => setLimit(Math.max(5, Math.min(100, Number(e.target.value) || 30)))} />
+                <Button onClick={handleStart} disabled={start.isPending || !productId || !keywords.trim()} className="gap-2 ml-auto">
+                  {start.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Buscar leads
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ══ ZONA 2 — RECORTE: abas de WhatsApp (derivadas) + segmento + toggles ══ */}
