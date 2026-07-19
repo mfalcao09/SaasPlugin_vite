@@ -315,7 +315,9 @@ export function buildLeadCard(item: any): LeadCard {
     seguindo: num(item?.followsCount ?? item?.following ?? item?.followingCount),
     posts: num(item?.postsCount ?? item?.mediaCount ?? item?.igtvVideoCount),
     telefone,
-    whatsapp_link: telefone ? `https://wa.me/${telefone}` : null,
+    // Número discável → wa.me/<num>; senão, link de WhatsApp em código (wa.me/message/…)
+    // quando o perfil só expõe o link-código (contato real, sem número recuperável).
+    whatsapp_link: telefone ? `https://wa.me/${telefone}` : (phone.wa_link ?? null),
     email,
     instagram_url,
     website,
@@ -364,9 +366,11 @@ export function qualifyLead(item: any, card: LeadCard): LeadQualification {
     country: card.phone_country,
     phone_any: card.telefone,
   });
-  const phonePass = !!card.telefone;
+  // "Tem WhatsApp acionável" = número discável OU link de WhatsApp em código
+  // (wa.me/message/… — contato real, número não recuperável). Ambos contam como contato.
+  const hasContact = !!card.telefone || !!card.whatsapp_link;
   const isInfoproduto = detectInfoproduto(card.bio, card.name, card.website);
-  const seg = classifyLeadSegment({ icp, langPass, geo, hasPhone: phonePass, isInfoproduto });
+  const seg = classifyLeadSegment({ icp, langPass, geo, hasPhone: hasContact, isInfoproduto });
   // Semente: hub de beleza com audiência (≥50k) e dentro do mercado (não descarte).
   const isSeed = (card.seguidores ?? 0) >= SEED_FOLLOWERS_MIN && seg.segment !== 'descarte';
   return {
@@ -381,7 +385,7 @@ export function qualifyLead(item: any, card: LeadCard): LeadQualification {
       icp,
       lang: { verdict: lang, pass: langPass },
       geo: { is_brazil: geo.is_brazil, explicit_foreign: geo.explicit_foreign, signals: geo.signals },
-      phone: { has_br_phone: phonePass },
+      phone: { has_br_phone: hasContact },
       infoproduto: isInfoproduto,
     },
   };

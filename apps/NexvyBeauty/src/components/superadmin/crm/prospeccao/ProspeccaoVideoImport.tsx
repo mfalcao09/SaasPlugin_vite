@@ -12,12 +12,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import {
   extractVideoFrames,
+  uploadVideoToStorage,
   useImportVideo,
   useVideoEnrichmentStatus,
+  NATIVE_MAX_BYTES,
   type VideoImportResult,
 } from './useVideoImport';
 
-type Phase = 'idle' | 'extracting' | 'sending' | 'enriching' | 'done' | 'error';
+type Phase = 'idle' | 'uploading' | 'extracting' | 'sending' | 'enriching' | 'done' | 'error';
 
 const fmtMB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
@@ -55,7 +57,7 @@ export function ProspeccaoVideoImport() {
   const comWpp = status?.cwpp?.total_found ?? null;
   const semWpp = status?.swpp?.total_found ?? null;
 
-  const busy = phase === 'extracting' || phase === 'sending';
+  const busy = phase === 'uploading' || phase === 'extracting' || phase === 'sending';
 
   // Fecha o fluxo quando o enriquecimento termina.
   useEffect(() => {
@@ -80,19 +82,38 @@ export function ProspeccaoVideoImport() {
     setErrorMsg(null);
     setResult(null);
     try {
-      setPhase('extracting');
-      setFrameProgress({ done: 0, total: 0 });
-      const { frames } = await extractVideoFrames(
-        file,
-        { intervalSec, maxFrames: 60, maxWidth: 640, quality: 0.6 },
-        (done, total) => setFrameProgress({ done, total }),
-      );
-      if (frames.length === 0) throw new Error('Não consegui extrair quadros legíveis do vídeo.');
+      let res: VideoImportResult | null = null;
 
-      setPhase('sending');
-      const res = await importVideo.mutateAsync({ product_id: productId, frames });
+      // 1) PATH NATIVO — sobe o vídeo inteiro (Gemini Files API) se couber no limite.
+      //    Elimina o buraco de amostragem dos frames (assiste o vídeo todo).
+      if (file.size <= NATIVE_MAX_BYTES) {
+        try {
+          setPhase('uploading');
+          const videoPath = await uploadVideoToStorage(file, productId);
+          setPhase('sending');
+          const r = await importVideo.mutateAsync({ product_id: productId, video_path: videoPath });
+          if (r?.fallback === 'frames') res = null; // nativo pediu p/ cair pra frames
+          else res = r;
+        } catch {
+          res = null; // qualquer falha no nativo → tenta frames
+        }
+      }
+
+      // 2) FALLBACK / vídeo grande → FRAMES (amostragem no navegador).
+      if (!res) {
+        setPhase('extracting');
+        setFrameProgress({ done: 0, total: 0 });
+        const { frames } = await extractVideoFrames(
+          file,
+          { intervalSec, maxFrames: 60, maxWidth: 640, quality: 0.6 },
+          (done, total) => setFrameProgress({ done, total }),
+        );
+        if (frames.length === 0) throw new Error('Não consegui extrair quadros legíveis do vídeo.');
+        setPhase('sending');
+        res = await importVideo.mutateAsync({ product_id: productId, frames });
+      }
+
       setResult(res);
-
       if (!res.net_new || res.net_new === 0) {
         setPhase('done');
       } else {
@@ -114,7 +135,7 @@ export function ProspeccaoVideoImport() {
           <Video className="h-6 w-6 text-primary" /> Importação por vídeo
         </h1>
         <p className="text-muted-foreground mt-1">
-          Suba uma <b>gravação de tela</b> rolando o Instagram (perfis, seguidores, comentários). A IA lê os quadros,
+          Suba uma <b>gravação de tela</b> rolando o Instagram (perfis, seguidores, comentários). A IA assiste o vídeo,
           extrai os <b>@perfis</b> que aparecem, remove duplicados da sua base e enriquece cada um no Apify.
           O resultado cai em duas buscas do dia: <b>c/ WhatsApp</b> e <b>sem WhatsApp</b>.
         </p>
@@ -185,7 +206,7 @@ export function ProspeccaoVideoImport() {
       <div className="flex items-center gap-3">
         <Button className="gap-2" onClick={run} disabled={!file || !productId || busy || phase === 'enriching'}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-          {phase === 'extracting' ? 'Extraindo quadros…' : phase === 'sending' ? 'Analisando com IA…' : 'Extrair @perfis do vídeo'}
+          {phase === 'uploading' ? 'Enviando vídeo…' : phase === 'extracting' ? 'Extraindo quadros…' : phase === 'sending' ? 'Analisando com IA…' : 'Extrair @perfis do vídeo'}
         </Button>
         {(phase === 'done' || phase === 'error') && (
           <Button variant="outline" className="gap-1" onClick={reset}>
@@ -193,6 +214,13 @@ export function ProspeccaoVideoImport() {
           </Button>
         )}
       </div>
+
+      {/* Progresso: upload do vídeo (path nativo) */}
+      {phase === 'uploading' && (
+        <div className="rounded-lg border border-border p-4 flex items-center gap-2 text-sm text-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" /> Enviando o vídeo para a IA assistir por completo…
+        </div>
+      )}
 
       {/* Progresso: extração de quadros */}
       {phase === 'extracting' && (
@@ -207,7 +235,7 @@ export function ProspeccaoVideoImport() {
       {/* Progresso: enviando à IA */}
       {phase === 'sending' && (
         <div className="rounded-lg border border-border p-4 flex items-center gap-2 text-sm text-foreground">
-          <Sparkles className="h-4 w-4 animate-pulse text-primary" /> A IA está lendo os quadros e identificando os @perfis…
+          <Sparkles className="h-4 w-4 animate-pulse text-primary" /> A IA está assistindo o vídeo e identificando os @perfis…
         </div>
       )}
 
@@ -229,7 +257,7 @@ export function ProspeccaoVideoImport() {
 
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="outline" className="bg-muted text-foreground border-border">
-              {result.handles_extracted} @perfis lidos · {result.frames} quadros
+              {result.handles_extracted} @perfis lidos · {result.mode === 'video' ? 'vídeo completo' : `${result.frames} quadros`}
             </Badge>
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
               {result.net_new} novos enviados

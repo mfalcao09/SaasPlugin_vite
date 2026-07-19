@@ -39,8 +39,11 @@ function json(body: unknown, status = 200) {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_HANDLES = 200;      // teto anti-fatura por importação (igual ao colar-handles).
 const MAX_FRAMES = 80;        // teto de frames por chamada (anti-flood / custo).
-const GEMINI_BATCH = 8;       // imagens por chamada ao Gemini.
+const GEMINI_BATCH = 8;       // imagens por chamada ao Gemini (path frames).
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
+const VIDEO_BUCKET = 'prospeccao-video';
+const NATIVE_MAX_BYTES = 60 * 1024 * 1024; // teto do path nativo (memória da edge); acima → frames
+const GENAI_BASE = 'https://generativelanguage.googleapis.com';
 
 const GEMINI_PROMPT =
   'As imagens são quadros de uma gravação de tela rolando o Instagram. ' +
@@ -49,6 +52,14 @@ const GEMINI_PROMPT =
   'do perfil, em comentários, marcações e sugestões. Ignore hashtags (#) e textos que ' +
   'não sejam usernames. Responda APENAS a lista de @handles, um por linha, sem numerar, ' +
   'sem repetir e sem nenhum outro texto.';
+
+// Prompt do path NATIVO (vídeo inteiro na Gemini Files API) — resolve o buraco de
+// amostragem dos frames: o modelo assiste o vídeo todo, não quadros esparsos.
+const NATIVE_VIDEO_PROMPT =
+  'Este é um vídeo de gravação de tela rolando o Instagram. Assista TODO o vídeo e ' +
+  'liste TODOS os @usernames de PERFIS do Instagram ÚNICOS que aparecem em qualquer ' +
+  'momento (cabeçalho de perfil, comentários, marcações, sugestões). Ignore hashtags. ' +
+  'Retorne um array JSON de strings com os @handles, sem repetir e sem mais nada.';
 
 /** Data local (America/Sao_Paulo) YYYY-MM-DD — a data do UPLOAD é o marcador da leva. */
 function saoPauloDay(): string {
@@ -80,6 +91,91 @@ async function extractHandlesBatch(frames: string[], model: string, apiKey: stri
   const data = await resp.json();
   const text: string = data?.choices?.[0]?.message?.content ?? '';
   return text.split(/[\s,;]+/).filter(Boolean);
+}
+
+/**
+ * PATH NATIVO — sobe o vídeo INTEIRO pra Gemini Files API e pede os @handles.
+ * upload resumável → aguarda ACTIVE → generateContent(file_uri) → array JSON.
+ * Usa a API nativa do Google (generativelanguage) com GEMINI_API_KEY — o gateway
+ * OpenRouter do app NÃO aceita vídeo. Devolve os @handles crus (pré-sanitização).
+ */
+async function extractHandlesFromVideo(blob: Blob, model: string, apiKey: string): Promise<string[]> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const mime = blob.type || 'video/mp4';
+  const nativeModel = model.replace(/^google\//, ''); // gateway usa google/…; nativo, não.
+
+  // 1) start (resumable)
+  const startResp = await fetch(`${GENAI_BASE}/upload/v1beta/files?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'X-Goog-Upload-Protocol': 'resumable',
+      'X-Goog-Upload-Command': 'start',
+      'X-Goog-Upload-Header-Content-Length': String(bytes.length),
+      'X-Goog-Upload-Header-Content-Type': mime,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ file: { display_name: 'prospeccao-video' } }),
+  });
+  if (!startResp.ok) throw new Error(`files:start ${startResp.status}: ${(await startResp.text()).slice(0, 150)}`);
+  const uploadUrl = startResp.headers.get('x-goog-upload-url');
+  if (!uploadUrl) throw new Error('files:start sem upload url');
+
+  // 2) upload + finalize
+  const upResp = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Length': String(bytes.length),
+      'X-Goog-Upload-Offset': '0',
+      'X-Goog-Upload-Command': 'upload, finalize',
+    },
+    body: bytes,
+  });
+  if (!upResp.ok) throw new Error(`files:upload ${upResp.status}: ${(await upResp.text()).slice(0, 150)}`);
+  let file = (await upResp.json())?.file;
+  if (!file?.uri || !file?.name) throw new Error('files:upload sem uri/name');
+  const fileName = String(file.name); // "files/xxxx"
+
+  // 3) poll até ACTIVE (vídeo é processado async)
+  const deadline = Date.now() + 90_000;
+  while (String(file.state) !== 'ACTIVE') {
+    if (String(file.state) === 'FAILED') throw new Error('processamento do vídeo falhou (state=FAILED)');
+    if (Date.now() > deadline) throw new Error('timeout aguardando o vídeo ficar ACTIVE');
+    await new Promise((r) => setTimeout(r, 2500));
+    const st = await fetch(`${GENAI_BASE}/v1beta/${fileName}?key=${apiKey}`);
+    if (!st.ok) throw new Error(`files:get ${st.status}`);
+    file = await st.json();
+  }
+
+  // 4) generateContent (file_uri + prompt), JSON array de strings
+  const genResp = await fetch(`${GENAI_BASE}/v1beta/models/${nativeModel}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [
+          { file_data: { mime_type: file.mimeType ?? mime, file_uri: file.uri } },
+          { text: NATIVE_VIDEO_PROMPT },
+        ],
+      }],
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: 'application/json',
+        responseSchema: { type: 'ARRAY', items: { type: 'STRING' } },
+      },
+    }),
+  });
+  const genText = await genResp.text();
+  // 5) apaga o file do Gemini (best-effort; não bloqueia)
+  fetch(`${GENAI_BASE}/v1beta/${fileName}?key=${apiKey}`, { method: 'DELETE' }).catch(() => {});
+  if (!genResp.ok) throw new Error(`generateContent ${genResp.status}: ${genText.slice(0, 150)}`);
+
+  const gen = JSON.parse(genText);
+  const out: string = (gen?.candidates?.[0]?.content?.parts ?? [])
+    .map((p: any) => p?.text).filter(Boolean).join('');
+  let arr: unknown[] = [];
+  try { const parsed = JSON.parse(out); if (Array.isArray(parsed)) arr = parsed; } catch { arr = out.split(/[\s,;]+/); }
+  return arr.map((x) => String(x));
 }
 
 /** find-or-create de uma busca do dia (idempotente por product_id + label). */
@@ -122,16 +218,15 @@ Deno.serve(async (req: Request) => {
   const productId = String(body?.product_id ?? '').trim();
   if (!UUID_RE.test(productId)) return json({ error: 'product_id invalido (UUID)' }, 400);
 
+  const model = typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
+  const videoPath = typeof body?.video_path === 'string' ? body.video_path.trim() : '';
   const rawFrames: unknown[] = Array.isArray(body?.frames) ? body.frames : [];
   const frames: string[] = rawFrames
     .filter((f): f is string => typeof f === 'string' && f.length > 100)
     .slice(0, MAX_FRAMES);
-  if (frames.length === 0) return json({ error: 'frames[] vazio (extraia quadros do vídeo no navegador)' }, 400);
-
-  const model = typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
-
-  const apiKey = Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY');
-  if (!apiKey) return json({ error: 'AI_API_KEY nao configurado no projeto' }, 500);
+  if (!videoPath && frames.length === 0) {
+    return json({ error: 'envie video_path (path nativo) OU frames[] (extraídos no navegador)' }, 400);
+  }
 
   let apifyToken: string;
   try { apifyToken = getApifyToken(); } catch {
@@ -143,30 +238,64 @@ Deno.serve(async (req: Request) => {
     .from('platform_crm_products').select('id').eq('id', productId).maybeSingle();
   if (!product) return json({ error: 'produto nao encontrado' }, 404);
 
-  // 1) Gemini: frames → @handles (em lotes). Union dedup + sanitização.
+  // 1) Extração de @handles — NATIVO (vídeo → Gemini Files API) OU FRAMES (imagens → gateway).
   const seen = new Set<string>();
   const handles: string[] = [];
-  let geminiCalls = 0;
-  try {
-    for (let i = 0; i < frames.length; i += GEMINI_BATCH) {
-      const batch = frames.slice(i, i + GEMINI_BATCH);
-      const found = await extractHandlesBatch(batch, model, apiKey);
-      geminiCalls++;
-      for (const raw of found) {
-        const h = sanitizeInstagramHandle(raw);
-        if (h && HANDLE_RE.test(h) && !seen.has(h)) { seen.add(h); handles.push(h); }
-      }
+  const pushHandles = (found: Iterable<string>) => {
+    for (const raw of found) {
+      const h = sanitizeInstagramHandle(raw);
+      if (h && HANDLE_RE.test(h) && !seen.has(h)) { seen.add(h); handles.push(h); }
     }
-  } catch (e) {
-    const msg = String((e as Error).message ?? e).slice(0, 300);
-    console.error('[leads-import-video] gemini falhou:', msg);
-    return json({ error: `Extração por IA falhou: ${msg}` }, 502);
+  };
+
+  let mode: 'video' | 'frames' = videoPath ? 'video' : 'frames';
+  let geminiCalls = 0;
+  let framesUsed = 0;
+
+  if (videoPath) {
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) return json({ error: 'GEMINI_API_KEY nao configurado no projeto', fallback: 'frames' }, 200);
+    try {
+      const { data: blob, error: dlErr } = await sb.storage.from(VIDEO_BUCKET).download(videoPath);
+      if (dlErr || !blob) throw new Error(`download storage: ${dlErr?.message ?? 'sem dados'}`);
+      if (blob.size > NATIVE_MAX_BYTES) {
+        return json({
+          error: `vídeo ${(blob.size / 1048576).toFixed(0)}MB acima do limite nativo (${NATIVE_MAX_BYTES / 1048576}MB)`,
+          fallback: 'frames',
+        }, 200);
+      }
+      pushHandles(await extractHandlesFromVideo(blob, model, geminiKey));
+      geminiCalls = 1;
+    } catch (e) {
+      const msg = String((e as Error).message ?? e).slice(0, 300);
+      console.error('[leads-import-video] nativo falhou:', msg);
+      // pede ao front pra cair pro path de frames (o vídeo cru fica no client)
+      return json({ error: `Extração nativa do vídeo falhou: ${msg}`, fallback: 'frames' }, 200);
+    } finally {
+      // vídeo já lido → remove do storage (best-effort; não guardamos o cru)
+      try { await sb.storage.from(VIDEO_BUCKET).remove([videoPath]); } catch { /* best-effort */ }
+    }
+  } else {
+    framesUsed = frames.length;
+    const apiKey = Deno.env.get('AI_API_KEY') ?? Deno.env.get('LOVABLE_API_KEY');
+    if (!apiKey) return json({ error: 'AI_API_KEY nao configurado no projeto' }, 500);
+    try {
+      for (let i = 0; i < frames.length; i += GEMINI_BATCH) {
+        const batch = frames.slice(i, i + GEMINI_BATCH);
+        pushHandles(await extractHandlesBatch(batch, model, apiKey));
+        geminiCalls++;
+      }
+    } catch (e) {
+      const msg = String((e as Error).message ?? e).slice(0, 300);
+      console.error('[leads-import-video] gemini(frames) falhou:', msg);
+      return json({ error: `Extração por IA falhou: ${msg}` }, 502);
+    }
   }
 
   const totalExtracted = handles.length;
   if (totalExtracted === 0) {
     return json({
-      ok: true, day: saoPauloDay(), frames: frames.length, gemini_calls: geminiCalls,
+      ok: true, day: saoPauloDay(), mode, frames: framesUsed, gemini_calls: geminiCalls,
       handles_extracted: 0, net_new: 0, duplicates: 0,
       message: 'Nenhum @perfil legível nos quadros. Grave a tela mais devagar/nítida.',
     });
@@ -193,7 +322,7 @@ Deno.serve(async (req: Request) => {
 
   if (netNew.length === 0) {
     return json({
-      ok: true, day, frames: frames.length, gemini_calls: geminiCalls,
+      ok: true, day, mode, frames: framesUsed, gemini_calls: geminiCalls,
       handles_extracted: totalExtracted, net_new: 0, duplicates, overflow: 0,
       message: 'Todos os @perfis do vídeo já estão na base (nada novo p/ enriquecer).',
     });
@@ -231,17 +360,17 @@ Deno.serve(async (req: Request) => {
       ...(cur?.params ?? {}),
       via: 'leads-import-video', wpp_bucket: 'com', day, split_by_wpp: true, sibling_swpp: swppId,
       run_ids: [...prevRunIds, run.runId],
-      last_import: { frames: frames.length, handles_extracted: totalExtracted, net_new: netNew.length, at: new Date().toISOString() },
+      last_import: { mode, frames: framesUsed, handles_extracted: totalExtracted, net_new: netNew.length, at: new Date().toISOString() },
     };
     await sb.from('platform_crm_lead_extractions')
       .update({ status: 'running', apify_run_id: run.runId, params }).eq('id', cwppId);
     await sb.from('platform_crm_lead_extractions')
       .update({ status: 'running' }).eq('id', swppId);
 
-    console.log(`[leads-import-video] day=${day} frames=${frames.length} gemini_calls=${geminiCalls} extracted=${totalExtracted} net_new=${netNew.length} dup=${duplicates} overflow=${overflow} run=${run.runId}`);
+    console.log(`[leads-import-video] mode=${mode} day=${day} frames=${framesUsed} gemini_calls=${geminiCalls} extracted=${totalExtracted} net_new=${netNew.length} dup=${duplicates} overflow=${overflow} run=${run.runId}`);
     return json({
       ok: true, day, extraction_id: cwppId, swpp_extraction_id: swppId, run_id: run.runId,
-      frames: frames.length, gemini_calls: geminiCalls,
+      mode, frames: framesUsed, gemini_calls: geminiCalls,
       handles_extracted: totalExtracted, net_new: netNew.length, duplicates, overflow,
     });
   } catch (e) {
