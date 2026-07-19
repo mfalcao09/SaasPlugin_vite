@@ -1,13 +1,14 @@
 // leads-import-video-webhook — callback do Apify para a Importação por vídeo.
 // verify_jwt=false (o Apify chama sem JWT — ver config.toml). Auth real =
-// (1) extraction_id na query casa com a busca "dona do run" (c/ wpp),
+// (1) extraction_id na query casa com a busca "dona do run",
 // (2) o run id do payload está nos run_ids gravados no start (prova de origem),
 // (3) o dataset só é lido com o APIFY_TOKEN do projeto (prova de posse).
 //
-// Diferença vs. leads-extraction-webhook: DISTRIBUI cada lead enriquecido em DUAS
-// buscas do dia — "… - c/ wpp" (a própria dona) e "… - s/ wpp" (params.sibling_swpp)
-// conforme o telefone FINAL. Reusa buildLeadCard/qualifyLead/fetchDatasetItems do
-// _shared (o webhook padrão fica intocado). Segurança (§11): SERVICE_ROLE, nunca loga PII.
+// Contrato 2026-07-19: INSERE todos os leads numa ÚNICA busca "Extração vídeo <data>"
+// (ingestão é dona da busca + do segment NO NASCIMENTO). A aba com/link/sem whatsapp é
+// DERIVADA em runtime via classifyWhatsapp no read — NÃO há split físico c/s aqui. O
+// enriquecimento posterior nunca toca segment/extraction_id (propriedade por coluna).
+// Reusa buildLeadCard/qualifyLead/fetchDatasetItems do _shared. Segurança (§11): SERVICE_ROLE, nunca loga PII.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { platformCrmCorsHeaders as corsHeaders } from '../_shared/platform-crm-auth.ts';
 import {
@@ -16,6 +17,7 @@ import {
   buildLeadCard,
   qualifyLead,
 } from '../_shared/apify-leads.ts';
+import { classifyWhatsapp } from '../_shared/lead-geo.ts';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -43,8 +45,8 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, serviceRoleKey);
 
-  const cwppId = new URL(req.url).searchParams.get('extraction_id')?.trim() ?? '';
-  if (!cwppId || !UUID_RE.test(cwppId)) {
+  const bucketId = new URL(req.url).searchParams.get('extraction_id')?.trim() ?? '';
+  if (!bucketId || !UUID_RE.test(bucketId)) {
     return json({ ignored: true, reason: 'extraction_id ausente/invalido' }, 200);
   }
 
@@ -57,40 +59,35 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, test: true });
   }
 
-  // Busca "dona do run" (c/ wpp) — traz sibling_swpp + run_ids + day.
-  const { data: cwpp } = await sb
+  // Busca dona do run — traz run_ids + day (prova de origem do webhook).
+  const { data: bucket } = await sb
     .from('platform_crm_lead_extractions')
     .select('id, product_id, apify_run_id, params')
-    .eq('id', cwppId)
+    .eq('id', bucketId)
     .maybeSingle();
-  if (!cwpp) return json({ ignored: true, reason: 'extraction nao encontrada' }, 200);
+  if (!bucket) return json({ ignored: true, reason: 'extraction nao encontrada' }, 200);
 
-  const params = cwpp.params ?? {};
-  const swppId = String(params?.sibling_swpp ?? '');
+  const params = bucket.params ?? {};
   const runIds: string[] = Array.isArray(params?.run_ids) ? params.run_ids : [];
   const day = String(params?.day ?? '');
 
   // Guard: o run id PRECISA estar entre os disparados (suporta append no mesmo dia).
-  const runOk = runId && (runIds.includes(runId) || cwpp.apify_run_id === runId);
+  const runOk = runId && (runIds.includes(runId) || bucket.apify_run_id === runId);
   if (!runOk) {
-    console.warn(`[leads-import-video-webhook] run mismatch cwpp=${cwppId}`);
+    console.warn(`[leads-import-video-webhook] run mismatch bucket=${bucketId}`);
     return json({ ignored: true, reason: 'run id divergente' }, 200);
-  }
-
-  if (!UUID_RE.test(swppId)) {
-    return json({ ignored: true, reason: 'sibling_swpp ausente/invalido' }, 200);
   }
 
   if (FAIL_EVENTS.has(eventType)) {
     await sb.from('platform_crm_lead_extractions')
-      .update({ status: 'error', last_error: eventType }).in('id', [cwppId, swppId]);
+      .update({ status: 'error', last_error: eventType }).eq('id', bucketId);
     return json({ ok: true, status: 'error', event: eventType });
   }
 
   const datasetId = String(resource?.defaultDatasetId ?? '');
   if (!datasetId) {
     await sb.from('platform_crm_lead_extractions')
-      .update({ status: 'error', last_error: 'sem defaultDatasetId no payload' }).in('id', [cwppId, swppId]);
+      .update({ status: 'error', last_error: 'sem defaultDatasetId no payload' }).eq('id', bucketId);
     return json({ ok: false, error: 'sem defaultDatasetId' }, 200);
   }
 
@@ -100,21 +97,23 @@ Deno.serve(async (req: Request) => {
 
     // Opt-out (Art.18) + lixeira (anti-recidiva), product-scoped.
     const { data: optoutRows } = await sb
-      .from('platform_crm_lead_optout').select('handle, telefone').eq('product_id', cwpp.product_id);
+      .from('platform_crm_lead_optout').select('handle, telefone').eq('product_id', bucket.product_id);
     const optoutPhones = new Set((optoutRows ?? []).map((r: any) => r.telefone).filter(Boolean));
     const optoutHandles = new Set(
       (optoutRows ?? []).map((r: any) => (r.handle ? String(r.handle).replace(/^@/, '') : null)).filter(Boolean),
     );
     const { data: excludedRows } = await sb
-      .from('platform_crm_lead_excluded').select('handle').eq('product_id', cwpp.product_id);
+      .from('platform_crm_lead_excluded').select('handle').eq('product_id', bucket.product_id);
     const excludedHandles = new Set(
       (excludedRows ?? []).map((r: any) => String(r.handle ?? '').replace(/^@/, '')).filter(Boolean),
     );
 
-    const labelCwpp = `Extração vídeo ${day} - c/ wpp`;
-    const labelSwpp = `Extração vídeo ${day} - s/ wpp`;
+    const label = `Extração vídeo ${day}`;
 
-    // Normaliza + dedup por handle DENTRO do batch, distribuindo por wpp.
+    // Normaliza + dedup por handle DENTRO do batch. TODOS os leads vão pra 1 busca;
+    // a aba (numero/link/nenhum) é derivada no read via classifyWhatsapp — nunca gravada.
+    // segment É gravado aqui porque isto é INGESTÃO (nascimento do lead); só o
+    // enriquecimento posterior é proibido de tocar segment (propriedade por coluna).
     const byKey = new Map<string, Record<string, unknown>>();
     let optedOut = 0, noHandle = 0;
     for (const item of items) {
@@ -124,13 +123,9 @@ Deno.serve(async (req: Request) => {
           (card.telefone && optoutPhones.has(card.telefone))) { optedOut++; continue; }
 
       const q = qualifyLead(item, card);
-      // c/ wpp = número discável OU link de WhatsApp em código (whatsapp_link presente).
-      const hasWhatsapp = !!card.telefone || !!card.whatsapp_link;
-      const target = hasWhatsapp ? cwppId : swppId;
-      const label = hasWhatsapp ? labelCwpp : labelSwpp;
-      byKey.set(`${target}|${card.handle}`, {
-        extraction_id: target,
-        product_id: cwpp.product_id,
+      byKey.set(`${bucketId}|${card.handle}`, {
+        extraction_id: bucketId,
+        product_id: bucket.product_id,
         handle: card.handle,
         name: card.name,
         primeiro_nome: card.primeiro_nome,
@@ -164,8 +159,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const rows = Array.from(byKey.values());
-    let withPhone = 0;
-    for (const r of rows) if (r.telefone || r.whatsapp_link) withPhone++;
+
+    // Telemetria 3-estados via classificador ÚNICO (consome classifyWhatsapp, não reimplementa).
+    // É só p/ log/resposta — a aba real é derivada no read pelo CRM; nada disto é persistido.
+    let n_numero = 0, n_link = 0, n_nenhum = 0;
+    for (const r of rows) {
+      const w = classifyWhatsapp({
+        telefone: (r.telefone as string | null) ?? null,
+        whatsapp_link: (r.whatsapp_link as string | null) ?? null,
+        raw: r.raw,
+      });
+      if (w.state === 'numero') n_numero++;
+      else if (w.state === 'link') n_link++;
+      else n_nenhum++;
+    }
 
     if (rows.length > 0) {
       const { error: upErr } = await sb
@@ -174,27 +181,24 @@ Deno.serve(async (req: Request) => {
       if (upErr) throw new Error(`upsert staging: ${upErr.message}`);
     }
 
-    // Recontagem real de cada busca (idempotente com append).
-    const totalCwpp = await countLeads(sb, cwppId);
-    const totalSwpp = await countLeads(sb, swppId);
+    // Recontagem real da busca (idempotente com append de várias importações no mesmo dia).
+    const total = await countLeads(sb, bucketId);
     await sb.from('platform_crm_lead_extractions')
-      .update({ status: 'done', total_found: totalCwpp, last_error: null }).eq('id', cwppId);
-    await sb.from('platform_crm_lead_extractions')
-      .update({ status: 'done', total_found: totalSwpp, last_error: null }).eq('id', swppId);
+      .update({ status: 'done', total_found: total, last_error: null }).eq('id', bucketId);
 
     console.log(
-      `[leads-import-video-webhook] cwpp=${cwppId} day=${day} dataset_items=${items.length} staged=${rows.length} c_wpp=${withPhone} s_wpp=${rows.length - withPhone} total_cwpp=${totalCwpp} total_swpp=${totalSwpp} opted_out=${optedOut} no_handle=${noHandle}`,
+      `[leads-import-video-webhook] bucket=${bucketId} day=${day} dataset_items=${items.length} staged=${rows.length} numero=${n_numero} link=${n_link} nenhum=${n_nenhum} total=${total} opted_out=${optedOut} no_handle=${noHandle}`,
     );
     return json({
-      ok: true, extraction_id: cwppId, swpp_extraction_id: swppId,
+      ok: true, extraction_id: bucketId,
       dataset_items: items.length, staged: rows.length,
-      com_wpp: withPhone, sem_wpp: rows.length - withPhone,
-      total_cwpp: totalCwpp, total_swpp: totalSwpp, opted_out: optedOut,
+      numero: n_numero, link: n_link, nenhum: n_nenhum,
+      total, opted_out: optedOut,
     });
   } catch (e) {
     const msg = String((e as Error).message ?? e).slice(0, 500);
     await sb.from('platform_crm_lead_extractions')
-      .update({ status: 'error', last_error: msg }).in('id', [cwppId, swppId]);
+      .update({ status: 'error', last_error: msg }).eq('id', bucketId);
     console.error('[leads-import-video-webhook] error:', msg);
     return json({ ok: false, error: msg }, 200);
   }

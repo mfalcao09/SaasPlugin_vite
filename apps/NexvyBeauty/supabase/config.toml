@@ -62,9 +62,10 @@ verify_jwt = false
 verify_jwt = false
 
 # Webhook do Apify da Importação por vídeo (leads-import-video). Mesma auth do
-# webhook padrão (extraction_id + run id ∈ run_ids + APIFY_TOKEN), mas DISTRIBUI os
-# leads em 2 buscas do dia (c/ wpp | s/ wpp). leads-import-video (o disparador) NÃO
-# entra aqui: exige JWT super_admin (verify_jwt=true, o default).
+# webhook padrão (extraction_id + run id ∈ run_ids + APIFY_TOKEN). Insere os leads
+# numa ÚNICA busca do dia ("Extração vídeo <data>") — a aba com/link/sem whatsapp é
+# DERIVADA em runtime via classifyWhatsapp (contrato 2026-07-19), não é busca física.
+# leads-import-video (o disparador) NÃO entra aqui: exige JWT super_admin (verify_jwt=true, o default).
 [functions.leads-import-video-webhook]
 verify_jwt = false
 
