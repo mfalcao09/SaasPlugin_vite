@@ -62,6 +62,7 @@ import { PlatformProspeccaoBaseConsolidada } from '@/components/superadmin/crm/p
 import { ProspeccaoCampanhasStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoCampanhasStub';
 import { ProspeccaoDashboardStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoDashboardStub';
 import { ProspeccaoEnriquecimentoStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoEnriquecimentoStub';
+import { ProspeccaoNovaImportacao } from '@/components/superadmin/crm/prospeccao/ProspeccaoNovaImportacao';
 import { ProspeccaoVideoImport } from '@/components/superadmin/crm/prospeccao/ProspeccaoVideoImport';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
@@ -389,6 +390,14 @@ const VENDAS_NAV: PlatformNavGroup[] = [
     id: 'vendas-prospeccao-ativa',
     label: 'Prospecção Ativa',
     items: [
+      {
+        // PORTA ÚNICA de aquisição: todos os métodos de entrada de lead num lugar só.
+        // Vem ANTES de "Buscas" de propósito — Buscas é o RESULTADO, não a entrada.
+        id: 'v-prospeccao-nova-importacao',
+        label: 'Nova Importação',
+        icon: I.DownloadCloud,
+        render: () => <ProspeccaoNovaImportacao />,
+      },
       {
         id: 'v-prospeccao-buscas',
         label: 'Buscas',

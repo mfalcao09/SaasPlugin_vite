@@ -61,6 +61,7 @@ import {
   Package,
   Instagram,
   Video,
+  DownloadCloud,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
@@ -288,6 +289,7 @@ export const PlatformIcons = {
   Webhook,
   Instagram,
   // vendas — prospecção ativa
+  DownloadCloud,
   Video,
   // vendas — captação
   FileQuestion,
