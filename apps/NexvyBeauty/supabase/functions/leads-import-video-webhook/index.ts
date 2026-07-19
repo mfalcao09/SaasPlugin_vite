@@ -124,8 +124,10 @@ Deno.serve(async (req: Request) => {
           (card.telefone && optoutPhones.has(card.telefone))) { optedOut++; continue; }
 
       const q = qualifyLead(item, card);
-      const target = card.telefone ? cwppId : swppId;
-      const label = card.telefone ? labelCwpp : labelSwpp;
+      // c/ wpp = número discável OU link de WhatsApp em código (whatsapp_link presente).
+      const hasWhatsapp = !!card.telefone || !!card.whatsapp_link;
+      const target = hasWhatsapp ? cwppId : swppId;
+      const label = hasWhatsapp ? labelCwpp : labelSwpp;
       byKey.set(`${target}|${card.handle}`, {
         extraction_id: target,
         product_id: cwpp.product_id,
@@ -163,7 +165,7 @@ Deno.serve(async (req: Request) => {
 
     const rows = Array.from(byKey.values());
     let withPhone = 0;
-    for (const r of rows) if (r.telefone) withPhone++;
+    for (const r of rows) if (r.telefone || r.whatsapp_link) withPhone++;
 
     if (rows.length > 0) {
       const { error: upErr } = await sb

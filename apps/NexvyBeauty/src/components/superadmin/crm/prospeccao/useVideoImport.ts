@@ -86,6 +86,8 @@ export async function extractVideoFrames(
 export interface VideoImportResult {
   ok: boolean;
   day: string;
+  mode?: 'video' | 'frames';    // 'video' = path nativo (Files API); 'frames' = quadros
+  fallback?: 'frames';          // nativo pediu p/ o front reprocessar via quadros
   extraction_id?: string;       // busca "c/ wpp" (dona do run) — usar p/ polling
   swpp_extraction_id?: string;  // busca "s/ wpp"
   run_id?: string;
@@ -96,6 +98,20 @@ export interface VideoImportResult {
   duplicates: number;
   overflow?: number;
   message?: string;
+}
+
+/** Até este tamanho o front tenta o path NATIVO (vídeo inteiro); acima, vai direto p/ frames. */
+export const NATIVE_MAX_BYTES = 45 * 1024 * 1024;
+
+/** Sobe o vídeo pro bucket privado 'prospeccao-video' e devolve o path (a edge lê e apaga). */
+export async function uploadVideoToStorage(file: File, productId: string): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+  const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('prospeccao-video')
+    .upload(path, file, { contentType: file.type || 'video/mp4', upsert: false });
+  if (error) throw new Error(`upload do vídeo falhou: ${error.message}`);
+  return path;
 }
 
 async function invokeError(error: unknown): Promise<string> {
@@ -109,10 +125,13 @@ async function invokeError(error: unknown): Promise<string> {
 
 export function useImportVideo() {
   return useMutation({
-    mutationFn: async (args: { product_id: string; frames: string[]; model?: string }): Promise<VideoImportResult> => {
+    mutationFn: async (
+      args: { product_id: string; frames?: string[]; video_path?: string; model?: string },
+    ): Promise<VideoImportResult> => {
       const { data, error } = await supabase.functions.invoke('leads-import-video', { body: args });
       if (error) throw new Error(await invokeError(error));
-      if ((data as any)?.error) throw new Error((data as any).error);
+      // fallback:'frames' NÃO é erro — o componente decide reprocessar via quadros.
+      if ((data as any)?.error && (data as any)?.fallback !== 'frames') throw new Error((data as any).error);
       return data as VideoImportResult;
     },
   });

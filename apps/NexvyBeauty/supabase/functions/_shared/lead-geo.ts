@@ -115,11 +115,29 @@ const WA_LINK_RE =
 // Telefone solto no texto (com/sem DDI/DDD/pontuação). O "+" é capturado no [0].
 const LOOSE_PHONE_RE = /(\+?\d[\d\s().-]{7,18}\d)/g;
 
+// Links de WhatsApp em CÓDIGO de letras (NÃO expõem o número): wa.me/message/CODE,
+// wa.link/CODE, api.whatsapp.com/message/CODE, wa.me/qr/CODE. São contato REAL (dá pra
+// mandar mensagem), mas o telefone não é recuperável (o redirect não revela o número).
+// Guardamos o link e o lead conta como "TEM WhatsApp" (vai pro balde c/ wpp), não s/ wpp.
+const WA_CODE_LINK_RE =
+  /(?:https?:\/\/)?(?:www\.)?(wa\.me\/(?:message|qr)\/[A-Za-z0-9]+|wa\.link\/[A-Za-z0-9]+|(?:api\.)?whatsapp\.com\/(?:message|qr)\/[A-Za-z0-9]+)/i;
+
+/** Acha o 1º link de WhatsApp em código nos textos (bio + links) → URL normalizada. */
+export function findWaCodeLink(texts: Array<string | null | undefined>): string | null {
+  for (const t of texts) {
+    if (!t) continue;
+    const m = t.match(WA_CODE_LINK_RE);
+    if (m) return `https://${m[1]}`;
+  }
+  return null;
+}
+
 export type BestPhone = {
   telefone: string | null;   // E.164 BR quando is_br; senão null
   is_br: boolean;
   country: string | null;    // 'BR' | DDI estrangeiro | null
   phone_any: string | null;  // qualquer número achado (p/ dedup futuro c/ Maps), BR ou não
+  wa_link?: string | null;   // link de WhatsApp em código (wa.me/message/…) quando presente
 };
 
 /**
@@ -155,6 +173,7 @@ export function extractBestPhone(texts: Array<string | null | undefined>): BestP
     is_br: false,
     country: firstAny?.country ?? null,
     phone_any: firstAny?.e164 ?? null,
+    wa_link: findWaCodeLink(texts), // sem número discável, mas pode ter link-código
   };
 }
 
