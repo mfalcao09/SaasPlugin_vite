@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
+import { parsePlatformCrmFnError } from './usePlatformCrmConversations';
 
 /**
  * WhatsApp Oficial (Meta Cloud API) do CRM de PLATAFORMA (super_admin).
@@ -99,6 +100,54 @@ export function useTestPlatformCrmMetaWAConnection() {
       else toast.error(data?.error ?? 'Falha no teste');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Falha no teste'),
+  });
+}
+
+/**
+ * (Re)registra o número na Cloud API — é o passo que faz o "display name" recém-aprovado
+ * pela Meta passar a valer de fato. Sem isto o WhatsApp Manager mostra o número conectado
+ * mas a cliente continua vendo o nome antigo.
+ * `set_pin` redefine o PIN da verificação em duas etapas antes de registrar (usar quando
+ * o PIN atual é desconhecido).
+ */
+export interface PlatformCrmMetaWARegisterResult {
+  ok: boolean;
+  connection: { id: string; phone_number: string | null; phone_number_id: string; waba_id: string | null };
+  steps: {
+    before?: { verified_name?: string; display_phone_number?: string; status?: string };
+    register?: unknown;
+    after?: { verified_name?: string; display_phone_number?: string; status?: string };
+    db_sincronizado?: string;
+  };
+}
+
+export function useRegisterPlatformCrmMetaWAConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { connection_id: string; pin: string; set_pin?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke('platform-meta-whatsapp-register', { body: payload });
+      if (error) {
+        // FunctionsHttpError esconde o corpo real ({ error, detail, dica }) na Response.
+        const { body } = await parsePlatformCrmFnError(error);
+        const partes = [body?.error, body?.detail, body?.dica].filter(Boolean);
+        if (partes.length) throw new Error(partes.join(' — '));
+        throw error;
+      }
+      if ((data as any)?.error) {
+        const d = data as any;
+        throw new Error([d.error, d.detail, d.dica].filter(Boolean).join(' — '));
+      }
+      return data as PlatformCrmMetaWARegisterResult;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['platform-crm-meta-wa-connections'] });
+      const antes = data?.steps?.before?.verified_name;
+      const depois = data?.steps?.after?.verified_name;
+      if (antes && depois && antes !== depois) toast.success(`Registrado: ${antes} → ${depois}`);
+      else if (depois) toast.success(`Número registrado na Cloud API (${depois})`);
+      else toast.success('Número registrado na Cloud API');
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Falha ao registrar o número'),
   });
 }
 

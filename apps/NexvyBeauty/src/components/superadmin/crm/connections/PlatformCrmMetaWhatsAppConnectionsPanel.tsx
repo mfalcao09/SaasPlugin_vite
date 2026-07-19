@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, RefreshCw, Pencil, Trash2, ShieldCheck, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Pencil, Trash2, ShieldCheck, AlertTriangle, FileText, BadgeCheck } from 'lucide-react';
 import {
   usePlatformCrmMetaWAConnections, useTestPlatformCrmMetaWAConnection, useSyncPlatformCrmMetaWATemplates, useDeletePlatformCrmMetaWAConnection,
+  useRegisterPlatformCrmMetaWAConnection,
   type PlatformCrmMetaWAConnection,
 } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
 import { PlatformCrmMetaWhatsAppWizard } from './PlatformCrmMetaWhatsAppWizard';
@@ -13,6 +14,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function StatusBadge({ c }: { c: PlatformCrmMetaWAConnection }) {
   if (c.status === 'active') return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">Ativa</Badge>;
@@ -33,12 +40,28 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
   const test = useTestPlatformCrmMetaWAConnection();
   const sync = useSyncPlatformCrmMetaWATemplates();
   const del = useDeletePlatformCrmMetaWAConnection();
+  const register = useRegisterPlatformCrmMetaWAConnection();
   const [wizardInternal, setWizardInternal] = useState(false);
   const wizardOpen = wizardInternal || !!openWizard;
   const closeWizard = () => { setWizardInternal(false); setEditing(null); onCloseWizard?.(); };
   const [editing, setEditing] = useState<PlatformCrmMetaWAConnection | null>(null);
   const [toDelete, setToDelete] = useState<PlatformCrmMetaWAConnection | null>(null);
   const [templatesFor, setTemplatesFor] = useState<PlatformCrmMetaWAConnection | null>(null);
+  // Re-registro na Cloud API: o PIN vive só aqui e é descartado ao fechar o diálogo.
+  const [registerFor, setRegisterFor] = useState<PlatformCrmMetaWAConnection | null>(null);
+  const [pin, setPin] = useState('');
+  const [resetPin, setResetPin] = useState(false);
+  const pinValido = /^\d{6}$/.test(pin);
+
+  const closeRegister = () => { setRegisterFor(null); setPin(''); setResetPin(false); };
+
+  const submitRegister = () => {
+    if (!registerFor || !pinValido) return;
+    register.mutate(
+      { connection_id: registerFor.id, pin, set_pin: resetPin || undefined },
+      { onSuccess: closeRegister },
+    );
+  };
 
   if (isLoading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -95,6 +118,18 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
                   <Button size="sm" variant="outline" onClick={() => sync.mutate(c.id)} disabled={sync.isPending}>
                     {sync.isPending && sync.variables === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setPin(''); setResetPin(false); setRegisterFor(c); }}
+                    disabled={register.isPending}
+                    title="Re-registrar o número na Cloud API (aplica o nome aprovado pela Meta)"
+                  >
+                    {register.isPending && registerFor?.id === c.id
+                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      : <BadgeCheck className="h-3.5 w-3.5 mr-1" />}
+                    Registrar
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setTemplatesFor(c)}>
                     <FileText className="h-3.5 w-3.5 mr-1" />Templates
                   </Button>
@@ -119,6 +154,63 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
           onClose={() => setTemplatesFor(null)}
         />
       )}
+
+      <Dialog open={!!registerFor} onOpenChange={(v) => { if (!v && !register.isPending) closeRegister(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar número na Cloud API</DialogTitle>
+            <DialogDescription>
+              Use depois que a Meta aprovar um novo nome de exibição — o nome só passa a valer
+              quando o número é registrado de novo. Número: {registerFor?.phone_number ?? registerFor?.phone_number_id}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="meta-register-pin">PIN de 6 dígitos</Label>
+              <Input
+                id="meta-register-pin"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                placeholder="000000"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && pinValido && !register.isPending) submitRegister(); }}
+              />
+              <p className="text-xs text-muted-foreground">
+                É o PIN da verificação em duas etapas do número.
+              </p>
+              {pin.length > 0 && !pinValido && (
+                <p className="text-xs text-destructive">Informe exatamente 6 dígitos numéricos.</p>
+              )}
+            </div>
+
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="meta-register-set-pin"
+                checked={resetPin}
+                onCheckedChange={(v) => setResetPin(v === true)}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="meta-register-set-pin" className="font-normal">Redefinir o PIN</Label>
+                <p className="text-xs text-muted-foreground">
+                  Use se você não souber o PIN atual — ele será redefinido para o valor informado.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeRegister} disabled={register.isPending}>Cancelar</Button>
+            <Button onClick={submitRegister} disabled={!pinValido || register.isPending}>
+              {register.isPending
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando…</>
+                : <><BadgeCheck className="h-4 w-4 mr-2" />Registrar</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!toDelete} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>
