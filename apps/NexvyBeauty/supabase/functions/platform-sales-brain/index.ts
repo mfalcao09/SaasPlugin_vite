@@ -88,6 +88,11 @@ const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível —
 // escalada humana — troca o agente da conversa (current_agent_id) e a Bia (closer)
 // assume na PRÓXIMA mensagem da lead. A conversa segue bot_active o tempo todo.
 const PASS_BIA_TAG = '[PASSAR_BIA]';
+// [ENVIAR_RAIOX] — a Duda DISPARA A ISCA NO AUTOMÁTICO: o handler chama demo-start
+// (nome+whatsapp da própria conversa), recebe /implantacao/<token> e entrega o link
+// na mesma resposta. Sem humano de plantão (pedido explícito Marcelo 2026-07-19 —
+// o prompt já mandava "disparar a isca" sem existir braço para isso).
+const RAIOX_TAG = '[ENVIAR_RAIOX]';
 // Bolha de transição calorosa que a Duda deixa ao passar para a Bia.
 const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';
 // Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
@@ -388,10 +393,16 @@ function sanitizeReply(input: string): { text: string; sanitized: boolean } {
  * que sobrecarregar a lead com um formulário.
  */
 function keepFirstQuestion(input: string): string {
-  const marks = (input.match(/\?/g) || []).length;
+  // '?' dentro de URL é querystring, NÃO pergunta (bug D3: o link de checkout
+  // "...?src=..." era truncado no meio). Mascara o '?' das URLs com um sentinela
+  // (\u0001 — nunca ocorre em texto de chat), conta/corta no mascarado e restaura
+  // no resultado — o corte nunca acontece dentro de um link.
+  const SENT = '\u0001';
+  const masked = input.replace(/https?:\/\/\S+/g, (u) => u.split('?').join(SENT));
+  const marks = (masked.match(/\?/g) || []).length;
   if (marks <= 1) return input.trim();
-  const firstQ = input.indexOf('?');
-  return input.slice(0, firstQ + 1).trim();
+  const firstQ = masked.indexOf('?');
+  return masked.slice(0, firstQ + 1).split(SENT).join('?').trim();
 }
 
 /**
@@ -670,6 +681,7 @@ LEAD VEIO DE ANÚNCIO (CTWA — MODO INBOUND)
 Esta lead clicou num anúncio Click-to-WhatsApp e chegou QUENTE${gancho ? ` (o anúncio dela: ${gancho})` : ''}. Ela já quer o "raio-x do WhatsApp" — ver quanto tá parado em cliente que sumiu.
 ABERTURA (só na PRIMEIRA fala): reconheça que ela veio pelo anúncio do raio-x, prometa mostrar em ~2 min, no número real dela, quanto tá parado, e faça JÁ a 1ª pergunta de qualificação. NUNCA abra genérico ("como posso te ajudar?") — isso queima o match do anúncio e derruba a conversão.
 QUALIFICAÇÃO LEVE (no máx 2-3 respostas, UMA pergunta por vez): (a) salão próprio ou atende como autônoma? (b) quantas cadeiras/profissionais? (c) usa algum sistema hoje? (d) qual a maior dor? Depois da 2ª-3ª resposta, PARE de perguntar e DISPARE a isca (o raio-x) — a própria demonstração qualifica o resto (a lead se qualifica sozinha ao ver o próprio dinheiro parado).
+COMO DISPARAR O RAIO-X: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link real da demonstração e envia automaticamente com as instruções do QR code. NUNCA invente ou digite um link você mesma; NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/teste em QUALQUER momento (mesmo fora do fluxo do anúncio), emita a tag.
 FORA DO ICP (curiosa, concorrente, quer emprego/renda extra): agradeça com carinho e encerre — não insista.`;
 }
 
@@ -1289,6 +1301,45 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
       }
     }
 
+    // 10b) [ENVIAR_RAIOX] — Raio-X AUTOMÁTICO. Gera o link da demo via demo-start
+    //      (público, honeypot+rate-limit) com nome+whatsapp da conversa e entrega
+    //      na mesma resposta. Falhou → fallback caloroso + alerta Telegram (a lead
+    //      NUNCA fica com promessa sem link e sem ninguém saber).
+    let sentRaiox = false;
+    if (reply.includes(RAIOX_TAG)) {
+      reply = reply.split(RAIOX_TAG).join('').replace(/\s+$/, '').trim();
+      try {
+        const appUrl = Deno.env.get('APP_URL') || 'https://app.nexvybeauty.com.br';
+        const demoRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/demo-start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: (conversation.visitor_name ?? '').trim() || 'Meu espaço',
+            whatsapp: conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '',
+          }),
+        });
+        const demo = await demoRes.json().catch(() => ({} as Record<string, unknown>));
+        if (demoRes.ok && typeof demo?.url === 'string' && demo.url) {
+          sentRaiox = true;
+          reply = `${reply ? reply + '\n\n' : ''}Aqui está o seu Raio-X 👉 ${appUrl}${demo.url}\n\nVocê conecta seu WhatsApp por QR code e em ~2 min eu te mostro quanto tem parado na sua carteira. Como o QR precisa ser escaneado com o SEU celular, abre esse link em outro aparelho (computador ou outro celular) e aponta a câmera 😉`;
+        } else {
+          console.warn('[platform-sales-brain] [ENVIAR_RAIOX] demo-start falhou:', demoRes.status, JSON.stringify(demo).slice(0, 200));
+          await sendTelegramAlertThrottled(
+            `raiox-failed:${conversationId}`,
+            `⚠️ RAIO-X automático FALHOU (demo-start HTTP ${demoRes.status})\nConversa: ${conversationId}\nA Duda prometeu o raio-x e o link não saiu — intervir.`,
+          );
+          reply = `${reply ? reply + '\n\n' : ''}Vou preparar o seu Raio-X agora e te mando o link aqui em instantes 😉`;
+        }
+      } catch (raioxErr) {
+        console.error('[platform-sales-brain] [ENVIAR_RAIOX] erro:', (raioxErr as Error)?.message);
+        await sendTelegramAlertThrottled(
+          `raiox-failed:${conversationId}`,
+          `⚠️ RAIO-X automático FALHOU (exceção: ${(raioxErr as Error)?.message ?? 'desconhecida'})\nConversa: ${conversationId} — intervir.`,
+        );
+        reply = `${reply ? reply + '\n\n' : ''}Vou preparar o seu Raio-X agora e te mando o link aqui em instantes 😉`;
+      }
+    }
+
     // 11) Escalada/handoff: detecta as tags (mesmo tratamento), remove do texto.
     const needsHandoff = reply.includes(HANDOFF_TAG) || reply.includes(ESCALATE_TAG);
     if (needsHandoff) {
@@ -1306,7 +1357,7 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     const sanitized = san.sanitized;
     // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
     // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
-    if (!needsHandoff && !passedToBia) reply = keepFirstQuestion(reply);
+    if (!needsHandoff && !passedToBia && !sentRaiox) reply = keepFirstQuestion(reply);
     let bubbles = splitIntoBubbles(reply);
     if (bubbles.length === 0) {
       bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
