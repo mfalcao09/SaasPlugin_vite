@@ -61,6 +61,13 @@ verify_jwt = false
 [functions.leads-extraction-webhook]
 verify_jwt = false
 
+# Webhook do Apify da Importação por vídeo (leads-import-video). Mesma auth do
+# webhook padrão (extraction_id + run id ∈ run_ids + APIFY_TOKEN), mas DISTRIBUI os
+# leads em 2 buscas do dia (c/ wpp | s/ wpp). leads-import-video (o disparador) NÃO
+# entra aqui: exige JWT super_admin (verify_jwt=true, o default).
+[functions.leads-import-video-webhook]
+verify_jwt = false
+
 # Import de perfis JÁ coletados direto no staging do C9 (irmão do webhook, mas recebe
 # os perfis no POST em vez de baixar do dataset). Sem JWT no gateway; auth real na
 # função = x-import-secret (LEADS_IMPORT_SECRET) OU JWT super_admin. Serve o pusher

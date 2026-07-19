@@ -36,6 +36,23 @@ export function getApifyToken(): string {
   return t;
 }
 
+// ── Sanitização de @handle (fonte-única) ─────────────────────────────────────
+// Regra canônica do IG: 1..30 chars, só [a-z0-9._]. Aceita @handle, URL do IG,
+// link completo ou username cru → normaliza p/ o username puro (sem @). É a MESMA
+// regra usada por `leads-import-handles`; centralizada aqui p/ o vídeo (Gemini) e
+// o colar-handles compartilharem exatamente o mesmo saneamento (anti-drift).
+export const HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+
+export function sanitizeInstagramHandle(raw: unknown): string | null {
+  let s = String(raw ?? '').trim().toLowerCase();
+  if (!s) return null;
+  s = s.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  s = s.replace(/^instagram\.com\//, '').replace(/^m\.instagram\.com\//, '');
+  s = s.replace(/[/?#].*$/, ''); // corta path/query/hash restante
+  s = s.replace(/^@/, '');
+  return HANDLE_RE.test(s) ? s : null;
+}
+
 // ── Apify REST ───────────────────────────────────────────────────────────────
 
 export interface IgActorInput {
