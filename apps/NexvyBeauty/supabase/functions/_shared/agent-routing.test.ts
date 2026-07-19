@@ -16,6 +16,7 @@ import {
   isRetentionAgent,
   pickSdrPersona,
   pickPersonaForConversation,
+  resolvePersonaForConversation,
 } from './agent-routing.ts';
 
 // Assert mínimo self-contained (sem dependência externa).
@@ -93,6 +94,70 @@ Deno.test('pickPersonaForConversation — pin respeitado; sem SDR e sem pin → 
   eq(pickPersonaForConversation(cascas, null), null, 'só cascas, sem pin → null');
   // Mas um casca pinado responde (é o caminho legítimo da Nina).
   eq(pickPersonaForConversation(cascas, 'nina')?.id, 'nina', 'casca pinado (Nina) responde por pin');
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// INVARIANTE "NENHUMA CONVERSA ÓRFÃ" (auditoria de roteamento/handoff 2026-07-19)
+//
+// Lei: a dona é sempre a SDR (Duda) até fazer o handoff; e ela responde por
+// QUALQUER conversa sem agente atribuído OU cujo handoff falhou. O resolvedor
+// tem que devolver a Duda — NUNCA null — e dizer POR QUE (pra o brain alarmar).
+//
+// REPRO BINÁRIO: agentes ativos+WhatsApp = [Duda, Bia, Lia]; a conversa aponta
+// current_agent_id='nina' (a Nina foi desativada / tirada do WhatsApp depois do
+// pin do nina-health-scan). Antes: caía na Duda EM SILÊNCIO — indistinguível de
+// conversa nova, e o pin fantasma sobrevivia no banco. Agora: Duda + reason
+// 'sdr_fallback_orphan_pin' + orphanAgentId='nina' ⇒ alerta + cura do pin.
+// ───────────────────────────────────────────────────────────────────────────
+Deno.test('resolvePersonaForConversation — pin ÓRFÃO (agente inativo) → Duda, NUNCA null', () => {
+  const ativos = [dudaSdr, bia, lia]; // Nina NÃO está na lista (inativa/fora do WhatsApp)
+  const r = resolvePersonaForConversation(ativos, 'nina');
+  eq(r.persona?.id, 'duda', 'pin órfão → a Duda assume (conversa nunca fica órfã)');
+  eq(r.reason, 'sdr_fallback_orphan_pin', 'motivo denuncia o handoff quebrado');
+  eq(r.orphanAgentId, 'nina', 'id do pin quebrado vai no alerta');
+});
+
+Deno.test('resolvePersonaForConversation — motivos dos caminhos SAUDÁVEIS', () => {
+  const full = [dudaSdr, bia, lia, ninaRet, nexvy, orq];
+  const semPin = resolvePersonaForConversation(full, null);
+  eq(semPin.persona?.id, 'duda', 'sem pin → Duda abre');
+  eq(semPin.reason, 'sdr_open', 'motivo = abertura normal (NÃO alarma)');
+  eq(semPin.orphanAgentId, null, 'sem pin quebrado');
+
+  const pinBia = resolvePersonaForConversation(full, 'bia');
+  eq(pinBia.persona?.id, 'bia', 'pin válido → Bia continua');
+  eq(pinBia.reason, 'pinned', 'motivo = pin respeitado (NÃO alarma)');
+
+  const pinNina = resolvePersonaForConversation(full, 'nina');
+  eq(pinNina.persona?.id, 'nina', 'pin válido → Nina (retenção só por pin)');
+  eq(pinNina.reason, 'pinned', 'motivo = pin respeitado');
+});
+
+Deno.test('resolvePersonaForConversation — pin órfão E sem Duda → no_persona (guard cala + alarma)', () => {
+  // Pior caso: handoff quebrado E nenhuma SDR pra assumir. Ninguém fala (não
+  // improvisa voz no número oficial), mas o id órfão viaja pro alerta.
+  const semDuda = [bia, lia, ...cascas];
+  const r = resolvePersonaForConversation(semDuda, 'fantasma');
+  eq(r.persona, null, 'sem SDR não há quem assuma');
+  eq(r.reason, 'no_persona', 'guard cala');
+  eq(r.orphanAgentId, 'fantasma', 'alerta sabe qual pin quebrou');
+
+  const vazio = resolvePersonaForConversation([], 'fantasma');
+  eq(vazio.persona, null, 'lista vazia → ninguém');
+  eq(vazio.reason, 'no_persona', 'lista vazia → no_persona');
+  eq(vazio.orphanAgentId, 'fantasma', 'lista vazia ainda reporta o pin órfão');
+});
+
+Deno.test('pickPersonaForConversation — wrapper preserva EXATAMENTE o comportamento antigo', () => {
+  const full = [dudaSdr, bia, lia, ninaRet, nexvy, orq];
+  for (const pin of [null, 'bia', 'nina', 'fantasma']) {
+    eq(
+      pickPersonaForConversation(full, pin)?.id ?? null,
+      resolvePersonaForConversation(full, pin).persona?.id ?? null,
+      `wrapper == resolver para pin=${pin}`,
+    );
+  }
+  eq(pickPersonaForConversation([bia, ...cascas], null), null, 'wrapper mantém null sem SDR/pin');
 });
 
 Deno.test('GARANTIA-MÃE — 3 cascas ativos + Duda presente: Duda abre, casca só por pin', () => {

@@ -46,20 +46,74 @@ export function pickSdrPersona(agents: Array<Record<string, any>>): Record<strin
   return agents.find(isSdrAgent) ?? null;
 }
 
+/** Por que esta persona foi escolhida — o handler usa pra decidir se ALARMA. */
+export type PersonaRouteReason =
+  /** current_agent_id aponta um agente ativo+WhatsApp do produto: é ele quem fala. */
+  | 'pinned'
+  /** Sem pin: a SDR (Duda) abre a conversa. Caminho normal. */
+  | 'sdr_open'
+  /** PIN ÓRFÃO — o agente pinado NÃO está entre os ativos+WhatsApp do produto
+   *  (desativado, removido, tirado do WhatsApp, ou handoff que apontou pra um
+   *  agente que o cérebro não consegue usar). A SDR ASSUME — invariante: conversa
+   *  nunca fica sem dono. O handler DEVE alarmar: é handoff quebrado. */
+  | 'sdr_fallback_orphan_pin'
+  /** Nem pin válido nem SDR ativa: ninguém pode falar. Handler cala + alarma. */
+  | 'no_persona';
+
+export interface PersonaRoute {
+  persona: Record<string, any> | null;
+  reason: PersonaRouteReason;
+  /** id do pin que não resolveu — preenchido quando houve pin que não casou. */
+  orphanAgentId: string | null;
+}
+
+/**
+ * ROTEAMENTO POR CONVERSA (linha travada Duda→Bia) — versão com DIAGNÓSTICO.
+ *
+ * Lei de negócio: a dona da conversa é sempre a SDR (Duda) até ela fazer o
+ * handoff; e ela é responsável por qualquer conversa SEM agente atribuído ou cujo
+ * handoff FALHOU. Ou seja: pin órfão → volta pra Duda, nunca fica muda.
+ *
+ * O fallback já era o comportamento; o que faltava era SABER que ele aconteceu
+ * (um pin apontando pra agente desativado caía na Duda em silêncio absoluto —
+ * indistinguível de uma conversa nova). Agora o motivo sai junto e o chamador
+ * alarma.
+ *
+ * Retorna a persona escolhida — quem persiste current_agent_id é o handler.
+ */
+export function resolvePersonaForConversation(
+  agents: Array<Record<string, any>>,
+  currentAgentId: string | null,
+): PersonaRoute {
+  const orphanIfPinned = currentAgentId ?? null;
+  if (!agents.length) return { persona: null, reason: 'no_persona', orphanAgentId: orphanIfPinned };
+
+  if (currentAgentId) {
+    const pinned = agents.find((a) => a.id === currentAgentId);
+    if (pinned) return { persona: pinned, reason: 'pinned', orphanAgentId: null };
+    // Pin não resolveu: handoff quebrado. Cai na SDR (dona por default) e DENUNCIA.
+    const sdr = pickSdrPersona(agents);
+    return sdr
+      ? { persona: sdr, reason: 'sdr_fallback_orphan_pin', orphanAgentId: currentAgentId }
+      : { persona: null, reason: 'no_persona', orphanAgentId: currentAgentId };
+  }
+
+  const sdr = pickSdrPersona(agents);
+  return sdr
+    ? { persona: sdr, reason: 'sdr_open', orphanAgentId: null }
+    : { persona: null, reason: 'no_persona', orphanAgentId: null };
+}
+
 /**
  * ROTEAMENTO POR CONVERSA (linha travada Duda→Bia): se a conversa já aponta um
  * agente ativo do produto em current_agent_id, é ELE quem fala (a Bia continua a
  * venda que a Duda passou; a Nina responde quando pinada). Senão, o SDR (Duda)
- * abre. Retorna a persona escolhida — quem persiste current_agent_id é o handler.
+ * abre. Wrapper fino de resolvePersonaForConversation — mantido pra chamadores
+ * que não precisam do motivo. Comportamento IDÊNTICO ao anterior.
  */
 export function pickPersonaForConversation(
   agents: Array<Record<string, any>>,
   currentAgentId: string | null,
 ): Record<string, any> | null {
-  if (!agents.length) return null;
-  if (currentAgentId) {
-    const pinned = agents.find((a) => a.id === currentAgentId);
-    if (pinned) return pinned; // agente já em curso na conversa (ativo + WhatsApp)
-  }
-  return pickSdrPersona(agents);
+  return resolvePersonaForConversation(agents, currentAgentId).persona;
 }

@@ -157,17 +157,24 @@ Deno.serve(async (req) => {
   const productId = (prod as any)?.id ?? null;
   if (!productId) return json({ error: 'produto nexvybeauty não encontrado' }, 500);
 
+  // active_in_whatsapp é OBRIGATÓRIO no filtro: o platform-sales-brain só
+  // considera agentes is_active + active_in_whatsapp. Pinar uma Nina fora do
+  // WhatsApp criaria um current_agent_id ÓRFÃO — a conversa cairia de volta na
+  // Duda (SDR, em modo VENDA) para uma cliente que JÁ comprou. Melhor não pinar.
   const { data: ninaRow } = await admin
     .from('platform_crm_product_agents')
-    .select('id, name')
+    .select('id, name, active_in_whatsapp')
     .eq('product_id', productId)
     .eq('is_active', true)
+    .eq('active_in_whatsapp', true)
     .ilike('name', '%nina%')
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
   const ninaId = (ninaRow as any)?.id ?? null;
-  if (!ninaId) return json({ error: 'agente Nina não encontrado (name ilike %nina%)' }, 500);
+  if (!ninaId) {
+    return json({ error: 'agente Nina não encontrado (name ilike %nina% + is_active + active_in_whatsapp)' }, 500);
+  }
 
   // 2) Contas ativas com plano ativado — filtra o D-LEAD em JS (posição no ciclo).
   const { data: orgs, error: orgErr } = await admin
