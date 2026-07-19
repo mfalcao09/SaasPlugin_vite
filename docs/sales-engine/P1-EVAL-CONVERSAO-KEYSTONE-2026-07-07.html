@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1 — Eval de Conversão: o Keystone da Nave BDR · Nexvy</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#111823; --card:#131c28; --line:#22303f;
+    --tx:#dce6f0; --mut:#8aa0b4; --acc:#4fd1c5; --acc2:#7aa2ff;
+    --red:#ff6b6b; --yel:#ffcc5c; --grn:#5ce6a1; --code:#0e151d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0a0e13 60%);color:var(--tx);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+  header{padding:44px 0 22px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 10px;letter-spacing:-.4px}
+  h1 .lob{color:var(--acc)}
+  .meta{color:var(--mut);font-size:14px}
+  .meta b{color:var(--tx)}
+  h2{font-size:22px;margin:38px 0 12px;padding-top:14px;border-top:1px solid var(--line);letter-spacing:-.3px}
+  h3{font-size:17px;margin:22px 0 8px;color:var(--acc2)}
+  p{margin:10px 0}
+  a{color:var(--acc);text-decoration:none;border-bottom:1px solid rgba(79,209,197,.35)}
+  a:hover{border-bottom-color:var(--acc)}
+  ul,ol{padding-left:22px} li{margin:5px 0}
+  code{background:var(--code);padding:1.5px 6px;border-radius:5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;color:#c7f0ea}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.5}
+  pre code{background:none;padding:0;color:#a9c4d6}
+  .callout{background:var(--bg2);border-left:3px solid var(--acc);border-radius:8px;padding:12px 16px;margin:16px 0;color:var(--tx)}
+  .key{background:linear-gradient(90deg,rgba(79,209,197,.10),rgba(122,162,255,.06));border:1px solid var(--line);border-left:3px solid var(--yel);border-radius:8px;padding:14px 16px;margin:18px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--bg2);color:var(--acc2);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+  .tag{display:inline-block;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--acc)}
+  .c-cert{color:var(--grn);font-weight:600} .c-prov{color:var(--yel);font-weight:600} .c-palp{color:var(--red);font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+  .r{color:var(--red)} .g{color:var(--grn)} .y{color:var(--yel)}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span class="lob">🔑</span> P1 — Eval de Conversão: o Keystone da Nave BDR</h1>
+  <div class="meta"><b>2026-07-07</b> · Claude para Marcelo Silva · Projeto SaasPlugin_vite · <span class="pill">grounding verificado: sales-spark DDL · Duda runtime · KVM4 via SSH · Hermes README</span></div>
+  <p class="meta" style="margin-top:8px">Detalhamento do P1 de <a href="NAVE-BDR-AUTONOMO-24-7-NEXVY-2026-07-07.html">NAVE-BDR-AUTONOMO</a> §4-6. <b>Critério de pronto:</b> golden set 50+ · runner local+CI · falso-descarte bloqueia PR · opt-in/report-rate no dashboard.</p>
+</header>
+
+<h2>0. TL;DR</h2>
+<div class="key">O eval de conversão é <b>um portão único com quatro clientes</b>: (1) variantes de prompt do sales-spark, (2) o cérebro da Duda/Bia (<code>platform-sales-brain</code>), (3) as <b>skills do Hermes agent</b> (auto-editáveis, SEM gate nativo → deploy dele é pós-P1), e (4) o corpus que o reindex da <code>cerebro-infra</code> reingere diariamente. <b>Nada desses quatro muda em produção sem passar no golden set.</b></div>
+<div class="callout"><b>Decisão de design:</b> casos vivem <b>em git</b> (<code>evals/sales/golden/*.jsonl</code>) — CI bloqueia PR sem credencial de banco, caso revisável em diff, mesmo arquivo gate-ia prompt E skill do Hermes. No banco ficam só <code>agent_eval_runs</code>/<code>agent_eval_results</code> (histórico/dashboard).</div>
+
+<h2>1. O que o eval mede — 3 camadas</h2>
+<table>
+<tr><th>Camada</th><th>O quê</th><th>Como</th><th>Bloqueia PR?</th></tr>
+<tr><td><b>L1 — Rota</b></td><td>Tag certa? <code>none</code> · <code>[PASSAR_BIA]</code> · <code>[ESCALAR_HUMANO]</code> · <code>[HANDOFF_HUMANO]</code></td><td>Gera via LiteLLM (modelo de prod), extrai tag, compara</td><td class="r"><b>Sim</b> — falso-descarte = 0 (hard) · route ≥ 0.90</td></tr>
+<tr><td><b>L2 — Fatos QCR</b></td><td><code>extractLeadFacts</code> certo? (sub_vertical, tempo, nº clientes, ticket, recorrência, dor_flags) + <code>computeQcrScore</code> bate</td><td>Determinístico (±10% no ticket); score é TS puro</td><td class="r"><b>Sim</b> — facts ≥ 0.85</td></tr>
+<tr><td><b>L3 — Qualidade + produção</b></td><td>Judge LLM (clareza, tom, compliance, CTA) + <b>opt-in-sem-report / report-rate / opt-in→demo</b></td><td>Judge via <span class="tag">reasoning</span>; produção via dashboard</td><td class="y">Não no MVP — informativo; report↑ = circuit-breaker em prod</td></tr>
+</table>
+
+<h3>1.1 "Falso-descarte" redefinido (diretiva pivotal)</h3>
+<p>No sistema atual <b>não existe rota de descarte</b> — diretiva do Marcelo (2026-07-05): <i>"não tem desqualificação… pagou é cliente… nunca rejeitar venda"</i>. O QCR roteia a <b>OFERTA</b> (qual plano), nunca aceita/rejeita. Falso-descarte =:</p>
+<ol>
+  <li>Resposta que <b>rejeite ou desestimule a venda</b> (<code>reject_sale</code>);</li>
+  <li><code>[ESCALAR_HUMANO]</code>/<code>[HANDOFF_HUMANO]</code> <b>por perfil ou tamanho de carteira</b> (regra 6: JAMAIS);</li>
+  <li><code>[PASSAR_BIA]</code> pra quem já decidiu ou carteira pequena (regra 8: Duda fecha).</li>
+</ol>
+<div class="callout"><b>Caso #1 do golden set = a falha real de 2026-07-04:</b> Duda desqualificou lead de "50 clientes" na 2ª mensagem sem perguntar ticket. Esse caso nunca mais passa.</div>
+
+<h2>2. Golden set — formato canônico (git)</h2>
+<p><code>evals/sales/golden/duda-sdr.jsonl</code> (+ <code>bia-closer.jsonl</code>, futuro <code>bdr-outbound.jsonl</code>). Uma linha por caso — <b>LGPD: PII real NUNCA commitada</b> (valores redigidos/sintéticos):</p>
+<pre><code>{"case_id":"gc-0001","agent":"duda_sdr","origin":"conv real 2026-07-04 redigida — falha 50-clientes",
+ "transcript":[{"role":"lead","text":"Atendo umas 50 clientes há 2 anos"}],
+ "facts_expected":{"sub_vertical":"cabeleireira","tempo_atendimento_meses":24,"num_clientes":50,
+                   "ticket_medio":null,"recorrencia":null,"dor_flags":[]},
+ "route_expected":"none",
+ "forbidden":["reject_sale","escalate_by_profile","invent_price"],
+ "must_do":["perguntar_ticket_antes_de_rotear"],
+ "outcome_label":"opt_in","weight":3,"tags":["adversarial","carteira-pequena","anti-desqualificacao"]}</code></pre>
+<p><b>Distribuição alvo (50+):</b> ~15 fluxo feliz · ~10 hesitante→<code>[PASSAR_BIA]</code> · ~5 pediu-humano→<code>[ESCALAR_HUMANO]</code> · ~3 reclamação grave→<code>[HANDOFF_HUMANO]</code> · ~12 adversariais anti-desqualificação · ~5 extração difícil · ~5 compliance. Fonte: conversas reais do platform_crm (projeto <code>fzhlbwhdejumkyqosuvq</code>) + redação de PII.</p>
+
+<h2>3. DDL — histórico de runs (convenções REAIS do sales-spark)</h2>
+<p>Padrão verificado no baseline: PK <code>uuid gen_random_uuid()</code>, <code>organization_id</code> FK→<code>organizations ON DELETE CASCADE</code>, enum = <code>text + CHECK _chk</code>, trigger <code>update_updated_at_column()</code>, RLS <code>user_belongs_to_organization + super_admin</code> + service_role full.</p>
+<pre><code>CREATE TABLE public.agent_eval_runs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    organization_id uuid NOT NULL,
+    agent_kind text NOT NULL,            -- duda_sdr | bia_closer | bdr_outbound | hermes_skill
+    git_sha text,
+    prompt_variant_id uuid,              -- FK ai_prompt_variants(id)
+    hermes_skill_version text,
+    model text,
+    n_cases integer DEFAULT 0 NOT NULL,
+    n_pass integer DEFAULT 0 NOT NULL,
+    false_discard_count integer DEFAULT 0 NOT NULL,
+    route_accuracy numeric, facts_accuracy numeric, judge_score numeric,
+    passed boolean,
+    status text DEFAULT 'running' NOT NULL,  -- running|passed|failed|error (CHECK _chk)
+    started_at timestamptz DEFAULT now() NOT NULL, finished_at timestamptz,
+    created_at timestamptz DEFAULT now() NOT NULL, updated_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE TABLE public.agent_eval_results (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    run_id uuid NOT NULL,                -- FK agent_eval_runs ON DELETE CASCADE
+    organization_id uuid NOT NULL,
+    case_id text NOT NULL,               -- 'gc-0001' (o caso vive em git)
+    actual_route text, actual_facts jsonb DEFAULT '{}',
+    route_pass boolean, facts_pass boolean,
+    forbidden_violations jsonb DEFAULT '[]', judge jsonb DEFAULT '{}',
+    pass boolean, created_at timestamptz DEFAULT now() NOT NULL
+);
+-- + PKs, FKs, trigger updated_at, RLS org_access + service_role (padrão cadences_org_access)</code></pre>
+<p class="meta">Interop: judge (L3) pode espelhar em <code>ai_quality_evaluations.score_conversion_potential</code> (coluna já existe) — opcional no MVP.</p>
+
+<h2>4. Runner</h2>
+<div class="callout"><b>Pré-requisito de refactor</b> (mesmo padrão do <code>scenario-match.ts</code> do cakto-recovery): extrair de <code>platform-sales-brain/index.ts</code> as funções puras pra <code>brain-core.ts</code> — <code>buildPrompt()</code>, <code>computeQcrScore()</code>, parsing de tags. Edge Function e runner importam do mesmo módulo. Zero mudança de comportamento.</div>
+<ol>
+  <li><code>tools/evals/run-golden.ts</code> (Deno) lê <code>evals/sales/golden/*.jsonl</code>;</li>
+  <li>Por caso: <code>buildPrompt()</code> real → resposta via <b>LiteLLM</b> (mesma tag de prod) → tag (L1) → <code>extractLeadFacts</code>+<code>computeQcrScore</code> (L2) → judge amostrado (L3, <span class="tag">reasoning</span>);</li>
+  <li>Agrega e sai com código: <code>false_discard&gt;0 → exit 1</code> · <code>route&lt;0.90 → exit 1</code> · <code>facts&lt;0.85 → exit 1</code>. Grava run no banco se houver credencial.</li>
+</ol>
+<p><b>CI</b> — <code>.github/workflows/eval-conversao.yml</code>: dispara em PR tocando <code>platform-sales-brain/**</code>, <code>evals/sales/**</code> ou <code>hermes-skills/**</code>; secrets <code>LITELLM_*</code>; exit≠0 <b>bloqueia merge</b>; sumário vira comment. Custo/run: centavos (~50 casos, <span class="tag">volume</span> + judge amostrado). <b>Local:</b> <code>deno task eval:golden</code>.</p>
+
+<h2>5. Integração com a auto-melhoria</h2>
+<h3>5.1 cerebro-infra (KVM4 — paths reais via SSH)</h3>
+<p>O gate do reindex (<code>/opt/stacks/cerebro-infra/reindex/run_reindex.sh</code> → <code>eval_gate.py</code>, <code>RAG_EVAL_THRESHOLD=0.7</code>, <code>RAG_EVAL_K=10</code>) continua medindo <b>retrieval</b> — ele gate-ia o ÍNDICE, e isso está certo. A conversão pluga por 3 pontos:</p>
+<ol>
+  <li><b>Corpus vencedor:</b> novo dir <code>sources/workstreams/sales/</code> recebe JSONL semanal das mensagens <b>vencedoras</b> (opt_in/demo sem report) — o reindex diário (cron 05:00 UTC, swap atômico + rollback) absorve. Auto-melhoria real e gated do conhecimento de venda.</li>
+  <li><b>Golden queries de conversão</b> no live-check pós-swap do <code>reindex-host.sh</code>.</li>
+  <li><b>Fix encontrado na inspeção:</b> gate pré-swap usa <code>K=10</code>, live-check usa <code>k=6</code> — alinhar em 10 (1 linha).</li>
+</ol>
+<h3>5.2 Hermes agent (pós-P1 — é ELE o auto-improver, não o openclaw)</h3>
+<ul>
+  <li>Skills de venda = arquivos versionados em git (<code>hermes-skills/</code>, agentskills.io); <b>prod monta read-only</b>;</li>
+  <li>Auto-edição em sandbox (backend Docker) → <b>PR</b> → CI roda golden set → merge humano (fase inicial); auto-merge só no P6;</li>
+  <li>Modelo do Hermes → LiteLLM (<span class="tag">reasoning</span> na mensagem, <span class="tag">volume</span> no resto);</li>
+  <li><code>command approval</code> + <code>container isolation</code> ligados desde o dia 1.</li>
+</ul>
+
+<h2>6. Sequência de implementação (checks binários)</h2>
+<table>
+<tr><th>Passo</th><th>Check binário</th></tr>
+<tr><td>1. Refactor <code>brain-core.ts</code></td><td>Edge Function importa do módulo; comportamento idêntico (testes passam)</td></tr>
+<tr><td>2. Migration <code>agent_eval_runs/results</code></td><td>aplica limpa; RLS testada com JWT de org</td></tr>
+<tr><td>3. Export + redação de 50+ conversas</td><td><code>wc -l</code> ≥50; zero PII no diff</td></tr>
+<tr><td>4. Runner local</td><td><b>gc-0001 FALHA no prompt antigo e PASSA no v2</b> — o eval detecta o bug real</td></tr>
+<tr><td>5. CI gate</td><td>PR com prompt sabotado (reintroduz desqualificação) é BLOQUEADO</td></tr>
+<tr><td>6. Corpus vencedor + golden queries na KVM4</td><td>reindex processa <code>workstreams/sales/</code>; live-check inclui as queries</td></tr>
+</table>
+
+<h2>7. Flags de honestidade</h2>
+<ul>
+  <li>DDL sales-spark, tags da Duda, paths/envs cerebro-infra: <span class="c-cert">[Certo]</span> (arquivo/código/SSH, 2026-07-07).</li>
+  <li>Hermes sem gate nativo de skill: <span class="c-cert">[Certo]</span> pelo README; loop real em produção <span class="c-prov">[Provável]</span>.</li>
+  <li>Thresholds 0.90/0.85: <span class="c-palp">[Palpite calibrado]</span> — ajustar após baseline run.</li>
+  <li>Custo de CI por run: <span class="c-prov">[Provável]</span> — medir na primeira execução.</li>
+</ul>
+
+<footer>P1 Eval de Conversão · Nexvy · 2026-07-07 · gerado por Claude. Par <code>.md</code>: <code>P1-EVAL-CONVERSAO-KEYSTONE-2026-07-07.md</code> · Doc-mãe: <a href="NAVE-BDR-AUTONOMO-24-7-NEXVY-2026-07-07.html">NAVE-BDR-AUTONOMO</a></footer>
+</div>
+</body>
+</html>

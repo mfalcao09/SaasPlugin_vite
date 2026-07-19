@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nave BDR — Arquitetura do BDR Autônomo 24/7 · Nexvy</title>
+<style>
+  :root{
+    --bg:#0b0f14; --bg2:#111823; --card:#131c28; --line:#22303f;
+    --tx:#dce6f0; --mut:#8aa0b4; --acc:#4fd1c5; --acc2:#7aa2ff;
+    --red:#ff6b6b; --yel:#ffcc5c; --grn:#5ce6a1; --code:#0e151d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0a0e13 60%);color:var(--tx);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+  header{padding:44px 0 22px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 10px;letter-spacing:-.4px}
+  h1 .lob{color:var(--acc)}
+  .meta{color:var(--mut);font-size:14px}
+  .meta b{color:var(--tx)}
+  h2{font-size:22px;margin:38px 0 12px;padding-top:14px;border-top:1px solid var(--line);letter-spacing:-.3px}
+  h3{font-size:17px;margin:22px 0 8px;color:var(--acc2)}
+  p{margin:10px 0}
+  a{color:var(--acc);text-decoration:none;border-bottom:1px solid rgba(79,209,197,.35)}
+  a:hover{border-bottom-color:var(--acc)}
+  ul,ol{padding-left:22px} li{margin:5px 0}
+  code{background:var(--code);padding:1.5px 6px;border-radius:5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;color:#c7f0ea}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.5}
+  pre code{background:none;padding:0;color:#a9c4d6}
+  .callout{background:var(--bg2);border-left:3px solid var(--acc);border-radius:8px;padding:12px 16px;margin:16px 0;color:var(--tx)}
+  .key{background:linear-gradient(90deg,rgba(79,209,197,.10),rgba(122,162,255,.06));border:1px solid var(--line);border-left:3px solid var(--yel);border-radius:8px;padding:14px 16px;margin:18px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--bg2);color:var(--acc2);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+  .tag{display:inline-block;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--acc)}
+  .c-cert{color:var(--grn);font-weight:600} .c-prov{color:var(--yel);font-weight:600} .c-palp{color:var(--red);font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+  .r{color:var(--red)} .g{color:var(--grn)} .y{color:var(--yel)}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+  .verdicts{display:grid;grid-template-columns:1fr;gap:12px;margin:16px 0}
+  @media(min-width:720px){.verdicts{grid-template-columns:1fr 1fr 1fr}}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .vcard h4{margin:0 0 6px;font-size:14px;color:var(--acc2)}
+  .vcard p{margin:0;font-size:13.5px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span class="lob">🦞</span> Nave BDR — BDR Autônomo 24/7 sobre a Infra Nexvy Real</h1>
+  <div class="meta"><b>2026-07-07</b> · Claude (Opus 4.8) para Marcelo Silva · Projeto SaasPlugin_vite · <span class="pill">arquitetura + plano ancorado nos ativos reais</span> · <span class="pill" style="border-color:var(--yel);color:var(--yel)">rev. 2 — auto-improver = Hermes agent</span></div>
+  <p class="meta" style="margin-top:8px">Objetivo: BDR autônomo que pega lead <b>congelado</b> (Maps/IG/TikTok) → <b>opt-in</b> → handoff Duda. Auto-melhorável, sem queimar canal.</p>
+</header>
+
+<h2>0. TL;DR — 3 vereditos + o keystone</h2>
+<div class="verdicts">
+  <div class="vcard"><h4>LLM</h4><p>Não há LLM local (ollama só embeddings). Você tem o <b>gateway LiteLLM por tag</b>: <span class="tag">volume</span> pro alto-volume, <span class="tag">reasoning</span> pra mensagem que vende. Medir PT-BR antes de fixar barato.</p></div>
+  <div class="vcard"><h4>Auto-improver = Hermes agent</h4><p><i>Corrigido: não é o openclaw</i> (esse é só gateway na KVM4). O <b>Hermes</b> (NousResearch, 211k★) — <b>não deployado ainda</b> — auto-edita as próprias skills <b>SEM eval-gate nativo</b>. O medo de "agente que se reescreve" <b>aplica-se</b> → deploy pós-P1, com skill-gate no golden set.</p></div>
+  <div class="vcard"><h4>Deliverability</h4><p>API oficial + template <b>não</b> blinda de ban (Meta bane por quality-rating + exige opt-in). <b>Frio quem toca é o anúncio, não o WhatsApp.</b></p></div>
+</div>
+<div class="key"><b>Keystone:</b> fechar o <b>loop de eval de conversão</b>. Ele é (a) o portão de segurança da autonomia 24/7 e (b) o sinal de recompensa que faz a reingestão da <code>cerebro-infra</code> melhorar <b>conversão</b>, não só indexação. Sem ele, "24/7 autônomo + auto-melhora" = drift confiante rumo ao banimento.</div>
+
+<h2>1. Inventário REAL dos ativos <span class="pill">verificado 2026-07-07</span></h2>
+<h3>KVM2 — <code>srv631079</code> (2 vCPU / 8 GB / CPU-only) — produção</h3>
+<ul>
+  <li><b>sales-spark</b> (Supabase): 139 tabelas / 81 edges / 161 RLS. Orquestrador multi-agente (<code>product_agents</code>, <code>agent_routing_rules</code>), memória vetorial (<code>lead_semantic_memory</code> pgvector 1536), cadências, A/B de prompt, eval.</li>
+  <li><b>Evolution API</b> — canal WhatsApp de pé.</li>
+  <li><b><code>scraper_imobiliario</code></b> (FastAPI/uvicorn) — <b>padrão de scraper já existente</b> a reusar.</li>
+  <li><b><code>claude-brain</code></b> (<code>claude-code-vps:v1</code>, <code>sleep infinity</code>) — Claude Code headless.</li>
+</ul>
+<h3>KVM4 — <code>srv1801696</code> (4 vCPU / 16 GB / CPU-only, Ubuntu 24.04, criada 03/07) — cérebro</h3>
+<ul>
+  <li><b><code>openclaw</code></b> (healthy): gateway de agente. 1 agente "Nexvy Orquestrador 🦞". Modelo <span class="tag">litellm/reasoning</span> + fallback <span class="tag">coding</span>. Canal Telegram (allowlist). MCP GitHub <b>read-only</b>.</li>
+  <li><b><code>cerebro-infra</code></b>: <code>memory-service</code> (RAG), <code>ollama</code> (embeddings), <code>reindex</code> (cron 05:00 UTC, <b>gated por <code>RAG_EVAL_THRESHOLD</code></b>), <code>pool-dispatch</code>, <code>mcp-gateway</code>, <code>litellm</code>.</li>
+</ul>
+<h3>LiteLLM — roteamento por tag</h3>
+<table>
+<tr><th>Tag</th><th>Roteia p/</th><th>Uso no BDR</th></tr>
+<tr><td><span class="tag">volume</span></td><td>hy3-preview (barato)</td><td>Scoring, dedup, enriquecimento, classificação</td></tr>
+<tr><td><span class="tag">reasoning</span></td><td>Opus 4.8 / Gemini-3-pro / Grok-4</td><td>1ª mensagem, objeção, decisão de rota</td></tr>
+<tr><td><span class="tag">coding</span></td><td>glm-5.2 / deepseek-v4-pro</td><td>—</td></tr>
+<tr><td><span class="tag">legal</span></td><td>GLM / Sonnet / Opus</td><td>NexvyLAW</td></tr>
+</table>
+<p class="meta">Modelos: glm-5/5.1/5.2, minimax-m3, claude-opus/sonnet, deepseek(-v4-flash/pro), qwen-235b, kimi, codestral, gpt-5/5.5, gemini-3-pro, grok-4, mimo, hy3.</p>
+<div class="callout"><b>Back-half que você já tem:</b> <b>Duda</b> (framework QCR, SDR inbound production-grade) + <b>sales-spark</b> (pipeline/cadências/memória/eval). <b>~70% da nave existe.</b> Falta o front-half (BDR frio→opt-in) e o eval de conversão.</div>
+
+<h2>2. Arquitetura da nave</h2>
+<h3>2.1 O funil (frozen → opt-in → Duda)</h3>
+<pre><code>Maps/IG/TikTok  --scrape--&gt;  prospect_staging  --enrich(volume)--&gt;  score
+     |                                                                |
+     +-------------- ATIVACAO (frio, canal que NAO queima) ----------+
+                                  |
+          +-----------------------+-----------------------+
+    custom-audience ads    lead magnet "Radar gratis"   soft-touch
+                                  |
+                        pessoa ENGAJA = OPT-IN  <-- flip
+                                  |
+                  +--------------v--------------+
+                  |  Duda (SDR) via WhatsApp API  | &lt;- opted-in = seguro
+                  |  qualifica -> demo (sales-spark)|
+                  +-------------------------------+</code></pre>
+<p><b>O BDR não vende. Ele leva congelado → opt-in.</b> A venda é da Duda, depois do flip.</p>
+<h3>2.2 A fronteira de autonomia</h3>
+<table>
+<tr><th>Etapa</th><th>Autonomia</th><th>Guardrail</th></tr>
+<tr><td>Sourcing, enriquecimento, scoring, rascunho</td><td class="g">100% autônoma 24/7</td><td>rate-limit por plataforma; dedup</td></tr>
+<tr><td>Ativação por ads/lead-magnet</td><td class="g">100% autônoma</td><td>orçamento cap; compliant by design</td></tr>
+<tr><td>Envio WhatsApp (só opted-in)</td><td class="y">autônoma c/ circuit-breaker</td><td>opt-in; template aprovado; <b>kill-switch por quality-rating</b>; throttle</td></tr>
+<tr><td>Auto-modificar comportamento do agente (inclui <b>skill self-edit do Hermes</b>)</td><td class="r">NUNCA autônoma</td><td>eval-gate (P1) + deploy revisado; skill mutada = candidata, golden set promove</td></tr>
+</table>
+<h3>2.3 Ordem de canal (deliverability)</h3>
+<ol>
+  <li><b>Ads (custom audience)</b> — retargeta a lista raspada. Não queima número. Escala.</li>
+  <li><b>Lead magnet</b> ("escaneio grátis quantas clientes sumiram") — <b>opt-in legítimo</b>.</li>
+  <li><b>WhatsApp API + template</b> — só depois do opt-in. Protege quem optou; não autoriza frio.</li>
+  <li>IG DM / WhatsApp frio — só contas descartáveis + circuit-breaker; alto risco de ban.</li>
+</ol>
+
+<h2>3. Roteamento de LLM por stake</h2>
+<table>
+<tr><th>Trabalho</th><th>Volume</th><th>Stake</th><th>Tag</th></tr>
+<tr><td>Score, dedup, resumo de enriquecimento, classificação</td><td>Altíssimo</td><td>Baixo</td><td><span class="tag">volume</span></td></tr>
+<tr><td><b>1ª mensagem fria / lead-magnet / objeção</b></td><td>Baixo</td><td class="r">Altíssimo</td><td><span class="tag">reasoning</span></td></tr>
+<tr><td>Decisão de rota / handoff</td><td>Médio</td><td>Alto</td><td><span class="tag">reasoning</span></td></tr>
+</table>
+<div class="callout"><b>Regra:</b> a economia de token na 1ª mensagem é ~1000× menor que o custo de um domínio/número queimado. <b>Nunca</b> barateie a mensagem que decide venda; <b>sempre</b> barateie o volume. <b>SPOF:</b> VPS única cai → LiteLLM com fallback.</div>
+
+<h2>4. Auto-melhoria SEGURA</h2>
+<p><b>Você já tem (seguro por design):</b> <code>cerebro-infra/reindex</code> reingere a memória diariamente (cron 05:00 UTC) e <b>só promove o índice se passar do <code>RAG_EVAL_THRESHOLD</code></b>. Melhora o <b>conhecimento</b> sem mutar o comportamento. ✅</p>
+<p><b>O que falta (keystone):</b> o eval de hoje mede <b>qualidade de retrieval</b>, não <b>conversão</b>. Para "cada dia melhor em VENDER":</p>
+<ol>
+  <li><b>Golden set de conversão</b> — 50–100 conversas reais rotuladas (rota correta? falso-descarte? virou opt-in/demo?).</li>
+  <li><b>Métrica de recompensa</b> = opt-in / reply-sem-report / demo-booked — <b>não</b> reply cru.</li>
+  <li><b>Alimentar <code>sources/</code></b> com mensagens vencedoras → reindex diário absorve → auto-melhoria real e gated.</li>
+  <li><b>Gate de deploy:</b> nenhuma variante de prompt <b>nem skill do Hermes</b> (auto-editável, sem gate nativo) vai a produção sem passar (falso-descarte=0, opt-in≥baseline, report↓). Skills versionadas: mutação → candidata → eval promove.</li>
+</ol>
+<div class="key">É assim que "cada dia melhor" vira verdade <b>sem</b> virar "cada dia mais perto do ban".</div>
+
+<h2>5. Gaps a construir</h2>
+<ol>
+  <li><b>Sourcing multi-fonte</b> — estender <code>scraper_imobiliario</code>: Maps (Apify, público — OK), IG/TikTok (Apify, ban-aware, throttle).</li>
+  <li><b><code>prospecting_runs</code> + <code>prospect_staging</code></b> (tabelas novas): raw → enriched → promoted_lead_id.</li>
+  <li><b>Enriquecimento waterfall:</b> Maps → site → <b>CNPJ (BrasilAPI)</b> → email/telefone. LLM <span class="tag">volume</span> resume.</li>
+  <li><b>Email como canal de cadência</b> (hoje CHECK <code>channel='whatsapp'</code>): <code>email_identities</code> + warmup, DKIM/DMARC via Hostinger DNS MCP.</li>
+  <li><b>Agente BDR</b> (<code>product_agent</code>): <code>primary_objective</code> = "conseguir opt-in". Playbook cold/trigger, &lt;100 palavras.</li>
+  <li><b>Eval de conversão</b> — o keystone.</li>
+  <li><b>Deploy do Hermes agent</b> como auto-improver — <b>estritamente pós-P1</b>: skills versionadas, Docker isolado, modelo no LiteLLM, skill-gate no golden set. Gateway WhatsApp/Telegram do Hermes avaliado vs openclaw.</li>
+</ol>
+
+<h2>6. Sequência com critérios verificáveis</h2>
+<table>
+<tr><th>Passo</th><th>Check binário</th></tr>
+<tr><td><b>P1 — Eval de conversão (keystone)</b></td><td>golden set 50+; runner em CI; falso-descarte bloqueia PR; métrica opt-in/report</td></tr>
+<tr><td>P2 — sourcing + staging (Maps 1º)</td><td>run "salões em [cidade]" gera ≥N enriquecidos promovidos</td></tr>
+<tr><td>P3 — Ativação frio→opt-in (ads+lead-magnet)</td><td>custom-audience roda; opt-in medido; <b>zero</b> WhatsApp frio</td></tr>
+<tr><td>P4 — Agente BDR + handoff Duda</td><td>opt-in → Duda assume; conversão opt-in→demo medida</td></tr>
+<tr><td>P5 — WhatsApp API só opted-in + circuit-breaker</td><td>quality-rating verde; kill-switch testado</td></tr>
+<tr><td>P6 — reindex ligado ao eval de conversão</td><td>mensagens vencedoras em <code>sources/</code>; opt-in melhora semana-a-semana</td></tr>
+</table>
+
+<h2>7. Riscos / anti-padrões</h2>
+<ul>
+  <li><span class="r">Frio no WhatsApp (mesmo com template)</span> → quality despenca → ban. Frio = ads.</li>
+  <li><span class="r">Envio autônomo sem circuit-breaker</span> → ban em escala. Gated no envio.</li>
+  <li>Scraping IG/TikTok viola ToS → contas descartáveis + throttle; Maps é o seguro.</li>
+  <li>Auto-melhoria medindo <b>reply cru</b> → agente vira agressivo → denúncia. Medir opt-in-sem-report.</li>
+  <li>Barão de token na 1ª mensagem → 1 msg ruim custa um número. <span class="tag">reasoning</span> na mensagem.</li>
+  <li>VPS única sem fallback → 24/7 vira "até saturar".</li>
+  <li>LGPD (Seção 11): base legal, opt-out em todo toque.</li>
+</ul>
+
+<h2>Apêndice A — Repos / frameworks</h2>
+<ul>
+  <li><b>hermes-agent</b> — github.com/NousResearch/hermes-agent (211k★, v0.18.0) — <b>o auto-improver escolhido</b>. Skills autônomas auto-editáveis (agentskills.io), gateways Telegram/Discord/Slack/WhatsApp/Signal, any-model (pluga no LiteLLM). ⚠️ Sem eval-gate nativo → deploy pós-P1.</li>
+  <li><b>SalesGPT</b> — github.com/filip-michalsky/SalesGPT (~2.6k★) — máquina de estágios multicanal.</li>
+  <li><b>OpenOutreach</b> — github.com/eracle/OpenOutreach (~2.2k★) — produto+ICP → descobre → qualifica → email.</li>
+  <li><b>open-sdr</b> — github.com/MatthewDailey/open-sdr — sub-agente de research por empresa.</li>
+  <li><b>Composio</b> — github.com/ComposioHQ/composio — conectores agent→CRM/Gmail.</li>
+  <li>Frameworks (você já tem equivalente): LangGraph, CrewAI, Agno, OpenAI Agents SDK, Vercel AI SDK, PydanticAI.</li>
+  <li>Comerciais p/ copiar: 11x (multi-agente), Clay (waterfall enrichment), Qualified (inbound intent), Lemlist/Instantly/Smartlead (deliverability).</li>
+</ul>
+
+<h2>Apêndice B — Corpus de vendas / psicologia</h2>
+<ul>
+  <li><b>Qualificação:</b> BANT · GPCTBA/C&amp;I · <b>NEAT</b> (já na Duda) · MEDDIC · <b>SPICED</b> (já na Duda) · CHAMP · FAINT.</li>
+  <li><b>Discovery:</b> SPIN · Challenger · Sandler · <b>JOLT</b> (indecisão).</li>
+  <li><b>Mensagem:</b> <b>PAS</b> · AIDA · BAB · 3x3 · <b>trigger/event-based</b> (maior lift) · Josh Braun poke-the-bear.</li>
+  <li><b>Psicologia:</b> <b>Cialdini (7)</b> — prova social de par-da-vertical; scarcity real (30/30/1). <b>Chris Voss</b> — labeling, accusation audit, "no"-oriented (upgrade da Duda). <b>Loss aversion (Kahneman)</b>.</li>
+  <li><b>Cadência:</b> 8–12 toques · multicanal · &lt;75–100 palavras · anti-padrão nº1: personalização falsa em escala.</li>
+  <li><b>Fontes:</b> <i>Never Split the Difference</i> (Voss) · <i>Fanatical Prospecting</i> (Blount) · <i>Gap Selling</i> (Keenan) · <i>SPIN</i> · <i>Challenger Sale</i> · <i>JOLT Effect</i> · <i>Influence</i>/<i>Pre-Suasion</i> (Cialdini). Criadores: Josh Braun · 30MPC · Jed Mahrle · Will Allred (Lavender) · Florin Tatulea · Sam Nelson (Agoge) · Belkins · Cognism.</li>
+</ul>
+
+<h2>8. Flags de honestidade</h2>
+<ul>
+  <li>Roteamento por tag e infra: <span class="c-cert">[Certo]</span> (inspecionado na VPS 2026-07-07).</li>
+  <li>Hermes: fatos do README (211k★, skill self-edit, sem gate) <span class="c-cert">[Certo]</span>; loop real em produção <span class="c-prov">[Provável]</span>. Ausência nas VPSs <span class="c-cert">[Certo]</span> (SSH grep 2026-07-07).</li>
+  <li>"reindex tem eval de RAG-quality, não de conversão": <span class="c-cert">[Certo]</span> (env <code>RAG_EVAL_THRESHOLD</code>).</li>
+  <li>"cheap PT-BR ≈ premium na 1ª mensagem": <span class="c-palp">[Palpite]</span> — medir com eval PT-BR.</li>
+  <li>Star counts / benchmarks de reply: <span class="c-prov">[Provável]</span> — revalidar.</li>
+</ul>
+
+<div class="key"><b>Decisão tomada (2026-07-07):</b> P1 confirmado por Marcelo ("Continue este trabalho"). Detalhamento completo — schema do golden set, runner em CI, integração cerebro-infra + skill-gate do Hermes — em <a href="P1-EVAL-CONVERSAO-KEYSTONE-2026-07-07.html">P1-EVAL-CONVERSAO-KEYSTONE-2026-07-07</a>.</div>
+
+<footer>Nave BDR · Nexvy · 2026-07-07 · gerado por Claude (Opus 4.8). Documento de decisão — não é código de produção. Par <code>.md</code>: <code>NAVE-BDR-AUTONOMO-24-7-NEXVY-2026-07-07.md</code></footer>
+</div>
+</body>
+</html>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Layers, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw,
-  Trash2, RotateCcw, Plus, Check, X, Phone, PhoneOff, Users2, DoorOpen,
+  Trash2, RotateCcw, Plus, Check, X, Users2, DoorOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,9 @@ import {
   useExcludeLeadByHandle,
   useRestoreLeadByHandle,
   type LeadSegment,
+  type WhatsappTab,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
-import { SEG_META, SEG_KEYS, fmtNum, whyText, toCsv } from './_shared';
+import { SEG_META, SEG_KEYS, SOURCE_META, leadSourceOf, fmtNum, whyText, toCsv, type LeadSource } from './_shared';
 
 /**
  * BASE CONSOLIDADA (Prospecção Ativa) — a base ÚNICA de leads.
@@ -29,13 +30,24 @@ import { SEG_META, SEG_KEYS, fmtNum, whyText, toCsv } from './_shared';
  * (reclassificar, WhatsApp manual, excluir/restaurar) são GLOBAIS: agem por handle
  * em TODAS as origens. As extrações originais ficam intactas na tela "Buscas".
  */
+
+// Abas de canal WhatsApp (rótulos). A contagem por aba fica nos badges abaixo (o
+// filtro é server-side, então mostrar contagem cruzada exigiria outra query).
+const WA_TABS: { val: WhatsappTab | 'all'; label: string; hint: string }[] = [
+  { val: 'all',    label: 'Todos',  hint: 'Todos os leads (qualquer WhatsApp)' },
+  { val: 'numero', label: 'Número', hint: 'Número discável — disparo por WhatsApp' },
+  { val: 'link',   label: 'Link',   hint: 'Só link-código (wa.me/message) — acionável no clique' },
+  { val: 'nenhum', label: 'Sem',    hint: 'Sem WhatsApp — fila de enriquecimento' },
+];
+
 export function PlatformProspeccaoBaseConsolidada() {
   const { effectiveProductId } = useActivePlatformProduct();
   const productId = effectiveProductId ?? null;
 
   const [extractionId, setExtractionId] = useState<string | 'all'>('all');
   const [segment, setSegment] = useState<LeadSegment | 'all'>('all');
-  const [withPhone, setWithPhone] = useState<'all' | 'with' | 'without'>('all');
+  const [waFilter, setWaFilter] = useState<WhatsappTab | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
   const [seedsOnly, setSeedsOnly] = useState(false);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
@@ -43,8 +55,27 @@ export function PlatformProspeccaoBaseConsolidada() {
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
   const { data: leads = [], isLoading } = usePlatformConsolidatedLeads(productId, {
-    extractionId, segment, withPhone, seedsOnly, qualifiedOnly, excludedOnly: showExcluded,
+    extractionId, segment, waTab: waFilter, seedsOnly, qualifiedOnly, excludedOnly: showExcluded,
   });
+
+  // FONTE (client-side): mapa extração→fonte (rótulo→fonte via leadSourceOf) + recorte.
+  // A query server-side já filtra segmento/aba/origem; a fonte é um agrupamento de rótulo
+  // (não há coluna própria), então filtramos aqui sobre o resultado (≤10k, custo trivial).
+  const extIdToSource = useMemo(() => {
+    const m = new Map<string, LeadSource>();
+    for (const ex of extractions) m.set(ex.id, leadSourceOf(ex));
+    return m;
+  }, [extractions]);
+  const shownExtractions = useMemo(
+    () => (sourceFilter === 'all' ? extractions : extractions.filter((ex) => leadSourceOf(ex) === sourceFilter)),
+    [extractions, sourceFilter],
+  );
+  const visibleLeads = useMemo(
+    () => (sourceFilter === 'all'
+      ? leads
+      : leads.filter((l) => (l.extraction_ids ?? []).some((id) => extIdToSource.get(id) === sourceFilter))),
+    [leads, sourceFilter, extIdToSource],
+  );
 
   const reclassify = useReclassifyLeadByHandle();
   const setPhone = useSetLeadPhoneByHandle();
@@ -59,17 +90,20 @@ export function PlatformProspeccaoBaseConsolidada() {
 
   const stats = useMemo(() => {
     const c: Record<string, number> = {
-      salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0, acionamento_via_instagram: 0,
-      seeds: 0, comTelefone: 0, origensSomadas: 0,
+      salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0,
+      seeds: 0, wa_numero: 0, wa_link: 0, wa_nenhum: 0, origensSomadas: 0,
     };
-    for (const l of leads) {
+    for (const l of visibleLeads) {
       if (l.segment) c[l.segment] = (c[l.segment] ?? 0) + 1;
       if (l.is_seed) c.seeds++;
-      if (l.telefone) c.comTelefone++;
+      // Aba WhatsApp derivada das colunas (mesma regra do waTab/classifyWhatsapp).
+      if (l.telefone) c.wa_numero++;
+      else if (l.whatsapp_link) c.wa_link++;
+      else c.wa_nenhum++;
       c.origensSomadas += l.origin_count ?? 1;
     }
     return c;
-  }, [leads]);
+  }, [visibleLeads]);
 
   const savePhone = () => {
     if (!editingPhone || !editingPhone.value.trim() || !productId) return;
@@ -80,7 +114,7 @@ export function PlatformProspeccaoBaseConsolidada() {
   };
 
   const handleExport = () => {
-    const qualified = leads.filter((l) => l.qualified);
+    const qualified = visibleLeads.filter((l) => l.qualified);
     const blob = new Blob([toCsv(qualified)], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -110,22 +144,55 @@ export function PlatformProspeccaoBaseConsolidada() {
           <Button variant="outline" size="sm" className="gap-1" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" /> Atualizar
           </Button>
-          <Button variant="outline" size="sm" className="gap-1" onClick={handleExport} disabled={leads.length === 0}>
+          <Button variant="outline" size="sm" className="gap-1" onClick={handleExport} disabled={visibleLeads.length === 0}>
             <Download className="h-4 w-4" /> Exportar qualificados (CSV)
           </Button>
         </div>
       </div>
 
+      {/* Abas de WhatsApp (Número · Link · Sem) — DERIVADAS das colunas: enriquecer o
+          telefone move o lead de aba sozinho. A aba "Sem" É a fila de enriquecimento. */}
+      <div className="inline-flex items-center rounded-lg border border-border overflow-hidden" role="tablist" aria-label="Aba WhatsApp">
+        {WA_TABS.map((t) => (
+          <button
+            key={t.val}
+            type="button"
+            role="tab"
+            aria-selected={waFilter === t.val}
+            title={t.hint}
+            className={`px-4 py-1.5 text-sm font-medium transition-colors border-r border-border last:border-r-0 ${
+              waFilter === t.val ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'
+            }`}
+            onClick={() => setWaFilter(t.val)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={extractionId} onValueChange={(v) => setExtractionId(v as string | 'all')}>
-          <SelectTrigger className="w-[280px]"><SelectValue placeholder="Origem (extração)" /></SelectTrigger>
+        <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v as LeadSource | 'all'); setExtractionId('all'); }}>
+          <SelectTrigger className="w-[190px]"><SelectValue placeholder="Fonte" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as origens</SelectItem>
-            {extractions.map((ex) => (
-              <SelectItem key={ex.id} value={ex.id}>
-                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
-              </SelectItem>
+            <SelectItem value="all">🗂️ Todas as fontes</SelectItem>
+            {(Object.keys(SOURCE_META) as LeadSource[]).map((s) => (
+              <SelectItem key={s} value={s}>{SOURCE_META[s].icon} {SOURCE_META[s].label}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={extractionId} onValueChange={(v) => setExtractionId(v as string | 'all')}>
+          <SelectTrigger className="w-[300px]"><SelectValue placeholder="Origem (busca)" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as buscas{sourceFilter !== 'all' ? ` (${SOURCE_META[sourceFilter].label})` : ''}</SelectItem>
+            {shownExtractions.map((ex) => {
+              const src = leadSourceOf(ex);
+              return (
+                <SelectItem key={ex.id} value={ex.id}>
+                  {SOURCE_META[src].icon} {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
 
@@ -134,19 +201,11 @@ export function PlatformProspeccaoBaseConsolidada() {
           <SelectContent>
             <SelectItem value="all">Todos os segmentos</SelectItem>
             <SelectItem value="salao_cliente">🟢 Espaço-cliente</SelectItem>
-            <SelectItem value="acionamento_via_instagram">🟣 Instagram (DM)</SelectItem>
             <SelectItem value="afiliado_infoproduto">🔵 Afiliado</SelectItem>
             <SelectItem value="revisao">🟡 Revisão</SelectItem>
-            <SelectItem value="descarte">⚪ Descarte</SelectItem>
           </SelectContent>
         </Select>
 
-        <Button variant={withPhone === 'with' ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setWithPhone((v) => (v === 'with' ? 'all' : 'with'))}>
-          <Phone className="h-4 w-4" /> Com telefone
-        </Button>
-        <Button variant={withPhone === 'without' ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setWithPhone((v) => (v === 'without' ? 'all' : 'without'))}>
-          <PhoneOff className="h-4 w-4" /> Sem telefone
-        </Button>
         <Button variant={seedsOnly ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setSeedsOnly((v) => !v)}><Sprout className="h-4 w-4" /> Sementes</Button>
         <Button variant={qualifiedOnly ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setQualifiedOnly((v) => !v)}><BadgeCheck className="h-4 w-4" /> Qualificados</Button>
         <Button variant={showExcluded ? 'destructive' : 'outline'} size="sm" className="gap-1" onClick={() => setShowExcluded((v) => !v)}><Trash2 className="h-4 w-4" /> Lixeira</Button>
@@ -159,14 +218,15 @@ export function PlatformProspeccaoBaseConsolidada() {
       )}
 
       <div className="flex flex-wrap gap-2 text-xs">
-        <Badge variant="outline" className="bg-muted text-foreground border-border"><Users2 className="h-3 w-3 mr-1" /> {leads.length} handles · {stats.origensSomadas} origens somadas</Badge>
+        <Badge variant="outline" className="bg-muted text-foreground border-border"><Users2 className="h-3 w-3 mr-1" /> {visibleLeads.length} handles · {stats.origensSomadas} origens somadas</Badge>
         <Badge variant="outline" className={SEG_META.salao_cliente.cls}>🟢 {stats.salao_cliente} salão</Badge>
-        <Badge variant="outline" className={SEG_META.acionamento_via_instagram.cls}>🟣 {stats.acionamento_via_instagram} DM</Badge>
         <Badge variant="outline" className={SEG_META.afiliado_infoproduto.cls}>🔵 {stats.afiliado_infoproduto} afiliado</Badge>
         <Badge variant="outline" className={SEG_META.revisao.cls}>🟡 {stats.revisao} revisão</Badge>
-        <Badge variant="outline" className={SEG_META.descarte.cls}>⚪ {stats.descarte} descarte</Badge>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">🌱 {stats.seeds} sementes</Badge>
-        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">📞 {stats.comTelefone} c/ telefone</Badge>
+        <span className="mx-1 w-px self-stretch bg-border" aria-hidden />
+        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">🟢 {stats.wa_numero} c/ número</Badge>
+        <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30">🔗 {stats.wa_link} por link</Badge>
+        <Badge variant="outline" className="bg-muted text-muted-foreground border-border">⚪ {stats.wa_nenhum} sem WhatsApp</Badge>
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden">
@@ -184,16 +244,16 @@ export function PlatformProspeccaoBaseConsolidada() {
             </thead>
             <tbody>
               {isLoading && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>}
-              {!isLoading && leads.length === 0 && (
+              {!isLoading && visibleLeads.length === 0 && (
                 <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">{showExcluded ? 'Lixeira vazia.' : 'Nenhum handle com esses filtros. As extrações da aba Buscas alimentam esta base.'}</td></tr>
               )}
-              {leads.map((l) => (
+              {visibleLeads.map((l) => (
                 <tr key={l.handle_key} className="border-t border-border hover:bg-muted/30">
                   <td className="p-2" title={whyText(l)}>
                     <div className="flex items-center gap-1">
                       <select
                         className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment]?.cls ?? '' : ''}`}
-                        value={l.segment ?? 'descarte'}
+                        value={l.segment ?? 'revisao'}
                         onChange={(e) => productId && reclassify.mutate({ productId, handle: l.handle_key, segment: e.target.value as LeadSegment })}
                         disabled={showExcluded}
                       >

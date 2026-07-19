@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protótipo — Actor de Query IG (busca em seguidores) · 2026-07-13</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--accent:#e8b4bc;--gold:#d4a94e;--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.55;padding:2rem 1rem;max-width:1100px;margin:0 auto}
+  h1{font-size:1.5rem;color:var(--accent);border-bottom:2px solid var(--border);padding-bottom:.6rem;margin-bottom:.4rem}
+  h2{font-size:1.15rem;color:var(--gold);margin:2rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1rem;color:var(--blue);margin:1.4rem 0 .5rem}
+  p{margin:.5rem 0}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:1.2rem}
+  blockquote{border-left:3px solid var(--accent);padding:.4rem .8rem;color:var(--muted);font-style:italic;margin:.8rem 0;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.85rem}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.45rem .6rem;border:1px solid var(--border)}
+  td{padding:.4rem .6rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel);padding:.1rem .35rem;border-radius:4px;font-size:.83em;color:var(--accent)}
+  pre{background:#010409;border:1px solid var(--border);border-radius:8px;padding:.9rem;overflow-x:auto;margin:.8rem 0;font-size:.8rem;line-height:1.45}
+  pre code{background:none;color:var(--text);padding:0}
+  .ok{color:var(--green);font-weight:600}.no{color:var(--red);font-weight:600}.pt{color:var(--yellow);font-weight:600}
+  .verdict{background:var(--panel);border:1px solid var(--gold);border-left:4px solid var(--gold);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0}
+  ul,ol{margin:.5rem 0 .5rem 1.4rem}
+  li{margin:.3rem 0}
+  .footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+  .kpi{display:flex;gap:.8rem;flex-wrap:wrap;margin:1rem 0}
+  .kpi div{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem;min-width:140px}
+  .kpi b{display:block;font-size:1.4rem;color:var(--accent)}
+  .kpi span{font-size:.75rem;color:var(--muted)}
+  .wrap{overflow-x:auto}
+  a{color:var(--blue);word-break:break-all}
+</style>
+</head>
+<body>
+
+<h1>PROTÓTIPO — "Actor de Query" IG</h1>
+<p class="sub">Busca DENTRO dos seguidores por keyword · NexvyBeauty C9 · 2026-07-13 · spike de scraping</p>
+
+<div class="kpi">
+  <div><b>7091857297</b><span>user_id resolvido (@unhass.decoradas)</span></div>
+  <div><b>846.481</b><span>seguidores do alvo</span></div>
+  <div><b>200 → 401</b><span>guest: profile OK, followers login-wall</span></div>
+  <div><b>~$1–2</b><span>banda / 100k matches</span></div>
+</div>
+
+<h2>1. Veredito</h2>
+<div class="verdict">
+<b>VIÁVEL — porém a premissa central estava errada e precisa ser corrigida.</b>
+<ul>
+  <li><span class="ok">[Certo]</span> O endpoint de busca dentro dos seguidores <b>existe</b> e aplica o filtro <code>query</code> <b>server-side</b> (só volta quem casa). A tese "pagar só pelo rio, não pelo oceano" <b>se sustenta na banda</b>.</li>
+  <li><span class="no">[Certo] Ele NÃO é guest.</span> Exige <b>sessão autenticada</b> (<code>sessionid</code>). Provado ao vivo: guest devolveu <b>HTTP 401</b>. O briefing dizia "o endpoint guest não usa login" — incorreto para followers: a lista fica atrás do login-wall independente do <code>query</code>.</li>
+  <li><b>Consequência:</b> produção precisa de <b>proxy residencial + POOL DE CONTAS LOGADAS</b> — não só proxy. Esse é o custo/risco binding, não a banda.</li>
+  <li><b>Não provei daqui:</b> que o filtro devolve só-matches ao vivo — exige sessão válida que não tenho/não devo criar no spike. Confirmação do filtro é <span class="pt">[Provável]</span>, ancorada no código do <code>instagrapi</code>.</li>
+</ul>
+</div>
+<blockquote>Correção de premissa (Modo Conselheiro): o diferencial do nosso actor vs. o de mercado (<code>jWD4G57HhqYY0mFhd</code>) <b>não é acesso guest</b> (não existe) — é <b>empurrar o <code>query</code> pro servidor e paginar só o subconjunto casado</b>, usando as mesmas contas logadas que qualquer scraper de followers já precisa. O ganho é de banda/páginas trafegadas, não de dispensar auth.</blockquote>
+
+<h2>2. Endpoint confirmado + fontes</h2>
+
+<h3>2.1. Resolução username → user_id (guest, funciona)</h3>
+<pre><code>GET https://i.instagram.com/api/v1/users/web_profile_info/?username=&lt;username&gt;
+Header obrigatório:  x-ig-app-id: 936619743392459   (web app id do IG, público)</code></pre>
+<p>Retorna <code>data.user.id</code> (+ <code>edge_followed_by.count</code>). Guest-acessível com só o <code>x-ig-app-id</code>. Provado ao vivo (§3).</p>
+
+<h3>2.2. Busca dentro dos seguidores — o "rio" (autenticado)</h3>
+<pre><code>GET https://www.instagram.com/api/v1/friendships/&lt;user_id&gt;/followers/
+      ?count=&lt;n&gt;
+      &amp;search_surface=follow_list_page
+      &amp;query=&lt;keyword&gt;          &lt;-- filtro server-side: só volta quem casa
+      &amp;enable_groups=true
+      [&amp;max_id=&lt;cursor&gt;]        &lt;-- paginação (next_max_id do corpo anterior)
+Headers:  x-ig-app-id: 936619743392459
+          x-csrftoken: &lt;csrftoken&gt;
+          cookie: sessionid=&lt;...&gt;; csrftoken=&lt;...&gt;</code></pre>
+<ul>
+  <li>Params <code>search_surface=follow_list_page</code> + <code>query</code> + <code>enable_groups=true</code> vêm <b>verbatim do <code>search_followers_v1</code> do instagrapi</b> (a caixa de busca do app usa essa superfície).</li>
+  <li>Host web <code>www.instagram.com/api/v1/...</code> ≡ mobile <code>i.instagram.com/api/v1/friendships/&lt;id&gt;/followers/</code>. Ambos <code>private_request()</code> = <b>autenticado</b>.</li>
+</ul>
+
+<h3>2.3. Fontes</h3>
+<ul>
+  <li><b>Scrapfly — How to Scrape Instagram in 2026</b>: confirma <code>web_profile_info</code> + <code>x-ig-app-id</code>; "Full follower and following lists: behind login"; "Datacenter IPs blocked instantly / Residential IPs required"; ~200 req/h/IP não-auth. <a href="https://scrapfly.io/blog/posts/how-to-scrape-instagram">link</a></li>
+  <li><b>instagrapi (subzeroid) — <code>mixins/user.py</code></b>: <code>search_followers_v1</code> → <code>friendships/{user_id}/followers/</code>, params <code>{search_surface:"follow_list_page", query, enable_groups:"true"}</code>, <code>private_request()</code>. <a href="https://github.com/subzeroid/instagrapi">link</a></li>
+  <li><b>instagrapi — issue #234 "Search by followers"</b>. <a href="https://github.com/subzeroid/instagrapi/issues/234">link</a></li>
+  <li><b>Graph API oficial (keyapi)</b>: API oficial não devolve lista de followers, só <code>followers_count</code>. <a href="https://www.keyapi.ai/blog/instagram-graph-api-get-followers-list-following/">link</a></li>
+  <li><b>Apify — pricing de proxy</b>: Residential $8/GB (Free/Starter), $7.5 (Scale), $7 (Business). <a href="https://apify.com/pricing/proxy">link</a></li>
+</ul>
+
+<h2>3. O que rodou AO VIVO</h2>
+<p>Do Mac do Marcelo (conexão local, não datacenter clássico), modo guest, trava de 1 página = <b>2 requests no total</b>:</p>
+<pre><code>$ node c9-follower-query-prototype.ts unhass.decoradas manicure 1
+
+[spike] alvo=@unhass.decoradas keyword="manicure" maxPages=1 modo=GUEST (sem login)
+[spike] user_id=7091857297 followers_total=846481
+[spike][ERRO] follower-search bloqueado: HTTP 401 — 401 Unauthorized (login-wall: endpoint exige sessão)</code></pre>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Resultado</th><th>Interpretação</th></tr></thead>
+<tbody>
+<tr><td>1. <code>web_profile_info</code> (guest)</td><td class="ok">200 OK → user_id 7091857297, 846.481 seguidores</td><td>Resolução funciona guest; IP não está sob bloqueio geral</td></tr>
+<tr><td>2. <code>followers?query=manicure</code> (guest)</td><td class="no">HTTP 401</td><td>Login-wall de auth — não é bloqueio de IP nem challenge. Passo 1 passou no mesmo IP</td></tr>
+</tbody>
+</table></div>
+<ul>
+  <li>O <b>401 é trava de autenticação, não bloqueio de IP datacenter.</b> Como o passo 1 passou, dá pra separar os eixos.</li>
+  <li>Não martelei o IG: 2 requests, parei no 1º bloqueio. Filtro de <code>query</code> não pôde ser exercido (precisa de sessão).</li>
+  <li><b>Caveat de IP:</b> um 401 por falta de sessão continuaria 401 mesmo com proxy residencial — o que destrava é a <b>conta logada</b>, não o proxy. O proxy destrava o eixo IP/rate, que aqui nem foi testado.</li>
+</ul>
+
+<h2>4. Diagnóstico de bloqueio (honesto)</h2>
+<p>Dois eixos independentes:</p>
+<ol>
+  <li><b>Auth (bati agora):</b> followers exige <code>sessionid</code>. Guest = 401 sempre. <b>Proxy não resolve</b> — só conta logada.</li>
+  <li><b>IP / rate (não testei):</b> com sessão, IG bane IP datacenter "instantly" e limita ~200 req/h/IP. <b>Aqui entra o proxy residencial</b> com sticky 5–10 min.</li>
+</ol>
+<p>Para medição representativa faltam <b>as duas coisas juntas</b> — sessão logada <b>e</b> proxy residencial. Deste ambiente isolei só o eixo (1).</p>
+
+<h2>5. Custo estimado por match (Apify Residential)</h2>
+<p><b>Preço:</b> $8/GB (Free/Starter) → $7,5 (Scale) → $7 (Business). Cobrança por GB de tráfego.</p>
+<p>Cada <code>user</code> casado ≈ 0,8–1,5 KB de JSON. Com <code>query</code> server-side pagina só o subconjunto casado; overhead amortiza numa página de ~50.</p>
+<div class="wrap"><table>
+<thead><tr><th>Cenário</th><th>KB efetivos/match</th><th>Matches por GB</th><th>Custo (a $8/GB)</th></tr></thead>
+<tbody>
+<tr><td>Otimista</td><td>1,0</td><td>~1.000.000</td><td class="ok">$0,80 / 100k (~$0,008/1k)</td></tr>
+<tr><td>Meio (premissa do briefing)</td><td>1,5</td><td>~666k</td><td class="ok">$1,20 / 100k (~$0,012/1k)</td></tr>
+<tr><td>Conservador (+overhead)</td><td>2,5</td><td>~400k</td><td class="ok">$2,00 / 100k (~$0,02/1k)</td></tr>
+</tbody>
+</table></div>
+<p>→ <b>Banda ≈ $1–$2 por 100.000 leads casados.</b> Desprezível. A tese do "rio" ganha no eixo banda.</p>
+<blockquote><span class="pt">[Provável]</span> A banda NÃO é o custo binding. O que custa/limita: (1) <b>pool de contas logadas</b> (aged/burner ~$1–5+, e queimam) — o $/match real, não medido aqui; (2) Apify Compute Units (centavos); (3) taxa de ban → reposição de conta. <b>Resumo: banda ~$1/100k (irrelevante); economia real travada pelo supply de contas e taxa de ban — não medido.</b></blockquote>
+
+<h2>6. Setup EXATO que falta</h2>
+<ol>
+  <li><b>1 conta IG logada descartável</b> (aged, não a da dona) → extrair <code>sessionid</code> + <code>csrftoken</code> dos cookies pós-login. Passar via env, nunca hardcode:
+    <pre><code>IG_SESSIONID=&lt;...&gt; IG_CSRFTOKEN=&lt;...&gt; \
+  node c9-follower-query-prototype.ts unhass.decoradas manicure 2</code></pre>
+    O protótipo já lê essas envs → "modo AUTENTICADO". Isso já prova o filtro (esperado: 200 + só usernames com "manicure").</li>
+  <li><b>Proxy residencial</b> (Apify Residential / IPRoyal / Bright Data) sticky 5–10 min. Standalone: <code>undici.ProxyAgent</code>/<code>HTTP_PROXY</code>. Actor: <code>Actor.createProxyConfiguration({ groups:['RESIDENTIAL'], countryCode:'BR' })</code> passado ao <code>fetch</code>/dispatcher.</li>
+  <li><b>Wrapper Apify Actor:</b> trocar <code>argv()</code> por <code>Actor.getInput()</code>, envolver <code>main()</code> em <code>Actor.main()</code>, persistir via <code>Actor.pushData()</code>. Core (<code>resolveUserId</code> + <code>searchFollowersPage</code>) intacto.</li>
+  <li><b>Medição:</b> paginação real (5–10 páginas), coletar GB do proxy (Apify reporta por run) ÷ matches → <b>$/match empírico</b>. 2–3 contas → <b>taxa de challenge/ban</b> (o número que decide a economia).</li>
+</ol>
+<p><b>Gate de decisão:</b> medir a <b>taxa de ban por conta por N requests</b> antes de escalar. Conta aguenta milhares de queries → modelo fecha barato. Queima em centenas → custo de conta domina e o $/match sobe 1–2 ordens acima da banda.</p>
+
+<h2>7. Restrições respeitadas</h2>
+<ul>
+  <li>Nenhum segredo exposto. Nenhum token nosso usado. <code>sessionid</code> só via env, nunca logado.</li>
+  <li>Máx. 2 requests ao IG (spike). Parei no 1º bloqueio.</li>
+  <li>Sem despejo de PII: só o handle público do alvo e nada da lista (que nem retornou).</li>
+</ul>
+
+<div class="footer">NexvyBeauty · C9 motor de leads Instagram-first · spike 2026-07-13 · protótipo em <code>c9-follower-query-prototype.ts</code></div>
+</body>
+</html>

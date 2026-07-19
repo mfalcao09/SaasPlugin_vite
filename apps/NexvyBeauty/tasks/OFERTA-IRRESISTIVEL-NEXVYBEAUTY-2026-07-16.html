@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Oferta Irresistível — NexvyBeauty · Grand Slam Offer</title>
+<style>
+  :root{
+    --bg:#0b0e14; --bg2:#111725; --card:#141b2b; --card2:#182236;
+    --ink:#e8edf6; --muted:#9fb0c8; --dim:#6c7c96;
+    --line:#243149; --line2:#2e3d5a;
+    --gold:#f2c14e; --gold-dim:#a9862f;
+    --pink:#ff7eb6; --cyan:#5ad1e6; --green:#57d99a; --red:#ff6b7a; --violet:#b79cff;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:linear-gradient(180deg,#0a0d13 0%,#0b0e14 40%,#0c1018 100%);
+    color:var(--ink); font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; padding:0 0 80px;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  header.hero{
+    padding:54px 22px 30px; text-align:center;
+    background:radial-gradient(1200px 380px at 50% -80px, rgba(242,193,78,.10), transparent 70%);
+    border-bottom:1px solid var(--line);
+  }
+  header.hero .kicker{color:var(--gold); font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px}
+  header.hero h1{font-size:34px; margin:12px 0 6px; line-height:1.15; letter-spacing:-.01em}
+  header.hero h1 span{color:var(--gold)}
+  header.hero .sub{color:var(--muted); max-width:720px; margin:8px auto 0; font-size:15px}
+  .meta-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:20px}
+  .chip{background:var(--card); border:1px solid var(--line2); color:var(--muted); padding:5px 12px; border-radius:999px; font-size:12.5px}
+  .chip b{color:var(--ink)}
+  main{margin-top:10px}
+  section{margin:34px 0; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 28px; box-shadow:var(--shadow)}
+  section.plain{background:transparent; border:none; box-shadow:none; padding:8px 0}
+  h2{font-size:22px; margin:2px 0 14px; letter-spacing:-.01em; display:flex; align-items:baseline; gap:10px}
+  h2 .num{color:var(--gold); font-variant-numeric:tabular-nums; font-size:16px; font-weight:800; opacity:.9}
+  h3{font-size:17px; margin:22px 0 10px; color:var(--ink)}
+  h4{font-size:14px; margin:16px 0 6px; color:var(--cyan); text-transform:uppercase; letter-spacing:.06em}
+  p{margin:10px 0}
+  a{color:var(--cyan)}
+  strong{color:#fff}
+  em{color:var(--muted)}
+  code, .tag{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:12.8px}
+  code{background:#0e1522; border:1px solid var(--line2); border-radius:5px; padding:1px 6px; color:var(--gold)}
+  .tag{color:var(--violet); background:rgba(183,156,255,.10); border:1px solid rgba(183,156,255,.28); border-radius:5px; padding:1px 6px; white-space:nowrap}
+  ul,ol{margin:10px 0; padding-left:22px}
+  li{margin:5px 0}
+  blockquote{margin:16px 0; padding:14px 18px; border-left:3px solid var(--gold); background:linear-gradient(90deg,rgba(242,193,78,.08),transparent); border-radius:0 10px 10px 0; color:var(--ink)}
+  blockquote.risk{border-left-color:var(--green); background:linear-gradient(90deg,rgba(87,217,154,.09),transparent)}
+  blockquote.dream{border-left-color:var(--pink); background:linear-gradient(90deg,rgba(255,126,182,.09),transparent)}
+  blockquote .big{font-size:18px; font-weight:600; display:block; color:#fff; margin-bottom:6px}
+  .tblwrap{overflow-x:auto; margin:14px 0; border:1px solid var(--line); border-radius:12px}
+  table{border-collapse:collapse; width:100%; font-size:13.6px; min-width:520px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{background:var(--card2); color:var(--cyan); font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.015)}
+  .center{text-align:center}
+  .conftag{font-weight:700; font-size:11px; padding:1px 7px; border-radius:5px; vertical-align:middle}
+  .c-certo{color:#0b0e14; background:var(--green)}
+  .c-prov{color:#0b0e14; background:var(--gold)}
+  .c-palp{color:#0b0e14; background:var(--pink)}
+  pre.slide{
+    background:#080b12; border:1px solid var(--line2); border-radius:12px; padding:18px 20px; overflow-x:auto;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:12.4px; line-height:1.55; color:#cfe0f2; white-space:pre;
+  }
+  pre.slide b{color:var(--gold)}
+  .callout{border:1px dashed var(--gold-dim); background:rgba(242,193,78,.06); border-radius:12px; padding:14px 18px; margin:16px 0; font-size:14px}
+  .callout.warn{border-color:#8a5a2f; background:rgba(255,150,80,.07)}
+  .pass{display:inline-block; background:var(--green); color:#062015; font-weight:800; padding:4px 14px; border-radius:8px; letter-spacing:.03em}
+  .toc{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:16px}
+  .toc a{background:var(--card2); border:1px solid var(--line2); padding:6px 12px; border-radius:8px; text-decoration:none; color:var(--muted); font-size:13px}
+  .toc a:hover{border-color:var(--gold-dim); color:var(--ink)}
+  .foot{color:var(--dim); font-size:12.5px; text-align:center; margin-top:40px; padding-top:20px; border-top:1px solid var(--line)}
+  .em-yes{color:var(--green); font-weight:700}
+  .em-no{color:var(--red); font-weight:700}
+  @media (max-width:600px){
+    header.hero h1{font-size:26px}
+    section{padding:20px 16px}
+    .wrap{padding:0 14px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">🎰 Grand Slam Offer · Lente Hormozi</div>
+  <h1>A Oferta Irresistível — <span>NexvyBeauty</span></h1>
+  <div class="sub">Análise + design de oferta sob a lente do clone <strong>Alex Hormozi</strong> + <strong>hormozi-squad</strong> + <code>100m-offers</code>. Read-only em produção — nada aplicado no banco, código ou deploy.</div>
+  <div class="meta-row">
+    <span class="chip">📅 <b>2026-07-16</b></span>
+    <span class="chip">🗄️ <b>fzhlbwhdejumkyqosuvq</b></span>
+    <span class="chip">📦 <b>apps/NexvyBeauty</b></span>
+    <span class="chip">🔒 <b>READ-ONLY</b> · HITL Marcelo</span>
+  </div>
+  <nav class="toc">
+    <a href="#s0">0 · Verdade desconfortável</a>
+    <a href="#s1">1 · Extração</a>
+    <a href="#s2">2 · Diagnóstico</a>
+    <a href="#s3">3 · Grand Slam Offer</a>
+    <a href="#s4">4 · Objeções</a>
+    <a href="#s5">5 · Antes×Depois</a>
+    <a href="#s6">6 · Teste Hormozi</a>
+    <a href="#s7">7 · O que muda</a>
+    <a href="#s8">8 · Rodada 2 (naming+preço)</a>
+    <a href="#s9">9 · Script Unificado</a>
+  </nav>
+</header>
+
+<div class="wrap"><main>
+
+<section id="s0">
+  <h2><span class="num">0</span> Resposta desconfortável primeiro</h2>
+  <p><span class="conftag c-certo">CERTO</span> O NexvyBeauty <strong>não tem oferta fraca. Tem oferta forte que se apresenta como fraca</strong> — e joga fora a melhor carta da mão. Na régua Hormozi: <em>"isso ainda é um produto, não uma oferta"</em> — porque lista feature, ancora no número errado e não reverteu o risco de forma explícita.</p>
+  <ol>
+    <li><strong>Você tem a reversão de risco mais rara que existe — e a trata como etapa de funil.</strong> Quase todo mundo vende <em>promessa</em>. Vocês vendem <em>prova</em>: o <strong>Raio-X</strong> mostra o dinheiro real dela (nome, telefone, R$) <strong>antes de pagar um centavo</strong>. Isso leva a <strong>Probabilidade Percebida a ~9/10</strong> — a alavanca que ninguém consegue empurrar. E hoje vive no rodapé.</li>
+    <li><strong>A oferta nunca empilha nem nomeia o próprio valor — e ancora no número fraco.</strong> A única âncora usada é "de R$383 por R$275" (28%). A âncora devastadora está na mão dela: ela perde <strong>~R$2.760/mês</strong> (teste real) = <strong>R$33 mil/ano de custo de inação</strong> = <strong>~10x o preço</strong>.</li>
+    <li><strong>Zero bônus nomeado, naming genérico, anual invisível.</strong> As objeções estão mapeadas mas nenhuma virou bônus com nome. "Essencial/Premium/Ultra" não vende transformação. E o anual embute <strong>2 meses grátis</strong> (275×10=2.750) que ninguém usa.</li>
+  </ol>
+  <div class="callout"><span class="conftag c-certo">CERTO</span> O conserto <strong>não pede baixar preço, inventar feature nem mentir.</strong> Pede: pôr o Raio-X no centro, empilhar e nomear o que já existe, trocar a âncora fraca pela forte (o dinheiro dela), transformar cada objeção em bônus, e usar anual + good-better-best. <strong>Nada disso mexe no número de <code>public_plans</code>.</strong></div>
+  <p><span class="conftag c-palp">PALPITE</span> O teto de conversão não é a copy — <strong>é a fila do Raio-X.</strong> Como o próprio funil de cold outreach concluiu: <em>"a copy compra os minutos; a demo fecha"</em>. Toda a oferta abaixo é desenhada pra empurrar tudo pro Raio-X.</p>
+</section>
+
+<section id="s1">
+  <h2><span class="num">1</span> FASE 1 — Extração (pré-preenchida do contexto real)</h2>
+  <p><em>O processo Hormozi manda extrair 1 pergunta por vez. Aqui as respostas já estão aterradas no código, nos docs e na confirmação da controladora — re-interrogar seria desperdício.</em></p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Pergunta Hormozi</th><th>Resposta (contexto real)</th></tr></thead>
+    <tbody>
+      <tr><td>P1</td><td>O que vende e por quanto?</td><td>SaaS de IA pra salão: recupera clientes sumidas + gestão no WhatsApp + agente de IA. <strong>Essencial R$275 · Premium R$427 · Ultra R$693</strong> (lançamento) → 383/599/849 (tabela).</td></tr>
+      <tr><td>P2</td><td>Quem compra? Dor mais cara?</td><td>Profissional da beleza por horário marcado (unhas, cílios, sobrancelha, pele, cabelo, make). <strong>Dor: cliente some e não volta — dinheiro vazando que ela nem vê</strong> (+ no-show).</td></tr>
+      <tr><td>P3</td><td>Resultado dos sonhos?</td><td>Ver o dinheiro parado e <strong>trazer a cliente de volta pelo próprio WhatsApp, sem anúncio, sem virar escrava de tecnologia.</strong></td></tr>
+      <tr><td>P4</td><td>O que já tentou / por que duvida?</td><td>Caderno, print, memória; talvez agência que queimou. <strong>Duvida porque "já me venderam ferramenta que não funcionou" e teme golpe/clonagem.</strong></td></tr>
+      <tr><td>P5</td><td>Tempo / esforço?</td><td>Hoje: zero reativação (nunca vê). Com o produto: <strong>Raio-X em ~20 min; cliente em dias; 5 min/dia (só aprova).</strong></td></tr>
+      <tr><td>P6</td><td>3 motivos pra NÃO comprar?</td><td>(1) <strong>"É golpe / vão mexer no meu WhatsApp"</strong>; (2) <strong>"tá caro / não sei se vale"</strong>; (3) <strong>"minhas clientes vão achar robô"</strong>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">2</span> FASE 2 — Diagnóstico Hormozi</h2>
+
+  <h3>Bloco A — Por que a oferta atual é fraca</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Sintoma Hormozi</th><th>Onde acontece hoje</th></tr></thead>
+    <tbody>
+      <tr><td>Lista feature em vez de resultado</td><td>"SaaS + gestão + IA" em vez de "seu dinheiro de volta na tela"</td></tr>
+      <tr><td>Ancora no número fraco</td><td>de-para "de R$383 por R$275" (28%) lidera; a âncora de 10x (a perda dela) fica escondida</td></tr>
+      <tr><td>Risco não revertido explicitamente</td><td>o Raio-X existe mas não é declarado como a reversão de risco central</td></tr>
+      <tr><td>Sem <span class="tag">[STACK DE BÔNUS]</span></td><td>objeções mapeadas, nenhuma virou bônus nomeado</td></tr>
+      <tr><td><span class="tag">[NOME MÁGICO]</span> ausente</td><td>"Essencial/Premium/Ultra" + oferta sem nome = cabe na planilha de qualquer CRM</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Veredito:</strong> <em>"dá pra comparar com o concorrente → ainda não terminou o trabalho."</em> O Raio-X é o que torna incomparável — e está desligado do pitch.</p>
+
+  <h3>Bloco B — O mapa de valor <span class="tag">[EQUAÇÃO DE VALOR]</span></h3>
+  <pre class="slide">              Sonho × Probabilidade Percebida
+   Valor  =  ──────────────────────────────────
+                  Tempo × Esforço</pre>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Quadrante</th><th class="center">Score</th><th>Estratégia</th></tr></thead>
+    <tbody>
+      <tr><td>Sonho (Dream Outcome)</td><td class="center">7/10</td><td>Bom, mas difuso. <strong>Subir:</strong> específico + emocional — "a cadeira enchendo com quem já foi sua".</td></tr>
+      <tr><td><strong>Probabilidade Percebida</strong></td><td class="center"><strong style="color:var(--gold)">9/10 ⭐</strong></td><td><strong>O ouro.</strong> O Raio-X mostra o R$ DELA antes de pagar. <strong>Estratégia: pôr no centro.</strong> Quase ninguém leva esse quadrante a 9.</td></tr>
+      <tr><td>Tempo de espera</td><td class="center">8/10</td><td>Raio-X ~20 min, cliente em dias. <strong>Manter:</strong> "o número na sua tela em minutos".</td></tr>
+      <tr><td>Esforço/Sacrifício</td><td class="center">8/10</td><td>Setup concierge + "só aprova". <strong>Nomear:</strong> "Setup Concierge de 30 min" e "1 clique".</td></tr>
+    </tbody>
+  </table></div>
+  <p>A maioria briga pra subir o <strong>Sonho</strong> (prometer mais — e mentir). Vocês têm a alavanca rara — <strong>Probabilidade a ~9/10 via prova própria</strong>. Construa tudo pra chegar no Raio-X.</p>
+
+  <h3>Bloco C — Objeção → componente da oferta</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Objeção (voz dela)</th><th>Vira → componente</th><th>Instrumento</th></tr></thead>
+    <tbody>
+      <tr><td>"não sei quantas sumiram nem quanto vale"</td><td>🔍 Raio-X da Carteira</td><td><span class="tag">[GARANTIA]</span></td></tr>
+      <tr><td>"não tenho a lista de quem sumiu"</td><td>📡 Radar de Recuperação</td><td><span class="tag">[STACK]</span> core</td></tr>
+      <tr><td>"não sei o que escrever"</td><td>✍️ Mensagem no Seu Tom</td><td><span class="tag">[STACK]</span> effort</td></tr>
+      <tr><td>"não tenho tempo/mão"</td><td>🤖 4 Automações 24/7</td><td><span class="tag">[STACK]</span> effort</td></tr>
+      <tr><td>"tecnologia me trava / vou largar"</td><td>🛠️ Setup Concierge de 30 min</td><td><span class="tag">[STACK]</span> effort</td></tr>
+      <tr><td>"trabalho sozinha"</td><td>💬 A IA que Atende por Você</td><td><span class="tag">[STACK]</span> core</td></tr>
+      <tr><td><strong>"é golpe / vão mexer no meu WhatsApp"</strong></td><td>🛡️ Blindagem do WhatsApp</td><td><span class="tag">[BÔNUS]</span></td></tr>
+      <tr><td><strong>"vão achar robô"</strong></td><td>✅ Garantia do Seu Tom</td><td><span class="tag">[BÔNUS]</span></td></tr>
+      <tr><td><strong>"e se faltar automação"</strong></td><td>🌱 Roadmap Vivo</td><td><span class="tag">[BÔNUS]</span></td></tr>
+      <tr><td><strong>"e se eu me arrepender"</strong></td><td>⚖️ 7 Dias da Lei (CDC)</td><td><span class="tag">[GARANTIA]</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">3</span> FASE 3 — A Grand Slam Offer</h2>
+
+  <h3><span class="tag">[DREAM OUTCOME]</span> — o resultado em uma frase</h3>
+  <blockquote class="dream"><span class="big">"Ver, hoje, quanto dinheiro está parado na sua carteira — e trazer suas clientes sumidas de volta pelo seu próprio WhatsApp, em 5 minutos por dia, sem gastar um real com anúncio."</span>
+  <em>Ganho emocional: parar de olhar a cadeira vazia sabendo que a cliente existe, está no seu celular, e só faltou alguém chamar.</em></blockquote>
+  <p>Corta o "até 70%" (hedge) e "180 dias" (proibido — copy é "seus últimos meses"). O número forte não é % prometida — é <strong>o R$ que o Raio-X mostra</strong>.</p>
+
+  <h3><span class="tag">[TRIM &amp; STACK]</span> — o value stack</h3>
+  <div class="callout warn">⚠️ <strong>Adaptação de conselheiro (Hormozi-compliant):</strong> público cético e queimado por agência. Um "VALOR TOTAL R$3.500 → paga R$275" grande demais <strong>liga o detector de golpe</strong>. O checklist do próprio squad exige <em>"números realistas, não fantasia"</em>. Então: <strong>âncora primária = o dinheiro DELA</strong>; o stack é suporte, valores como referência de mercado honesta.</div>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Tipo</th><th>Componente (nome proprietário)</th><th>O que faz</th><th>Ref. solta*</th></tr></thead>
+    <tbody>
+      <tr><td><b style="color:var(--cyan)">CORE</b></td><td>📡 Radar de Recuperação</td><td>Varre a carteira toda semana e entrega a lista de quem sumiu + R$</td><td>~R$300/mês</td></tr>
+      <tr><td><b style="color:var(--cyan)">CORE</b></td><td>💬 A IA que Atende por Você</td><td>Responde, qualifica e reativa no WhatsApp</td><td>~R$500/mês</td></tr>
+      <tr><td><b style="color:var(--cyan)">CORE</b></td><td>📅 Carteira + Agenda + Painel</td><td>Fim do caderno: agenda, carteira e faturamento num lugar</td><td>~R$150/mês</td></tr>
+      <tr><td><b style="color:var(--violet)">EFFORT</b></td><td>🤖 4 Automações 24/7</td><td>Aniversário · lembrete 24h (mata no-show) · pacote vencendo · cliente sumida</td><td>~R$250/mês</td></tr>
+      <tr><td><b style="color:var(--violet)">EFFORT</b></td><td>✍️ Mensagem no Seu Tom</td><td>A IA escreve com o nome da cliente; ela aprova em 1 clique</td><td>~R$200/mês</td></tr>
+      <tr><td><b style="color:var(--violet)">EFFORT</b></td><td>🛠️ Setup Concierge de 30 min</td><td>Configuramos tudo no WhatsApp atual — sem trocar número</td><td>~R$300 (1x)</td></tr>
+      <tr><td><b style="color:var(--green)">PROOF</b></td><td>🔍 Raio-X da Carteira</td><td>Mostra quem sumiu (nome+fone) e quanto vale — <strong>antes de pagar</strong></td><td><strong>grátis (é a prova)</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">* Referência do que cada peça custaria contratada solta — <strong>não</strong> preço de venda. Soma de referência: <strong>~R$1.400/mês em ferramentas soltas + R$300 de setup</strong>, e o Raio-X grátis — por a partir de <strong>R$275/mês</strong>.</p>
+
+  <h3><span class="tag">[EQUAÇÃO DE VALOR]</span> — ancoragem de preço &amp; o de-para 275→383</h3>
+  <p>Três âncoras, <strong>nesta ordem de força</strong> (a atual usa só a 3ª — a mais fraca):</p>
+  <ol>
+    <li><strong>PRIMÁRIA — o custo de inação (o Raio-X).</strong> "Você perde ~R$X/mês." Ex. real: <strong>R$2.760/mês = R$33.120/ano</strong>. Contra Essencial (R$3.300/ano) → <strong>valor-preço ~10:1</strong>. <em>Nota Pricing: a 10x-rule sugere que vocês estão até <strong>subprecificados</strong> — o de-para 275→383 fecha parte honesta desse gap, não é "aumento por ganância".</em></li>
+    <li><strong>SECUNDÁRIA — o de-para de tabela.</strong> "De [tabela] por [lançamento], sobe em breve." Verdadeiro, mas só ~28% → <strong>suporte, não manchete.</strong> Sem "travado pra sempre".</li>
+    <li><strong>TERCIÁRIA — o anual.</strong> <code>[mensal]×10 = [anual]</code> → <strong>"no plano anual, 2 meses por nossa conta."</strong></li>
+  </ol>
+  <h4>Good-better-best (já no banco — reforçar, não reinventar)</h4>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Tier</th><th>Papel psicológico</th><th>Frame de venda</th></tr></thead>
+    <tbody>
+      <tr><td>Essencial</td><td>âncora baixa / porta de entrada</td><td>"Comece a recuperar — recepção de IA + agenda + CRM"</td></tr>
+      <tr><td>Premium — <b style="color:var(--gold)">"Mais escolhido"</b></td><td><strong>o decoy/alvo</strong></td><td>"Atende, qualifica e reativa cliente <strong>sozinho</strong> — pra equipe"</td></tr>
+      <tr><td>Ultra</td><td>âncora alta</td><td>"Multi-unidade, IA de <strong>voz</strong>, integrações — pra redes"</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="tag">[GARANTIA GOD-MODE]</span> — a reversão de risco (jogada central)</h3>
+  <p><span class="conftag c-certo">CERTO</span> Contraintuitivo. Hormozi normalmente empurra garantia condicional ("recupere X ou reembolso"). <strong>Para este produto/público seria mais fraco:</strong> (a) a operação não sustenta prometer resultado (profundidade do histórico do WhatsApp é incerta); (b) "devolvo 100%" é o timbre exato da agência que queimou a dona. A reversão correta já existe e é <strong>superior a reembolso</strong>:</p>
+  <blockquote class="risk"><span class="big">🔒 "A gente não te promete. A gente te mostra."</span>
+  <strong>Você não compra uma promessa. Você compra um número que já viu com os próprios olhos.</strong> Antes de pagar um único real, o Raio-X mostra quantas clientes sumiram, quem são e quanto valem. Você decide <strong>depois</strong> de ver o dinheiro. Não fez sentido? Fica com o Raio-X de brinde e a gente apaga tudo em 72h, com confirmação.</blockquote>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Camada</th><th>O que é</th><th>Mata o medo de</th></tr></thead>
+    <tbody>
+      <tr><td>1. Prova antes do pagamento</td><td>o Raio-X: o R$ dela na tela antes de decidir</td><td>"e se não funcionar / for enganação"</td></tr>
+      <tr><td>2. Segurança legal</td><td>arrependimento de 7 dias (CDC art. 49)</td><td>"e se eu me arrepender da compra"</td></tr>
+      <tr><td>3. Apagamento com prova</td><td>não fechou → tudo apagado em 72h (LGPD)</td><td>"e se ficarem com meus dados"</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)"><strong>Proibido:</strong> "painel-juiz", "risco é nosso", "devolvo se não recuperar", "resultado garantido".</p>
+
+  <h3><span class="tag">[STACK DE BÔNUS]</span> — cada bônus mata uma objeção</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Bônus</th><th>O que entrega</th><th>Objeção que mata</th></tr></thead>
+    <tbody>
+      <tr><td>🛡️ <strong>Blindagem do WhatsApp</strong></td><td>"Nunca pedimos senha, código ou acesso. Quando ativa, é o seu número, você no controle."</td><td><strong>"É golpe? Vão clonar?"</strong> (objeção #1)</td></tr>
+      <tr><td>✅ <strong>Garantia do Seu Tom</strong></td><td>"Nada sai pra sua cliente sem você aprovar — no seu jeito, com o nome dela."</td><td><strong>"Vão achar robô"</strong></td></tr>
+      <tr><td>🌱 <strong>Roadmap Vivo</strong></td><td>"Pediu automação nova? Serve a todo salão → grátis. Só sua → agente sob medida (add-on)."</td><td><strong>"Vou enjoar / produto parado"</strong></td></tr>
+      <tr><td>⚖️ <strong>7 Dias da Lei do Seu Lado</strong></td><td>"Arrependeu em 7 dias? O CDC te devolve. Sem letra miúda."</td><td><strong>"E se eu me arrepender?"</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Escassez &amp; urgência — só o que é verdade</h3>
+  <p><strong>Escassez:</strong> a única legítima é temporal (preço de lançamento sobe pra tabela). <strong>Nada de "X vagas"</strong> — o Marcelo matou isso de propósito. <em>(A validar: se o Setup Concierge tem teto real de onboarding/semana, "a fila do concierge" seria escassez honesta — usar SÓ se for verdade.)</em></p>
+  <p><strong>Urgência (duas honestas):</strong> (1) <strong>a hemorragia</strong> — "quem sumiu há 40 dias volta fácil; há 6 meses, raramente. Cada semana o seu Raio-X encolhe."; (2) <strong>o preço</strong> — "o valor de agora é o de lançamento e sobe em breve".</p>
+
+  <h3><span class="tag">[NOME MÁGICO]</span> — MAGIC naming</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Peça</th><th>Proposta</th><th>Racional</th></tr></thead>
+    <tbody>
+      <tr><td>Nome do método/oferta</td><td><strong>"Cliente de Volta"</strong></td><td>Container = método; outcome = cliente de volta. O sonho em 3 palavras (já tem equity na LP).</td></tr>
+      <tr><td>Tagline</td><td><em>"O sistema que traz sua cliente de volta pelo seu WhatsApp — em 5 min/dia."</em></td><td>sonho + esforço-baixo + canal dela</td></tr>
+      <tr><td>Nome do hook</td><td><strong>"Raio-X da Carteira"</strong></td><td>ver o escondido (o dinheiro parado). Power word, curioso, específico.</td></tr>
+      <tr><td>Tiers</td><td>Essencial "Comece a recuperar" · Premium "Recupera e atende sozinho" · Ultra "IA em escala"</td><td>transformação, não tamanho</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Qualifier — "Isso NÃO é pra você se…"</h3>
+  <blockquote><strong>"O Cliente de Volta NÃO é pra você se:</strong> você não atende por horário marcado; não tem histórico de clientes no seu WhatsApp; ou quer que o sistema dispare mensagem <strong>sem você aprovar</strong> — porque aqui <strong>nada sai sem o seu ok</strong>. É pra quem tem carteira (mesmo pequena) e quer parar de perder cliente que já é sua."</blockquote>
+
+  <h3>A oferta em uma página (stack slide)</h3>
+  <p style="font-size:13px;color:var(--muted)">Números entre <code>[…]</code> vêm de <code>public_plans</code> em runtime — não hardcodar na copy de produção.</p>
+  <pre class="slide"><b>CLIENTE DE VOLTA — NexvyBeauty</b>
+O sistema que traz sua cliente sumida de volta pelo seu
+próprio WhatsApp, em 5 minutos por dia, sem gastar com anúncio.
+
+Pra: profissional da beleza que atende por horário marcado
+
+<b>A PROVA (antes de pagar um real):</b>
+🔍 RAIO-X DA CARTEIRA — te mostramos na tela quantas clientes
+   sumiram, quem são e quanto valem em R$. Você decide DEPOIS.
+   (sem pedir senha nem acesso ao seu WhatsApp)
+
+<b>O QUE VOCÊ RECEBE:</b>
+✓ 📡 Radar de Recuperação — a lista de quem sumiu, toda semana
+✓ 💬 A IA que Atende por Você — responde, qualifica e reativa
+✓ 📅 Carteira + Agenda + Painel — fim do caderno
+✓ 🤖 4 Automações 24/7 — aniversário, lembrete, pacote, cliente sumida
+✓ ✍️ Mensagem no Seu Tom — a IA escreve; você aprova em 1 clique
+✓ 🛠️ Setup Concierge de 30 min — configuramos tudo, no seu número
+
+<b>BÔNUS (cada um mata um medo):</b>
++ 🛡️ Blindagem do WhatsApp   + ✅ Garantia do Seu Tom
++ 🌱 Roadmap Vivo            + ⚖️ 7 Dias da Lei do Seu Lado
+
+<b>A GENTE NÃO TE PROMETE — TE MOSTRA.</b> Não fechou? Apaga em 72h.
+
+<b>A CONTA QUE FECHA:</b>
+VOCÊ PERDE HOJE:  [o R$ do seu Raio-X]  (ex.: R$2.760/mês = R$33 mil/ano)
+O SISTEMA CUSTA:  [preço de lançamento] (de [tabela] por [lançamento])
+VOCÊ RECUPERA:    2-3 clientes de volta e ele já se pagou
+NO ANUAL:         2 meses por nossa conta
+
+<b>PRÓXIMO PASSO:</b> Responde "quero" e a gente monta o seu Raio-X.
+Grátis, sem compromisso, sem acesso ao seu WhatsApp.</pre>
+</section>
+
+<section id="s4">
+  <h2><span class="num">4</span> Objeções × rebatidas — embutidas na oferta</h2>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Objeção</th><th>Onde responde</th><th>Rebatida (1 linha)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>"É golpe? Vão mexer no meu WhatsApp?"</strong></td><td>Bônus 🛡️ + reversão</td><td>"Não pedimos senha nem acesso — levantamos do nosso lado. Ativou? É o seu número, você no controle."</td></tr>
+      <tr><td><strong>"Vão achar robô"</strong></td><td>Bônus ✅ + ✍️</td><td>"Nada sai sem você aprovar — no seu tom, com o nome dela."</td></tr>
+      <tr><td>"Vai funcionar? / já me enganaram"</td><td>🔍 Raio-X</td><td>"Você vê o R$ na tela antes de pagar. É prova, não promessa."</td></tr>
+      <tr><td>"Tá caro / não sei se vale"</td><td>Ancoragem + conta por nicho</td><td>"Você perde R$X/mês; o plano custa [preço]. Recuperar 2 clientes já paga."</td></tr>
+      <tr><td>"Me deixa pensar"</td><td>Urgência da hemorragia</td><td>"Sem pressão falsa — mas cada semana seu Raio-X encolhe, e o lançamento sobe."</td></tr>
+      <tr><td>"Vai me dar trabalho / não sei mexer"</td><td>🛠️ Setup Concierge</td><td>"A gente configura tudo. 5 min/dia, você só aprova."</td></tr>
+      <tr><td>"Já uso WhatsApp Business + agenda"</td><td>📅 + copy</td><td>"Mesmo número, mesmo WhatsApp — a gente turbina, não troca."</td></tr>
+      <tr><td>"E se eu me arrepender?"</td><td>Bônus ⚖️ 7 dias CDC</td><td>"A lei te devolve em 7 dias. Sem letra miúda."</td></tr>
+      <tr><td>"E se faltar automação?"</td><td>Bônus 🌱 Roadmap Vivo</td><td>"Você pede. Serve a todo salão = grátis. Só sua = sob medida."</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">5</span> Antes × depois</h2>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Dimensão</th><th>ANTES</th><th>DEPOIS (Grand Slam)</th></tr></thead>
+    <tbody>
+      <tr><td>Reversão de risco</td><td>demo = etapa de funil</td><td><strong>Raio-X = centro</strong> (anti-garantia + prova própria)</td></tr>
+      <tr><td>Âncora de preço</td><td>de-para 28% (fraco)</td><td><strong>custo de inação ~10x</strong> lidera; de-para + anual = suporte</td></tr>
+      <tr><td>Value stack</td><td>inexistente</td><td><strong>7 componentes nomeados</strong> (core/effort/proof)</td></tr>
+      <tr><td>Bônus</td><td>zero</td><td><strong>4 nomeados</strong>, cada um mata uma objeção</td></tr>
+      <tr><td>Naming</td><td>genérico, sem nome</td><td><strong>"Cliente de Volta"</strong> + <strong>"Raio-X da Carteira"</strong></td></tr>
+      <tr><td>Anual</td><td>invisível</td><td><strong>"2 meses por nossa conta"</strong></td></tr>
+      <tr><td>Urgência</td><td>"sobe em breve" (vaga)</td><td><strong>hemorragia</strong> (Raio-X encolhe) + preço sobe</td></tr>
+      <tr><td>"Cresce com você"</td><td>letra miúda</td><td><strong>Bônus 🌱 Roadmap Vivo</strong> (moat)</td></tr>
+      <tr><td>Qualifier</td><td>inexistente</td><td><strong>"NÃO é pra você se…"</strong></td></tr>
+      <tr><td>Honestidade</td><td>já honesta</td><td><strong>mantida</strong> — zero escassez inventada, zero garantia de performance</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">6</span> Teste Hormozi + checklist de qualidade</h2>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Pergunta do TESTE</th><th>Veredito</th></tr></thead>
+    <tbody>
+      <tr><td>Dá pra comparar com o concorrente?</td><td><span class="em-no">Não</span> — nenhum CRM mostra o R$ dela <strong>antes de pagar</strong> (category-of-one).</td></tr>
+      <tr><td>Valor percebido &gt;&gt; preço?</td><td><span class="em-yes">Sim</span> — custo de inação ~R$33k/ano vs R$3,3k/ano. ~10:1.</td></tr>
+      <tr><td>Risco com quem?</td><td><span class="em-yes">Com a gente</span> — ela vê o número antes de pagar + 7 dias CDC + apaga em 72h.</td></tr>
+      <tr><td>Sentiria burrice em recusar?</td><td><strong>Perto</strong> — recusar um raio-x grátis do próprio dinheiro parado. O atrito que resta é operacional (a fila do Raio-X), não retórico.</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Checklist do squad (HORMOZI-CL-001) — CRÍTICOS:</strong> ✅ Dream outcome visualizável · ✅ Probabilidade com prova · ✅ Grand Slam "burrice dizer não" · ✅ Revenue model explícito · ✅ Next steps específicos. Não-críticos: ✅ risk reversal crível · ✅ escassez lógica não fabricada · ✅ números realistas não fantasia.</p>
+  <p class="center" style="margin-top:18px"><span class="pass">RESULTADO: PASS ✅</span></p>
+</section>
+
+<section id="s7">
+  <h2><span class="num">7</span> O que muda pra entregar — por dono</h2>
+  <p><em>Quase tudo é copy/apresentação (não código, não banco). O produto já entrega; falta empacotar.</em></p>
+
+  <h4>7.1 Copy — sem tocar banco/código (quick win &lt;7 dias)</h4>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Onde</th><th>Mudança</th><th>Dono</th></tr></thead>
+    <tbody>
+      <tr><td>LP (<code>main:SalesPage.tsx</code>)</td><td>Reordenar em torno de "Cliente de Volta" + Raio-X no topo; value stack nomeado; ancoragem "perda dela"; bônus; anual; qualifier</td><td>copy (revisão Marcelo)</td></tr>
+      <tr><td>Prompts Duda/Bia</td><td>Injetar nomes + ancoragem "perda dela primeiro" + o anual</td><td><strong>decisão Marcelo</strong></td></tr>
+      <tr><td><code>platform_crm_products</code></td><td>Nomear componentes/bônus; reversão anti-garantia</td><td><strong>decisão Marcelo</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>7.2 Já pronto no produto (só empacotar)</h4>
+  <p>Raio-X (esteira demo ~65%), Radar, 4 automações, IA que atende, Setup concierge, Carteira/Agenda, de-para de preço, anual, good-better-best, "cresce com você". <strong>Nada novo a construir</strong> — o trabalho é posicionamento.</p>
+
+  <h4>7.3 Decisões do Marcelo (HITL)</h4>
+  <ol>
+    <li><strong>Renomear planos no banco?</strong> Recomendo <strong>não</strong> (acopla LP+agentes+<code>public_plans</code>) — só taglines.</li>
+    <li><strong>"Cliente de Volta"</strong> como nome oficial do método? (tem equity na LP).</li>
+    <li><strong>"Fila do Concierge"</strong> como escassez de capacidade — só se for verdade.</li>
+    <li><strong>Valores de referência do stack</strong> na copy pública — usar/omitir? (Recomendo âncora na perda dela; referências discretas.)</li>
+    <li><strong>Subprecificação:</strong> a 10x-rule sugere que o Essencial pode estar barato; avaliar se a tabela deveria ser mais alta (decisão de negócio).</li>
+    <li>Aplicar qualquer mudança no <strong>live</strong> = OK da controladora + Marcelo.</li>
+  </ol>
+</section>
+
+<section id="s8">
+  <h2><span class="num">8</span> Rodada 2 — Naming segmentado + Ladder de preço</h2>
+  <div class="callout">🗄️ Aterrado no banco LIVE (query read-only 2026-07-16): preços confirmados + <strong>só 1 org ativa (Ultra, provável interna) = efetivamente PRÉ-LANÇAMENTO, sem base pagante.</strong> Rodado por hormozi-squad + 100m-offers + 100m-leads.</div>
+
+  <h3>8.1 Naming — "Cliente de Volta" é estreito demais (o Marcelo acertou)</h3>
+  <p><span class="conftag c-certo">CERTO</span> "Cliente de Volta" nomeia SÓ um dos dois trabalhos: <strong>recuperação</strong> (quem TEM carteira vazando — o Raio-X brilha) e <strong>encher/manter agenda</strong> (quem COMEÇA, ou cuja dor é cadeira vazia/no-show, não churn). Pior: pra iniciante de histórico raso, <strong>o Raio-X volta vazio</strong> ("&lt;5 sumidos → histórico curto") → liderar tudo com Cliente de Volta <strong>se auto-seleciona contra</strong> o iniciante. Mas pro cold outreach (carteira-pesado) o nome é perfeito — então escopa, não mata.</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Camada</th><th>Nome</th><th>Pra quem / papel</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Promessa-mãe</strong></td><td><strong style="color:var(--gold)">"Agenda Cheia"</strong></td><td>todos os segmentos — subsume recuperação + captação + no-show; bate na dor da cadeira vazia</td></tr>
+      <tr><td>Benefício (tagline)</td><td><em>"Agenda cheia é dinheiro no bolso — sem anúncio"</em></td><td>é o "Dinheiro no Bolso" que o Marcelo levantou</td></tr>
+      <tr><td>Lead magnet / prova</td><td><strong>"Raio-X da Carteira"</strong></td><td>quem TEM carteira (cold) — hook killer, escopado</td></tr>
+      <tr><td>Sub-promessas</td><td>"traga sua Cliente de Volta" · "cadeira nunca vazia"</td><td>por segmento (recuperação · iniciante/no-show)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Hormozi: o nome-mãe promete o dream outcome que o <strong>mercado inteiro</strong> compartilha → <strong>Agenda Cheia</strong>. O Raio-X segue como lead magnet "Reveal Problems" (100m-leads) pro segmento onde funciona.</p>
+
+  <h3>8.2 Preço — a direção está certa, mas os multiplicadores QUEBRAM a escada</h3>
+  <p><span class="conftag c-certo">CERTO</span> Subir a tabela: concordo. Mas <strong>2x/1,8x/1,2x invertem/achatam o good-better-best</strong> — matam o decoy:</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Base do multiplicador</th><th>Essencial 2x</th><th>Premium 1,8x</th><th>Ultra 1,2x</th><th>O que quebra</th></tr></thead>
+    <tbody>
+      <tr><td>sobre <strong>lançamento</strong> (275/427/693)</td><td>550</td><td>769</td><td>832</td><td>Premium↔Ultra a <strong>8%</strong> → Ultra vira quase-Premium, decoy morre</td></tr>
+      <tr><td>sobre <strong>tabela atual</strong> (383/599/849)</td><td>766</td><td>1.078</td><td><strong>1.019</strong></td><td><strong>Ultra fica mais barato que Premium</strong> → escada invertida</td></tr>
+    </tbody>
+  </table></div>
+  <p>A lógica é boa ("Essencial é o mais subprecificado vs valor"). Mas <strong>"mais subprecificado vs valor" ≠ "quem pode pagar mais agora"</strong>: o comprador do Essencial é a <strong>solo</strong> (ticket R$50-90, ~R$3-6k/mês) → R$550/mês = 10-18% do faturamento dela. Menor caixa + maior fonte de volume do cold. E com <strong>zero base pagante</strong>, o flywheel (LAIRE-Earn / "o melhor anúncio é um cliente feliz") nem começou — entrada cara estrangula as primeiras histórias de sucesso.</p>
+  <h4>Ladder A (recomendado) — entrada de lançamento intacta, sobe a TABELA com escada limpa</h4>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Tier</th><th>Lançamento (mantém)</th><th>Tabela hoje</th><th>Tabela proposta</th><th>De-para (âncora)</th></tr></thead>
+    <tbody>
+      <tr><td>Essencial</td><td>R$275</td><td>383</td><td><strong style="color:var(--gold)">R$450</strong></td><td>"de 450 por 275" (−39%)</td></tr>
+      <tr><td>Premium ⭐</td><td>R$427</td><td>599</td><td><strong style="color:var(--gold)">R$720</strong></td><td>"de 720 por 427" (−41%)</td></tr>
+      <tr><td>Ultra</td><td>R$693</td><td>849</td><td><strong style="color:var(--gold)">R$1.190</strong></td><td>"de 1.190 por 693" (−42%)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Escada 450:720:1.190 = <strong>1 : 1,6 : 2,64</strong> ✅ (Premium = meio inteligente; Ultra claramente premium — voz IA + API justificam). De-para de 39-42% (vs 28% hoje) = <strong>âncora + urgência mais fortes</strong>. Anual segue ×10 (2 meses grátis).</p>
+  <p><strong>Ladder B (se dobrar a entrada):</strong> Essencial 550 / Premium <strong>850</strong> / Ultra <strong>1.290</strong> (1 : 1,55 : 2,35 ✅ — a escada sobe junto). Custo: no salto lançamento→tabela a solo paga 550 → mitiga com grandfather do cohort.</p>
+  <blockquote class="risk"><strong>"Vamos conseguir mostrar o valor?"</strong> <span class="conftag c-certo">CERTO</span> SIM — a âncora é o <strong>custo de inação</strong> (o Raio-X, ~R$33k/ano), não a etiqueta. Essencial a 450 = 5.400/ano = <strong>~6:1</strong>. O teto real não é justificar valor — é o <strong>caixa da solo na entrada</strong>. Por isso: sobe a TABELA, mantém a ENTRADA de lançamento acessível agora.</blockquote>
+  <p style="font-size:13px;color:var(--muted)"><strong>HITL:</strong> aplicar reajuste = write em <code>platform_plans</code> (+ recriar view se tocar colunas) = decisão do Marcelo + controladora. Nada aplicado nesta sessão (READ-ONLY).</p>
+</section>
+
+<section id="s9">
+  <h2><span class="num">9</span> Script de Oferta Unificado</h2>
+  <div class="callout"><strong>Resposta à pergunta do Marcelo:</strong> sim, as duas promessas cabem no MESMO script — como <strong>outcome + mecanismo</strong>. "Agenda Cheia" é o destino (serve todos); "Cliente de Volta" (via Raio-X) é o caminho mais rápido pra chegar lá (mecanismo/prova). O iniciante é pego no passo 4. <strong>Ladder A aprovada pelo Marcelo</strong> (2026-07-16) — aplicar = HITL pendente.</div>
+  <blockquote class="dream"><span class="big">"Agenda cheia começa pelas clientes que você já tem."</span> — a linha que casa as duas promessas.</blockquote>
+  <pre class="slide"><b>[1 · Promessa-mãe — Agenda Cheia]</b>
+Toda profissional de beleza quer a mesma coisa: agenda cheia e
+dinheiro no bolso — sem depender de anúncio e sem virar refém do celular.
+
+<b>[2 · Mecanismo surpresa → Cliente de Volta]</b>
+E o caminho mais rápido pra encher a agenda não é caçar cliente nova.
+É trazer de volta as que já foram suas e sumiram. Elas já te conhecem,
+já confiam, já gastaram com você — dinheiro que já era seu, parado no
+seu WhatsApp.
+
+<b>[3 · Prova → Raio-X da Carteira]</b>
+E a gente te mostra exatamente quanto: o Raio-X da Carteira varre o seu
+WhatsApp e mostra quantas clientes sumiram, quem são e quanto valem em
+R$ — antes de você pagar um real.
+
+<b>[4 · Alarga pro iniciante/no-show — ainda Agenda Cheia]</b>
+Está começando e a carteira ainda é pequena? A agenda enche pela frente
+também: a IA que atende e qualifica, o lembrete que mata a falta (o
+no-show que rouba a sua cadeira) e as automações 24/7. Do jeito que a
+sua carteira estiver, a agenda enche.
+
+<b>[5 · Reversão de risco]</b>
+A gente não te promete — te mostra. Você decide depois de ver o número.
+Não fez sentido? Fica com o Raio-X de brinde e apagamos tudo em 72h.
+
+<b>[6 · Preço ancorado na perda (escada A)]</b>
+Você está perdendo [o R$ do seu Raio-X] por mês. O sistema custa
+[preço de lançamento] — de [preço de tabela] (sobe em breve). Recuperar
+2-3 clientes já paga. No anual, 2 meses por nossa conta.
+
+<b>[7 · Fechamento — casa as duas promessas]</b>
+Agenda cheia começa pelas clientes que você já tem. Responde "quero"
+que eu monto o seu Raio-X — grátis, sem acesso ao seu WhatsApp.</pre>
+  <p style="font-size:13px;color:var(--muted)"><strong>Nuance de canal:</strong> na LP começa no passo 1 (Agenda Cheia); no cold outreach ao <code>salao_cliente</code> (carteira-pesado) pode ABRIR direto no passo 2/3 (Cliente de Volta) e voltar pra "agenda cheia" no fechamento.</p>
+  <h4>Pronto pra aplicar a Ladder A (quando derem GO — write em prod, HITL)</h4>
+  <pre class="slide">-- Sobe SÓ a tabela (list_price_monthly). Lançamento intocado.
+-- A coluna já existe na view public_plans → NÃO precisa recriar a view.
+UPDATE public.platform_plans SET list_price_monthly = 450  WHERE slug = 'starter'; -- Essencial
+UPDATE public.platform_plans SET list_price_monthly = 720  WHERE slug = 'pro';     -- Premium
+UPDATE public.platform_plans SET list_price_monthly = 1190 WHERE slug = 'premium'; -- Ultra
+-- check: SELECT slug, price_monthly, list_price_monthly FROM public_plans WHERE is_public;</pre>
+</section>
+
+<section class="plain">
+  <h3>Anexo — regras respeitadas &amp; preços LIVE</h3>
+  <ul>
+    <li>✅ Preço = <code>public_plans</code> runtime; zero número hardcoded na copy de produção.</li>
+    <li>✅ Escassez só temporal-honesta; nenhuma "vaga/fundadora".</li>
+    <li>✅ Sem garantia de performance/devolução; reversão = Raio-X + CDC 7 dias + apagamento 72h.</li>
+    <li>✅ 3 tiers reforçados (Premium "Mais escolhido" = decoy); nenhum 4º plano inventado.</li>
+    <li>✅ READ-ONLY em prod — nada aplicado.</li>
+  </ul>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Plano</th><th>slug</th><th>Lançamento</th><th>Tabela</th><th>Anual</th><th>Selo</th></tr></thead>
+    <tbody>
+      <tr><td>Essencial</td><td>starter</td><td>R$275</td><td>R$383</td><td>R$2.750 <em>(~2 meses grátis)</em></td><td>—</td></tr>
+      <tr><td>Premium</td><td>pro</td><td>R$427</td><td>R$599</td><td>R$4.270</td><td><b style="color:var(--gold)">Mais escolhido</b></td></tr>
+      <tr><td>Ultra</td><td>premium</td><td>R$693</td><td>R$849</td><td>R$6.930</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">Teste E2E (R$10) e Trial (R$0) = <code>is_public=false</code> (não vazam). <strong>Fontes:</strong> PACOTE-SUNSET, COLD-OUTREACH-SCRIPT, ESTEIRA-DEMONSTRACAO-BLUEPRINT v2, usePlatformPlans.ts, platform-sales-brain, migration add_list_price, confirmação LIVE da controladora. Frameworks: 100m-offers + clone Hormozi + hormozi-squad.</p>
+</section>
+
+<div class="foot">
+  Análise/design — nada aplicado no banco, código ou deploy. Marcelo decide o que vira copy no live.<br>
+  NexvyBeauty · Grand Slam Offer · 2026-07-16 · pareado com <code>OFERTA-IRRESISTIVEL-NEXVYBEAUTY-2026-07-16.md</code>
+</div>
+
+</main></div>
+</body>
+</html>

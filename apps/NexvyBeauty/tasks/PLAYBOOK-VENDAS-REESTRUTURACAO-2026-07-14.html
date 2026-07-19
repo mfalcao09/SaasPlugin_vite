@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playbook de Vendas NexvyBeauty — Reestruturação Macro · 2026-07-14</title>
+<style>
+  :root{
+    --bg:#0d0f14; --bg2:#141822; --card:#171c28; --card2:#1c2230;
+    --ink:#e6e9f0; --muted:#9aa4b8; --line:#28303f;
+    --rose:#e8a0bf; --rose2:#f3c6d9; --gold:#e6c07a; --mint:#7fd6b0;
+    --red:#ff8a8a; --blue:#8ab4ff; --amber:#ffcf7a;
+    --code:#0a0c11;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0d12,#0d0f14 240px);color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
+  header.hero{padding:52px 22px 30px;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 300px at 20% -10%,rgba(232,160,191,.10),transparent 70%)}
+  header.hero .wrap{padding:0}
+  .kicker{color:var(--rose);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+  h1{font-size:30px;line-height:1.2;margin:.35em 0 .3em;font-weight:800;letter-spacing:-.01em}
+  .meta{color:var(--muted);font-size:14px}
+  .meta code{color:var(--rose2)}
+  h2{font-size:22px;margin:44px 0 14px;padding-top:14px;border-top:1px solid var(--line);font-weight:800;letter-spacing:-.01em}
+  h3{font-size:17px;margin:26px 0 10px;color:var(--rose2);font-weight:700}
+  h4{font-size:15px;margin:18px 0 6px;color:var(--gold);font-weight:700}
+  p{margin:10px 0}
+  a{color:var(--blue);text-decoration:none}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.88em;
+    background:#0a0c11;border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:var(--rose2)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:15px 16px;overflow:auto;margin:12px 0}
+  pre code{background:none;border:0;padding:0;color:#cfe0ff;font-size:12.6px;line-height:1.6;display:block;white-space:pre}
+  strong{color:#fff}
+  em{color:var(--gold);font-style:normal;font-weight:600}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.7px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--card2);color:var(--rose2);font-weight:700;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:18px 0}
+  .callout{border-left:3px solid var(--rose);background:linear-gradient(90deg,rgba(232,160,191,.07),transparent);
+    border-radius:8px;padding:12px 16px;margin:14px 0}
+  .callout.warn{border-left-color:var(--amber);background:linear-gradient(90deg,rgba(255,207,122,.08),transparent)}
+  .callout.danger{border-left-color:var(--red);background:linear-gradient(90deg,rgba(255,138,138,.09),transparent)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:999px;
+    padding:2px 9px;margin-right:6px;vertical-align:middle}
+  .t-certo{background:rgba(127,214,176,.16);color:var(--mint);border:1px solid rgba(127,214,176,.35)}
+  .t-prov{background:rgba(138,180,255,.14);color:var(--blue);border:1px solid rgba(138,180,255,.35)}
+  .toc{columns:2;column-gap:26px;font-size:14px;color:var(--muted)}
+  .toc a{display:block;padding:3px 0}
+  .badge-out{color:var(--red)} .badge-keep{color:var(--mint)} .badge-neut{color:var(--amber)}
+  hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+  .foot{color:var(--muted);font-size:13px;margin-top:36px;font-style:italic}
+  @media(max-width:640px){.toc{columns:1}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">NexvyBeauty · Análise Read-Only · Proposta</div>
+    <h1>Playbook de Vendas — Mapa &amp; Reestruturação Macro</h1>
+    <div class="meta">
+      2026-07-14 · agentes <strong>Duda/Bia</strong> + oferta · Supabase <code>fzhlbwhdejumkyqosuvq</code> · repo <code>apps/NexvyBeauty</code><br>
+      <span style="color:var(--red)">Nada foi aplicado — é proposta. Marcelo decide a partir daqui.</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <strong>Índice</strong>
+    <div class="toc" style="margin-top:8px">
+      <a href="#s0">0 · Resposta desconfortável primeiro</a>
+      <a href="#s1">1 · Código — hardcoded vs banco</a>
+      <a href="#s2">2 · Dados — colunas reais</a>
+      <a href="#s3">3 · Infra — view, planos, goldens</a>
+      <a href="#pa">A · Nova arquitetura do playbook</a>
+      <a href="#pb">B · Reescrita das colunas</a>
+      <a href="#pc">C · Desligar a campanha 30/30/1</a>
+      <a href="#pd">D · Plano de migração</a>
+      <a href="#pe">E · Riscos &amp; ordem de execução</a>
+    </div>
+  </div>
+
+  <!-- 0 -->
+  <h2 id="s0">0 · Resposta desconfortável primeiro</h2>
+
+  <div class="callout danger">
+    <span class="tag t-certo">Certo</span><strong>A oferta antiga NÃO é "texto numa coluna" — está costurada em 5 camadas. Trocar só o banco deixa a Duda se contradizendo.</strong>
+    O "Piloto Fundadora / garantia de devolução / 30 vagas" vive em:
+    <ol style="margin:8px 0 0">
+      <li><strong>Código hardcoded</strong> do <code>platform-sales-brain</code> — a regra 5 cita "Piloto"; a rota se chama <code>oferta_piloto</code>; o bloco de escassez injeta "vagas de fundadora".</li>
+      <li><strong>8 colunas de banco</strong> (6 em <code>platform_crm_products</code> + 2 agentes).</li>
+      <li><strong>View viva</strong> <code>founder_campaign_status</code> + <strong>trava no provisioning</strong> que carimba toda org paga como fundadora.</li>
+      <li><strong>12 goldens de eval</strong> — um deles <em>exige</em> a palavra "garantia".</li>
+      <li><strong>A landing page inteira</strong> (<code>SalesPage.tsx</code>) — o CTA de WhatsApp que abastece a Duda promete "30 vagas / devolvemos 100%".</li>
+    </ol>
+    Data-only deixa o código dizendo "Piloto", a rota <code>oferta_piloto</code>, e a escassez injetando <strong>"restam 30 de 30 vagas de fundadora"</strong> (LIVE agora — <code>campanha_encerrada=false</code>). Precisa ser um pacote: dados + código + view + goldens.
+  </div>
+
+  <div class="callout warn">
+    <span class="tag t-certo">Certo</span><strong>Price-drift já em produção.</strong>
+    As colunas dizem <strong>Essencial R$217 · Premium R$387</strong> e ensinam "R = PR ÷ 217". A fonte-única real (<code>public_plans</code>) é <strong>R$247 / R$391 / R$687</strong>. O modelo recebe âncora velha enquanto o score determinístico usa 247. Consertar no mesmo passe.
+  </div>
+
+  <div class="callout">
+    <span class="tag t-prov">Provável</span><strong>O motor de score QCR-V deve ser MANTIDO.</strong>
+    Ele já ancora no valor (PR = carteira × ticket × 35%) e roteia PLANO, não oferta. A reestruturação é cirúrgica: renomear a rota <code>oferta_piloto</code>, apagar a linguagem de fundadora, desligar a escassez, reescrever as 8 colunas para vender Essencial/Premium/Ultra ancorados na conta da recuperação.
+  </div>
+
+  <!-- 1 -->
+  <h2 id="s1">1 · Código — como o prompt de runtime é montado</h2>
+
+  <h3><code>platform-sales-brain/index.ts</code> — o "cérebro" do WhatsApp de vendas</h3>
+  <p>O <code>systemPrompt</code> é montado nas <strong>linhas 1022-1054</strong>. Anatomia (origem de cada bloco):</p>
+  <table>
+    <thead><tr><th>Bloco</th><th>Origem</th><th>Arquivo:linha</th></tr></thead>
+    <tbody>
+      <tr><td>Identidade / objetivo / tom / instruções adicionais / esquema de qualificação</td><td class="badge-keep">BANCO — <code>platform_crm_product_agents</code></td><td><code>1022-1028</code></td></tr>
+      <tr><td>Memória do lead + score-fato (QCR-V computado em TS)</td><td class="badge-keep">BANCO — <code>leads.metadata</code></td><td><code>298-355</code> → <code>1029</code></td></tr>
+      <tr><td>Bloco de conhecimento do produto</td><td class="badge-keep">BANCO — <code>platform_crm_products</code></td><td><code>157-186</code> → <code>999</code></td></tr>
+      <tr><td><strong>Escassez da campanha fundadora</strong></td><td class="badge-out">VIEW <code>founder_campaign_status</code> + template hardcoded</td><td><code>169-173</code></td></tr>
+      <tr><td>Links de pagamento (a "maquininha")</td><td class="badge-keep">BANCO — <code>public_plans</code></td><td><code>226-234</code>, <code>982-989</code></td></tr>
+      <tr><td><strong>REGRAS INVIOLÁVEIS 1-8</strong> + regras de forma</td><td class="badge-neut">HARDCODED no código</td><td><code>1031-1054</code></td></tr>
+    </tbody>
+  </table>
+
+  <h4>Regras hardcoded com resíduo da oferta antiga</h4>
+  <ul>
+    <li><strong>Regra 5 (<code>:1038</code>)</strong> — cita "Piloto" literal: <em>"…plano de entrada com a conta honesta e <u>convite pro Piloto quando crescer</u>… Trial só se a lead pedir…"</em></li>
+    <li><strong>Regra 2 (<code>:1035</code>)</strong> — já NEUTRA (instrui a NÃO prometer): <em>"Não prometa garantia de devolução…"</em> Só tirar "condições especiais de lançamento".</li>
+    <li><strong>Regra 3 (<code>:1036</code>)</strong> — "Escassez SÓ a real (o dado da campanha acima…)". A "campanha acima" some ao desligar o bloco.</li>
+  </ul>
+
+  <h4>Bloco de escassez — <code>buildKnowledgeContext</code> (<code>:169-173</code>)</h4>
+  <pre><code>CAMPANHA: restam {slots_left} de {total_vagas} vagas de fundadora (dado real do banco…)
+// ou encerrada:
+CAMPANHA: campanha encerrada — as {total_vagas} vagas de fundadora foram preenchidas.
+          NÃO ofertar condições de fundadora.</code></pre>
+
+  <h4>Outros pontos hardcoded</h4>
+  <ul>
+    <li><code>sanitizeReply</code> (<code>:373-391</code>): troca <code>grátis/desconto/promoção</code> por "condições especiais de lançamento" → trocar por reancoragem neutra no valor.</li>
+    <li>Score QCR-V (<code>:505-650</code>): <code>QCRV_ANCHOR_FALLBACK=217</code> (<code>:515</code>, velho — real 247); rota <code>oferta_piloto</code> (tipo <code>:535</code>, decisão <code>:620-623</code>) é resíduo (a guidance de texto já foi neutralizada). <code>resolveAnchor</code> lê 247 de <code>public_plans</code> em runtime — OK.</li>
+    <li><code>ONBOARDING_RULE_BLOCK</code> (<code>:660</code>, modo implantação gated): ainda diz "condição de fundadora".</li>
+  </ul>
+
+  <h3><code>platform-sales-copilot/index.ts</code> — "Sugerir Resposta" do super-admin</h3>
+  <ul>
+    <li>Fallback <code>PLATFORM_KNOWLEDGE_CONTEXT</code> (<code>:40-46</code>) — <span class="badge-keep">já neutro</span>.</li>
+    <li><strong>Mesmo bloco de escassez hardcoded</strong> (<code>:181-185</code>) — precisa do mesmo desligamento.</li>
+    <li>Lê as <strong>mesmas colunas</strong> do produto (<code>:149</code>) → herda a reescrita automaticamente.</li>
+  </ul>
+
+  <h3><code>_shared/cakto-plan-provisioning.ts</code> — a trava</h3>
+  <ul>
+    <li><code>:197-216</code> — na 1ª ativação de org paga, carimba <code>organizations.founder_status</code>. <strong>É esse write que faz <code>slots_left</code> andar.</strong> Non-fatal.</li>
+    <li><code>:228</code> — <code>enabled_modules</code> fixo (não ligado à oferta — não mexer).</li>
+    <li><strong>Impacto de desligar a campanha:</strong> o carimbo vira cosmético. NÃO afeta ativação/billing/welcome/seeds/handoff.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="s2">2 · Dados — colunas reais (trechos citados)</h2>
+  <h3><code>platform_crm_products</code> WHERE slug='nexvybeauty' (id <code>806b5975…</code>)</h3>
+  <table>
+    <thead><tr><th>Coluna</th><th>Conteúdo real (trecho)</th><th>Carrega</th></tr></thead>
+    <tbody>
+      <tr><td><code>guarantee</code></td><td>"<strong>GARANTIA PILOTO FUNDADORA: 30 dias</strong>… se o painel não mostrar valor recuperado maior que a mensalidade, <strong>devolução de 100%</strong>. O painel é o juiz…"</td><td>garantia devolução, Piloto</td></tr>
+      <tr><td><code>discount_policy</code></td><td>"PROIBIDO DESCONTO… <strong>reancorar na garantia</strong>… <strong>Preço travado de fundadora</strong>…"</td><td>garantia, fundadora</td></tr>
+      <tr><td><code>icp</code></td><td>"…QUALIFICAÇÃO: <strong>≥8 meses</strong> E <strong>≥80 clientes</strong>… Sem carteira parada = <strong>não é lead do piloto</strong>."</td><td>Piloto, régua de corte</td></tr>
+      <tr><td><code>pitch_30s</code></td><td>"…<strong>Piloto de 30 dias</strong>: se não recuperar mais que a mensalidade, <strong>devolvemos o dinheiro</strong>."</td><td>Piloto, devolução</td></tr>
+      <tr><td><code>pitch_2min</code></td><td>"…<strong>ESCASSEZ REAL (30/30/1): 30 vagas de fundadora</strong>… <strong>devolvemos 100%</strong>. Vaga do dia não acumula."</td><td>30/30/1, vaga do dia</td></tr>
+      <tr><td><code>objections</code></td><td>"'Vai funcionar?' → <strong>garantia painel-juiz: devolvemos 100%</strong>. 'Tá caro' → <strong>reancorar na garantia</strong>…"</td><td>garantia (6 linhas)</td></tr>
+      <tr><td><code>plans</code></td><td>"Trial (R$0)… <strong>Essencial R$217/mês</strong> · <strong>Premium R$387</strong>… Ultra R$687."</td><td class="badge-out">PREÇO VELHO (real 247/391)</td></tr>
+      <tr><td><code>pricing</code> (JSON)</td><td><code>{"planos":[…217…387…687…]}</code></td><td class="badge-out">PREÇO VELHO</td></tr>
+      <tr><td><code>knowledge_base</code></td><td>≈4 KB: "<strong>OFERTA VIGENTE: PILOTO FUNDADORA 'CLIENTE DE VOLTA' (30/30/1)</strong>… 30 vagas… <strong>garantia individual 30 dias (painel-juiz)</strong>… vaga do dia… <strong>R = PR÷217</strong>… ≥70 → Piloto Fundadora… PLAYBOOK CLOSER — BIA: <strong>garantia painel-juiz ANTES do preço</strong>…"</td><td>tudo</td></tr>
+    </tbody>
+  </table>
+
+  <h3><code>platform_crm_product_agents</code> — Duda + Bia (ativos no WhatsApp)</h3>
+  <p><strong>Duda — SDR Qualificadora</strong> (id <code>577fc770…</code>):</p>
+  <ul>
+    <li><code>primary_objective</code>: "…QCR-V roteia a OFERTA: <strong>&gt;=70 = Piloto Fundadora com a conta personalizada</strong>…"</li>
+    <li><code>additional_prompt</code>: "…escassez só a real (<strong>1 vaga/dia</strong>)… <strong>convite pro Piloto</strong>… Proibido desconto e 'teste gratuito' <strong>para o Piloto</strong>…"</li>
+  </ul>
+  <p><strong>Bia — Closer</strong> (id <code>8b684f7e…</code>):</p>
+  <ul>
+    <li><code>primary_objective</code>: "…<strong>garantia painel-juiz como transferência de risco</strong> + a conta da carteira dele…"</li>
+    <li><code>additional_prompt</code>: "…<strong>Garantia = transferência de risco: 'o risco é meu — se em 30 dias não recuperar… devolvo'</strong>. É a sua arma principal… escassez só a real (<strong>vaga do dia</strong>)…"</li>
+  </ul>
+  <p style="color:var(--muted);font-size:13.5px"><code>prohibited_phrases=[]</code> e <code>qualification_schema=null</code> em ambos — o roteiro vive todo em <code>additional_prompt</code>.</p>
+
+  <!-- 3 -->
+  <h2 id="s3">3 · Infra — view, planos, goldens</h2>
+
+  <h3>View <code>founder_campaign_status</code> (LIVE)</h3>
+  <pre><code>SELECT 30 AS total_vagas,
+  count(*) FILTER (WHERE founder_status='is_founder')                    AS fundadoras_ativas,
+  GREATEST(0, 30 - count(*) FILTER (WHERE founder_status='is_founder'))  AS slots_left,
+  count(*) FILTER (WHERE founder_status='is_founder') >= 30              AS campanha_encerrada
+FROM organizations;</code></pre>
+  <div class="callout warn"><strong>Estado atual:</strong> <code>total_vagas=30 · fundadoras_ativas=0 · slots_left=30 · campanha_encerrada=false</code>.
+  → A Duda está injetando <strong>"restam 30 de 30 vagas de fundadora" agora mesmo</strong>. A campanha nunca foi aposentada no banco; só existe a decisão.</div>
+
+  <h3>Planos — fonte real vs. o que o texto diz</h3>
+  <table>
+    <thead><tr><th>Plano</th><th>slug</th><th><code>public_plans</code> (REAL)</th><th>Texto nas colunas</th></tr></thead>
+    <tbody>
+      <tr><td>Trial</td><td>trial</td><td>R$0 · sem checkout</td><td>R$0</td></tr>
+      <tr><td class="badge-out">Teste E2E ⚠️</td><td>teste</td><td class="badge-out">R$10 · checkout LIVE</td><td>(não citado)</td></tr>
+      <tr><td>Essencial</td><td>starter</td><td><strong>R$247</strong> · pay.cakto/huzxqgr</td><td class="badge-out">R$217 ❌</td></tr>
+      <tr><td>Premium</td><td>pro</td><td><strong>R$391</strong> · pay.cakto/352rvm6</td><td class="badge-out">R$387 ❌</td></tr>
+      <tr><td>Ultra</td><td>premium</td><td><strong>R$687</strong> · pay.cakto/7n2obhs</td><td class="badge-keep">R$687 ✓</td></tr>
+    </tbody>
+  </table>
+  <div class="callout danger"><strong>⚠️ "Teste E2E" (R$10) tem <code>checkout_url</code> vivo em <code>public_plans</code></strong> e o cérebro monta os LINKS DE PAGAMENTO filtrando só por <code>checkout_url</code> presente (<code>:989</code>) → hoje a Duda pode oferecer o link de R$10 a um lead real.</div>
+
+  <h3>Goldens que codificam a oferta antiga (<code>tmp-eval-agents/goldens.ts</code>)</h3>
+  <table>
+    <thead><tr><th>Golden</th><th>O que assere hoje</th><th>Ação</th></tr></thead>
+    <tbody>
+      <tr><td><code>NO_FREE_TRIAL</code> (<code>:87</code>)</td><td>reason: "o <strong>Piloto</strong> é PAGO com garantia"</td><td>Reescrever reason; a assertion fica</td></tr>
+      <tr><td class="badge-out"><code>h_pede_desconto…garantia</code> (<code>:318</code>)</td><td><code>must_contain 'garantia|devolv|risco é meu|recuperar'</code></td><td><strong>Quebra</strong> → trocar por <code>must_contain 'conta|recupera|vale|retorno'</code></td></tr>
+      <tr><td><code>d_ticket_alto_piloto</code> (<code>:219</code>)</td><td>cenário cita "Piloto"</td><td>Renomear cenário → "plano recomendado"</td></tr>
+      <tr><td><code>k_reclamacao_grave</code> (<code>:411</code>)</td><td><code>must_not_contain 'piloto|…'</code></td><td>Manter (inócuo)</td></tr>
+      <tr><td>b · c · e · l</td><td>só cenário</td><td>Limpar textos; assertions OK</td></tr>
+      <tr><td>a · f · g · i · j</td><td>neutros</td><td>Sem mudança</td></tr>
+    </tbody>
+  </table>
+  <p>A régua binária fixa a oferta antiga em ≥2 assertions. Sem atualizar goldens no mesmo PR, o eval fica vermelho e bloqueia.</p>
+
+  <hr>
+
+  <!-- A -->
+  <h2 id="pa">A · Nova arquitetura do playbook</h2>
+  <table>
+    <thead><tr><th>Papel</th><th>Vende</th><th>Ancora em</th><th class="badge-out">Sai</th><th class="badge-keep">Fica neutro</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Duda (SDR)</strong></td><td>Essencial / Premium / Ultra</td><td>conta da recuperação + porte da operação</td><td>Piloto, garantia devolução, 30 vagas, vaga do dia, régua ≥80</td><td>QCR-V, "seu espaço", 1 pergunta/msg, preço do banco</td></tr>
+      <tr><td><strong>Bia (Closer)</strong></td><td>fecha por VALOR o cético</td><td>conta personalizada + prova (demo na carteira) + arrependimento 7 dias</td><td>"garantia painel-juiz / devolvo 100%"</td><td>herdar dossiê, não reapresentar, 12 objeções</td></tr>
+      <tr><td><strong>Mentoria Cofounder</strong></td><td class="badge-out">NÃO entra no playbook</td><td>—</td><td>(LP gated pós-login, só assinantes)</td><td>linha proibida: Duda/Bia nunca mencionam</td></tr>
+    </tbody>
+  </table>
+  <h4>Redução de risco que substitui a garantia-gimmick</h4>
+  <ol>
+    <li><strong>Prova, não promessa:</strong> demo de 20 min na carteira da própria cliente (o R$ dela na tela).</li>
+    <li><strong>Arrependimento legal de 7 dias</strong> (CDC art. 49) — é do checkout, não fala de venda. Mencionar en passant, <strong>nunca</strong> "devolvo se não recuperar".</li>
+    <li><strong>A conta que fecha:</strong> 2-3 clientes de volta pagam a mensalidade — sem prometer devolução.</li>
+  </ol>
+
+  <!-- B -->
+  <h2 id="pb">B · Reescrita sugerida das colunas</h2>
+  <div class="callout"><strong>Regra de ouro:</strong> não hardcodar preço em prosa. Onde hoje diz "R$217", apontar para "a seção LINKS DE PAGAMENTO" (banco). Mata o price-drift de raiz.</div>
+
+  <h4><code>guarantee</code> (não há mais garantia — instruir o que NÃO prometer)</h4>
+  <pre><code>SEM garantia de devolução por resultado. A redução de risco vem da PROVA, não de promessa:
+demonstração de 20 min na carteira da própria cliente (o R$ recuperável dela na tela) + o
+direito de arrependimento de 7 dias do checkout (CDC art. 49). NUNCA prometa "devolvemos o
+dinheiro se não recuperar", "painel-juiz", "risco é nosso" nem devolução condicionada a desempenho.</code></pre>
+
+  <h4><code>discount_policy</code></h4>
+  <pre><code>PROIBIDO desconto — regra inviolável. Se pedirem, reancorar no VALOR: a conta da recuperação
+(2-3 clientes de volta já pagam a mensalidade). Preço = oficial do banco (LINKS DE PAGAMENTO).
+Nunca prometer feature futura. Nunca inventar "preço travado" ou "condição de lançamento".</code></pre>
+
+  <h4><code>icp</code> (tirar a régua de corte)</h4>
+  <pre><code>Profissionais da beleza: lash/nail designer, sobrancelha, podóloga, esteticista, dona de espaço.
+NÃO existe corte de qualificação — pagou é cliente. Carteira grande/ticket alto → Premium/Ultra;
+solo/começando → Essencial. Quem tem carteira aproveita o Radar desde o dia 1; quem começa
+organiza agenda e atendimento e o Radar cresce junto.</code></pre>
+
+  <h4><code>pitch_30s</code></h4>
+  <pre><code>Quem vive de hora marcada perde dinheiro todo mês com cliente que some — e nem vê. O NexvyBeauty
+é uma IA que varre a sua carteira, mostra quem sumiu e quanto vale, escreve a mensagem e dispara
+pelo SEU WhatsApp com 1 clique. Recuperando só 2-3 clientes por mês, o sistema já se paga.</code></pre>
+
+  <h4><code>pitch_2min</code></h4>
+  <pre><code>1. MECANISMO: Radar semanal + 4 automações (aniversário, lembrete 24h, pacote vencendo, sumida).
+2. ESFORÇO ZERO: setup concierge de 30 min, no WhatsApp atual, sem trocar número — ela só aprova.
+3. A CONTA QUE FECHA: Lash (~R$150-250) 1 cliente paga o mês · Nails (~R$50-90) 3 · Sobrancelha
+   (~R$80-150) 2 · Salão/equipe 2-3.
+4. PROVA, NÃO PROMESSA: demo de 20 min na carteira dela — o R$ recuperável na tela antes de decidir.
+5. PLANO PELO PORTE: solo → Essencial; salão/equipe → Premium; operação maior → Ultra.
+   Preço sempre o da seção LINKS DE PAGAMENTO.</code></pre>
+
+  <h4><code>objections</code></h4>
+  <pre><code>"Vai funcionar?" → Demo na carteira DELA: o R$ recuperável na tela. A conta é a prova.
+"Vale?" → A conta: lash 1 cliente paga o mês; nails 3; sobrancelha 2; salão 2-3.
+"Dá trabalho?" → Setup concierge de 30 min; ela só aprova as mensagens.
+"Já uso WhatsApp+agenda" → Não substituímos, turbinamos. Mesmo número.
+"Tá caro / desconto" → NUNCA desconto. Reancora na conta. Nunca prometer devolução.
+"E se eu não gostar?" → Arrependimento de 7 dias do checkout (lei). Nada de devolução por resultado.</code></pre>
+
+  <h4><code>plans</code> / <code>pricing</code></h4>
+  <pre><code>plans:   Essencial (solo) · Premium (salão/equipe) · Ultra (operação maior). Trial (R$0) = teste
+         do produto. PREÇOS sempre na seção LINKS DE PAGAMENTO — nunca inventar/arredondar.
+pricing: {"planos":[{"nome":"Essencial",…247},{"nome":"Premium",…391},{"nome":"Ultra",…687}],
+          "fonte_precos":"public_plans / LINKS DE PAGAMENTO — ler sempre do banco"}</code></pre>
+
+  <h4><code>knowledge_base</code> (remove OFERTA/30-30-1; mantém QCR-V como leitura de VALOR + Bia sem garantia)</h4>
+  <pre><code>═══ POSICIONAMENTO ═══
+Plataforma de gestão + IA de recuperação de carteira. A venda ancora no VALOR. NÃO há "Piloto
+Fundadora", NÃO há garantia de devolução, NÃO há vagas/escassez de campanha. Vendemos os planos
+do catálogo pelo porte da operação e pela conta da recuperação.
+
+═══ QCR-V (Qualificação de Carteira Recuperável — para ESCOLHER o plano) ═══
+PR = clientes históricas × ticket × 35%. Compara PR com a mensalidade para ESCOLHER o plano,
+nunca para negar. Descoberta 1 pergunta/msg: área → tempo → carteira → ticket.
+SCORE 0-100 (roteia o PLANO): D1 Potencial 50 (R = PR ÷ [preço do Essencial do banco]) · D2 Tempo
+20 · D3 Recorrência 15 · D4 Dor 15.
+ROTAS: alto+carteira robusta → Premium/Ultra com a conta · 40-69 → aprofundar · pequena/começando
+→ Essencial honesto (NUNCA "não se encaixa"). Preço sempre de LINKS DE PAGAMENTO.
+
+═══ CLOSER — BIA (fechamento por VALOR) ═══
+Inimigo = INDECISÃO, não "não vê valor". Reduz o medo com PROVA e CONTA, não garantia.
+7 passos: herdar dossiê · reframe · a conta DELA · need-payoff · reduzir risco com PROVA (demo +
+arrependimento 7 dias, NUNCA "devolvo se não recuperar") · recomenda UM plano · link + pós.
+Coerência: preço de LINKS DE PAGAMENTO; ≤300 chars; 1 pergunta/msg; nunca se reapresentar.
+NUNCA mencionar mentoria/Cofounder.</code></pre>
+
+  <h4>Agentes — <code>primary_objective</code> + <code>additional_prompt</code></h4>
+  <p><strong>Duda:</strong> objetivo passa a rotear PLANO (carteira robusta → Premium/Ultra; solo → Essencial), preço da seção LINKS DE PAGAMENTO, "sem Piloto, sem garantia de devolução, sem vagas, sem mentoria". No <code>additional_prompt</code> troca os blocos de fundadora por: redução de risco = demo + arrependimento 7 dias; proibido desconto; nunca mencionar mentoria.</p>
+  <p><strong>Bia:</strong> objetivo vence a indecisão com <strong>prova + conta</strong> (não garantia). No <code>additional_prompt</code>, a linha da garantia vira: <em>"Redução de risco = PROVA: demo de 20 min na carteira dele + arrependimento de 7 dias. NUNCA 'o risco é meu / devolvo se não recuperar / painel-juiz'."</em> O resto (não reapresentar, preço do banco, tom WhatsApp) permanece.</p>
+  <p style="color:var(--muted);font-size:13.5px">Textos completos no <code>.md</code> pareado, §B.</p>
+
+  <!-- C -->
+  <h2 id="pc">C · Desligar a campanha 30/30/1</h2>
+  <p><strong>Recomendado: desligar no CÓDIGO, deixar a view morrer sem consumidor.</strong></p>
+  <ol>
+    <li>Remover a injeção de escassez em <code>platform-sales-brain:169-173</code> <strong>e</strong> <code>platform-sales-copilot:181-185</code> (ou gate por env <code>FOUNDER_CAMPAIGN_ENABLED</code>, default <code>false</code>).</li>
+    <li><code>cakto-plan-provisioning:197-216</code> — neutralizar o write de <code>founder_status</code> (ou deixar; vira cosmético). Não afeta ativação/billing/handoff.</li>
+    <li><code>founder_campaign_status</code> — deixar como view órfã; dropar num passe de limpeza posterior.</li>
+  </ol>
+  <div class="callout warn"><strong>Por que NÃO só mexer na view:</strong> forçar <code>campanha_encerrada=true</code> ainda injeta o template feio "as 30 vagas de fundadora foram preenchidas. NÃO ofertar condições de fundadora" — que continua ensinando ao modelo que existe "condição de fundadora". Tem que sair do código.</div>
+
+  <!-- D -->
+  <h2 id="pd">D · Plano de migração</h2>
+  <h4>D.1 — Forward migration de DADOS: <code>20260714_sunset_piloto_e_novo_playbook.sql</code> (esboço, não aplicar)</h4>
+  <pre><code>BEGIN;
+UPDATE platform_crm_products SET
+  guarantee=$$…§B$$, discount_policy=$$…§B$$, icp=$$…§B$$, pitch_30s=$$…§B$$,
+  pitch_2min=$$…§B$$, objections=$$…§B$$, plans=$$…§B$$,
+  pricing=$${"planos":[{…247},{…391},{…687}],…}$$::jsonb,
+  knowledge_base=$$═══ POSICIONAMENTO ═══ …§B$$, updated_at=now()
+WHERE slug='nexvybeauty';
+
+UPDATE platform_crm_product_agents SET primary_objective=$$…$$, additional_prompt=$$…$$, updated_at=now()
+WHERE id='577fc770-1688-464c-9ff9-46244c9b203b'; -- Duda
+UPDATE platform_crm_product_agents SET primary_objective=$$…$$, additional_prompt=$$…$$, updated_at=now()
+WHERE id='8b684f7e-e7a7-436d-aa48-4817e203ccaf'; -- Bia
+COMMIT;</code></pre>
+  <p style="color:var(--muted);font-size:13.5px">Preferir <code>WHERE id=</code> (ids estáveis capturados nesta análise) a <code>WHERE name ILIKE</code>.</p>
+
+  <h4>D.2 — PR de CÓDIGO companheiro (mesma janela)</h4>
+  <ul>
+    <li><code>platform-sales-brain</code>: remover escassez (<code>:169-173</code>); tirar "Piloto" da regra 5 (<code>:1038</code>); neutralizar <code>sanitizeReply</code> (<code>:381-382</code>) e <code>ONBOARDING_RULE_BLOCK</code> (<code>:660</code>); renomear rota <code>oferta_piloto→premium</code> (<code>:535, :620-623, :341</code>); <code>QCRV_ANCHOR_FALLBACK</code> 217→247 (<code>:515</code>).</li>
+    <li><code>platform-sales-copilot</code>: remover escassez (<code>:181-185</code>).</li>
+    <li>(Opcional) <code>cakto-plan-provisioning</code>: neutralizar <code>founder_status</code> (<code>:197-216</code>).</li>
+  </ul>
+
+  <h4>D.3 — Goldens (mesmo PR)</h4>
+  <ul>
+    <li><code>NO_FREE_TRIAL.reason</code> (<code>:91</code>) — tirar "Piloto/garantia".</li>
+    <li><code>h_pede_desconto…</code> (<code>:318-346</code>) — trocar <code>must_contain 'garantia|devolv…'</code> por <code>'conta|recupera|vale|retorno'</code>.</li>
+    <li><code>d_ticket_alto_piloto</code> (<code>:219</code>) — renomear cenário.</li>
+    <li><code>b · c · e · l</code> — limpar menções a "Piloto" no texto.</li>
+  </ul>
+
+  <!-- E -->
+  <h2 id="pe">E · Riscos &amp; ordem de execução</h2>
+  <table>
+    <thead><tr><th>#</th><th>Risco</th><th>Mitigação</th></tr></thead>
+    <tbody>
+      <tr><td>R1</td><td><strong>Data-only</strong> deixa código dizendo "Piloto" + escassez injetando "30 vagas" → Duda incoerente</td><td>Ship <strong>D.1 + D.2 juntos</strong></td></tr>
+      <tr><td>R2</td><td>Goldens quebram (h exige "garantia") → eval vermelho</td><td>D.3 no mesmo PR; eval verde antes do merge</td></tr>
+      <tr><td class="badge-out">R3</td><td><strong>LP <code>SalesPage.tsx</code> ainda vende Piloto + devolução 100% + 30 vagas</strong> (<code>:1030-1055</code>) — é o CTA que abastece a Duda; lead chega esperando fundadora e a Duda vende outra coisa</td><td>Sunset da LP <strong>em lockstep</strong> (fora do escopo, mas ACOPLADO)</td></tr>
+      <tr><td>R4</td><td>Price-drift reintroduzido se a reescrita hardcodar preço</td><td>Prosa aponta para LINKS DE PAGAMENTO; só o JSON leva número</td></tr>
+      <tr><td class="badge-out">R5</td><td><strong>"Teste E2E" R$10 com checkout vivo</strong> vaza como link ofertável</td><td>Tirar de <code>public_plans</code> ou zerar <code>checkout_url</code></td></tr>
+      <tr><td>R6</td><td>Modo implantação (gated) ainda diz "condição de fundadora" (<code>:660</code>)</td><td>Neutralizar no D.2 (baixa urgência)</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Ordem sugerida (cada passo com check binário)</h4>
+  <ol>
+    <li>Escrever textos novos → <em>check: revisão humana aprova o tom.</em></li>
+    <li>Migration D.1 (staging) → <em>check: <code>SELECT</code> sem "Piloto|fundadora|devolução".</em></li>
+    <li>PR de código D.2 → <em>check: <code>grep -i "fundadora|piloto|vagas"</code> nas 2 functions = 0 matches funcionais.</em></li>
+    <li>Goldens D.3 → <em>check: eval 12/12 verde.</em></li>
+    <li>Sunset LP → <em>check: LP sem "Piloto / devolvemos 100% / 30 vagas".</em></li>
+    <li>(Opcional) provisioning + esconder Teste E2E → <em>check: LINKS DE PAGAMENTO só Essencial/Premium/Ultra.</em></li>
+  </ol>
+
+  <hr>
+  <h2 style="border:0;padding:0">Arquivos-fonte citados</h2>
+  <ul style="font-size:13.5px;color:var(--muted)">
+    <li><code>supabase/functions/platform-sales-brain/index.ts</code></li>
+    <li><code>supabase/functions/platform-sales-copilot/index.ts</code></li>
+    <li><code>supabase/functions/_shared/cakto-plan-provisioning.ts</code></li>
+    <li><code>supabase/functions/tmp-eval-agents/goldens.ts</code></li>
+    <li><code>src/pages/SalesPage.tsx</code> (LP acoplada, fora do escopo)</li>
+    <li>Banco <code>fzhlbwhdejumkyqosuvq</code>: <code>platform_crm_products</code>, <code>platform_crm_product_agents</code>, view <code>founder_campaign_status</code>, <code>platform_plans</code>, <code>public_plans</code></li>
+  </ul>
+
+  <p class="foot">Proposta — nada aplicado, nada commitado. Marcelo decide a partir daqui. · Gerado 2026-07-14.</p>
+
+</div>
+</body>
+</html>

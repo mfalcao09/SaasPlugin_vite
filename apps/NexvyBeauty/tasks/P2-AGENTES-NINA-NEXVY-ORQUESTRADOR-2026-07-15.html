@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2 — Blueprint dos 3 agentes-casca · Nina · Nexvy · Orquestrador · 2026-07-15</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa;--violet:#a78bfa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.62;padding:0 1rem 3rem;max-width:1120px;margin:0 auto}
+  header{padding:2.2rem 0 1.2rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .kicker{color:var(--gold);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase}
+  h1{font-size:1.75rem;color:#fff;margin:.3rem 0 .2rem}
+  h1 .n{color:var(--violet)}
+  .sub{color:var(--muted);font-size:.86rem}
+  .status{display:inline-block;margin-top:.6rem;padding:.2rem .7rem;border-radius:99px;background:#3a2f10;color:var(--yellow);font-size:.78rem;font-weight:600}
+  h2{font-size:1.16rem;color:var(--gold);margin:2.2rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1rem;color:var(--blue);margin:1.4rem 0 .5rem}
+  h4{font-size:.92rem;color:var(--rose);margin:1rem 0 .35rem}
+  p{margin:.55rem 0}
+  blockquote{border-left:3px solid var(--rose);padding:.55rem .9rem;color:var(--muted);margin:.9rem 0;background:var(--panel);border-radius:0 8px 8px 0}
+  blockquote b{color:var(--rose)}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.82rem}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.5rem .6rem;border:1px solid var(--border)}
+  td{padding:.45rem .6rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:.12rem .4rem;border-radius:5px;font-size:.82em;color:var(--rose)}
+  .ok{color:var(--green);font-weight:600}.no{color:var(--red);font-weight:600}.pt{color:var(--yellow);font-weight:600}
+  ul,ol{margin:.5rem 0 .5rem 1.4rem}
+  li{margin:.32rem 0}
+  .wrap{overflow-x:auto}
+  .danger{background:linear-gradient(135deg,#2a1213,#1c0f0f);border:1px solid #5a2f2f;border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .danger b{color:var(--red)}
+  .fact{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:0 10px 10px 0;padding:.7rem 1rem;margin:.7rem 0}
+  .fact b{color:var(--blue)}
+  .check{background:linear-gradient(135deg,#12241a,#0f1c2e);border:1px solid #2f5a40;border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .check b{color:var(--green)}
+  .promptbox{background:#0f151f;border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin:.6rem 0;font-size:.82rem;color:var(--text);white-space:pre-wrap;font-family:ui-monospace,'SF Mono',Menlo,monospace;line-height:1.55}
+  pre{background:#0f151f;border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;overflow-x:auto;font-size:.8rem;line-height:1.6;color:var(--text)}
+  pre code{background:none;color:var(--text);padding:0}
+  .rec{color:var(--green);font-weight:700}
+  .footer{margin-top:2.6rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+  .pill{display:inline-block;padding:.08rem .5rem;border-radius:99px;font-size:.72rem;font-weight:600}
+  .pill.shell{background:#3a2f10;color:var(--yellow)}
+  .pill.ready{background:#0f2a1a;color:var(--green)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">NexvyBeauty · P2 — Tripulação de agentes</div>
+  <h1>BLUEPRINT DOS 3 CASCAS · <span class="n">Nina · Nexvy · Orquestrador</span></h1>
+  <p class="sub">2026-07-15 · READ-ONLY + design · banco fzhlbwhdejumkyqosuvq (só leitura) · roteador platform-sales-brain/index.ts · produto 806b5975…</p>
+  <span class="status">🟡 AGUARDA 3 DECISÕES DO MARCELO (§3) + ação-ponte HOJE (§5)</span>
+</header>
+
+<blockquote><b>A verdade desconfortável primeiro:</b> dos 3 cascas, <b>2 não deveriam existir como "agente que conversa"</b>. Nexvy é redundante com a Lia; Orquestrador não é um bot (é o dispatcher, que já existe em código). Só a <b>Nina (Retenção)</b> é papel novo real. Trate como <b>1 agente a construir (Nina) + 1 gap de disparo (greeting da Lia) + 2 linhas a aposentar</b> — não "3 agentes a preencher".</blockquote>
+
+<h2>Fact-Forcing Gate — 4 fatos verificados via DB + código</h2>
+<div class="fact"><b>Fato 1 — Cascas ATIVOS no WhatsApp com prompt-placeholder.</b> Em <code>platform_crm_product_agents</code>, <code>primary_objective</code> = "Atender o lead conforme o objetivo definido." (44 chars), <code>additional_prompt</code> vazio, criados 2026-07-04. Todos <code>is_active=true</code> <b>e <code>active_in_whatsapp=true</code></b> → entram na agentList do brain.</div>
+<div class="fact"><b>Fato 2 — Roteador é string-match por nome com fallback não-determinístico.</b> <code>isSdrAgent</code> (l.259-263), <code>isCloserAgent</code> (l.266-270), <code>pickSdrPersona</code> (l.273-276) = <code>agents.find(isSdrAgent) ?? agents[0]</code>. A query (l.898-905) <b>não tem ORDER BY</b> → <code>agents[0]</code> é a ordem que o Postgres devolver.</div>
+<div class="fact"><b>Fato 3 — Hoje nenhum casca responde sozinho; risco latente.</b> Com a Duda ativa, <code>pickSdrPersona</code> sempre a acha (por nome, mesmo com agent_type=custom). <code>current_agent_id</code> só é escrito pela linha Duda→Bia (brain l.1234) e Duda→Lia (onboarding-handoff:120). Risco abre se: Duda desativada → <code>agents[0]</code> roleta; pin manual (manual-outreach:296-317); roteador futuro por agent_type.</div>
+<div class="fact"><b>Fato 4 — "Resposta vazia" é premissa errada: seria voz genérica com nome de bastidor.</b> O systemPrompt (l.1021-1053) sempre injeta nome + REGRAS INVIOLÁVEIS hardcoded. Um casca pinado responderia como vendedora genérica assinando "Orquestrador Cliente-de-Volta" no número oficial — <b>pior que vazio</b>. O guard l.912-916 só protege quando NÃO há persona alguma.</div>
+
+<h2>1. Estado real dos 3 agentes + o bug</h2>
+<div class="wrap">
+<table>
+  <tr><th>Agente</th><th>ID</th><th>agent_type</th><th>active_wa</th><th>obj / prompt</th><th>Situação</th></tr>
+  <tr><td>Duda — SDR Qualificadora</td><td><code>577fc770…3b</code></td><td>custom</td><td class="ok">✅</td><td>630 / 1790</td><td><span class="pill ready">pronta (SDR)</span></td></tr>
+  <tr><td>Bia — Closer</td><td><code>8b684f7e…af</code></td><td>closer</td><td class="ok">✅</td><td>481 / 1589</td><td><span class="pill ready">pronta (closer)</span></td></tr>
+  <tr><td>Lia · Implantação</td><td><code>927fe936…9b</code></td><td>support</td><td class="ok">✅</td><td>238 / 1222</td><td><span class="pill ready">pronta (CS · pin P10)</span></td></tr>
+  <tr><td><b>Nina — Sucesso, Suporte &amp; Retenção</b></td><td><code>d925bb6e…33</code></td><td>custom</td><td class="pt">✅</td><td class="no">44 / 0</td><td><span class="pill shell">casca</span></td></tr>
+  <tr><td><b>Nexvy — Ativação Pós-Venda</b></td><td><code>48aa225c…ea</code></td><td>custom</td><td class="pt">✅</td><td class="no">44 / 0</td><td><span class="pill shell">casca</span></td></tr>
+  <tr><td><b>Orquestrador Cliente-de-Volta</b></td><td><code>d54ea78d…3a</code></td><td>custom</td><td class="pt">✅</td><td class="no">44 / 0</td><td><span class="pill shell">casca</span></td></tr>
+</table>
+</div>
+
+<div class="danger">
+<b>O bug, mecânica exata.</b> O brain carrega TODOS os agentes <code>is_active + active_in_whatsapp</code> do produto — os 3 cascas incluídos. O que os impede de falar hoje é frágil:
+<ol>
+<li><b>Fallback <code>agents[0]</code> (l.275):</b> enquanto a Duda casar <code>isSdrAgent</code>, o <code>?? agents[0]</code> está morto. Desative/renomeie a Duda e, <b>sem ORDER BY</b>, <code>agents[0]</code> vira roleta — pode cair em Nina/Nexvy/Orquestrador.</li>
+<li><b>Pin por <code>current_agent_id</code> (l.289-291):</b> algo escreve <code>current_agent_id = casca.id</code> (transferência manual, manual-outreach) → o casca fala.</li>
+<li><b>Resultado:</b> no número <b>oficial de vendas</b>, um agente de retenção — ou o literal "Orquestrador Cliente-de-Volta" — responde uma lead com objetivo nulo e voz genérica. Queima de marca, não erro silencioso.</li>
+</ol>
+<b>O bug não está armado hoje, mas está carregado.</b> <code>active_in_whatsapp=true</code> em casca sem prompt é arma engatilhada apontada pro número oficial.
+</div>
+
+<h2>2. Papel + prompt proposto (só do que faz sentido construir)</h2>
+
+<h3>2.1 NINA — Sucesso, Suporte &amp; Retenção <span class="ok">✅ CONSTRUIR</span></h3>
+<p><b>Papel real:</b> cuida da cliente que <b>já usa</b> — suporte do dia a dia + detectar risco de churn + salvar renovação. Única das três que ocupa vazio real: pós-implantação a Lia entrega o espaço no ar e some; ninguém acompanha depois.</p>
+<h4>primary_objective (proposto)</h4>
+<div class="promptbox">Cuidar da cliente que já usa o NexvyBeauty: tirar dúvida do dia a dia, destravar o que ela não conseguiu sozinha e, quando aparecer sinal de risco (sumiu, uso caiu, reclamou, renovação chegando), agir pra ela ficar. Objetivo: cliente ativa e renovando. A venda já aconteceu: PROIBIDO ofertar plano, preço, upgrade ou link. Sempre "seu espaço", nunca "salão". Cobrança/reembolso, bug que não resolvo ou pedido de humano → [ESCALAR_HUMANO].</div>
+<h4>additional_prompt (proposto)</h4>
+<div class="promptbox">VOCE E A NINA — Sucesso e Retenção do NexvyBeauty. A cliente JA e usuaria; voce e quem cuida dela pra ela continuar e renovar.
+
+TOM: proxima e resolvedora, WhatsApp de verdade (ate 300 caracteres, no maximo 1 pergunta por mensagem, max 1 emoji). Micro-ack no que ela disse antes de agir.
+
+QUANDO VOCE ABRE (proativa): voce foi acionada por um SINAL (renovacao chegando, uso caiu, silencio, reclamacao). NAO comece com discurso — puxe pelo cuidado: pergunte como esta indo o espaco dela, ou ofereca ajuda no ponto exato do sinal. Uma mensagem curta e humana.
+
+REGRAS DURAS:
+- A venda ACABOU. PROIBIDO ofertar plano, preco, upgrade, link de pagamento ou fundadora. Retencao NAO e desconto: e resolver a dor e lembrar o valor que ela ja tem.
+- Linguagem NEUTRA: "seu espaco", nunca "salao".
+- UM passo por mensagem. Nada de textao.
+- Cobranca/reembolso, bug que voce nao resolve, cancelamento formal ou pedido de humano -> [ESCALAR_HUMANO].
+- Nunca invente funcionalidade nem prometa prazo fora do conhecimento do produto.
+- Se ela quiser sair, entenda o porque com calma (1 pergunta), resolva o que der, e so entao escale — nunca prometa reembolso/desconto por conta propria.</div>
+<blockquote><b>Nota de engenharia:</b> o brain HOJE só responde a inbound. A Nina proativa (abrir por sinal) exige um <b>disparador novo</b> (Fase 1). O prompt já contempla o modo "abertura proativa".</blockquote>
+
+<h3>2.2 Greeting proativo pós-compra — vai na LIA, não numa "Nexvy"</h3>
+<p>O gap do P10 (Lia só responde à próxima msg) some com um disparo proativo. A Lia <b>já tem no prompt</b> "Primeira fala: dê boas-vindas pela compra" — ela só nunca é acionada. Abertura proativa (mesma voz da Lia, ≤300 chars/bolha):</p>
+<div class="promptbox">Bolha 1: Oi {nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.
+
+Bolha 2: Seu acesso já está no seu e-mail. Quando abrir, me chama aqui que a gente monta tudo junto, um passo por vez. Bora?</div>
+<p>Isso é <b>1 disparador + a Lia</b> — não um segundo agente.</p>
+
+<h3>2.3 Nexvy e Orquestrador — sem prompt de conversa</h3>
+<p>Não escrevo prompt porque a recomendação é <b>não construí-los como personas</b> (§3). Se o Marcelo decidir o contrário, o greeting acima é o que a "Nexvy-greeter" usaria — mas ele pertence à Lia.</p>
+
+<h2>3. Decisões de design que dependem do Marcelo (com recomendação)</h2>
+
+<h3>Decisão A — Nexvy: redundante, greeter ou trial?</h3>
+<div class="wrap">
+<table>
+  <tr><th>Opção</th><th>O que é</th><th>Implicação</th><th>Veredito</th></tr>
+  <tr><td><b>(a) Aposentar</b></td><td>A Lia cobre a ativação; Nexvy sai do ar</td><td>1 persona a menos; gap do P10 resolvido via disparo na Lia</td><td class="rec">✅ RECOMENDADO</td></tr>
+  <tr><td>(b) Greeter proativo</td><td>Nexvy dá o "oi" e passa pra Lia</td><td>2 agentes pra 1 job; <b>não resolve</b> o gap (o gap é disparo, não persona)</td><td class="no">❌</td></tr>
+  <tr><td>(c) Trial/self-service</td><td>Compra direta sem SDR</td><td>Papel legítimo, mas <b>não há fluxo de trial hoje</b></td><td class="pt">⏸️ futuro</td></tr>
+</table>
+</div>
+<p><b>Recomendação:</b> <span class="rec">(a)</span>. O gap do P10 é de disparo — resolve na Lia. Guarde o nome "Nexvy" pro dia do self-service/trial (opção c).</p>
+
+<h3>Decisão B — Nina: qual gatilho de saúde-de-conta?</h3>
+<p>Não há cron de saúde na plataforma hoje. Desenho proposto:</p>
+<ul>
+<li><b>Motor:</b> <code>pg_cron</code> diário (ex.: 09:00) → edge <code>nina-health-scan</code> varre contas provisionadas e classifica risco.</li>
+<li><b>Sinais (ordem de dor):</b> (1) renovação em <b>D-X</b> (ex.: D-7); (2) queda de uso (sem login/agendamentos em N dias); (3) silêncio (X dias); (4) reclamação (tag/escalada recente).</li>
+<li><b>Ação:</b> abre/reusa a conversa, pina <code>current_agent_id = nina.id</code> e dispara <b>1</b> msg proativa (mesma infra do greeting da Lia — construir uma vez).</li>
+<li><b>Onde plugar:</b> <code>pg_cron</code> → edge → disparador proativo compartilhado. <b>Não</b> webhook (webhook é reativo; saúde é proativa por tempo).</li>
+</ul>
+<p><b>Recomendação:</b> começar SÓ com o sinal (1) <b>renovação D-7</b> (maior ROI, menor ruído). Uso/silêncio/reclamação numa 2ª iteração, após medir falso-positivo.</p>
+<blockquote>⚠️ <b>Verificar antes de codar:</b> onde vive o ciclo/renovação do tenant (Cakto / <code>subscriptions</code> / <code>organizations</code>) e o sinal de "uso" (login/agendamentos). Não inferir — checar no schema (§8.1 CLAUDE.md).</blockquote>
+
+<h3>Decisão C — Orquestrador: migrar o roteador agora ou depois?</h3>
+<p><b>O que ele realmente é:</b> o dispatcher que decide quem fala. <b>Já existe</b> em <code>pickPersonaForConversation</code>; o estado por conversa já vive em <code>current_agent_id</code>. A linha-persona é categoria errada e o nome <b>colide</b> com a reativação do TENANT (<code>organization_orchestrator_config</code> + <code>orchestrator_state</code>, tabela <code>product_agents</code> — mundo diferente).</p>
+<p><b>Migração desenhada (nome→agent_type), se/quando valer:</b></p>
+<ul>
+<li><b>Alvo:</b> <code>agent_type ∈ {ldr, bdr, sdr, closer, activation, cs, retention, portfolio}</code>. Sem CHECK constraint hoje (varchar livre) — viável sem DDL de constraint.</li>
+<li><b>Estados (lead.stage → agente):</b> novo→sdr (Duda) · qualificado_cetico→closer (Bia) · comprou→cs (Lia, pin) · ativo_em_risco→retention (Nina).</li>
+<li><b>Backfill:</b> Duda custom→sdr; Bia mantém closer; Lia support→cs; Nina→retention; Nexvy→activation (ou remover); Orquestrador→remover.</li>
+<li><b>Código:</b> <code>isSdrAgent</code>→<code>agent_type==='sdr'</code> (com fallback ao match-nome na transição). Pontos: pickSdrPersona, pin inicial (l.924), busca do closer no [PASSAR_BIA] (l.1109-1118).</li>
+</ul>
+<p><b>Esforço/risco:</b> médio. O match-por-nome está espalhado em 3-4 pontos e é comprovadamente frágil — a migração da Lia teve que <b>evitar a palavra "duda"</b> porque <code>isSdrAgent</code> faz <code>hay.includes('duda')</code>.</p>
+<p><b>Recomendação:</b> <span class="rec">migrar DEPOIS</span>, atrelado à entrada da Nina (o 4º agente que conversa) — aí há golden suite (<code>tmp-eval-agents</code>) pra provar paridade. <b>Agora:</b> aposentar a linha-casca; o pin já é o dispatcher.</p>
+
+<h2>4. Plano de construção em fases + check binário</h2>
+<div class="wrap">
+<table>
+  <tr><th>Fase</th><th>Entrega</th><th>Check binário</th></tr>
+  <tr><td><b>0 — Ponte (HOJE)</b></td><td><code>active_in_whatsapp=false</code> nos 3 cascas</td><td>Query nos 3 IDs → <code>false</code>; agentList do brain volta a <code>[Duda, Bia, Lia]</code></td></tr>
+  <tr><td><b>1 — Nina</b></td><td>Prompt + <code>pg_cron</code> + edge <code>nina-health-scan</code> + disparador proativo (D-7)</td><td>Cron roda; conta D-7 recebe <b>1</b> msg da Nina; <code>current_agent_id=nina.id</code>; sem D-7 → 0 msgs</td></tr>
+  <tr><td><b>2 — Greeting (Lia)</b></td><td>Disparador proativo no <code>cakto-plan-provisioning</code> pós-handoff</td><td>Compra de teste → cliente recebe boas-vindas da Lia <b>sem</b> mandar msg; segue <code>bot_active</code></td></tr>
+  <tr><td><b>3 — Aposentar Nexvy + Orquestrador</b></td><td>Decisão A e C aplicadas</td><td><code>is_active=false</code> (ou renomeadas); roteador <b>inalterado</b>; eval <code>tmp-eval-agents</code> verde</td></tr>
+  <tr><td><b>4 — (Opcional) Roteador→agent_type</b></td><td>Backfill + troca isSdr/isCloser + estados</td><td>Golden suite verde <b>antes e depois</b>; Duda/Bia/Lia roteiam por agent_type</td></tr>
+</table>
+</div>
+<p><b>Dependências:</b> Fase 0 independente e imediata. Fases 1 e 2 compartilham o <b>disparador proativo</b> (construir uma vez). Fase 4 só depois da Nina. Nada abre sem Review da fase anterior (§14 CLAUDE.md).</p>
+
+<h2>5. Ação-ponte imediata pro bug (o que fazer HOJE)</h2>
+<div class="check">
+<b>Recomendação: kill-switch, não prompt.</b> Dar prompt agora comprometeria com design não decidido. Tirar do WhatsApp é reversível, não bloqueia nada e <b>desarma</b> o <code>agents[0]</code>/pin.
+</div>
+<p>SQL proposto (a executar pelo Marcelo — este doc é READ-ONLY):</p>
+<pre><code>-- Desarma os 3 cascas no número oficial até serem construídos/aposentados.
+update platform_crm_product_agents
+set active_in_whatsapp = false, updated_at = now()
+where id in (
+  'd925bb6e-a506-4644-9995-7a7529113a33',  -- Nina
+  '48aa225c-a09f-4956-b5b7-a9826544eaea',  -- Nexvy
+  'd54ea78d-c0b0-4058-a51f-af38e442d53a'   -- Orquestrador
+);</code></pre>
+<p><b>Check binário:</b> após o update, a query de agentes do brain (<code>is_active AND active_in_whatsapp</code>, produto 806b5975…) retorna exatamente 3 linhas: Duda, Bia, Lia.</p>
+<p><b>Poderia algum casca responder vazio HOJE?</b> Não automaticamente — a Duda intercepta o <code>isSdrAgent</code> e nada pina os cascas. Mas o risco está carregado (Duda desativada → <code>agents[0]</code> roleta; pin manual). A ponte remove o risco em 1 comando, sem efeito colateral.</p>
+
+<div class="footer">
+<b>Review.</b> Prova: 5 queries no banco fzhlbwhdejumkyqosuvq (inventário, colunas, constraints, prompts) + leitura de platform-sales-brain/index.ts (1382 linhas), _shared/onboarding-handoff.ts, platform-meta-whatsapp-webhook/index.ts, grep dos escritores de current_agent_id. IDs e linhas reais.<br>
+Correções de premissa do briefing: (1) "prompt=0" → primary_objective=44 chars placeholder + additional_prompt=0; (2) "resposta vazia" → voz genérica com nome de bastidor (pior que vazio); (3) "main-brain:271" → o fallback real é platform-sales-brain/index.ts:275; (4) o gap do P10 é de disparo proativo, não de persona.<br>
+Fronteira confirmada: Orquestrador de reativação REAL vive no mundo TENANT (product_agents + organization_orchestrator_config), não em platform_crm_product_agents.<br>
+Pendências pro Marcelo: Decisão A (aposentar Nexvy ✅) · B (Nina D-7 primeiro) · C (Orquestrador migrar depois, aposentar linha agora) · executar o SQL-ponte da §5.
+</div>
+
+</body>
+</html>

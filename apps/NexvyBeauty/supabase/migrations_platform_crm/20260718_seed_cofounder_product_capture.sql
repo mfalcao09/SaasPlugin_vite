@@ -1,0 +1,22 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 20260718_seed_cofounder_product_capture.sql — NO-OP (não aplicar / sem efeito)
+--
+-- DESCOBERTA (verificação no banco live fzhlbwhdejumkyqosuvq, 2026-07-18): o
+-- produto Cofounder e TODA a captação JÁ EXISTEM (criados via UI do CRM — por
+-- isso não estavam em nenhuma migration local, e um grep no código não acharia):
+--   • produto   platform_crm_products id=e2e1e85d-25f4-4d1d-8c90-02db2985ad0f (slug 'cofounder')
+--   • pipeline  platform_crm_pipeline_stages (6 stages):
+--               Interessada → Assinou o SaaS → Vaga reservada → Em mentoria →
+--               Concluída (is_won) → Perdida (is_lost)
+--   • form      platform_crm_forms "Interesse Cofounder", slug 'interesse-cofounder', status active
+--
+-- Portanto NÃO há nada a criar. O seed originalmente escrito aqui criaria um
+-- FORM DUPLICADO (slug 'cofounder' ao lado do 'interesse-cofounder' existente) —
+-- por isso foi transformado neste NO-OP. O botão "Quero conhecer o Cofounder" do
+-- e-mail de boas-vindas (welcome-admin-access.tsx) aponta para
+-- /f/interesse-cofounder — o formulário que JÁ existe.
+--
+-- Lição: verificar o estado REAL no banco antes de escrever seed/migration —
+-- infra criada por UI vive só no banco, não nas migrations.
+-- ─────────────────────────────────────────────────────────────────────────────
+-- (sem statements — no-op intencional)

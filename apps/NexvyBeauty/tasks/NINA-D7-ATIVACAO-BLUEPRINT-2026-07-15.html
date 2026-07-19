@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint — GATE de ativação da Nina (retenção D-7) · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0e141c; --line:#223041;
+    --ink:#e6edf3; --mut:#93a4b3; --dim:#6b7c8c;
+    --grn:#3fb950; --red:#f85149; --amb:#d29922; --blu:#58a6ff; --pur:#bc8cff;
+    --chip:#1b2430;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.62;font-size:15.5px}
+  .wrap{max-width:960px;margin:0 auto;padding:40px 22px 90px}
+  h1{font-size:26px;line-height:1.25;margin:0 0 6px;letter-spacing:-.2px}
+  h2{font-size:20px;margin:44px 0 12px;padding-top:16px;border-top:1px solid var(--line);letter-spacing:-.2px}
+  h3{font-size:16px;margin:26px 0 8px;color:#cdd8e3}
+  p{margin:10px 0}
+  a{color:var(--blu);text-decoration:none}
+  code{font-family:var(--mono);font-size:.86em;background:var(--chip);padding:1px 6px;border-radius:5px;color:#d7e2ee;border:1px solid #1f2a37}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:12.9px;line-height:1.6;color:#cdd9e5}
+  .meta{color:var(--mut);font-size:13.5px;margin:2px 0}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amb);border-radius:10px;padding:14px 18px;margin:20px 0}
+  .lead.red{border-left-color:var(--red)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;vertical-align:middle;margin-right:4px}
+  .t-certo{background:rgba(63,185,80,.14);color:#56d364;border:1px solid rgba(63,185,80,.3)}
+  .t-prov{background:rgba(88,166,255,.14);color:#79b8ff;border:1px solid rgba(88,166,255,.3)}
+  .t-palp{background:rgba(210,153,34,.14);color:#e3b341;border:1px solid rgba(210,153,34,.3)}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .fact h3{margin-top:0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.6px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:#0f1620;color:#cbd6e2;font-weight:600}
+  tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
+  .ok{color:var(--grn);font-weight:600}
+  .no{color:var(--red);font-weight:600}
+  .warn{color:var(--amb);font-weight:600}
+  ul{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .pill{display:inline-block;background:var(--chip);border:1px solid #223041;border-radius:999px;padding:2px 10px;font-size:12px;color:var(--mut);margin:2px 6px 2px 0;font-family:var(--mono)}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+  .kbd{font-family:var(--mono);font-size:12px;color:#cdd9e5}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Blueprint — Fechar o GATE de ativação da Nina (retenção D-7)</h1>
+  <p class="meta"><strong>Produto:</strong> NexvyBeauty &nbsp;·&nbsp; <strong>Banco:</strong> <code>fzhlbwhdejumkyqosuvq</code> &nbsp;·&nbsp; <strong>Data:</strong> 2026-07-15</p>
+  <p class="meta"><strong>Escopo:</strong> READ-ONLY (nenhum código/banco alterado) &nbsp;·&nbsp; <strong>Modo:</strong> conselheiro — verdade desconfortável primeiro</p>
+
+  <h2>0. Fact-Forcing Gate — os 4 fatos, reverificados AGORA</h2>
+  <div class="lead red">
+    <p>A tarefa pedia "validar o gatilho" presumindo que <strong>só falta o D-7</strong>.</p>
+    <p><span class="tag t-certo">CERTO</span> <strong>Essa premissa está errada — e é a verdade desconfortável.</strong> O gatilho depende de DOIS pré-requisitos. O D-7 é o segundo. O primeiro — <strong>o modo retenção no brain de produção</strong> — <strong>NÃO está em prod</strong>. Ligar a flag hoje faria a Nina <em>vender</em> para quem já comprou (Fato 4).</p>
+  </div>
+
+  <div class="fact">
+    <h3>FATO 1 — Âncora D-7: só existe <code>plan_activated_at</code></h3>
+    <p><code>information_schema</code> de <code>organizations</code> → únicas colunas de plano: <code>cakto_customer_email</code>, <code>cakto_subscription_id</code>, <code>plan_activated_at</code>, <code>plan_id</code>, <code>plan_status</code>. <strong>Não existe</strong> <code>renewal_date</code>/<code>current_period_end</code>/<code>dia_vencimento</code>/<code>cycle</code>. O aviso do executor ("colunas de renovação não versionadas / drift") <strong>confirma-se: nunca existiram</strong>. A data-verdade de renovação existe só em <code>cakto_orders.raw_payload-&gt;subscription-&gt;next_payment_date</code> — nunca promovida a coluna.</p>
+  </div>
+  <div class="fact">
+    <h3>FATO 2 — <code>nina-health-scan</code> está COMPLETO, deployado e inerte</h3>
+    <p><code>list_edge_functions</code> → <strong>ACTIVE, version=1</strong>. <code>cron.job #24</code> <code>0 12 * * *</code> <strong>active=true</strong>. Computa D-7 real, resolve a conversa, pina a Nina, insere a bolha e envia por WhatsApp Cloud — tudo atrás do gate <code>NINA_HEALTH_SCAN_ENABLED != 'true'</code> → <code>{skipped:'flag_off'}</code>. <strong>O cron roda todo dia como no-op.</strong></p>
+  </div>
+  <div class="fact">
+    <h3>FATO 3 — Churn: a v1 NÃO detecta churn; é um timer</h3>
+    <p>O scan aciona só por <strong>tempo</strong> (posição no ciclo). Não lê silêncio, queda de uso nem reclamação. Os dados existem (<code>last_message_at</code>, <code>agendamentos</code>, <code>journey_events</code>) — mas nenhum é usado.</p>
+  </div>
+  <div class="fact">
+    <h3>FATO 4 — Backfill aplicado, mas o BRAIN DEPLOYADO não tem o modo retenção</h3>
+    <ul>
+      <li>Backfill <strong>aplicado em prod</strong>: Nina <code>d925bb6e…</code> = <strong><code>agent_type='retention'</code></strong>, ativa + WhatsApp. <span class="ok">✅</span></li>
+      <li><code>get_edge_function('platform-sales-brain')</code> (<strong>v33</strong>): <code>RETENTION_RULE_BLOCK</code> <span class="no">NÃO</span> · <code>isRetentionAgent</code> <span class="no">NÃO</span> · <code>retentionActive</code> <span class="no">NÃO</span> · ainda tem <code>?? agents[0]</code>. Só tem o modo <em>implantação</em> (Lia).</li>
+      <li><strong>PR-B (retenção) NÃO está em produção.</strong> PR-A <code>284e7d2</code> e PR-B <code>2eeaff5</code> não estão na <code>main</code>; deploy é manual → "em prod" ≠ "na main". O backfill <code>retention</code> está <strong>inerte</strong>.</li>
+    </ul>
+    <p><strong>Risco:</strong> flag ON hoje → Nina pinada → cliente responde → brain v33 não reconhece <code>retention</code>, injeta <code>buildCheckoutContext</code> (links) e vira "atendente de VENDAS". A Nina <strong>ofertaria plano a quem já é cliente</strong> — viola a regra-mãe dela.</p>
+  </div>
+
+  <h2>1. A RESPOSTA do D-7 (âncora + SQL exato)</h2>
+  <h3>1.1 O que dá pra afirmar</h3>
+  <p><span class="tag t-certo">CERTO</span> Dá para computar "faltam 7 dias" — duas âncoras, uma frágil e uma correta:</p>
+  <table>
+    <thead><tr><th>Âncora</th><th>Fonte</th><th>Confiabilidade</th><th>Custo</th></tr></thead>
+    <tbody>
+      <tr><td><strong>(A)</strong> <code>plan_activated_at mod 30 == 23</code> <em>(o scan hoje)</em></td><td><code>organizations.plan_activated_at</code></td><td class="warn">Média — exata só p/ mensal-30</td><td>zero (já codado)</td></tr>
+      <tr><td><strong>(B)</strong> <code>next_payment_date − 7</code></td><td><code>cakto_orders.raw_payload-&gt;subscription</code></td><td class="ok">Alta — data-verdade Cakto; imune a ciclo/anual/dunning</td><td>persistir coluna + trocar <code>computeRenewalPosition</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.2 Por que (A) funciona — e onde quebra</h3>
+  <p><span class="tag t-certo">CERTO</span> A Cakto usa <strong>período fixo de 30 dias</strong> (<code>recurrence_period: 30</code>; no payload de teste <code>paid_at 2026-07-11 → next_payment_date 2026-08-10</code> = +30d). E <code>cakto-plan-provisioning.ts:209</code> grava <code>plan_activated_at = now()</code> em <strong>todo</strong> webhook pago (inclusive renovação — org achada por <code>cakto_customer_email</code>). Logo, para mensal, <code>mod 30 == 23</code> acerta 7 dias antes de cada renovação sem depender de nada externo.</p>
+  <p><span class="tag t-certo">CERTO</span> <strong>Onde quebra:</strong></p>
+  <ul>
+    <li><strong>Planos anuais.</strong> <code>platform_plans</code> tem <code>price_monthly</code> <em>e</em> <code>price_yearly</code>. Oferta anual → <code>recurrence_period=365</code>, mas o env <code>NINA_RENEWAL_CYCLE_DAYS</code> é global (default 30) → dispara ~12x/ano errado.</li>
+    <li><strong><code>plan_activated_at</code> de seed manual.</strong> A única org ("Studio Bella (Teste)", 2026-06-18) não veio da Cakto (<code>cakto_subscription_id</code> NULO) → <code>mod 30</code> vira âncora arbitrária.</li>
+    <li><strong>Dunning/retry</strong> (<code>max_retries:3</code>): renovação atrasada re-ancora e defasa o próximo <code>next_payment_date</code>.</li>
+  </ul>
+
+  <h3>1.3 Recomendação</h3>
+  <p><span class="tag t-prov">PROVÁVEL</span> <strong>Âncora recomendada: (B), antes da base crescer.</strong> Persistir <code>next_payment_date</code>+<code>recurrence_period</code> no provisionamento (dado já chega no <code>raw_payload</code>) e computar <code>D-7 = next_payment_date::date − current_date = 7</code>. Resolve anual e dunning de graça.</p>
+  <p><span class="tag t-certo">CERTO</span> <strong>Para ligar JÁ (v1):</strong> (A) é defensável — se <strong>(i)</strong> nenhuma oferta ativa for anual <strong>e (ii)</strong> a base real for ~0 (é: 1 org de teste). Hoje o scan alcança <strong>0 contas</strong> (<code>days_since=27</code>, <code>27 % 30 = 27 ≠ 23</code>). Risco do D-7 hoje = nulo; o risco real é o Fato 4.</p>
+
+  <h3>1.4 SQL exato</h3>
+  <p><strong>(A)</strong> — verificação do modelo atual (quem o scan pegaria hoje):</p>
+  <pre><code>select o.id, o.name, o.plan_activated_at,
+       floor(extract(epoch from (now() - o.plan_activated_at))/86400)::int      as days_since,
+       floor(extract(epoch from (now() - o.plan_activated_at))/86400)::int % 30 as cycle_pos
+from public.organizations o
+where o.plan_status = 'active'
+  and o.plan_activated_at is not null
+  and floor(extract(epoch from (now() - o.plan_activated_at))/86400)::int % 30 = 30 - 7;  -- targetPos=23
+-- Resultado hoje (2026-07-15): 0 linhas.</code></pre>
+  <p><strong>(B)</strong> — âncora recomendada, lendo a data-verdade já existente:</p>
+  <pre><code>-- Quando next_payment_date for persistido (ex.: organizations.next_renewal_at):
+--   select id, name from public.organizations
+--   where plan_status='active' and (next_renewal_at::date - current_date) = 7;
+
+-- Enquanto não persistido, a fonte crua (por org, último pedido):
+select distinct on (co.organization_id)
+       co.organization_id,
+       (co.raw_payload->'subscription'->>'next_payment_date')::timestamptz as next_payment_date,
+       (co.raw_payload->'subscription'->>'recurrence_period')              as recurrence_period
+from public.cakto_orders co
+where co.scope = 'organization'
+  and co.raw_payload->'subscription' is not null
+order by co.organization_id, co.paid_at desc;
+-- Hoje: 0 linhas úteis (único pedido é scope='platform', organization_id NULL, dado de teste).</code></pre>
+
+  <h2>2. <code>nina-health-scan</code>: o que já faz vs. o que falta</h2>
+  <h3>2.1 O que já faz (completo, deployado, gated)</h3>
+  <ul>
+    <li><strong>Gate</strong>: <code>NINA_HEALTH_SCAN_ENABLED != 'true'</code> → <code>{skipped:'flag_off'}</code>; auth service-role ou <code>x-brain-secret</code> (timing-safe).</li>
+    <li><strong>D-7</strong>: <code>computeRenewalPosition = daysSince(plan_activated_at) % CYCLE</code>; alvo <code>CYCLE-LEAD</code> (30-7=23); <code>CYCLE/LEAD</code> por env.</li>
+    <li><strong>Alvos</strong>: <code>organizations</code> <code>plan_status='active'</code> + <code>plan_activated_at not null</code>, filtradas em JS.</li>
+    <li><strong>Conversa</strong>: <code>provisioned_organization_id</code> (handoff) → fallback <code>cakto_customer_email</code> → <code>leads</code> → conversa.</li>
+    <li><strong>Idempotência</strong>: não reaborda se a Nina já falou (<code>metadata-&gt;&gt;proactive_outreach='nina'</code>) no ciclo (≤1/ciclo).</li>
+    <li><strong>Pin + disparo</strong>: <code>current_agent_id = nina.id</code>; insere bolha; envia WhatsApp Cloud; persiste antes de entregar; non-fatal por conta.</li>
+  </ul>
+  <h3>2.2 O que FALTA (por bloqueio)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Falta</th><th>Bloqueia ligar?</th><th>Onde</th></tr></thead>
+    <tbody>
+      <tr><td>F1</td><td><strong>Brain com modo retenção em prod</strong> (Fato 4)</td><td class="no">SIM — bloqueio duro</td><td><code>platform-sales-brain</code> (PR-B)</td></tr>
+      <tr><td>F2</td><td>Confirmar âncora: mensal-30 <em>ou</em> migrar p/ <code>next_payment_date</code></td><td class="warn">SIM (correção)</td><td><code>computeRenewalPosition</code></td></tr>
+      <tr><td>F3</td><td>Excluir orgs de teste/comp do alvo</td><td class="warn">SIM (falso-positivo hoje)</td><td>filtro em <code>organizations</code></td></tr>
+      <tr><td>F4</td><td>Popular <code>cakto_customer_email</code> / <code>provisioned_organization_id</code> reais</td><td class="warn">Verificar</td><td>provisionamento + handoff</td></tr>
+      <tr><td>F5</td><td>Sinais de churn (silêncio/uso)</td><td>Não (melhoria)</td><td>§3</td></tr>
+      <tr><td>F6</td><td>Hardening do <code>.or()</code> por e-mail</td><td>Não (baixo risco)</td><td>scan</td></tr>
+    </tbody>
+  </table>
+  <p><span class="tag t-certo">CERTO</span> <strong>Não é stub.</strong> O que "falta" não é código do scan — é a <strong>precondição de prod (brain)</strong> e a <strong>decisão de âncora</strong>.</p>
+
+  <h2>3. Sinais de churn viáveis com o dado real</h2>
+  <table>
+    <thead><tr><th>Sinal</th><th>Dado real</th><th>Como</th><th>Confiança</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Silêncio</strong></td><td><code>conversations.last_message_at</code>, <code>.status</code></td><td>dias desde a última msg &gt; limiar</td><td class="ok">Alta</td></tr>
+      <tr><td><strong>Fila parada</strong></td><td><code>conversations.unread_count_agents</code></td><td>salão não responde os próprios clientes</td><td class="warn">Média</td></tr>
+      <tr><td><strong>Queda de uso</strong></td><td><code>agendamentos</code>, <code>booking_*</code></td><td>volume/tendência caindo = largando o produto</td><td class="ok">Alta</td></tr>
+      <tr><td><strong>Jornada</strong></td><td><code>journey_events</code>, <code>post_sale_event_logs</code></td><td>eventos de ativação ausentes</td><td class="warn">Média</td></tr>
+      <tr><td><strong>Reclamação</strong></td><td><code>messages</code> + <code>analyze/evaluate-conversation</code></td><td>sentimento/intenção negativa</td><td class="warn">Média</td></tr>
+    </tbody>
+  </table>
+  <p><span class="tag t-prov">PROVÁVEL</span> v1 sai com o <strong>timer D-7</strong>. "Uso caindo" (agendamentos) e "silêncio" (<code>last_message_at</code>) são os de maior ROI p/ a v2 — dado maduro, não bloqueiam o lançamento.</p>
+
+  <h2>4. Como a Nina é PINADA e conecta ao modo retenção (#68)</h2>
+  <pre><code>nina-health-scan  →  UPDATE conversations SET current_agent_id = nina.id   (PIN determinístico)
+platform-sales-brain:
+   pickPersonaForConversation(agents, current_agent_id)  →  devolve a Nina (pinada)
+   retentionActive = isRetentionAgent(persona)           →  TRUE (agent_type='retention' | nome '%nina%')
+   ⇒ remove buildCheckoutContext (SEM links/preço)
+   ⇒ troca a regra 7 por RETENTION_RULE_BLOCK ("já comprou; NUNCA oferte; cuidar e reancorar no valor")
+   ⇒ systemPrompt: "do time de Sucesso, Suporte e Retenção" (não "atendente de VENDAS")</code></pre>
+  <p><code>isRetentionAgent</code> (<code>_shared/agent-routing.ts</code>) casa por <code>agent_type='retention'</code> (primário) ou nome <code>%nina%/%retenç%</code> (fallback). O backfill já pôs Nina=<code>retention</code>.</p>
+  <div class="lead red">
+    <p><span class="tag t-certo">CERTO</span> <strong>O elo quebrado:</strong> a cadeia não fecha em prod hoje — o brain v33 não tem <code>isRetentionAgent</code>/<code>RETENTION_RULE_BLOCK</code>. O pin funcionaria, mas o brain trataria a Nina como vendedora. <strong>PIN sem modo retenção é pior que nada</strong> — é o vetor exato do risco.</p>
+  </div>
+
+  <h2>5. A ORDEM exata pra ligar a flag com segurança</h2>
+  <pre><code>0. [JÁ FEITO] edge nina-health-scan deployada gated  →  POST retorna {skipped:'flag_off'}          ✅
+0. [JÁ FEITO] cron nina-health-scan-daily ativo       →  cron.job #24 active=true                    ✅
+0. [JÁ FEITO] backfill agent_type                      →  Nina.agent_type='retention'                 ✅  (inerte s/ brain)
+
+1. DEPLOYAR PR-B (modo retenção no brain) em produção
+   check: brain deployado contém RETENTION_RULE_BLOCK E isRetentionAgent
+          E NÃO contém "?? agents[0]"                                                    ☐ HOJE: FALHA (v33)
+
+2. CONFIRMAR a âncora D-7 contra o billing real
+   check-a: nenhuma oferta ativa é anual (só price_monthly)  — OU
+   check-b: computeRenewalPosition migrado p/ next_payment_date (recomendado)           ☐
+
+3. EXCLUIR alvos indevidos (teste/complimentary/interno)
+   check: a query §1.4-A não retorna "Studio Bella (Teste)" nem subs is_complimentary   ☐
+
+4. SMOKE controlado com a flag AINDA OFF
+   check: invocar nina-health-scan manualmente; `due`/`reached` = esperado (hoje due=0)  ☐
+
+5. SÓ ENTÃO: NINA_HEALTH_SCAN_ENABLED = true
+   check: 1ª coorte real recebe 1 bolha; conversa pinada; resposta entra em MODO RETENÇÃO ☐</code></pre>
+  <p><strong>A trava é o Passo 1.</strong> Passos 2–4 são baratos. O Passo 1 é o que a premissa da tarefa presumia pronto e <strong>não está</strong>.</p>
+
+  <h2>6. Decisões pro Marcelo</h2>
+  <ul>
+    <li><strong>D1 — Âncora D-7 (decisão central).</strong> <span class="tag t-prov">PROVÁVEL</span> Recomendo <strong>persistir <code>next_payment_date</code>/<code>recurrence_period</code></strong> no provisionamento e computar <code>D-7 = next_payment_date − 7</code>. Curto prazo: manter <code>mod 30</code> só se <strong>nenhuma oferta ativa for anual</strong>. Qual caminho?</li>
+    <li><strong>D2 — Ordem inegociável.</strong> <span class="tag t-certo">CERTO</span> O brain do PR-B <strong>precisa ir a prod ANTES</strong> de <code>NINA_HEALTH_SCAN_ENABLED=true</code>. O inventário dizia "PR-B GO DADO / enfileirado" — o <strong>código deployado (v33) contradiz</strong>. Confirmar/refazer o deploy do PR-B é o próximo ato real.</li>
+    <li><strong>D3 — Escopo v1.</strong> <span class="tag t-prov">PROVÁVEL</span> Ligar só como <strong>timer D-7</strong> (sem churn) é aceitável p/ MVP. Silêncio + uso entram na v2. Concorda em cortar aqui?</li>
+    <li><strong>D4 — Alvo do scan.</strong> <span class="tag t-certo">CERTO</span> O scan mira <code>plan_status='active'</code> sem excluir <strong>orgs de teste</strong> ("Studio Bella (Teste)") nem <strong><code>is_complimentary</code></strong> → mandaria msg de renovação a quem <strong>não paga</strong>. Precisa de filtro de exclusão antes de ligar.</li>
+    <li><strong>D5 — Dependências do handoff.</strong> <span class="tag t-palp">PALPITE</span> A resolução de conversa depende de <code>provisioned_organization_id</code> ou <code>cakto_customer_email</code>. Na única org ambos são NULOS. Validar que o provisionamento real popula esses campos, senão o scan acha D-7 mas cai em <code>skipped_no_conversation</code>.</li>
+    <li><strong>D6 — Hardening menor.</strong> <span class="tag t-palp">PALPITE</span> Escapar vírgula/parêntese no <code>.or()</code> do fallback por e-mail. Baixo risco; dívida, não bloqueio.</li>
+  </ul>
+
+  <h2>Apêndice — evidências e IDs</h2>
+  <p>
+    <span class="pill">projeto fzhlbwhdejumkyqosuvq</span>
+    <span class="pill">produto slug nexvybeauty</span>
+    <span class="pill">product_id 806b5975-…</span>
+  </p>
+  <ul>
+    <li><strong>Agentes (prod):</strong> Nina <code>d925bb6e-…</code> <code>retention</code> · Duda <code>577fc770-…</code> <code>sdr</code> · Bia <code>8b684f7e-…</code> <code>closer</code> · Lia <code>927fe936-…</code> <code>support</code> (todos ativos + WhatsApp)</li>
+    <li><strong>Única org:</strong> <code>2c88a73e-…</code> "Studio Bella (Teste)", <code>plan_status=active</code>, <code>plan_activated_at=2026-06-18</code>, <code>cakto_subscription_id=NULL</code>, <code>cakto_customer_email=NULL</code></li>
+    <li><strong><code>subscriptions</code></strong> (1 linha): <code>premium/active/monthly</code>, <code>current_period_end=2026-07-18</code>, <strong><code>is_complimentary=true</code></strong>; nenhuma edge escreve nessa tabela — só telas super-admin (<code>SubscriptionsManager.tsx:151</code> = <code>now()+30d</code> manual)</li>
+    <li><strong><code>cakto_orders</code></strong> (1 linha, teste): <code>scope=platform</code>, <code>organization_id=NULL</code>, <code>raw_payload-&gt;subscription</code>: <code>next_payment_date=2026-08-10</code>, <code>recurrence_period=30</code>, <code>current_period=1</code></li>
+    <li><strong>Edges (prod):</strong> <code>nina-health-scan</code> ACTIVE v1 (gated) · <code>platform-sales-brain</code> ACTIVE <strong>v33 sem modo retenção</strong> · <code>cron.job #24 nina-health-scan-daily</code> ativo</li>
+    <li><strong>Git:</strong> PR-A <code>284e7d2</code> e PR-B <code>2eeaff5</code> <strong>não estão na <code>main</code></strong>; deploy manual (desacoplado do merge)</li>
+    <li><strong>Arquivos-chave:</strong> <code>functions/nina-health-scan/index.ts</code> · <code>_shared/agent-routing.ts</code> · <code>_shared/cakto-plan-provisioning.ts:209</code> · <code>platform-sales-brain/index.ts</code> · <code>migrations_platform_crm/20260715_nina_health_scan_cron.sql</code> · <code>20260715_agent_type_backfill.sql</code></li>
+  </ul>
+
+  <div class="foot">
+    Blueprint gerado em investigação READ-ONLY · NexvyBeauty · 2026-07-15 · pareado com <span class="kbd">NINA-D7-ATIVACAO-BLUEPRINT-2026-07-15.md</span>
+  </div>
+
+</div>
+</body>
+</html>

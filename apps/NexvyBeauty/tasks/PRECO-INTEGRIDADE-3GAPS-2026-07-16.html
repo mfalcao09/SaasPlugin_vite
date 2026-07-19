@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integridade de Preço — 3 gaps NexvyBeauty · 2026-07-16</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px}
+  .wrap{max-width:1040px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 4px;color:#fff;letter-spacing:-.02em}
+  h2{font-size:18px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);color:#fff}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:14px}
+  .tl{background:rgba(212,169,78,.08);border:1px solid rgba(212,169,78,.28);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .red{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.32);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .tlwrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel);margin-top:8px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:12.5px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  tr:last-child td{border-bottom:0}
+  code{background:#0b0d11;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;color:#cdd3de}
+  ol,ul{margin:6px 0 0;padding-left:22px}li{margin:5px 0}
+  strong{color:#fff}
+  .g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}
+  .box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💰 Integridade de Preço — 3 gaps (admin · timing · Cakto)</h1>
+  <div class="sub"><strong>2026-07-16</strong> · investigação da controladora (3 threads + síntese, grounded na fonte) · resposta aos 3 gaps da tela Planos</div>
+
+  <div class="red"><strong>TL;DR — a verdade desconfortável.</strong> Dos 3 gaps (admin sem controle · timing manual · link Cakto rançoso), <strong>o único bloqueador de DINHEIRO não estava na lista</strong> — está no provisionamento: <strong>o webhook da Cakto não valida o valor pago.</strong> Quem pagar um preço errado (link velho) é <strong>provisionado no plano cheio, sem alerta.</strong> O resto é cosmético/operacional com 0 base pagante. <strong>Não automatize o flip de preço antes do webhook validar pagamento — é automatizar o lado errado.</strong></div>
+
+  <h2>Estado real do banco (read-only, live)</h2>
+  <div class="tlwrap"><table>
+    <tr><th>Plano</th><th>slug</th><th>Cobrado (price_monthly)</th><th>Tabela (list_price_monthly)</th><th>checkout_url</th><th>is_public</th></tr>
+    <tr><td>Essencial</td><td>starter</td><td>R$ 275</td><td>R$ 383</td><td>pay.cakto.com.br/3dydcfk</td><td class="g">✅</td></tr>
+    <tr><td>Premium</td><td>pro</td><td>R$ 427</td><td>R$ 599</td><td>pay.cakto.com.br/5jyxi6p</td><td class="g">✅</td></tr>
+    <tr><td>Ultra</td><td>premium</td><td>R$ 693</td><td>R$ 849</td><td>pay.cakto.com.br/35saejw</td><td class="g">✅</td></tr>
+    <tr><td>Teste E2E</td><td>teste</td><td>R$ 10</td><td>— (null)</td><td>pay.cakto.com.br/34h7jqp</td><td class="r">❌ (is_active=true → <strong>vaza</strong>)</td></tr>
+    <tr><td>Trial</td><td>trial</td><td>R$ 0</td><td>—</td><td>—</td><td class="r">❌</td></tr>
+  </table></div>
+  <p style="color:var(--muted);font-size:13px"><code>list_price_monthly</code> populado (383/599/849 — a âncora de-para está viva). Ladder A subiria pra 450/720/1190. Cada plano tem <code>cakto_product_id</code> distinto; ofertas novas reusam o mesmo product_id — raiz do gap C.</p>
+
+  <h2>Fonte-da-verdade — quem guarda preço → quem lê → onde diverge</h2>
+  <div class="tlwrap"><table>
+    <tr><th>Preço</th><th>Onde vive</th><th>Quem lê</th><th>Editável no admin?</th><th>Drift</th></tr>
+    <tr><td><strong>Cobrado (lançamento)</strong></td><td><code>platform_plans.price_monthly</code></td><td>view <code>public_plans</code> → LP + sales-brain + wizard</td><td class="g">✅ (PlanFormDialog)</td><td>—</td></tr>
+    <tr><td><strong>Tabela / "de"</strong></td><td><code>list_price_monthly</code></td><td>só <code>public_plans</code> → <strong>só o wizard PlanosStep</strong> renderiza o "de/por"; LP e PlanSelector não</td><td class="r">❌ (sem campo; tipo base nem declara)</td><td>só SQL cru</td></tr>
+    <tr><td><strong>Anual</strong></td><td><code>price_yearly</code></td><td>idem</td><td class="g">✅</td><td>não auto-deriva</td></tr>
+    <tr><td><strong>Deadline</strong></td><td><code>launch_price_ends_at</code> (proposto)</td><td><strong>ninguém</strong> — 0 consumidores</td><td class="r">❌</td><td>coluna morta</td></tr>
+    <tr><td><strong>VALOR PAGO</strong></td><td><strong>objeto-oferta DENTRO da Cakto</strong></td><td>comprador via <code>checkout_url</code></td><td>só via <code>cakto-sync-offer</code> (manual)</td><td class="r"><strong>ALTO</strong></td></tr>
+  </table></div>
+  <p style="color:var(--muted);font-size:13px"><strong>Fluxo do dinheiro:</strong> <code>SalesPage.tsx:193</code> manda o comprador pro <code>checkout_url</code> (oferta Cakto). O preço está <strong>congelado dentro da oferta</strong>, nunca é read ao vivo do banco.</p>
+
+  <h2>Os 3 gaps — confirmados na fonte</h2>
+  <div class="box">
+    <p><strong>(a) Admin não controla list_price_monthly nem timing.</strong> <code>PlanFormDialog.tsx</code> expõe só price_monthly/price_yearly/trial_days/grace_period_days. Nenhum input de list_price_monthly; o tipo <code>PlatformPlan</code> nem o declara. Editar = SQL cru. Nenhum campo de data.</p>
+    <p><strong>(b) Timing lançamento→tabela 100% MANUAL — não há motor.</strong> Zero cron/edge/trigger toca pricing. <code>launch_price_ends_at</code> = coluna morta. "sobe em breve" (<code>sales-brain:236</code>) é texto reativo (booleano list_price&gt;price), não countdown.</p>
+    <p><strong>(c) Link Cakto velho nunca se auto-corrige — o gap grave.</strong> <code>cakto-sync-offer:112-129</code>: mudar preço → match por preço exato falha → <strong>cria oferta NOVA</strong>; a antiga fica viva no preço velho pra sempre. O webhook (<code>cakto-plan-provisioning.ts</code>) <strong>não valida amount</strong>: resolve por product_id → <strong>quem pagou o preço velho é provisionado no plano cheio, sem alerta</strong>. Único vestígio: <code>billing_history.amount</code> ao lado de <code>plan.price_monthly</code> — nada compara.</p>
+  </div>
+
+  <h2>Arquitetura recomendada</h2>
+  <div class="tlwrap"><table>
+    <tr><th>Gap</th><th>Fix limpo</th><th>Interino / veredito</th></tr>
+    <tr><td><strong>(a) editar list_price</strong></td><td>campo no tipo + numberField na aba Pricing (~5 linhas) + regen types.ts</td><td>SQL cru (hoje). Trivial.</td></tr>
+    <tr><td><strong>(b) timing</strong></td><td>effective_date + cron diário</td><td class="g"><strong>Runbook manual agora</strong> — 0 clientes, automação = over-engineering. Cron é fast-follow.</td></tr>
+    <tr><td><strong>(c) Cakto</strong></td><td>editar preço da oferta in-place (se API permitir) / checkout dinâmico</td><td class="g"><strong>Validar amount no webhook + desativar oferta antiga no sync</strong> — rede obrigatória, ~10 linhas.</td></tr>
+  </table></div>
+
+  <h2 class="r">Corte de lançamento (0 pagantes hoje)</h2>
+  <div class="red">
+    <strong>🔴 BLOQUEADOR antes do 1º cliente / E2E R$10:</strong>
+    <ol>
+      <li><strong>Validação de amount no webhook</strong> — único gap de perda de receita silenciosa. Barato.</li>
+      <li>Confirmar checkout_url de cada plano aponta pra oferta no preço correto (275/427/693).</li>
+      <li>Fechar o vazamento do Teste E2E (<code>is_active=true</code>).</li>
+    </ol>
+    <p class="y"><strong>🟡 Fast-follow:</strong> campo list_price no admin · effective_date+cron · editar oferta Cakto in-place/checkout dinâmico · regen types.ts · "de/por" na LP+PlanSelector (marketing, não integridade).</p>
+  </div>
+
+  <h2>Decisão do Marcelo (pra construir o fix do webhook)</h2>
+  <div class="tl">Quando alguém paga <strong>menos</strong> que o preço atual (link velho): <strong>rejeitar</strong> (nega acesso — pune quem pagou de boa-fé) ou <strong>provisionar + alertar</strong> (entrega + avisa)? <strong>Meu voto: provisionar + alertar</strong> — negar acesso a quem pagou é pior que a diferença; o alerta te dá controle sem fricção. Confirma?</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P10 — Handoff Duda→Lia · Blueprint de Ativação · 2026-07-15</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2430; --border:#30363d;
+    --fg:#e6edf3; --muted:#8b949e; --accent:#d4a0ff; --accent2:#7ee2b8;
+    --red:#ff7b72; --amber:#f0b849; --green:#56d364; --blue:#79c0ff;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+  header{background:linear-gradient(135deg,#1a1230 0%,#0d1117 70%);border-bottom:1px solid var(--border);padding:44px 0 32px;margin-bottom:36px}
+  h1{font-size:26px;margin:0 0 10px;letter-spacing:-.3px}
+  h1 .p10{color:var(--accent)}
+  .sub{color:var(--muted);font-size:14px}
+  .badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted)}
+  .badge.ro{border-color:#3d2f55;color:var(--accent)}
+  h2{font-size:20px;margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);letter-spacing:-.2px}
+  h3{font-size:16px;margin:26px 0 10px;color:var(--accent2)}
+  p{margin:10px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:2px 6px;border-radius:5px;color:#e3b8ff}
+  pre{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55}
+  pre code{background:none;padding:0;color:#c9d1d9}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px}
+  th{background:var(--bg3);text-align:left;padding:9px 12px;border:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  td{padding:9px 12px;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .ok{color:var(--green);font-weight:600}
+  .no{color:var(--red);font-weight:600}
+  .warn{color:var(--amber);font-weight:600}
+  .tldr{background:linear-gradient(135deg,#1c1528,#161b22);border:1px solid #3d2f55;border-radius:12px;padding:22px 26px;margin:24px 0}
+  .tldr h2{margin-top:0;border:none;padding:0;font-size:17px;color:var(--accent)}
+  .tldr ol{margin:10px 0 0;padding-left:22px}
+  .tldr li{margin:9px 0}
+  .callout{border-left:4px solid var(--amber);background:var(--bg2);border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;font-size:14px}
+  .callout.red{border-left-color:var(--red)}
+  .callout.green{border-left-color:var(--green)}
+  .step{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin:14px 0}
+  .step .n{display:inline-block;background:var(--accent);color:#14091f;font-weight:700;border-radius:8px;padding:1px 10px;margin-right:8px;font-size:13px}
+  .step .check{color:var(--accent2);font-size:13.5px;margin-top:8px}
+  .sev-p0{background:#3d1a1a;color:var(--red);padding:1px 8px;border-radius:6px;font-weight:700;font-size:12px}
+  .sev-alta{background:#3d2a12;color:var(--amber);padding:1px 8px;border-radius:6px;font-weight:700;font-size:12px}
+  .sev-media{background:#25303d;color:var(--blue);padding:1px 8px;border-radius:6px;font-weight:600;font-size:12px}
+  .sev-baixa{background:#15301f;color:var(--green);padding:1px 8px;border-radius:6px;font-size:12px}
+  .foot{margin-top:56px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--border);padding-top:16px}
+  .keep{color:var(--green)} .drop{color:var(--red)}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1><span class="p10">P10</span> — Handoff SDR: Duda → pagamento → Lia no MESMO thread</h1>
+  <div class="sub">Blueprint de ativação em produção · NexvyBeauty · Supabase <code>fzhlbwhdejumkyqosuvq</code> · 2026-07-15</div>
+  <div class="badges">
+    <span class="badge ro">investigação READ-ONLY</span>
+    <span class="badge">nenhum código editado</span>
+    <span class="badge">nada deployado</span>
+    <span class="badge">nenhuma migration aplicada</span>
+  </div>
+</div></header>
+<div class="wrap">
+
+<div class="tldr">
+<h2>TL;DR — a verdade desconfortável primeiro</h2>
+<ol>
+<li><strong>O handoff NÃO está deployado — nem como código morto.</strong> O bundle do <code>cakto-webhook</code> v35 em produção (2026-07-15T00:15, do worktree sunset) <strong>não contém</strong> <code>onboarding-handoff.ts</code>, nem <code>handoffConversationToOnboarding</code>, nem <code>ONBOARDING_HANDOFF_ENABLED</code> (verificado byte a byte via <code>get_edge_function</code>). O shared existe só no repo (origin/main, PR #63).</li>
+<li><strong>Topologia git diferente do esperado:</strong> a main LOCAL (<code>7b446c7</code>) divergiu da origin/main (<code>f63219c</code>) — o local NÃO contém #63 nem #65. O working tree uncommitted difere contra essa base velha, por isso carrega tanto lixo pré-sunset. <strong>O porte nasce de <code>origin/main</code>, nunca da main local nem do working tree inteiro.</strong></li>
+<li><strong>Bug P0 no matching (dados de produção):</strong> o webhook inbound grava <code>visitor_whatsapp</code>/<code>visitor_phone</code> como <code>+55…</code> (<code>platform-meta-whatsapp-webhook/index.ts:185-186</code>), mas <code>phoneVariantsBR</code> gera variantes só-dígitos com match exato <code>.in.()</code> — 3/3 conversas em prod têm <code>+</code>. <strong>O match por telefone erra 100% como está;</strong> só o fallback de e-mail salvaria. Fix trivial, obrigatório no PR do porte.</li>
+<li><strong>O banco está 100% pronto</strong> (migration <code>20260714_onboarding_fase_handoff.sql</code> aplicada e verificada): coluna, índice, 2 RPCs e a Lia seedada e ativa.</li>
+<li>O que falta é cirúrgico: <strong>1 PR (5 hunks + 1 fix) · deploy de 3 edges · 1 secret · 2 smokes. Meio dia a 1 dia.</strong></li>
+</ol>
+</div>
+
+<h2>1) Estado real nas camadas</h2>
+<div class="scroll">
+<table>
+<tr><th>Peça</th><th>origin/main (pós-#65, f63219c)</th><th>Deployado (prod)</th><th>Working tree (uncommitted)</th><th>Banco</th></tr>
+<tr><td><code>_shared/onboarding-handoff.ts</code></td><td class="ok">✅ existe (130 linhas, PR #63)</td><td class="no">❌ ausente do bundle v35 (verificado)</td><td class="no">❌ não existe (base local pré-#63)</td><td>n/a</td></tr>
+<tr><td>Chamada do handoff no <code>cakto-plan-provisioning.ts</code></td><td class="no">❌ não chama (diff vazio vs sunset-wt)</td><td class="no">❌ não chama (v35 = origin/main)</td><td class="ok">✅ import :8 + call :581-598 (gate <code>org_created</code> :569)</td><td>n/a</td></tr>
+<tr><td><code>platform-sales-brain</code> modo implantação</td><td class="no">❌ zero refs (grep vazio)</td><td class="no">❌ idêntico à origin/main (diff = 0)</td><td class="ok">✅ completo (:652-748, :927-958, :996-1001, :1029, :1040)</td><td>n/a</td></tr>
+<tr><td><code>platform-sales-copilot</code></td><td>versão sunset</td><td>v27 = origin/main</td><td class="warn">⚠️ 100% lixo pré-sunset — zero handoff</td><td>n/a</td></tr>
+<tr><td><code>ONBOARDING_HANDOFF_ENABLED</code></td><td>lido só em <code>onboarding-handoff.ts:37</code></td><td class="no">não existe em bundle nenhum</td><td>lido no brain :933-934</td><td>secret não setado (nada o lê hoje)</td></tr>
+<tr><td>Coluna <code>provisioned_organization_id</code></td><td>migration no repo (<code>migrations_platform_crm/20260714…</code>)</td><td>—</td><td>—</td><td class="ok">✅ existe + índice parcial</td></tr>
+<tr><td><code>onboarding_submissions.current_step(_id)</code></td><td>migration no repo</td><td>—</td><td>—</td><td class="ok">✅ 2 colunas</td></tr>
+<tr><td>RPCs <code>set_onboarding_step(_public)</code></td><td>migration; frontend chama (<code>useImplantacao.ts:200-203</code>)</td><td>—</td><td>—</td><td class="ok">✅ ambas existem</td></tr>
+<tr><td>Agente "Lia · Implantação"</td><td>seed na migration</td><td>—</td><td>—</td><td class="ok">✅ <code>927fe936-…</code>, support, active, WA, product nexvybeauty</td></tr>
+<tr><td>Formato <code>visitor_whatsapp</code> em prod</td><td>—</td><td>—</td><td>—</td><td class="warn">⚠️ 3/3 com <code>+</code> (E.164) — quebra o match atual</td></tr>
+</table>
+</div>
+<p><strong>Versões deployadas:</strong> cakto-webhook v35 · platform-sales-brain v30 · platform-sales-copilot v27 (todos 2026-07-15T00:15, sunset-wt). <span class="warn">⚠️ <code>cakto-reprocess-order</code> v30 é de 2026-07-06</span> — também importa o provisioning; entra na lista de redeploy.</p>
+
+<h3>O que a origin/main JÁ resolve sozinha</h3>
+<p><code>ONBOARDING_RULE_BLOCK</code> <strong>não existe</strong> na main; o brain pós-#65 não lê <code>provisioned_organization_id</code>. <strong>A Lia JÁ entra no agentList</strong> (query <code>main-brain:808-815</code>: product_id + is_active + active_in_whatsapp — os três ✓) e o pin (<code>pickPersonaForConversation</code>, :284-294) respeita <code>current_agent_id</code>.</p>
+<div class="callout red"><strong>Mas com o brain ATUAL, uma Lia pinada falaria como BIA:</strong> <code>isSdrAgent</code> (:258-263) e <code>isCloserAgent</code> (:265-270) dão <code>false</code> pra ela → a regra 7 do prompt (:913) cai no ramo "VOCÊ É A BIA (closer de VALOR)", com links de checkout no contexto. <strong>Ordem de ativação importa: deploy do brain ANTES do secret.</strong></div>
+
+<h2>2) O DELTA exato a portar (e o que descartar)</h2>
+<div class="callout"><strong>Estratégia:</strong> branch a partir de <strong>origin/main</strong>. NÃO commitar o working tree — ele reverteria o #65 (reintroduz <code>founder_status</code>, "Piloto Fundadora", QCRV 217, <code>oferta_piloto</code> e <strong>desfaz o R5</strong>: o filtro <code>is_public</code> que impede o "Teste E2E" R$10 de vazar como link ofertável). Copilot e SalesPage.tsx uncommitted: <span class="drop">descartar por inteiro</span>.</div>
+
+<h3>2.1 <code>_shared/cakto-plan-provisioning.ts</code> — 2 hunks <span class="keep">(portar)</span></h3>
+<p><strong>Hunk A — import</strong> (origin/main, após a :7 <code>normalizePhoneBR</code>):</p>
+<pre><code>import { handoffConversationToOnboarding } from './onboarding-handoff.ts';</code></pre>
+<p><strong>Hunk B — chamada</strong> (dentro do <code>if (planRes.org_created) {</code> da :553, logo após o <code>await sendWelcomeWhatsApp(…)</code> que termina na :564):</p>
+<pre><code>    // HANDOFF Duda→CS pós-compra (gated por ONBOARDING_HANDOFF_ENABLED, default
+    // OFF): a conversa de VENDA da compradora passa pro agente de CS/implantação
+    // e ganha o vínculo conversa↔org (provisioned_organization_id) que liga o
+    // modo implantação do platform-sales-brain. Non-fatal por design (a função
+    // nunca lança); try/catch de cinto-e-suspensório — jamais derruba quem pagou.
+    try {
+      const handoff = await handoffConversationToOnboarding(admin, {
+        organizationId: planRes.organization_id,
+        customerPhone: order.customer_phone ?? null,
+        customerEmail: order.customer_email ?? null,
+      });
+      console.log('[cakto-provisioning] onboarding handoff:', JSON.stringify(handoff));
+    } catch (e) {
+      console.warn('[cakto-provisioning] onboarding handoff (non-fatal):', String(e).slice(0, 200));
+    }</code></pre>
+<p class="drop">❌ NÃO portar: hunk F2.4 <code>founder_status</code> (WT :196-215) — superseded pelo #65.</p>
+
+<h3>2.2 <code>platform-sales-brain/index.ts</code> — 4 hunks <span class="keep">(portar)</span></h3>
+<p><strong>Hunk C</strong> — bloco de consts do modo implantação (WT :652-748 inteiro: GATE DUPLO + <code>ONBOARDING_RULE_BLOCK</code> + <code>WIZARD_PAGES</code> [playbook das 9 páginas] + <code>buildOnboardingPhaseContext</code>). Inserir entre a :654 e a :656 (<code>Deno.serve</code>) da origin/main. Adição pura — aplica limpo.</p>
+<p><strong>Hunk D</strong> — passo 7.5 (WT :927-958 inteiro: flag + select de <code>provisioned_organization_id</code> + select de <code>onboarding_submissions</code>). Inserir após o PIN INICIAL (:832-839), antes da :841. Adição pura.</p>
+<p><strong>Hunk E</strong> — supressão de checkout no modo implantação (origin/main :872-874):</p>
+<pre><code>    // MODO IMPLANTAÇÃO: SEM links de pagamento nem regra de preço — a cliente já
+    // comprou. Com onboardingActive=false, a expressão é IDÊNTICA à atual.
+    const knowledgeContext = buildKnowledgeContext(product)
+      + (onboardingActive ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
+      + (plans.length ? PRICE_RULE_BLOCK : ''));</code></pre>
+<div class="callout"><strong>Manter <code>buildKnowledgeContext(product)</code> com 1 argumento</strong> — a versão do WT passa <code>campaign</code> (founder view, morta no #65). Não portar o parâmetro.</div>
+<p><strong>Hunk F</strong> — 2 micro-edits no template do prompt:</p>
+<ul>
+<li>:902 — <code>${leadMemoryContext}${knowledgeContext}</code> → <code>${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}</code></li>
+<li>:913 — envolver o ternário da regra 7: <code>${onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU…` : `7. VOCÊ É A BIA…`}</code> — <strong>preservando o texto sunset da main nos dois ramos</strong> (o WT tem texto velho de Piloto neles; só o wrapper é portável).</li>
+</ul>
+<p class="drop">❌ NÃO portar (brain): headers "funil de fundadoras" · <code>campaign</code>/<code>founder_campaign_status</code> · remoção do de-para <code>list_price_monthly</code> · remoção do filtro <code>is_public</code> (desfaria o R5) · <code>oferta_piloto</code>/QcrRota · <code>QCRV_ANCHOR_FALLBACK=217</code> (main = 275) · sanitizeReply antigo · textos "piloto" da closer.</p>
+
+<h3>2.3 <code>_shared/onboarding-handoff.ts</code> — 1 fix NOVO obrigatório <span class="sev-p0">P0</span></h3>
+<p>O arquivo do #63 está certo de arquitetura, mas o match por telefone <strong>nunca casa</strong> com o formato real do banco (<code>+E.164</code>). Fix mínimo (~:66-73):</p>
+<pre><code>    const variants = phoneVariantsBR(args.customerPhone);
+    if (variants.length) {
+      // Webhooks inbound/outbound gravam visitor_whatsapp/visitor_phone como
+      // "+E.164" (platform-meta-whatsapp-webhook:185-186); phoneVariantsBR gera
+      // só-dígitos. Cobrimos os dois formatos (match .in. é exato).
+      const withPlus = variants.map((v) => `+${v}`);
+      const list = [...variants, ...withPlus].join(',');</code></pre>
+<p><strong>Opcional recomendado:</strong> filtrar a busca de conversa por <code>.eq('product_id', csAgent.product_id)</code> — garante que o handoff só pina conversas do produto da Lia (evita pin órfão onde ela não entraria no agentList do brain).</p>
+
+<h3>2.4 Fora do escopo</h3>
+<p><code>platform-sales-copilot/index.ts</code> (WT = só lixo pré-sunset) · <code>SalesPage.tsx</code> (1.411 linhas de LP pré-sunset; o #65 deployou "sem cirurgia da LP") · <code>evolution-history-sync/</code> (untracked, outra frente).</p>
+
+<h2>3) Plano de ativação passo a passo (checks binários)</h2>
+<div class="callout green">Pré-condição JÁ satisfeita: migration aplicada — colunas, índice, RPCs e Lia verificados hoje via SQL (seção 1).</div>
+
+<div class="step"><span class="n">0</span><strong>Branch limpa</strong> — <code>git fetch origin && git checkout -b feat/p10-handoff-duda-lia origin/main</code>
+<div class="check">✔ <code>git log --oneline -1</code> == f63219c (ou mais novo) · <code>git status</code> limpo</div></div>
+
+<div class="step"><span class="n">1</span><strong>PR do porte</strong> — hunks A-F + fix 2.3; NADA além
+<div class="check">✔ diff toca SÓ os 3 arquivos · zero <code>founder_status</code>/<code>oferta_piloto</code>/<code>Piloto Fundadora</code> aditivo · <code>is_public</code> intacto no brain (R5) · <code>deno check</code> passa nos 2 entrypoints</div></div>
+
+<div class="step"><span class="n">2</span><strong>Merge + deploy de 3 edges (flag ainda OFF)</strong> — <code>supabase functions deploy platform-sales-brain cakto-webhook cakto-reprocess-order --project-ref fzhlbwhdejumkyqosuvq</code>
+<div class="check">✔ brain &gt; v30, webhook &gt; v35, reprocess &gt; v30, ACTIVE · bundle novo contém <code>onboarding-handoff.ts</code> · msg de venda → Duda responde normal (flag OFF = byte-idêntico)</div></div>
+
+<div class="step"><span class="n">3</span><strong>Secret (o interruptor)</strong> — <code>supabase secrets set ONBOARDING_HANDOFF_ENABLED=true --project-ref fzhlbwhdejumkyqosuvq</code><br>
+Secret é por projeto — cobre as 3 funções. Leituras em runtime: (1) <code>onboarding-handoff.ts:37</code> (bundleado em cakto-webhook E cakto-reprocess-order); (2) brain passo 7.5. Com <code>true</code>: handoff executa no <code>org_created</code> (pina Lia + grava vínculo) e o brain checa o vínculo a cada msg — com vínculo, modo implantação (bloco FASE + regra 7 CS + sem links); sem vínculo, prompt byte-idêntico.
+<div class="check">✔ <code>supabase secrets list</code> mostra a key</div></div>
+
+<div class="step"><span class="n">4</span><strong>Smoke 1 — modo implantação do brain (sem pagamento)</strong><br>
+1. Msg do celular de teste ao número oficial (11 95213-9912) → Duda responde.<br>
+2. SQL: <code>UPDATE platform_crm_conversations SET current_agent_id='927fe936-0965-4693-90be-5944e745359b', provisioned_organization_id='&lt;org teste&gt;' WHERE id='&lt;conv&gt;';</code> (+ opcional <code>current_step=3</code> na submission da org).<br>
+3. Mandar: "oi, travei na tela de serviços, e agora?"
+<div class="check">✔ resposta no MESMO thread com tom CS (sem preço/link/plano) · menciona a página 3 "Serviços" · logs 7.5 sem erro · "quanto custa o upgrade?" NÃO retorna link</div>
+4. Cleanup: reset dos 2 campos pra NULL.</div>
+
+<div class="step"><span class="n">5</span><strong>Smoke 2 — E2E matching via webhook simulado (sem pagamento real)</strong><br>
+1. Obter o webhook secret (tabela de credenciais Cakto, via MCP) e um offer slug mapeado (ideal: "Teste E2E" R$10, <code>is_public=false</code>).<br>
+2. <code>POST …/functions/v1/cakto-webhook?scope=platform&amp;secret=…</code> com payload sintético: <code>{"event":"purchase_approved","data":{"id":"P10-SMOKE-&lt;ts&gt;","status":"paid","paymentMethod":"pix","offer":{"slug":"…"},"customer":{"name":"Smoke P10","email":"&lt;email teste&gt;","phone":"&lt;fone do smoke 1&gt;"}}}</code> (conferir shape contra <code>mapCaktoOrderForUpsert</code>, <code>cakto-client.ts:312-343</code>).
+<div class="check">✔ HTTP 200 · log <code>onboarding handoff: {"ok":true,…}</code> (se vier <code>skipped:conversation_not_found</code>, o fix do "+" falhou) · SQL: conversa com <code>current_agent_id</code>=Lia + vínculo · próxima msg → Lia dá boas-vindas</div>
+⚠️ Efeitos reais: cria org + user + welcome WhatsApp. Cleanup: deletar org (cascade), auth user, linha em <code>cakto_orders</code>, despinar conversa.</div>
+
+<div class="step"><span class="n">6</span><strong>Go-live real</strong>
+<div class="check">✔ 1ª venda real COM conversa prévia → <code>handoff ok:true</code> + Lia assume · venda SEM conversa → <code>skipped:conversation_not_found</code> e provisioning intacto (NO-OP limpo)</div></div>
+
+<div class="callout red"><strong>Kill switch:</strong> <code>supabase secrets set ONBOARDING_HANDOFF_ENABLED=false</code>. ⚠️ Desligar a flag NÃO despina Lias já fixadas — o brain voltaria a tratá-las pelo ramo closer ("VOCÊ É A BIA"). Ao desligar, rodar também: <code>UPDATE platform_crm_conversations SET current_agent_id=NULL WHERE current_agent_id='927fe936-…' AND provisioned_organization_id IS NOT NULL;</code></div>
+
+<h2>4) Riscos + casos de borda do matching</h2>
+<div class="scroll">
+<table>
+<tr><th>#</th><th>Caso</th><th>O que acontece (código atual)</th><th>Sev.</th><th>Mitigação</th></tr>
+<tr><td>1</td><td><strong>Formato +E.164 no banco</strong></td><td>Match por fone erra 100% (3/3 conversas em prod têm "+")</td><td><span class="sev-p0">P0</span></td><td>Fix 2.3 — obrigatório no PR</td></tr>
+<tr><td>2</td><td>Pagou com fone ≠ WhatsApp</td><td>Fone falha → fallback e-mail (leads ilike + visitor_email)</td><td><span class="sev-media">Média</span></td><td>Fallback cobre se o e-mail bate; senão risco 3</td></tr>
+<tr><td>3</td><td>Fone E e-mail divergentes / compra direta sem conversa</td><td><code>skipped: conversation_not_found</code> — NO-OP limpo, provisioning e welcome intactos (:104-107)</td><td><span class="sev-baixa">Baixa (desejado)</span></td><td>Aceitar; follow-up: casar por e-mail quando a cliente escrever</td></tr>
+<tr><td>4</td><td>Duas conversas do mesmo número</td><td>Mais recente vence (<code>last_message_at desc limit 1</code>)</td><td><span class="sev-baixa">Baixa</span></td><td>Correto por design</td></tr>
+<tr><td>5</td><td>Conversa de OUTRO produto (ou product_id NULL)</td><td>Pina a Lia, mas o brain filtra agentList por product_id → pin miss → fallback SDR</td><td><span class="sev-media">Média</span></td><td>Opcional 2.3: filtrar por <code>product_id = csAgent.product_id</code></td></tr>
+<tr><td>6</td><td>Deploy do brain DEPOIS da flag</td><td>Lia pinada com brain velho fala como <strong>Bia closer com links</strong></td><td><span class="sev-alta">Alta</span></td><td>Ordem do plano: passo 2 antes do 3</td></tr>
+<tr><td>7</td><td><code>cakto-reprocess-order</code> esquecido</td><td>Reprocesso manual roda provisioning de 06/07 (sem handoff)</td><td><span class="sev-media">Média</span></td><td>Na lista de deploy do passo 2</td></tr>
+<tr><td>8</td><td>Commitar o working tree como está</td><td>Reverte #65: founder_status, Piloto, e <strong>desfaz o R5</strong> (Teste E2E R$10 vazaria)</td><td><span class="sev-alta">Alta</span></td><td>Porte cirúrgico a partir de origin/main (seção 2)</td></tr>
+<tr><td>9</td><td>E-mail com <code>,</code> <code>(</code> <code>)</code> no <code>.or()</code> PostgREST</td><td>Filtro malformado → convErr logado → NO-OP</td><td><span class="sev-baixa">Baixa</span></td><td>Já non-fatal; hardening opcional</td></tr>
+<tr><td>10</td><td>Agente support "%implanta%" de outro produto (futuro)</td><td>Lookup do CS não filtra produto; o mais antigo vence</td><td><span class="sev-baixa">Baixa hoje</span></td><td>Resolver quando houver 2º produto</td></tr>
+<tr><td>11</td><td>Lia não fala proativamente</td><td>Handoff só PINA; Lia responde à PRÓXIMA msg. Boas-vindas imediatas = template <code>sendWelcomeWhatsApp</code> (:370), não a persona</td><td><span class="sev-media">Média (gap vs visão)</span></td><td>Consciente; follow-up: greeter proativo (padrão <code>agent-handoff-greeter</code>)</td></tr>
+<tr><td>12</td><td>Retry/renovação de webhook</td><td>Gate <code>org_created</code> (:553) — só na 1ª ativação, não repina</td><td><span class="sev-baixa">OK</span></td><td>Idempotência garantida</td></tr>
+<tr><td>13</td><td>Payload sem fone</td><td><code>phoneVariantsBR(null)</code> → [] → direto pro e-mail</td><td><span class="sev-baixa">OK</span></td><td>Coberto</td></tr>
+</table>
+</div>
+<p><strong>O que o payload do Cakto traz</strong> (<code>cakto-client.ts:330-332</code>, <code>mapCaktoOrderForUpsert</code>): <code>customer_name = customer.name</code> · <code>customer_email = customer.email</code> · <code>customer_phone = customer.phone</code> (com <code>customer = order.customer ?? order.user</code>). Nome/e-mail/fone — exatamente o trio que o handoff consome.</p>
+
+<h2>5) Estimativa honesta de esforço</h2>
+<table>
+<tr><th>Etapa</th><th>Esforço</th><th>Observação</th></tr>
+<tr><td>PR do porte (hunks A-F + fix 2.3 + deno check)</td><td>2-3 h</td><td>C/D são adição pura; E/F exigem cuidado pra não arrastar texto pré-sunset; fix do "+" = 5 linhas</td></tr>
+<tr><td>Review do PR (~150 linhas, 3 arquivos)</td><td>30-45 min</td><td>Checklist: zero founder/piloto aditivo; is_public intacto</td></tr>
+<tr><td>Deploy 3 edges + secret</td><td>15 min</td><td>Ordem: edges → secret</td></tr>
+<tr><td>Smoke 1 + Smoke 2 + cleanup</td><td>1-2 h</td><td>Smoke 2 cria org/user reais — cleanup incluído</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>meio dia a 1 dia</strong></td><td>Com margem pra 1 iteração de ajuste no smoke</td></tr>
+</table>
+<p>Não é um projeto — é um porte de código que já existe e já foi pensado (gates duplos, non-fatal por design, seed determinístico). O trabalho "novo" de verdade é o fix do "+" (achado desta investigação) e a disciplina de não deixar o lixo pré-sunset entrar junto.</p>
+
+<div class="foot">Fontes verificadas: git (origin/main f63219c · local 7b446c7 · sunset-wt a7d3c5c) · bundles deployados via MCP <code>get_edge_function</code>/<code>list_edge_functions</code> · banco via MCP <code>execute_sql</code> (colunas, RPCs, índice, agentes, formatos de telefone). Par deste arquivo: <code>P10-HANDOFF-DUDA-LIA-2026-07-15.md</code>.</div>
+
+</div>
+</body>
+</html>

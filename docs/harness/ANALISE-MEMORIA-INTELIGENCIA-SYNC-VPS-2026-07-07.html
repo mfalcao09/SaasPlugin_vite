@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Análise — Memória, Inteligência e Sync Mac→VPS · 2026-07-07</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--txt:#e6edf3;--dim:#8b949e;--acc:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--gold:#e3b341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:2rem 1rem}
+  main{max-width:920px;margin:0 auto}
+  h1{font-size:1.7rem;border-bottom:2px solid var(--acc);padding-bottom:.5rem}
+  h2{font-size:1.3rem;color:var(--acc);margin-top:2.2rem}
+  h3{font-size:1.05rem;color:var(--gold)}
+  .meta{color:var(--dim);font-size:.85rem;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem}
+  .alert{background:#1c1408;border:1px solid var(--warn);border-left:5px solid var(--warn);border-radius:8px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem}
+  th,td{border:1px solid var(--border);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--panel)}
+  code,pre{font-family:"SF Mono",Menlo,monospace;font-size:.85em;background:var(--panel);border-radius:5px}
+  code{padding:.1em .35em}
+  pre{padding:1rem;overflow-x:auto;border:1px solid var(--border);line-height:1.5}
+  li{margin:.35rem 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0}
+  strong{color:#fff}
+</style>
+</head>
+<body>
+<main>
+<h1>🧠 Análise — Memória, Inteligência e Sync Mac→VPS</h1>
+<p class="meta"><strong>Data:</strong> 2026-07-07 · <strong>Autor:</strong> Claude (Fable 5) a pedido de Marcelo · <strong>Grounding:</strong> varredura por subagente Sonnet nos memos + logs + launchd + settings.json. Fatos "verificados" têm prova direta; "declarados" vêm de memo sem re-checagem no KVM4. Par deste doc: <code>ANALISE-MEMORIA-INTELIGENCIA-SYNC-VPS-2026-07-07.md</code></p>
+
+<div class="alert">
+<h3 style="margin-top:0">⚡ Resposta desconfortável primeiro</h3>
+<p><strong>O sync Mac→VPS que você quer JÁ EXISTE e estava funcionando hoje.</strong></p>
+<ul>
+<li><span class="ok">✅ verificado</span> — <code>cerebro_sync.sh</code> (launchd <code>com.marcelo.cerebro-sync</code>): rsync de <code>projects/*.jsonl</code> + <code>memory/*.md</code> + <code>workstreams/</code> → KVM4 a cada 6h. Logs OK em 05/06/07-07 (1 falha de rede auto-recuperada).</li>
+<li><span class="ok">✅ verificado</span> — <code>cerebro_push_session.sh</code> (hooks <strong>Stop</strong> e <strong>SessionEnd</strong>, <code>settings.json:72,162</code>): push em <strong>tempo real</strong> do JSONL → <code>POST /v1/memory/ingest</code>. Log com <code>"persisted":true</code> até 18:16 de hoje.</li>
+</ul>
+<p>"Salvou no PC = sync com a VPS" <strong>está de pé</strong>. O cansaço vem de 3 outras causas ↓</p>
+</div>
+
+<h2>Por que parece que nunca termina (diagnóstico)</h2>
+<ol>
+<li><strong>O plano é maior que a necessidade.</strong> ADR 8-layer (05-20): Notion↔Supabase, pgvector, Cognee, Supermemory, MetaMCP, Composio, Sim Studio — <span class="warn">7 sprints em `proposed`</span>, Edge Functions criadas e nunca deployadas, 4 decisões paradas na sua fila. Cada retomada reabre a obra inteira.</li>
+<li><strong>Índices duplicados sem SoT eleita.</strong> 2 vetoriais (vindex Mac 464MB + cérebro KVM4) e 3 memórias semânticas (md/Notion/Supabase). Dois lugares com o mesmo dado = um sempre errado.</li>
+<li><strong>"Pronto" não é verificável — gap = EVALS</strong> (declarado no seu memo walkinglabs). Consequências reais: índice dizia "9k+ sessões" (7.833 eram lixo <code>_tools/</code>, só 1.360 reais); memos dizem Hermes rodando, sua memória de 07-07 diz "não deployado". <span class="bad">Sem eval, nada parece pronto — e o quebrado parece pronto.</span></li>
+</ol>
+
+<h2>Q1 — Estruturar melhor o salvar de memória/inteligência</h2>
+<h3>Modelo mental: 4 temperaturas, 1 fonte de verdade</h3>
+<table>
+<tr><th>Camada</th><th>O que é</th><th>Existe?</th></tr>
+<tr><td><strong>Quente</strong> (todo prompt)</td><td>CLAUDE.md · MEMORY.md raiz 5.5KB · protocolo v3 · regras de processo</td><td class="ok">✅ auto-load + inject</td></tr>
+<tr><td><strong>Morna</strong> (roteada)</td><td><code>topics/INDEX-*</code> via <strong>memory-router</strong> (cwd+branch+keywords) · deploy-context · STATE.md</td><td class="ok">✅ desde hoje — padrão a replicar</td></tr>
+<tr><td><strong>Fria</strong> (sob demanda)</td><td>arquivos-tópico · <code>ask.sh</code> · cérebro KVM4 · /sistematiza</td><td class="warn">✅ parcial</td></tr>
+<tr><td><strong>Arquivo</strong></td><td>JSONL, snapshots, Notion .gz</td><td class="ok">✅</td></tr>
+</table>
+<div class="card"><strong>Princípio nº1 — SoT = arquivos <code>.md</code> + JSONL. Todo o resto é índice derivado e regenerável.</strong> Índice nunca se conserta — regenera da fonte. Elimina a classe "qual cópia está certa".</div>
+
+<h3>As 5 alavancas (ordem de retorno)</h3>
+<ol>
+<li><strong>Write-path único (<code>mem-write</code>)</strong> — um comando roteia (tipo, tema, conteúdo) → memo + linha no INDEX + tag.sh + push cérebro. Um funil = zero drift; o sync herda a disciplina.</li>
+<li><strong>Git em <code>~/.claude</code> (subset)</strong> — memory/hooks/skills/workstreams; commit automático no Stop. Histórico + rollback + <em>substrato do sync da Q2</em>. Excludes: segredos, caches, JSONL.</li>
+<li><strong>Evals = o próximo degrau.</strong> ~20 golden queries no <code>eval_gate.py</code> (já existe no reindex 05UTC) · miner das 04:00 gera casos · métrica no Telegram. <em>Regra: camada nova só entra com eval provando gap.</em></li>
+<li><strong>Ciclo de ferramentas</strong> (o método que criou o v3): fricção → hook mínimo → medir 1 semana → promover/matar. Candidatos: <strong>PreCompact checkpoint</strong> (sessões pela metade!), <strong>SessionEnd distiller</strong> (lições automáticas), <strong>gate completed-com-prova</strong>.</li>
+<li><strong>Higiene:</strong> frontmatter <code>verificado_em:</code>; job de frescor/expiry; aposentar números ilusórios.</li>
+</ol>
+
+<h2>Q2 — Sync Mac→VPS: análise e decisão</h2>
+<div class="card"><strong>Eu discordo de continuar os Sprints 3–7 como estão</strong> porque o pipeline essencial já funciona e cada sprint novo cria outro sistema que exige o MESMO sync que te cansa. O que eu faria: fechar o perímetro — eleger SoT, endurecer o canal vivo, matar/adiar o resto. O risco de continuar: mais camadas `proposed` = mais frentes pela metade = mais fadiga, sem recall melhor.</div>
+
+<h3>Arquitetura-alvo (80% já construída)</h3>
+<pre>Mac (~/.claude)  ── SoT: memory/*.md · workstreams/ · hooks/ · skills/ · JSONL
+   │
+   ├─ tempo real: hook Stop/SessionEnd → cerebro_push (JSONL delta)   [✅ LIVE hoje]
+   ├─ arrasto:    cerebro_sync rsync → KVM4                            [✅ LIVE, janela 6h]
+   └─ (upgrade)   git commit no Stop → push privado → KVM4 pull        [substitui/reforça rsync]
+
+KVM4  ── índices DERIVADOS: cérebro query/ingest · reindex 05UTC · OpenClaw/recall
+Notion ── export one-way (arquivo humano) · Supabase ecosystem_memory ── matar OU promover</pre>
+
+<h3>Plano de fechamento (1 sessão cada, critério binário)</h3>
+<table>
+<tr><th>#</th><th>Ação</th><th>DONE verificável</th></tr>
+<tr><td>1</td><td><strong>Congelar o 8-layer</strong>: ADR curto — SoT=arquivos; Notion=one-way; Cognee/Supermemory/MetaMCP/Composio/SimStudio ADIADOS até eval provar gap; decidir Supabase</td><td>ADR commitado + roadmap superseded</td></tr>
+<tr><td>2</td><td><strong>Endurecer o canal</strong>: rsync 6h→15min (ou git no Stop) + alerta de falha → Telegram + excludes de segredo auditados</td><td>falha simulada alerta em &lt;15min</td></tr>
+<tr><td>3</td><td><strong>Canário do cérebro</strong>: 1 golden query/dia → alerta se degradar</td><td>3 dias seguidos com log</td></tr>
+<tr><td>4</td><td><strong>Eval set do RAG</strong>: 20 golden queries no eval_gate</td><td>reindex falha o gate se recall cair</td></tr>
+<tr><td>5</td><td><strong>Multi-conta</strong>: <code>origin: user@host</code> em cada ingest/commit; outras contas entram pelo MESMO funil</td><td>2 origens distinguíveis na query</td></tr>
+</table>
+<p>Depois disso, "mesmo cérebro, mesmo conteúdo, tempo real" deixa de ser projeto e vira <strong>invariante monitorado</strong> — o único estado em que você para de carregar ele na cabeça.</p>
+
+<h3>O que NÃO fazer</h3>
+<ul>
+<li>Não construir 2º mecanismo de tempo-real — o push por hook JÁ é o tempo-real.</li>
+<li>Não sincronizar índices/embeddings — sincroniza-se FONTE; índice regenera de cada lado.</li>
+<li>Não deployar as Edge Functions Notion↔Supabase paradas antes da decisão #1 — meia-obra é a fonte do cansaço.</li>
+</ul>
+
+<h2>Pendências criadas (fila HITL)</h2>
+<ol>
+<li><strong>D1:</strong> aprovar congelamento do 8-layer (supersede D-Roadmap-1..4 de 05-20).</li>
+<li><strong>D2:</strong> Supabase <code>ecosystem_memory</code>: matar ou promover? <em>Recomendação: matar por ora.</em></li>
+<li><strong>D3:</strong> rsync 15min vs git-push-no-Stop. <em>Recomendação: git (versionamento+sync+auditoria num mecanismo).</em></li>
+</ol>
+</main>
+</body>
+</html>

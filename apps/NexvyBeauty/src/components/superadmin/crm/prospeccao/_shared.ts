@@ -15,11 +15,33 @@ export const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: st
   salao_cliente: { label: 'Espaço-cliente', dot: '🟢', cls: 'bg-green-500/15 text-green-600 border-green-500/30' },
   afiliado_infoproduto: { label: 'Afiliado', dot: '🔵', cls: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
   revisao: { label: 'Revisão', dot: '🟡', cls: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30' },
-  descarte: { label: 'Descarte', dot: '⚪', cls: 'bg-muted text-muted-foreground border-border' },
-  acionamento_via_instagram: { label: 'Instagram (DM)', dot: '🟣', cls: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
 };
 
-export const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao', 'descarte', 'acionamento_via_instagram'];
+export const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao'];
+
+// ── FONTE do lead (rótulo/agrupamento) — DERIVADA do label da busca (keywords[0]) ─────
+// A coluna `source` do banco é sempre 'instagram' (não discrimina). Quem discrimina a
+// FONTE é o rótulo da extração: "Prospectagram Leva N", "Extração vídeo DD-MM",
+// "Server API - c/s wpp" (Serper — sessão paralela do Marcelo, read-only aqui), ou a
+// keyword crua (busca por palavra). Prefixo do label → fonte canônica.
+export type LeadSource = 'prospectagram' | 'video' | 'serper' | 'keyword';
+
+export const SOURCE_META: Record<LeadSource, { label: string; icon: string }> = {
+  prospectagram: { label: 'Prospectagram', icon: '📸' },
+  video:         { label: 'Vídeo (Gemini)', icon: '🎬' },
+  serper:        { label: 'Server API', icon: '🌐' },
+  keyword:       { label: 'Palavra-chave', icon: '🔎' },
+};
+
+/** Classifica a FONTE de uma extração pelo prefixo do rótulo (keywords[0]). */
+export function leadSourceOf(ex: { keywords?: string[] | null }): LeadSource {
+  const label = (ex.keywords?.[0] ?? '').trim().toLowerCase();
+  if (label.startsWith('prospectagram')) return 'prospectagram';
+  if (label.startsWith('extração vídeo') || label.startsWith('extracao video') ||
+      label.startsWith('vídeo') || label.startsWith('video')) return 'video';
+  if (label.startsWith('server api') || label.includes('serper')) return 'serper';
+  return 'keyword';
+}
 
 export function fmtNum(n: number | null | undefined): string {
   if (n == null) return '—';

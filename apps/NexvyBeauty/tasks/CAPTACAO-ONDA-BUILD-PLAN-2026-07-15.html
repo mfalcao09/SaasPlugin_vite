@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onda Captação (T1.10) — Plano de Build</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --border:#30363d;
+    --fg:#e6edf3; --fg2:#adbac7; --muted:#768390;
+    --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --purple:#bc8cff;
+    --code:#1f2530;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-.5px}
+  h2{font-size:20px;font-weight:700;margin:36px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:16px;font-weight:700;margin:20px 0 8px}
+  p{margin:10px 0}
+  a{color:var(--blue);text-decoration:none}
+  code{background:var(--code);color:#e6edf3;padding:1.5px 6px;border-radius:5px;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:12.5px}
+  .lead{color:var(--fg2);border-left:3px solid var(--border);padding:8px 16px;margin:14px 0;background:var(--bg2);border-radius:0 8px 8px 0}
+  .lead div{margin:2px 0}
+  .callout{background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--amber);
+    border-radius:8px;padding:14px 18px;margin:18px 0}
+  .callout.crit{border-left-color:var(--red)}
+  .callout.ok{border-left-color:var(--green)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--border);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--bg3);font-weight:700;color:var(--fg)}
+  tr:nth-child(even) td{background:var(--bg2)}
+  .pill{display:inline-block;padding:1px 9px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .p-green{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+  .p-red{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.4)}
+  .p-gray{background:rgba(118,131,144,.15);color:var(--muted);border:1px solid rgba(118,131,144,.4)}
+  .p-blue{background:rgba(88,166,255,.15);color:var(--blue);border:1px solid rgba(88,166,255,.4)}
+  .sec{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:6px 22px 18px;margin:18px 0}
+  .sec-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .check{background:var(--code);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:13.5px}
+  .check b{color:var(--green)}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  .mono{font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;color:var(--fg2)}
+  hr{border:none;border-top:1px solid var(--border);margin:26px 0}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Onda Captação (T1.10) — Plano de Build executável</h1>
+<div class="lead">
+  <div><b>Data:</b> 2026-07-15 · <b>Fonte:</b> T1.10 do <code>PLANO-MESTRE-GO-LIVE-2026-07-11.md</code> (linhas 72-84)</div>
+  <div><b>Escopo:</b> C1 + C5 (build) · C2 + C3 (verificar/errata) · C7 + C8 (triviais)</div>
+  <div><b>Repo:</b> <span class="mono">apps/NexvyBeauty</span></div>
+  <div><b>Estado:</b> READ-ONLY audit — nenhum código foi tocado. Hand-off para o agente de build.</div>
+</div>
+
+<div class="callout crit">
+  <h3 style="margin-top:6px">⚠️ Descoberta de escopo que MUDA o plano (ler antes de tudo)</h3>
+  <p>O menu <b>Captação</b> vive no <b>mundo PLATAFORMA (super_admin)</b> — <code>src/components/superadmin/crm/capture/**</code> + edges <code>platform-*</code> + tabelas <code>platform_crm_*</code>. <b>NÃO</b> é o mundo tenant (<code>src/components/admin/**</code>, edges <code>form-generate-ai</code>/<code>quiz-generate-ai</code>, tabela <code>forms</code>).</p>
+  <p>Montado direto no registry (<code>superadmin/platform-shell/registry.tsx</code>, grupo <code>vendas-captacao</code>, l.412-469):</p>
+  <table>
+    <tr><th>Item nav</th><th>id</th><th>Componente montado</th></tr>
+    <tr><td>Quiz</td><td><code>v-quiz</code></td><td><code>PlatformCrmQuizManager</code> (registry:420)</td></tr>
+    <tr><td>Formulários</td><td><code>v-formularios</code></td><td><code>PlatformCrmFormsManager</code> (registry:426)</td></tr>
+    <tr><td>Templates / Resultados / Analytics</td><td><code>v-templates</code>/<code>v-resultados</code>/<code>v-analytics</code></td><td>componentes reais (registry:456/462/468)</td></tr>
+  </table>
+  <p><b>Consequência nº1:</b> o plano cita edges <code>form-generate-ai</code>/<code>quiz-generate-ai</code> (nomes tenant). <b>O alvo real é a versão <code>platform-</code></b>: <code>platform-form-generate-ai</code> e <code>platform-quiz-generate-ai</code> (ambas existem, criadas 07-12). Ligar a edge tenant fura o recorte de plataforma (product-scoped, sem <code>organization_id</code>).</p>
+  <p><b>Consequência nº2:</b> 2 dos 4 itens investigados <b>já foram construídos</b> após a auditoria de 07-12. C2 e C3 viram <i>verificação + errata</i>, não build.</p>
+</div>
+
+<h2>🔒 Fact-Forcing Gate — 4 fatos verificados (arquivo:linha)</h2>
+<table>
+  <tr><th>#</th><th>Fato</th><th>Evidência</th></tr>
+  <tr>
+    <td><b>F1</b></td>
+    <td><b>C1 é real e UI-only.</b> O dialog "Novo Formulário" tem só "Do Zero"/"Template" — falta "Com IA". A edge <code>platform-form-generate-ai</code> existe e retorna <code>{success, blocks, suggested_name}</code> (mesmo shape da tenant).</td>
+    <td class="mono">PlatformCrmFormsManager.tsx:489-512 · platform-form-generate-ai/index.ts:69-80 (body) :364-368 (retorno)</td>
+  </tr>
+  <tr>
+    <td><b>F2</b></td>
+    <td><b>C3 JÁ ESTÁ PRONTO.</b> O <code>PlatformCrmQuizManager</code> (em <code>v-quiz</code>) abre launcher com 3 cards (Do Zero / <b>Com IA</b> / Template); "Com IA" chama <code>platform-quiz-generate-ai</code>.</td>
+    <td class="mono">PlatformCrmQuizManager.tsx:240-265 · quiz/create/PlatformCrmQuizCreateWithAI.tsx:68 · registry.tsx:417-420</td>
+  </tr>
+  <tr>
+    <td><b>F3</b></td>
+    <td><b>C2 JÁ ESTÁ PRONTO.</b> <code>/f/:slug</code> → <code>PublicForm</code> cai no fallback e renderiza <code>&lt;PlatformCrmPublicForm&gt;</code>, que submete via <code>platform-form-submit</code>. O publish gera o link <code>/f/{slug}</code> real. Não existe "Link público em breve" no mundo plataforma.</td>
+    <td class="mono">PublicForm.tsx:57-60,577-578 · PlatformCrmPublicForm.tsx:56,225 · form/PlatformCrmFormPublish.tsx:23 · form/PlatformCrmFormBuilder.tsx:382</td>
+  </tr>
+  <tr>
+    <td><b>F4</b></td>
+    <td><b>C5 é UI-only e reusa componentes prontos.</b> O footer só tem "Fechar". Os 3 botões reaproveitam <code>PlatformCrmCallWithAIDialog</code>, <code>PlatformCrmSendCadenceDialog</code> (props open/onOpenChange/leadId/productId) e <code>PlatformCrmLeadDetail</code> (leadId); a coluna <code>lead_id</code> existe na submission (FK). Zero edge nova.</td>
+    <td class="mono">form/PlatformCrmFormResponseDetail.tsx:10-12,269-271 · inbox/PlatformCrmCallWithAIDialog.tsx:55-61 · inbox/PlatformCrmSendCadenceDialog.tsx:28-42 · types.ts (platform_crm_form_submissions.lead_id)</td>
+  </tr>
+</table>
+
+<h2>📊 Resumo executável</h2>
+<table>
+  <tr><th>Item</th><th>Veredito</th><th>Arquivo(s) a tocar</th><th>Tipo</th><th>Esforço</th><th>Sinal</th></tr>
+  <tr><td><b>C1</b> — Form "Com IA"</td><td>BUILD</td><td class="mono">PlatformCrmFormsManager.tsx (edit) + form/PlatformCrmFormCreateWithAI.tsx (novo)</td><td>UI-only (edge+hooks prontos)</td><td><b>M</b></td><td><span class="pill p-green">🟢 UI-only barato</span></td></tr>
+  <tr><td><b>C2</b> — Link público</td><td>PRONTO → verificar</td><td>— (smoke test)</td><td>verificação</td><td>P</td><td><span class="pill p-gray">⚪ sem build</span></td></tr>
+  <tr><td><b>C3</b> — Quiz "Com IA"/Template</td><td>PRONTO → verificar</td><td>— (smoke test)</td><td>verificação</td><td>P</td><td><span class="pill p-gray">⚪ sem build</span></td></tr>
+  <tr><td><b>C5</b> — 3 botões no ResponseDetail</td><td>BUILD</td><td class="mono">form/PlatformCrmFormResponseDetail.tsx (edit)</td><td>UI-only (reusa 3 componentes)</td><td><b>M</b></td><td><span class="pill p-green">🟢 UI-only barato</span></td></tr>
+  <tr><td><b>C7</b> — Upload do quiz</td><td>BUILD (outlier)</td><td class="mono">quiz/PlatformCrmQuizCategorizedPalette.tsx:200 (+ runtime/bucket p/ real)</td><td>UI <b>+ storage</b></td><td>P–M</td><td><span class="pill p-red">🔴 toca storage</span></td></tr>
+  <tr><td><b>C8</b> — Comentário stale</td><td>ERRATA</td><td class="mono">PlatformCrmCaptureManager.tsx:14-17</td><td>doc</td><td>trivial</td><td><span class="pill p-gray">⚪ 1-linha</span></td></tr>
+</table>
+<div class="callout"><b>Regra de ouro:</b> só C1, C5 e C8 tocam código com certeza. C7 é o único que sai do "UI-only barato" (storage). C2/C3 são smoke tests que fecham como errata.</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C1 — "Novo Formulário" sem "Com IA"</h3><span class="pill p-green">🟢 UI-only barato</span></div>
+  <p><b>Onde falta:</b> <code>PlatformCrmFormsManager.tsx</code>, dialog de criação, bloco de métodos em <b>l.489-512</b> (grid 2 col: "Do Zero" + "Template"). Sem botão "Com IA".</p>
+  <p><b>Recursos que JÁ existem (não recriar):</b></p>
+  <ul>
+    <li>Edge <code>platform-form-generate-ai</code>. <b>Body</b> (:69-80): <code>{ product_id, objective:'qualification'|'diagnostic'|'capture'|'presale'|'feedback', tone, num_questions, user_context?, use_brain?=true, use_objections?=true }</code>. <b>Retorno</b> (:364-368): <code>{ success:true, blocks, suggested_name }</code>. Auth <code>authenticatePlatformAgent</code> — mesmo caminho do quiz (precedente F2).</li>
+    <li>Hooks: <code>useCreatePlatformCrmForm</code> (já importado :69) + <code>usePlatformCrmSaveFormBlocks</code> (form/usePlatformCrmSaveFormBlocks.ts:21).</li>
+    <li>Referências p/ espelhar: tenant <code>admin/forms/FormAIGenerator.tsx:77-110</code> + irmão platform <code>quiz/create/PlatformCrmQuizCreateWithAI.tsx</code>.</li>
+  </ul>
+  <p><b>Mudança precisa (UI-only, sem edge nova):</b></p>
+  <ol>
+    <li><b>Novo</b> <code>form/PlatformCrmFormCreateWithAI.tsx</code> — espelho de <code>PlatformCrmQuizCreateWithAI</code> + <code>FormAIGenerator</code>. Props <code>{ open, onOpenChange, productId, onCreated(formId) }</code>. <code>invoke('platform-form-generate-ai',{body})</code>; no retorno cria via <code>useCreatePlatformCrmForm</code> (name=<code>suggested_name</code>) + grava blocos via <code>usePlatformCrmSaveFormBlocks</code> + <code>onCreated(newId)</code>.</li>
+    <li><b>Editar</b> <code>PlatformCrmFormsManager.tsx</code>: grid de métodos (:492) → 3 colunas + botão "Com IA" (ícone <code>Sparkles</code>) que abre o dialog (estado <code>aiOpen</code>, <code>productId = newFormProductId || effectiveProductId</code>). No <code>onCreated</code> → <code>setBuilderFormId(newId)</code>.</li>
+  </ol>
+  <p><b>É UI-only?</b> SIM — edge pronta, hooks prontos, nenhuma migration. <b>Esforço:</b> M.</p>
+  <div class="check"><b>Check binário:</b> em <code>v-formularios</code> → "Novo Formulário" mostra 3 métodos incl. "Com IA" → objetivo + gerar dispara <code>platform-form-generate-ai</code> (Network 200) → form nasce com blocos e o builder abre. <code>tsc</code> 0 erros.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C2 — "Link público" (a incerteza do plano)</h3><span class="pill p-gray">⚪ PRONTO → só verificar</span></div>
+  <p><b>Veredito: já funciona.</b> A dúvida ("<code>/f/:slug</code>+<code>platform-form-submit</code> do PR#26 podem já existir → viraria só fiação") — <b>existem e estão fiados</b>:</p>
+  <ul>
+    <li>Rota <code>/f/:slug</code> → <code>PublicForm</code> (App.tsx:223). Se não for form do salão → <code>setFallbackToPlatform(true)</code> (:57-60) → <code>&lt;PlatformCrmPublicForm slug&gt;</code> (:577-578).</li>
+    <li><code>PlatformCrmPublicForm</code> submete via <code>platform-form-submit</code> (:56,225).</li>
+    <li>Publish gera link real <code>/f/{slug}</code> + copiar/abrir/embed (form/PlatformCrmFormPublish.tsx:23), montado no builder (form/PlatformCrmFormBuilder.tsx:382) atrás de "Publicar" (:203,209,269).</li>
+  </ul>
+  <p>O botão morto "Link público em breve" do plano <b>NÃO existe</b> no mundo plataforma (string ausente no código — paráfrase de estado antigo/tenant). <b>É errata.</b></p>
+  <div class="callout"><b>Residual OPCIONAL (backlog separado, não bloqueia):</b> abas Embed/Widget do publish geram snippets p/ <code>/embed/form/:id</code> + <code>public/form-widget.js</code> que <b>não existem</b>; QR Code é placeholder (:203-206). Nada disso é "form que não publica não capta" — o link direto capta.</div>
+  <div class="check"><b>Check binário (smoke):</b> publicar form (active) → abrir <code>/f/{slug}</code> anônimo → renderiza runtime de plataforma → enviar → <code>platform-form-submit</code> 200 → submissão aparece em "Respostas". Passou → fecha C2 como ✅ (errata).</div>
+</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C3 — Novo Quiz sem "Com IA"/"Template"</h3><span class="pill p-gray">⚪ PRONTO → só verificar</span></div>
+  <p><b>Veredito: já foi construído</b> (componentes datados 07-12 13:16, após a auditoria). O <code>PlatformCrmQuizManager</code> (em <code>v-quiz</code>, registry:420):</p>
+  <ul>
+    <li>"Novo Quiz" → <code>PlatformCrmQuizCreationLauncher</code> com 3 cards: Do Zero / <b>Com IA</b> / Template (:240-265).</li>
+    <li>"Com IA" → <code>PlatformCrmQuizCreateWithAI</code> → <code>invoke('platform-quiz-generate-ai')</code> (quiz/create/…:68).</li>
+    <li>"Template" → <code>PlatformCrmQuizTemplateLibrary</code>; "Do Zero" → <code>PlatformCrmQuizCreateFromScratch</code>.</li>
+  </ul>
+  <p><b>Nota:</b> existe duplicado <code>templates/create/PlatformCrmQuizCreateWithAI.tsx</code> — <b>ignorar</b>; o manager importa o de <code>quiz/create/</code>.</p>
+  <div class="check"><b>Check binário (smoke):</b> <code>v-quiz</code> → "Novo Quiz" abre launcher com 3 cards → "Criar com IA" gera via <code>platform-quiz-generate-ai</code> (200) e abre builder. Passou → fecha C3 como ✅ (errata).</div>
+</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C5 — FormResponseDetail sem os 3 botões</h3><span class="pill p-green">🟢 UI-only barato</span></div>
+  <p><b>Onde falta:</b> <code>form/PlatformCrmFormResponseDetail.tsx</code>. Footer (<b>l.269-271</b>) só tem "Fechar". O comentário do arquivo (<b>l.10-12</b>) admite que os 3 atos não foram portados.</p>
+  <table>
+    <tr><th>Botão</th><th>Reusar</th><th>Props</th><th>Gate</th></tr>
+    <tr><td><b>Chamar com IA</b></td><td class="mono">inbox/PlatformCrmCallWithAIDialog.tsx (:55-61)</td><td class="mono">open, onOpenChange, lead={name:leadName, phone:leadPhone}</td><td>sempre (nome/tel já computados :129-130)</td></tr>
+    <tr><td><b>Inserir em Cadência</b></td><td class="mono">inbox/PlatformCrmSendCadenceDialog.tsx (:28-42)</td><td class="mono">open, onOpenChange, leadId={submission.lead_id}, productId</td><td>só se <code>submission.lead_id</code></td></tr>
+    <tr><td><b>Ver Lead no CRM</b></td><td class="mono">leads/PlatformCrmLeadDetail.tsx em &lt;Dialog&gt; (padrão kanban/PlatformCrmKanban.tsx:339)</td><td class="mono">leadId={submission.lead_id}</td><td>só se <code>submission.lead_id</code></td></tr>
+  </table>
+  <p><b>Mudança precisa (UI-only):</b> (1) estados <code>aiOpen/cadenceOpen/leadOpen</code> + imports; (2) reescrever footer (:269-271) p/ 3 botões (condicionais em <code>lead_id</code> p/ Cadência/Ver-Lead); (3) montar os 3 dialogs; (4) atualizar comentário stale (:10-12).</p>
+  <p><b>Dado disponível:</b> <code>submission</code> = <code>Tables&lt;'platform_crm_form_submissions'&gt;</code> com <code>lead_id</code> (FK), vindo do pai <code>PlatformCrmFormResponses</code>. <code>leadName</code>/<code>leadPhone</code> já resolvidos por heurística.</p>
+  <p><b>É UI-only?</b> SIM — reusa 3 componentes + 1 tabela. Nenhuma edge/migration. <b>Esforço:</b> M.</p>
+  <div class="check"><b>Check binário:</b> "Respostas" → abrir resposta → footer com 3 botões. Com <code>lead_id</code>: Cadência grava em <code>platform_crm_cadence_enrollments</code>; "Ver Lead" abre detalhe; "Chamar com IA" abre dialog. <code>tsc</code> 0 erros.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C7 — Upload do quiz = placeholder</h3><span class="pill p-red">🔴 toca storage (outlier)</span></div>
+  <p><b>Onde:</b> <code>quiz/PlatformCrmQuizCategorizedPalette.tsx:200</code> — subtipo <code>upload</code> → <code>input_type='text'</code> + <code>placeholder='Anexar arquivo (em breve)'</code>. Não sobe arquivo.</p>
+  <p><b>Único item que sai do "UI-only barato"</b> — upload real exige: (a) bucket Supabase Storage, (b) handler no runtime <code>src/pages/PublicQuiz.tsx</code>, (c) render do campo no builder. Prioridade "baixa" no plano.</p>
+  <ul>
+    <li><b>Barata (honesta, mantém UI-only):</b> trocar placeholder para verdade ("Upload de arquivo — em desenvolvimento"). Fecha o cosmético sem storage.</li>
+    <li><b>Completa (só se a onda aceitar storage):</b> bucket <code>quiz-uploads</code>, <code>input_type='file'</code>, upload no <code>PublicQuiz</code>, salvar URL na resposta.</li>
+  </ul>
+  <p><b>Recomendação:</b> se a onda é "UI-only barato", rota barata agora + card separado p/ o upload real.</p>
+  <div class="check"><b>Check (barata):</b> campo de upload no builder não diz mais "em breve" enganoso. <b>(completa):</b> no quiz público, anexar arquivo persiste no bucket e a URL aparece na resposta.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-h"><h3>C8 — Comentário stale</h3><span class="pill p-gray">⚪ errata 1-linha</span></div>
+  <p><b>Onde:</b> <code>PlatformCrmCaptureManager.tsx:14-17</code> — o comentário diz <code>v-templates / v-resultados / v-analytics: TODO(edge)</code>. <b>Duplamente stale:</b> (1) o registry monta componentes reais (<code>PlatformCrmCaptureTemplatesLibrary</code> :456, <code>PlatformCrmCaptureResultsSection</code> :462, <code>PlatformCrmCaptureAnalyticsTab</code> :468); (2) esses itens nem passam mais por <code>PlatformCrmCaptureManager</code>.</p>
+  <p><b>Mudança:</b> remover/atualizar a linha do TODO. Antes, olhar os 3 componentes p/ confirmar que são reais (Templates já tem empty-state honesto "Em breve", templates/…:121).</p>
+  <div class="check"><b>Check binário:</b> <code>grep "TODO(edge)"</code> no arquivo não retorna a linha dos 3 menus.</div>
+</div>
+
+<h2>🧭 Ordem de execução sugerida</h2>
+<ol>
+  <li><b>C8</b> (errata 1-linha) — aquece, zero risco.</li>
+  <li><b>C5</b> (UI-only, alto valor operacional) — reusa 3 componentes prontos.</li>
+  <li><b>C1</b> (UI-only, o exemplo do Marcelo) — novo dialog + botão, edge pronta.</li>
+  <li><b>Verificar C2 e C3</b> (smoke tests) — fechar como ✅/errata; <b>não</b> reconstruir.</li>
+  <li><b>C7</b> por último — decidir rota barata vs storage; se storage, card à parte.</li>
+</ol>
+
+<div class="callout crit">
+  <h3 style="margin-top:6px">⚠️ Armadilhas (não repetir a auditoria)</h3>
+  <ul>
+    <li><b>NÃO</b> ligar edges tenant <code>form-generate-ai</code>/<code>quiz-generate-ai</code> — o alvo é <code>platform-form-generate-ai</code>/<code>platform-quiz-generate-ai</code>.</li>
+    <li><b>NÃO</b> tocar <code>src/components/admin/**</code> (tenant/salão) — Captação é 100% <code>superadmin/crm/capture/**</code>.</li>
+    <li><b>NÃO</b> reconstruir C2/C3 — já existem; só verificar.</li>
+    <li><b>NÃO</b> criar edge nova para C1/C5 — todas existem.</li>
+    <li>Ignorar o duplicado <code>templates/create/PlatformCrmQuizCreateWithAI.tsx</code> (o vivo é <code>quiz/create/</code>).</li>
+  </ul>
+</div>
+
+<div class="foot">Gerado 2026-07-15 · READ-ONLY audit · par de <code>CAPTACAO-ONDA-BUILD-PLAN-2026-07-15.md</code></div>
+
+</div>
+</body>
+</html>

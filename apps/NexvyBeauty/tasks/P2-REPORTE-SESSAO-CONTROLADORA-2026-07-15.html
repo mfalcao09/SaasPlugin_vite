@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte à Controladora — P2 Agentes · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --txt:#e6edf3; --muted:#9198a1; --accent:#e879a6; --accent2:#7ee787;
+    --warn:#f0b429; --danger:#ff7b72; --ok:#3fb950; --link:#79c0ff;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:32px 18px 80px}
+  .wrap{max-width:920px;margin:0 auto}
+  header{border:1px solid var(--border);border-radius:14px;padding:22px 24px;
+    background:linear-gradient(135deg,#161b22,#1c2330);margin-bottom:26px}
+  header h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
+  header .sub{color:var(--muted);font-size:13px}
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:16px}
+  .meta div{background:#0d1117;border:1px solid var(--border);border-radius:9px;padding:8px 11px;font-size:12.5px}
+  .meta b{color:var(--accent);font-weight:600}
+  .verdict{display:inline-block;background:rgba(63,185,80,.14);border:1px solid var(--ok);
+    color:var(--ok);border-radius:999px;padding:4px 13px;font-size:13px;font-weight:600;margin-top:14px}
+  h2{font-size:16.5px;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:8px}
+  section p{margin:8px 0}
+  code{font-family:var(--mono);background:#0d1117;border:1px solid var(--border);
+    border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--accent2)}
+  pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px;color:var(--txt)}
+  a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#0d1117;color:var(--muted);font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .ok{color:var(--ok);font-weight:600}.wait{color:var(--warn)}.stop{color:var(--danger);font-weight:600}
+  ul{margin:8px 0;padding-left:22px}li{margin:5px 0}
+  .callout{border-left:3px solid var(--accent);background:var(--panel2);
+    border-radius:0 9px 9px 0;padding:11px 15px;margin:12px 0}
+  .callout.warn{border-color:var(--warn)}.callout.danger{border-color:var(--danger)}
+  .pill{font-family:var(--mono);font-size:11.5px;padding:1px 7px;border-radius:5px;border:1px solid var(--border)}
+  .foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--border);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>📡 Reporte à Sessão Controladora — P2 Agentes</h1>
+  <div class="sub">Nina · Lia proativa · Roteador por <code>agent_type</code> — NexvyBeauty · 2026-07-15</div>
+  <div class="meta">
+    <div><b>Frente</b><br>P2 — construir 3 agentes-casca</div>
+    <div><b>Dono (sessão)</b><br>a0eae41f</div>
+    <div><b>Base</b><br>origin/main 4aa1b06 (#66)</div>
+    <div><b>Classe de ato</b><br>Operacional</div>
+  </div>
+  <span class="verdict">✅ Construção (código) 100% finalizada</span>
+</header>
+
+<section>
+  <h2><span class="n">1</span>Veredito</h2>
+  <p>A <b>construção (código) está 100% finalizada</b> — critério do Marcelo: <em>"entregar o CÓDIGO 100% PRONTO (implementado, testado fora de produção, PRs cortados). NÃO ficar bloqueado esperando teste em produção."</em></p>
+  <p>Fora do critério (por design): aplicar migrations em produção + ligar flags → dependem de GO/validação do Marcelo.</p>
+  <div class="callout"><b>Atualização pós-reporte (MCP reconectou):</b> as <b>2 migrations do PR-A</b> (prompt da Nina + cron) foram <span class="ok">APLICADAS + verificadas</span> em produção (Nina po=481/ap=1215; cron <code>0 12 * * *</code>). Ambas inertes com a flag OFF. Falta: backfill do PR-B (com GO), redeploy edges cakto (com o flip P10) e ativar flags.</div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>O que fez — 2 PRs por blast-radius</h2>
+  <p><b>PR-A — <a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/67">#67</a></b> <span class="pill">deployável · aditivo · NÃO toca o brain</span></p>
+  <table>
+    <tr><th>#</th><th>Entrega</th><th>Estado</th></tr>
+    <tr><td>A1</td><td>Prompt da <b>Nina</b> (migration)</td><td class="ok">✅ aplicada+verificada (po=481, ap=1215)</td></tr>
+    <tr><td>A2</td><td>Edge <code>nina-health-scan</code> (gated OFF): D-7 → pina Nina → 1 abertura</td><td class="ok">✅ deployada + smoke</td></tr>
+    <tr><td>A3</td><td>pg_cron 09:00 BRT → edge</td><td class="ok">✅ aplicada+verificada (cron 0 12 * * *)</td></tr>
+    <tr><td>A4</td><td>Greeting proativo da <b>Lia</b> (2 bolhas) + de-dup do welcome</td><td class="ok">✅ código</td></tr>
+    <tr><td>A5</td><td><b>Nexvy</b> aposentado (papel — Lia assume)</td><td class="ok">✅</td></tr>
+  </table>
+  <p><b>PR-B — <a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/68">#68</a></b> <span class="pill" style="border-color:var(--danger);color:var(--danger)">⛔ AGUARDA GO · toda a cirurgia no brain</span></p>
+  <table>
+    <tr><th>#</th><th>Entrega</th><th>Estado</th></tr>
+    <tr><td>B1</td><td>Roteador por <code>agent_type</code> + fallback nome</td><td class="ok">✅</td></tr>
+    <tr><td>B2</td><td><code>pickSdrPersona ?? null</code> — mata a roleta <code>agents[0]</code> (defesa-mãe)</td><td class="ok">✅</td></tr>
+    <tr><td>B3</td><td>Modo retenção no brain (<code>RETENTION_RULE_BLOCK</code>, sem links/preço)</td><td class="ok">✅</td></tr>
+    <tr><td>B4</td><td>Backfill agent_type (Duda→sdr, Nina→retention)</td><td class="wait">✅ código · ⏳ validar+aplicar</td></tr>
+    <tr><td>B5</td><td>Extração <code>_shared/agent-routing.ts</code> + test (<b>deno test 6/6</b>)</td><td class="ok">✅</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Como fez — fronteira + decisões</h2>
+  <div class="callout"><b>Regra de fronteira:</b> PR-A nunca toca <code>platform-sales-brain</code> (motor da Duda LIVE); PR-B concentra toda mudança no brain. <b>Por quê:</b> a Nina pinada seria tratada como Bia/closer e venderia — precisa do modo retenção no brain (PR-B); o health-scan nasce gated OFF pra não abrir janela de risco antes disso.</div>
+  <p><b>E1</b> — "não desativar cascas" = segurança pela <b>lógica</b> (<code>?? null</code>): mesmo os 3 cascas ativos, nenhum abre conversa (sem SDR → guard cala). <b>E2</b> — greeting da Lia <b>substitui</b> o welcome genérico (não soma). Com as flags OFF (produção hoje), comportamento idêntico ao atual.</p>
+</section>
+
+<section>
+  <h2><span class="n">4</span>Provas</h2>
+  <ul>
+    <li><b>deno check</b> limpo em todos os arquivos tocados (+ transitivo webhook/reprocess).</li>
+    <li><b>deno test</b> <code>agent-routing.test.ts</code> → <span class="ok">6/6 verde</span>: Duda roteia; NENHUM casca abre nem com os 3 ativos; pin respeitado.</li>
+    <li><b>Smoke em produção:</b> <code>POST nina-health-scan</code> → <code>{"skipped":"flag_off"}</code> (deployada + inerte).</li>
+    <li><b>Banco VALIDADO (read-only, MCP):</b> os 6 agentes batem 100% com o blueprint (Duda custom, Bia closer, Lia support, Nina/Nexvy/Orq custom). Nina ainda placeholder (po=44, ap=0).</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">5</span>Bloqueios</h2>
+  <ul>
+    <li><b>Supabase MCP off na construção</b> → migrations não aplicadas; contornado com blueprint + validação final quando o MCP surgiu.</li>
+    <li><b>Sem service-key local</b> (anon bloqueada por RLS) → sem query/migração alternativa durante a construção.</li>
+    <li><b>Colunas de renovação de <code>organizations</code> não versionadas (drift)</b> → âncora do D-7 a confirmar.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">6</span>A validar / decidir</h2>
+  <ul>
+    <li><b>Vetar/aprovar E1 e E2</b> (decisões de engenharia que mudam comportamento).</li>
+    <li><b>agent_type real</b> — <span class="ok">✅ JÁ VALIDADO</span> nesta sessão (bate com o blueprint).</li>
+    <li class="wait"><b>Âncora do D-7</b> — <code>plan_activated_at mod ciclo</code> (env 30/7). Confirmar ciclo/semântica de renovação da Cakto antes de ligar a flag.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">7</span>A corrigir / polir (menores, não bloqueiam)</h2>
+  <p>Nenhum bug conhecido. Polish: (a) Nina pinada em conversa com onboarding submission recebe o contexto de implantação junto — inócuo (retenção tem precedência); (b) fallback por e-mail do health-scan poderia escapar vírgula/parêntese; (c) <code>.html</code> do blueprint levemente defasado (só o <code>.md</code> tem a §Execução).</p>
+</section>
+
+<section>
+  <h2><span class="n">8</span>O que deixei de fazer (e por quê)</h2>
+  <ul>
+    <li><b>Aplicar as 3 migrations</b> — MCP off na construção (agora disponível: as 2 do PR-A são seguras/inertes; backfill espera GO).</li>
+    <li><b>Redeploy cakto-webhook/reprocess</b> (greeting gated) — não redeployo edge de pagamento LIVE pra shippar código gated sem urgência; vai com o flip da flag P10.</li>
+    <li><b>Deploy do brain (PR-B)</b> — aguarda GO explícito.</li>
+    <li><b>tmp-eval-agents</b> — exige o brain do PR-B deployado (smoke pós-deploy).</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">9</span>Ordem de ativação (não inverter)</h2>
+  <pre>1. Validar âncora D-7 (billing Cakto).                          [Marcelo]
+2. GO no PR-B → aplicar backfill agent_type → deploy brain.     [MCP, com GO]
+3. Rodar tmp-eval-agents (gate 90%) — paridade Duda/Bia.        [prova pós-deploy]
+4. Aplicar migrations PR-A (prompt Nina + cron); deploy
+   cakto-webhook + cakto-reprocess-order.                       [PR-A]
+5. SÓ ENTÃO: NINA_HEALTH_SCAN_ENABLED=true                      [flag]
+6. Quando quiser: ONBOARDING_HANDOFF_ENABLED=true               [greeting Lia + P10]</pre>
+</section>
+
+<div class="foot">
+  PRs <a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/67">#67</a> · <a href="https://github.com/mfalcao09/SaasPlugin_vite/pull/68">#68</a> ·
+  commits 284e7d2 / a3eb01c / 5ed775e ·
+  blueprint <code>P2-AGENTES-…-2026-07-15.md</code> §Execução ·
+  memória <code>project_p2_agentes_nina_lia_roteador_2026-07-15.md</code>
+</div>
+
+</div>
+</body>
+</html>

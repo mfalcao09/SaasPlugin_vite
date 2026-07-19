@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estado de Go-Live NexvyBeauty — 2026-07-16</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px}
+  .wrap{max-width:1040px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px;color:#fff;letter-spacing:-.02em}
+  h2{font-size:18px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--rose);text-transform:uppercase;letter-spacing:.04em}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:14px}
+  .tl{background:rgba(212,169,78,.08);border:1px solid rgba(212,169,78,.28);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .tlwrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel);margin-top:8px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  tr:last-child td{border-bottom:0}
+  code{background:#0b0d11;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;color:#cdd3de}
+  .box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-top:10px}
+  ol,ul{margin:6px 0 0;padding-left:22px}li{margin:5px 0}
+  strong{color:#fff}
+  .g{color:var(--green)}.r{color:var(--red)}.y{color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚦 Estado de Go-Live — NexvyBeauty</h1>
+  <div class="sub"><strong>2026-07-16</strong> · foto consolidada da controladora · supersede INVENTARIO/PLANO-MESTRE para decisão de lançamento</div>
+
+  <div class="tl"><strong>TL;DR</strong> — O produto + a máquina de aquisição de 3 vetores estão <strong>construídos, deployados e provados</strong> (gated). O que separa do lançamento <strong>não é mais código — é ops do Marcelo</strong> (E2E real, LP, flags, números, RIPD) + curar/aprovar a base. <strong>Recomendação: lançar no CORE como piloto controlado 1-3 salões.</strong></div>
+
+  <h2>✅ No ar — deployado e provado (gated)</h2>
+  <h3>Produto</h3>
+  <div class="tlwrap"><table>
+    <tr><th>Peça</th><th>Estado</th><th>PR</th></tr>
+    <tr><td>Onboarding E2E (wizard 9 passos + telemetria)</td><td class="g">✅ prod</td><td>#63</td></tr>
+    <tr><td>Brain de vendas: Duda→Bia · roteador <strong>blindado</strong> (roleta morta, <code>??null</code>) · preço fonte-única · sunset (275/427/693→383/599/849, sem "vagas")</td><td class="g">✅ prod (eval <strong>97,92%</strong>)</td><td>#65/#68</td></tr>
+    <tr><td>Automação real (4 receitas default ON) + Agente de Carteira (auditor + captura)</td><td class="g">✅ prod, gated</td><td>#69</td></tr>
+    <tr><td>Modo retenção da Nina (dormente até <code>nina-health-scan</code>)</td><td class="g">✅ prod, gated</td><td>#67/#68</td></tr>
+    <tr><td>Handoff pós-compra Duda→Lia (mesmo thread)</td><td class="g">✅ prod, flag OFF</td><td>#66</td></tr>
+    <tr><td>E-mail transacional (Resend) — fix do 403 (chave nova sb_secret), dry-run seguro</td><td class="g">✅ prod, dry-run</td><td>#76</td></tr>
+    <tr><td><strong>Esteira demo: backend + front</strong> (o raio-x navegável — R$2.760/23 no teste)</td><td class="g">✅ prod</td><td>#70-74 · #77</td></tr>
+    <tr><td>Prospecção: menu + Base Consolidada + <strong>portão de aprovação PER-LEAD</strong> (clean slate: 0 aprovados, 4.006 crus intactos)</td><td class="g">✅ prod</td><td>#64 · #82→#83</td></tr>
+  </table></div>
+  <h3>Aquisição — 3 vetores</h3>
+  <div class="tlwrap"><table>
+    <tr><th>Vetor</th><th>Estado</th><th>PR</th></tr>
+    <tr><td><strong>Cold outbound</strong>: motor anti-ban (warm-up/teto/jitter/segment-gate/kill-switch) + script vencedor + IG DM + opt-out + handoff</td><td class="g">✅ prod, gated OFF, smoke verde</td><td>#75</td></tr>
+    <tr><td><strong>Ads inbound</strong>: atribuição CTWA + Duda-inbound-mode + CAPI desacoplado + schema</td><td class="g">✅ prod, gated OFF (funil 3/6; #5/#6 fast-follow)</td><td>#78-81</td></tr>
+    <tr><td><strong>A demo/raio-x</strong> = a isca/fecho compartilhado dos dois (a alavanca de conversão da análise de cold)</td><td class="g">✅ construída</td><td>—</td></tr>
+  </table></div>
+
+  <h2 class="r">🔴 FILA-HITL do Marcelo — os desbloqueadores reais (não é código)</h2>
+  <div class="box"><ol>
+    <li><strong>E2E R$10</strong> (compra real → prova a máquina inteira) — <strong>o gate nº1</strong>.</li>
+    <li><strong>LP nova</strong> (Lovable) → eu subo.</li>
+    <li><strong>Flags:</strong> <code>EMAIL_SEND_ENABLED=true</code> (chave já existe) · <code>ONBOARDING_HANDOFF_ENABLED=true</code> + smokes · duplo-gate cold (<code>dry_run=false</code> + <code>COLD_OUTREACH_ENABLED</code>) · <code>NINA_HEALTH_SCAN_ENABLED</code> (após D-7).</li>
+    <li><strong>Números:</strong> burner dedicado (cold, ≠ WABA oficial) · número oficial novo + WABA/Página FB (ads inbound).</li>
+    <li><strong>Resend:</strong> confirmar domínio <code>nexvybeauty.com.br</code> verificado (SPF/DKIM/DMARC).</li>
+    <li><strong>Ads:</strong> App Review Meta · audiências (excluir 1.919 + lookalike da semente 1.497) · secrets CAPI.</li>
+    <li><strong>Legal:</strong> sign-off do RIPD/<code>PRIVACY_VERSION</code> (esteira).</li>
+    <li><strong>Aprovar as bases</strong> na Prospecção (portão per-lead).</li>
+  </ol></div>
+
+  <h2>🔄 Em voo — sob coordenação (reportam à controladora, gated)</h2>
+  <div class="box">
+    <ul>
+      <li><strong>Sessão Oferta</strong> — a oferta mais irresistível ($100M Offers, demo no centro). MARCO 1 ✅.</li>
+      <li><strong>Sessão ADS</strong> — gestão/otimização de ads (A2-back ✅ gated; front buildando). <strong>Fast-follow.</strong></li>
+      <li><strong>Fila da controladora:</strong> downstream (campanhas/cold lendo <code>approved_at</code> per-lead — building) · esta foto.</li>
+    </ul>
+    <p class="y" style="margin:8px 0 0"><strong>🟡 Fast-follows:</strong> Nina D-7 (0 pagantes hoje) · Captação C1/C5/C8 · CAPI #5/#6 producers · Ads management UI · Instagram Flows · Voz IA (Fase 2).</p>
+  </div>
+
+  <h2>🎯 Recomendação de corte de lançamento</h2>
+  <div class="tl"><strong>Lançar no CORE como piloto controlado (1-3 salões):</strong> sell → buy → onboard → automate + a demo. A máquina está construída e provada; os gates que faltam são <strong>ops sua</strong>, não código. <strong>Semana, não meses.</strong> Esteira/retenção/outbound/ads-management entram como fast-follow.</div>
+</div>
+</body>
+</html>

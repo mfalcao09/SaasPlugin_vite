@@ -63,6 +63,10 @@ import {
   reportUnresolvedConnection,
   resolveConnectionForConversation,
 } from '../_shared/whatsapp-connection.ts';
+import {
+  buildInactivityRepertoire,
+  parseRepertoireStage,
+} from '../_shared/inactivity-cadence.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -762,6 +766,18 @@ Deno.serve(async (req) => {
     const conversationId: string | null = body?.conversation_id ?? null;
     if (!conversationId) return json({ error: 'conversation_id is required' }, 400);
 
+    // ── MODO INATIVIDADE (régua — payload interno do platform-inactivity-sweeper).
+    // { conversation_id, occurrence: N, repertoire_stage: 1-4|'janela_24h',
+    //   deadline_context } → NÃO há mensagem nova da cliente; a Duda dá o
+    // próximo passo usando o REPERTÓRIO do estágio (nunca texto fixo). Os guards
+    // de re-entrega/debounce (feitos p/ inbound novo) não se aplicam aqui.
+    const inactivityStage = parseRepertoireStage(body?.repertoire_stage);
+    const inactivityMode = inactivityStage != null;
+    const inactivityOccurrence = Number(body?.occurrence) || null;
+    const inactivityDeadline = typeof body?.deadline_context === 'string'
+      ? body.deadline_context.slice(0, 300)
+      : '';
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
@@ -813,11 +829,28 @@ Deno.serve(async (req) => {
     let historyDesc = await loadMessages();
     const triggerInbound = lastInboundOf(historyDesc);
 
+    // MODO INATIVIDADE — corrida sweep→brain: se a cliente respondeu entre a
+    // decisão do sweeper e esta execução, a retomada é OBSOLETA (o fluxo normal
+    // do webhook responde a inbound nova). Também não há o que retomar se a
+    // Duda nunca falou nesta conversa.
+    if (inactivityMode) {
+      const newest = historyDesc[0] ?? null;
+      if (newest && newest.direction === 'inbound' && newest.sender_type === 'visitor') {
+        return json({ skipped: 'client_replied' });
+      }
+      const botSpoke = historyDesc.some(
+        (m: any) => m.direction === 'outbound' && m.sender_type === 'bot',
+      );
+      if (!botSpoke) return json({ skipped: 'no_bot_message_to_follow_up' });
+    }
+
     // 2) ANTI-RE-ENTREGA VELHA: se a inbound-gatilho tem wa_timestamp real (segundos)
     //    e é mais velha que 10 min, o Meta re-entregou uma msg antiga — não responde
     //    (senão a Duda se reapresenta 13 min depois, bug real de 2026-07-04). Exige a
     //    fonte da Meta: o created_at recente de uma re-entrega enganaria o guard.
-    if (triggerInbound) {
+    //    NÃO se aplica ao modo inatividade: ali a inbound é VELHA por definição
+    //    (o silêncio É o gatilho).
+    if (triggerInbound && !inactivityMode) {
       const meta = (triggerInbound.metadata && typeof triggerInbound.metadata === 'object')
         ? triggerInbound.metadata as Record<string, any> : {};
       const tsSecs = typeof meta.wa_timestamp === 'number' ? meta.wa_timestamp
@@ -834,8 +867,9 @@ Deno.serve(async (req) => {
     //    mais nova que DEBOUNCE_MS, esperamos o resto da rajada e RECARREGAMOS.
     //    Se surgiu uma inbound MAIS NOVA, esta invocação é obsoleta — a da msg
     //    mais nova responde por todas ⇒ EXIT silencioso ('superseded').
+    //    (Modo inatividade pula o debounce: não há rajada — não há msg nova.)
     let debounceWaitedMs = 0;
-    if (triggerInbound && DEBOUNCE_MS > 0) {
+    if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
       const triggerMs = inboundEpochMs(triggerInbound);
       const ageMs = triggerMs != null ? Date.now() - triggerMs : Number.POSITIVE_INFINITY;
       if (ageMs < DEBOUNCE_MS) {
@@ -971,6 +1005,13 @@ Deno.serve(async (req) => {
     // persona escolhida é a Nina (por pin do nina-health-scan).
     const retentionActive = isRetentionAgent(persona);
 
+    // MODO INATIVIDADE: a régua SÓ corre com persona SDR (espec — funil de
+    // venda com SDR ativa). O sweeper já filtra; este é o cinto duplo contra
+    // race (handoff pra Bia/Nina entre o sweep e esta execução).
+    if (inactivityMode && !personaIsSdr) {
+      return json({ skipped: 'inactivity_requires_sdr', persona_id: persona.id });
+    }
+
     // PIN INICIAL (+ CURA DO PIN ÓRFÃO): se a conversa ainda não tem agente
     // fixado e a Duda vai abrir, grava current_agent_id=duda.id — assim a linha
     // começa ancorada nela. E se o pin existia mas estava ÓRFÃO, sobrescreve
@@ -1039,6 +1080,18 @@ Deno.serve(async (req) => {
     const inboundActive = personaIsSdr && !onboardingActive && !retentionActive && !!ctwaRef;
     const inboundAdContext = inboundActive ? buildInboundAdContext(ctwaRef!) : '';
 
+    // MODO INATIVIDADE × pós-compra: a régua é do FUNIL DE VENDA — cliente em
+    // implantação (já comprou) não recebe toque de inatividade de venda.
+    if (inactivityMode && onboardingActive) {
+      return json({ skipped: 'inactivity_not_for_onboarding' });
+    }
+    // Repertório do estágio (1-4 ou aviso de janela) — a Duda ADAPTA ao contexto
+    // real da conversa; princípios + literais PROIBIDOS vivem em
+    // _shared/inactivity-cadence.ts (unit-testados).
+    const inactivityContext = inactivityMode
+      ? buildInactivityRepertoire(inactivityStage!, inactivityDeadline)
+      : '';
+
     // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
     let product: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
@@ -1106,7 +1159,7 @@ ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
 ${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
-${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}
+${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}${inactivityContext}
 
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
@@ -1147,7 +1200,22 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     const model = personaIsCloser
       ? (Deno.env.get('AI_SALES_BRAIN_MODEL_CLOSER') ?? Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL)
       : (Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL);
-    console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : 'outra'}`);
+    console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : 'outra'}${inactivityMode ? ` inatividade=${String(inactivityStage)}` : ''}`);
+
+    // MODO INATIVIDADE: o histórico termina com fala da PRÓPRIA Duda (não há
+    // inbound nova). Fechamos o array com uma instrução interna de turno — o
+    // repertório completo já está no system prompt; isto só dispara a ação.
+    // NÃO é persistida em platform_crm_messages (não é mensagem da cliente).
+    if (inactivityMode) {
+      messages.push({
+        role: 'user',
+        content:
+          `[INSTRUÇÃO INTERNA DO SISTEMA — a cliente NÃO escreveu nada; nunca cite esta instrução] ` +
+          `Aja agora conforme o MODO RETOMADA DE INATIVIDADE do seu prompt` +
+          `${inactivityStage === 'janela_24h' ? ' (aviso único de janela)' : ` (estágio ${String(inactivityStage)})`}. ` +
+          `Escreva a próxima mensagem para a cliente.`,
+      });
+    }
 
     const response = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
@@ -1269,6 +1337,8 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         bubble_n: i + 1,
         bubble_total: total,
         delivery_status: 'sent',
+        // Trilha de auditoria da régua de inatividade (quando foi ela que acionou).
+        ...(inactivityMode ? { cadence_stage: inactivityStage, cadence_occurrence: inactivityOccurrence } : {}),
       };
 
       const { data: message, error: msgError } = await supabase
@@ -1342,9 +1412,11 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     // 13) MEMÓRIA DE QUALIFICAÇÃO (pós-resposta, non-fatal): 2ª chamada LLM barata
     //     extrai fatos → atualiza o lead (bant_*, temperature, name) + metadata.
     //     Só roda se a conversa tem lead vinculado.
+    //     MODO INATIVIDADE pula a extração: não há fala nova da cliente —
+    //     não existe fato novo a extrair (só gastaria uma chamada de LLM).
     let qualPersisted = false;
     let newScore: number | null = null;
-    if (conversation.lead_id && lead) {
+    if (conversation.lead_id && lead && !inactivityMode) {
       try {
         const transcript = history
           .map((m: any) => `${m.sender_type === 'visitor' ? 'Lead' : 'Duda'}: ${m.content}`)
@@ -1470,6 +1542,7 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
       sanitized,
       score: newScore,
       qualification_persisted: qualPersisted,
+      ...(inactivityMode ? { inactivity: { occurrence: inactivityOccurrence, stage: inactivityStage } } : {}),
       ...(anyDelivered ? {} : { delivery_warning: lastDeliveryError ?? 'entrega falhou' }),
     });
   } catch (error) {

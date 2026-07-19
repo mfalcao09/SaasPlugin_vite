@@ -177,6 +177,49 @@ export function extractBestPhone(texts: Array<string | null | undefined>): BestP
   };
 }
 
+// ── Classificador de CANAL WhatsApp (3 estados) — CONTRATO ÚNICO 2026-07-19 ────
+// Fonte-única que TODAS as sessões consomem (CRM, video-import, enriquecimento) —
+// não reimplementar (drift garantido). A ABA da UI é DERIVADA disto em RUNTIME,
+// nunca coluna armazenada. Motivo: binário só-`telefone` descartava ~737 leads que
+// TÊM WhatsApp acionável (686 code-links + 36 números escondidos no externalUrl).
+export type WhatsappClass = 'numero' | 'link' | 'nenhum';
+export type WhatsappResult = {
+  state: WhatsappClass;
+  telefone: string | null; // número BR discável (E.164) quando state='numero' — serve p/ disparo uazapi
+  wa_link: string | null;  // link-código (wa.me/message/…) quando state='link'
+};
+
+/**
+ * Classifica o canal de WhatsApp do lead em 3 estados, na ordem de força:
+ *  • 'numero' → número BR discável (`telefone` já salvo OU wa.me/<dígitos> escondido em link/externalUrl/bio).
+ *  • 'link'   → só link-código OPACO (wa.me/message | wa.link | whatsapp.com/message): acionável no clique, sem número.
+ *  • 'nenhum' → nada acionável → fila de enriquecimento.
+ * REUSA `extractBestPhone` (não duplica regex). `raw` = item cru do IG (externalUrl/externalUrls/biography/website).
+ */
+export function classifyWhatsapp(lead: {
+  telefone?: string | null;
+  whatsapp_link?: string | null;
+  bio?: string | null;
+  raw?: any;
+}): WhatsappResult {
+  const tel = (lead.telefone ?? '').trim();
+  if (tel) return { state: 'numero', telefone: tel, wa_link: null };
+
+  const raw = lead.raw ?? {};
+  const extUrls = Array.isArray(raw.externalUrls)
+    ? raw.externalUrls.map((u: any) => (typeof u === 'string' ? u : u?.url)).filter(Boolean)
+    : [];
+  const texts: Array<string | null | undefined> = [
+    lead.whatsapp_link, raw.externalUrl, raw.external_url, raw.website,
+    ...extUrls, lead.bio, raw.biography,
+  ];
+
+  const bp = extractBestPhone(texts);
+  if (bp.telefone) return { state: 'numero', telefone: bp.telefone, wa_link: null };
+  if (bp.wa_link) return { state: 'link', telefone: null, wa_link: bp.wa_link };
+  return { state: 'nenhum', telefone: null, wa_link: null };
+}
+
 // ── Detecção de idioma (peneira grossa lusófona, com TOLERÂNCIA) ─────────────
 // Marcadores fortes por idioma. PT é intencionalmente amplo (Brasil E Portugal —
 // a separação BR-vs-PT é trabalho do GEO, não do idioma).
@@ -341,19 +384,27 @@ export function classifyLeadSegment(opts: {
 }): SegmentResult {
   const { icp, langPass, geo, hasPhone, isInfoproduto } = opts;
 
-  // 1) Fora do mercado (idioma não-PT confiante OU geografia estrangeira explícita).
-  if (!langPass) return { segment: 'descarte', qualified: false };
-  if (geo.explicit_foreign) return { segment: 'descarte', qualified: false };
+  // MODELO 3-CATS (2026-07-19, aprovado Marcelo): segmento = POSICIONAMENTO, NÃO
+  // reachability. Só 3 baldes: salao_cliente (Cliente) · afiliado_infoproduto ·
+  // revisao (absorve o antigo `descarte`). Cliente INDEPENDE de telefone (o telefone
+  // define a ABA WhatsApp via classifyWhatsapp, não o segmento). `qualified` segue
+  // exigindo telefone = "pronto p/ venda por NÚMERO" (disparo uazapi); no-phone é
+  // Cliente acionável por DM/link, mas não "qualified de número".
 
-  // 2) Infoproduto de beleza (BR/indeterminado) → afiliado (mantido; ativado depois).
+  // 1) Fora do mercado (idioma não-PT confiante OU geografia estrangeira explícita) → REVISÃO.
+  if (!langPass) return { segment: 'revisao', qualified: false };
+  if (geo.explicit_foreign) return { segment: 'revisao', qualified: false };
+
+  // 2) Infoproduto de beleza (BR/indeterminado) → afiliado.
   if (isInfoproduto) return { segment: 'afiliado_infoproduto', qualified: false };
 
-  // 3) Sem sinal de beleza e sem ser infoproduto → fora do ICP → descarte.
-  if (!icp.pass) return { segment: 'descarte', qualified: false };
+  // 3) Sem sinal de beleza → fora do ICP → REVISÃO (não descarta).
+  if (!icp.pass) return { segment: 'revisao', qualified: false };
 
-  // 4) Beleza no universo BR: salão-cliente PRONTO precisa de BR confirmado + contato.
-  if (geo.is_brazil && hasPhone) return { segment: 'salao_cliente', qualified: true };
+  // 4) Beleza no universo BR → Cliente (segmento independe de telefone).
+  //    qualified = pronto p/ venda por número → precisa de telefone discável.
+  if (geo.is_brazil) return { segment: 'salao_cliente', qualified: hasPhone };
 
-  // 5) Beleza mas faltou confirmar BR ou contato → não descarta, TRIAGEM.
+  // 5) Beleza mas BR não confirmado → REVISÃO (triagem).
   return { segment: 'revisao', qualified: false };
 }

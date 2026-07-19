@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventário Go-Live NexvyBeauty — atualizado 2026-07-15</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--bd:#2a2f3a;--tx:#e6e8ee;--mut:#9aa3b2;--rose:#c54b60;--grn:#3fb950;--yel:#d9a441;--red:#e5534b;--blu:#4b8fd9;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:32px 20px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-size:19px;margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--bd);color:#fff}
+  .sub{color:var(--mut);font-size:13.5px;margin-bottom:16px}
+  .done{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);border-radius:10px;padding:14px 18px;margin-bottom:8px}
+  .done li{margin:4px 0}
+  .tblwrap{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:680px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{background:var(--card2);color:#fff;font-weight:600}
+  tr:last-child td{border-bottom:0}
+  code{background:#0b0d11;border:1px solid var(--bd);border-radius:4px;padding:1px 5px;font-size:12px;color:#cdd3de}
+  .id{font-weight:700;color:var(--rose);white-space:nowrap}
+  .g{color:var(--grn)}.y{color:var(--yel)}.r{color:var(--red)}
+  .box{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px 18px;margin-top:14px}
+  ol{margin:6px 0 0;padding-left:22px}ol li{margin:5px 0}
+  strong{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📋 Inventário de Pendências — Go-Live NexvyBeauty</h1>
+  <div class="sub">Criado 2026-07-14 · <strong>Atualizado 2026-07-15</strong> (pós-deploy sunset + menu) · ✅ no ar · 🟡 parcial · 🔴 não existe · ⏳ pendente</div>
+
+  <h2>✅ Subiu em produção nesta sessão</h2>
+  <div class="done"><ul>
+    <li><strong>Onboarding E2E</strong> (wizard 9 passos + telemetria) — PR #63</li>
+    <li><strong>Menu "Prospecção Ativa"</strong> (Buscas + Base consolidada dedup-merge + stubs) — PR #64 · VIEW aplicada (4.005 handles, nada perdido)</li>
+    <li><strong>Sunset "Piloto Fundadora"</strong> — PR #65: migrations (de-para 275/383·427/599·693/849 + 8 colunas + Duda/Bia) + edges (brain/copilot/cakto-webhook). Banco verificado limpo.</li>
+    <li><strong>R5</strong> (Teste R$10 vazando) corrigido · <strong>ICP enriquecido</strong> + <strong>preço fonte-única</strong> aplicados</li>
+    <li><strong>Enriquecimento</strong> 4.006 leads (1.919 WhatsApp + 1.562 IG) · preços 275/427/693 · nº demo Meta · Resend · webhook Cakto</li>
+  </ul></div>
+
+  <h2>⏳ Pendências (você prioriza)</h2>
+  <div class="tblwrap"><table>
+    <tr><th>#</th><th>Item</th><th>Estado</th><th>O que falta</th><th>Esforço</th><th>Bloqueia?</th></tr>
+    <tr><td class="id">P8</td><td><strong>Esteira de demonstração</strong> (ver o R$ DELA antes de comprar)</td><td class="y">🔬 roadmap /loop PRONTO</td><td>⛔ 2 blockers: <strong>B1</strong> geo-IP provider · <strong>B4</strong> QR+compra físicos (redefine "100%")</td><td>~11-13d</td><td class="r">pitch promete</td></tr>
+    <tr><td class="id">P9</td><td><strong>Automação real</strong> (4 receitas)</td><td class="y">🔄 DEPLOYANDO agora (agente)</td><td>merge #69→main + migration + edges + front · aguardar <code>DEPLOY-VERDE</code></td><td>—</td><td class="r">pitch "automático"</td></tr>
+    <tr><td class="id">CART</td><td><strong>Agente de Gestão de Carteira</strong> (auditor + captura)</td><td class="y">🔄 DEPLOYANDO agora (junto do #69)</td><td>smoke live 7 pending/3 unreachable · aguardar <code>DEPLOY-VERDE</code> + backfill</td><td>—</td><td>pré-disparo</td></tr>
+    <tr><td class="id">P2</td><td><strong>3 agentes-casca</strong> (Nina, Nexvy, Orquestrador)</td><td class="g">✅ PR-A #67 em PROD · PR-B #68 GO DADO (enfileirado)</td><td>dispara sozinho pós-#69, com gate <code>tmp-eval ≥90%</code> (rollback se falhar) · você depois: D-7 antes de <code>NINA_HEALTH_SCAN</code></td><td>—</td><td>não (flags OFF)</td></tr>
+    <tr><td class="id">P10</td><td><strong>Handoff SDR</strong> — ✅ <strong>no ar (flag OFF)</strong>, PR #66 · <strong>smokes prontos</strong></td><td class="g">🟢</td><td>⚠️ ordem: (re)deploy do porte no <code>cakto-webhook</code> → ligar <code>ONBOARDING_HANDOFF_ENABLED=true</code> → 2 smokes</td><td>mínimo</td><td>não</td></tr>
+    <tr><td class="id">P11</td><td><strong>Agentes LDR / BDR</strong> (outbound aos 4.006)</td><td class="r">🔴 personas faltam</td><td>prompt + agent_type + anti-spam</td><td>Médio</td><td>só se outbound</td></tr>
+    <tr><td class="id">P13</td><td>Orquestrador formal (dispatcher por agent_type)</td><td class="y">🟡 implícito</td><td>migrar roteador nome→agent_type</td><td>Alto</td><td>não</td></tr>
+    <tr><td class="id">LP</td><td><strong>LP nova</strong> (Lovable) substituir a antiga</td><td class="y">🟡 você fazendo</td><td>você finaliza → eu subo</td><td>—</td><td>R3 temporária</td></tr>
+    <tr><td class="id">E2E</td><td>Rodar o E2E de verdade (compra real R$10)</td><td>⏳ adiado</td><td>você paga → prova provisioning</td><td>Baixo</td><td>prova final</td></tr>
+    <tr><td class="id">P14/15</td><td>Link onboarding auto-enviado · telefones unicode-bold</td><td class="y">P14 🟡 · P15 ✅ 100%</td><td>P14 opcional · P15: 4 <code>telefone</code> + 4 <code>whatsapp_link</code> normalizados (0 restantes)</td><td>Baixo</td><td>não</td></tr>
+    <tr><td class="id">INFRA</td><td>Disco do Mac (1,3 GB) · roteador de agentes por-nome</td><td class="r">🔴/🟡</td><td>liberar espaço · migrar (P13)</td><td>—</td><td>ambiente</td></tr>
+  </table></div>
+
+  <h2>🚦 Caminho para o go-live</h2>
+  <p style="color:var(--mut)">O produto está essencialmente construído. O que falta pra lançar não é mais código — são gates + os 2 deploys terminando.</p>
+  <div class="box">
+    <p style="margin:0 0 6px"><strong class="r">🔴 Caminho crítico (bloqueia lançar)</strong></p>
+    <ol style="margin-top:4px">
+      <li>🔄 <strong>2 deploys fecharem</strong> — #69 (automação+carteira) deployando · #68 (brain) enfileirado.</li>
+      <li>🚀 <strong>LP nova</strong> (Lovable) → eu subo. [Marcelo]</li>
+      <li>🔴 <strong>E2E real (compra R$10)</strong> — a <strong>maior incógnita</strong>: a cadeia inteira (pagar→provisionar→onboarding→automação) nunca rodou com pagamento real neste ciclo. [Marcelo paga → eu monitoro]</li>
+      <li>📧 <strong>Resend/e-mail</strong> — cron <code>process-email-queue</code> <strong>NÃO existe</strong> → e-mail pós-compra não sai. [Marcelo: conta+DNS · eu: cron+branding]</li>
+      <li>⚙️ <strong>P10 flag</strong> — porte sobe com o #69; ligar <code>ONBOARDING_HANDOFF_ENABLED=true</code> → 2 smokes. [Marcelo]</li>
+    </ol>
+    <p><strong class="y">🟡 Fast-follow (lança sem):</strong> Esteira demonstração (~11-13d; demo manual no piloto) · Nina retenção D-7 (importa em D+30) · LDR/BDR outbound (se GTM outbound) · Captação C1/C3/C5 · Instagram Flows · Voz IA (Fase 2).</p>
+    <p><strong>⚠️ Decisão sua (corte de lançamento):</strong> <strong>(recomendo)</strong> lançar no <strong>CORE como piloto controlado 1-3 salões</strong> (+ demo manual), esteira/retenção/outbound fast-follow — <strong>semana, não meses</strong>. Alternativa: esperar a esteira (~2 semanas, receita na mesa). Coerência: pitch promete "demo carteira" → demo manual no piloto ou suaviza até a esteira subir.</p>
+  </div>
+</div>
+</body>
+</html>
