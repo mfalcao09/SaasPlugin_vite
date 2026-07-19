@@ -53,6 +53,47 @@ export function sanitizeInstagramHandle(raw: unknown): string | null {
   return HANDLE_RE.test(s) ? s : null;
 }
 
+/**
+ * FRAMES → @handles (loteado + paralelo + merge/dedup). Núcleo TESTÁVEL do path de
+ * FRAMES da Importação por vídeo: quebra os quadros em lotes de `batchSize`, chama
+ * `extractBatch` (Gemini visão) com CONCORRÊNCIA limitada e funde os @handles achados —
+ * sanitizados (regra canônica) e deduplicados GLOBALMENTE por handle. Não sobe o vídeo
+ * cru: o front extrai os quadros e aqui só orquestramos as chamadas de visão — por isso
+ * o path de frames "engole" QUALQUER TAMANHO de vídeo (o arquivo nunca trafega). A ORDEM
+ * do resultado não é determinística (execução paralela), mas o CONJUNTO de handles é.
+ */
+export async function extractHandlesFromFrames(
+  frames: string[],
+  batchSize: number,
+  extractBatch: (batch: string[]) => Promise<string[]>,
+  concurrency = 5,
+): Promise<{ handles: string[]; geminiCalls: number }> {
+  const size = Math.max(1, Math.trunc(batchSize) || 1);
+  const batches: string[][] = [];
+  for (let i = 0; i < frames.length; i += size) batches.push(frames.slice(i, i + size));
+
+  const seen = new Set<string>();
+  const handles: string[] = [];
+  const merge = (found: Iterable<string>) => {
+    for (const raw of found) {
+      const h = sanitizeInstagramHandle(raw);
+      if (h && HANDLE_RE.test(h) && !seen.has(h)) { seen.add(h); handles.push(h); }
+    }
+  };
+
+  let next = 0;
+  const worker = async () => {
+    for (;;) {
+      const idx = next++;
+      if (idx >= batches.length) return;
+      merge(await extractBatch(batches[idx]));
+    }
+  };
+  const lanes = Math.max(1, Math.min(Math.trunc(concurrency) || 1, batches.length));
+  await Promise.all(Array.from({ length: lanes }, () => worker()));
+  return { handles, geminiCalls: batches.length };
+}
+
 // ── Apify REST ───────────────────────────────────────────────────────────────
 
 export interface IgActorInput {
