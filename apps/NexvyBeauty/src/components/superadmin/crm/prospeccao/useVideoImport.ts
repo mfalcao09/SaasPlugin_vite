@@ -16,6 +16,13 @@ export interface FrameExtractOpts {
   quality?: number;     // qualidade JPEG (0..1)
 }
 
+/**
+ * Teto de quadros (fonte-única, alinhado ao MAX_FRAMES da edge). NÃO é o antigo cap de
+ * 60 quadros: é uma proteção de tempo-de-execução da edge + tamanho do POST. Com amostragem
+ * densa (~2–4 fps) 300 quadros cobrem minutos de scroll; vídeos ainda mais longos se dividem.
+ */
+export const MAX_VIDEO_FRAMES = 300;
+
 function seekTo(video: HTMLVideoElement, t: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const onSeeked = () => { cleanup(); resolve(); };
@@ -35,7 +42,7 @@ export async function extractVideoFrames(
   opts: FrameExtractOpts = {},
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ frames: string[]; durationSec: number }> {
-  const { intervalSec = 1.5, maxFrames = 60, maxWidth = 640, quality = 0.6 } = opts;
+  const { intervalSec = 0.75, maxFrames = MAX_VIDEO_FRAMES, maxWidth = 640, quality = 0.6 } = opts;
   const url = URL.createObjectURL(file);
   const video = document.createElement('video');
   video.src = url;

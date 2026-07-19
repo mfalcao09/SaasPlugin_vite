@@ -16,6 +16,7 @@ import {
   useImportVideo,
   useVideoEnrichmentStatus,
   NATIVE_MAX_BYTES,
+  MAX_VIDEO_FRAMES,
   type VideoImportResult,
 } from './useVideoImport';
 
@@ -38,7 +39,7 @@ export function ProspeccaoVideoImport() {
   const qc = useQueryClient();
 
   const [file, setFile] = useState<File | null>(null);
-  const [intervalSec, setIntervalSec] = useState(1.5);
+  const [intervalSec, setIntervalSec] = useState(0.75);
   const [phase, setPhase] = useState<Phase>('idle');
   const [frameProgress, setFrameProgress] = useState({ done: 0, total: 0 });
   const [result, setResult] = useState<VideoImportResult | null>(null);
@@ -105,7 +106,7 @@ export function ProspeccaoVideoImport() {
         setFrameProgress({ done: 0, total: 0 });
         const { frames } = await extractVideoFrames(
           file,
-          { intervalSec, maxFrames: 60, maxWidth: 640, quality: 0.6 },
+          { intervalSec, maxFrames: MAX_VIDEO_FRAMES, maxWidth: 640, quality: 0.6 },
           (done, total) => setFrameProgress({ done, total }),
         );
         if (frames.length === 0) throw new Error('Não consegui extrair quadros legíveis do vídeo.');
@@ -188,14 +189,14 @@ export function ProspeccaoVideoImport() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Amostragem: 1 quadro a cada <b className="text-foreground">{intervalSec.toFixed(1)}s</b></span>
-            <span>menos quadros = mais barato · mais quadros = pega mais perfis</span>
+            <span>Amostragem: 1 quadro a cada <b className="text-foreground">{intervalSec}s</b></span>
+            <span>mais denso = pega mais perfis no scroll · menos denso = mais barato</span>
           </div>
           <Slider
             value={[intervalSec]}
-            min={0.5}
-            max={4}
-            step={0.5}
+            min={0.25}
+            max={3}
+            step={0.25}
             onValueChange={(v) => setIntervalSec(v[0])}
             disabled={busy || phase === 'enriching'}
           />
