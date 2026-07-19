@@ -77,6 +77,30 @@
   <meta name="twitter:title" content="Agenda cheia, sem gastar com anúncio — com quem já é sua cliente.">
   <meta property="og:description" content="Em 5 minutos por dia, a sua EquipIA varre suas conversas de WhatsApp, acha quem sumiu e escreve a mensagem no seu tom — e você só aprova.">
   <meta name="twitter:description" content="Em 5 minutos por dia, a sua EquipIA varre suas conversas de WhatsApp, acha quem sumiu e escreve a mensagem no seu tom — e você só aprova.">
+  <!-- ── Meta Pixel (R1 da auditoria de funil) ──────────────────────────────
+       Só instala no host de MARKETING (apex/LP). NÃO dispara em app.* nem gestao.*
+       — público de retargeting não pode ser poluído com uso interno do produto.
+       O ID vem do build (VITE_META_PIXEL_ID no .env do VPS; Vite substitui %VITE_*%).
+       Sem ID configurado, o guard sai e NADA é instalado (falha segura).
+       fbc/fbp ficam disponíveis p/ a CAPI — src/lib/tracking.ts já os coleta. -->
+  <script>
+    (function () {
+      try {
+        var PIXEL_ID = '%VITE_META_PIXEL_ID%';
+        var h = location.hostname;
+        if (h.indexOf('app.') === 0 || h.indexOf('gestao.') === 0) return;   // app autenticado: não rastreia
+        if (!PIXEL_ID || PIXEL_ID.indexOf('VITE_') !== -1) return;           // env ausente: não instala
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+        document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', PIXEL_ID);
+        fbq('track', 'PageView');
+      } catch (e) { /* pixel nunca pode quebrar a LP */ }
+    })();
+  </script>
+
   <!-- Shell de gestão (gestao.*): tema "Nexvy Lux" (navy + dourado, fundo claro),
        aplicado ANTES do React montar p/ evitar flash. app.*/apex seguem no tema Beauty. -->
   <script>

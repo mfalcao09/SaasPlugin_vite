@@ -89,13 +89,21 @@ export interface PacoteClienteRow {
   data_validade: string | null
   status: string | null
 }
-// Subset da tabela clientes — telefone (p/ disparo WhatsApp) + nascimento (aniversário).
+// Subset da tabela clientes — telefone (p/ disparo WhatsApp) + nascimento (aniversário)
+// + ultima_interacao_wa (última msg no WhatsApp; alimenta o recuperável no DIA-1, antes
+// de existir agendamento concluído — carteira importada via evolution-history-sync).
 export interface ClienteRow {
   id: string
   nome: string | null
   telefone: string | null
   data_nascimento: string | null
+  ultima_interacao_wa?: string | null
 }
+
+// Ticket-fallback do dia-1: sem agendamento concluído, ticketMedio=0. Pra a tela de
+// valor não mostrar R$ 0,00 mudo, o recuperável usa este ticket ESTIMADO (mesma âncora
+// do demo pré-venda) — a headline já é rotulada "receita POTENCIAL", não realizada.
+export const DEFAULT_TICKET_FALLBACK = 100
 
 // ─── Helpers de data (T00:00:00 ancora local; sem shift de TZ) ──────────────
 export function todayMidnight(): Date {
@@ -145,6 +153,7 @@ export function buildLevers(
   agendamentos: AgendamentoRow[],
   pacotes: PacoteClienteRow[],
   clientesRows: ClienteRow[] = [],
+  ticketFallback = 0,
 ): GrowthLever[] {
   const hoje = todayMidnight()
   const concluidos = agendamentos.filter((a) => a.status === 'concluido')
@@ -182,6 +191,9 @@ export function buildLevers(
   // Ticket médio = média do valor dos concluídos (base p/ várias alavancas).
   const totalConcluidos = concluidos.reduce((s, a) => s + Number(a.valor ?? 0), 0)
   const ticketMedio = concluidos.length ? totalConcluidos / concluidos.length : 0
+  // Ticket usado nas estimativas: o real (média dos concluídos) ou, no dia-1 sem
+  // histórico, o fallback estimado — pra a headline de potencial não zerar mudo.
+  const ticketBase = ticketMedio || ticketFallback
 
   // Por cliente: última visita concluída (Date) + total histórico gasto.
   // Chave preferencial = cliente_id; fallback = cliente_nome (dado antigo sem id).
@@ -200,6 +212,18 @@ export function buildLevers(
     if (a.cliente_nome && cur.nome === 'Cliente') cur.nome = a.cliente_nome
     porCliente.set(key, cur)
   }
+  // ── Dia-1: carteira do WhatsApp (sem agendamento concluído) ────────────────
+  // Salão recém-onboardado não tem concluídos → porCliente vazio → recuperável = 0.
+  // Mergeia clientes que só têm sinal de WhatsApp (ultima_interacao_wa, importado pela
+  // evolution-history-sync) e ainda NÃO estão em porCliente (dedupe por chave = não
+  // dobra quem já tem concluído). Assim a alavanca de reativação estima com a base real.
+  for (const c of clientesRows) {
+    const key = c.id ?? (c.nome ? `nome:${c.nome}` : null)
+    if (!key || porCliente.has(key)) continue
+    const ultimaWa = parseDateLocal(c.ultima_interacao_wa)
+    if (!ultimaWa) continue
+    porCliente.set(key, { key, nome: c.nome ?? 'Cliente', ultima: ultimaWa, gasto: 0, visitas: 0 })
+  }
   const clientes = [...porCliente.values()]
 
   // ── Alavanca 1: Clientes inativos → reativação ──────────────────────────
@@ -211,7 +235,7 @@ export function buildLevers(
       inativos.length > 0
         ? `${inativos.length} cliente${inativos.length === 1 ? '' : 's'} sem voltar há mais de ${INATIVO_DIAS} dias. Uma mensagem traz de volta.`
         : `Nenhum cliente parado há mais de ${INATIVO_DIAS} dias — sua base está em dia.`,
-    estimated: (ticketMedio || 0) * inativos.length,
+    estimated: (ticketBase || 0) * inativos.length,
     count: inativos.length,
     ctaLabel: 'Ver clientes inativos',
     ctaTo: TO_CLIENTES,
@@ -381,7 +405,7 @@ export function buildLevers(
       aniversariantes.length > 0
         ? `${aniversariantes.length} cliente${aniversariantes.length === 1 ? '' : 's'} fazem aniversário este mês. Um carinho + mimo traz de volta.`
         : 'Ninguém aniversariando este mês — cadastre a data de nascimento dos clientes pra ativar.',
-    estimated: (ticketMedio || 0) * aniversariantes.length,
+    estimated: (ticketBase || 0) * aniversariantes.length,
     count: aniversariantes.length,
     ctaLabel: 'Ver clientes',
     ctaTo: TO_CLIENTES,

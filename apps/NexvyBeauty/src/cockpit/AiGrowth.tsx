@@ -34,7 +34,7 @@ import { formatBRL } from '@/cockpit/home/format'
 import { BulkReactivationDialog } from '@/cockpit/reactivation/BulkReactivationDialog'
 import { normalizeBrPhone, type OpportunityCardData } from '@/cockpit/types'
 import {
-  buildLevers, aggregateLevers, leverMessage,
+  buildLevers, aggregateLevers, leverMessage, DEFAULT_TICKET_FALLBACK,
   TO_CLIENTES, TO_PACOTES, TO_AGENDA, TO_SERVICOS,
   type GrowthLever, type AiGrowthData, type AgendamentoRow, type PacoteClienteRow,
 } from '@/cockpit/levers'
@@ -275,10 +275,12 @@ export default function AiGrowth({ demo, embedded }: { demo?: AiGrowthDemoData; 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, telefone, data_nascimento, cidade, uf')
+        .select('id, nome, telefone, data_nascimento, ultima_interacao_wa, cidade, uf')
         .eq('organization_id', organizationId!)
       if (error) throw error
-      return (data ?? []) as SegmentClienteRow[]
+      // as unknown as: types.ts gerado está defasado (sem ultima_interacao_wa em
+      // clientes, apesar da coluna existir no banco — F6). Runtime OK. TODO: regenerar types.
+      return (data ?? []) as unknown as SegmentClienteRow[]
     },
   })
 
@@ -286,7 +288,7 @@ export default function AiGrowth({ demo, embedded }: { demo?: AiGrowthDemoData; 
     return <div className="p-6"><NoOrg /></div>
   }
 
-  const d = demo ?? { levers: buildLevers(agendamentos, pacotes, clientesRows) }
+  const d = demo ?? { levers: buildLevers(agendamentos, pacotes, clientesRows, DEFAULT_TICKET_FALLBACK) }
   const { total: totalPotencial, count: totalItens } = aggregateLevers(d.levers)
 
   // 3ª dimensão: oportunidades de SEGMENTO (faixa × serviço × região). Cruza o

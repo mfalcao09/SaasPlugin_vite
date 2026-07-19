@@ -28,6 +28,7 @@ export interface SegmentClienteRow {
   nome: string | null
   telefone: string | null
   data_nascimento: string | null
+  ultima_interacao_wa: string | null
   cidade: string | null
   uf: string | null
 }
