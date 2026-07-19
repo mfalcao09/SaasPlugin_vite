@@ -56,6 +56,7 @@ import {
   pickPersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
+import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -908,7 +909,15 @@ Deno.serve(async (req) => {
 
     if (!persona) {
       // Sem persona não há motor — não improvisa uma voz genérica no número oficial.
+      // O guard de segurança continua (melhor calar que botar voz aleatória no número
+      // de vendas), MAS calar em silêncio com tráfego PAGO rodando = lead comprada
+      // morrendo sem ninguém saber. Agora ele GRITA. (Auditoria pré-ads 2026-07.)
       console.warn('[platform-sales-brain] sem persona ativa no WhatsApp para product_id:', conversation.product_id);
+      await sendTelegramAlert(
+        `🚨 SDR AUSENTE no número de vendas\n` +
+        `Nenhuma persona ativa em WhatsApp para product_id: ${conversation.product_id ?? 'null'}.\n` +
+        `A lead ficou SEM RESPOSTA. Verifique se a Duda está is_active + active_in_whatsapp.`,
+      );
       return json({ skipped: 'no_active_persona' });
     }
 
