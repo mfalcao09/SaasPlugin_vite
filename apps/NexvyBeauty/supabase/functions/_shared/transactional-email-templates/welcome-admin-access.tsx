@@ -34,8 +34,11 @@ const WHATSAPP_URL = 'https://wa.me/5511955021205'
 // Slices do design Canva "NexvyBeauty - Boas Vindas" (fonte visual da verdade).
 // Hospedadas em apps/NexvyBeauty/public/email/ → servidas pelo front em
 // https://nexvybeauty.com.br/email/* (exigem deploy do front para ficarem públicas).
-const HERO_IMG = 'https://nexvybeauty.com.br/email/hero.jpg'
-const COFOUNDER_IMG = 'https://nexvybeauty.com.br/email/cofounder.jpg'
+// ⚠️ Imagem de e-mail MUDOU = nome de arquivo MUDA (v2, v3...). Gmail/clients fazem
+// proxy-cache por URL e não há invalidação — reusar o nome serve a versão velha
+// para sempre (lição de 2026-07-19: hero/cofounder novos "não populavam").
+const HERO_IMG = 'https://nexvybeauty.com.br/email/hero-v2.jpg'
+const COFOUNDER_IMG = 'https://nexvybeauty.com.br/email/cofounder-v2.jpg'
 
 // Paleta sampleada do PDF do Canva (200dpi):
 const PINK = '#cf3f6e' // CTA principal rosa/magenta
@@ -127,7 +130,7 @@ const WelcomeAdminAccessEmail = ({
             <Img
               src={COFOUNDER_IMG}
               width="288"
-              alt="Sessão de massagem em um espaço de bem-estar claro e acolhedor"
+              alt="Mentora e dona de salão analisando os números do negócio juntas, em um espaço claro e acolhedor"
               style={cofounderImg}
             />
           </div>
