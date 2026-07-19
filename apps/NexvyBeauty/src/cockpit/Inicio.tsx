@@ -27,8 +27,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTodaysTasks } from '@/hooks/useTasks'
 import PrecisaDeVoce from './PrecisaDeVoce'
 import {
-  buildLevers, aggregateLevers,
+  buildLevers, aggregateLevers, DEFAULT_TICKET_FALLBACK,
   type AgendamentoRow as LeverAgendamento, type PacoteClienteRow as LeverPacote,
+  type ClienteRow as LeverCliente,
 } from './levers'
 
 // ─── Shapes das linhas reais ────────────────────────────────────────────────
@@ -142,6 +143,20 @@ export default function Inicio() {
     },
   })
 
+  const { data: clientes } = useQuery({
+    queryKey: ['inicio-clientes', organizationId],
+    enabled: !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome, telefone, data_nascimento, ultima_interacao_wa')
+        .eq('organization_id', organizationId!)
+        .limit(5000)
+      if (error) throw error
+      return (data ?? []) as unknown as LeverCliente[]
+    },
+  })
+
   const { data: profissionais } = useQuery({
     queryKey: ['inicio-profissionais', organizationId],
     enabled: !!organizationId,
@@ -179,8 +194,8 @@ export default function Inicio() {
   const recuperadoCount = (recuperados ?? []).length
 
   const m = useMemo(
-    () => compute(agendamentos ?? [], lancamentos ?? [], pacotes ?? [], profissionais ?? []),
-    [agendamentos, lancamentos, pacotes, profissionais],
+    () => compute(agendamentos ?? [], lancamentos ?? [], pacotes ?? [], profissionais ?? [], clientes ?? []),
+    [agendamentos, lancamentos, pacotes, profissionais, clientes],
   )
 
   const tarefasPendentes = (tarefasHoje ?? []).filter((t: any) => t.status !== 'completed').length
@@ -272,7 +287,7 @@ export default function Inicio() {
 // ════════════════════════════════════════════════════════════════════════════
 // Agregação pura — testável e fora do componente (sem hooks).
 // ════════════════════════════════════════════════════════════════════════════
-function compute(ags: AgRow[], lancs: LancRow[], pacs: PacRow[], profs: ProfRow[]) {
+function compute(ags: AgRow[], lancs: LancRow[], pacs: PacRow[], profs: ProfRow[], clis: LeverCliente[] = []) {
   const mesAtual = monthKey(0)
   const mesAnterior = monthKey(-1)
   const hojeStr = ymd(new Date())
@@ -300,7 +315,7 @@ function compute(ags: AgRow[], lancs: LancRow[], pacs: PacRow[], profs: ProfRow[
   const desmarcacaoPct = noMes.length ? (perdaCount / noMes.length) * 100 : 0
 
   // ── Bloco C: alavancas (reusa levers.ts) ──
-  const levers = buildLevers(ags as unknown as LeverAgendamento[], pacs as unknown as LeverPacote[])
+  const levers = buildLevers(ags as unknown as LeverAgendamento[], pacs as unknown as LeverPacote[], clis, DEFAULT_TICKET_FALLBACK)
   const { total: recuperavel, count: recuperavelCount } = aggregateLevers(levers)
   const comValor = levers.filter((l) => l.estimated > 0)
   const topLever = comValor.length ? comValor.reduce((a, b) => (b.estimated > a.estimated ? b : a)) : null

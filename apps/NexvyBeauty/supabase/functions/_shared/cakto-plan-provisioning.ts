@@ -404,9 +404,17 @@ export async function ensureAdminUser(
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // redirectTo → o link do e-mail aterrissa em /reset-password (ResetPassword.tsx
+    // detecta a sessão de recovery e exibe o campo de nova senha). Sem isto, o Supabase
+    // usa o Site URL padrão (raiz) e joga a compradora no dashboard, sem nunca mostrar o
+    // form de senha — e como a senha inicial é aleatória, ela fica travada (R5 da auditoria
+    // de funil). ⚠️ OPS: a URL PRECISA estar na allowlist "Redirect URLs" do Auth do projeto,
+    // senão o Supabase a ignora e cai de volta no Site URL (mesmo bug, silencioso).
+    const APP_URL = Deno.env.get('APP_URL') || 'https://app.nexvybeauty.com.br';
     const { data: linkData } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email,
+      options: { redirectTo: `${APP_URL}/reset-password` },
     });
     const recoveryLink =
       (linkData as any)?.properties?.action_link ||

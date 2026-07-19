@@ -118,3 +118,35 @@ verify_jwt = false
 # DUPLO GATE de envio: campaign.dry_run (default true) + env COLD_OUTREACH_ENABLED.
 [functions.platform-cold-outreach]
 verify_jwt = false
+
+# ── Webhooks PÚBLICOS de terceiros (provider -> plataforma) ──────────────────
+# Provedores de pagamento/anúncio NUNCA mandam JWT Supabase; a auth real é feita
+# DENTRO de cada função (secret/HMAC/token). Sem estes blocos, um redeploy religa
+# verify_jwt=true (default) e o gateway devolve 401 ANTES da função rodar — matando
+# a provisão de venda / o webhook em SILÊNCIO. (Auditoria de fluidez do funil, 2026-07.)
+
+# Cakto (venda -> provisão do tenant). Auth = ?secret= / x-cakto-secret validado na função.
+# CRÍTICO: sem este bloco, toda venda que chega pela Cakto morre no gateway (401).
+[functions.cakto-webhook]
+verify_jwt = false
+
+# Recuperação de carrinho Cakto: chamada server-to-server com Bearer service_role.
+# verify_jwt=false por consistência (service_role no formato novo sb_secret_ não é JWT).
+[functions.cakto-recovery-trigger]
+verify_jwt = false
+
+# Hotmart (venda -> provisão). Auth = hottok no payload, sem JWT Supabase.
+[functions.hotmart-webhook]
+verify_jwt = false
+
+# Doppus (venda -> provisão). Auth = header doppus-token, sem JWT Supabase.
+[functions.doppus-webhook]
+verify_jwt = false
+
+# Lead Ads da Meta (GET hub.challenge/hub.verify_token + POST de lead), sem JWT Supabase.
+[functions.facebook-leads-webhook]
+verify_jwt = false
+
+# Descadastro one-click de e-mail (token no query; Gmail/Apple mandam POST one-click), sem JWT.
+[functions.handle-email-unsubscribe]
+verify_jwt = false
