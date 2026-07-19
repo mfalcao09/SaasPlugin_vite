@@ -498,10 +498,15 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
 /** Handoff BDR->Duda no MESMO thread: UPDATE current_agent_id (padrão onboarding-handoff P10). */
 async function handoffToDuda(sb: SupabaseClient, productId: string | undefined, conversationId: string) {
   if (!productId) return { ok: false, reason: "no product" };
+  // active_in_whatsapp no filtro: o platform-sales-brain (quem conduz daqui pra
+  // frente) só enxerga is_active + active_in_whatsapp. Pinar uma Duda fora do
+  // WhatsApp criaria um current_agent_id ÓRFÃO no thread. Sem Duda utilizável, o
+  // BDR (Bento) segue dono da conversa — ninguém fica sem agente.
   const { data: agents } = await sb.from("platform_crm_product_agents")
-    .select("id, name, agent_type, is_active").eq("product_id", productId).eq("is_active", true);
+    .select("id, name, agent_type, is_active, active_in_whatsapp")
+    .eq("product_id", productId).eq("is_active", true).eq("active_in_whatsapp", true);
   const duda = pickSdrPersona((agents ?? []) as any[]);
-  if (!duda) return { ok: false, reason: "no sdr (Duda) agent" };
+  if (!duda) return { ok: false, reason: "no sdr (Duda) agent active_in_whatsapp" };
   await sb.from("platform_crm_conversations").update({ current_agent_id: duda.id, updated_at: new Date().toISOString() }).eq("id", conversationId);
   return { ok: true, to_agent_id: duda.id };
 }

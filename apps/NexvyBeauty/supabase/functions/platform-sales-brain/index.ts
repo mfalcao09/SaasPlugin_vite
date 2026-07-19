@@ -53,10 +53,10 @@ import {
   isCloserAgent,
   isRetentionAgent,
   pickSdrPersona,
-  pickPersonaForConversation,
+  resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
-import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
+import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
   connectionErrorCode,
@@ -902,6 +902,11 @@ Deno.serve(async (req) => {
     //    persistimos current_agent_id=duda.id na conversa (pin determinístico).
     let persona: Record<string, any> | null = null;
     let sdrAgentId: string | null = null; // id da Duda — alvo do pin inicial
+    // Motivo do roteamento: 'pinned' | 'sdr_open' | 'sdr_fallback_orphan_pin' | 'no_persona'.
+    // O fallback órfão (pin apontando pra agente inativo/inexistente) precisa GRITAR
+    // e RE-PINAR — antes ele caía na Duda em silêncio, indistinguível de conversa nova.
+    let routeReason: string = 'no_persona';
+    let orphanAgentId: string | null = null;
     if (conversation.product_id) {
       const { data: agents } = await supabase
         .from('platform_crm_product_agents')
@@ -914,7 +919,10 @@ Deno.serve(async (req) => {
       const agentList = (agents as Array<Record<string, any>>) || [];
       const sdrPersona = pickSdrPersona(agentList);
       sdrAgentId = sdrPersona?.id ?? null;
-      persona = pickPersonaForConversation(agentList, conversation.current_agent_id ?? null);
+      const route = resolvePersonaForConversation(agentList, conversation.current_agent_id ?? null);
+      persona = route.persona;
+      routeReason = route.reason;
+      orphanAgentId = route.orphanAgentId;
     }
 
     if (!persona) {
@@ -926,9 +934,32 @@ Deno.serve(async (req) => {
       await sendTelegramAlert(
         `🚨 SDR AUSENTE no número de vendas\n` +
         `Nenhuma persona ativa em WhatsApp para product_id: ${conversation.product_id ?? 'null'}.\n` +
+        (orphanAgentId
+          ? `Pior: a conversa ${conversationId} apontava current_agent_id=${orphanAgentId}, que TAMBÉM não resolve — handoff quebrado E sem Duda pra assumir.\n`
+          : '') +
         `A lead ficou SEM RESPOSTA. Verifique se a Duda está is_active + active_in_whatsapp.`,
       );
       return json({ skipped: 'no_active_persona' });
+    }
+
+    // FALLBACK ÓRFÃO → a Duda assume E o pin quebrado é CURADO no banco.
+    // Acontece quando current_agent_id aponta um agente que o cérebro não pode
+    // usar (desativado, removido, ou tirado do WhatsApp — ex.: pin da Nina com
+    // active_in_whatsapp=false). O invariante manda: conversa sem agente que
+    // responda VOLTA pra SDR. Antes isso já acontecia, mas EM SILÊNCIO e SEM
+    // curar a linha — o pin órfão sobrevivia e cada mensagem repetia o desvio.
+    if (routeReason === 'sdr_fallback_orphan_pin') {
+      console.warn(
+        `[platform-sales-brain] pin órfão em ${conversationId}: current_agent_id=${orphanAgentId} não está ativo+WhatsApp — Duda (${persona.id}) assume.`,
+      );
+      await sendTelegramAlertThrottled(
+        `orphan-pin:${conversationId}`,
+        `⚠️ HANDOFF QUEBRADO — Duda assumiu\n` +
+        `Conversa: ${conversationId}\n` +
+        `current_agent_id órfão: ${orphanAgentId} (não está is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}).\n` +
+        `A SDR (${persona.name ?? persona.id}) assumiu e o pin foi corrigido — a lead NÃO ficou sem resposta.\n` +
+        `Confira se o agente de destino foi desativado sem querer.`,
+      );
     }
 
     // Papel do agente que vai falar AGORA (condiciona [PASSAR_BIA] e continuidade).
@@ -940,9 +971,15 @@ Deno.serve(async (req) => {
     // persona escolhida é a Nina (por pin do nina-health-scan).
     const retentionActive = isRetentionAgent(persona);
 
-    // PIN INICIAL: se a conversa ainda não tem agente fixado e a Duda vai abrir,
-    // grava current_agent_id=duda.id — assim a linha começa ancorada nela.
-    if (!conversation.current_agent_id && sdrAgentId && persona.id === sdrAgentId) {
+    // PIN INICIAL (+ CURA DO PIN ÓRFÃO): se a conversa ainda não tem agente
+    // fixado e a Duda vai abrir, grava current_agent_id=duda.id — assim a linha
+    // começa ancorada nela. E se o pin existia mas estava ÓRFÃO, sobrescreve
+    // pela Duda: sem isso a conversa ficaria com um dono fantasma no banco e o
+    // desvio se repetiria a cada mensagem.
+    if (
+      (!conversation.current_agent_id || routeReason === 'sdr_fallback_orphan_pin') &&
+      sdrAgentId && persona.id === sdrAgentId
+    ) {
       await supabase
         .from('platform_crm_conversations')
         .update({ current_agent_id: sdrAgentId })
@@ -1170,7 +1207,17 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
       if (biaAgentId) {
         passedToBia = true;
       } else {
+        // HANDOFF FALHO Duda→Bia: a Duda MANTÉM a conversa (invariante honrado —
+        // ninguém fica órfão), mas a lead ouviu "te deixo com a Bia" e a Bia não
+        // existe. Isso não pode mais acontecer em silêncio.
         console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer (Bia) ativo no WhatsApp — Duda mantém a conversa.');
+        await sendTelegramAlertThrottled(
+          `pass-bia-failed:${conversationId}`,
+          `⚠️ HANDOFF Duda→Bia FALHOU — Duda mantém a conversa\n` +
+          `Conversa: ${conversationId}\n` +
+          `Nenhum closer (Bia) is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}.\n` +
+          `A lead JÁ recebeu a bolha de transição ("te deixo com a Bia") — quem responder será a Duda.`,
+        );
       }
     }
 

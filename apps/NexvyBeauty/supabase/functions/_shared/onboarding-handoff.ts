@@ -23,6 +23,7 @@ import {
   reportUnresolvedConnection,
   resolveConnectionForConversation,
 } from './whatsapp-connection.ts';
+import { sendTelegramAlertThrottled } from './platform-alerts.ts';
 
 export interface OnboardingHandoffArgs {
   organizationId: string;
@@ -175,7 +176,17 @@ export async function handoffConversationToOnboarding(
       return { ok: false, skipped: 'agent_query_failed' };
     }
     if (!csAgent?.id) {
+      // HANDOFF Duda→Lia FALHOU. A conversa NÃO fica órfã (segue com quem estava,
+      // a Duda), mas uma compradora pagante ficou sem quem faça a implantação —
+      // silêncio aqui é exatamente o que a auditoria pré-ads foi caçar.
       console.warn('[onboarding-handoff] nenhum agente CS de implantação (support/%implanta%) ativo — handoff pulado.');
+      await sendTelegramAlertThrottled(
+        `onboarding-handoff-no-cs:${args.organizationId}`,
+        `⚠️ HANDOFF PÓS-COMPRA FALHOU (sem agente de implantação)\n` +
+        `Org provisionada: ${args.organizationId}\n` +
+        `Nenhum agente is_active com agent_type='support' e nome ~ '%implanta%' (Lia).\n` +
+        `A conversa CONTINUA com o agente atual (Duda) — ninguém ficou sem resposta, mas a implantação não foi assumida.`,
+      );
       return { ok: false, skipped: 'no_cs_agent' };
     }
 
@@ -244,6 +255,13 @@ export async function handoffConversationToOnboarding(
     if (updErr) {
       // Coluna ainda não migrada, RLS, etc. — loga e segue (deploy-safe).
       console.warn('[onboarding-handoff] update da conversa falhou:', updErr.message);
+      await sendTelegramAlertThrottled(
+        `onboarding-handoff-update-failed:${conversationId}`,
+        `⚠️ HANDOFF PÓS-COMPRA FALHOU (update da conversa)\n` +
+        `Conversa: ${conversationId} · Org: ${args.organizationId} · Lia: ${csAgent.id}\n` +
+        `Erro: ${updErr.message.slice(0, 200)}\n` +
+        `current_agent_id NÃO mudou — a conversa segue com o agente anterior (Duda), sem modo implantação.`,
+      );
       return { ok: false, skipped: 'update_failed', conversation_id: conversationId, cs_agent_id: csAgent.id };
     }
 

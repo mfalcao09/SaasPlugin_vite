@@ -41,7 +41,19 @@ export const AgentTreeNode = memo(function AgentTreeNode({
   onToggleStatus,
   onOpenExecutiveTab,
 }: AgentTreeNodeProps) {
-  const template = AGENT_TEMPLATES[agent.agent_type];
+  // Lookup TOTAL: agent_type vem do BANCO (dinâmico); o mapa é estático. Um tipo
+  // novo sem entrada aqui derrubava a tela inteira via RouteErrorBoundary
+  // ("Cannot read properties of undefined (reading 'icon')" — caos de 2026-07-19,
+  // agentes prospector/retention criados sem o mapa acompanhar). Nunca crashar
+  // por dado desconhecido: degrada para um card genérico.
+  const template = AGENT_TEMPLATES[agent.agent_type] ?? {
+    name: agent.agent_type,
+    description: '',
+    icon: '🤖',
+    primary_objective: '',
+    can_do: [],
+    cannot_do: [],
+  };
   const isOrchestrator = variant === 'orchestrator';
 
   return (
