@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,9 @@ import {
   useExtractionApprovalCounts,
   type LeadSegment,
   type ExtractedLead,
+  type WhatsappTab,
 } from '@/components/superadmin/crm/data/usePlatformProspeccao';
+import { SOURCE_META, leadSourceOf, type LeadSource } from '@/components/superadmin/crm/prospeccao/_shared';
 
 /**
  * PROSPECÇÃO (C9) — cockpit do motor de extração de leads (super_admin, product-scoped).
@@ -34,12 +36,19 @@ const SEG_META: Record<LeadSegment, { label: string; dot: string; cls: string }>
   salao_cliente: { label: 'Espaço-cliente', dot: '🟢', cls: 'bg-green-500/15 text-green-600 border-green-500/30' },
   afiliado_infoproduto: { label: 'Afiliado', dot: '🔵', cls: 'bg-blue-500/15 text-blue-600 border-blue-500/30' },
   revisao: { label: 'Revisão', dot: '🟡', cls: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30' },
-  descarte: { label: 'Descarte', dot: '⚪', cls: 'bg-muted text-muted-foreground border-border' },
-  acionamento_via_instagram: { label: 'Instagram (DM)', dot: '🟣', cls: 'bg-purple-500/15 text-purple-600 border-purple-500/30' },
 };
-const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao', 'descarte', 'acionamento_via_instagram'];
+const SEG_KEYS: LeadSegment[] = ['salao_cliente', 'afiliado_infoproduto', 'revisao'];
 
 const SUGGESTED = 'cabeleireira, escova progressiva, alongamento de unhas, design de sobrancelhas, esmalteria, micropigmentação, salão de beleza';
+
+// Abas de canal WhatsApp — DERIVADAS das colunas (telefone/whatsapp_link), nunca armazenadas.
+// Preencheu o telefone → o lead muda de aba sozinho (mata o "lead preso na lista errada").
+const WA_TABS: { val: WhatsappTab | 'all'; label: string; hint: string }[] = [
+  { val: 'all',    label: 'Todos',  hint: 'Todos os leads da busca' },
+  { val: 'numero', label: 'Número', hint: 'Número discável — pronto p/ disparo por WhatsApp' },
+  { val: 'link',   label: 'Link',   hint: 'Só link-código (wa.me/message) — acionável no clique, sem número' },
+  { val: 'nenhum', label: 'Sem',    hint: 'Sem WhatsApp — esta aba É a fila de enriquecimento' },
+];
 
 // Colunas opcionais (mostrar/ocultar). As 5 base (segmento, perfil, seguidores, telefone, categoria) são fixas.
 const OPT_COLS: { key: string; label: string }[] = [
@@ -86,6 +95,9 @@ export function PlatformProspeccaoManager() {
   const [limit, setLimit] = useState(30);
   const [selectedExtractionId, setSelectedExtractionId] = useState<string | null>(null);
   const [segment, setSegment] = useState<LeadSegment | 'all'>('all');
+  const [waFilter, setWaFilter] = useState<WhatsappTab | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
+  const [showEngine, setShowEngine] = useState(false);
   const [seedsOnly, setSeedsOnly] = useState(false);
   const [qualifiedOnly, setQualifiedOnly] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
@@ -98,9 +110,23 @@ export function PlatformProspeccaoManager() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: extractions = [] } = usePlatformLeadExtractions(productId);
+
+  // FONTE: a coluna `source` do banco é sempre 'instagram' (não discrimina); quem discrimina
+  // é o PREFIXO do rótulo (keywords[0]) — ver leadSourceOf. Os chips refletem o que a base
+  // REALMENTE tem hoje: importações (Prospectagram · Server API · Vídeo) + keyword-search.
+  const sourceCounts = useMemo(() => {
+    const c = { prospectagram: 0, video: 0, serper: 0, keyword: 0 } as Record<LeadSource, number>;
+    for (const ex of extractions) c[leadSourceOf(ex)]++;
+    return c;
+  }, [extractions]);
+  const shownExtractions = useMemo(
+    () => (sourceFilter === 'all' ? extractions : extractions.filter((ex) => leadSourceOf(ex) === sourceFilter)),
+    [extractions, sourceFilter],
+  );
   const activeExtraction =
-    selectedExtractionId ?? extractions.find((e) => e.status === 'done')?.id ?? extractions[0]?.id ?? null;
-  const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, seedsOnly, qualifiedOnly, excludedOnly: showExcluded });
+    (selectedExtractionId && shownExtractions.some((e) => e.id === selectedExtractionId) ? selectedExtractionId : null)
+    ?? shownExtractions.find((e) => e.status === 'done')?.id ?? shownExtractions[0]?.id ?? null;
+  const { data: leads = [], isLoading: leadsLoading } = usePlatformExtractedLeads(activeExtraction, { segment, waTab: waFilter, seedsOnly, qualifiedOnly, excludedOnly: showExcluded });
   const start = useStartExtraction();
   const reclassify = useReclassifyLead();
   const importHandles = useImportHandles();
@@ -128,7 +154,7 @@ export function PlatformProspeccaoManager() {
   };
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, descarte: 0, acionamento_via_instagram: 0, seeds: 0 };
+    const c: Record<string, number> = { salao_cliente: 0, afiliado_infoproduto: 0, revisao: 0, seeds: 0 };
     for (const l of leads) {
       if (l.segment) c[l.segment] = (c[l.segment] ?? 0) + 1;
       if (l.is_seed) c.seeds++;
@@ -206,7 +232,8 @@ export function PlatformProspeccaoManager() {
             <Radar className="h-6 w-6 text-primary" /> Prospecção
           </h1>
           <p className="text-muted-foreground mt-1">
-            Motor de extração de leads (Instagram). Busque por palavra-chave ou cole @handles; os perfis vêm classificados por segmento.
+            Base de leads do Instagram organizada por <b>fonte</b>. Hoje a maior parte entra por <b>importação</b>
+            {' '}(Prospectagram · Server API · Vídeo, rodadas nas sessões) — a busca por palavra-chave é só mais uma fonte.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -224,13 +251,14 @@ export function PlatformProspeccaoManager() {
 
       {showRules && (
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground space-y-1">
-          <p>🟢 <b>Espaço-cliente (Qualificado):</b> beleza + Brasil + <b>telefone BR presente</b>. É o que entra no export/ads.</p>
-          <p>🟣 <b>Instagram (DM):</b> beleza/BR sem telefone mesmo após enriquecimento — acionamento via direct do Instagram (o @ basta).</p>
+          <p className="text-foreground font-medium">SEGMENTO = posicionamento do lead (quem ele é). Não tem relação com ter ou não WhatsApp.</p>
+          <p>🟢 <b>Espaço-cliente:</b> beleza + Brasil. <b>Independe de telefone</b> — sem telefone continua cliente.</p>
           <p>🔵 <b>Afiliado:</b> curso/mentoria de beleza (kiwify/hotmart, "X alunas formadas"). Guardado p/ recrutamento futuro.</p>
-          <p>🟡 <b>Revisão:</b> é beleza mas faltou confirmar Brasil e/ou contato — triagem manual.</p>
-          <p>⚪ <b>Descarte:</b> fora do mercado (idioma não-PT, geografia estrangeira, ou sem sinal de beleza). Passe o mouse no segmento pra ver <b>por qual camada</b> caiu.</p>
-          <p>🗑️ <b>Excluir de vez:</b> apaga a PII do lead e arquiva o @ pra nunca mais voltar num scrap (lixeira LGPD-safe). Use nos descartes confirmados.</p>
-          <p>➕ <b>WhatsApp manual:</b> achou o telefone numa imagem do perfil? Preencha na coluna Telefone → o lead vira qualificado (espaço-cliente).</p>
+          <p>🟡 <b>Revisão:</b> não confirmou beleza e/ou Brasil, ou está fora do mercado — triagem manual. Passe o mouse no segmento pra ver <b>por qual camada</b> caiu.</p>
+          <p className="pt-2 text-foreground font-medium">ABAS DE WHATSAPP = como falar com ele. São derivadas, não são listas separadas.</p>
+          <p><b>Número</b> = telefone discável (disparo) · <b>Link</b> = só link-código wa.me/message (clica e fala, sem número) · <b>Sem</b> = nada acionável — <b>esta aba É a fila de enriquecimento</b>.</p>
+          <p>🗑️ <b>Excluir de vez:</b> apaga a PII do lead e arquiva o @ pra nunca mais voltar num scrap (lixeira LGPD-safe).</p>
+          <p>➕ <b>WhatsApp manual:</b> achou o telefone numa imagem do perfil? Preencha na coluna Telefone → vira qualificado e <b>pula pra aba Número sozinho</b> (não precisa mover de lista).</p>
           <p>🌱 <b>Semente:</b> perfil de beleza com ≥ 50k seguidores (hub p/ minerar). Você pode marcar/desmarcar manualmente.</p>
         </div>
       )}
@@ -257,41 +285,110 @@ export function PlatformProspeccaoManager() {
         </div>
       )}
 
+      {/* ══ ZONA 1 — FONTE & BUSCA: o que a base REALMENTE tem hoje, por fonte ══ */}
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <label className="text-sm font-medium text-foreground">Palavras-chave (separadas por vírgula)</label>
-        <Input placeholder={SUGGESTED} value={keywords} onChange={(e) => setKeywords(e.target.value)} />
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="text-xs text-primary underline" onClick={() => setKeywords(SUGGESTED)}>usar conjunto-ouro</button>
-          <span className="text-xs text-muted-foreground">·</span>
-          <label className="text-xs text-muted-foreground">perfis/keyword:</label>
-          <Input type="number" className="w-20 h-8" min={5} max={100} value={limit} onChange={(e) => setLimit(Math.max(5, Math.min(100, Number(e.target.value) || 30)))} />
-          <Button onClick={handleStart} disabled={start.isPending || !productId || !keywords.trim()} className="gap-2 ml-auto">
-            {start.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Buscar leads
-          </Button>
+          <span className="text-sm font-medium text-foreground mr-1">Fonte:</span>
+          <button
+            type="button"
+            onClick={() => { setSourceFilter('all'); setSelectedExtractionId(null); }}
+            className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+              sourceFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+            }`}
+          >
+            🗂️ Todas ({extractions.length})
+          </button>
+          {(Object.keys(SOURCE_META) as LeadSource[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              disabled={sourceCounts[s] === 0}
+              onClick={() => { setSourceFilter(s); setSelectedExtractionId(null); }}
+              className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors disabled:opacity-40 ${
+                sourceFilter === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {SOURCE_META[s].icon} {SOURCE_META[s].label} ({sourceCounts[s]})
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={activeExtraction ?? ''} onValueChange={setSelectedExtractionId}>
+            <SelectTrigger className="w-[340px]"><SelectValue placeholder="Selecione uma busca" /></SelectTrigger>
+            <SelectContent>
+              {shownExtractions.map((ex) => (
+                <SelectItem key={ex.id} value={ex.id}>
+                  {SOURCE_META[leadSourceOf(ex)].icon} {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">
+            {shownExtractions.length} busca(s){sourceFilter !== 'all' ? ` em ${SOURCE_META[sourceFilter].label}` : ''}
+          </span>
+        </div>
+
+        {/* Motor de keyword-search — RECOLHIDO e explicado (antes ficava solto no topo,
+            sem dizer o que fazia). Responde "roda onde? traz o quê?" dentro da própria UI. */}
+        <div className="border-t border-border pt-3">
+          <button
+            type="button"
+            onClick={() => setShowEngine((v) => !v)}
+            className="flex w-full items-center gap-2 text-left text-sm font-medium text-foreground hover:text-primary"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${showEngine ? '' : '-rotate-90'}`} />
+            ➕ Nova busca por palavra-chave (Apify)
+          </button>
+          <p className="text-xs text-muted-foreground mt-1 pl-6">
+            Roda o <b>keyword-search do Apify</b> no Instagram e cria uma busca NOVA aqui.
+            Hoje a maior parte dos leads <b>não vem daqui</b> — vem das importações (Prospectagram · Server API · Vídeo).
+          </p>
+          {showEngine && (
+            <div className="mt-3 space-y-3 pl-6">
+              <label className="text-sm font-medium text-foreground">Palavras-chave (separadas por vírgula)</label>
+              <Input placeholder={SUGGESTED} value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="text-xs text-primary underline" onClick={() => setKeywords(SUGGESTED)}>usar conjunto-ouro</button>
+                <span className="text-xs text-muted-foreground">·</span>
+                <label className="text-xs text-muted-foreground">perfis/keyword:</label>
+                <Input type="number" className="w-20 h-8" min={5} max={100} value={limit} onChange={(e) => setLimit(Math.max(5, Math.min(100, Number(e.target.value) || 30)))} />
+                <Button onClick={handleStart} disabled={start.isPending || !productId || !keywords.trim()} className="gap-2 ml-auto">
+                  {start.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Buscar leads
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ══ ZONA 2 — RECORTE: abas de WhatsApp (derivadas) + segmento + toggles ══ */}
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={activeExtraction ?? ''} onValueChange={setSelectedExtractionId}>
-          <SelectTrigger className="w-[300px]"><SelectValue placeholder="Selecione uma extração" /></SelectTrigger>
-          <SelectContent>
-            {extractions.map((ex) => (
-              <SelectItem key={ex.id} value={ex.id}>
-                {(ex.keywords ?? []).slice(0, 3).join(', ')}{(ex.keywords?.length ?? 0) > 3 ? '…' : ''} · {ex.status}{ex.total_found != null ? ` · ${ex.total_found}` : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="inline-flex items-center rounded-lg border border-border overflow-hidden" role="tablist" aria-label="Aba WhatsApp">
+          {WA_TABS.map((t) => (
+            <button
+              key={t.val}
+              type="button"
+              role="tab"
+              aria-selected={waFilter === t.val}
+              title={t.hint}
+              className={`px-4 py-1.5 text-sm font-medium transition-colors border-r border-border last:border-r-0 ${
+                waFilter === t.val ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'
+              }`}
+              onClick={() => setWaFilter(t.val)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
         <Select value={segment} onValueChange={(v) => setSegment(v as LeadSegment | 'all')}>
           <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os segmentos</SelectItem>
             <SelectItem value="salao_cliente">🟢 Espaço-cliente</SelectItem>
-            <SelectItem value="acionamento_via_instagram">🟣 Instagram (DM)</SelectItem>
             <SelectItem value="afiliado_infoproduto">🔵 Afiliado</SelectItem>
             <SelectItem value="revisao">🟡 Revisão</SelectItem>
-            <SelectItem value="descarte">⚪ Descarte</SelectItem>
           </SelectContent>
         </Select>
 
@@ -378,7 +475,6 @@ export function PlatformProspeccaoManager() {
         <Badge variant="outline" className={SEG_META.salao_cliente.cls}>🟢 {counts.salao_cliente} salão</Badge>
         <Badge variant="outline" className={SEG_META.afiliado_infoproduto.cls}>🔵 {counts.afiliado_infoproduto} afiliado</Badge>
         <Badge variant="outline" className={SEG_META.revisao.cls}>🟡 {counts.revisao} revisão</Badge>
-        <Badge variant="outline" className={SEG_META.descarte.cls}>⚪ {counts.descarte} descarte</Badge>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">🌱 {counts.seeds} sementes</Badge>
       </div>
 
@@ -436,7 +532,7 @@ export function PlatformProspeccaoManager() {
                     <div className="flex items-center gap-1">
                       <select
                         className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment]?.cls ?? '' : ''}`}
-                        value={l.segment ?? 'descarte'}
+                        value={l.segment ?? 'revisao'}
                         onChange={(e) => reclassify.mutate({ id: l.id, segment: e.target.value as LeadSegment })}
                         disabled={showExcluded}
                       >

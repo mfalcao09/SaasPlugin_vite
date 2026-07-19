@@ -17,7 +17,10 @@ import { toast } from 'sonner';
  */
 
 export type LeadExtractionStatus = 'pending' | 'running' | 'done' | 'error';
-export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao' | 'descarte' | 'acionamento_via_instagram';
+// SEGMENTO = POSICIONAMENTO (3 cats, aprovado Marcelo 2026-07-19): Cliente · Afiliado · Revisão.
+// Eliminados: `acionamento_via_instagram` (era override de reachability = erro de categoria — a
+// ABA WhatsApp é DERIVADA das colunas via `waTab`, não do segmento) e `descarte` (fundiu em Revisão).
+export type LeadSegment = 'salao_cliente' | 'afiliado_infoproduto' | 'revisao';
 
 export interface LeadExtraction {
   id: string;
@@ -63,6 +66,20 @@ export interface ExtractedLead {
   /** Portão por-LEAD: NULL = "em tratamento"; preenchido = lead aprovado (entra na Base
    *  consolidada após o flip da view). Opcional: a view consolidada não expõe este campo. */
   approved_at?: string | null;
+}
+
+// ── Canal WhatsApp (3 estados) DERIVADO das colunas persistidas ───────────────
+// Espelha o `classifyWhatsapp` do edge (_shared/lead-geo.ts), que JÁ extraiu/persistiu
+// telefone+whatsapp_link na ingestão. A ABA da UI é ISTO, calculada no read — nunca uma
+// coluna "wpp-status" armazenada. Assim, quando o enriquecimento preenche `telefone`, o
+// lead migra de aba sozinho (não fica "preso" numa lista errada). Regra idêntica ao edge:
+//   telefone → 'numero' (discável, disparo uazapi) · só whatsapp_link (link-código
+//   wa.me/message) → 'link' · nada → 'nenhum' (fila de enriquecimento).
+export type WhatsappTab = 'numero' | 'link' | 'nenhum';
+export function waTab(lead: Pick<ExtractedLead, 'telefone' | 'whatsapp_link'>): WhatsappTab {
+  if (lead.telefone) return 'numero';
+  if (lead.whatsapp_link) return 'link';
+  return 'nenhum';
 }
 
 /** Jobs de extração do produto (mais recentes primeiro). */
@@ -202,6 +219,7 @@ export function useExtractionApprovalCounts(extractionId: string | null) {
 
 export interface LeadFilters {
   segment?: LeadSegment | 'all';
+  waTab?: WhatsappTab | 'all';   // Número (telefone) · Link (só wa.me/message) · Sem (fila enriquecimento)
   seedsOnly?: boolean;
   qualifiedOnly?: boolean;
   excludedOnly?: boolean;
@@ -223,6 +241,10 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       if (filters.excludedOnly) q = q.not('excluded_at', 'is', null);
       else q = q.is('excluded_at', null);
       if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment);
+      // Aba WhatsApp derivada das colunas (espelha classifyWhatsapp/waTab) — nunca coluna.
+      if (filters.waTab === 'numero') q = q.not('telefone', 'is', null);
+      else if (filters.waTab === 'link') q = q.is('telefone', null).not('whatsapp_link', 'is', null);
+      else if (filters.waTab === 'nenhum') q = q.is('telefone', null).is('whatsapp_link', null);
       if (filters.seedsOnly) q = q.eq('is_seed', true);
       if (filters.qualifiedOnly) q = q.eq('qualified', true);
       const { data, error } = await q.order('seguidores', { ascending: false, nullsFirst: false }).limit(500);
@@ -439,7 +461,7 @@ export interface ConsolidatedLead extends ExtractedLead {
 export interface ConsolidatedFilters {
   extractionId?: string | 'all';
   segment?: LeadSegment | 'all';
-  withPhone?: 'with' | 'without' | 'all';
+  waTab?: WhatsappTab | 'all';   // Número (telefone) · Link (só wa.me/message) · Sem (fila enriquecimento)
   seedsOnly?: boolean;
   qualifiedOnly?: boolean;
   excludedOnly?: boolean;
@@ -462,10 +484,13 @@ export function usePlatformConsolidatedLeads(productId: string | null, filters: 
       // Lixeira: por padrão esconde o que foi excluído em QUALQUER origem.
       if (filters.excludedOnly) q = q.eq('is_excluded', true);
       else q = q.eq('is_excluded', false);
-      if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment); // preserva acionamento_via_instagram
+      if (filters.segment && filters.segment !== 'all') q = q.eq('segment', filters.segment); // filtro por segmento (3 cats)
       if (filters.extractionId && filters.extractionId !== 'all') q = q.contains('extraction_ids', [filters.extractionId]); // filtro por origem
-      if (filters.withPhone === 'with') q = q.not('telefone', 'is', null);
-      if (filters.withPhone === 'without') q = q.is('telefone', null);
+      // Aba WhatsApp derivada das colunas (espelha classifyWhatsapp): numero=telefone;
+      // link=SÓ whatsapp_link (link-código); nenhum=nenhum dos dois (fila de enriquecimento).
+      if (filters.waTab === 'numero') q = q.not('telefone', 'is', null);
+      else if (filters.waTab === 'link') q = q.is('telefone', null).not('whatsapp_link', 'is', null);
+      else if (filters.waTab === 'nenhum') q = q.is('telefone', null).is('whatsapp_link', null);
       if (filters.seedsOnly) q = q.eq('is_seed', true);
       if (filters.qualifiedOnly) q = q.eq('qualified', true);
       // Base ÚNICA: o teto tem de cobrir TODA a base consolidada (F2), senão as
