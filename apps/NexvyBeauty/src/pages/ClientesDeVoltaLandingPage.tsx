@@ -765,7 +765,7 @@ function Nichos() {
         <path className="stroke" d="M36 21 L36 12" />
       </svg>
       <h3 className="script">Nails</h3>
-      <p>Manutenções perdidas.</p>
+      <p>Manutenções que sumiram.</p>
     </div>,
     <div className="cardm" key="lash">
       <svg viewBox="0 0 72 72" aria-hidden="true">
