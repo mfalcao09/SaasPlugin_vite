@@ -405,7 +405,11 @@ function Hero() {
             te mostra <b>quanto dá para recuperar em 30 dias</b>, com a sua base.
           </p>
           <div className="hero-ctas">
-            <a className="btn btn-rose" href={WHATSAPP_URL}>
+            <a
+              className="btn btn-rose"
+              href={WHATSAPP_URL}
+              onClick={() => fbqTrack("Lead", { content_name: "raiox_hero", content_category: "whatsapp_cta" })}
+            >
               Quero meu Raio-X grátis
             </a>
             <a className="btn btn-quiet" href="#equipia">
@@ -650,7 +654,11 @@ function RaioXDaCarteira() {
           </div>
         </div>
         <div className="hero-ctas rv" style={{ marginTop: 24 }}>
-          <a className="btn btn-rose" href={WHATSAPP_URL}>
+          <a
+            className="btn btn-rose"
+            href={WHATSAPP_URL}
+            onClick={() => fbqTrack("Lead", { content_name: "raiox_secao", content_category: "whatsapp_cta" })}
+          >
             Quero ver o meu número
           </a>
         </div>
