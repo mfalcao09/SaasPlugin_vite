@@ -24,6 +24,12 @@ verify_jwt = false
 [functions.platform-meta-whatsapp-webhook]
 verify_jwt = false
 
+# Registro/re-registro de número na Cloud API (aplica display name aprovado pela Meta).
+# Chamada server-to-server (operação), não pelo frontend — por isso sem JWT no gateway.
+# Auth real DENTRO da função: authenticatePlatformAgent (service_role ou super_admin).
+[functions.platform-meta-whatsapp-register]
+verify_jwt = false
+
 # Webhook público de DMs do Instagram (Meta -> plataforma). Sem JWT.
 # Auth real = X-Hub-Signature-256 (HMAC do app_secret) validada na função.
 [functions.platform-instagram-webhook]

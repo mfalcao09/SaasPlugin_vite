@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nina → Extração para DUDA e EquipIA · NexvyBeauty</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0e141c; --line:#223041;
+    --ink:#e6edf3; --mut:#93a4b3; --dim:#6b7c8c;
+    --grn:#3fb950; --red:#f85149; --amb:#d29922; --blu:#58a6ff; --pur:#bc8cff;
+    --chip:#1b2430;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.62;font-size:15.5px}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 90px}
+  h1{font-size:26px;line-height:1.25;margin:0 0 6px;letter-spacing:-.2px}
+  h2{font-size:20px;margin:44px 0 12px;padding-top:16px;border-top:1px solid var(--line);letter-spacing:-.2px}
+  h3{font-size:16px;margin:26px 0 8px;color:#cdd8e3}
+  h4{font-size:14.5px;margin:20px 0 6px;color:#bcc9d6}
+  p{margin:10px 0}
+  a{color:var(--blu);text-decoration:none}
+  code{font-family:var(--mono);font-size:.86em;background:var(--chip);padding:1px 6px;border-radius:5px;color:#d7e2ee;border:1px solid #1f2a37}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:12.5px;line-height:1.55;color:#cdd9e5;white-space:pre}
+  .meta{color:var(--mut);font-size:13.5px;margin:2px 0}
+  .lead{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amb);border-radius:10px;padding:14px 18px;margin:20px 0}
+  .lead.red{border-left-color:var(--red)}
+  .lead.blu{border-left-color:var(--blu)}
+  .lead.grn{border-left-color:var(--grn)}
+  blockquote{margin:12px 0;padding:10px 16px;border-left:3px solid #2b3a4c;background:var(--panel2);border-radius:0 8px 8px 0;color:#c6d3e0;font-size:14.2px}
+  blockquote p{margin:6px 0}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:14px 0}
+  .fact h3{margin-top:0}
+  .tblwrap{overflow-x:auto;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:#0f1620;color:#cbd6e2;font-weight:600}
+  tbody tr:nth-child(even){background:rgba(255,255,255,.015)}
+  .ok{color:var(--grn);font-weight:600}
+  .no{color:var(--red);font-weight:600}
+  .warn{color:var(--amb);font-weight:600}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .pill{display:inline-block;background:var(--chip);border:1px solid #223041;border-radius:999px;padding:2px 10px;font-size:12px;color:var(--mut);margin:2px 6px 2px 0;font-family:var(--mono)}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+  .num{font-family:var(--mono);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Nina / Ana Vitória — Plano de Extração para DUDA (B2B) e EquipIA (tenant)</h1>
+  <p class="meta"><strong>Data:</strong> 2026-07-19 &nbsp;·&nbsp; <strong>Repo analisado:</strong> <code>mfalcao09/remix-nina-para-est-tica-e-beleza-19jun</code></p>
+  <p class="meta">Clone efêmero em <code>/private/tmp/claude-501/nina-analise/nina</code> — <strong>fora</strong> do worktree do SaasPlugin_vite. Análise read-only: nenhum código de produção tocado, nada commitado.</p>
+  <p class="meta"><strong>Convenção de citação:</strong> caminhos <code>src/…</code> e <code>supabase/…</code> referem-se ao <strong>repo da Nina</strong>; caminhos prefixados com <code>apps/NexvyBeauty/</code> são <strong>nossos</strong>.</p>
+
+  <div class="lead">
+    <p>⚠️ <strong>Colisão de nomes.</strong> Já existe uma agente chamada <strong>Nina</strong> do nosso lado (retenção/D-7 — ver <code>apps/NexvyBeauty/tasks/NINA-D7-ATIVACAO-BLUEPRINT-2026-07-15.md</code>). Neste documento, “Nina” = <strong>o produto comprado da Viver de IA</strong>. Se algum ativo for adotado, renomear na origem para evitar ambiguidade permanente no codebase.</p>
+  </div>
+
+  <h2>0. Veredito em uma página</h2>
+
+  <div class="lead red">
+    <p><strong>A resposta desconfortável primeiro:</strong> a proporção 15%/80% está certa em espírito, mas <em>“a Nina transfere quase inteira (~80%)”</em> é perigoso se alguém ler como “porta o módulo”. <strong>Zero por cento do runtime da Nina é portável.</strong> O código é single-tenant por decisão explícita e assumida (<code>supabase/migrations/20260521200736_…sql:2</code> — <em>“MIGRAÇÃO: Sistema Single-Tenant (V2)”</em>), não tem <code>organization_id</code> em lugar nenhum, tem RLS que entrega <code>SELECT</code> de tudo para qualquer <code>authenticated</code>, e todo LLM passa pelo gateway proprietário do Lovable. O que transfere é <strong>conhecimento</strong>: prompt, vocabulário, guardrails, taxonomia, políticas, templates e o <em>desenho</em> do configurador.</p>
+  </div>
+
+  <div class="tblwrap"><table>
+    <thead><tr><th>Trilha</th><th>Avaliação do Marcelo</th><th>Correção</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>A — DUDA (B2B)</strong></td>
+        <td>~15%, só técnica</td>
+        <td><strong>~15% confirmado em volume; errado em natureza.</strong> Não é “0% de conteúdo”: existe um prompt B2B <strong>direto</strong> que a hipótese não considerou — <code>getDefaultSystemPrompt()</code> em <code>supabase/functions/nina-orchestrator/index.ts:1547-1688</code> é a Nina <strong>vendendo software/IA para donos de empresa</strong>, exatamente o job-shape da Duda.</td>
+      </tr>
+      <tr>
+        <td><strong>B — EquipIA (tenant)</strong></td>
+        <td>~80%, quase inteira</td>
+        <td><strong>~75% do CONHECIMENTO, ~0% do CÓDIGO.</strong> E um furo na premissa: o <em>“configurador que permite cada salão ter a sua”</em> <strong>não existe</strong> — a Nina tem <strong>uma</strong> linha de <code>nina_settings</code> para a instância inteira (<code>nina-orchestrator/index.ts:207-214</code> cai em <code>.limit(1).maybeSingle()</code>). O que existe é um excelente <strong>formulário + arquitetura de geração</strong>; o multi-tenant é nosso (<code>product_agents</code>), não deles.</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="lead red">
+    <p><strong>Riscos que travam reuso literal (§6):</strong> o repo carrega o <strong>design system e a marca do vendedor</strong> (<code>src/design-system/viverdeia/</code> completo, com logos, tokens e marketing kit) e ainda a marca de um <strong>terceiro</strong> (<code>_reference-assina/</code>, Assina.ai); tem <code>.env</code> commitado apontando para o Supabase do vendedor; e tem duas vulnerabilidades P0 herdadas (service_role key legível <strong>e gravável</strong> pelo frontend; refresh tokens do Google legíveis por qualquer usuário logado). <strong>Nada disso pode encostar no nosso repo.</strong> A extração é feita a mão, por transcrição de conteúdo — nunca por cópia de arquivo.</p>
+  </div>
+
+  <h2>1. Mapa do repositório</h2>
+
+  <h3>1.1 Origem e stack</h3>
+  <ul>
+    <li><strong>Origem:</strong> remix do Lovable. Único ancestral: <code>7fd4dbf "Initial commit from remix"</code> (2026-07-17). Os 24 commits são todos do mesmo dia — <strong>o histórico do vendedor não veio junto</strong>; temos um snapshot.</li>
+    <li><strong>Rebrand já feito:</strong> <code>daba1ba "Finalizou rebrand NexvyBeauty"</code>; <code>package.json:2</code> já diz <code>"name": "nexvy-beauty"</code>. A persona foi renomeada de “Nina” para “Ana Vitória” — diff de <strong>8 linhas</strong> em <code>src/prompts/default-nina-prompt.ts</code>. <strong>O conteúdo do prompt é 100% do vendedor</strong>; o rebrand só trocou nomes próprios.</li>
+    <li><strong>Stack:</strong> React 18 + Vite 6 + TS + Tailwind 3 + shadcn/Radix + Supabase (auth, Postgres, Edge Functions Deno) + Playwright. 225 arquivos versionados; 26 tabelas + 3 views.</li>
+    <li><strong>A Nina já é, ela própria, um fork vertical.</strong> O README original (<code>git show 7fd4dbf:README.md</code>) diz: <em>“É um fork da Nina genérica (SDR)”</em>. O vendedor mantém um produto-base B2B e verticaliza — o que explica o prompt B2B sobrevivendo como fallback hardcoded na edge function.</li>
+  </ul>
+
+  <h3>1.2 Arquitetura de runtime</h3>
+<pre><code>Meta WhatsApp Cloud API (graph.facebook.com/v18.0)
+        │  webhook
+        ▼
+whatsapp-webhook ──► message_grouping_queue   (debounce de 10 s — index.ts:13)
+        │
+        ▼
+message-grouper ────► messages + nina_processing_queue
+        │
+        ▼
+nina-orchestrator ──► claim_nina_processing_batch (lote de 10)
+        │              ├─ resolve settings (fallback triplo: user → global → qualquer)
+        │              ├─ monta system prompt + variáveis + memória do cliente
+        │              ├─ chama Lovable AI Gateway com 4 tools
+        │              ├─ executa tool calls (agenda / reagenda / cancela / catálogo)
+        │              └─ enfileira resposta em send_queue (delay aleatório 1-3 s)
+        │
+        ├──► whatsapp-sender       (envia; quebra em chunks se habilitado)
+        └──► analyze-conversation  (extrai BANT + move o deal no funil)
+
+pg_cron ──► appointment-reminders   (*/5 min)  ──► pré / pós / NPS / recall
+pg_cron ──► google-calendar-watch   (03:00)    ──► renova canal de push do GCal</code></pre>
+  <p class="meta">Fontes: <code>whatsapp-webhook/index.ts:13</code>; <code>nina-orchestrator/index.ts:136-137,177-219,255,1179-1207,1463-1494</code>; <code>20260525140501_cron_jobs_and_app_config.sql:128-144</code>.</p>
+
+  <h3>1.3 Onde vive o quê (UI vs. lógica de agente)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Camada</th><th>Onde</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Persona / prompt (beleza)</strong></td><td><code>src/prompts/default-nina-prompt.ts:18-142</code></td><td>constante TS no front, usada como <em>fallback</em> de UI</td></tr>
+      <tr><td><strong>Persona / prompt (B2B herdado)</strong></td><td><code>supabase/functions/nina-orchestrator/index.ts:1547-1688</code></td><td>fallback hardcoded no servidor. <strong>Achado principal da trilha DUDA</strong></td></tr>
+      <tr><td><strong>Prompt efetivo em runtime</strong></td><td><code>nina_settings.system_prompt_override</code> (TEXT)</td><td><code>nina-orchestrator/index.ts:255</code>; slot de A/B em <code>test_system_prompt</code></td></tr>
+      <tr><td><strong>Configurador de persona</strong></td><td><code>PromptGeneratorSheet.tsx</code> + <code>supabase/functions/generate-prompt/index.ts</code></td><td>14 campos → template determinístico → LLM só refina</td></tr>
+      <tr><td><strong>Tools do agente</strong></td><td><code>nina-orchestrator/index.ts:13-120</code></td><td>4 schemas OpenAI-style, hardcoded no arquivo</td></tr>
+      <tr><td><strong>Guardrails clínicos</strong></td><td><code>default-nina-prompt.ts:69-76</code> + <code>generate-prompt/index.ts:152-157</code></td><td>só no prompt; <strong>não há veto pós-geração</strong></td></tr>
+      <tr><td><strong>Catálogo de procedimentos</strong></td><td>tabela <code>procedures</code> + tool <code>list_procedures</code> + <code>ProceduresManager.tsx</code></td><td><code>20260522223353_f3_…sql:10-29</code>; query em <code>nina-orchestrator/index.ts:507-544</code></td></tr>
+      <tr><td><strong>Follow-up / recall</strong></td><td><code>appointment_reminders</code> + <code>reminder_templates</code> + <code>RemindersManager.tsx</code> + cron</td><td><code>20260522223353_f3_…sql:92-148</code></td></tr>
+      <tr><td><strong>Memória / BANT</strong></td><td><code>contacts.client_memory</code> (jsonb), via <code>analyze-conversation</code></td><td><code>analyze-conversation/index.ts:116-162</code></td></tr>
+      <tr><td><strong>UI que não interessa</strong></td><td><code>src/components/{Kanban,Dashboard,Contacts,Scheduling,Team,ChatInterface}.tsx</code></td><td>CRM genérico com skin rose/gold — nosso CRM é ordens de grandeza maior</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="fact">
+    <p><strong>Regra de leitura:</strong> ~70% dos arquivos são UI de CRM (ruído para nós). O valor está concentrado em <strong>7 arquivos</strong>: <code>default-nina-prompt.ts</code>, <code>nina-orchestrator/index.ts</code>, <code>generate-prompt/index.ts</code>, <code>PromptGeneratorSheet.tsx</code>, <code>ProceduresManager.tsx</code>, <code>analyze-conversation/index.ts</code> e a migration <code>20260522223353_f3_…sql</code>.</p>
+  </div>
+
+  <h2>2. Inventário dos ativos reutilizáveis (com citação)</h2>
+
+  <h3>A. Prompt de sistema — vertical beleza</h3>
+  <p><code>src/prompts/default-nina-prompt.ts:18-142</code>. XML tagueado: <code>&lt;role&gt;</code>, <code>&lt;company&gt;</code>, <code>&lt;core_philosophy&gt;</code>, <code>&lt;knowledge_base&gt;</code>, <code>&lt;guidelines&gt;</code>, <code>&lt;tool_usage_protocol&gt;</code>, <code>&lt;cognitive_process&gt;</code>, <code>&lt;output_format&gt;</code>, <code>&lt;examples&gt;</code>. 8 variáveis documentadas no cabeçalho (<code>:7-15</code>).</p>
+  <blockquote><p><code>:36-40</code> — “1. Beleza começa pelo acolhimento. Nunca tratamos uma cliente como ‘lead frio’. […] 5. O objetivo é levar a pessoa a uma avaliação ou agendamento. Não é ‘fechar venda no WhatsApp’.”</p></blockquote>
+  <blockquote><p><code>:70-75</code> — “Não prometa resultado clínico específico […] Não dê diagnóstico médico ou prescreva. […] Não use vocabulário agressivo de venda (‘última vaga!’, ‘promoção relâmpago!’, ‘garanta já!’). […] Não envie fotos de antes-e-depois de outras clientes sem autorização.”</p></blockquote>
+
+  <h3>B. Prompt de sistema — B2B <span class="warn">(o achado que muda a trilha DUDA)</span></h3>
+  <p><code>supabase/functions/nina-orchestrator/index.ts:1547-1688</code>. É a Nina do <strong>Viver de IA</strong> vendendo formações e soluções de IA para empresários. Conteúdo <strong>B2B SaaS</strong>, mesmo job da Duda.</p>
+  <blockquote><p><code>:1569-1573</code> — “1. Você é uma ‘entendedora’, não uma ‘explicadora’. Primeiro escute, depois oriente. 2. Objetivo: Fazer o lead falar 70% do tempo. Sua função é fazer as perguntas certas. 3. Regra de Ouro: Nunca faça uma afirmação se puder fazer uma pergunta aberta. 4. Foco: Descobrir a dor real (o ‘porquê’) antes de apresentar soluções.”</p></blockquote>
+  <blockquote><p><code>:1624</code> — “Lead qualificado se demonstrar: ser empresário/gestor/decisor, interesse genuíno em IA, disponibilidade para investir, problema claro que IA pode resolver.”</p></blockquote>
+  <blockquote><p><code>:1683-1685</code> — contra-exemplo rotulado “Mau exemplo (muito vendedor)”, marcado com ❌.</p></blockquote>
+  <p><span class="warn">Nota de propriedade:</span> o bloco cita nominalmente fundadores, investidores, clientes e prova social do Viver de IA (<code>:1561-1564</code>). O texto <strong>não entra</strong> no nosso repo — extrai-se o <em>padrão</em>, reescrito com os nossos fatos.</p>
+
+  <h3>C. Schemas de tools (contrato de function calling)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Tool</th><th>Linha</th><th>Destaque</th></tr></thead>
+    <tbody>
+      <tr><td><code>create_appointment</code></td><td><code>:13-50</code></td><td>enum <code>type</code>: <code>evaluation | procedure | followup | return</code>; guia de duração dentro do <em>description</em> (<code>:35</code>: “30 (avaliação curta), 45 (limpeza simples), 60 (avaliação completa), 90 (procedimento médio), 120 (procedimento longo)”)</td></tr>
+      <tr><td><code>reschedule_appointment</code></td><td><code>:53-77</code></td><td>captura <code>reason</code> livre — vira dado de objeção</td></tr>
+      <tr><td><code>cancel_appointment</code></td><td><code>:80-96</code></td><td>“Ofereça remarcar antes de cancelar definitivamente” na própria descrição</td></tr>
+      <tr><td><code>list_procedures</code></td><td><code>:99-120</code></td><td>“NUNCA invente procedimentos — sempre consulte aqui primeiro” — anti-alucinação <strong>na tool</strong>, não no prompt</td></tr>
+    </tbody>
+  </table></div>
+  <p>Validação de negócio no handler, não no modelo: data no passado e <strong>conflito de horário por sobreposição de intervalos</strong> (<code>:418-457</code>), com erros tipados (<code>date_in_past</code>, <code>time_conflict</code>) que voltam como texto para a cliente (<code>:1264-1268</code>).</p>
+
+  <h3>D. Vocabulário e taxonomia de procedimentos</h3>
+  <ul>
+    <li><strong>Taxonomia canônica (7 categorias)</strong> com CHECK no banco: <code>facial</code>, <code>corporal</code>, <code>harmonizacao</code>, <code>capilar</code>, <code>bem_estar</code>, <code>pos_operatorio</code>, <code>outro</code> — <code>20260522223353_f3_…sql:14-16</code>; espelhada no enum da tool (<code>nina-orchestrator/index.ts:109</code>) e no select da UI (<code>ProceduresManager.tsx:24-32</code>).</li>
+    <li><strong>Vocabulário por área</strong> — <code>default-nina-prompt.ts:45-50</code>: limpeza de pele, peeling, microagulhamento, jato de plasma, skinbooster; toxina botulínica, preenchimento labial, bioestimuladores, fios de sustentação; drenagem linfática, massagem modeladora, criolipólise, radiofrequência, ultrassom focalizado, gluteoplastia injetável; drenagem pós-cirúrgica; design de sobrancelhas, micropigmentação, lash design, depilação a laser; laser capilar.</li>
+    <li><strong>8 subverticais de negócio</strong> — <code>PromptGeneratorSheet.tsx:38-47</code> (estética facial · harmonização orofacial · estética corporal · dermatologia estética · biomedicina estética · salão completo · SPA · clínica multidisciplinar).</li>
+    <li><strong>Heurística de categorização por título</strong> (regex) — <code>nina-orchestrator/index.ts:872-877</code>.</li>
+  </ul>
+
+  <h3>E. Schema do catálogo (<code>procedures</code>)</h3>
+  <p><code>20260522223353_f3_…sql:10-29</code>. Campos que <strong>não temos</strong>: <code>contraindications</code> (<code>:22</code>), <code>pre_care</code> (<code>:23</code>), <code>post_care</code> (<code>:24</code>), <code>price_min</code>/<code>price_max</code> como <strong>faixa</strong> (<code>:19-20</code>) e <code>price_visible BOOLEAN DEFAULT false</code> (<code>:21</code>). Índices: parcial por categoria e <strong>full-text pt-BR</strong> <code>gin(to_tsvector('portuguese', name))</code> (<code>:31-32</code>).</p>
+  <div class="lead grn">
+    <p>O <code>price_visible</code> é aplicado <strong>no servidor</strong>: <code>nina-orchestrator/index.ts:536-542</code> <strong>remove</strong> <code>price_min</code>/<code>price_max</code> do payload entregue ao modelo quando a clínica não autoriza. É guardrail de política que o modelo não consegue burlar porque nunca vê o dado — padrão superior ao nosso hábito de instruir por prompt.</p>
+  </div>
+  <p>UI do CRUD (<code>ProceduresManager.tsx:222-383</code>) expõe 11 campos; <code>professional_id</code> existe na migration (<code>:25</code>) mas <strong>não é exposto</strong>. Copy que resume a intenção do produto: <em>“Tudo que a Nina pode oferecer. Ela só fala sobre o que está cadastrado aqui.”</em> (<code>ProceduresManager.tsx:136-138</code>).</p>
+
+  <h3>F. Motor de lembretes / recall + templates literais</h3>
+  <ul>
+    <li>Tipos (CHECK): <code>pre_24h</code>, <code>pre_2h</code>, <code>post_24h</code>, <code>post_7d_nps</code>, <code>recall_30d</code>, <code>recall_90d</code> — <code>…f3_…sql:97</code>.</li>
+    <li>Offsets em código: <code>nina-orchestrator/index.ts:879-885</code>. <span class="warn">Atenção:</span> <code>recall_90d</code> existe no enum e tem template, mas <strong>não é agendado</strong>.</li>
+    <li>Resolução de template com <strong>fallback por categoria</strong> (específico → genérico): <code>:892-900</code>.</li>
+  </ul>
+  <blockquote><p><code>pre_24h / harmonizacao</code>: “Oi, {{cliente_nome}}! 💖 Lembrando do seu {{procedimento}} amanhã às {{hora}}. Evite anti-inflamatórios e álcool nas próximas 24h. Tudo certo pra vir?”</p></blockquote>
+  <blockquote><p><code>pre_24h / facial</code>: “Amanhã às {{hora}} tem seu protocolo facial. Lembre de vir sem maquiagem e evitar exposição ao sol.”</p></blockquote>
+  <blockquote><p><code>post_24h / harmonizacao</code>: “Como está se sentindo? Lembre de não massagear a área tratada por 48h e evitar exposição solar direta.”</p></blockquote>
+  <blockquote><p><code>post_7d_nps</code>: “Faz uma semana do seu atendimento. De 0 a 10, o quanto você recomendaria a gente pra uma amiga?” &nbsp;·&nbsp; <code>recall_30d</code>: “Faz 30 dias do seu último cuidado com a gente. Quer agendar uma manutenção? ✨”</p></blockquote>
+  <p>Seeds em <code>…f3_…sql:138-148</code>. O valor aqui é o <strong>cuidado clínico embutido na copy operacional</strong> (anti-inflamatório, álcool, massagear, sol) — conhecimento de domínio, não texto genérico. Placeholders: <code>{{cliente_nome}}</code>, <code>{{data}}</code>, <code>{{hora}}</code>, <code>{{procedimento}}</code>, <code>{{endereco}}</code> (<code>RemindersManager.tsx:295</code>).</p>
+
+  <h3>G. Configurador de persona — o desenho (não o código)</h3>
+  <p><code>PromptGeneratorSheet.tsx</code> + <code>supabase/functions/generate-prompt/index.ts</code>.</p>
+  <p><strong>14 campos</strong> (<code>generate-prompt/index.ts:30-45</code>): <code>assistant_name</code>, <code>clinic_name</code>, <code>clinic_type</code>, <code>subvertical</code>, <code>lead_professional</code>, <code>ticket_average</code>, <code>procedures</code>, <code>differentials</code>, <code>voice_style</code>, <code>forbidden_phrases</code>, <code>pricing_policy</code>, <code>conversion_action</code>, <code>max_lines</code> (slider 2-6), <code>emoji_intensity</code>. Obrigatórios validados nos dois lados (<code>PromptGeneratorSheet.tsx:112-121</code>; <code>generate-prompt/index.ts:82-94</code>).</p>
+
+  <h4>Enumerações que são o ativo — cada opção vira um bloco de prompt determinístico</h4>
+  <ul>
+    <li><code>voice_style</code> → 4 opções com descritor completo (<code>generate-prompt/index.ts:47-56</code>). Ex.: <em>“SPA zen — calma, contemplativa, vocabulário de bem-estar. Usa palavras como ‘cuidado’, ‘presença’, ‘respiro’. Sem urgência, sem pressão.”</em> · <em>“Amigo próximo — […] usa diminutivos quando combina (‘rapidinho’, ‘agendinha’).”</em></li>
+    <li><code>emoji_intensity</code> → <code>none</code> / <code>minimal</code> / <code>soft</code> / <code>high</code> (<code>:58-63</code>), com regra operacional por nível (<code>minimal</code> = “no máximo 1 a cada 3 mensagens. Apenas 💖 ou ✨”).</li>
+    <li><code>pricing_policy</code> → <code>never</code> / <code>range</code> / <code>table</code> (<code>:65-72</code>). O <code>never</code> traz a frase de contorno pronta: <em>“Posso te passar a referência exata na avaliação, tá?”</em></li>
+    <li><code>conversion_action</code> → 5 opções (<code>PromptGeneratorSheet.tsx:62-68</code>), incluindo avaliação remota por vídeo e retorno de manutenção.</li>
+    <li><code>forbidden_phrases</code> já vem preenchido: <em>“última vaga, promoção relâmpago, garanta já, oferta exclusiva”</em> (<code>PromptGeneratorSheet.tsx:95</code>).</li>
+    <li><code>maxLinesAbsolute = Math.min(max_lines + 2, 6)</code> (<code>generate-prompt/index.ts:105</code>) — teto duro além do alvo.</li>
+  </ul>
+
+  <div class="lead grn">
+    <p><strong>Arquitetura de geração — isto é o que vale copiar.</strong> O template XML é montado <strong>deterministicamente em código</strong> (<code>:107-196</code>) e o LLM entra <strong>só para refinar fluidez</strong>, com meta-prompt que o proíbe de reescrever a estrutura (<code>:198-225</code>):</p>
+    <blockquote><p><code>:203-205</code> — “1. Mantenha TODA a estrutura XML do template exatamente como está. 2. NÃO adicione promessas de resultado, urgência ou escassez. 3. Mantenha o tom acolhedor, profissional e ético — clínica/estética NUNCA usa pressão de venda.”<br>
+    <code>:200</code> — “NÃO adicione técnicas de venda agressiva. NÃO troque ‘cliente’ por ‘lead’.”</p></blockquote>
+    <p>Mais <strong>whitelist de variáveis</strong> no meta-prompt (<code>:206-216</code>) e <strong>sanitizador pós-geração</strong> (<code>:6-28</code>) que remove cercas markdown, força os delimitadores <code>&lt;system_instruction&gt;</code> e reescreve expressões Luxon vazadas para <code>{{ data_hora }}</code>. Engenharia madura de geração de prompt — bem melhor do que “peça pro LLM escrever o prompt”.</p>
+  </div>
+
+  <h3>H. Extração de memória / BANT estruturado</h3>
+  <ul>
+    <li><strong>Amostragem de custo:</strong> análise pesada só nas interações 1, 5, 10, 15… (<code>analyze-conversation/index.ts:30</code>); nas demais, update barato (<code>:34-63</code>).</li>
+    <li><strong>Tool <code>update_memory_insights</code></strong> (<code>:118-161</code>): <code>interests[]</code>, <code>pain_points[]</code>, <code>qualification_score</code> 0-100, <code>next_best_action</code> enum (<code>qualify|demo|followup|close|nurture</code>), <code>budget_indication</code>, <code>decision_timeline</code>.</li>
+    <li><strong>Movimentação de funil por IA</strong> com critério textual por estágio (<code>pipeline_stages.ai_trigger_criteria</code>, <code>is_ai_managed</code>) e <strong>gate de confiança &gt; 70</strong> antes de mover o deal (<code>:302</code>).</li>
+  </ul>
+  <p><strong>Comparação honesta:</strong> o nosso QCR-V persistido (<code>apps/NexvyBeauty/supabase/functions/platform-sales-brain/index.ts:275-320,514</code>) é superior — score determinístico renderizado como <strong>fato imperativo</strong> no prompt, em vez de número que o LLM re-inventa a cada 5 mensagens. Não há o que importar, <strong>exceto</strong> o gate de confiança antes de mutar estado do CRM.</p>
+
+  <h3>I. Debounce de mensagens fragmentadas</h3>
+  <p><code>whatsapp-webhook/index.ts:13</code> — <code>GROUPING_DELAY_MS = 10000</code>, com <code>process_after</code> reagendado a cada nova mensagem do mesmo número (<code>:314,328</code>), consumido pelo <code>message-grouper</code> que agrupa por telefone (<code>message-grouper/index.ts:60-68</code>). Resolve o comportamento real de WhatsApp (a cliente manda 4 mensagens de 3 palavras).</p>
+
+  <h3>J. Roteamento adaptativo de modelo</h3>
+  <p><code>nina-orchestrator/index.ts:1765-1851</code>. Modos <code>flash | pro | pro3 | adaptive</code>. O <code>adaptive</code> (<code>:1788-1851</code>) escolhe modelo <strong>e temperatura</strong>: reclamação/urgência → <code>pro</code> @ 0.3; técnico → <code>pro</code> @ 0.4; vendas com score &gt; 50 → <code>flash</code> @ 0.5; conversa nova (&lt; 5 msgs) → <code>flash</code> @ 0.8. <code>max_tokens</code> fixo em 1000 (<code>:1200</code>).</p>
+  <p><strong>Avaliação:</strong> a heurística por keyword é frágil; <span class="no">não recomendo copiá-la</span>. O que vale é o <strong>princípio de temperatura variável por fase</strong> — hoje não passamos <code>temperature</code> (<code>platform-sales-brain/index.ts:1111-1116</code>).</p>
+
+  <h3>K. Funil de beleza (nomenclatura)</h3>
+  <p><code>20260527141926_pipeline_stages_nina_beleza.sql:15-23</code>: Novas Interessadas → Avaliação Agendada → Pós-avaliação → Negociando Pacote → Cliente Ativa / Não evoluiu. Migration idempotente (UPDATE por <code>position</code> + INSERT dos faltantes, sem DELETE de estágio com deal).</p>
+
+  <h3>L. Contrato de integrações (documento)</h3>
+  <p><code>docs/INTEGRATIONS.md</code> — 134 linhas com o contrato de “Calendar Adapter” (OAuth → outbound → inbound → disconnect), o <strong>loop guard</strong> via <code>appointment.last_sync_source</code>, uma seção <em>“Quando vale fazer”</em> (não implementar especulativamente) e o tratamento especial de ERP:</p>
+  <blockquote><p>“O Nina vira front-of-funnel (qualificar + agendar via WhatsApp) e o ERP segue como back-of-house (executar, faturar, comissionar).”</p></blockquote>
+  <p>Decisão de posicionamento útil para a EquipIA contra Trinks/iClinic/Belezix — e que nós ainda não escrevemos em lugar nenhum.</p>
+
+  <h3>M. Bugs herdados — a lista de “não copie isto”</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Bug</th><th>Evidência</th></tr></thead>
+    <tbody>
+      <tr><td><strong><code>{{ clinica_nome }}</code> e <code>{{ profissional }}</code> nunca são interpolados.</strong> A UI anuncia 8 variáveis (<code>AgentSettings.tsx:263-277</code>), o interpolador resolve <strong>6</strong> (<code>nina-orchestrator/index.ts:1712-1723</code>) e o regex devolve o match original. O prompt padrão manda literalmente “assistente … da {{ clinica_nome }}” para o modelo</td><td><code>default-nina-prompt.ts:20,27,80,120</code></td></tr>
+      <tr><td><strong><code>recall_90d</code> tem enum e template, mas nunca é agendado</strong></td><td><code>…f3_…sql:97,147</code> vs <code>nina-orchestrator/index.ts:879-885</code></td></tr>
+      <tr><td><strong><code>{{endereco}}</code> é substituído por string vazia</strong> — o lembrete <code>pre_2h</code> sai como “endereço: .”</td><td><code>appointment-reminders/index.ts:100-104</code></td></tr>
+      <tr><td><strong><code>validateStepData</code> existe e nunca é chamado</strong> no onboarding — validação é só log</td><td><code>OnboardingWizard.tsx:287-337</code></td></tr>
+      <tr><td><strong>Prompt duplicado em duas fontes</strong>, com incidente já documentado</td><td><code>.lovable/plan.md</code></td></tr>
+      <tr><td><strong><code>procedures_catalog_enabled</code></strong> é lido em runtime e não tem UI nem coluna documentada</td><td><code>nina-orchestrator/index.ts:1187</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>3. Validação da proporção 15% / 80%</h2>
+
+  <h3>3.1 Trilha DUDA — 15% está certo, a caracterização não</h3>
+  <div class="lead">
+    <p>Concordo com o número. <strong>Discordo de “só a técnica transfere”.</strong></p>
+    <p><code>nina-orchestrator/index.ts:1547-1688</code> é um prompt de <strong>SDR B2B vendendo software/IA para donos de empresa</strong>: público empresário/gestor/decisor (<code>:1624</code>), objeto plataforma SaaS + formações, canal WhatsApp, objetivo descoberta → educação → agendamento. <strong>É a Duda com outro nome e outro produto.</strong> A leitura de que “o público e a oferta são opostos” vale para o <code>DEFAULT_NINA_PROMPT</code> (beleza), <strong>não</strong> para este.</p>
+  </div>
+  <p>Ainda assim o volume é pequeno, porque nosso brain já tem o que a Nina não tem: score QCR-V persistido; handoff Duda→Bia com dossiê e regra de continuidade (<code>platform-sales-brain/index.ts:1044-1049</code>); regras invioláveis anti-desconto e anti-escassez-falsa (<code>:1067-1074</code>); links de pagamento por plano; atribuição CTWA; humanizador com bolhas, delays e tics (<code>_shared/humanizer.ts</code>, 731 linhas). E o que a Nina tem e nós não temos é exatamente o que a hipótese apontou: <strong>few-shot com contra-exemplos, scaffold cognitivo e disciplina de forma declarada</strong>.</p>
+  <p><strong>Veredito:</strong> 15% confirmado. Correção: dentro desses 15%, ~1/3 é conteúdo B2B (framing de descoberta consultiva), não só andaime.</p>
+
+  <h3>3.2 Trilha EquipIA — 80% do conhecimento, 0% do código</h3>
+  <p>Concordo com ~80% <strong>se e somente se</strong> “transferir” significar transcrever conhecimento. Eu baixaria para <strong>~75%</strong> e separaria em duas contas, porque a média esconde o risco:</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Dimensão</th><th>Transferência</th><th>Por quê</th></tr></thead>
+    <tbody>
+      <tr><td>Persona + tom + filosofia de atendimento</td><td class="ok">~90%</td><td><code>default-nina-prompt.ts:20-41</code> é reescritível quase palavra a palavra</td></tr>
+      <tr><td>Guardrails clínicos</td><td class="ok">~95%</td><td><code>:69-76</code> — melhor do que qualquer coisa que temos (temos <strong>zero</strong>)</td></tr>
+      <tr><td>Vocabulário + taxonomia de procedimentos</td><td class="ok">~90%</td><td>7 categorias com CHECK + ~25 protocolos nomeados</td></tr>
+      <tr><td>Política de preço</td><td class="ok">~85%</td><td>3 políticas enumeradas + frase de contorno pronta</td></tr>
+      <tr><td>Protocolo de agendamento + tipos</td><td class="ok">~80%</td><td>enum <code>evaluation/procedure/followup/return</code> mapeia direto</td></tr>
+      <tr><td>Few-shot</td><td class="ok">~80%</td><td>5 exemplos, 2 deles negativos rotulados</td></tr>
+      <tr><td>Templates de lembrete / recall</td><td class="ok">~85%</td><td>copy com cuidado clínico real</td></tr>
+      <tr><td>Campos clínicos do catálogo</td><td class="ok">~100%</td><td><code>contraindications</code>, <code>pre_care</code>, <code>post_care</code>, <code>price_visible</code> — não temos nenhum</td></tr>
+      <tr><td><strong>Configurador — desenho</strong> (14 campos + enums + geração template-first)</td><td class="ok">~85%</td><td>melhor artefato de engenharia do repo</td></tr>
+      <tr><td><strong>Configurador — código / persistência</strong></td><td class="no">~0%</td><td>single-tenant</td></tr>
+      <tr><td>Runtime (orchestrator, filas, RLS, schema, gateway)</td><td class="no">~0%</td><td>§6</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="lead red">
+    <p><strong>Onde a premissa fura.</strong> “O configurador de persona (que permite cada salão ter a sua)” não é verdade no código. A Nina resolve settings em cascata até <code>.limit(1).maybeSingle()</code> (<code>nina-orchestrator/index.ts:207-214</code>); a migration de 2026-05 zerou o <code>user_id</code> de propósito (<code>20260521200736_…sql:32</code>); e o bootstrap declara “single-tenant: user_id NULL” (<code>20260527142807_bootstrap_admin_and_default_settings.sql:16</code>). O modelo comercial deles é <strong>um deploy por clínica</strong>. O “cada salão tem a sua” é <strong>nosso</strong> (<code>product_agents</code> por <code>organization_id</code>) — a Nina só fornece o <strong>formulário</strong>.</p>
+  </div>
+
+  <div class="fact">
+    <h3>Evidência do tamanho real do buraco do nosso lado</h3>
+    <p>Grep por <code>contraindic|pre_care|post_care</code> em <code>apps/NexvyBeauty/src</code> e <code>apps/NexvyBeauty/supabase</code> → <strong>zero ocorrências</strong>. Os 7 templates de <code>apps/NexvyBeauty/supabase/functions/_shared/agent-prompt-templates.ts</code> (<code>sdr</code>, <code>closer</code>, <code>support</code>, <code>financial</code>, <code>admin</code>, <code>orchestrator</code>, <code>custom</code>) são <strong>todos B2B genéricos</strong> — falam de “produto”, “planos”, “quebra de objeção”, “checkout”. <strong>Não existe template de recepcionista de salão.</strong></p>
+    <p>E o passo “Sua EquipIA” do onboarding coleta <strong>dois</strong> campos — nome e tom, com 3 opções (<code>apps/NexvyBeauty/src/components/onboarding/implantacao/ImplantacaoWizard.tsx:377-386</code>; mapeamento em <code>apps/NexvyBeauty/supabase/functions/apply-onboarding/index.ts:336</code>). A Nina coleta <strong>14</strong> campos com enums de domínio.</p>
+  </div>
+
+  <h2>4. Trilha DUDA — técnicas a importar para o brain B2B</h2>
+  <p class="meta">Escopo: <code>apps/NexvyBeauty/supabase/functions/platform-sales-brain/index.ts</code> e <code>.../_shared/agent-prompt-templates.ts</code>. <strong>Nada de conteúdo estético entra aqui.</strong></p>
+
+  <h3>D1. Bloco <code>&lt;examples&gt;</code> com contra-exemplos rotulados — <span class="warn">a maior lacuna</span></h3>
+  <p>Hoje nem o <code>systemPrompt</code> da Duda (<code>platform-sales-brain/index.ts:1055-1087</code>) nem os templates (<code>_shared/agent-prompt-templates.ts:29-68</code>) têm <strong>um único exemplo</strong>. Só há proibições em prosa (“PROIBIDO clichês: ‘boa!’, ‘que ótimo’…” — <code>agent-prompt-templates.ts:107</code>). Proibição sem contraste é a forma mais fraca de instruir.</p>
+  <p>Padrão da Nina (<code>default-nina-prompt.ts:120-141</code>): pares <code>Cliente → Assistente</code> rotulados <code>Bom exemplo</code> / <code>Mau exemplo (vendedor demais)</code> / <code>Mau exemplo (diagnóstico)</code>, marcados com ❌ e, num deles, com a correção logo abaixo.</p>
+  <p><strong>Aplicação B2B — 5 exemplos com o nosso conteúdo:</strong> (1) abertura vinda de anúncio CTWA; (2) “quanto custa” antes da descoberta; (3) pedido de desconto — contra-exemplo: conceder; correto: reancorar na conta da recuperação; (4) “vou pensar” — contra-exemplo: passar pra Bia cedo demais; correto: uma pergunta de objeção; (5) decisão explícita — contra-exemplo: “quer que eu te ajude?”; correto: mandar a URL. Os casos 3-5 já existem como <strong>regra</strong> (<code>:1067,1073</code>); viram exemplo, que é como o modelo aprende melhor.</p>
+  <p class="meta"><em>Verifica:</em> 5 goldens novos em <code>apps/NexvyBeauty/supabase/functions/tmp-eval-agents/goldens.ts</code> passando, sem regressão nos atuais.</p>
+
+  <h3>D2. Scaffold cognitivo explícito</h3>
+  <p><code>default-nina-prompt.ts:104-111</code> — 5 passos silenciosos: ANALISAR (etapa) → VERIFICAR (o que ainda não sei) → PLANEJAR (próxima pergunta) → REDIGIR → REVISAR (bateu o limite? só 1 pergunta?).</p>
+  <p>O passo 5 é o mais valioso: <strong>auto-checagem da regra de forma dentro do próprio prompt</strong>. Nós declaramos as regras (<code>:1080-1087</code>: ≤300 chars, 1 pergunta, sem markdown) mas não pedimos revisão — e violação de forma é justamente o defeito recorrente.</p>
+  <p><strong>Aplicação:</strong> bloco <code>PROCESSO INTERNO (silencioso)</code> no fim do system prompt da Duda, com VERIFICAR apontando para <code>persona.qualification_schema</code> (<code>:1060</code>) e REVISAR checando ≤300 chars / 1 pergunta / sem markdown / não repergunta o que já está em “O QUE JÁ SABEMOS DA LEAD”.</p>
+
+  <h3>D3. Estrutura em tags XML</h3>
+  <p>A Nina usa <code>&lt;role&gt;</code>, <code>&lt;core_philosophy&gt;</code>, <code>&lt;guidelines&gt;</code>, <code>&lt;examples&gt;</code>; nós usamos separadores <code>═══</code>. Tags delimitam melhor e reduzem vazamento entre seções. Ganho pequeno mas real. <span class="warn">Cautela:</span> o system prompt da Duda é montado por concatenação condicional (<code>:1055-1087</code>) — o tagueamento tem que preservar a montagem. Fazer junto de D1/D2, nunca isolado.</p>
+
+  <h3>D4. Anti-alucinação na <em>description</em> da tool, não no prompt</h3>
+  <p><code>nina-orchestrator/index.ts:103</code> põe “NUNCA invente procedimentos — sempre consulte aqui primeiro” dentro da descrição da tool. A instrução viaja com a tool e não compete por atenção com o resto do system prompt.</p>
+  <p><strong>Aplicação:</strong> replicar nas descrições das nossas tools em <code>apps/NexvyBeauty/supabase/functions/_shared/tools/impl/</code> — em especial <code>gerar_link_pagamento.ts</code> (nunca inventar URL) e <code>consultar_historico_cliente.ts</code>.</p>
+
+  <h3>D5. Guardrail de política aplicado no servidor, não no prompt</h3>
+  <p><code>nina-orchestrator/index.ts:536-542</code>: com <code>price_visible = false</code>, o preço é <strong>removido do payload</strong> antes de o modelo ver. A regra “NUNCA ofereça desconto” (<code>platform-sales-brain/index.ts:1067</code>) é hoje só texto — se houver campo de desconto no conhecimento do produto, ele deve ser filtrado no servidor antes de entrar no <code>knowledgeContext</code>.</p>
+
+  <h3>D6. Gate de confiança antes de mutar estado de CRM</h3>
+  <p><code>analyze-conversation/index.ts:302</code> — só move o deal com <code>confidence &gt; 70</code>. Conferir se a nossa movimentação automática de estágio tem gate equivalente.</p>
+
+  <h3>D7. Temperatura variável por fase</h3>
+  <p>Importar <strong>o princípio, não a heurística de keyword</strong>. Já roteamos modelo por persona (<code>:1100-1102</code>) mas não passamos <code>temperature</code> (<code>:1111-1116</code>). Proposta mínima: Duda em descoberta com temperatura mais alta; Bia em fechamento e qualquer turno com objeção, mais baixa.</p>
+
+  <h3>D-NÃO — o que explicitamente não importar</h3>
+  <ul>
+    <li>Todo o <code>&lt;company&gt;</code> / <code>&lt;knowledge_base&gt;</code> do prompt B2B (<code>:1557-1601</code>) — são fatos do Viver de IA.</li>
+    <li>O fallback triplo de settings (<code>:177-219</code>) — consequência do single-tenant; para nós seria bug de vazamento entre organizações.</li>
+    <li><code>getAdaptiveSettings</code> por keyword (<code>:1788-1851</code>).</li>
+  </ul>
+
+  <h2>5. Trilha EquipIA (tenant) — portar, adaptar, manter</h2>
+
+  <h3>5.1 Portar quase direto (transcrição de conteúdo, nunca cópia de arquivo)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Ativo</th><th>Origem</th><th>Destino</th></tr></thead>
+    <tbody>
+      <tr><td class="num">B1</td><td><strong>Template <code>beauty_receptionist</code></strong></td><td><code>default-nina-prompt.ts:18-142</code></td><td>novo entry em <code>_shared/agent-prompt-templates.ts</code> + espelho em <code>src/components/admin/agents/AgentPromptTemplates.ts</code></td></tr>
+      <tr><td class="num">B2</td><td><strong>Guardrails clínicos</strong> (não prescreve, não diagnostica, não promete resultado, não compara concorrente, não envia antes-e-depois de terceiros)</td><td><code>default-nina-prompt.ts:69-76</code></td><td>bloco fixo de B1 + defaults de <code>prohibited_phrases</code></td></tr>
+      <tr><td class="num">B3</td><td><strong>Taxonomia de 7 categorias</strong></td><td><code>…f3_…sql:14-16</code></td><td>enum de categoria em <code>products</code> (tipo <code>servico</code>)</td></tr>
+      <tr><td class="num">B4</td><td><strong>Campos clínicos do catálogo</strong>: <code>contraindications</code>, <code>pre_care</code>, <code>post_care</code>, <code>price_min/max</code>, <code>price_visible</code></td><td><code>…f3_…sql:19-24</code></td><td><code>products.settings</code> (jsonb) — evita migration de coluna e respeita o contrato <code>products.tipo='servico'</code></td></tr>
+      <tr><td class="num">B5</td><td><strong>9 templates de lembrete/recall</strong> com cuidado clínico na copy</td><td><code>…f3_…sql:138-148</code></td><td>cadência / pós-venda (<code>cadence-*</code>, <code>process-post-sale-scheduled</code>)</td></tr>
+      <tr><td class="num">B6</td><td><strong>Ciclo <code>recall_30d</code> / <code>recall_90d</code></strong> como conceito de produto</td><td><code>…f3_…sql:97</code></td><td>cadência de reativação — é literalmente “Cliente de Volta”</td></tr>
+      <tr><td class="num">B7</td><td><strong>Few-shot da recepcionista</strong> (5 exemplos, 2 negativos)</td><td><code>default-nina-prompt.ts:120-141</code></td><td>dentro de B1</td></tr>
+      <tr><td class="num">B8</td><td><strong>Posicionamento front-of-funnel vs. ERP back-of-house</strong></td><td><code>docs/INTEGRATIONS.md</code></td><td>doc de estratégia de integração do tenant</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.2 Adaptar (o desenho serve, a implementação não)</h3>
+  <p><strong>B9 — Configurador de persona por salão.</strong> Adotar os <strong>14 campos e as enumerações</strong> (§2.G) como <em>schema de configuração do agente recepcionista</em>, persistindo em <code>product_agents</code> por <code>organization_id</code> — que já é o nosso modelo. Campos que hoje <strong>não existem</strong> no nosso <code>AgentEditor</code>: <span class="pill">subvertical</span><span class="pill">lead_professional</span><span class="pill">ticket_average</span><span class="pill">pricing_policy</span><span class="pill">conversion_action</span><span class="pill">emoji_intensity</span><span class="pill">max_lines</span> (já temos nome, tom, objetivo, frases proibidas/obrigatórias, tamanho de mensagem, humanização).</p>
+  <p><strong>B10 — Geração template-first.</strong> Nosso <code>generate-agent-ai</code> (559 linhas) já é mais completo que o <code>generate-prompt</code> da Nina (291), mas deixa o LLM com mais liberdade estrutural. Adotar os três controles: (1) template montado <strong>em código</strong>, LLM só refina; (2) <strong>whitelist de variáveis</strong> no meta-prompt; (3) <strong>sanitizador pós-geração</strong>.</p>
+  <p><strong>B11 — <code>price_visible</code> como gate de servidor</strong> (§2.E / D5): quando o salão não autoriza divulgar preço, o preço <strong>não entra no contexto</strong>. Não é instrução — é ausência de dado.</p>
+  <p><strong>B12 — Debounce de 10 s.</strong> Verificar se <code>evolution-webhook</code> / <code>platform-meta-whatsapp-webhook</code> já agrupam mensagens fragmentadas; se não, adotar o padrão <code>process_after</code> reagendável.</p>
+
+  <h3>5.3 O que já temos e é melhor — manter, não substituir</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Nosso</th><th>Por quê é melhor</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Multi-tenant real</strong> (<code>organization_id</code>, RLS por org)</td><td>a Nina é single-tenant por design (§3.2)</td></tr>
+      <tr><td><strong><code>product_agents</code> + hierarquia + roteamento + handoff</strong> (<code>_shared/agent-routing.ts</code>, <code>_shared/orchestrator.ts</code>, <code>AgentHierarchyView.tsx</code>)</td><td>a Nina tem <strong>um</strong> agente e nenhum roteamento</td></tr>
+      <tr><td><strong>Humanizador</strong> (<code>_shared/humanizer.ts</code>: bolhas, delays, tics regionais, reações, <code>buildHumanizationPromptBlock</code>)</td><td>a Nina tem delay aleatório + split por <code>\n\n</code> (<code>nina-orchestrator/index.ts:1756-1763</code>)</td></tr>
+      <tr><td><strong>Registry de tools</strong> (<code>_shared/tools/registry.ts</code> + 5 impls)</td><td>a Nina tem 4 tools hardcoded no arquivo do orchestrator</td></tr>
+      <tr><td><strong>Score QCR-V persistido como fato</strong></td><td>a Nina recalcula score por LLM a cada 5 mensagens</td></tr>
+      <tr><td><strong>Gateway próprio</strong> (<code>AI_GATEWAY_URL</code>, modelo por persona)</td><td>a Nina está presa ao <code>ai.gateway.lovable.dev</code></td></tr>
+      <tr><td><strong>AgentEditor completo</strong> (abas Humanização, Tools, Agendamento, Treinamento, Menu de boas-vindas, Regras de ativação, TestChat, import de documento)</td><td>a Nina tem uma textarea + um sheet gerador</td></tr>
+      <tr><td><strong>Booking do salão, catálogo, cadências, CSAT, push, Instagram, CTWA</strong></td><td>camadas inteiras que a Nina não tem</td></tr>
+    </tbody>
+  </table></div>
+  <div class="lead">
+    <p><strong>Aviso de fronteira:</strong> booking do CRM (reunião) ≠ agenda do salão (tenant). Todo o material de agendamento da Nina é <strong>agenda de salão</strong> e deve aterrissar na trilha tenant — nunca no <code>platform_crm</code>.</p>
+  </div>
+
+  <h2>6. Riscos</h2>
+
+  <h3>6.1 Propriedade intelectual e licenciamento — bloqueante para cópia literal</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Risco</th><th>Evidência</th><th>Ação</th></tr></thead>
+    <tbody>
+      <tr><td class="num">R1</td><td><strong>Sem licença.</strong> Não há <code>LICENSE</code> no repo. Compra ≠ cessão de direitos por default; o escopo do que foi adquirido (uso? fonte? direito de derivar e revender?) não está documentado no repositório</td><td>ausência de arquivo de licença; 24 commits de 2026-07-17, sem termo</td><td>Confirmar o contrato de compra antes de qualquer merge. Até lá: <strong>extração por transcrição</strong>, não por cópia</td></tr>
+      <tr><td class="num">R2</td><td><strong>Marca e design system do vendedor embarcados</strong></td><td><code>src/design-system/viverdeia/</code> completo (README, SKILL.md, tokens <code>--via-*</code>, previews, marketing kit) + <code>src/assets/viverdeia/*.svg</code> (4 logos)</td><td><strong>Nunca copiar.</strong> Se o repo for mantido, remover</td></tr>
+      <tr><td class="num">R3</td><td><strong>Marca de terceiro embarcada</strong></td><td><code>src/design-system/viverdeia/ui_kits/_reference-assina/</code> — mocks derivados do <strong>Assina.ai</strong>, com aviso no próprio README: “não copie copy, logo, ou nome”</td><td>idem R2 — risco de terceiro, não do vendedor</td></tr>
+      <tr><td class="num">R4</td><td><strong>Dados nominais do vendedor no prompt de produção</strong></td><td><code>nina-orchestrator/index.ts:1550,1561-1564</code> (fundadores, investidores, clientes: G4, WEG, V4, Reserva)</td><td>Se esse fallback rodar em produção nossa, é afirmação falsa sobre terceiros. Reescrever integralmente</td></tr>
+      <tr><td class="num">R5</td><td><strong>Identificadores residuais</strong></td><td><code>whatsapp_verify_token</code> default <code>'viver-de-ia-nina-webhook'</code> (<code>20251126124558_…sql:245</code>) e auto-gerado com prefixo <code>viver-ia-</code> no onboarding (<code>StepWhatsApp.tsx:41-48</code>); <code>openai_assistant_id</code> default <code>'asst_X8XSK…'</code> (<code>:232</code>); enum <code>team_assignment</code> com nomes próprios</td><td>Nenhum entra no nosso schema</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.2 Segurança — P0 herdados</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Risco</th><th>Evidência</th></tr></thead>
+    <tbody>
+      <tr><td class="num no">S1</td><td><strong>service_role_key legível E GRAVÁVEL pelo frontend.</strong> <code>app_config</code> guarda a service_role key (a própria descrição do seed diz “NUNCA exponha em UI cliente”), mas as policies logo acima dão <code>SELECT</code> <strong>e</strong> <code>FOR ALL</code> a qualquer <code>authenticated</code>, sem checagem de admin — e nenhuma migration posterior corrige. <code>AppConfigCard.tsx</code> busca o <code>value</code> e o exibe atrás de um toggle. <strong>Escalação direta de privilégio → bypass total de RLS</strong></td><td><code>20260525140501_cron_jobs_and_app_config.sql:36-45,50</code> + <code>src/components/settings/AppConfigCard.tsx:25-27</code></td></tr>
+      <tr><td class="num no">S2</td><td><strong>Refresh tokens do Google legíveis por qualquer usuário logado</strong></td><td><code>google_calendar_credentials</code> com <code>FOR ALL TO authenticated USING (auth.role() = 'authenticated')</code> — <code>…f3_…sql:76-79</code></td></tr>
+      <tr><td class="num warn">S3</td><td><strong>Chaves de terceiros em texto plano no banco e no DOM.</strong> <code>elevenlabs_api_key</code>, <code>whatsapp_access_token</code> em <code>nina_settings</code>; o front faz <code>select('*')</code> e renderiza em <code>&lt;input type="password"&gt;</code> com botão de revelar. Contido a admins após o hardening de <code>20260526210715</code>, mas é chave viva no browser</td><td><code>20251126124558_…sql:235,243</code>; <code>ApiSettings.tsx:165-197,624-643</code>; <code>AgentSettings.tsx:88-92</code></td></tr>
+      <tr><td class="num warn">S4</td><td><strong>API key da ElevenLabs enviada do browser no body</strong> para <code>test-elevenlabs-tts</code>, em vez de a function ler do banco</td><td><code>StepElevenLabs.tsx:104-114</code></td></tr>
+      <tr><td class="num warn">S5</td><td><strong><code>.env</code> commitado</strong> com <code>VITE_SUPABASE_PROJECT_ID</code> / <code>VITE_SUPABASE_URL</code> / publishable key do projeto <strong>do vendedor</strong>. Chaves públicas por design, mas apontam para infra de terceiro; o README admite: “O <code>.env</code> aponta para o Supabase original do fork”</td><td><code>.env</code> (versionado desde <code>7fd4dbf</code>), <code>supabase/config.toml:1</code>, <code>README.md</code></td></tr>
+      <tr><td class="num warn">S6</td><td><strong>Sem isolamento entre usuários.</strong> Todo <code>authenticated</code> lê todos os contatos, conversas, deals, agendamentos, procedimentos e fotos de clientes</td><td><code>20260521200736_…sql:56-69</code>; <code>20260529001254_…sql:37-50</code>; <code>…f3_…sql:36-39,110-135</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="lead red">
+    <p>S1–S4 violam frontalmente a <strong>Seção 11.1</strong> do CLAUDE.md (chaves nunca no frontend; segredo server-side). É mais um argumento contra reuso de código: <strong>importar o schema da Nina importaria a postura de segurança dela.</strong></p>
+  </div>
+
+  <h3>6.3 Acoplamentos que impedem porte de código</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>Acoplamento</th><th>Evidência</th></tr></thead>
+    <tbody>
+      <tr><td class="num">T1</td><td><strong>Lovable AI Gateway</strong> — todo LLM vai para <code>ai.gateway.lovable.dev</code> com <code>LOVABLE_API_KEY</code>; erro 402 fala em “créditos do workspace Lovable”</td><td><code>nina-orchestrator/index.ts:9</code>; <code>generate-prompt/index.ts:228,254</code>; + <code>health-check</code>, <code>analyze-conversation</code>, <code>message-grouper</code>, <code>validate-setup</code></td></tr>
+      <tr><td class="num">T2</td><td><strong>Single-tenant estrutural</strong> — sem <code>organization_id</code>; settings resolvidos por <code>.limit(1)</code></td><td><code>20260521200736_…sql:2,32</code>; <code>nina-orchestrator/index.ts:207-214</code></td></tr>
+      <tr><td class="num">T3</td><td><strong>Nomes de tabela colidem/divergem</strong> — <code>contacts</code>, <code>messages</code>, <code>conversations</code>, <code>appointments</code>, <code>deals</code>, <code>pipeline_stages</code> existem nos dois lados com colunas diferentes</td><td>comparar <code>src/integrations/supabase/types.ts</code> com o nosso schema</td></tr>
+      <tr><td class="num">T4</td><td><strong><code>pg_cron</code> lendo credencial de tabela de aplicação</strong> — <code>nina_invoke_reminders()</code> busca URL + service_role em <code>app_config</code>; se vazia, <strong>falha em silêncio</strong> (<code>RETURN NULL</code>)</td><td><code>20260525140501_…sql:61-88</code></td></tr>
+      <tr><td class="num">T5</td><td><strong>Prompt duplicado em duas fontes</strong>, com incidente já documentado</td><td><code>.lovable/plan.md</code></td></tr>
+      <tr><td class="num">T6</td><td><strong>Sem eval de agente</strong> — só 5 specs Playwright de UI; nenhum teste de comportamento de prompt</td><td><code>e2e/*.spec.ts</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.4 Risco de processo</h3>
+  <ul>
+    <li><strong>R6 — Contaminação do worktree.</strong> O clone está em <code>/private/tmp/claude-501/nina-analise/</code>. Sob nenhuma hipótese o repo da Nina deve ser copiado para dentro de <code>SaasPlugin_vite</code> (worktree compartilhado com outras sessões).</li>
+    <li><strong>R7 — Isto não é um porte.</strong> Pela regra de porte nomeado (Seção 14.3 do CLAUDE.md), não cabe parity-check de contagem origem→destino: é <strong>extração de conhecimento com reescrita</strong>. O controle é checklist de itens (B1..B12, D1..D7) com evidência por item.</li>
+  </ul>
+
+  <h2>7. Execução proposta</h2>
+  <p class="meta">Sequência com critério binário por passo. <strong>Nada aqui está autorizado</strong> — é proposta.</p>
+
+  <div class="fact">
+    <h3>Fase 0 — destravar (Marcelo)</h3>
+    <ol>
+      <li>Confirmar o escopo contratual da compra (uso vs. direito de derivar/revender). → <em>verifica:</em> resposta registrada. Se for só uso, a extração fica limitada a ideias, não a texto.</li>
+      <li>Decidir o destino do repo da Nina (arquivar / manter como referência / remover marca de terceiro). → <em>verifica:</em> decisão registrada.</li>
+    </ol>
+  </div>
+
+  <div class="fact">
+    <h3>Fase 1 — DUDA (barata, alto retorno)</h3>
+    <ol start="3">
+      <li>D1 (few-shot com contra-exemplos) + D2 (scaffold cognitivo). → <em>verifica:</em> 5 goldens novos em <code>tmp-eval-agents/goldens.ts</code> passando; nenhum golden atual regredindo.</li>
+      <li>D4 (anti-alucinação nas descriptions das tools). → <em>verifica:</em> golden “pediu link de pagamento” sem URL inventada em 10/10.</li>
+      <li>D6 (gate de confiança) + D7 (temperatura por fase). → <em>verifica:</em> nenhuma movimentação de estágio com confiança &lt; 70 numa janela de 24 h de log.</li>
+    </ol>
+  </div>
+
+  <div class="fact">
+    <h3>Fase 2 — EquipIA, conteúdo (o grosso do valor)</h3>
+    <ol start="6">
+      <li>B1+B2+B7 — template <code>beauty_receptionist</code> com guardrails clínicos e few-shot. → <em>verifica:</em> diante de “estou com manchas no rosto” o agente <strong>não</strong> diagnostica, em 10/10.</li>
+      <li>B3+B4 — taxonomia e campos clínicos em <code>products.settings</code>. → <em>verifica:</em> serviço criado com <code>contraindications</code>/<code>pre_care</code>/<code>post_care</code> aparece no contexto do agente.</li>
+      <li>B11 — <code>price_visible</code> como gate de servidor. → <em>verifica:</em> com <code>price_visible=false</code>, o preço <strong>não</strong> está no payload enviado ao modelo (asserção sobre o payload, não sobre o output).</li>
+      <li>B5+B6 — templates de lembrete/recall e cadência de reativação. → <em>verifica:</em> cadência de 30 d dispara com a copy clínica correta por categoria; <code>recall_90d</code> <strong>agendado</strong> (bug §2.M corrigido na nossa implementação).</li>
+    </ol>
+  </div>
+
+  <div class="fact">
+    <h3>Fase 3 — EquipIA, configurador</h3>
+    <ol start="10">
+      <li>B9 — 7 campos novos no <code>AgentEditor</code>. → <em>verifica:</em> salvar e recarregar preserva os 7; o prompt gerado reflete os 7.</li>
+      <li>B10 — template-first + whitelist + sanitizador em <code>generate-agent-ai</code>. → <em>verifica:</em> 20 gerações seguidas sem markdown vazado, sem variável fora da whitelist, estrutura estável; <strong>e toda variável anunciada na UI resolvida no runtime</strong> (bug §2.M).</li>
+      <li>B12 — debounce, se ainda não existir. → <em>verifica:</em> 4 mensagens em 6 s geram <strong>uma</strong> resposta.</li>
+    </ol>
+  </div>
+
+  <h2>Anexo — ordem de leitura recomendada (densidade de valor)</h2>
+  <ol>
+    <li><code>supabase/functions/nina-orchestrator/index.ts</code> (1851 linhas) — tools, pipeline, prompt B2B, roteamento de modelo</li>
+    <li><code>src/prompts/default-nina-prompt.ts</code> (142) — persona beleza</li>
+    <li><code>supabase/functions/generate-prompt/index.ts</code> (291) — geração template-first + meta-prompt</li>
+    <li><code>src/components/settings/PromptGeneratorSheet.tsx</code> (443) — 14 campos e enums</li>
+    <li><code>supabase/migrations/20260522223353_f3_procedures_calendar_reminders_photos.sql</code> — catálogo, lembretes, templates seed</li>
+    <li><code>src/components/settings/ProceduresManager.tsx</code> (386) + <code>RemindersManager.tsx</code> (455) — CRUD e copy operacional</li>
+    <li><code>supabase/functions/analyze-conversation/index.ts</code> (344) — memória / BANT</li>
+    <li><code>docs/INTEGRATIONS.md</code> (134) — contrato de integrações e posicionamento vs. ERP</li>
+  </ol>
+
+  <div class="foot">
+    NexvyBeauty · <code>tasks/NINA-EXTRACAO-DUDA-EQUIPIA-2026-07-19.{md,html}</code> · análise read-only, nada commitado · par gerado conforme a convenção de relatórios (.md + .html) do projeto.
+  </div>
+
+</div>
+</body>
+</html>

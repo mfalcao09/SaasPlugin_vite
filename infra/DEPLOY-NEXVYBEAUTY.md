@@ -2,6 +2,7 @@
 
 > **Fonte única de verdade do deploy do NexvyBeauty no VPS `vps-hostinger` (145.223.29.96).**
 > Última reconciliação: **2026-07-11** (git do VPS regularizado — ver §6).
+> Última correção: **2026-07-19** (domínio fantasma removido do runbook — ver §2.1).
 > Par `.md` + `.html` (Seção 4 CLAUDE.md). Editar os dois em sincronia.
 
 ---
@@ -16,10 +17,12 @@ git add -A && git commit -m "..." && git push origin main
 ssh vps-hostinger
 cd /opt/stacks/saasplugin-vite
 git pull --ff-only origin main
-./infra/deploy-vps.sh NexvyBeauty nexvy-beauty gestao.nexvybeauty.com.br
+./infra/deploy-vps.sh NexvyBeauty nexvy-beauty app.nexvybeauty.com.br
 ```
 
 O script só retorna `0` quando **prova** que o bundle novo está servindo (gate anti-phantom). Qualquer coisa diferente de `DEPLOY-VERDE:` = deploy não concluído.
+
+> ⚠️ **O 3º argumento é o ALVO DO GATE, não a lista de domínios.** Use `app.nexvybeauty.com.br` (validado 2026-07-19). **Não** use `gestao.nexvybeauty.com.br` — esse subdomínio **não existe** (ver §2.1).
 
 > **Regra de ouro (a lição de 2026-07-11):** o que vai pra produção **passa pelo git** (commit + push + pull no VPS). **Nunca** sincronizar arquivo-a-arquivo via `scp` sobre um working tree — isso quebra o determinismo e foi exatamente o que precisou ser desfeito (§6).
 
@@ -37,9 +40,25 @@ O script só retorna `0` quando **prova** que o bundle novo está servindo (gate
 | Dockerfile | `infra/Dockerfile.app` (multi-app via `--build-arg APP_DIR`) |
 | Rede | `traefik-public` (externa) |
 | Traefik | **file provider** — template `infra/traefik/NexvyBeauty.yml.template` → renderizado em `/opt/stacks/traefik/dynamic/nexvy-beauty.yml` |
-| Domínios | `gestao.nexvybeauty.com.br` (cockpit) · `app.nexvybeauty.com.br` · `nexvybeauty.com.br` |
+| Domínios servidos | `nexvybeauty.com.br` (+ `www`) → apex/LP · `app.nexvybeauty.com.br` → SaaS (login, hub, super-admin) |
+| CRM do grupo | `gestao.nexvy.tech` → **mesmo container**, mas roteado por arquivo Traefik **separado**: `/opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml` |
+| Alvo do gate (3º arg) | `app.nexvybeauty.com.br` |
 
 **Ponto crítico de entendimento:** o `deploy-vps.sh` **builda do WORKING TREE** de `/opt/stacks/saasplugin-vite` — **não** de um checkout limpo, **não** faz `git pull` sozinho. Ele empacota o que estiver no disco. Por isso o `git pull --ff-only` **antes** de rodar o script é o que garante que o build reflete o commit certo. Se o working tree estiver sujo/divergente, você builda a sujeira.
+
+**Segundo ponto crítico:** os hosts do NexvyBeauty são **hardcodados no template** (`app.` + apex/www). O argumento `DOMAIN` do script **não** cria rota nenhuma — ele só monta a URL que o gate vai testar (`https://$DOMAIN/`).
+
+### 2.1 ⚠️ Armadilha: `gestao.nexvybeauty.com.br` NÃO EXISTE
+
+Esse subdomínio foi **removido do Traefik em 2026-07-11** (era fantasma). O `gestao` canônico é `gestao.nexvy.tech` (CRM do grupo), em arquivo dinâmico próprio. O próprio `infra/traefik/NexvyBeauty.yml.template` avisa: *"NAO recriar gestao.nexvybeauty.com.br aqui"*.
+
+**Por que isso queima tempo:** o 3º argumento é a URL do gate. Se você apontar para um domínio que o Traefik não serve, o deploy **funciona** (container healthy, apex e `app.` em 200) mas o gate testa um host que não resolve e cospe:
+
+```
+GATE FALHOU: https://gestao.nexvybeauty.com.br/ nao respondeu 200 em 90s (HTTP 000000)
+```
+
+`HTTP 000` = o curl nem conectou (não é 404/502 da aplicação). Aconteceu em **2026-07-19**: parecia deploy quebrado, não estava — e quase induziu rollback desnecessário. Rodar de novo com `app.nexvybeauty.com.br` terminou **verde**, com o bundle novo servindo.
 
 ---
 
@@ -53,9 +72,9 @@ O script só retorna `0` quando **prova** que o bundle novo está servindo (gate
 2. `docker build --no-cache` (default) da imagem, do working tree.
 3. Lê o hash do bundle **da imagem recém-buildada** (`EXPECTED_HASH`).
 4. Recria o container em `traefik-public`; renderiza o template Traefik.
-5. **Gate anti-phantom:** faz poll até `HTTP 200` (até 90s, inclui emissão de cert), depois exige `SERVED_HASH == EXPECTED_HASH`. Se servir bundle velho → `GATE FALHOU (PHANTOM)` + exit 1.
+5. **Gate anti-phantom:** faz poll até `HTTP 200` **em `https://DOMAIN/`** (até 90s, inclui emissão de cert), depois exige `SERVED_HASH == EXPECTED_HASH`. Se servir bundle velho → `GATE FALHOU (PHANTOM)` + exit 1. Se o `DOMAIN` não for servido pelo Traefik → `GATE FALHOU: ... (HTTP 000000)` + exit 1, **mesmo com o deploy OK** (§2.1).
 
-Saída de sucesso: `DEPLOY-VERDE: NexvyBeauty servindo provado em https://gestao.nexvybeauty.com.br/`.
+Saída de sucesso: `DEPLOY-VERDE: NexvyBeauty servindo provado em https://app.nexvybeauty.com.br/`.
 
 Variáveis úteis: `BUILD_NO_CACHE=0` (pula --no-cache, mais rápido/arriscado), `READY_TIMEOUT`, `BUNDLE_RE`.
 
@@ -99,6 +118,7 @@ O bundle vite (frontend) **não** inclui `supabase/functions/*` nem `supabase/mi
 3. **`reset --hard` no VPS só com paridade provada** — antes de resetar, confirmar que o working tree não tem código VPS-only não-recuperável (comparar contra o ref alvo incluindo untracked via `git add -AN` temporário + `git diff <ref>` + `git reset`).
 4. **Branch de trabalho → main via PR (fast-forward).** Não deixar feature branch virar trunk de facto.
 5. **Deploy só é "verde" com `DEPLOY-VERDE:`** — o gate anti-phantom é a prova; sem ele, o deploy não terminou.
+6. **O alvo do gate tem que ser um domínio que o Traefik realmente serve** — conferir em `/opt/stacks/traefik/dynamic/` antes. Domínio errado = `GATE FALHOU ... (HTTP 000000)` com o deploy intacto (§2.1). Antes de fazer rollback por gate vermelho, confirme se o container está healthy e se os domínios reais respondem 200.
 
 ---
 
@@ -109,7 +129,7 @@ ssh vps-hostinger
 cd /opt/stacks/saasplugin-vite
 git log --oneline -5                 # achar o SHA bom anterior
 git checkout <SHA_ANTERIOR>          # ou: git reset --hard <SHA>
-./infra/deploy-vps.sh NexvyBeauty nexvy-beauty gestao.nexvybeauty.com.br
+./infra/deploy-vps.sh NexvyBeauty nexvy-beauty app.nexvybeauty.com.br
 ```
 
-Logs / diagnóstico: `docker logs -f nexvy-beauty --tail=100` · `curl -I https://gestao.nexvybeauty.com.br/`.
+Logs / diagnóstico: `docker logs -f nexvy-beauty --tail=100` · `curl -I https://app.nexvybeauty.com.br/` · `curl -I https://nexvybeauty.com.br/` · `curl -I https://gestao.nexvy.tech/`.

@@ -18,6 +18,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { phoneVariantsBR } from './phone.ts';
 import { GRAPH_BASE } from './meta-graph.ts';
 import { decryptSecret } from './meta-crypto.ts';
+import {
+  type ConversationConnectionHints,
+  reportUnresolvedConnection,
+  resolveConnectionForConversation,
+} from './whatsapp-connection.ts';
 
 export interface OnboardingHandoffArgs {
   organizationId: string;
@@ -53,7 +58,10 @@ const LIA_GREETING_BUBBLES = [
  * a sendWelcomeWhatsApp): nunca lança nem derruba o provisionamento pago.
  *
  * Entrega espelha o deliverViaWhatsAppCloud do platform-sales-brain: a conexão
- * Meta 'active' mais recente, decrypt do token, dígitos do destino, POST no Graph.
+ * vem de resolveConnectionForConversation — o MESMO número por onde a conversa
+ * de venda aconteceu (conversation.meta_connection_id), NUNCA "a ativa mais
+ * recente" (com 2+ números isso jogava a Lia numa thread nova, do nada, logo
+ * depois da compra). Decrypt do token, dígitos do destino, POST no Graph.
  * Persiste a mensagem ANTES de entregar (existe no CRM mesmo se o Graph falhar).
  * Retorna true se pelo menos 1 bolha foi persistida (o greeting "aconteceu" do
  * ponto de vista do CRM/anti-duplicação, independentemente da entrega externa).
@@ -61,6 +69,7 @@ const LIA_GREETING_BUBBLES = [
 async function sendLiaGreeting(
   admin: SupabaseClient,
   conversationId: string,
+  conversation: ConversationConnectionHints | null,
   destPhone: string | null,
   customerName: string | null,
 ): Promise<boolean> {
@@ -68,20 +77,22 @@ async function sendLiaGreeting(
     const firstName = (customerName || '').trim().split(/\s+/)[0] || '';
     const to = String(destPhone ?? '').replace(/\D/g, '');
 
-    // Conexão Meta ativa (mono-connection): resolvida UMA vez p/ as 2 bolhas.
+    // Conexão de saída: resolvida UMA vez p/ as 2 bolhas.
     let phoneNumberId: string | null = null;
     let token: string | null = null;
+    let connectionId: string | null = null;
     if (to) {
-      const { data: conn } = await admin
-        .from('platform_crm_whatsapp_meta_connections')
-        .select('phone_number_id, access_token_encrypted')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (conn?.access_token_encrypted && conn?.phone_number_id) {
-        phoneNumberId = conn.phone_number_id as string;
-        token = await decryptSecret(conn.access_token_encrypted as string);
+      const resolved = await resolveConnectionForConversation(admin, conversation);
+      if (resolved.conn) {
+        phoneNumberId = resolved.conn.phone_number_id;
+        connectionId = resolved.conn.id;
+        token = await decryptSecret(resolved.conn.access_token_encrypted);
+      } else {
+        // Sem conexão resolvível NÃO entrega (persiste no CRM e alerta): mandar
+        // pelo número errado é pior do que a bolha ficar só no histórico.
+        await reportUnresolvedConnection('onboarding-handoff/lia-greeting', resolved, {
+          conversation_id: conversationId,
+        });
       }
     }
 
@@ -98,7 +109,13 @@ async function sendLiaGreeting(
           sender_type: 'bot',
           content: body,
           content_type: 'text',
-          metadata: { channel: 'whatsapp_cloud', proactive_greeting: 'lia', bubble_n: i + 1, bubble_total: LIA_GREETING_BUBBLES.length },
+          metadata: {
+            channel: 'whatsapp_cloud',
+            proactive_greeting: 'lia',
+            bubble_n: i + 1,
+            bubble_total: LIA_GREETING_BUBBLES.length,
+            ...(connectionId ? { connection_id: connectionId } : {}),
+          },
         })
         .select('id')
         .single();
@@ -240,7 +257,9 @@ export async function handoffConversationToOnboarding(
     try {
       const { data: convRow } = await admin
         .from('platform_crm_conversations')
-        .select('visitor_whatsapp, visitor_phone, visitor_name')
+        // meta_connection_id/product_id: dizem por qual número a Lia deve falar
+        // (o mesmo da conversa de venda).
+        .select('id, visitor_whatsapp, visitor_phone, visitor_name, meta_connection_id, product_id')
         .eq('id', conversationId)
         .maybeSingle();
       const { data: priorGreeting } = await admin
@@ -256,7 +275,13 @@ export async function handoffConversationToOnboarding(
       } else {
         const destPhone = (convRow as any)?.visitor_whatsapp ?? (convRow as any)?.visitor_phone ?? args.customerPhone ?? null;
         const name = (convRow as any)?.visitor_name ?? null;
-        greeted = await sendLiaGreeting(admin, conversationId, destPhone, name);
+        greeted = await sendLiaGreeting(
+          admin,
+          conversationId,
+          (convRow as ConversationConnectionHints | null) ?? null,
+          destPhone,
+          name,
+        );
       }
     } catch (e) {
       console.warn('[onboarding-handoff] greeting (non-fatal):', String(e).slice(0, 160));

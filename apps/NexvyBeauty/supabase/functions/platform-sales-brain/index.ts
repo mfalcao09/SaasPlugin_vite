@@ -56,6 +56,13 @@ import {
   pickPersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
+import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
+import {
+  type ConversationConnectionHints,
+  connectionErrorCode,
+  reportUnresolvedConnection,
+  resolveConnectionForConversation,
+} from '../_shared/whatsapp-connection.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
@@ -112,30 +119,32 @@ function isAuthorized(req: Request): boolean {
 }
 
 /**
- * Entrega uma mensagem outbound no WhatsApp Cloud API (número de VENDAS).
- * Porte 1:1 do deliverViaWhatsAppCloud do platform-webchat-inbox: mono-connection
- * (a `active` mais recente), decrypt do token, dígitos do destino, POST no Graph.
+ * Entrega uma mensagem outbound no WhatsApp Cloud API RESPONDENDO PELO MESMO
+ * NÚMERO QUE RECEBEU a mensagem da lead: a conexão sai de
+ * resolveConnectionForConversation (conversation.meta_connection_id → product_id
+ * → única ativa). Se a resolução for ambígua (2+ ativas e nada resolve), NÃO
+ * envia — loga + alerta. Responder pelo número errado (outra thread no aparelho
+ * da lead) é pior do que falhar visível.
  * Retorna o wamid pra casar com os statuses (sent/delivered/read) do webhook.
  */
 async function deliverViaWhatsAppCloud(
   supabase: any,
+  conversation: ConversationConnectionHints | null,
   toPhone: string,
   content: string,
-): Promise<{ wamid: string | null; error: string | null }> {
+): Promise<{ wamid: string | null; error: string | null; connectionId: string | null }> {
   try {
-    const { data: conn } = await supabase
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { wamid: null, error: 'no_active_connection' };
+    const resolved = await resolveConnectionForConversation(supabase, conversation);
+    const conn = resolved.conn;
+    if (!conn) {
+      await reportUnresolvedConnection('platform-sales-brain', resolved, {
+        conversation_id: conversation?.id ?? null,
+      });
+      return { wamid: null, error: connectionErrorCode(resolved), connectionId: null };
     }
     const token = await decryptSecret(conn.access_token_encrypted as string);
     const to = String(toPhone ?? '').replace(/\D/g, '');
-    if (!to) return { wamid: null, error: 'no_destination_phone' };
+    if (!to) return { wamid: null, error: 'no_destination_phone', connectionId: conn.id };
 
     const payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body: content } };
 
@@ -148,12 +157,12 @@ async function deliverViaWhatsAppCloud(
     if (!res.ok) {
       const msg = data?.error?.message ?? `graph ${res.status}`;
       console.error('[platform-sales-brain] entrega WhatsApp falhou:', msg);
-      return { wamid: null, error: String(msg).slice(0, 300) };
+      return { wamid: null, error: String(msg).slice(0, 300), connectionId: conn.id };
     }
-    return { wamid: data?.messages?.[0]?.id ?? null, error: null };
+    return { wamid: data?.messages?.[0]?.id ?? null, error: null, connectionId: conn.id };
   } catch (e) {
     console.error('[platform-sales-brain] entrega WhatsApp exception:', e);
-    return { wamid: null, error: String(e).slice(0, 300) };
+    return { wamid: null, error: String(e).slice(0, 300), connectionId: null };
   }
 }
 
@@ -760,7 +769,9 @@ Deno.serve(async (req) => {
     // 1) Conversa — só age em WhatsApp com bot ativo.
     const { data: conversation, error: convError } = await supabase
       .from('platform_crm_conversations')
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp')
+      // meta_connection_id é OBRIGATÓRIO no select: é ele que diz por qual
+      // número responder (a conexão que RECEBEU a mensagem da lead).
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -908,7 +919,15 @@ Deno.serve(async (req) => {
 
     if (!persona) {
       // Sem persona não há motor — não improvisa uma voz genérica no número oficial.
+      // O guard de segurança continua (melhor calar que botar voz aleatória no número
+      // de vendas), MAS calar em silêncio com tráfego PAGO rodando = lead comprada
+      // morrendo sem ninguém saber. Agora ele GRITA. (Auditoria pré-ads 2026-07.)
       console.warn('[platform-sales-brain] sem persona ativa no WhatsApp para product_id:', conversation.product_id);
+      await sendTelegramAlert(
+        `🚨 SDR AUSENTE no número de vendas\n` +
+        `Nenhuma persona ativa em WhatsApp para product_id: ${conversation.product_id ?? 'null'}.\n` +
+        `A lead ficou SEM RESPOSTA. Verifique se a Duda está is_active + active_in_whatsapp.`,
+      );
       return json({ skipped: 'no_active_persona' });
     }
 
@@ -1223,12 +1242,22 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         continue;
       }
 
-      const { wamid, error: deliveryError } = await deliverViaWhatsAppCloud(supabase, dest, bubbleText);
+      const { wamid, error: deliveryError, connectionId } = await deliverViaWhatsAppCloud(
+        supabase,
+        conversation,
+        dest,
+        bubbleText,
+      );
       if (wamid) anyDelivered = true; else lastDeliveryError = deliveryError;
 
       const deliveryMeta = wamid
-        ? { ...baseMeta, wamid, delivery_status: 'sent' }
-        : { ...baseMeta, delivery_status: 'failed', delivery_error: deliveryError };
+        ? { ...baseMeta, wamid, delivery_status: 'sent', ...(connectionId ? { connection_id: connectionId } : {}) }
+        : {
+            ...baseMeta,
+            delivery_status: 'failed',
+            delivery_error: deliveryError,
+            ...(connectionId ? { connection_id: connectionId } : {}),
+          };
 
       const { data: updated } = await supabase
         .from('platform_crm_messages')
