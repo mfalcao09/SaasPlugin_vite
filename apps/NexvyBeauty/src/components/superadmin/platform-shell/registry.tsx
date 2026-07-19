@@ -62,7 +62,7 @@ import { PlatformProspeccaoBaseConsolidada } from '@/components/superadmin/crm/p
 import { ProspeccaoCampanhasStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoCampanhasStub';
 import { ProspeccaoDashboardStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoDashboardStub';
 import { ProspeccaoEnriquecimentoStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoEnriquecimentoStub';
-import { ProspeccaoVideoImportStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoVideoImportStub';
+import { ProspeccaoVideoImport } from '@/components/superadmin/crm/prospeccao/ProspeccaoVideoImport';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
@@ -423,7 +423,7 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-prospeccao-video',
         label: 'Importação por vídeo',
         icon: I.Video,
-        render: () => <ProspeccaoVideoImportStub />,
+        render: () => <ProspeccaoVideoImport />,
       },
     ],
   },
