@@ -6,10 +6,12 @@
 // Desacoplamento vs. fonte (booking-dispatcher/Vendus):
 //   - a fonte é cron-driven sobre booking_scheduled_jobs + Evolution (WhatsApp
 //     não-oficial, por-tenant). AQUI o canal é a WhatsApp Cloud API oficial
-//     (número de VENDAS da plataforma), mono-connection, SEM organization_id.
-//   - connection ativa = platform_crm_whatsapp_meta_connections (status='active'
-//     mais recente), token via decryptSecret, POST em /{phone_number_id}/messages
-//     (mesmo padrão de entrega do platform-webchat-inbox).
+//     (número de VENDAS da plataforma), SEM organization_id.
+//   - connection = _shared/whatsapp-connection.ts. Para o CONVIDADO, resolvida
+//     pelo TELEFONE dele (a conversa de WhatsApp dele diz por qual número a
+//     plataforma já falava com ele) — NÃO mais "a ativa mais recente", que com
+//     2+ números manda o aviso pela thread errada. Token via decryptSecret,
+//     POST em /{phone_number_id}/messages (padrão do platform-webchat-inbox).
 //   - conteúdo reusa o motor de templates da fonte (_shared/booking-templates.ts):
 //     confirmation_whatsapp p/ o convidado, internal_whatsapp p/ o vendedor,
 //     com fallback nos DEFAULT_TEMPLATES quando o event_type não customizou.
@@ -33,6 +35,12 @@ import {
   renderTemplate,
   DEFAULT_TEMPLATES,
 } from '../_shared/booking-templates.ts';
+import {
+  type SendableMetaConnection,
+  connectionErrorCode,
+  reportUnresolvedConnection,
+  resolveConnectionForPhone,
+} from '../_shared/whatsapp-connection.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,30 +66,61 @@ interface RequestBody {
 }
 
 /**
- * Entrega uma mensagem de texto no WhatsApp Cloud API (número de VENDAS).
- * Mono-connection: usa a connection `active` mais recente. Retorna o wamid para
- * casar com os statuses (sent/delivered/read) que chegam pelo webhook.
- * Espelho 1:1 do deliverViaWhatsAppCloud do platform-webchat-inbox.
+ * Fallback SÓ para o aviso INTERNO ao vendedor (ver deliverWhatsAppText): a
+ * conexão ativa mais recente, que era a regra antiga de toda a plataforma.
+ * NUNCA usar em mensagem que vai para uma lead/convidado.
+ */
+async function legacyMostRecentActiveConnection(
+  supabase: SB,
+): Promise<SendableMetaConnection | null> {
+  const { data: conn } = await supabase
+    .from('platform_crm_whatsapp_meta_connections')
+    .select('id, phone_number_id, access_token_encrypted, product_id, display_name')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!conn?.access_token_encrypted || !conn?.phone_number_id) return null;
+  return conn as SendableMetaConnection;
+}
+
+/**
+ * Entrega uma mensagem de texto no WhatsApp Cloud API pelo número por onde a
+ * plataforma JÁ falava com aquele telefone: a conexão sai de
+ * resolveConnectionForPhone (conversa de WhatsApp mais recente do número →
+ * meta_connection_id). Ambíguo (2+ ativas e o telefone não tem conversa) → NÃO
+ * envia; loga + alerta. Retorna o wamid para casar com os statuses
+ * (sent/delivered/read) que chegam pelo webhook.
+ *
+ * `audience: 'internal'` (aviso ao VENDEDOR, número nosso) não tem "thread que
+ * recebeu" a honrar: se a resolução por telefone não achar nada, cai na conexão
+ * mais recente como antes — quebrar o aviso interno seria pior que a imprecisão.
+ * Para o CONVIDADO (audience 'guest') vale a regra dura: nunca chuta.
  */
 async function deliverWhatsAppText(
   supabase: SB,
   toPhone: string,
   content: string,
-): Promise<{ wamid: string | null; error: string | null }> {
+  audience: 'guest' | 'internal' = 'guest',
+): Promise<{ wamid: string | null; error: string | null; connectionId: string | null }> {
   try {
-    const { data: conn } = await supabase
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { wamid: null, error: 'no_active_connection' };
+    const resolved = await resolveConnectionForPhone(supabase, toPhone);
+    let conn = resolved.conn;
+    if (!conn && audience === 'internal' && resolved.reason === 'ambiguous') {
+      conn = await legacyMostRecentActiveConnection(supabase);
+      if (conn) {
+        console.warn(
+          '[platform-booking-dispatcher] aviso interno sem conversa de referência — usando a conexão ativa mais recente',
+        );
+      }
+    }
+    if (!conn) {
+      await reportUnresolvedConnection('platform-booking-dispatcher', resolved, { audience });
+      return { wamid: null, error: connectionErrorCode(resolved), connectionId: null };
     }
     const token = await decryptSecret(conn.access_token_encrypted as string);
     const to = String(toPhone ?? '').replace(/\D/g, '');
-    if (!to) return { wamid: null, error: 'no_destination_phone' };
+    if (!to) return { wamid: null, error: 'no_destination_phone', connectionId: conn.id };
 
     const payload = { messaging_product: 'whatsapp', to, type: 'text', text: { body: content } };
     const res = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
@@ -93,12 +132,12 @@ async function deliverWhatsAppText(
     if (!res.ok) {
       const msg = data?.error?.message ?? `graph ${res.status}`;
       console.error('[platform-booking-dispatcher] entrega WhatsApp falhou:', msg);
-      return { wamid: null, error: String(msg).slice(0, 300) };
+      return { wamid: null, error: String(msg).slice(0, 300), connectionId: conn.id };
     }
-    return { wamid: data?.messages?.[0]?.id ?? null, error: null };
+    return { wamid: data?.messages?.[0]?.id ?? null, error: null, connectionId: conn.id };
   } catch (e) {
     console.error('[platform-booking-dispatcher] entrega WhatsApp exception:', e);
-    return { wamid: null, error: String(e).slice(0, 300) };
+    return { wamid: null, error: String(e).slice(0, 300), connectionId: null };
   }
 }
 
@@ -219,7 +258,7 @@ async function handleCancellation(
 
   if (sellerWantsCancel && sellerPhone && (sellerChannel === 'whatsapp' || sellerChannel === 'both')) {
     const message = renderTemplate(DEFAULT_TEMPLATES.internal_cancellation_whatsapp, vars);
-    const { wamid, error } = await deliverWhatsAppText(supabase, sellerPhone, message);
+    const { wamid, error } = await deliverWhatsAppText(supabase, sellerPhone, message, 'internal');
     results.seller_whatsapp = { wamid, error };
 
     await supabase.from('platform_crm_booking_logs').insert({
@@ -397,7 +436,7 @@ Deno.serve(async (req) => {
     if (sellerWantsNew && sellerPhone && (sellerChannel === 'whatsapp' || sellerChannel === 'both')) {
       const tpl = settings?.internal_message_template || DEFAULT_TEMPLATES.internal_whatsapp;
       const message = renderTemplate(tpl, vars);
-      const { wamid, error } = await deliverWhatsAppText(supabase, sellerPhone, message);
+      const { wamid, error } = await deliverWhatsAppText(supabase, sellerPhone, message, 'internal');
       results.seller_whatsapp = { wamid, error };
 
       await supabase.from('platform_crm_booking_logs').insert({

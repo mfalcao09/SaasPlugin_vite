@@ -45,10 +45,11 @@
 //   * webchat_assignment_events → inexistente na plataforma; auditoria omitida.
 //   * Assinatura do atendente (getAttendantSignature) → recurso de organização
 //     do tenant; sem equivalente na plataforma.
-//   * Roteamento de canal: conversas `channel='whatsapp'` (número de VENDAS,
-//     Cloud API oficial) são ENTREGUES via Graph API na action `send` — a
-//     connection ativa vem de platform_crm_whatsapp_meta_connections e o wamid
-//     retornado vai no metadata (statuses do webhook atualizam por ele).
+//   * Roteamento de canal: conversas `channel='whatsapp'` são ENTREGUES via
+//     Graph API na action `send` — a connection sai de
+//     _shared/whatsapp-connection.ts (conversation.meta_connection_id → o MESMO
+//     número que recebeu a mensagem; NÃO existe mais "a ativa mais recente") e o
+//     wamid retornado vai no metadata (statuses do webhook atualizam por ele).
 //     Conversas `channel='instagram'` (DMs entradas pelo platform-instagram-
 //     webhook) são ENTREGUES via Graph DM (deliverViaInstagram — POST
 //     /{fb_page_id}/messages com page token, node IDÊNTICO ao instagram-send
@@ -120,6 +121,12 @@ import {
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, graphFetch, GraphError } from '../_shared/meta-graph.ts';
+import {
+  type ConversationConnectionHints,
+  connectionErrorCode,
+  reportUnresolvedConnection,
+  resolveConnectionForConversation,
+} from '../_shared/whatsapp-connection.ts';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -139,9 +146,11 @@ interface GraphDeliveryErrorDetail {
 }
 
 /**
- * Entrega uma mensagem outbound no WhatsApp Cloud API (número de VENDAS).
- * Mono-connection por ora: usa a connection `active` mais recente. Retorna o
- * wamid para casar com os statuses (sent/delivered/read) do webhook.
+ * Entrega uma mensagem outbound no WhatsApp Cloud API RESPONDENDO PELO MESMO
+ * NÚMERO QUE RECEBEU a conversa: a conexão vem de
+ * resolveConnectionForConversation (conversation.meta_connection_id → product_id
+ * → única ativa). Ambíguo (2+ ativas, nada resolve) → NÃO envia, loga + alerta.
+ * Retorna o wamid para casar com os statuses (sent/delivered/read) do webhook.
  *
  * Mídia: `media.url` é o link que a Meta baixa (signed URL do storage no
  * caminho novo; URL direta no legado). Caption: `media.caption` tem precedência,
@@ -150,24 +159,35 @@ interface GraphDeliveryErrorDetail {
  */
 async function deliverViaWhatsAppCloud(
   supabase: any,
+  conversation: ConversationConnectionHints | null,
   toPhone: string,
   content: string,
   media?: { kind: string; url: string; caption?: string | null; filename?: string | null } | null,
-): Promise<{ wamid: string | null; error: string | null; errorDetail: GraphDeliveryErrorDetail | null }> {
+): Promise<{
+  wamid: string | null;
+  error: string | null;
+  errorDetail: GraphDeliveryErrorDetail | null;
+  connectionId: string | null;
+}> {
   try {
-    const { data: conn } = await supabase
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { wamid: null, error: 'no_active_connection', errorDetail: null };
+    const resolved = await resolveConnectionForConversation(supabase, conversation);
+    const conn = resolved.conn;
+    if (!conn) {
+      await reportUnresolvedConnection('platform-webchat-inbox', resolved, {
+        conversation_id: conversation?.id ?? null,
+      });
+      return {
+        wamid: null,
+        error: connectionErrorCode(resolved),
+        errorDetail: null,
+        connectionId: null,
+      };
     }
     const token = await decryptSecret(conn.access_token_encrypted as string);
     const to = String(toPhone ?? '').replace(/\D/g, '');
-    if (!to) return { wamid: null, error: 'no_destination_phone', errorDetail: null };
+    if (!to) {
+      return { wamid: null, error: 'no_destination_phone', errorDetail: null, connectionId: conn.id };
+    }
 
     let payload: Record<string, unknown>;
     if (media?.url && media?.kind) {
@@ -204,12 +224,17 @@ async function deliverViaWhatsAppCloud(
         http_status: res.status,
       };
       console.error('[platform-webchat-inbox] entrega WhatsApp falhou:', JSON.stringify(detail));
-      return { wamid: null, error: detail.message, errorDetail: detail };
+      return { wamid: null, error: detail.message, errorDetail: detail, connectionId: conn.id };
     }
-    return { wamid: data?.messages?.[0]?.id ?? null, error: null, errorDetail: null };
+    return {
+      wamid: data?.messages?.[0]?.id ?? null,
+      error: null,
+      errorDetail: null,
+      connectionId: conn.id,
+    };
   } catch (e) {
     console.error('[platform-webchat-inbox] entrega WhatsApp exception:', e);
-    return { wamid: null, error: String(e).slice(0, 300), errorDetail: null };
+    return { wamid: null, error: String(e).slice(0, 300), errorDetail: null, connectionId: null };
   }
 }
 
@@ -225,31 +250,42 @@ async function resolveCommerceCatalogId(supabase: any): Promise<string | null> {
 
 /**
  * Product message no WhatsApp Cloud API (single-product interactive) — card
- * NATIVO do catálogo. Mesma resolução de connection do deliverViaWhatsAppCloud
- * (active mais recente). `bodyText` vira interactive.body.text (a Cloud API
- * exige body não-vazio; máx 1024 chars).
+ * NATIVO do catálogo. MESMA resolução de connection do deliverViaWhatsAppCloud
+ * (o número que recebeu a conversa). `bodyText` vira interactive.body.text (a
+ * Cloud API exige body não-vazio; máx 1024 chars).
  */
 async function deliverProductViaWhatsAppCloud(
   supabase: any,
+  conversation: ConversationConnectionHints | null,
   toPhone: string,
   catalogId: string,
   retailerId: string,
   bodyText: string,
-): Promise<{ wamid: string | null; error: string | null; errorDetail: GraphDeliveryErrorDetail | null }> {
+): Promise<{
+  wamid: string | null;
+  error: string | null;
+  errorDetail: GraphDeliveryErrorDetail | null;
+  connectionId: string | null;
+}> {
   try {
-    const { data: conn } = await supabase
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { wamid: null, error: 'no_active_connection', errorDetail: null };
+    const resolved = await resolveConnectionForConversation(supabase, conversation);
+    const conn = resolved.conn;
+    if (!conn) {
+      await reportUnresolvedConnection('platform-webchat-inbox/product', resolved, {
+        conversation_id: conversation?.id ?? null,
+      });
+      return {
+        wamid: null,
+        error: connectionErrorCode(resolved),
+        errorDetail: null,
+        connectionId: null,
+      };
     }
     const token = await decryptSecret(conn.access_token_encrypted as string);
     const to = String(toPhone ?? '').replace(/\D/g, '');
-    if (!to) return { wamid: null, error: 'no_destination_phone', errorDetail: null };
+    if (!to) {
+      return { wamid: null, error: 'no_destination_phone', errorDetail: null, connectionId: conn.id };
+    }
 
     const payload = {
       messaging_product: 'whatsapp',
@@ -276,11 +312,16 @@ async function deliverProductViaWhatsAppCloud(
         fbtrace_id: g?.fbtrace_id ? String(g.fbtrace_id) : null,
         http_status: res.status,
       };
-      return { wamid: null, error: detail.message, errorDetail: detail };
+      return { wamid: null, error: detail.message, errorDetail: detail, connectionId: conn.id };
     }
-    return { wamid: data?.messages?.[0]?.id ?? null, error: null, errorDetail: null };
+    return {
+      wamid: data?.messages?.[0]?.id ?? null,
+      error: null,
+      errorDetail: null,
+      connectionId: conn.id,
+    };
   } catch (e) {
-    return { wamid: null, error: String(e).slice(0, 300), errorDetail: null };
+    return { wamid: null, error: String(e).slice(0, 300), errorDetail: null, connectionId: null };
   }
 }
 
@@ -796,7 +837,9 @@ async function performOutboundSend(
 ): Promise<OutboundSendResult> {
   const { data: conversation, error: convError } = await supabase
     .from('platform_crm_conversations')
-    .select('id, assigned_to, status, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id')
+    // meta_connection_id/product_id são OBRIGATÓRIOS no select: dizem por qual
+    // número o WhatsApp deve responder (o que RECEBEU a mensagem da lead).
+    .select('id, assigned_to, status, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id, meta_connection_id, product_id')
     .eq('id', opts.conversationId)
     .single();
 
@@ -891,6 +934,7 @@ async function performOutboundSend(
     // Card nativo primeiro (só quando pedido, sem mídia, e com catálogo ligado).
     // Qualquer recusa da Graph cai no texto+link — NUNCA deixa de responder.
     let wamid: string | null = null;
+    let waConnectionId: string | null = null;
     let deliveryError: string | null = null;
     let errorDetail: GraphDeliveryErrorDetail | null = null;
     let deliveredAsProduct = false;
@@ -898,8 +942,9 @@ async function performOutboundSend(
       const catalogId = await resolveCommerceCatalogId(supabase);
       if (catalogId) {
         const r = await deliverProductViaWhatsAppCloud(
-          supabase, dest, catalogId, opts.product.retailer_id, String(opts.content ?? ''),
+          supabase, conversation, dest, catalogId, opts.product.retailer_id, String(opts.content ?? ''),
         );
+        waConnectionId = r.connectionId ?? waConnectionId;
         if (r.wamid) { wamid = r.wamid; deliveredAsProduct = true; }
         else console.warn('[platform-webchat-inbox] product card falhou, fallback texto:', r.error);
       }
@@ -907,6 +952,7 @@ async function performOutboundSend(
     if (!wamid) {
       const r = await deliverViaWhatsAppCloud(
         supabase,
+        conversation,
         dest,
         String(opts.content ?? ''),
         resolvedMedia
@@ -919,9 +965,11 @@ async function performOutboundSend(
           : null,
       );
       wamid = r.wamid; deliveryError = r.error; errorDetail = r.errorDetail;
+      waConnectionId = r.connectionId ?? waConnectionId;
     }
     const deliveryMeta = wamid
       ? { ...(message.metadata ?? {}), wamid, delivery_status: 'sent', channel: 'whatsapp_cloud',
+          ...(waConnectionId ? { connection_id: waConnectionId } : {}),
           ...(deliveredAsProduct
             ? { wa_type: 'interactive_product', product_retailer_id: opts.product?.retailer_id }
             : {}) }
@@ -930,6 +978,7 @@ async function performOutboundSend(
           delivery_status: 'failed',
           delivery_error: deliveryError,
           delivery_error_detail: errorDetail,
+          ...(waConnectionId ? { connection_id: waConnectionId } : {}),
         };
     const { data: updated } = await supabase
       .from('platform_crm_messages')
@@ -2690,7 +2739,9 @@ Deno.serve(async (req) => {
       // Descobre canal/destino pela conversa.
       const { data: conv, error: convErr } = await supabase
         .from('platform_crm_conversations')
-        .select('id, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id')
+        // meta_connection_id/product_id: o resend TEM que sair pelo mesmo número
+        // da conversa original (senão a lead vê a reentrega em outra thread).
+        .select('id, channel, visitor_phone, visitor_whatsapp, visitor_id, instagram_connection_id, meta_connection_id, product_id')
         .eq('id', msg.conversation_id)
         .maybeSingle();
 
@@ -2756,8 +2807,9 @@ Deno.serve(async (req) => {
 
       const dest = conv.visitor_whatsapp ?? conv.visitor_phone ?? '';
       const media = meta.media && typeof meta.media === 'object' ? meta.media : null;
-      const { wamid, error: deliveryError, errorDetail } = await deliverViaWhatsAppCloud(
+      const { wamid, error: deliveryError, errorDetail, connectionId } = await deliverViaWhatsAppCloud(
         supabase,
+        conv,
         dest,
         String(msg.content ?? ''),
         media,
@@ -2769,6 +2821,7 @@ Deno.serve(async (req) => {
             wamid,
             delivery_status: 'sent',
             channel: 'whatsapp_cloud',
+            ...(connectionId ? { connection_id: connectionId } : {}),
             resent_at: new Date().toISOString(),
             // limpa o erro anterior ao ter sucesso. USAR null (não undefined):
             // o metadata é persistido via JSON, e JSON.stringify DROPA chaves
@@ -2782,6 +2835,7 @@ Deno.serve(async (req) => {
             delivery_status: 'failed',
             delivery_error: deliveryError,
             delivery_error_detail: errorDetail,
+            ...(connectionId ? { connection_id: connectionId } : {}),
             resent_at: new Date().toISOString(),
           };
 
