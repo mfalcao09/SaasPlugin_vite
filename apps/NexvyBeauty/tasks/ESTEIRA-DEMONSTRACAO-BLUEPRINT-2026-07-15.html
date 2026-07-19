@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLUEPRINT v2 — Esteira de Demonstração NexvyBeauty · 2026-07-15</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa;--violet:#a78bfa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;padding:0 1rem 3rem;max-width:1120px;margin:0 auto}
+  header{padding:2.2rem 0 1.2rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .kicker{color:var(--gold);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase}
+  header h1{font-size:1.9rem;color:#fff;margin:.3rem 0 .2rem}
+  header h1 .hl{color:var(--rose)}
+  .sub{color:var(--muted);font-size:.88rem}
+  .status{display:inline-block;margin-top:.6rem;padding:.2rem .7rem;border-radius:99px;background:#3a2f10;color:var(--yellow);font-size:.78rem;font-weight:600}
+  h1{font-size:1.6rem;color:#fff;margin:1.6rem 0 .6rem}
+  h2{font-size:1.18rem;color:var(--gold);margin:2.2rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1rem;color:var(--blue);margin:1.4rem 0 .5rem}
+  p{margin:.55rem 0}
+  a{color:var(--blue)}
+  blockquote{border-left:3px solid var(--rose);padding:.55rem .9rem;color:var(--muted);margin:.9rem 0;background:var(--panel);border-radius:0 8px 8px 0}
+  blockquote strong,blockquote b{color:var(--rose)}
+  blockquote em{color:var(--text)}
+  .wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.84rem}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.5rem .65rem;border:1px solid var(--border)}
+  td{padding:.45rem .65rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:.12rem .4rem;border-radius:5px;font-size:.82em;color:var(--rose);font-family:ui-monospace,'SF Mono',Menlo,monospace}
+  .funnel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.2rem;margin:1rem 0;overflow-x:auto}
+  .funnel pre{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.78rem;line-height:1.65;white-space:pre}
+  .funnel code{background:none;padding:0;color:var(--text);font-size:1em}
+  ul,ol{margin:.5rem 0 .5rem 1.4rem}
+  li{margin:.3rem 0}
+  hr{border:none;border-top:1px solid var(--border);margin:1.8rem 0}
+  strong{color:#fff}
+  del{color:var(--muted)}
+  .v2{display:inline-block;color:#0b0e14;background:var(--gold);font-size:.62rem;font-weight:800;padding:.02rem .32rem;border-radius:4px;letter-spacing:.03em;vertical-align:middle;text-transform:uppercase}
+  .changelog{background:linear-gradient(180deg,rgba(212,169,78,.10),rgba(212,169,78,.02));border:1px solid var(--gold);border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .changelog h2{border:none;margin:.1rem 0 .6rem;padding:0}
+  .footer{margin-top:2.6rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">NexvyBeauty · Frente P8 do inventário go-live</div>
+  <h1>BLUEPRINT <span class="hl">v2</span> · <span class="hl">Esteira de Demonstração</span></h1>
+  <p class="sub">2026-07-15 · sessão ARQUITETO · v2 com os 4 ajustes cravados pós-aprovação do Marcelo ("está bem top")</p>
+  <span class="status">🟡 BLUEPRINT — nada implementado · pareado com ESTEIRA-DEMONSTRACAO-BLUEPRINT-2026-07-15.md</span>
+</header>
+
+<blockquote>
+<p><strong>Versão:</strong> <strong>v2</strong> (2026-07-15) — ajustes cravados pós-aprovação do Marcelo. Mudanças pontuais marcadas com <span class="v2">v2</span> no corpo.<br>
+<strong>Data original:</strong> 2026-07-15 · <strong>Autor:</strong> sessão ARQUITETO (síntese de 6 investigações read-only de 2026-07-14/15)<br>
+<strong>Escopo:</strong> blueprint de arquitetura — NADA foi implementado. Fontes: código local <code>apps/NexvyBeauty</code> + banco live <code>fzhlbwhdejumkyqosuvq</code> + versão deployada do <code>cakto-webhook</code>.<br>
+<strong>Pareado com:</strong> <code>ESTEIRA-DEMONSTRACAO-BLUEPRINT-2026-07-15.html</code> · <strong>Roadmap de execução:</strong> <code>ESTEIRA-ROADMAP-EXECUCAO-AUTONOMA-2026-07-15.md</code>.</p>
+</blockquote>
+
+<div class="changelog">
+<h2>v2 — o que mudou vs v1 (4 ajustes cravados)</h2>
+<p>Marcelo aprovou o v1 com 4 ajustes. Este v2 os incorpora; cada ponto tocado no corpo leva a etiqueta <span class="v2">v2</span>.</p>
+<ol>
+<li><span class="v2">v2</span> <strong>Tela 1 (Empresa) volta a ser COMPLETA, não reduzida.</strong> A tela precisa <strong>identificar a empresa corretamente</strong>. Revertida a decisão do v1 (Seção 4) que enxugava o step. O campo <strong>ticket médio</strong> continua obrigatório (insumo da fórmula do dinheiro).</li>
+<li><span class="v2">v2</span> <strong>LGPD endurecida (Seção 5):</strong> termos <strong>robustos</strong>; <strong>retenção de 72h nos DADOS</strong> (não na UI), <strong>independente</strong> de pedido de exclusão, com <strong>TTL/wipe automático via pg_cron</strong> ao fim das 72h; registro de <strong>IP + geolocalização aproximada por IP</strong> (server-side, sem pedir permissão) + timestamp + user-agent + texto/versão do termo, como prova do consentimento; botão <strong>"Excluir meus dados"</strong> (sem "agora") — exclusão <strong>agendada</strong> pro fim das 72h; <strong>análise contínua</strong>: enquanto a conexão do WhatsApp seguir ativa, seguimos analisando nas 72h, <strong>inclusive mensagens novas</strong> — explícito no consentimento; base legal = <strong>consentimento explícito prévio</strong> (a lead declara ter base legítima para compartilhar os contatos das clientes dela — ela Controladora, NexvyBeauty Operador). Copy sempre <strong>"seus últimos meses"</strong>, nunca "180 dias".</li>
+<li><span class="v2">v2</span> <strong>Follow-up dos não-fechados nas 72h:</strong> a <strong>Duda (SDR)</strong> retoma no <strong>MESMO thread</strong> de WhatsApp, com a conta do dinheiro que a lead viu na demo — <strong>reusa o funil + a mecânica do handoff (P10)</strong>. NÃO se cria agente novo.</li>
+<li><span class="v2">v2</span> <strong>Pré-requisito 0 RESOLVIDO:</strong> o <code>onboarding-handoff.ts</code> (handoff Duda→CS no mesmo thread) foi <strong>mergeado no P10 (PR #66, <code>main</code> 4aa1b06) e deployado com flag OFF</strong>. Deixa de ser bug bloqueante da Fase 0 — vira <strong>dependência satisfeita</strong> que a esteira reusa.</li>
+</ol>
+</div>
+
+<hr>
+<h2>TL;DR — as verdades desconfortáveis primeiro</h2>
+<ol>
+<li><strong>~65% da esteira já existe em código.</strong> O caminho crítico não é construir — é <strong>ligar 4 fios</strong> (pipeline F6 de histórico está 100% escrito na ponta receptora e 0% conectado) e <strong>apagar direito</strong> (wipe LGPD é 0% e o <code>delete-organization</code> atual <strong>vaza 33 tabelas</strong> e <strong>trava em 7 FKs</strong>).</li>
+<li><span class="v2">v2</span> <strong>Pré-requisito 0 já resolvido.</strong> O <code>_shared/onboarding-handoff.ts</code> (import de <code>cakto-plan-provisioning.ts:8</code>) foi recriado e mergeado no <strong>P10 (PR #66, <code>main</code> 4aa1b06)</strong>, deployado com <code>ONBOARDING_HANDOFF_ENABLED=OFF</code> (deploy-safe, não muda produção). A esteira <strong>reusa</strong> essa mecânica para o follow-up da Duda no mesmo thread. Deixou de ser bloqueante.</li>
+<li><strong>"180 dias" não é promessa garantível.</strong> A profundidade do histórico é decidida pelo WhatsApp ("most recent", relatos de semanas a ~1 ano). Copy ratificada: <strong>"seus últimos meses"</strong>. Gate G0a/G0b de medição real (<code>PLANO-EXECUCAO-ONBOARDING-DECOLAGEM-2026-07-09.md:41-56</code>) é pré-lançamento.</li>
+<li><strong>O R$ do Radar atual é fictício para WhatsApp-only</strong> (<code>deal_value</code> = 0 em lead de salão). A fórmula da esteira (<code>sumidos × ticket</code>) corrige isso — e o mesmo conserto serve para o pós-venda.</li>
+</ol>
+
+<hr>
+<h2>1. VISÃO + FLUXO E2E</h2>
+<p><strong>A esteira em uma frase:</strong> a lead conecta o WhatsApp real dela numa org provisória, nosso pipeline transforma o histórico em carteira de clientes, mostramos <strong>em reais</strong> quanto ela está perdendo com clientes sumidos — e ou ela compra (a org demo vira a org paga, sem retrabalho) ou apagamos tudo em 72h com prova.</p>
+
+<h3>Fluxo numerado</h3>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Mecanismo</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>Lead entra (Duda / quiz / formulário)</td><td><code>capture-lead</code> (já existe) → <code>sales_leads</code> + <code>lgpd_consents</code> scope <code>lead_capture</code></td></tr>
+<tr><td>1</td><td>Recebe link do wizard demo</td><td><strong>EF nova <code>demo-start</code></strong> (verify_jwt=false): cria org <code>plan_status='demo'</code> + <code>cakto_customer_email</code> + <code>demo_expires_at=+72h</code> + <code>onboarding_submissions mode='demo'</code> com token; devolve <code>/implantacao/:token</code></td></tr>
+<tr><td>2</td><td>Onboarding demo</td><td><code>ImplantacaoWizard</code> refatorado (render por id): <code>empresa</code> (<span class="v2">v2</span> <strong>COMPLETA</strong> — identifica a empresa corretamente, inclui <strong>ticket médio</strong>) → <code>whatsapp_qr</code> → <code>relatorio_dinheiro</code> → <code>planos</code>. SEM agentes/setores/equipes (só pós-venda). Autosave anônimo já existe (<code>save_onboarding_draft_public</code>)</td></tr>
+<tr><td>3</td><td>QR de instância REAL</td><td><strong>EF nova <code>demo-evolution</code></strong> (verify_jwt=false, auth token+session sha256): cria instância com <code>syncFullHistory:true</code>, conecta, serve QR e status — a lead anônima não consegue chamar o <code>evolution-proxy</code> (exige JWT admin)</td></tr>
+<tr><td>4</td><td>Varredura do WhatsApp</td><td>Evolution emite <code>MESSAGES_SET/CHATS_SET/CONTACTS_SET</code> → <code>evolution-webhook</code> <strong>encaminha (fio novo)</strong> → <code>evolution-history-sync</code> (pronta, órfã) → RPC <code>upsert_clientes_whatsapp</code> → <code>public.clientes</code> com <code>ultima_interacao_wa</code>. Só nome+telefone+timestamp; corpo de mensagem NUNCA persiste no Postgres</td></tr>
+<tr><td>5</td><td>Relatório do dinheiro</td><td>SQL determinístico: sumidos = <code>ultima_interacao_wa BETWEEN now()-180d AND now()-45d</code>; R$ = <code>sumidos × ticket</code>. Render: <code>MoneyHeadline</code> + <code>OpportunityCard</code>. Entrega no WhatsApp dela via <code>evolution-send</code> (texto+link) pela instância recém-conectada</td></tr>
+<tr><td>6</td><td>Tela de planos</td><td><code>usePublicPlans</code> + CTA <code>checkout_url + '?src=demo-wizard'</code> (atribuição sai de graça pelo pipeline <code>nxv_track</code>/<code>extractSellerRef</code>)</td></tr>
+<tr><td>7</td><td><strong>FECHOU</strong></td><td><code>cakto-webhook</code> → <code>provisionPlatformPlan</code> casa a org demo por <code>cakto_customer_email</code> (Camada 1, zero diff) ou fallback email/fone (Camada 2, ~15 linhas) → <code>UPDATE plan_status='active'</code> <strong>é a promoção in-place</strong> → mesma org, mesma instância, mesma carteira. Seeds+welcome+handoff em <code>org_created || promoted</code>; <code>demo_expires_at=NULL</code></td></tr>
+<tr><td>8</td><td><strong>NÃO FECHOU</strong></td><td>Durante as 72h, <span class="v2">v2</span> <strong>a Duda (SDR) retoma no MESMO thread</strong> com a conta do dinheiro da demo (reusa o handoff P10 — <code>provisioned_organization_id</code> vinculado já no <code>demo-start</code>; NÃO é agente novo). Enquanto a conexão seguir ativa, <span class="v2">v2</span> <strong>seguimos analisando o WhatsApp nas 72h (inclusive msgs novas)</strong>. <strong>EF nova <code>demo-reaper</code></strong> (pg_cron horário, <code>x-cron-secret</code>): T-24h aviso no WhatsApp; T-0 chama <strong>EF nova <code>wipe-demo-org</code></strong> (8 passos, servidor Evolution primeiro) + confirmação de eliminação pra lead</td></tr>
+</tbody>
+</table></div>
+
+<h3>Diagrama</h3>
+<div class="funnel"><pre><code>LEAD (anonima)                       NEXVY (Supabase Edge + Evolution VPS)
+--------------                       -------------------------------------
+[0] Duda/quiz/form ---> capture-lead ---> sales_leads + lgpd_consents('lead_capture')
+                             |
+                             v
+[1] link do wizard <--- demo-start (verify_jwt=false, rate-limit IP/fone)
+    /implantacao/:token      |-- organizations {plan_status:'demo', cakto_customer_email,
+                             |                  demo_expires_at: now()+72h}
+                             '-- onboarding_submissions {mode:'demo', token_hash, expires_at}
+       |
+       v
+[2] Wizard demo (render por id) -- [v2] empresa COMPLETA:
+    empresa(completa+ticket) -> whatsapp_qr -> relatorio_dinheiro -> planos
+       | autosave anon      | consent scope           ^
+       | (RPCs publicas     | 'demo_whatsapp_scan'    | SQL: sumidos x ticket
+       |  ja existentes)    v                         | (clientes.ultima_interacao_wa)
+       |             demo-evolution (auth token+session)
+       |              |-- connect {syncFullHistory:true} --> Evolution VPS
+       |              |-- status (QR/conexao, server-side)
+       |              '-- report / send_report / request_deletion [v2]
+       v                            |
+[3] lead escaneia o QR -------------'
+    Evolution emite MESSAGES_SET / CHATS_SET / CONTACTS_SET
+       |
+       v
+    evolution-webhook --forward fire-and-forget--> evolution-history-sync
+                                                        |
+                                                        v
+                                    RPC upsert_clientes_whatsapp -> public.clientes
+                                    (nome + fone + ultima_interacao_wa; nunca corpo de msg)
+       |
+       v
+[4] relatorio no wizard + evolution-send (texto+link) no WhatsApp dela
+       |
+       |----- FECHOU -----> [5] checkout Cakto (?src=demo-wizard)
+       |                        |
+       |                        v
+       |             cakto-webhook -> provisionPlatformPlan
+       |             match por cakto_customer_email (ou email/fone da org demo)
+       |             UPDATE plan_status:'active'  == PROMOCAO IN-PLACE
+       |             ensureAdminUser (MESMA org) + seeds/welcome/handoff (gate 569)
+       |             demo_expires_at = NULL
+       |
+       '--- NAO FECHOU ---> [6] [v2] Duda (SDR) retoma no MESMO thread (handoff P10)
+                                com a conta do dinheiro; analise segue nas 72h
+                                (msgs novas incluidas) se a conexao ficar ativa
+                            [7] demo-reaper (pg_cron horario, x-cron-secret)
+                                T-24h: aviso WhatsApp ("sua demo expira amanha")
+                                T-0:   wipe-demo-org (Evolution server -> storage ->
+                                       33 orfas -> 7 bloqueadoras -> CASCADE org)
+                                Retem: lgpd_consents + platform_audit_logs (prova)</code></pre></div>
+
+<hr>
+<h2>2. ARQUITETURA — o que REUSA vs o que CRIA</h2>
+
+<h3>2.0 Decisões do arquiteto (conflitos resolvidos)</h3>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Conflito</th><th>Decisão</th><th>Por quê</th></tr></thead>
+<tbody>
+<tr><td>D1</td><td>Marcador demo: <code>status='demo'</code> vs <code>plan_status='demo'</code></td><td><strong><code>plan_status='demo'</code></strong> + coluna nova <code>demo_expires_at</code></td><td>A promoção via UPDATE existente (<code>cakto-plan-provisioning.ts:219-231</code>) já seta <code>plan_status='active'</code> — <strong>a flag morre sozinha na conversão, zero código</strong>. Guard do wipe: <code>plan_status='demo'</code></td></tr>
+<tr><td>D2</td><td>Rota nova vs reusar <code>/implantacao/:token</code></td><td><strong>Reusar <code>/implantacao/:token</code></strong>, wizard discrimina por <code>mode='demo'</code></td><td>Menos rota, menos superfície pública; <code>validate_onboarding_token</code> só precisa devolver o <code>mode</code></td></tr>
+<tr><td>D3</td><td>Carteira da demo em <code>clientes</code> do tenant vs staging separado</td><td><strong><code>clientes</code> direto</strong> (design atual do F6)</td><td>É o que garante o "converte sem retrabalho" do passo 7. Custo: o wipe tem que ser perfeito → <span class="v2">v2</span> <strong>F3 (LGPD) é gate de conformidade técnica, não fase opcional</strong></td></tr>
+<tr><td>D4</td><td>Auth user na demo: sem vs com</td><td><strong>SEM auth user/profile pré-venda</strong></td><td>O fluxo público token+RPC definer já opera sem tocar RLS. O auth user nasce na conversão via <code>ensureAdminUser</code>. Menos superfície, LGPD mais limpa</td></tr>
+<tr><td>D5</td><td>Seeds na promoção: pular vs rodar</td><td><strong>Rodar: gate 569 vira <code>org_created || promoted</code></strong></td><td>A org demo NUNCA recebeu seeds. Sem isso a org convertida nasce sem catálogo, sem Radar, sem welcome. O wizard demo não tem step de serviços, então não há colisão</td></tr>
+<tr><td>D6</td><td>Instância Evolution: criar no <code>demo-start</code> vs lazy</td><td><strong>Lazy</strong> (no <code>demo-evolution</code> action <code>connect</code>)</td><td>Instância = 100-300MB RAM no VPS; não desperdiçar com quem abandona na tela 1</td></tr>
+<tr><td>D7</td><td>Envio do relatório: instância dela vs Salvy</td><td><strong>Instância dela</strong> (server-side, 1 msg)</td><td>Zero setup extra; risco de ban ~zero para 1 mensagem. Salvy fica de fallback</td></tr>
+<tr><td>D8</td><td>Cálculo do dinheiro: SQL vs LLM</td><td><strong>SQL determinístico</strong> para o censo; LLM só top-N, e só pós-venda</td><td>Passar o histórico inteiro pelo Gemini custa caro e não escala; a régua "diasSemVoltar > X" já é provada em <code>clientActions.ts:139-156</code></td></tr>
+</tbody>
+</table></div>
+
+<h3>2.1 O que REUSA (com arquivo:linha)</h3>
+<div class="wrap"><table>
+<thead><tr><th>Peça</th><th>Onde</th><th>Estado</th></tr></thead>
+<tbody>
+<tr><td>Intake do histórico (F6)</td><td><code>evolution-history-sync/index.ts</code> (255 linhas) + <code>migrations_salao/20260714_f6_carteira_whatsapp.sql</code></td><td><strong>Untracked, não deployado, migration não aplicada</strong> — código pronto, ~90%</td></tr>
+<tr><td>Fluxo público por token</td><td><code>onboarding_submissions</code> + RPCs <code>validate_onboarding_token</code>/<code>save_onboarding_draft_public</code>/<code>submit_onboarding_public</code> + <code>useImplantacao.ts:80-199</code> + rota <code>App.tsx:266</code></td><td>Live e provado; falta só <code>mode='demo'</code> no CHECK</td></tr>
+<tr><td>Wizard</td><td><code>ImplantacaoWizard.tsx:26-34</code> (render por índice)</td><td>Refactor mecânico render-por-id + prop <code>steps</code></td></tr>
+<tr><td>Ciclo Evolution (criar/QR/conectar)</td><td><code>evolution-proxy/index.ts</code>: <code>create_instance_self</code> :419-591, <code>connect_instance</code> :697-848; webhook :942-975</td><td>Funciona, mas <strong>exige JWT admin</strong> — a EF <code>demo-evolution</code> reusa os mesmos fetches server-side</td></tr>
+<tr><td>Render do dinheiro</td><td><code>MoneyHeadline.tsx</code>, <code>OpportunityCard.tsx:30</code> (<strong>modo demo já embutido</strong>), <code>format.ts</code>, <code>BucketCards</code>, <code>HomeStates</code></td><td>Reuso as-is</td></tr>
+<tr><td>Régua "sumiu há N dias"</td><td><code>clientActions.ts:139-156</code></td><td>Transpor para <code>ultima_interacao_wa</code> = cópia direta</td></tr>
+<tr><td>Envio WhatsApp</td><td><code>evolution-send/index.ts</code> (texto/documento/link+preview)</td><td>Pronto; provado em <code>sendReactivation.ts:36-38</code></td></tr>
+<tr><td>Tela de planos (dados)</td><td>view <code>public_plans</code> + <code>usePublicPlans()</code> em <code>usePlatformPlans.ts:111-123</code></td><td>Falta <code>list_price_monthly</code> no Pick (:99-109)</td></tr>
+<tr><td>Atribuição de venda</td><td><code>platform-sales-brain/index.ts:203-232</code> + <code>_shared/cakto-client.ts:298-320</code> + <code>cakto-webhook/index.ts:62-77</code></td><td><code>?src=demo-wizard</code> no CTA e a atribuição sai de graça</td></tr>
+<tr><td>Conversão</td><td><code>_shared/cakto-plan-provisioning.ts</code>: lookup :159-163, ativação :219-231, <code>ensureAdminUser</code> :282-377, gate seeds :569</td><td>Camada 1 = zero diff no provisioning</td></tr>
+<tr><td>Consent forense</td><td><code>capture-lead/index.ts:105-148</code> + <code>lgpd_consents</code> + <code>legalContent.ts:11-13</code></td><td>Replicar com scope novo <code>demo_whatsapp_scan</code></td></tr>
+<tr><td>Padrão EF pública sem JWT</td><td><code>config.toml</code>: <code>apply-onboarding</code>, <code>platform-form-submit</code>; auth token+session em <code>apply-onboarding/index.ts:59-75</code></td><td>Molde das EFs novas</td></tr>
+<tr><td>Padrão cron</td><td>job 18 <code>salon-automation-daily</code> (<code>x-cron-secret</code>)</td><td>Molde do <code>demo-reaper</code></td></tr>
+<tr><td>Delete de instância no servidor</td><td><code>evolution-proxy/index.ts:1059-1094</code> / <code>logout_instance</code> :1201-1263</td><td>Reusar no wipe — trocando best-effort por deleção <strong>verificada</strong></td></tr>
+</tbody>
+</table></div>
+
+<h3>2.2 O que CRIA</h3>
+<div class="wrap"><table>
+<thead><tr><th>Item</th><th>Tipo</th><th>Tamanho</th></tr></thead>
+<tbody>
+<tr><td><code>demo-start</code></td><td>EF nova (verify_jwt=false; rate-limit IP/fone + honeypot; cria org demo + submission; token 32B+sha256)</td><td>~150 linhas</td></tr>
+<tr><td><code>demo-evolution</code></td><td>EF nova (auth token+session; actions <code>connect</code>/<code>status</code>/<code>report</code>/<code>send_report</code>/ <span class="v2">v2</span> <code>request_deletion</code> — grava <code>deletion_requested_at</code> e agenda o wipe pro TTL, <strong>não</strong> apaga na hora)</td><td>~250 linhas</td></tr>
+<tr><td><code>wipe-demo-org</code></td><td>EF nova (service_role; 8 passos; deleção verificada no Evolution; audit com contagens)</td><td>~250 linhas</td></tr>
+<tr><td><code>demo-reaper</code></td><td>EF nova (x-cron-secret; T-24h aviso, T-0 wipe) + job pg_cron horário</td><td>~80 linhas + 1 cron</td></tr>
+<tr><td>Fiação F6</td><td>Patches: <code>syncFullHistory:true</code> nos 2 creates, 3 eventos <code>*_SET</code>, forward fire-and-forget no <code>evolution-webhook</code></td><td>~30 linhas</td></tr>
+<tr><td><del>Recriar <code>_shared/onboarding-handoff.ts</code></del> <span class="v2">v2</span> <strong>JÁ FEITO no P10</strong></td><td>Writer do vínculo conversa↔org — mergeado (PR #66, <code>main</code> 4aa1b06), flag <code>ONBOARDING_HANDOFF_ENABLED</code> OFF. Dependência satisfeita; a esteira só liga a flag e reusa</td><td>0 (feito)</td></tr>
+<tr><td>Patch conversão</td><td>Camada 2 no provisioning + gate 569 <code>|| promoted</code> + <code>demo_expires_at=NULL</code></td><td>~20 linhas</td></tr>
+<tr><td>Wizard: refactor + 3 telas novas</td><td>render-por-id + prop <code>steps</code>; steps <code>whatsapp_qr</code>, <code>relatorio_dinheiro</code>, <code>planos</code>; campo ticket médio</td><td>~400 linhas front</td></tr>
+<tr><td>Adapter cliente→<code>OpportunityCardData</code></td><td>espelho de <code>toOpportunityCard</code></td><td>~15 linhas</td></tr>
+<tr><td>SQL sumidos + fórmula R$</td><td>dentro do <code>demo-evolution</code> action <code>report</code></td><td>~30 linhas</td></tr>
+<tr><td>Migrations</td><td>ALTER CHECK <code>mode</code> (+<code>'demo'</code>); <code>organizations.demo_expires_at</code> + índice; aplicar <code>20260714_f6_carteira_whatsapp.sql</code></td><td>2 novas + 1 existente</td></tr>
+<tr><td>Copy LGPD</td><td>Tela QR (checklist art. 9º/39), bump <code>PRIVACY_VERSION</code>, RIPD curto</td><td>texto</td></tr>
+</tbody>
+</table></div>
+
+<h3>2.3 Quanto já existe</h3>
+<div class="wrap"><table>
+<thead><tr><th>Frente</th><th>% pronto</th><th>O que falta</th></tr></thead>
+<tbody>
+<tr><td>F6 — histórico vira carteira</td><td><strong>90%</strong></td><td>4 fios + aplicar migration + deploy</td></tr>
+<tr><td>Wizard público por token</td><td><strong>85%</strong></td><td>mode demo, refactor render-por-id, 3 telas</td></tr>
+<tr><td>Evolution QR para anônimo</td><td><strong>70%</strong></td><td>EF <code>demo-evolution</code></td></tr>
+<tr><td>Motor do dinheiro</td><td><strong>50%</strong></td><td>SQL sumidos + fórmula + adapter</td></tr>
+<tr><td>Entrega no WhatsApp</td><td><strong>90%</strong></td><td>template do resumo + trigger</td></tr>
+<tr><td>Conversão demo→pago</td><td><strong>85%</strong></td><td>Camada 1 + Camada 2 + gate 569</td></tr>
+<tr><td>LGPD wipe + TTL</td><td><strong>10%</strong></td><td><code>wipe-demo-org</code> + <code>demo-reaper</code> + consent scope + copy <span class="v2">v2</span> <strong>+ IP/geo por IP + análise contínua 72h + botão "Excluir meus dados" (agendado)</strong></td></tr>
+<tr><td><strong>TOTAL ponderado</strong></td><td><strong>~65%</strong></td><td><strong>caminho crítico = fiação F6 + wipe LGPD</strong></td></tr>
+</tbody>
+</table></div>
+
+<hr>
+<h2>3. MODELO DE DADOS</h2>
+<p><strong>Decisão central: NENHUMA tabela nova.</strong> <code>onboarding_submissions</code> já é a "demo_session" (token, sessão single-use, expires_at, payload, revogação, access_count).</p>
+<h3>Mudanças em tabelas existentes</h3>
+<div class="wrap"><table>
+<thead><tr><th>Tabela</th><th>Mudança</th><th>Detalhe</th></tr></thead>
+<tbody>
+<tr><td><code>onboarding_submissions</code></td><td>ALTER CHECK de <code>mode</code>: <code>('link','first_access','demo')</code></td><td>Opcional: status <code>'converted'</code>/<code>'purged'</code> (recomendado: adicionar, dá trilha de auditoria de graça)</td></tr>
+<tr><td><code>organizations</code></td><td>Coluna nova <code>demo_expires_at timestamptz NULL</code> + índice parcial <code>WHERE plan_status='demo'</code> <span class="v2">v2</span> <strong>+ <code>deletion_requested_at timestamptz NULL</code></strong></td><td>TTL = criação + <strong>72h</strong>. Reaper: <code>WHERE plan_status='demo' AND demo_expires_at &lt; now()</code>. Promoção seta <code>demo_expires_at=NULL</code>. <span class="v2">v2</span> <code>deletion_requested_at</code> = quando a lead clicou "Excluir meus dados" (só auditoria; <strong>não</strong> antecipa o wipe)</td></tr>
+<tr><td><code>organizations</code> (valores)</td><td><code>plan_status='demo'</code>; <code>cakto_customer_email</code>; <code>slug=NULL</code> (404 desejável); <code>enabled_modules=[]</code></td><td>Camada 1 da conversão: o lookup existente (:159-163) acha a org sem 1 diff</td></tr>
+<tr><td><code>clientes</code></td><td>Aplicar <code>20260714_f6_carteira_whatsapp.sql</code> (<strong>hoje NÃO aplicada</strong>)</td><td><code>telefone_normalizado</code>, <code>ultima_interacao_wa</code>, índice não-unique <code>(org, tel_norm)</code>, RPC <code>upsert_clientes_whatsapp</code> (advisory lock; nunca sobrescreve nome curado; <code>tags=['whatsapp']</code> = marcador pro wipe)</td></tr>
+<tr><td><code>lgpd_consents</code></td><td>Scope novo <code>'demo_whatsapp_scan'</code></td><td>Gravado no clique "Conectar WhatsApp", com texto verbatim + versões + <span class="v2">v2</span> <strong><code>ip</code> + <code>user_agent</code> + geolocalização aproximada por IP (<code>geo_city</code>/<code>geo_region</code>, server-side, sem pedir permissão) + <code>timestamp</code></strong> — mesmo mecanismo do <code>capture-lead</code> + resolução de geo por IP. Se as colunas de geo não existirem, ALTER aditivo (nunca destrutivo)</td></tr>
+</tbody>
+</table></div>
+<p><strong>O que NÃO nasce na demo (de propósito):</strong> sem auth user/profiles/user_roles (D4); sem seeds B5/B6/B7 (scan de demo é único, nunca agendado); sem slug público.</p>
+
+<hr>
+<h2>4. AS TELAS do wizard demo</h2>
+<p>Sequência exata (prop <code>steps</code>): <code>['empresa', 'whatsapp_qr', 'relatorio_dinheiro', 'planos']</code>.</p>
+
+<h3>Tela 1 — <code>empresa</code> (<span class="v2">v2</span> COMPLETA)</h3>
+<p><span class="v2">v2</span> <strong>Revertida a redução do v1.</strong> A tela precisa <strong>identificar a empresa corretamente</strong> — mantém o step 0 atual (<code>ImplantacaoWizard.tsx:126+</code>) <strong>completo</strong> (nome do espaço, WhatsApp da dona, segmento/sub-vertical + os demais campos de identificação do step), <strong>não enxugado</strong>. <strong>1 campo novo obrigatório: ticket médio</strong> ("quanto custa, em média, um atendimento seu?") com default por sub-vertical se ela pular — o step "Negócios" atual (:191-233) <strong>não tem campo de preço</strong>, e esse campo é o insumo da fórmula do dinheiro. Autosave anônimo já funciona. (O que fica FORA da demo continua sendo só agentes/setores/equipes — <strong>nunca</strong> a identificação da empresa.)</p>
+
+<h3>Tela 2 — <code>whatsapp_qr</code> (nova)</h3>
+<ul>
+<li><strong>Bloco LGPD antes do QR</strong> (checklist completo na Seção 5): quem somos, finalidade única, o que coletamos (e o que NÃO), <span class="v2">v2</span> <strong>retenção de 72h nos DADOS — independente de pedido de exclusão, com wipe automático ao fim do prazo</strong>, <span class="v2">v2</span> <strong>análise contínua enquanto a conexão seguir ativa (inclui msgs novas)</strong>, checkbox de <strong>consentimento explícito</strong> + declaração da Controladora → grava <code>lgpd_consents</code> scope <code>demo_whatsapp_scan</code> <span class="v2">v2</span> <strong>com IP + geolocalização aproximada por IP + timestamp + user-agent + texto/versão do termo</strong>. <strong>QR só aparece após o aceite.</strong></li>
+<li>QR + status: <code>demo-evolution</code> actions <code>connect</code>/<code>status</code> (polling server-side — o polling direto na tabela <code>evolution_instances</code> morre no RLS pra anon).</li>
+<li><strong>Não</strong> renderizar QR via <code>api.qrserver.com</code> (vazamento do pairing code — bug existente em <code>GuidedOnboarding.tsx:649</code>); exigir base64.</li>
+<li>Estado pós-conexão: "Conectado! Estamos analisando suas conversas — isso leva alguns minutos" (chunks async; usar <code>HomeStates</code> de loading). Avançar habilita quando o <code>report</code> retornar contagem estável ou timeout com o que tiver.</li>
+</ul>
+
+<h3>Tela 3 — <code>relatorio_dinheiro</code> (nova) — o AHA</h3>
+<ul>
+<li><strong><code>MoneyHeadline</code></strong>: <code>total</code> = <code>nº sumidos × ticket</code>, subtitle honesto: <em>"clientes que falaram com você nos últimos meses e sumiram"</em> (nunca "180 dias").</li>
+<li>Cards <code>OpportunityCard</code> com <code>seed=true + onSeedCta</code> (o botão vira <strong>"Quero recuperar esses clientes"</strong>): nome + telefone reais + "Sumiu há N dias".</li>
+<li><strong>Integridade:</strong> aqui NUNCA usar <code>seedOpportunities.ts</code> (exemplos fake). Se a varredura vier rasa (&lt; 5 sumidos), mensagem honesta — mentir no AHA mata a venda no pós.</li>
+<li>Em paralelo (server-side): <code>send_report</code> dispara <code>evolution-send</code> (texto-resumo + link) no WhatsApp dela.</li>
+<li>Rodapé: botão <span class="v2">v2</span> <strong>"Excluir meus dados"</strong> (sem "agora") — <strong>agenda a exclusão pro fim das 72h</strong>, não imediata (art. 18 registrado; o wipe efetivo é o TTL via <code>demo-reaper</code>). Grava <code>deletion_requested_at</code> para trilha de auditoria.</li>
+</ul>
+
+<h3>Tela 4 — <code>planos</code> (nova)</h3>
+<ul>
+<li><code>usePublicPlans()</code> — Essencial 275 (de 383), Premium 427 (de 599), Ultra 693 (de 849); adicionar <code>list_price_monthly</code> ao Pick.</li>
+<li>Âncora de valor: "você está perdendo R$ X/mês — o plano custa R$ Y".</li>
+<li>CTA: <code>window.location.href = plan.checkout_url + '?src=demo-wizard'</code>.</li>
+<li>Aviso de retenção visível: "não contratou? tudo é apagado em 72h, com confirmação".</li>
+</ul>
+<blockquote><p><strong>Cuidado transversal:</strong> a demo <strong>NUNCA</strong> chama <code>apply-onboarding</code> antes da venda — ele seta <code>onboarding_locked=true</code> e mataria a reabertura do wizard.</p></blockquote>
+
+<hr>
+<h2>5. LGPD</h2>
+<h3>5.1 Papéis e base legal</h3>
+<div class="wrap"><table>
+<thead><tr><th>Questão</th><th>Resposta</th></tr></thead>
+<tbody>
+<tr><td>Papéis</td><td><strong>Lead = Controladora, NexvyBeauty = Operadora</strong> — enquadramento já declarado verbatim no produto (<code>OnboardingWelcome.tsx:113-125</code>, Política §9). Na demo pré-contratual, o aceite da tela do QR é o <strong>instrumento</strong> (art. 39). Sem ele, a Nexvy escorrega pra controladora (exposição art. 42)</td></tr>
+<tr><td><span class="v2">v2</span> <strong>Base legal do acesso (lead → NexvyBeauty)</strong></td><td><strong>Consentimento explícito prévio</strong> da lead (art. 7º I) — ela autoriza, de forma inequívoca e informada, o NexvyBeauty (Operador) a acessar e analisar o WhatsApp dela nas condições dos 72h. É o que o texto do checkbox (5.2) formaliza</td></tr>
+<tr><td>Base legal da lead sobre os clientes dela</td><td><strong>Legítimo interesse da própria lead</strong> (art. 7º IX c/c art. 10) — recuperação da própria carteira; <span class="v2">v2</span> <strong>a lead declara ter base legítima para compartilhar os contatos das clientes dela</strong>. LIA fecha: minimização ✓ (só nome+fone+timestamp), expectativa ✓, salvaguardas ✓ (TTL 72h + wipe + <strong>nenhum contato com terceiros durante a demo</strong>)</td></tr>
+<tr><td>Base legal da Nexvy</td><td>Nenhuma própria — opera sob instrução. Tudo além (treinar modelo, enriquecer <code>platform_crm_extracted_leads</code>, marketing próprio) = <strong>desvio de finalidade, proibido por construção</strong></td></tr>
+<tr><td>Art. 11 (sensíveis)</td><td>Conversa de salão carrega dado de saúde/estética incidental → regra dura: <strong>metadados só, nunca corpo de mensagem no nosso banco</strong>. O resíduo é a instância Evolution — por isso é efêmera e o passo 1 do wipe é o servidor. <span class="v2">v2</span> <strong>"Efêmera" = vive no máximo 72h enquanto a conexão fica ativa (para a análise contínua); morta no wipe do T-0</strong></td></tr>
+</tbody>
+</table></div>
+
+<h3>5.2 Texto do consentimento (<span class="v2">v2</span> robusto, canônico — checkbox, tela do QR)</h3>
+<p><span class="v2">v2</span> <strong>Texto cravado pelo Marcelo (usar VERBATIM):</strong></p>
+<blockquote><p><em>"Ao conectar seu WhatsApp, você autoriza o NexvyBeauty a: (1) acessar seu histórico de conversas dos últimos meses para identificar clientes que não retornaram e estimar o valor recuperável; (2) manter esse acesso por até 72 horas enquanto sua conexão permanecer ativa, analisando inclusive novas mensagens do período; (3) reter os dados importados por até 72 horas mesmo que você solicite a exclusão antes — a remoção é agendada para o fim desse prazo, não imediata; (4) registrar seu IP e localização aproximada como prova deste consentimento. Você declara ter base legítima para compartilhar os dados de contato das suas clientes, atuando o NexvyBeauty como operador. A retenção de 72h é condição informada e aceita deste consentimento."</em></p></blockquote>
+<p>Identificação do Operador exibida na tela (fora do checkbox): <strong>Nexvy Tecnologia e Comunicação LTDA-ME, CNPJ 64.930.755/0001-78</strong>, DPO <code>dpo@nexvy.tech</code>.</p>
+<p>Gravado em <code>lgpd_consents</code> com scope <code>demo_whatsapp_scan</code>, <code>consent_text</code> <strong>verbatim</strong>, <code>terms_version</code>/<code>privacy_version</code>, <span class="v2">v2</span> <strong><code>ip</code>, <code>user_agent</code> e geolocalização aproximada por IP (<code>geo_city</code>/<code>geo_region</code>, resolvida server-side sem pedir permissão) + <code>timestamp</code></strong> — prova de validade do consentimento (mecanismo do <code>capture-lead/index.ts:105-148</code> + resolução de geo por IP no servidor; custo ~zero).</p>
+<p><strong>Checklist da tela (art. 9º/39):</strong> (1) quem — Nexvy CNPJ + papel de Operadora; (2) finalidade específica e única; (3) minimização + "conteúdo não é armazenado"; (4) o que NÃO fazemos; (5) <span class="v2">v2</span> <strong>retenção 72h nos dados (independente de exclusão) + análise contínua enquanto a conexão ficar ativa</strong> + migração pros Termos se contratar; (6) checkbox acima; (7) <span class="v2">v2</span> <strong>botão "Excluir meus dados" (sem "agora" — exclusão agendada pro fim das 72h)</strong> + DPO; (8) <strong>bump de <code>PRIVACY_VERSION</code></strong> — a política vigente (2026-06-19) não descreve o scan de demo; consent apontando pra política que não cobre o tratamento é consent furado.</p>
+
+<h3>5.3 Retenção e TTL</h3>
+<ul>
+<li><span class="v2">v2</span> <strong>TTL: 72h nos DADOS, não na UI</strong> (<code>organizations.demo_expires_at = criação + 72h</code>). O prazo vale <strong>independente de pedido de exclusão</strong>: mesmo que a lead clique "Excluir meus dados", os dados persistem até o fim das 72h e só então são apagados. Cron pg_cron <strong>horário</strong> → <code>demo-reaper</code> faz o <strong>wipe automático</strong> ao vencer o TTL.</li>
+<li><span class="v2">v2</span> <strong>Botão "Excluir meus dados"</strong> (sem "agora"): registra <code>deletion_requested_at</code> (auditoria) e <strong>agenda</strong> a remoção pro fim das 72h — nunca imediata.</li>
+<li><span class="v2">v2</span> <strong>Análise contínua nas 72h:</strong> enquanto a conexão seguir <strong>ativa</strong>, seguimos analisando o WhatsApp dela nas 72h, <strong>inclusive mensagens novas do período</strong> — condição explícita no consentimento. A instância vive até o TTL (não é morta logo após o 1º scan); o wipe no T-0 a elimina.</li>
+<li><strong>T-24h:</strong> WhatsApp/e-mail "sua demo expira amanhã — seus dados serão apagados".</li>
+<li><strong>T-0:</strong> <code>wipe-demo-org</code> por org vencida; confirmação de eliminação pra lead (fecha o ciclo art. 18).</li>
+<li>Idempotente: o wipe termina removendo a org → re-execução é no-op.</li>
+<li><strong>RIPD curto</strong> (art. 38) — volume de terceiros por demo é de centenas/milhares.</li>
+</ul>
+
+<h3>5.4 Wipe — tabela por tabela (<code>wipe-demo-org</code>)</h3>
+<p>Guard-rail duro: <strong><code>WHERE plan_status='demo'</code></strong> — jamais wipar org paga. <code>delete-organization</code> atual <strong>não serve</strong>: vaza 33 tabelas sem FK e trava em 7 FKs <code>NO ACTION</code>.</p>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Alvo</th><th>Ação</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>Servidor Evolution</strong></td><td>Por instância: <code>logout</code> + <code>DELETE /instance/delete/{name}</code> — e <strong>verificar</strong> via <code>GET /instance/fetchInstances</code> (wipe best-effort é furo LGPD: a sessão Baileys ficaria viva no VPS)</td></tr>
+<tr><td>2</td><td><strong>storage.objects</strong></td><td><code>chat-media</code> prefixo <code>whatsapp-inbound/{org}/</code> + <code>onboarding-uploads</code>, <code>company-logos</code>, <code>avatars</code></td></tr>
+<tr><td>3</td><td><strong>33 órfãs sem FK</strong></td><td><code>DELETE WHERE organization_id=$1</code> — prioridade: <code>opportunity_scan_items</code> (<strong>contém o relatório: nome+fone de terceiros</strong>), <code>opportunity_scans</code>, <code>agendamentos</code>, <code>profissionais</code>, <code>reactivation_log</code>, <code>lead_semantic_memory</code> + demais</td></tr>
+<tr><td>4</td><td><strong>7 bloqueadoras NO ACTION</strong></td><td><code>product_knowledge_sources</code>, <code>product_onboarding_state</code>, <code>scheduled_messages</code>, <code>webhooks</code>, <code>ai_response_feedback</code>, <code>sankhya_mappings</code>, <code>sankhya_sync_logs</code> — antes da org</td></tr>
+<tr><td>5</td><td><strong>Filhas sem organization_id</strong></td><td><code>processed_messages</code>, <code>conversation_processing_locks</code>, <code>sent_responses</code> — por conversation/instance ids coletados antes</td></tr>
+<tr><td>6</td><td><strong>auth.users</strong></td><td>Loop <code>deleteUser</code> (defensivo — demo não tem membros por D4)</td></tr>
+<tr><td>7</td><td><strong><code>DELETE FROM organizations</code></strong></td><td>CASCADE em ~90 tabelas (inclui <code>clientes</code>, <code>webchat_conversations</code>, <code>evolution_instances</code>, <code>onboarding_submissions</code>)</td></tr>
+<tr><td>8</td><td><strong>RETER (não wipar)</strong></td><td><code>lgpd_consents</code> (prova), <code>sales_leads</code>/<code>platform_crm_*</code> (dados PRÓPRIOS da lead, base <code>lead_capture</code>), <code>platform_audit_logs</code> com o registro do wipe (contagens, sem dados de terceiros) — prova art. 16/18</td></tr>
+</tbody>
+</table></div>
+<p>Forma: <strong>edge function</strong> (precisa Evolution API + Storage API), não função SQL pura.</p>
+
+<hr>
+<h2>6. CONVERSÃO — demo vira venda sem retrabalho</h2>
+<h3>6.1 O mecanismo (2 camadas)</h3>
+<p><strong>Camada 1 — zero diff no provisioning.</strong> <code>demo-start</code> grava <code>cakto_customer_email = &lt;email da lead&gt;</code>. O lookup existente (<code>cakto-plan-provisioning.ts:159-163</code>) acha a org, e o fluxo inteiro promove sem tocar uma linha. <strong>O UPDATE de ativação JÁ É a promoção.</strong></p>
+<p><strong>Camada 2 — fallback (~15 linhas), após a linha 163.</strong> Lead pode pagar com outro e-mail:</p>
+<div class="funnel"><pre><code>if (!existingOrg) {
+  const phone = normalizePhoneBR(order.customer_phone); // já importado (linha 7)
+  const { data: demoOrg } = await admin
+    .from('organizations').select('id, slug')
+    .eq('plan_status', 'demo')
+    .or(`email.eq.${email}${phone ? `,phone.eq.${phone}` : ''}`)
+    .maybeSingle();
+  if (demoOrg) {
+    existingOrg = demoOrg; promoted = true;
+    await admin.from('organizations')
+      .update({ cakto_customer_email: email }).eq('id', demoOrg.id);
+  }
+}</code></pre></div>
+<p><strong>Mais 3 ajustes obrigatórios:</strong></p>
+<ol>
+<li><strong>Gate :569:</strong> <code>if (planRes.org_created || promoted)</code> para <strong>seeds + welcome + handoff</strong> (D5).</li>
+<li><strong>Cancelar TTL:</strong> <code>demo_expires_at = NULL</code> no UPDATE de promoção (cinto e suspensório).</li>
+<li><span class="v2">v2</span> <strong>Pré-requisito 0 — RESOLVIDO (P10):</strong> o <code>_shared/onboarding-handoff.ts</code> foi recriado e mergeado (<strong>PR #66, <code>main</code> 4aa1b06</strong>), deployado com <code>ONBOARDING_HANDOFF_ENABLED</code> OFF. O webhook de venda já não quebra. A esteira <strong>liga a flag</strong> e reusa o handoff tanto na conversão quanto no <strong>follow-up da Duda (6.4)</strong>.</li>
+</ol>
+
+<h3>6.2 O que se preserva na promoção</h3>
+<div class="wrap"><table>
+<thead><tr><th>Ativo</th><th>Como sobrevive</th></tr></thead>
+<tbody>
+<tr><td>Instância WhatsApp conectada</td><td><code>evolution_instances</code> pertence à org — org é a mesma</td></tr>
+<tr><td>Carteira de clientes (F6)</td><td><code>clientes</code> da org — mesma org</td></tr>
+<tr><td>Preenchimentos do wizard</td><td><code>onboarding_submissions.payload</code> — pós-venda <code>apply-onboarding</code> aplica</td></tr>
+<tr><td>Vínculo conversa Duda↔org</td><td><code>platform_crm_conversations.provisioned_organization_id</code> — gravado já no INÍCIO da demo: a Duda vira guia, entrega o relatório e continua a implantação pós-pagamento sem troca de canal</td></tr>
+<tr><td>Atribuição da venda</td><td><code>?src=demo-wizard</code> → <code>extractSellerRef</code> → <code>resolve_affiliate_ref</code></td></tr>
+</tbody>
+</table></div>
+
+<h3>6.3 "Liberar as telas restantes"</h3>
+<p>O único gate de telas é o wizard-overlay do <code>CockpitShell.tsx:48-54</code> (flags por usuário) — <strong>não há trava por rota</strong>. Pós-promoção: <code>enabled_modules</code> setado pelo provisioning + <code>GuidedOnboarding</code> V3 já deixa equipe/agentes/CRM <strong>fora do caminho crítico</strong>. "Liberar telas" = efeito colateral natural da promoção, zero código novo.</p>
+
+<h3>6.4 <span class="v2">v2</span> Follow-up dos não-fechados (Duda no mesmo thread, via P10)</h3>
+<p>A lead que rodou a demo e <strong>não comprou</strong> não é abandonada nem recebe agente novo. Durante as 72h:</p>
+<ul>
+<li>O <code>demo-start</code> já grava <code>provisioned_organization_id</code> = org demo na conversa de venda da Duda (a <strong>mesma coluna</strong> que o handoff P10 usa) — a Duda <strong>é a guia do wizard desde o início</strong>, então o thread já existe.</li>
+<li>A Duda <strong>retoma no MESMO thread</strong> com a <strong>conta do dinheiro que a lead viu na demo</strong> (o <code>report</code>: nº de sumidos × ticket = R$ X/mês), reusando <strong>o funil de vendas + a mecânica de handoff do P10</strong> (<code>handoffConversationToOnboarding</code> / <code>provisioned_organization_id</code>). <strong>Nenhum agente novo.</strong></li>
+<li>Enquanto a conexão seguir ativa, a análise continua nas 72h (msgs novas incluídas), então a conta pode ser <strong>atualizada</strong> no follow-up.</li>
+<li>No T-0, se ainda não fechou, o <code>wipe-demo-org</code> apaga tudo de terceiros (a conversa de venda própria da lead — base <code>lead_capture</code> — é retida).</li>
+</ul>
+<p>Dependência: <strong>P10 já mergeado/deployado (flag OFF)</strong> — a esteira liga a flag e reusa. Sem reimplementar handoff.</p>
+
+<hr>
+<h2>7. RISCOS honestos + mitigações</h2>
+<div class="wrap"><table>
+<thead><tr><th>#</th><th>Risco</th><th>Avaliação</th><th>Mitigação</th></tr></thead>
+<tbody>
+<tr><td>R1</td><td><strong>Ban do número da lead</strong> (Baileys = cliente não-oficial)</td><td>Conectar e SÓ LER = baixo risco. O vetor REAL é o <strong>disparo em massa pós-venda</strong></td><td>Demo: read-only + 1 msg (~zero risco). Pós-venda: rampa/warm-up 24-48h + jitter + circuit-breaker (não construídos). Nunca prometer imunidade</td></tr>
+<tr><td>R2</td><td><strong>Profundidade do histórico não garantida</strong></td><td>O AHA pode vir raso e matar a venda</td><td>Copy "seus últimos meses" (nunca 180d); gate G0a/G0b (N≥50); estado honesto na tela 3; UX "leva alguns minutos"</td></tr>
+<tr><td>R3</td><td><strong>Capacidade do VPS</strong> (100-300MB RAM/instância; servidor ÚNICO com o CRM)</td><td>Teto é RAM, não dinheiro</td><td>Pool de N slots + fila + TTL 72h; monitorar RAM; avaliar VPS dedicado antes de tráfego pago</td></tr>
+<tr><td>R4</td><td><strong>Abuso do endpoint público</strong> (<code>demo-start</code> sem auth)</td><td>Real — cada chamada cria org + potencialmente instância</td><td>Rate-limit por IP/telefone + honeypot; instância lazy (D6); token 72h single-session; NUNCA expor RPC anon direta</td></tr>
+<tr><td>R5</td><td><strong>Wipe incompleto = passivo LGPD</strong></td><td>O maior risco técnico-jurídico da esteira</td><td><code>wipe-demo-org</code> com deleção VERIFICADA (re-fetch <code>fetchInstances</code>), 8 passos, audit; <span class="v2">v2</span> <strong>F3 é gate de conformidade técnica</strong></td></tr>
+<tr><td>R6</td><td><del>Import quebrado <code>onboarding-handoff.ts</code></del> <span class="v2">v2</span> <strong>RESOLVIDO</strong></td><td>Era bloqueante; <strong>P10 (PR #66, <code>main</code> 4aa1b06)</strong> recriou o arquivo e deployou com flag OFF</td><td>Nenhuma — dependência satisfeita; a esteira só liga a flag</td></tr>
+<tr><td>R7</td><td><strong>Timeout do webhook</strong> (syncFullHistory emite dezenas de chunks)</td><td>Médio</td><td>Forward fire-and-forget; RPC protege com advisory lock + batch 500</td></tr>
+<tr><td>R8</td><td><strong><code>evolution-webhook</code> sem auth de origem</strong></td><td>Pré-existente, a esteira amplia a exposição</td><td>F4: HMAC/secret; curto prazo: cross-check <code>apikey</code> vs <code>instance_token</code></td></tr>
+<tr><td>R9</td><td><strong>Vazamento do pairing code</strong> (QR via <code>api.qrserver.com</code>)</td><td>Pré-existente</td><td>Tela demo exige base64; corrigir os 3 pontos em F4</td></tr>
+<tr><td>R10</td><td><strong>R$ 0 na Home de Valor real</strong></td><td>Já é bug do pós-venda</td><td>A fórmula <code>sumidos × ticket</code> é o conserto — portar pro pós-venda em F4</td></tr>
+<tr><td>R11</td><td>Bearer não timing-safe + <code>instanceRef</code> interpolado cru no <code>.or()</code></td><td>Menor</td><td>F4 hardening</td></tr>
+</tbody>
+</table></div>
+
+<hr>
+<h2>8. FASES DE CONSTRUÇÃO (check binário por fase)</h2>
+<blockquote>
+<p>Regra §8.3: cada passo tem check passou/falhou.</p>
+<p><span class="v2">v2</span> <strong>Execução autônoma:</strong> o produto NÃO está lançado e <strong>não há leads reais</strong> até o Marcelo revisar. Logo o <code>/loop</code> constrói <strong>F0→F4 sem checkpoint humano no meio</strong>; o go-live público <strong>deixa de ser gate bloqueante</strong> e vira <strong>item final de revisão do Marcelo</strong>. F3 (LGPD) continua sendo gate de <strong>conformidade técnica</strong> (o wipe tem que funcionar antes de qualquer dado real), mas não trava o loop — é verificado por smoke com número de teste. Roadmap operacional: <code>ESTEIRA-ROADMAP-EXECUCAO-AUTONOMA-2026-07-15.md</code>.</p>
+</blockquote>
+
+<h3>F0 — Fundação e fiação — pré-requisito de TUDO</h3>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td><span class="v2">v2</span> <strong><code>_shared/onboarding-handoff.ts</code> — JÁ FEITO (P10, PR #66).</strong> Só validar presença + ligar <code>ONBOARDING_HANDOFF_ENABLED</code> quando a esteira precisar do follow-up</td><td><code>test -f supabase/functions/_shared/onboarding-handoff.ts</code> = existe; <code>deno check --node-modules-dir=none</code> limpo em <code>cakto-webhook</code></td></tr>
+<tr><td>Aplicar <code>20260714_f6_carteira_whatsapp.sql</code></td><td><code>SELECT proname FROM pg_proc WHERE proname='upsert_clientes_whatsapp'</code> = 1 row; colunas existem</td></tr>
+<tr><td>Deploy <code>evolution-history-sync</code></td><td>Aparece no <code>list_edge_functions</code> do project</td></tr>
+<tr><td><code>syncFullHistory:true</code> nos 2 creates + 3 eventos <code>*_SET</code> + forward fire-and-forget</td><td><strong>Parear um número de teste → <code>clientes</code> ganha rows com <code>tags=['whatsapp']</code> e <code>ultima_interacao_wa</code> não-nula</strong></td></tr>
+</tbody>
+</table></div>
+
+<h3>F1 — MVP do AHA</h3>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>Migration: <code>mode='demo'</code> no CHECK + <code>organizations.demo_expires_at</code></td><td>ALTERs aplicados; INSERT de teste com <code>mode='demo'</code> passa</td></tr>
+<tr><td>EF <code>demo-start</code> (org demo + submission + token; rate-limit)</td><td><code>curl</code> anônimo → 200 com URL; 2º curl mesmo fone em &lt;1min → 429</td></tr>
+<tr><td>Refactor wizard render-por-id + prop <code>steps</code></td><td>Wizard pós-venda (7 steps) inalterado — smoke test passa</td></tr>
+<tr><td>Telas <code>empresa</code>(+ticket) / <code>whatsapp_qr</code> / <code>relatorio_dinheiro</code> + EF <code>demo-evolution</code></td><td>QR renderiza; conexão reflete em &lt;10s</td></tr>
+<tr><td>SQL sumidos + fórmula + adapter</td><td><code>report</code> retorna count e total coerentes com o SQL manual</td></tr>
+<tr><td><strong>Check da fase (o AHA)</strong></td><td><strong>Sessão anônima E2E real: link → aceite → QR → escaneia → tela mostra R$ &gt; 0 com nomes e telefones reais dela</strong></td></tr>
+</tbody>
+</table></div>
+
+<h3>F2 — Entrega + conversão</h3>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td><code>send_report</code> via <code>evolution-send</code></td><td>Mensagem chega no WhatsApp da lead de teste</td></tr>
+<tr><td>Tela <code>planos</code> (+<code>list_price_monthly</code>) + <code>?src=demo-wizard</code></td><td>CTA abre checkout Cakto com o param</td></tr>
+<tr><td>Patch conversão: Camada 1 + Camada 2 + gate 569 + <code>demo_expires_at=NULL</code></td><td><strong>Compra de teste → a MESMA org (UUID igual) fica <code>plan_status='active'</code>, <code>count(clientes)</code> antes == depois, seeds rodaram, e-mail de acesso recebido</strong></td></tr>
+</tbody>
+</table></div>
+
+<h3>F3 — LGPD — <span class="v2">v2</span> GATE DE CONFORMIDADE TÉCNICA, não fase opcional (o wipe tem que funcionar antes de qualquer dado real; não é gate de lançamento porque o loop não lança)</h3>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td><span class="v2">v2</span> Consent scope <code>demo_whatsapp_scan</code> + copy robusta (texto 5.2 verbatim, "seus últimos meses") + <strong>IP + geo por IP + UA + versão do termo</strong> gravados + botão <strong>"Excluir meus dados"</strong> (agendado, sem "agora") + cláusula de <strong>análise contínua</strong></td><td>Row em <code>lgpd_consents</code> com <code>ip</code>/<code>geo_city</code>/<code>geo_region</code>/<code>user_agent</code>/versões; clique no botão grava <code>deletion_requested_at</code> <strong>sem</strong> apagar antes do TTL</td></tr>
+<tr><td><code>wipe-demo-org</code> (8 passos, deleção verificada)</td><td>Pós-wipe: org ausente; <strong><code>GET /instance/fetchInstances</code> sem a instância</strong>; storage sem o prefixo; <code>platform_audit_logs</code> com contagens; <code>lgpd_consents</code> retido</td></tr>
+<tr><td><code>demo-reaper</code> + pg_cron horário + aviso T-24h + confirmação pós-wipe</td><td>Org com <code>demo_expires_at</code> no passado desaparece em ≤1h sem intervenção; <code>SELECT * FROM cron.job</code> mostra o job</td></tr>
+<tr><td>Bump <code>PRIVACY_VERSION</code> + RIPD curto</td><td>Política em versão nova; consent aponta pra versão que cobre o tratamento</td></tr>
+</tbody>
+</table></div>
+
+<h3>F4 — Hardening e escala</h3>
+<div class="wrap"><table>
+<thead><tr><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>Medição G0a/G0b (profundidade real, N≥50 + números velhos)</td><td>Relatório com distribuição; copy ajustada por evidência</td></tr>
+<tr><td>Pool/fila de instâncias demo + monitor de RAM</td><td>Alerta dispara em teste de carga</td></tr>
+<tr><td>HMAC no <code>evolution-webhook</code>; QR base64-only; timing-safe no history-sync</td><td>Testes de injeção falham com 401</td></tr>
+<tr><td>Portar <code>sumidos × ticket</code> pra Home de Valor pós-venda</td><td>Salão real recém-conectado mostra R$ &gt; 0</td></tr>
+</tbody>
+</table></div>
+
+<h3>O MVP mais curto que entrega o AHA</h3>
+<p><strong>F0 + F1:</strong> a lead vê "R$ X sumindo do seu caixa" com nomes e telefones reais — o <strong>1º marco verificável</strong> ("R$ na tela dela"). Dá pra rodar demo assistida/interna já nesse ponto.</p>
+<p><span class="v2">v2</span> Como o loop roda autônomo e <strong>sem tráfego real</strong> até a revisão do Marcelo, <strong>F3 (LGPD) é construída na sequência do loop</strong> — não é gate de lançamento (não há lançamento no loop); é gate de <strong>conformidade técnica</strong>, verificado por smoke (wipe com número de teste). Público só depois da <strong>revisão final do Marcelo</strong>.</p>
+<p><strong>Sequência do loop: F0→F4, linear.</strong> O roadmap autônomo (<code>ESTEIRA-ROADMAP-EXECUCAO-AUTONOMA-2026-07-15.md</code>) fixa ordem, entregáveis exatos e checks binários por fase.</p>
+
+<hr>
+<h2>Apêndice — pendências conectadas</h2>
+<ul>
+<li><code>tasks/INVENTARIO-PENDENCIAS-GO-LIVE-2026-07-14.md</code> P8 ("Esteira de demonstração" 🔴) é ESTE blueprint — atualizar o inventário quando F1 fechar.</li>
+<li>CART (agente gestão de carteira, ~60%) consome a mesma <code>clientes.ultima_interacao_wa</code> — o F6 ligado destrava os dois.</li>
+<li>Localização do servidor Evolution segue pergunta aberta (<code>DESENHO-ONBOARDING §9</code>) — relevante pra R3.</li>
+<li><span class="v2">v2</span> <strong>P10 (PR #66, <code>main</code> 4aa1b06)</strong> — handoff Duda→CS no mesmo thread, flag <code>ONBOARDING_HANDOFF_ENABLED</code> OFF: dependência satisfeita que a esteira reusa (conversão + follow-up dos não-fechados).</li>
+<li><span class="v2">v2</span> <strong>Roadmap de execução autônoma:</strong> <code>tasks/ESTEIRA-ROADMAP-EXECUCAO-AUTONOMA-2026-07-15.md</code> (+.html) — F0→F4 pra <code>/loop</code> oneshot, checks binários, sem checkpoint humano.</li>
+</ul>
+
+<div class="footer">
+BLUEPRINT v2 · Esteira de Demonstração NexvyBeauty · 2026-07-15 · pareado com <code>ESTEIRA-DEMONSTRACAO-BLUEPRINT-2026-07-15.md</code> · roadmap em <code>ESTEIRA-ROADMAP-EXECUCAO-AUTONOMA-2026-07-15.md</code>
+</div>
+
+</body>
+</html>

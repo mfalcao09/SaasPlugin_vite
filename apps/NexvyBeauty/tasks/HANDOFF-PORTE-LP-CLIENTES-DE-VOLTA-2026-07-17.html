@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handoff — Porte da LP "Clientes de Volta" (Lovable → repo)</title>
+<style>
+  :root{
+    --bg:#0b0e14; --card:#141b2b; --card2:#182236; --ink:#e8edf6; --muted:#9fb0c8; --dim:#6c7c96;
+    --line:#243149; --line2:#2e3d5a; --gold:#f2c14e; --gold-dim:#a9862f;
+    --green:#57d99a; --cyan:#5ad1e6; --pink:#ff7eb6; --red:#ff6b7a; --violet:#b79cff;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0a0d13,#0b0e14 40%,#0c1018);color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
+  header.hero{padding:50px 22px 26px;text-align:center;background:radial-gradient(1100px 360px at 50% -80px,rgba(90,209,230,.10),transparent 70%);border-bottom:1px solid var(--line)}
+  .kicker{color:var(--cyan);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12.5px}
+  h1{font-size:29px;margin:12px 0 6px;line-height:1.15;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);max-width:740px;margin:8px auto 0;font-size:15px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px}
+  .chip{background:var(--card);border:1px solid var(--line2);color:var(--muted);padding:5px 12px;border-radius:999px;font-size:12.5px}
+  .chip b{color:var(--ink)}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+  .toc a{background:var(--card2);border:1px solid var(--line2);padding:6px 12px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:13px}
+  .toc a:hover{border-color:var(--gold-dim);color:var(--ink)}
+  section{margin:30px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 26px;box-shadow:var(--shadow)}
+  h2{font-size:20px;margin:2px 0 12px;letter-spacing:-.01em}
+  h2 .n{color:var(--gold);font-weight:800;margin-right:6px}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--cyan);text-transform:uppercase;letter-spacing:.05em}
+  p{margin:9px 0}
+  strong{color:#fff}
+  em{color:var(--muted)}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.4px;background:#0e1522;border:1px solid var(--line2);border-radius:5px;padding:1px 6px;color:var(--gold)}
+  pre{background:#080b12;border:1px solid var(--line2);border-radius:10px;padding:12px 14px;overflow-x:auto;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#cfe0f2}
+  ol,ul{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  .tblwrap{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:13.2px;min-width:560px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--card2);color:var(--cyan);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  .rulebox{border:1px dashed var(--gold-dim);background:rgba(242,193,78,.06);border-radius:12px;padding:14px 18px;margin:14px 0}
+  .warn{border:1px dashed #8a5a2f;background:rgba(255,150,80,.07);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:14px}
+  .foot{color:var(--dim);font-size:12.5px;text-align:center;margin-top:36px;padding-top:20px;border-top:1px solid var(--line)}
+  @media (max-width:600px){h1{font-size:22px}section{padding:18px 15px}.wrap{padding:0 13px}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="kicker">📦 Handoff Técnico · Lovable → repo</div>
+  <h1>Porte da LP <span>"Clientes de Volta"</span></h1>
+  <div class="sub">Tudo que a controladora precisa pra portar a LP do Lovable e implementar no repositório: stack, inventário, placeholders, quebrados, integração e quem executa. Nada portado ainda.</div>
+  <div class="meta-row">
+    <span class="chip">📅 <b>2026-07-17</b></span>
+    <span class="chip">🧩 <b>TanStack Start → Vite/React-Router</b></span>
+    <span class="chip">commit <b>f1d6fc5</b></span>
+    <span class="chip">backend: <b>NENHUM</b></span>
+  </div>
+  <nav class="toc">
+    <a href="#s0">0 · Projeto</a>
+    <a href="#s1">1 · Stack</a>
+    <a href="#s2">2 · Arquivos</a>
+    <a href="#s4">4 · Placeholders</a>
+    <a href="#s5">5 · Integração</a>
+    <a href="#s6">6 · Decisões</a>
+    <a href="#s7">7 · Quem executa</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+<section id="s0">
+  <h2><span class="n">0</span>Identidade do projeto Lovable (via MCP, verificado)</h2>
+  <div class="tblwrap"><table><tbody>
+    <tr><td>Projeto</td><td><code>volta-cliente-magica</code> ("Clientes de Volta")</td></tr>
+    <tr><td>project_id</td><td><code>304b956f-a6d4-4fe1-8b13-c57606d85e04</code></td></tr>
+    <tr><td>workspace</td><td><code>fP5vn9r9t2PfoOn707P7</code> (marcelo's Lovable, owner)</td></tr>
+    <tr><td>editor</td><td>lovable.dev/projects/304b956f-…</td></tr>
+    <tr><td>público</td><td>volta-cliente-magica.lovable.app</td></tr>
+    <tr><td>repo</td><td>github.com/mfalcao09/clientes-de-volta</td></tr>
+    <tr><td>commit</td><td><code>f1d6fc5</code> 2026-07-16 15:39 · completed · publicado · 67 edições</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s1">
+  <h2><span class="n">1</span>Stack + a decisão-chave do porte</h2>
+  <p><strong>LP = TanStack Start</strong> (react-start + react-router + Nitro), <strong>React 19</strong>, <strong>Tailwind v4</strong>, Vite 8. <strong>Destino</strong> (<code>apps/NexvyBeauty</code>) = Vite + React-Router, React 18, Tailwind v3 → <strong>mismatch de framework</strong>.</p>
+  <div class="rulebox"><strong>Mas o porte é simples</strong> porque a LP não depende do framework:
+    <ul>
+      <li>Conteúdo todo em <strong>1 arquivo</strong>: <code>src/routes/index.tsx</code> (JSX cru + hooks padrão + <code>React.cloneElement</code> — <strong>compatível com React 18</strong>).</li>
+      <li>Design todo em <code>src/lp.css</code> (classes próprias). <strong>NÃO usa</strong> shadcn/radix/Tailwind.</li>
+      <li>Sem loaders/server functions/SSR-dependente — só animações client-side.</li>
+      <li><strong>Backend/DB/secrets/conexões: NENHUM</strong> (list_connections vazio). LP 100% estática.</li>
+    </ul>
+    <strong>Estratégia:</strong> extrair <code>index.tsx</code> como componente de página, trazer <code>lp.css</code>, dropar o <code>createFileRoute</code>, plugar como rota. Sem migrar backend.
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="n">2</span>Inventário de arquivos</h2>
+  <h3>Portar</h3>
+  <ul>
+    <li><code>src/routes/index.tsx</code> (~1.606 linhas) → página React. Remover o wrapper <code>createFileRoute("/")</code>; exportar <code>LandingPage</code> (sub-componentes: Nav, Hero, Calculadora, RaioXDaCarteira, EyeSection, Nichos, OQueResolvemos, Modulos, Equipia, ComoFunciona, Planos, ChamadaPosPlanos, Cofounder, Faq, Footer).</li>
+    <li><code>src/lp.css</code> — o design inteiro. Portar <strong>verbatim</strong>.</li>
+    <li>Fontes + Meta/OG (§3).</li>
+  </ul>
+  <h3>Provável descarte (verificar)</h3>
+  <ul>
+    <li><code>src/assets/*.jpg</code> (3) — o <code>index.tsx</code> NÃO os importa (SVG inline + CSS). Confirmar se <code>lp.css</code> os usa via <code>url()</code>; senão, descartar.</li>
+    <li><code>src/components/ui/*</code> (49 shadcn/radix) — não usados. <code>src/styles.css</code> (base Tailwind) — checar reset.</li>
+  </ul>
+  <h3>Descartar (scaffolding TanStack)</h3>
+  <p><code>__root.tsx</code> · <code>router.tsx</code> · <code>routeTree.gen.ts</code> · <code>server.ts</code> · <code>start.ts</code> · <code>src/lib/*error*.ts</code> (reporting do Lovable) · <code>vite.config.ts</code>.</p>
+</section>
+
+<section id="s3">
+  <h2><span class="n">3</span>Fontes + Meta/OG</h2>
+  <p><strong>Fontes (Google Fonts):</strong> Fraunces (serif, <code>.serif</code>) + Inter (corpo).</p>
+  <pre>https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400..700&display=swap</pre>
+  <p><strong>Meta:</strong> title "NexvyBeauty — Recupere clientes que sumiram pelo seu WhatsApp" + description pt-BR. <span style="color:var(--red)">⚠️ og:image = screenshot do Lovable</span> → trocar por OG própria. E <code>&lt;html lang="en"&gt;</code> → <code>lang="pt-BR"</code>.</p>
+</section>
+
+<section id="s4">
+  <h2><span class="n">4</span>Mapa completo de placeholders / quebrados</h2>
+  <p><em>Marcados com <code>data-todo="…"</code>; a const <code>WHATSAPP_URL="#whatsapp"</code>. Nada plugado.</em></p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>#</th><th>O que</th><th>Estado</th><th>Ação</th></tr></thead>
+    <tbody>
+      <tr><td>P1</td><td>Checkout dos 3 planos</td><td><code>href="#"</code> · <code>data-todo="checkout-*"</code></td><td><code>checkout_url</code> real (de <code>public_plans</code>)</td></tr>
+      <tr><td>P2</td><td>WhatsApp comercial (Hero + Raio-X + rodapé)</td><td><code>WHATSAPP_URL="#whatsapp"</code> ×3</td><td>wa.me real</td></tr>
+      <tr><td>P3</td><td>Login "Entrar"</td><td><code>href="#"</code></td><td>URL de login</td></tr>
+      <tr><td>P4</td><td>Footer: Termos, Privacidade LGPD, Instagram</td><td><code>data-todo</code> · <code>href="#"</code></td><td>URLs reais</td></tr>
+      <tr><td>P5</td><td><strong>Preço hardcoded ×2</strong>: Planos (275/427/693 + de-para 450/720/1.190) e Calculadora (<code>/427</code>)</td><td>fixo</td><td><strong>decisão</strong>: <code>public_plans</code> (<code>usePublicPlans</code> existe) ou hardcode (2 lugares)</td></tr>
+      <tr><td>P6</td><td>Modal Cofounder — e-mail é <strong>NO-OP</strong></td><td>"Enviar" só fecha</td><td>wire real ou remover</td></tr>
+      <tr><td>P7</td><td>"50 vagas" Cofounder (×2)</td><td>eyebrow + badge</td><td><strong>decisão</strong>: real ou remover</td></tr>
+      <tr><td>P8</td><td>OG image</td><td>screenshot Lovable</td><td>OG própria</td></tr>
+      <tr><td>P9</td><td>Cookie A/B do Hero (<code>nx_lp_var</code>)</td><td>sem consumidor</td><td>opcional: analytics</td></tr>
+    </tbody>
+  </table></div>
+  <div class="warn">✅ <strong>Já corrigido</strong> (não é pendência): qualifier invertido (removido), "sem acesso" (→ "conecta e autoriza, sem senha, apaga 72h"), Lorem ipsum, reorder (Calculadora↑ + Raio-X), FAQ 3 objeções, de-para Ladder A nos cards.</div>
+</section>
+
+<section id="s5">
+  <h2><span class="n">5</span>Integração com o nosso stack</h2>
+  <ul>
+    <li><strong>Preço single-source:</strong> o app já tem <code>usePublicPlans()</code> (<code>public_plans</code> + <code>list_price_monthly</code>). Portada, a LP deveria consumir esse hook → mata o drift (P5 de raiz).</li>
+    <li><strong>Checkout:</strong> <code>public_plans.checkout_url</code> (Cakto) → resolve P1.</li>
+    <li><strong>Deploy:</strong> front manual via <code>ssh vps-hostinger</code> + <code>deploy-vps.sh</code> (sem CI). LP entra no pipeline ou deploy próprio.</li>
+    <li><strong>Rota/domínio:</strong> substitui/coexiste com a <code>SalesPage</code> atual? Qual rota?</li>
+  </ul>
+</section>
+
+<section id="s6">
+  <h2><span class="n">6</span>Decisões pendentes</h2>
+  <ol>
+    <li><strong>Preço:</strong> <code>public_plans</code> (recomendado) ou hardcode?</li>
+    <li><strong>Ladder A (450/720/1.190) já é pública?</strong> Confirmar valores + <strong>verificar moeda (USD×BRL) no <code>public_plans</code></strong> antes de publicar.</li>
+    <li><strong>50 vagas</strong> Cofounder: real ou remover?</li>
+    <li><strong>Mecanismo do Raio-X:</strong> "48h por escrito" vs esteira self-service.</li>
+    <li><strong>Rota/domínio</strong> + relação com a <code>SalesPage</code>.</li>
+    <li><strong>Links reais</strong> (checkout, WhatsApp, login, legais).</li>
+  </ol>
+</section>
+
+<section id="s7">
+  <h2><span class="n">7</span>Quem executa? <span style="font-size:13px;color:var(--muted)">(critério: mais contexto + capacidade)</span></h2>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Metade</th><th>O quê</th><th>Contexto máximo</th></tr></thead>
+    <tbody>
+      <tr><td><strong>A — Código da LP</strong></td><td>extrair como página, strip TanStack, lp.css+fontes+meta, React19→18</td><td><strong>ESTA sessão</strong> (leu cada linha, tem o MCP Lovable)</td></tr>
+      <tr><td><strong>B — Integração + deploy</strong></td><td><code>usePublicPlans</code>, Cakto, links, rota/domínio, deploy manual, Ladder A/moeda</td><td><strong>CONTROLADORA</strong> (dona do repo/public_plans/Cakto/deploy)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="rulebox"><strong>Proposta:</strong> híbrido — esta sessão prepara o <strong>PR do código</strong> (metade A); a controladora faz <strong>integração/wiring/deploy</strong> (metade B). OU a controladora executa tudo. Decisão dela pelo "quem entrega melhor". <strong>Empate/dúvida → Marcelo.</strong></div>
+</section>
+
+<div class="foot">
+  Levantamento via MCP Lovable + clone git + leitura integral do index.tsx. Nada portado/aplicado.<br>
+  Handoff de porte da LP · 2026-07-17 · par de <code>HANDOFF-PORTE-LP-CLIENTES-DE-VOLTA-2026-07-17.md</code>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P10 — Smokes do Handoff Duda→Lia · Runbook · 2026-07-15</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2430; --border:#30363d;
+    --fg:#e6edf3; --muted:#8b949e; --accent:#d4a0ff; --accent2:#7ee2b8;
+    --red:#ff7b72; --amber:#f0b849; --green:#56d364; --blue:#79c0ff;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+  header{background:linear-gradient(135deg,#101a2a 0%,#0d1117 70%);border-bottom:1px solid var(--border);padding:44px 0 32px;margin-bottom:36px}
+  h1{font-size:26px;margin:0 0 10px;letter-spacing:-.3px}
+  h1 .p10{color:var(--accent)}
+  .sub{color:var(--muted);font-size:14px}
+  .badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--muted)}
+  .badge.ro{border-color:#3d2f55;color:var(--accent)}
+  .badge.warn{border-color:#5a4416;color:var(--amber)}
+  h2{font-size:20px;margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);letter-spacing:-.2px}
+  h3{font-size:16px;margin:26px 0 10px;color:var(--accent2)}
+  h4{font-size:14px;margin:20px 0 8px;color:var(--blue)}
+  p{margin:10px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--bg3);padding:2px 6px;border-radius:5px;color:#e3b8ff}
+  pre{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55}
+  pre code{background:none;padding:0;color:#c9d1d9}
+  .lang{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px}
+  th{background:var(--bg3);text-align:left;padding:9px 12px;border:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  td{padding:9px 12px;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .ok{color:var(--green);font-weight:600}
+  .no{color:var(--red);font-weight:600}
+  .warn{color:var(--amber);font-weight:600}
+  .tldr{background:linear-gradient(135deg,#141d16,#161b22);border:1px solid #2f4a37;border-radius:12px;padding:22px 26px;margin:24px 0}
+  .tldr h2{margin-top:0;border:none;padding:0;font-size:17px;color:var(--accent2)}
+  .callout{border-left:4px solid var(--amber);background:var(--bg2);border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;font-size:14px}
+  .callout.red{border-left-color:var(--red)}
+  .callout.green{border-left-color:var(--green)}
+  .callout.blue{border-left-color:var(--blue)}
+  .smoke{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:6px 24px 20px;margin:22px 0}
+  .smoke.a{border-top:3px solid var(--accent)}
+  .smoke.b{border-top:3px solid var(--blue)}
+  .tag{display:inline-block;font-weight:700;border-radius:8px;padding:1px 10px;margin-right:8px;font-size:13px}
+  .tag.a{background:var(--accent);color:#14091f}
+  .tag.b{background:var(--blue);color:#08131f}
+  .pill{display:inline-block;padding:1px 9px;border-radius:6px;font-size:12px;font-weight:600}
+  .pill.pass{background:#15301f;color:var(--green)}
+  .pill.fail{background:#3d1a1a;color:var(--red)}
+  .foot{margin-top:56px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--border);padding-top:16px}
+  .scroll{overflow-x:auto}
+  ul{margin:10px 0;padding-left:22px} li{margin:6px 0}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1><span class="p10">P10</span> — Roteiro executável dos 2 smokes do Handoff (Duda → pago → Lia, mesmo thread)</h1>
+  <div class="sub">Runbook pronto-para-disparar · NexvyBeauty · Supabase <code>fzhlbwhdejumkyqosuvq</code> · 2026-07-15</div>
+  <div class="badges">
+    <span class="badge ro">roteiro + payloads exatos</span>
+    <span class="badge">flag NÃO ligada</span>
+    <span class="badge">nenhuma escrita em produção</span>
+    <span class="badge warn">executar = ação do Marcelo</span>
+  </div>
+</div></header>
+<div class="wrap">
+
+<div class="tldr">
+<h2>Fact-Forcing Gate — 4 fatos, re-executados na hora (read-only)</h2>
+<p>Antes de escrever este roteiro, os 4 fatos load-bearing foram re-verificados ao vivo em <code>fzhlbwhdejumkyqosuvq</code> numa query consolidada read-only.</p>
+</div>
+
+<div class="scroll"><table>
+<thead><tr><th>#</th><th>Fato</th><th>Verificado (valor real)</th></tr></thead>
+<tbody>
+<tr><td><b>1</b></td><td><b>A Lia é quem o handoff resolve.</b> Lookup em <code>platform_crm_product_agents</code>: <code>agent_type='support' AND is_active=true AND name ILIKE '%implanta%'</code>, o mais antigo (<code>onboarding-handoff.ts:44-52</code>).</td><td><span class="ok">✅</span> <code>id=927fe936-…359b</code>, <code>agent_type=support</code>, <code>is_active=true</code>, <code>product_id=806b5975-…1041</code></td></tr>
+<tr><td><b>2</b></td><td><b>Colunas-alvo do handoff existem</b> em <code>platform_crm_conversations</code>: <code>provisioned_organization_id</code>, <code>current_agent_id</code>, <code>product_id</code>, <code>visitor_whatsapp</code>, <code>visitor_phone</code>.</td><td><span class="ok">✅</span> 5/5 colunas presentes</td></tr>
+<tr><td><b>3</b></td><td><b>Credencial platform tem <code>webhook_secret</code></b> e há plano de teste <code>is_public=false</code> mapeado a offer slug (não vaza como link ofertável).</td><td><span class="ok">✅</span> credencial <code>scope='platform'</code> com secret; plano <b>Teste E2E</b> <code>offer_slug='34h7jqp'</code>, <code>product_cakto_id='71a6060b-…f84c'</code>, <code>is_public=false</code>, R$10</td></tr>
+<tr><td><b>4</b></td><td><b>Gate <code>org_created</code>:</b> o handoff só dispara quando a compra <b>cria</b> a org (<code>cakto-plan-provisioning.ts:554</code>), e <code>org_created=true</code> só sem org prévia p/ o <code>cakto_customer_email</code> (<code>:159-201</code>).</td><td><span class="ok">✅</span> <code>0</code> orgs pré-existentes p/ <code>p10-smoke-a@nexvy-teste.invalid</code> e <code>…-b@…</code></td></tr>
+</tbody></table></div>
+
+<div class="callout red"><b>Por que o Fato 4 é o mais traiçoeiro:</b> se você semear uma org de teste "pra facilitar", o handoff <b>nunca dispara</b> (o gate <code>org_created</code> fica <code>false</code>) — falso-negativo. Regra: <b>semeie a conversa, nunca a org</b>. A org nasce da própria compra.</div>
+
+<h2>Como o código encadeia (fonte real, arquivo:linha)</h2>
+<pre><code>cakto-webhook/index.ts
+  :51  payload = await req.json()
+  :53  order   = payload.data?.order ?? payload.data ?? payload.order ?? payload
+  :57  row     = mapCaktoOrderForUpsert(order,…)   → customer.{name,email,phone}, product.id, status, paymentMethod  (cakto-client.ts:312-342)
+  :59  row.cakto_offer_slug = extractOfferSlug(order,…)   → último segmento do checkoutUrl  (cakto-plan-provisioning.ts:68-85)
+  :206 if (scope==='platform')
+  :209   provisionFromOrder(admin, row)
+
+cakto-plan-provisioning.ts
+  :537 provisionPlatformPlan → status paid/approved (:142) · resolve plano por offer slug/product (:102-124) ·
+       cria/acha org por cakto_customer_email (:159-201) · orgCreated=true SÓ se criou (:194-195)
+  :543 ensureAdminUser (cria auth user + profile + role + e-mail de acesso)   ← independente do handoff
+  :554 if (planRes.org_created) {
+  :557   seedSalonDataForNewOrg  (catálogo + automações OFF + Radar)
+  :560   sendWelcomeWhatsApp     (boas-vindas WhatsApp ao comprador, non-fatal)
+  :571   try { handoffConversationToOnboarding(admin,{organizationId, customerPhone, customerEmail}) }   ← O HANDOFF
+       }
+
+_shared/onboarding-handoff.ts
+  :37  GATE: ONBOARDING_HANDOFF_ENABLED !== 'true' → { ok:false, skipped:'flag_off' }   (NO-OP)
+  :44  acha o agente CS (Lia) — support + %implanta% + ativo, o mais antigo
+  :66  variants = phoneVariantsBR(customerPhone)               (só-dígitos)
+  :71  withPlus = variants.map(v =&gt; `+${v}`)                   ← FIX P0 (bug do +E.164)
+  :77       .eq('product_id', csAgent.product_id)              ← FIX opcional (só conversa do produto da Lia)
+  :78       .or(`visitor_whatsapp.in.(${list}),visitor_phone.in.(${list})`)   list = variants ∪ withPlus
+  :87  fallback por e-mail (leads + visitor_email) se telefone não casar
+  :110 se não achou conversa → { skipped:'conversation_not_found' }   (NO-OP limpo, provisioning intacto)
+  :117 UPDATE conversa SET current_agent_id = Lia, provisioned_organization_id = &lt;org nova&gt;</code></pre>
+
+<div class="callout"><b>O bug P0 (por que o <code>withPlus</code> importa):</b> os webhooks inbound gravam <code>visitor_whatsapp</code>/<code>visitor_phone</code> como <b><code>+E.164</code></b> (<code>platform-meta-whatsapp-webhook:185-186</code>). <code>phoneVariantsBR</code> gera variantes <b>só-dígitos</b> e o match <code>.in.()</code> é <b>exato</b> → sem o <code>withPlus</code>, <code>+5511987650001</code> nunca casa com <code>5511987650001</code> e o match <b>erra 100%</b>. O <code>onboarding-handoff.ts</code> <b>já traz o fix</b> (linhas 71-72) e o filtro por produto (linha 77).</div>
+
+<h2>Pré-condição (obrigatória antes de qualquer smoke)</h2>
+<p>Estes smokes <b>presumem que o porte-deploy do blueprint já foi feito</b>. Sem isso, o bundle do <code>cakto-webhook</code> em prod <b>não contém</b> <code>onboarding-handoff.ts</code> (TL;DR #1 do blueprint) e o smoke faz NO-OP silencioso.</p>
+<ul>
+<li><b>P1.</b> PR do porte merged (hunks A-F + fix 2.3 do blueprint <code>P10-HANDOFF-DUDA-LIA-2026-07-15.md</code>).</li>
+<li><b>P2.</b> 3 edges deployadas <b>nesta ordem</b> (brain ANTES do secret): <code>platform-sales-brain cakto-webhook cakto-reprocess-order</code>. Check: <code>get_edge_function</code> do <code>cakto-webhook</code> mostra <code>onboarding-handoff.ts</code> no bundle.</li>
+<li><b>P3.</b> Flag ligada — <b>é o disparo</b>. Enquanto OFF, o handoff responde <code>skipped:'flag_off'</code> e nada muda.</li>
+</ul>
+<div class="callout blue">Ordem canônica: <b>P1 → P2 (deploy) → P3 (secret ON) → Smoke A → Smoke B → Go-live</b>. O secret é o último interruptor.</div>
+
+<h3>Comando da flag (AÇÃO DO MARCELO)</h3>
+<pre><span class="lang">bash</span><code># LIGAR (dispara o handoff — é isto que "arma" os 2 smokes)
+supabase secrets set ONBOARDING_HANDOFF_ENABLED=true  --project-ref fzhlbwhdejumkyqosuvq
+
+# REVERTER (kill switch)
+supabase secrets set ONBOARDING_HANDOFF_ENABLED=false --project-ref fzhlbwhdejumkyqosuvq</code></pre>
+<ul>
+<li>O secret é <b>por projeto</b> — cobre <code>cakto-webhook</code>, <code>cakto-reprocess-order</code> e o <code>platform-sales-brain</code> de uma vez. Novas invocações leem o novo valor (near-instant; sem redeploy).</li>
+</ul>
+<div class="callout"><b>⚠️ Nuance do kill switch (do blueprint):</b> desligar a flag <b>NÃO despina</b> Lias já fixadas. Ao reverter em produção, rode também:
+<pre><span class="lang">sql</span><code>UPDATE platform_crm_conversations
+   SET current_agent_id = NULL
+ WHERE current_agent_id = '927fe936-0965-4693-90be-5944e745359b'
+   AND provisioned_organization_id IS NOT NULL;</code></pre></div>
+
+<h3>Constantes usadas nos dois smokes</h3>
+<div class="scroll"><table>
+<thead><tr><th>Item</th><th>Valor</th></tr></thead>
+<tbody>
+<tr><td>Produto Beauty (<code>product_id</code>)</td><td><code>806b5975-e268-402e-a65c-9e9503271041</code></td></tr>
+<tr><td>Lia · Implantação (<code>agent_type=support</code>)</td><td><code>927fe936-0965-4693-90be-5944e745359b</code></td></tr>
+<tr><td>Duda (SDR, pin inicial da conversa)</td><td><code>577fc770-1688-464c-9ff9-46244c9b203b</code></td></tr>
+<tr><td>Plano de teste (não-vaza, <code>is_public=false</code>)</td><td>offer slug <code>34h7jqp</code> · <code>product_cakto_id 71a6060b-…f84c</code> · R$10</td></tr>
+<tr><td>Endpoint do webhook</td><td><code>https://fzhlbwhdejumkyqosuvq.supabase.co/functions/v1/cakto-webhook?scope=platform&amp;secret=$PLATFORM_WEBHOOK_SECRET</code></td></tr>
+</tbody></table></div>
+<p>O <code>PLATFORM_WEBHOOK_SECRET</code> <b>não é impresso aqui</b> (segredo). Puxe read-only na hora:</p>
+<pre><span class="lang">bash</span><code># via MCP execute_sql (o valor aparece só no seu terminal):
+#   select webhook_secret from cakto_credentials where scope='platform';
+export PLATFORM_WEBHOOK_SECRET='&lt;cole aqui na hora&gt;'</code></pre>
+<div class="callout blue"><b>Nota de gateway:</b> <code>cakto-webhook</code> roda público em prod (a Cakto não manda JWT; auth real = o <code>secret</code>). Se o gateway devolver <code>401</code> por JWT, acrescente ao <code>curl</code>: <code>-H "apikey: &lt;ANON_KEY&gt;" -H "Authorization: Bearer &lt;ANON_KEY&gt;"</code> (a anon key é publishable; no-op quando a função é pública).</div>
+
+<!-- ===================== SMOKE A ===================== -->
+<div class="smoke a">
+<h2><span class="tag a">SMOKE A</span> Handoff SDR — conversa da Duda existe → compra paga com o MESMO telefone → Lia assume o thread</h2>
+<p><b>Objetivo (critério verificável):</b> ao chegar a compra paga, a <b>mesma</b> conversa (mesmo <code>conversation_id</code>, sem criar nova) passa a ter <code>current_agent_id = Lia</code> e <code>provisioned_organization_id</code> preenchido. E o fix P0 casa o telefone em <b>todos os formatos</b> (com/sem <code>+55</code>, com/sem 9º dígito).</p>
+
+<h3>A.0 — Prova do fix P0 no nível-query <span class="pill pass">ZERO efeito colateral · não precisa da flag</span></h3>
+<p>Reproduz a lista <code>.in.()</code> que o handoff monta p/ a compra de fone <code>11987650001</code> (dígitos ∪ <code>withPlus</code>) e testa contra cada formato de armazenamento real. Todos devem casar (<code>casa=true</code>). No código PRÉ-fix (só dígitos), os formatos com <code>+</code> dariam <code>false</code> — esse era o bug.</p>
+<pre><span class="lang">sql — A.0 (prova P0)</span><code>with list(v) as (            -- exatamente o que phoneVariantsBR('11987650001') ∪ withPlus produz
+  values ('11987650001'),('5511987650001'),('551187650001'),('1187650001'),
+         ('+11987650001'),('+5511987650001'),('+551187650001'),('+1187650001')
+),
+stored(fmt, val) as (        -- formatos possíveis do visitor_whatsapp no banco
+  values ('E.164 +55 c/9 (formato REAL de prod — o que QUEBRAVA sem o fix)', '+5511987650001'),
+         ('dígitos +55 c/9',  '5511987650001'),
+         ('+ sem 55, c/9',    '+11987650001'),
+         ('dígitos sem 55, c/9','11987650001'),
+         ('legacy +55 sem 9', '+551187650001')
+)
+select s.fmt, s.val, (s.val in (select v from list)) as casa
+from stored s order by s.fmt;
+-- PASS = todas as linhas com casa=true (5/5).</code></pre>
+
+<h3>A.1 — Seed do estado inicial (conversa da Duda; NÃO cria org)</h3>
+<div class="callout">Troque <code>+5511987650001</code> pelo E.164 do <b>seu celular de teste</b> se quiser ver a Lia responder no WhatsApp. O <code>visitor_whatsapp</code> é gravado em <code>+E.164</code> <b>de propósito</b> — é o formato que o fix P0 precisa casar.</div>
+<pre><span class="lang">sql — SEED A.1</span><code>INSERT INTO platform_crm_conversations
+  (id, channel, status, visitor_id, visitor_name, visitor_whatsapp, visitor_phone,
+   product_id, current_agent_id, last_message_at, metadata)
+VALUES
+  ('a0000000-0000-4000-8000-0000000000a1'::uuid,   -- id fixo de teste (fácil de assert/cleanup)
+   'whatsapp', 'bot_active',
+   'p10-smoke-a-visitor', 'Smoke P10 A',
+   '+5511987650001', '+5511987650001',             -- formato +E.164 = o caso P0
+   '806b5975-e268-402e-a65c-9e9503271041'::uuid,   -- produto Beauty (a Lia é deste produto)
+   '577fc770-1688-464c-9ff9-46244c9b203b'::uuid,   -- Duda pinada (SDR)
+   now(), '{"p10_smoke":"A"}'::jsonb);</code></pre>
+
+<h3>A.2 — Gatilho: webhook Cakto de compra paga (mesmo fone, formato diferente do armazenado)</h3>
+<p>A compra manda o fone como <code>11987650001</code> (sem <code>+55</code>). O <code>withPlus</code> gera <code>+5511987650001</code>, que casa com o seed → é o E2E do fix P0.</p>
+<pre><span class="lang">bash — GATILHO A.2</span><code>curl -sS -X POST \
+  "https://fzhlbwhdejumkyqosuvq.supabase.co/functions/v1/cakto-webhook?scope=platform&amp;secret=$PLATFORM_WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "event": "purchase_approved",
+        "data": { "order": {
+          "id": "P10-SMOKE-A-1",
+          "status": "paid",
+          "paymentMethod": "pix",
+          "amount": 10,
+          "checkoutUrl": "https://pay.cakto.com.br/34h7jqp",
+          "product":  { "id": "71a6060b-8816-4f31-9bfc-8eac07d3f84c", "name": "Teste E2E" },
+          "customer": { "name": "Smoke P10 A",
+                        "email": "p10-smoke-a@nexvy-teste.invalid",
+                        "phone": "11987650001" }
+        }}
+      }'
+# Esperado: HTTP 200  {"ok":true,"event":"purchase_approved"}</code></pre>
+
+<h3>A.3 — Asserções (pass/fail via SQL + log)</h3>
+<p><b>Log a procurar</b> (<code>get_logs</code>/dashboard do <code>cakto-webhook</code>):<br>
+<code>[cakto-provisioning] onboarding handoff: {"ok":true,"conversation_id":"a0000000-…-a1","cs_agent_id":"927fe936-…"}</code><br>
+Se vier <code>{"ok":false,"skipped":"conversation_not_found"}</code> → <span class="no">o match por telefone falhou</span> (fix do <code>+</code> não pegou). Se vier <code>"skipped":"flag_off"</code> → a flag não está ON.</p>
+<pre><span class="lang">sql — ASSERT A</span><code>-- a MESMA conversa passou pra Lia + ganhou o vínculo org (todas as colunas devem dar true)
+SELECT
+  c.id                                                                AS conversation_id,
+  c.id = 'a0000000-0000-4000-8000-0000000000a1'::uuid                 AS mesmo_thread,          -- true = não criou nova
+  c.current_agent_id = '927fe936-0965-4693-90be-5944e745359b'::uuid   AS pinned_lia,            -- true
+  c.current_agent_id &lt;&gt; '577fc770-1688-464c-9ff9-46244c9b203b'::uuid  AS saiu_da_duda,          -- true
+  c.provisioned_organization_id IS NOT NULL                           AS tem_vinculo_org,       -- true
+  c.provisioned_organization_id = o.id                                AS vinculo_bate_org_nova  -- true
+FROM platform_crm_conversations c
+LEFT JOIN organizations o ON o.cakto_customer_email = 'p10-smoke-a@nexvy-teste.invalid'
+WHERE c.id = 'a0000000-0000-4000-8000-0000000000a1'::uuid;
+
+-- thread ÚNICO: nenhuma conversa nova criada p/ o produto+fone (deve ser 1)
+SELECT count(*) AS convs_do_fone_deve_ser_1
+FROM platform_crm_conversations
+WHERE product_id = '806b5975-e268-402e-a65c-9e9503271041'::uuid
+  AND (visitor_whatsapp IN ('+5511987650001','5511987650001')
+    OR visitor_phone    IN ('+5511987650001','5511987650001'));
+
+-- a compra provisionou a org (org_created disparou o handoff)
+SELECT id, plan_id, plan_status, slug
+FROM organizations
+WHERE cakto_customer_email = 'p10-smoke-a@nexvy-teste.invalid';   -- 1 linha, plan_status='active'</code></pre>
+<p><span class="pill pass">PASS de A</span> = ASSERT A com 5/5 colunas <code>true</code> · <code>convs_do_fone_deve_ser_1 = 1</code> · 1 org <code>active</code> · log <code>ok:true</code>. (Opcional E2E: msg do celular de teste no thread → resposta chega como <b>Lia/CS</b>, sem preço/link.)</p>
+
+<h3>A.4 — Cleanup (ordem: filhos → org → user → pedido → conversa)</h3>
+<pre><span class="lang">sql — CLEANUP A</span><code>DELETE FROM servico_catalogo            WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-a@nexvy-teste.invalid');
+DELETE FROM salon_automation_rules      WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-a@nexvy-teste.invalid');
+DELETE FROM opportunity_scan_schedules  WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-a@nexvy-teste.invalid');
+DELETE FROM billing_history             WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-a@nexvy-teste.invalid');
+DELETE FROM user_roles WHERE user_id IN (SELECT id FROM auth.users WHERE email='p10-smoke-a@nexvy-teste.invalid');
+DELETE FROM profiles   WHERE email = 'p10-smoke-a@nexvy-teste.invalid';
+DELETE FROM organizations WHERE cakto_customer_email = 'p10-smoke-a@nexvy-teste.invalid';
+DELETE FROM auth.users WHERE email = 'p10-smoke-a@nexvy-teste.invalid';
+DELETE FROM cakto_orders WHERE scope='platform' AND cakto_id='P10-SMOKE-A-1';
+DELETE FROM platform_crm_conversations WHERE id='a0000000-0000-4000-8000-0000000000a1'::uuid;</code></pre>
+</div>
+
+<!-- ===================== SMOKE B ===================== -->
+<div class="smoke b">
+<h2><span class="tag b">SMOKE B</span> Compra direta — sem SDR prévio → não quebra, org provisionada, boas-vindas</h2>
+<p><b>Objetivo (critério verificável):</b> compra paga <b>sem nenhuma conversa anterior</b> → provisiona a org normalmente e o handoff faz <b>NO-OP gracioso</b> (<code>skipped:'conversation_not_found'</code>), sem derrubar o pagamento. Nenhuma conversa é pinada.</p>
+
+<h3>B.1 — Seed</h3>
+<p><b>Nenhum.</b> Pré-condição: e-mail <code>p10-smoke-b@nexvy-teste.invalid</code> sem org e sem conversa (Fato 4 confirmou <code>0</code>). Confirmação opcional:</p>
+<pre><span class="lang">sql — PRÉ-CHECK B</span><code>SELECT
+  (SELECT count(*) FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid') AS org_prev,       -- 0
+  (SELECT count(*) FROM platform_crm_conversations WHERE visitor_whatsapp IN ('+5511987650002','5511987650002')) AS conv_prev; -- 0</code></pre>
+
+<h3>B.2 — Gatilho: webhook de compra paga sem conversa prévia</h3>
+<pre><span class="lang">bash — GATILHO B.2</span><code>curl -sS -X POST \
+  "https://fzhlbwhdejumkyqosuvq.supabase.co/functions/v1/cakto-webhook?scope=platform&amp;secret=$PLATFORM_WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "event": "purchase_approved",
+        "data": { "order": {
+          "id": "P10-SMOKE-B-1",
+          "status": "paid",
+          "paymentMethod": "pix",
+          "amount": 10,
+          "checkoutUrl": "https://pay.cakto.com.br/34h7jqp",
+          "product":  { "id": "71a6060b-8816-4f31-9bfc-8eac07d3f84c", "name": "Teste E2E" },
+          "customer": { "name": "Smoke P10 B",
+                        "email": "p10-smoke-b@nexvy-teste.invalid",
+                        "phone": "11987650002" }
+        }}
+      }'
+# Esperado: HTTP 200  {"ok":true,"event":"purchase_approved"}</code></pre>
+
+<h3>B.3 — Asserções (pass/fail via SQL + log)</h3>
+<p><b>Logs a procurar</b> (<code>cakto-webhook</code>):<br>
+<code>[cakto-webhook] provisioning result {"ok":…,"organization_id":"…","org_created":true,…}</code><br>
+<code>[cakto-provisioning] onboarding handoff: {"ok":false,"skipped":"conversation_not_found"}</code> ← <b>NO-OP gracioso esperado</b> (ou <code>"flag_off"</code> se a flag estiver OFF). Em nenhum caso o provisioning pode quebrar.</p>
+<pre><span class="lang">sql — ASSERT B</span><code>-- org provisionada mesmo sem conversa (graceful)
+SELECT id, plan_id, plan_status, slug, cakto_customer_email
+FROM organizations
+WHERE cakto_customer_email = 'p10-smoke-b@nexvy-teste.invalid';   -- 1 linha, plan_status='active'
+
+-- NENHUMA conversa pinada pra essa org (compra direta não pina ninguém)
+SELECT count(*) AS convs_pinadas_deve_ser_0
+FROM platform_crm_conversations
+WHERE provisioned_organization_id IN
+      (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');   -- 0
+
+-- billing registrado (prova que o pagamento foi processado)
+SELECT amount, status, description
+FROM billing_history
+WHERE organization_id IN
+      (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');   -- 1 linha, status='paid'</code></pre>
+<p><b>Comportamento de boas-vindas esperado (compra direta):</b></p>
+<ul>
+<li><b>E-mail de acesso</b> disparado (<code>ensureAdminUser</code> → <code>send-transactional-email</code>, template <code>welcome-admin-access</code>, idempotente por <code>welcome-admin-&lt;userId&gt;</code>; <code>cakto-plan-provisioning.ts:339-356</code>).</li>
+<li><b>WhatsApp de boas-vindas</b> tentado ao fone da compra (<code>sendWelcomeWhatsApp</code>, <code>:371-420</code>) — só envia se houver conexão Meta <code>status='active'</code>; senão loga <code>skipped:'no_active_connection'</code> (non-fatal). <span class="warn">⚠️ use um fone que você controle ou não-alocado</span>: se houver conexão ativa, uma mensagem real é enviada.</li>
+</ul>
+<p><span class="pill pass">PASS de B</span> = 1 org <code>active</code> · <code>convs_pinadas_deve_ser_0 = 0</code> · 1 billing <code>paid</code> · log <code>handoff ok:false / skipped</code> · webhook <code>200</code>. <span class="pill fail">Fail</span> = webhook <code>500</code>, org não criada, ou qualquer conversa pinada.</p>
+
+<h3>B.4 — Cleanup</h3>
+<pre><span class="lang">sql — CLEANUP B</span><code>DELETE FROM servico_catalogo            WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');
+DELETE FROM salon_automation_rules      WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');
+DELETE FROM opportunity_scan_schedules  WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');
+DELETE FROM billing_history             WHERE organization_id IN (SELECT id FROM organizations WHERE cakto_customer_email='p10-smoke-b@nexvy-teste.invalid');
+DELETE FROM user_roles WHERE user_id IN (SELECT id FROM auth.users WHERE email='p10-smoke-b@nexvy-teste.invalid');
+DELETE FROM profiles   WHERE email = 'p10-smoke-b@nexvy-teste.invalid';
+DELETE FROM organizations WHERE cakto_customer_email = 'p10-smoke-b@nexvy-teste.invalid';
+DELETE FROM auth.users WHERE email = 'p10-smoke-b@nexvy-teste.invalid';
+DELETE FROM cakto_orders WHERE scope='platform' AND cakto_id='P10-SMOKE-B-1';</code></pre>
+</div>
+
+<h2>Efeitos colaterais reais dos smokes (transparência)</h2>
+<div class="scroll"><table>
+<thead><tr><th>Efeito</th><th>Onde</th><th>Mitigação</th></tr></thead>
+<tbody>
+<tr><td>Cria <b>org + user admin + billing</b> de teste</td><td>ambos</td><td>Cleanup A.4/B.4 apaga tudo</td></tr>
+<tr><td><b>E-mail de acesso</b> enviado ao endereço <code>.invalid</code></td><td>ambos</td><td><code>.invalid</code> nunca entrega (RFC 2606); bounce inócuo. Ou use <code>voce+p10smokeA@suaempresa.com</code></td></tr>
+<tr><td>Possível <b>alerta Telegram</b> "provisionamento com ERRO" se <code>createUser</code>/e-mail falhar no <code>.invalid</code></td><td>ambos</td><td>Esperado e inócuo; ou use e-mail real com plus-addressing</td></tr>
+<tr><td><b>WhatsApp de boas-vindas</b> ao fone da compra (se houver conexão Meta ativa)</td><td>ambos</td><td>Use fone próprio ou não-alocado (<code>11 98765-000x</code>)</td></tr>
+<tr><td><b>Radar/automações</b> semeados na org (automações nascem OFF)</td><td>ambos</td><td>Cleanup remove <code>servico_catalogo</code>/<code>salon_automation_rules</code>/<code>opportunity_scan_schedules</code></td></tr>
+</tbody></table></div>
+<div class="callout green">Todos os efeitos são de <b>teste</b> e reversíveis pelos blocos de cleanup. Rode o cleanup logo após colher as asserções.</div>
+
+<div class="foot">
+Fontes (código real, arquivo:linha): <code>_shared/onboarding-handoff.ts</code>, <code>_shared/cakto-plan-provisioning.ts</code>, <code>cakto-webhook/index.ts</code>, <code>_shared/cakto-client.ts</code>, <code>_shared/phone.ts</code>, <code>supabase/config.toml</code>. Estado do banco: verificação read-only via MCP <code>execute_sql</code> em <code>fzhlbwhdejumkyqosuvq</code> (Fact-Forcing Gate). Blueprint-mãe: <code>P10-HANDOFF-DUDA-LIA-2026-07-15.md</code>.
+</div>
+
+</div>
+</body>
+</html>

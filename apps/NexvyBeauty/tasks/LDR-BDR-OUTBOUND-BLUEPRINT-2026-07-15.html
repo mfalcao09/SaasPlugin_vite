@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blueprint LDR/BDR Outbound — NexvyBeauty · 2026-07-15</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--panel2:#1a2230;--border:#2b3648;--text:#cdd6e4;--muted:#8494ab;--rose:#e8b4bc;--gold:#d4a94e;--green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa;--violet:#a78bfa}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;padding:0 1rem 3rem;max-width:1120px;margin:0 auto}
+  header{padding:2.2rem 0 1.2rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+  .kicker{color:var(--gold);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase}
+  header h1{font-size:1.95rem;color:#fff;margin:.35rem 0 .3rem;line-height:1.2}
+  header h1 .hl{color:var(--rose)}
+  .sub{color:var(--muted);font-size:.88rem}
+  .status{display:inline-block;margin-top:.7rem;margin-right:.4rem;padding:.2rem .7rem;border-radius:99px;background:#10241a;color:var(--green);font-size:.76rem;font-weight:600}
+  .status.warn{background:#3a2f10;color:var(--yellow)}
+  h2{font-size:1.2rem;color:var(--gold);margin:2.4rem 0 .8rem;border-left:4px solid var(--gold);padding-left:.6rem}
+  h3{font-size:1.02rem;color:var(--blue);margin:1.5rem 0 .5rem}
+  p{margin:.7rem 0}
+  a{color:var(--blue)}
+  ul,ol{padding-left:1.2rem}
+  li{margin:.28rem 0}
+  table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.85rem;display:block;overflow-x:auto}
+  th{background:var(--panel);color:var(--gold);text-align:left;padding:.5rem .65rem;border:1px solid var(--border);white-space:nowrap}
+  td{padding:.45rem .65rem;border:1px solid var(--border);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  code{background:var(--panel2);padding:.12rem .4rem;border-radius:5px;font-size:.82em;color:var(--rose);font-family:ui-monospace,'SF Mono',Menlo,monospace}
+  blockquote{border-left:3px solid var(--rose);padding:.6rem .95rem;color:var(--muted);margin:1rem 0;background:var(--panel);border-radius:0 8px 8px 0}
+  blockquote strong{color:var(--rose)}
+  blockquote em{color:var(--text)}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+  .lead{background:linear-gradient(180deg,rgba(248,113,113,.10),rgba(248,113,113,.02));border:1px solid #5a2b2b;border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .lead strong{color:var(--red)}
+  .tag{display:inline-block;font-size:.66rem;font-weight:800;padding:.06rem .4rem;border-radius:4px;letter-spacing:.03em;vertical-align:middle}
+  .certo{background:#10241a;color:var(--green)}
+  .provavel{background:#1a2440;color:var(--blue)}
+  .palpite{background:#2a2440;color:var(--violet)}
+  .yes{color:var(--green);font-weight:700}
+  .no{color:var(--red);font-weight:700}
+  .warn2{color:var(--yellow);font-weight:700}
+  .callout{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin:1.2rem 0}
+  .footer{margin-top:2.8rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem}
+  .ratif{border:1px solid #2a4a34;background:rgba(74,222,128,.06);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0}
+  .gate{border:1px solid #5a4a1a;background:rgba(250,204,21,.06);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0}
+  .gate strong{color:var(--yellow)}
+  .ratif strong{color:var(--green)}
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">NexvyBeauty · Frente LDR/BDR · Read-only + Design</div>
+  <h1>Blueprint — Outbound aos <span class="hl">4.006 leads</span></h1>
+  <div class="sub">2026-07-15 · Banco <code>fzhlbwhdejumkyqosuvq</code> · Produto <code>806b5975</code> · Tom: Conselheiro</div>
+  <span class="status">READ-ONLY — nada alterado</span>
+  <span class="status warn">Cold direto: GATE JURÍDICO aberto</span>
+</header>
+
+<div class="lead">
+  <h2 style="border:0;margin:.2rem 0 .5rem;padding:0;color:#fff">0 · A verdade desconfortável primeiro</h2>
+  <p><span class="tag certo">CERTO</span> <strong>Não existe hoje pipeline funcional de cold-outbound-via-WhatsApp para esses 4.006 — e o "backend de disparo pronto" do plano-mestre é falso no lado da plataforma.</strong> Três buracos verificados:</p>
+  <ol>
+    <li>O motor que o stub aponta para reuso (<code>manual-outreach</code>) lê <code>product_agents</code> (tenant, <strong>0 linhas</strong>) e <code>leads</code> (tenant) — <strong>não</strong> os <code>platform_crm_extracted_leads</code>/<code>platform_crm_product_agents</code>. Chamá-lo com agente da plataforma dá "Agent not found".</li>
+    <li>O motor de campanhas da plataforma entrega <strong>só em webchat</strong> — o cabeçalho diz <em>"A plataforma NÃO tem WhatsApp"</em>; sem conversa aberta → <code>skipped_no_channel</code>. Instância Evolution da plataforma <strong>= 0</strong>.</li>
+    <li><strong>100% dos 4.006 têm <code>finalidade='audiencia_ads'</code></strong> (coluna comentada <em>"SÓ audiência de Ads"</em>). Contato direto no WhatsApp = <strong>finalidade nova</strong> — o desvio que você já marcou como "base legal própria".</li>
+  </ol>
+  <p><span class="tag provavel">PROVÁVEL</span> A pergunta certa não é "como disparo pros 1.497", é <strong>"cold direto deve acontecer?"</strong>. Sua direção cravada (D1–D10) roteia aquisição por <strong>ads → opt-in → Duda, nunca frio no oficial</strong>, e trata o raspado como <strong>inteligência de ICP</strong> — não lista de discagem. Blast frio reabre o gate que você fechou de propósito.</p>
+</div>
+
+<h2>1 · Fact-Forcing Gate (4 fatos reexecutados no banco)</h2>
+<table>
+  <tr><th>#</th><th>Fato</th><th>Valor</th><th>Fonte</th></tr>
+  <tr><td><strong>F1</strong></td><td>Total · salão-cliente c/ WhatsApp · só-Instagram</td><td><strong>4.006 · 1.497 · 1.562</strong></td><td><code>platform_crm_extracted_leads</code></td></tr>
+  <tr><td><strong>F2</strong></td><td>Agentes do produto · personas BDR/prospector</td><td><strong>6 · 0</strong></td><td><code>platform_crm_product_agents</code></td></tr>
+  <tr><td><strong>F3</strong></td><td>Instância WhatsApp plataforma · opt-out rows · leads c/ <code>finalidade='audiencia_ads'</code></td><td><strong>0 · 0 · 4.006 (100%)</strong></td><td><code>evolution_instances</code>, <code>lead_optout</code>, col <code>finalidade</code></td></tr>
+  <tr><td><strong>F4</strong></td><td><code>product_agents</code> (tabela que o <code>manual-outreach</code> lê)</td><td><strong>0 linhas</strong></td><td><code>product_agents</code> (tenant)</td></tr>
+</table>
+<p class="sub">Query de verificação idempotente (read-only): 9 contagens agregadas. Resultado bate 1:1 com a tabela.</p>
+
+<h2>2 · Estado real — o que existe (arquivo:linha)</h2>
+
+<h3>2.1 Motor <code>manual-outreach</code> (tenant) — o único que envia WhatsApp</h3>
+<p><code>supabase/functions/manual-outreach/index.ts</code> (387 linhas):</p>
+<ul>
+  <li><strong>Agente</strong> de <code>product_agents</code> (<code>:50-54</code>) — tenant, <strong>0 linhas</strong> (F4). Descasamento: os agentes de venda vivem em <code>platform_crm_product_agents</code>.</li>
+  <li><strong>Lead</strong> de <code>leads</code> (<code>:106-117</code>); pula sem telefone; prefixa <code>55</code>.</li>
+  <li><strong>Geração</strong> via gateway IA <code>google/gemini-2.5-flash</code> (<code>:206-219</code>); <strong>envio</strong> via <code>evolution-send</code> (<code>:243-251</code>); até 2 bolhas com <strong>800ms</strong> entre elas (<code>:259</code>).</li>
+  <li><strong>Anti-flood atual:</strong> dedupe <code>(lead,agent)</code> em 24h (<code>:121-139</code>); pula conversa humana (<code>:150-155</code>); follow-up 24h/48h, 09–18, Seg–Sex, máx 2 (<code>:359-368</code>).</li>
+</ul>
+<p>É bom motor de outreach <strong>retroativo/inbound</strong>. <strong>Não</strong> é prospecção fria da plataforma — canal, tabelas e persona errados para os 4.006.</p>
+
+<h3>2.2 Disparo na plataforma — webchat-only</h3>
+<p><code>platform-campaign-dispatcher/index.ts</code>: <em>"A plataforma NÃO tem WhatsApp"</em> (<code>:19</code>); validações WhatsApp removidas (<code>:15-17</code>); <code>skipped_no_channel</code> (<code>:26</code>); <code>GLOBAL_LIMIT=100</code>/<code>CONCURRENCY=8</code> (<code>:50-51</code>). Cap de vazão — <strong>não</strong> anti-ban. O <code>ProspeccaoCampanhasStub.tsx</code> (<code>:3-16</code>) assume reuso do <code>manual-outreach</code> — que lê tabelas vazias. <strong>Gap central de wiring.</strong></p>
+
+<h3>2.3 Os 4.006 leads — segmentos e canais</h3>
+<table>
+  <tr><th>Segmento</th><th>Total</th><th>c/ WhatsApp</th><th>Qualified</th><th>Canal</th><th>Alvo venda SaaS?</th></tr>
+  <tr><td><strong>salao_cliente</strong></td><td><strong>1.507</strong></td><td><strong>1.497</strong></td><td><strong>1.507</strong></td><td>WhatsApp</td><td class="yes">Sim — o ICP</td></tr>
+  <tr><td><strong>acionamento_via_instagram</strong></td><td><strong>1.562</strong></td><td>0</td><td>0</td><td>Instagram DM</td><td class="warn2">Sim, outro canal</td></tr>
+  <tr><td>afiliado_infoproduto</td><td>397</td><td>287</td><td>0</td><td>WhatsApp</td><td class="no">Não — afiliação</td></tr>
+  <tr><td>revisao</td><td>293</td><td>32</td><td>0</td><td>—</td><td class="warn2">Só após revisão</td></tr>
+  <tr><td>descarte</td><td>247</td><td>103 (44 excl.)</td><td>0</td><td>—</td><td class="no">Nunca</td></tr>
+</table>
+<p><strong>Acionável:</strong> WhatsApp p/ venda = <strong>1.497</strong> (salao_cliente c/ telefone, todos qualified, phone_br). Instagram DM = <strong>1.562</strong> (zero telefone). Semente limpa (<code>is_seed</code>) = <strong>66</strong> (26 em salao_cliente). Base consolidada dedup = 4.005 (1 handle fundido; nada perdido). 5 extrações.</p>
+
+<h3>2.4 Personas — LDR existe, BDR não</h3>
+<table>
+  <tr><th>Persona</th><th>agent_type</th><th>Papel</th><th>Prompt</th><th>Canais</th></tr>
+  <tr><td><strong>Duda — SDR Qualificadora</strong></td><td><code>sdr</code></td><td>Vende/qualifica quem chega</td><td>1.790 ch</td><td>WA+IG+Inbox</td></tr>
+  <tr><td><strong>Bia — Closer</strong></td><td><code>closer</code></td><td>Fecha o que a Duda passou</td><td>1.589 ch</td><td>WA+IG+Inbox</td></tr>
+  <tr><td>Lia · Implantação</td><td><code>support</code></td><td>Onboarding pós-compra</td><td>1.222 ch</td><td>WA</td></tr>
+  <tr><td>Nina — Sucesso/Retenção</td><td><code>retention</code></td><td>Cuida de quem já usa</td><td>1.215 ch</td><td>WA+IG+Inbox</td></tr>
+  <tr><td>Nexvy — Ativação</td><td><code>custom</code></td><td><em>aposentado (P2)</em></td><td><span class="no">0</span></td><td>—</td></tr>
+  <tr><td>Orquestrador Cliente-de-Volta</td><td><code>custom</code></td><td>Reativação</td><td><span class="no">0</span></td><td>—</td></tr>
+</table>
+<ul>
+  <li><strong>LDR (qualificador de quem chega) = Duda</strong> (<code>sdr</code>). Existe, production-grade.</li>
+  <li><strong>BDR (prospector outbound / 1º-toque frio) = AUSENTE.</strong> Nenhum <code>agent_type ∈ {prospector,bdr,outbound,ldr}</code> (F2=0). Duda <strong>responde</strong>, não prospecta frio.</li>
+  <li><strong>Falta p/ BDR:</strong> prompt 1º-toque→opt-in (não vende, D8) · <code>agent_type='prospector'</code> · reconhecimento no roteador · wiring + número dedicado.</li>
+</ul>
+
+<h3>2.5 Roteador (<code>_shared/agent-routing.ts</code>, PR #68 não deployado)</h3>
+<p>Reconhece só <code>sdr</code>/<code>closer</code>/<code>retention</code> (<code>:14-38</code>); <code>pickSdrPersona() ?? null</code> mata a roleta <code>agents[0]</code> (<code>:44-47</code>). <strong>Não reconhece <code>prospector</code>.</strong> O outbound gera a 1ª mensagem sozinho (não pelo brain, que é reativo) → o BDR precisa de gerador de 1º-toque próprio, platform-scoped.</p>
+
+<h3>2.6 Anti-spam / deliverability / warm-up — essencialmente ausente</h3>
+<table>
+  <tr><th>Controle</th><th>Existe?</th><th>Onde / gap</th></tr>
+  <tr><td>Delay entre bolhas (800ms)</td><td class="yes">✅</td><td><code>manual-outreach:259</code></td></tr>
+  <tr><td>Dedupe (lead,agente) 24h</td><td class="yes">✅</td><td><code>manual-outreach:121-139</code></td></tr>
+  <tr><td>Janela comercial 09–18 Seg–Sex</td><td class="yes">✅</td><td><code>ai_outreach_queue :359-364</code></td></tr>
+  <tr><td>Cap de vazão por tick</td><td class="yes">✅</td><td><code>dispatcher:50-51</code></td></tr>
+  <tr><td><strong>Warm-up ramp (aquecimento de chip)</strong></td><td class="no">❌</td><td>inexistente</td></tr>
+  <tr><td><strong>Teto diário por número/instância</strong></td><td class="no">❌</td><td>inexistente</td></tr>
+  <tr><td><strong>Jitter humano entre leads</strong></td><td class="no">❌</td><td>inexistente</td></tr>
+  <tr><td><strong>Gate de segmento no disparo</strong></td><td class="no">❌</td><td>nada impede disparar em <code>descarte</code></td></tr>
+  <tr><td><strong>Detecção de bloqueio/quality-rating</strong></td><td class="no">❌</td><td>inexistente</td></tr>
+  <tr><td><strong>Kill-switch de campanha fria</strong></td><td class="no">❌</td><td>inexistente</td></tr>
+</table>
+<p><span class="tag certo">CERTO</span> Para cold em volume, isto é o <strong>cenário de ban</strong>. Chip novo, sem rampa e sem teto, frio = bloqueio + denúncia + morte em dias. A memória crava: <em>"API oficial Meta + template aprovado NÃO blinda de ban"</em>.</p>
+
+<h3>2.7 LGPD — o que já existe na infra</h3>
+<ul>
+  <li><strong>Base e finalidade por lead:</strong> <code>lgpd_basis='art7_par4_publico'</code>, <code>finalidade='audiencia_ads'</code> (<code>leads-extraction-webhook:155-156</code>; <code>leads-import-profiles:163-164</code>; default em <code>20260712_platform_crm_lead_extractions.sql:96</code>).</li>
+  <li><strong>Opt-out (Art.18) na INGESTÃO:</strong> os imports filtram <code>platform_crm_lead_optout</code> (<code>:112-136</code> / <code>:88-126</code>). <strong>Mas a tabela está vazia (0)</strong> e <strong>nada popula ela em runtime</strong> — o brain não trata "SAIR/PARE". Opt-out honrado no re-import, <strong>não na conversa</strong>.</li>
+  <li><strong>Oficial:</strong> <code>whatsapp_meta_connections</code>=2 (WABA demo). Por D1: só opt-in inbound, nunca frio.</li>
+</ul>
+
+<h2>3 · O modelo LGPD do cold outreach (o coração)</h2>
+<blockquote>Você é o advogado — este é o <strong>modelo de engenharia enforçável</strong> + os pontos de decisão. Sua validação jurídica prevalece.</blockquote>
+
+<h3>3.1 O problema central: mudança de finalidade</h3>
+<p><span class="tag certo">CERTO</span> Os 4.006 foram coletados sob <code>finalidade='audiencia_ads'</code> / base <code>art7_par4_publico</code>. O Art. 7º §4 dispensa <strong>consentimento</strong> para dado público — mas <strong>não</strong> dispensa finalidade, adequação, necessidade, transparência (Art. 6º). <strong>Contatar direto ≠ montar audiência de ads.</strong> Reaproveitar sem reavaliar a base viola <strong>limitação de finalidade</strong> (Art. 6º I). Cold WhatsApp exige: nova base legal (legítimo interesse, Art. 7º IX) com <strong>LIA própria</strong> + atualizar <code>finalidade</code> + documentar o balanceamento. Ato <strong>constitucional</strong> — só sua palavra direta ratifica.</p>
+
+<h3>3.2 Modelo proposto (se você ratificar o contato direto)</h3>
+<table>
+  <tr><th>Princípio LGPD</th><th>Controle técnico enforçável</th><th>Estado hoje</th></tr>
+  <tr><td>Finalidade (6º I)</td><td>Coluna <code>finalidade</code> reflete o uso real; disparo lê a finalidade certa; audita</td><td class="no">❌ hoje audiencia_ads</td></tr>
+  <tr><td>Necessidade/minimização (6º III)</td><td><strong>Segment-gate:</strong> só <code>salao_cliente</code>+qualified+phone_br; nunca descarte/afiliado/revisao</td><td class="no">❌ sem gate</td></tr>
+  <tr><td>Transparência (6º VI)</td><td>1ª msg diz quem somos + de onde veio o contato + como sair</td><td class="no">❌ prompt BDR não existe</td></tr>
+  <tr><td>Oposição (Art. 18)</td><td>Opt-out em 1 palavra → grava optout + <strong>para cadência na hora</strong> + honra no re-import</td><td class="warn2">⚠️ só re-import</td></tr>
+  <tr><td>Eliminação/TTL (Art. 16)</td><td>Lead frio não convertido expira (~180d) → elimina/anonimiza</td><td class="no">❌ inexistente</td></tr>
+  <tr><td>Accountability (Art. 37)</td><td>Log por lead: base + finalidade + origem + timestamp + opt-out</td><td class="warn2">⚠️ base/final. sim; contato não</td></tr>
+  <tr><td>Segurança (Art. 46)</td><td>Número dedicado (nunca o oficial); dado não trafega no front</td><td class="warn2">⚠️ número não provisionado</td></tr>
+</table>
+
+<h3>3.3 Enquadramento B2B (atenua, não elimina)</h3>
+<p><span class="tag provavel">PROVÁVEL</span> Alvo = estabelecimentos (salões, muitos MEI/PJ) → legítimo interesse B2B mais defensável que B2C. <strong>Porém</strong> o dado é o celular pessoal do profissional (PF) — zona cinza. Decisão sua; a engenharia consegue segmentar por sinais de PJ (CNPJ no bio, categoria comercial) para reforçar o gate B2B, se quiser.</p>
+
+<h3>3.4 O canal Instagram DM tem regras próprias</h3>
+<p>Os 1.562 <code>acionamento_via_instagram</code> não têm telefone → canal é <strong>DM do Instagram</strong>, com limites da Meta (DM a não-seguidores, block/shadowban) e ToS distintos. <strong>Não é WhatsApp e não herda o modelo acima.</strong> Frente de canal separada. Fora do MVP.</p>
+
+<h2>4 · Arquitetura proposta (reuso vs novo)</h2>
+<h3>4.1 Reusar (não reconstruir)</h3>
+<p>Duda (LDR/SDR) como destino do opt-in · <code>evolution-send</code> · cadência/dedupe/janela do <code>manual-outreach</code> (portar 1:1) · <code>platform_crm_lead_optout</code> + filtro de ingestão · roteador <code>agent-routing.ts</code> (estender).</p>
+<h3>4.2 Construir novo (o front-half do BDR)</h3>
+<table>
+  <tr><th>Componente</th><th>Descrição</th><th>Por que novo</th></tr>
+  <tr><td>Persona BDR (<code>prospector</code>)</td><td>Prompt 1º-toque que leva ao opt-in, <strong>não vende</strong>; origem transparente</td><td>F2=0</td></tr>
+  <tr><td><code>isProspectorAgent()</code></td><td>Roteador reconhece o BDR; 1º-toque fora do caminho inbound</td><td>roteador só sdr/closer/retention</td></tr>
+  <tr><td><code>platform-manual-outreach</code></td><td>Fork lendo <code>platform_crm_extracted_leads</code>+<code>platform_crm_product_agents</code>+instância Evolution da plataforma</td><td>tenant lê tabelas vazias (F4)</td></tr>
+  <tr><td>Camada anti-ban</td><td>Warm-up + teto/número + jitter + segment-gate + kill-switch + detecção</td><td>tudo ausente (§2.6)</td></tr>
+  <tr><td>Opt-out runtime</td><td>Handler "SAIR/PARE" no brain → grava optout + para cadência</td><td>ausente</td></tr>
+  <tr><td>Instância Evolution dedicada</td><td>Número <strong>burner</strong>, nunca o oficial (D1)</td><td>evolution_instances=0</td></tr>
+  <tr><td>TTL/expurgo</td><td>Job de retenção do lead frio</td><td>ausente</td></tr>
+</table>
+
+<h2>5 · Decisões para o Marcelo</h2>
+
+<h3>5.1 Leitura do pedido — confirme antes de construir</h3>
+<p>"LDR/BDR outbound aos 4.006" tem 3 leituras, com implicações jurídicas opostas:</p>
+<ul>
+  <li><strong>(a) Cold WhatsApp direto aos 1.497</strong> → finalidade nova + LIA + número burner + warm-up; reabre o gate. <span class="no">Não ratificado.</span></li>
+  <li><strong>(b) Os 4.006 como inteligência de ICP</strong> → ads por interesse + lookalike de first-party → opt-in → Duda. <span class="yes">É a via-limpa que você já cravou (D3–D10).</span></li>
+  <li><strong>(c) Híbrido</strong> → Instagram DM aos 1.562 + ads para o resto + BDR frio só como piloto gated na semente limpa.</li>
+</ul>
+<p><strong>Minha leitura recomendada: (b) como default ratificado, com (a) apenas como piloto gated e explicitamente aprovado.</strong> Confirma ou ajusta?</p>
+
+<h3>5.2 Ratificado vs precisa do seu "aprovo"</h3>
+<div class="ratif">
+  <strong>Já ratificado (D1–D10, 2026-07-09) — pode construir:</strong>
+  <ul>
+    <li>Aquisição por ads → click-to-WhatsApp → opt-in → Duda; nunca frio no oficial (D1).</li>
+    <li>Raspado = inteligência de ICP (targeting/lookalike de first-party), não lista de discagem (via-limpa).</li>
+    <li>Playbook fixo + tetos + kill-switch + aprovação em lote (D2); piloto R$500 custo-por-opt-in (D6); LGPD legítimo-interesse+opt-out+origem (D10).</li>
+  </ul>
+</div>
+<div class="gate">
+  <strong>Precisa do seu "aprovo" explícito (constitucional — nunca por relay):</strong>
+  <ol>
+    <li><strong>Cold WhatsApp direto</strong> aos raspados → mudança de <code>finalidade</code> (audiencia_ads→prospeccao_comercial) + LIA. <em>Sem isto, nada dispara frio.</em></li>
+    <li>Provisionar número/instância <strong>burner</strong> para cold.</li>
+    <li>Qualquer uso do número oficial para frio → já vetado por D1; nem entra na fila.</li>
+  </ol>
+</div>
+<p><strong>Overlap com o BDR-autônomo NÃO-ratificado:</strong> a arquitetura "BDR 24/7 autônomo" segue <strong>PROPOSTA EM DISCUSSÃO</strong>; sua execução foi transferida à sessão GO-LIVE <code>local_d4bae0c2</code> e está <strong>PARKED até Onda 1 verde</strong>; a auto-melhoria (Hermes/eval P1) está diferida p/ v2 (D9). Este blueprint é só o <strong>front-half</strong> (sourcing→opt-in→handoff) — <strong>não</strong> liga autonomia nem auto-edição de skills.</p>
+
+<h3>5.3 Cadência e canais (proposta, se (a) for ratificado)</h3>
+<ul>
+  <li><strong>Canal:</strong> número burner via Evolution — nunca o oficial.</li>
+  <li><strong>Cadência:</strong> 1º-toque (opt-in) → +24h → +48h, máx 2 follow-ups; janela 09–18 Seg–Sex; jitter 40–180s/lead.</li>
+  <li><strong>Volume:</strong> warm-up ramp (ex. 20/dia → dobra a cada 2–3 dias até teto); teto/número; começar pela semente limpa (26 seeds).</li>
+  <li><strong>Personas:</strong> BDR (<code>prospector</code>, 1º-toque→opt-in) → Duda (<code>sdr</code>) qualifica → Bia (<code>closer</code>) fecha. Zero venda no frio.</li>
+</ul>
+
+<h2>6 · Fases + check binário</h2>
+<table>
+  <tr><th>Fase</th><th>Entrega</th><th>Check binário</th><th>Depende</th></tr>
+  <tr><td><strong>F0 · Gate jurídico</strong></td><td>Decisão finalidade + LIA + canal, registrada por você</td><td>✅ Marcelo grava "ratifico (a)" <strong>ou</strong> "só via-limpa (b)"</td><td>você</td></tr>
+  <tr><td><strong>F1 · Segurança</strong> (buildável já)</td><td>Opt-out runtime ("SAIR"→optout+para cadência) + TTL + log accountability</td><td>✅ E2E: "SAIR" grava row em <code>lead_optout</code> e a cadência para</td><td>—</td></tr>
+  <tr><td><strong>F2 · Persona BDR</strong> (draft inerte)</td><td><code>agent_type='prospector'</code> + prompt 1º-toque→opt-in + <code>isProspectorAgent()</code></td><td>✅ <code>deno test</code> reconhece prospector; agente não wired</td><td>—</td></tr>
+  <tr><td><strong>F3 · Plumbing</strong> (dormant)</td><td><code>platform-manual-outreach</code> + camada anti-ban, em <strong>DRY-RUN</strong></td><td>✅ dry-run gera msg + enfileira <strong>sem enviar</strong>; segment-gate recusa descarte/afiliado</td><td>F1,F2</td></tr>
+  <tr><td><strong>F4 · Piloto</strong></td><td>Warm-up real na semente limpa (26), burner, custo R$0, métrica opt-in-sem-report</td><td>✅ N msgs via burner; kill-switch testado; opt-out honrado; <strong>zero uso do oficial</strong></td><td>F0(a)+F3</td></tr>
+</table>
+<p><strong>Regra de ouro:</strong> F1/F2/F3 são operacionais e buildáveis; <strong>F4 e a mudança de finalidade são constitucionais</strong> — só param na sua palavra direta.</p>
+
+<h2>7 · MVP mínimo</h2>
+<div class="callout">
+  <p><span class="tag provavel">PROVÁVEL</span> <strong>O MVP honesto NÃO é "blast nos 1.497".</strong> Dado o gate de finalidade + a via-limpa ratificada, o mínimo defensável é:</p>
+  <ol>
+    <li><strong>Opt-out runtime + accountability log</strong> (F1) — segurança necessária de qualquer forma; fecha o buraco do "opt-out só no re-import".</li>
+    <li><strong>Persona BDR draft + roteador</strong> (F2) — artefato inerte, sem risco.</li>
+    <li><strong><code>platform-manual-outreach</code> em DRY-RUN</strong> (F3) — plumbing pronto e dormente; prova segment-gate+optout <strong>sem enviar nada</strong>.</li>
+    <li><strong>Doc de decisão de finalidade/LIA</strong> (F0) — o único item que destrava o envio real.</li>
+  </ol>
+  <p><strong>Só se você ratificar (a):</strong> piloto na semente limpa de 26 seeds via burner com warm-up, medindo custo-por-opt-in — espelhando a disciplina do piloto R$500 (D6). Semente limpa &gt; volume (D7). Fica <strong>um único botão</strong> (sua ratificação) entre o dormente e o piloto.</p>
+</div>
+
+<h2>8 · Riscos e recomendação final</h2>
+<ul>
+  <li><span class="tag certo">CERTO</span> Disparar frio aos 1.497 hoje = ban de número + exposição de finalidade (audiencia_ads≠contato) + opt-out não-honrado em runtime. Três falhas simultâneas.</li>
+  <li><span class="tag provavel">PROVÁVEL</span> A via-limpa (b) entrega o mesmo objetivo (clientes novos) sem reabrir o gate: os 4.006 são ouro <strong>como targeting</strong>, não como lista de discagem.</li>
+  <li><strong>Recomendação:</strong> construir F1–F3 + o doc F0. <strong>Não</strong> disparar frio sem sua ratificação de finalidade. Se ratificar, pilotar só na semente limpa.</li>
+</ul>
+<blockquote><strong>Discordância estruturada:</strong> se o pedido implícito era "monta o blast pros 1.497 e manda ver", eu discordo — o risco é ban + exposição LGPD numa frente onde você é o advogado e já cravou a via-limpa. <em>O que eu faria:</em> F1–F3 dormentes + a decisão de finalidade na sua mão. Se você tem informação nova (ex.: já decidiu que o contato direto B2B é defensável e quer assumir o risco), me diga e eu priorizo a F4.</blockquote>
+
+<div class="footer">
+  Blueprint READ-ONLY · nenhum código, migration ou registro alterado · pareado com <code>LDR-BDR-OUTBOUND-BLUEPRINT-2026-07-15.md</code> · NexvyBeauty 2026-07-15
+</div>
+</body>
+</html>

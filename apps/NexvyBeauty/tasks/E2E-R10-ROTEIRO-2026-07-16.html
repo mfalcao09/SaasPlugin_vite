@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E2E R$10 — Roteiro de Teste Real (NexvyBeauty)</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#111722; --card:#161b22; --card2:#1c2330;
+    --border:#26303d; --border2:#30404f;
+    --text:#e6edf3; --muted:#9aa7b4; --dim:#7d8895;
+    --accent:#f5a6c8; --accent2:#c084fc; --cyan:#56d4dd;
+    --green:#3fb950; --red:#f85149; --amber:#e3b341;
+    --code-bg:#0b0f16; --mono:"SF Mono", SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:linear-gradient(160deg,#0d1117 0%,#0f1420 100%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.65; font-size:15.5px;
+    padding:0 0 80px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px;}
+  header.hero{
+    background:linear-gradient(135deg,#1a1030 0%,#231328 55%,#2a1420 100%);
+    border-bottom:1px solid var(--border2);
+    padding:40px 0 30px; margin-bottom:34px;
+  }
+  header.hero .wrap{padding-top:0;}
+  h1{font-size:29px; margin:0 0 6px; letter-spacing:-.4px;
+     background:linear-gradient(90deg,#f5a6c8,#c084fc); -webkit-background-clip:text;
+     background-clip:text; -webkit-text-fill-color:transparent;}
+  .sub{color:var(--muted); font-size:14px; margin:2px 0;}
+  .sub code{color:var(--cyan);}
+  .pill{display:inline-block; background:#2a1a35; border:1px solid #4a2a5c; color:#e9c9f5;
+        border-radius:999px; padding:2px 11px; font-size:12.5px; margin:8px 6px 0 0;}
+  h2{font-size:22px; margin:44px 0 14px; padding-bottom:8px; border-bottom:1px solid var(--border);
+     letter-spacing:-.3px;}
+  h2 .n{color:var(--accent2); font-weight:700; margin-right:8px;}
+  h3{font-size:16.5px; margin:26px 0 8px; color:#dfe7ef;}
+  p{margin:9px 0;}
+  a{color:var(--cyan);}
+  ul,ol{margin:8px 0; padding-left:22px;}
+  li{margin:4px 0;}
+  strong{color:#fff;}
+  code{font-family:var(--mono); font-size:13px; background:#1e2632; color:#f0b8d4;
+       padding:1.5px 6px; border-radius:5px; border:1px solid #2a3543;}
+  pre{background:var(--code-bg); border:1px solid var(--border2); border-radius:10px;
+      padding:14px 16px; overflow-x:auto; margin:12px 0;}
+  pre code{background:none; border:none; color:#c9d5e0; padding:0; font-size:13px; line-height:1.55;}
+  blockquote{border-left:3px solid var(--accent2); background:#171226;
+     margin:14px 0; padding:10px 16px; border-radius:0 8px 8px 0; color:#d3c4e0;}
+  blockquote.warn{border-left-color:var(--amber); background:#221c10; color:#ecd9a6;}
+  blockquote strong{color:#fff;}
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px; display:block; overflow-x:auto;}
+  th,td{border:1px solid var(--border2); padding:9px 12px; text-align:left; vertical-align:top;}
+  th{background:#1d2531; color:#eaf0f6; font-weight:600;}
+  tr:nth-child(even) td{background:#141a24;}
+  .step-card{background:var(--card); border:1px solid var(--border); border-radius:12px;
+     padding:4px 20px 16px; margin:16px 0;}
+  .pf{font-weight:600;}
+  .pass{color:var(--green);} .fail{color:var(--red);}
+  .mapbox pre{background:#0a0e15; border-color:#233; font-size:12.5px; line-height:1.5;}
+  .checklist{background:var(--card2); border:1px solid var(--border2); border-radius:12px; padding:10px 22px;}
+  .checklist h4{color:var(--accent); margin:16px 0 4px; font-size:14px; text-transform:uppercase; letter-spacing:.5px;}
+  .checklist ul{list-style:none; padding-left:2px;}
+  .checklist li{margin:5px 0;}
+  .checklist li::before{content:"☐"; color:var(--cyan); margin-right:9px; font-size:15px;}
+  .risk-major td:first-child{color:var(--red); font-weight:700;}
+  .foot{margin-top:40px; padding-top:18px; border-top:1px solid var(--border); color:var(--dim); font-size:13px;}
+  .foot code{font-size:12px;}
+  .tag-no{color:var(--red); font-weight:600;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>E2E R$10 — Roteiro de Teste Real</h1>
+    <div class="sub">Provar a cadeia completa <strong>compra → webhook → provisionamento → onboarding → automação</strong> com um pagamento REAL de R$10.</div>
+    <div class="sub">Data: <strong>2026-07-16</strong> · Supabase: <code>fzhlbwhdejumkyqosuvq</code> · Front: <code>gestao.nexvy.tech</code></div>
+    <div class="sub">Plano: <strong>Teste E2E</strong> (slug <code>teste</code>, R$10) · Checkout: <code>https://pay.cakto.com.br/34h7jqp</code></div>
+    <span class="pill">Origem: "dispare um subagente para construir o roteiro do E2E"</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2><span class="n">0.</span>Critério de sucesso global</h2>
+  <p>O teste <strong>passa</strong> quando, após o pagamento real de R$10, TODAS estas afirmações forem verdadeiras:</p>
+  <ol>
+    <li>Existe <strong>1 linha</strong> em <code>cakto_orders</code> (scope <code>platform</code>) com <code>status='paid'</code> e <code>amount=10</code>.</li>
+    <li>Existe <strong>1 organização</strong> com <code>plan_status='active'</code>, <code>plan_id</code> = plano <code>teste</code>, <code>enabled_modules</code> com os 3 módulos.</li>
+    <li>Existe <strong>1 linha</strong> em <code>billing_history</code> com <code>amount = 10</code> (exatamente — não 1000) e <code>status='paid'</code>.</li>
+    <li>Existe <strong>1 usuário admin</strong> (auth + <code>profiles</code> + <code>user_roles.role='admin'</code>) para o e-mail comprador.</li>
+    <li>A org nasceu <strong>operacional</strong>: catálogo de serviços + <strong>4 regras</strong> de automação <code>enabled=true</code> + agenda do Radar.</li>
+    <li>O e-mail <code>welcome-admin-access</code> foi <strong>registrado</strong> em <code>email_send_log</code> (enviado de fato só se <code>EMAIL_SEND_ENABLED=true</code>).</li>
+    <li>Ao final, a org de teste é <strong>apagada</strong> e o banco volta ao estado anterior.</li>
+  </ol>
+  <blockquote class="warn"><strong>⚠️ É uma cobrança REAL de R$10</strong> no cartão/PIX usado. O estorno é manual pela Cakto. Use um <strong>e-mail que você controla</strong> e, de preferência, <strong>sem org demo pré-existente</strong> nesse e-mail/telefone (senão o fluxo PROMOVE a demo em vez de criar org nova — ver Risco R5).</blockquote>
+
+  <h2>Mapa da cadeia <span style="font-size:14px;color:var(--dim);font-weight:400;">(o que o código realmente faz)</span></h2>
+  <div class="mapbox">
+<pre><code>[Comprador paga R$10]  →  https://pay.cakto.com.br/34h7jqp
+        │
+        ▼
+[Cakto dispara webhook]  →  edge  cakto-webhook  (?scope=platform, ?secret=&lt;webhook_secret&gt;)
+        │   valida cred (cakto_credentials.scope='platform') + webhook_secret
+        │   upsert em cakto_orders  (mapCaktoOrderForUpsert)
+        ▼
+[provisionFromOrder]  (_shared/cakto-plan-provisioning.ts)
+        │   gate: status ∈ {paid, approved}
+        │   resolve plano por cakto_offer_slug='34h7jqp' → fallback cakto_product_id
+        │   cria/acha organizations por cakto_customer_email  (ou PROMOVE org demo)
+        │   organizations.plan_status='active', plan_id, enabled_modules, demo_expires_at=null
+        │   billing_history (amount=10, status='paid', metadata.cakto_id)  ← idempotente
+        │   ensureAdminUser → auth user + profiles + user_roles(admin) + email welcome
+        │   [se org_created||promoted] seedSalonDataForNewOrg:
+        │        servico_catalogo(10) · salon_automation_rules(4, enabled=TRUE) · opportunity_scan_schedules(Radar)
+        ▼
+[Onboarding]  welcome-admin-access → send-transactional-email → fila transactional_emails
+        │        process-email-queue drena (envia via Resend só se EMAIL_SEND_ENABLED=true)
+        │   Wizard de implantação (apply-onboarding, 9 passos) é SEPARADO — o admin roda depois de logar.
+        ▼
+[Automação]  salon-automation-run consome as 4 regras salon_automation_rules (já enabled=TRUE)</code></pre>
+  </div>
+  <p><strong>Fatos do código que mudam o teste:</strong></p>
+  <ul>
+    <li><strong>Provisionamento só ocorre no <code>scope=platform</code>.</strong> Tag-automations, agente de recuperação (<code>cakto-recovery-trigger</code>) e resolução de lead <strong>só rodam em <code>scope=organization</code></strong> → não procure por eles neste teste.</li>
+    <li>O e-mail welcome é <strong>sempre enfileirado</strong> (<code>email_send_log.status='pending'</code>), mas só <strong>sai</strong> via Resend se <code>EMAIL_SEND_ENABLED=true</code> (senão fica <code>dry_run</code>).</li>
+    <li>As 4 receitas de automação nascem <strong><code>enabled=TRUE</code></strong> (decisão P9/CART 2026-07-15) — não dependem de flag.</li>
+    <li><code>billing_history.amount</code> recebe <code>order.amount</code> <strong>como veio da Cakto</strong>. O código assume <strong>reais</strong> (10), não centavos. Se vier 1000, é bug de unidade (Risco R6).</li>
+  </ul>
+
+  <h2><span class="n">1.</span>PRE-FLIGHT <span style="font-size:14px;color:var(--dim);font-weight:400;">(antes de pagar)</span></h2>
+
+  <div class="step-card">
+    <h3>1.1 — O checkout cobra mesmo R$10?</h3>
+    <ul>
+      <li><strong>Ação:</strong> abrir <code>https://pay.cakto.com.br/34h7jqp</code> no navegador (Chrome real).</li>
+      <li><strong>Esperado:</strong> página de pagamento da Cakto exibindo <strong>R$ 10,00</strong>.</li>
+      <li><strong>Verificar:</strong> olho no valor na tela (lado-Cakto; o código não controla o preço cobrado).</li>
+      <li class="pf"><span class="pass">✅</span> mostra R$ 10,00 · <span class="fail">❌</span> outro valor → <strong>PARE</strong> (oferta 34h7jqp não está em R$10).</li>
+    </ul>
+  </div>
+
+  <div class="step-card">
+    <h3>1.2 — O plano <code>teste</code> está mapeado e resolve o slug?</h3>
+    <p><strong>Ação:</strong> SQL (read-only) no SQL Editor:</p>
+<pre><code>select id, name, slug, price_monthly, is_public, is_active,
+       cakto_offer_slug, cakto_product_id
+from platform_plans
+where slug = 'teste';</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> 1 linha · <code>price_monthly=10</code> · <code>cakto_offer_slug='34h7jqp'</code> · <code>cakto_product_id='71a6060b-8816-4f31-9bfc-8eac07d3f84c'</code> · <code>is_active=true</code> · <code>is_public=false</code>.</li>
+      <li class="pf"><span class="pass">✅</span> <code>cakto_offer_slug='34h7jqp'</code> presente (é por ele que <code>resolvePlatformPlan</code> acha o plano) · <span class="fail">❌</span> slug vazio → fallback por <code>cakto_product_id</code> ou falha "plan not found".</li>
+    </ul>
+  </div>
+
+  <div class="step-card">
+    <h3>1.3 — O segredo do webhook confere? <span style="font-size:13px;color:var(--dim);">(a "assinatura" da Cakto)</span></h3>
+    <blockquote>A Cakto <strong>não</strong> manda HMAC. A autenticação é um <strong>segredo compartilhado</strong> enviado na URL (<code>?secret=…</code>) ou no header <code>x-cakto-secret</code>, comparado a <code>cakto_credentials.webhook_secret</code>.</blockquote>
+<pre><code>select scope, organization_id,
+       (webhook_secret is not null and webhook_secret &lt;&gt; '') as tem_secret
+from cakto_credentials
+where scope = 'platform';</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> 1 linha, <code>scope='platform'</code>. Se <code>tem_secret=true</code>, a URL do webhook no painel Cakto <strong>precisa</strong> conter o mesmo <code>?secret=…</code>. Se <code>false</code>, aceita qualquer chamador.</li>
+      <li><strong>Verificar (lado Cakto):</strong> URL deve ser <code>…/functions/v1/cakto-webhook?scope=platform&amp;secret=&lt;valor&gt;</code>.</li>
+      <li class="pf"><span class="pass">✅</span> segredo do painel == banco (ou <code>tem_secret=false</code>) · <span class="fail">❌</span> divergente → webhook retorna <strong>401</strong> + alerta Telegram (venda paga <strong>sem</strong> provisionar).</li>
+    </ul>
+  </div>
+
+  <div class="step-card">
+    <h3>1.4 — O webhook está acessível SEM JWT?</h3>
+    <blockquote class="warn"><code>cakto-webhook</code> <strong>não</strong> está em <code>supabase/config.toml</code>; depende de ter sido deployado com <code>--no-verify-jwt</code>. Um redeploy sem a flag faz o gateway rejeitar TODA chamada Cakto com 401 <strong>antes</strong> do código (nenhum alerta — o código nem executa).</blockquote>
+<pre><code>curl -i -X POST "https://fzhlbwhdejumkyqosuvq.supabase.co/functions/v1/cakto-webhook?scope=platform" \
+  -H "Content-Type: application/json" -d '{}'</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> resposta do <strong>código</strong> — <code>404 {"error":"credentials not found"}</code> ou <code>400 {"error":"invalid payload"}</code> ou <code>401 {"error":"invalid secret"}</code>.</li>
+      <li class="pf"><span class="pass">✅</span> qualquer uma dessas (o código rodou) · <span class="fail">❌</span> <code>401 {"message":"Missing authorization header"}</code> (gateway) → <strong>PARE e redeploye</strong> com <code>--no-verify-jwt</code>.</li>
+    </ul>
+  </div>
+
+  <div class="step-card">
+    <h3>1.5 — Flags: o que precisa estar ON/OFF?</h3>
+    <table>
+      <tr><th>Flag (env da edge)</th><th>Estado p/ o teste</th><th>Efeito</th><th>Bloqueia a cadeia?</th></tr>
+      <tr><td><code>EMAIL_SEND_ENABLED</code></td><td><strong>ON</strong> p/ receber o welcome; OFF = só <code>dry_run</code></td><td>Envia (ou não) o welcome via Resend</td><td class="tag-no">Não — provisiona igual</td></tr>
+      <tr><td><code>ONBOARDING_HANDOFF_ENABLED</code></td><td>irrelevante (default OFF)</td><td>OFF → sem handoff Duda→Lia; WhatsApp genérico</td><td class="tag-no">Não</td></tr>
+      <tr><td>Automação (<code>salon_automation_rules</code>)</td><td>N/A</td><td>4 receitas nascem <code>enabled=TRUE</code> por código</td><td class="tag-no">Não</td></tr>
+    </table>
+    <ul>
+      <li><strong>Ação:</strong> confirmar <code>EMAIL_SEND_ENABLED</code> nas envs (Edge Functions → Secrets).</li>
+      <li class="pf">Decisão consciente — anote o valor. Se OFF, o passo 5.2 valida por <code>dry_run</code>.</li>
+    </ul>
+  </div>
+
+  <div class="step-card">
+    <h3>1.6 — Snapshot "antes" (para provar o delta)</h3>
+<pre><code>select
+  (select count(*) from organizations)  as orgs,
+  (select count(*) from cakto_orders)    as orders,
+  (select count(*) from billing_history) as billings;</code></pre>
+    <p class="pf">Anote os 3 números. No cleanup (passo 7) eles devem voltar iguais.</p>
+  </div>
+
+  <h2><span class="n">2.</span>PAGAMENTO <span style="font-size:14px;color:var(--dim);font-weight:400;">(R$10 real)</span></h2>
+  <div class="step-card">
+    <ul>
+      <li><strong>Ação:</strong> no checkout <code>34h7jqp</code>, pagar <strong>R$10</strong> com: <strong>e-mail que você controla</strong> (<code>&lt;EMAIL_TESTE&gt;</code>), <strong>telefone/nome reais</strong> (<code>&lt;FONE_TESTE&gt;</code>). PIX aprova em segundos.</li>
+      <li><strong>Esperado:</strong> Cakto confirma o pagamento e dispara o webhook <code>paid</code>.</li>
+      <li><strong>Verificar:</strong> tela de "pagamento aprovado" + e-mail de recibo da Cakto.</li>
+      <li class="pf"><span class="pass">✅</span> Cakto confirma aprovação · <span class="fail">❌</span> pendente/recusado → aguarde ou refaça.</li>
+    </ul>
+    <blockquote>Com PIX o status vira <code>paid</code> na hora. Com cartão pode haver análise. O provisionamento <strong>só</strong> ocorre em <code>status ∈ {paid, approved}</code>.</blockquote>
+  </div>
+
+  <h2><span class="n">3.</span>RECEBIMENTO DO WEBHOOK</h2>
+  <div class="step-card">
+    <h3>3.1 — O log da edge registrou a chamada?</h3>
+    <ul>
+      <li><strong>Ação:</strong> Dashboard → Edge Functions → <code>cakto-webhook</code> → Logs (ou MCP <code>get_logs</code>).</li>
+      <li><strong>Esperado:</strong> <code>provisioning result {...}</code> com <code>ok:true</code>/<code>org_created</code>. <strong>Sem</strong> 🚨 de segredo/plano.</li>
+      <li class="pf"><span class="pass">✅</span> log presente · <span class="fail">❌</span> <code>invalid secret</code> (401) → 1.3 · <span class="fail">❌</span> nenhum log → 1.4.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>3.2 — A ordem foi persistida?</h3>
+<pre><code>select scope, cakto_id, status, amount, customer_email, customer_phone,
+       cakto_offer_slug, product_cakto_id, created_at
+from cakto_orders
+where scope = 'platform'
+  and lower(customer_email) = lower('&lt;EMAIL_TESTE&gt;')
+order by created_at desc
+limit 1;</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> 1 linha · <code>status='paid'</code> · <strong><code>amount=10</code></strong> · <code>cakto_offer_slug='34h7jqp'</code>.</li>
+      <li class="pf"><span class="pass">✅</span> <code>amount=10</code> e <code>status='paid'</code> · <span class="fail">❌</span> <code>amount=1000</code> → bug de unidade (R6) · <span class="fail">❌</span> sem linha → webhook não chegou (1.3/1.4).</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">4.</span>PROVISIONAMENTO</h2>
+  <div class="step-card">
+    <h3>4.1 — A organização foi criada e ativada?</h3>
+<pre><code>select id, name, email, cakto_customer_email, slug,
+       plan_id, plan_status, plan_activated_at, enabled_modules,
+       demo_expires_at, cakto_subscription_id
+from organizations
+where lower(cakto_customer_email) = lower('&lt;EMAIL_TESTE&gt;')
+order by created_at desc
+limit 1;</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> <code>plan_status='active'</code> · <code>plan_id</code>=plano <code>teste</code> · <code>plan_activated_at</code> preenchido · <code>enabled_modules={erp_salao, crm_vendas, atendimento}</code> · <code>demo_expires_at=null</code> · <code>slug</code> não-nulo.</li>
+      <li class="pf"><span class="pass">✅</span> todos os campos · <span class="fail">❌</span> <code>plan_status</code>≠active ou <code>plan_id</code> nulo → "plan not found" (1.2).</li>
+      <li><strong>Anote o <code>id</code> como <code>&lt;ORG_ID&gt;</code></strong> — usado em todos os passos seguintes e no cleanup.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>4.2 — O plano bateu certo (join)?</h3>
+<pre><code>select o.id as org_id, o.plan_status, p.slug as plano_slug, p.price_monthly
+from organizations o
+join platform_plans p on p.id = o.plan_id
+where o.id = '&lt;ORG_ID&gt;';</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> <code>plano_slug='teste'</code>, <code>price_monthly=10</code>, <code>plan_status='active'</code>.</li>
+      <li class="pf"><span class="pass">✅</span> casa no plano <code>teste</code> · <span class="fail">❌</span> outro plano → mapeamento de slug/product errado.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>4.3 — O billing registrou R$10?</h3>
+<pre><code>select amount, status, description, payment_date,
+       metadata-&gt;&gt;'cakto_id' as cakto_id,
+       metadata-&gt;&gt;'cakto_offer_slug' as offer_slug
+from billing_history
+where organization_id = '&lt;ORG_ID&gt;'
+order by payment_date desc
+limit 1;</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> <strong><code>amount=10</code></strong> (exato) · <code>status='paid'</code> · <code>description</code> ~ <code>Plano Teste E2E — Cakto</code> · <code>cakto_id</code> = o do 3.2 · <code>offer_slug='34h7jqp'</code>.</li>
+      <li class="pf"><span class="pass">✅</span> <code>amount=10</code> e <code>status='paid'</code> · <span class="fail">❌</span> <code>amount=1000</code> → R6 · <span class="fail">❌</span> sem linha → billing falhou (log 3.1).</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>4.4 — O usuário admin existe (auth + profile + role)?</h3>
+<pre><code>select pr.id as user_id, pr.email, pr.organization_id, pr.is_active, ur.role
+from profiles pr
+left join user_roles ur on ur.user_id = pr.id and ur.role = 'admin'
+where pr.organization_id = '&lt;ORG_ID&gt;';</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> 1 linha · <code>email=&lt;EMAIL_TESTE&gt;</code> · <code>organization_id=&lt;ORG_ID&gt;</code> · <code>is_active=true</code> · <code>role='admin'</code>.</li>
+      <li class="pf"><span class="pass">✅</span> profile com <code>role='admin'</code> · <span class="fail">❌</span> sem role → <code>ensureAdminUser</code> falhou (ver <code>errors</code> no log 3.1).</li>
+      <li><strong>Anote <code>user_id</code> como <code>&lt;USER_ID&gt;</code>.</strong></li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>4.5 — Módulos habilitados (reforço) · 4.6 — UI super-admin</h3>
+<pre><code>select enabled_modules from organizations where id = '&lt;ORG_ID&gt;';</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> array com <code>erp_salao</code>, <code>crm_vendas</code>, <code>atendimento</code>.</li>
+      <li><strong>4.6 (UI):</strong> logar como super-admin em <code>gestao.nexvy.tech</code> → Empresas → a org <code>&lt;EMAIL_TESTE&gt;</code> aparece <strong>ativa</strong>, plano <code>Teste E2E</code>.</li>
+      <li class="pf"><span class="pass">✅</span> 3 módulos + org visível ativa · <span class="fail">❌</span> ausente/diferente → investigar.</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">5.</span>ONBOARDING</h2>
+  <div class="step-card">
+    <h3>5.1 — O e-mail welcome foi registrado?</h3>
+<pre><code>select message_id, template_name, recipient_email, status, created_at
+from email_send_log
+where lower(recipient_email) = lower('&lt;EMAIL_TESTE&gt;')
+order by created_at desc
+limit 3;</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> linha com <code>template_name='welcome-admin-access'</code>. <code>status</code>: <code>pending</code>→<code>sent</code> (se flag ON) · <code>dry_run</code> (se flag OFF) · <code>suppressed</code> (e-mail na lista de supressão).</li>
+      <li class="pf"><span class="pass">✅</span> existe linha <code>welcome-admin-access</code> · <span class="fail">❌</span> ausente → <code>ensureAdminUser</code> não chamou o e-mail (log 3.1).</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>5.2 — O e-mail chegou? <span style="font-size:13px;color:var(--dim);">(só se <code>EMAIL_SEND_ENABLED=true</code>)</span></h3>
+    <ul>
+      <li><strong>Ação:</strong> abrir a inbox de <code>&lt;EMAIL_TESTE&gt;</code>. Esperado: "Acesse sua conta NexvyBeauty" com <strong>link de recuperação</strong> (define a senha do admin).</li>
+      <li><strong>Se flag OFF:</strong> pule — a prova é <code>status='dry_run'</code> no 5.1 (esperado e correto).</li>
+      <li class="pf"><span class="pass">✅</span> inbox recebeu (ON) ou <code>dry_run</code> (OFF) · <span class="fail">❌</span> flag ON e nada → checar Resend/SPF/DKIM.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>5.3 — (Opcional) Login e wizard de implantação</h3>
+    <blockquote>O <strong>wizard de 9 passos</strong> (<code>apply-onboarding</code> / <code>ImplantacaoWizard</code>) <strong>não</strong> é disparado pela compra — é o admin quem roda depois de logar. Testá-lo é opcional para o E2E de compra→provisionamento.</blockquote>
+    <ul>
+      <li class="pf"><span class="pass">✅</span> wizard salva sem erro · <span class="fail">❌</span> erro → escopo de bug do wizard (fora do núcleo).</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">6.</span>AUTOMAÇÃO</h2>
+  <div class="step-card">
+    <h3>6.1 — As 4 receitas nasceram ligadas?</h3>
+<pre><code>select tipo, enabled, antecedencia_dias
+from salon_automation_rules
+where organization_id = '&lt;ORG_ID&gt;'
+order by tipo;</code></pre>
+    <ul>
+      <li><strong>Esperado:</strong> <strong>4 linhas</strong> — <code>aniversario</code>(0) · <code>pacote_vencendo</code>(3) · <code>agendamento_24h</code>(1) · <code>retorno_inativo</code>(45) — todas <strong><code>enabled=true</code></strong>.</li>
+      <li class="pf"><span class="pass">✅</span> 4 regras <code>enabled=true</code> · <span class="fail">❌</span> &lt;4 ou alguma <code>false</code> → <code>seedSalonDataForNewOrg</code> falhou parcial (log 3.1).</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>6.2 — Catálogo de serviços · 6.3 — Agenda do Radar</h3>
+<pre><code>select count(*) as servicos from servico_catalogo where organization_id = '&lt;ORG_ID&gt;';
+-- (servico_catalogo é VIEW sobre products tipo='servico')
+
+select name, cron_expression, is_active
+from opportunity_scan_schedules
+where organization_id = '&lt;ORG_ID&gt;';</code></pre>
+    <ul>
+      <li><strong>Esperado (6.2):</strong> <strong>10</strong> serviços (Corte, Escova, Coloração, Manicure, …).</li>
+      <li><strong>Esperado (6.3):</strong> 1 linha · <code>name='Radar Automático'</code> · <code>cron_expression='0 8 * * *'</code> · <code>is_active=true</code>.</li>
+      <li class="pf"><span class="pass">✅</span> 10 serviços + agenda presente · <span class="fail">❌</span> 0/ausente → seed falhou (best-effort, mas é FAIL do teste).</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">7.</span>CLEANUP <span style="font-size:14px;color:var(--dim);font-weight:400;">(apagar a org de teste)</span></h2>
+  <blockquote class="warn"><strong>⚠️</strong> A org de teste é <strong>PAGA</strong> (<code>plan_status='active'</code>), então <strong><code>wipe-demo-org</code> NÃO serve</strong> — o guard exige <code>plan_status='demo'</code> e retorna <strong>403 <code>not_a_demo_org</code></strong>. Use <code>delete-organization</code>.</blockquote>
+
+  <div class="step-card">
+    <h3>7.1 — Caminho limpo: edge <code>delete-organization</code> (via UI super-admin)</h3>
+    <ul>
+      <li><strong>Ação:</strong> em <code>gestao.nexvy.tech</code>, logado como <strong>super-admin</strong>, abrir a org → <strong>Excluir empresa</strong> (dispara <code>delete-organization</code> via <code>useDeleteOrganization</code>).</li>
+      <li><strong>O que faz:</strong> valida <code>is_super_admin</code> → deleta usuários da org no Auth (cascata limpa <code>profiles</code>/<code>user_roles</code>) → <code>DELETE</code> em <code>organizations</code> (cascata FK: <code>billing_history</code>, <code>salon_automation_rules</code>, <code>opportunity_scan_schedules</code>, <code>servico_catalogo</code>/products…) → grava <code>platform_audit_logs</code>.</li>
+      <li class="pf"><span class="pass">✅</span> retorno <code>{ok:true}</code> e a org some da lista.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>7.2 — Verificar que a org sumiu</h3>
+<pre><code>select count(*) as ainda_existe    from organizations         where id = '&lt;ORG_ID&gt;';
+select count(*) as billing_restante from billing_history       where organization_id = '&lt;ORG_ID&gt;';
+select count(*) as regras_restantes from salon_automation_rules where organization_id = '&lt;ORG_ID&gt;';</code></pre>
+    <p class="pf"><span class="pass">✅</span> os três = <strong>0</strong> · <span class="fail">❌</span> &gt;0 → cascata não cobriu (ver 7.4).</p>
+  </div>
+  <div class="step-card">
+    <h3>7.3 — Resíduos que NÃO cascateiam (limpar à mão)</h3>
+    <ul>
+      <li><strong><code>cakto_orders</code> (scope <code>platform</code>)</strong> — <code>organization_id=NULL</code> no escopo platform → não cascateia:</li>
+    </ul>
+<pre><code>-- Confirme antes com SELECT; execute o DELETE só após conferir o cakto_id.
+delete from cakto_orders
+where scope = 'platform'
+  and lower(customer_email) = lower('&lt;EMAIL_TESTE&gt;')
+  and cakto_id = '&lt;CAKTO_ID_DO_PASSO_3.2&gt;';</code></pre>
+    <ul>
+      <li><strong>Usuário no Auth</strong> — se for reusar o e-mail, confirme <code>select count(*) from profiles where lower(email)=lower('&lt;EMAIL_TESTE&gt;')</code> = 0; usuário órfão remove pelo Dashboard → Authentication → Users.</li>
+      <li><strong>Logs de e-mail</strong> (<code>email_send_log</code>, <code>email_unsubscribe_tokens</code>, <code>suppressed_emails</code>) — não cascateiam; inofensivos, mas se reusar o e-mail e ele tiver caído em <code>suppressed_emails</code>, remova essa linha (senão o próximo welcome é suprimido).</li>
+      <li><strong><code>platform_audit_logs</code></strong> — a linha "Empresa excluída permanentemente" fica <strong>de propósito</strong> (auditoria). Não apague.</li>
+    </ul>
+  </div>
+  <div class="step-card">
+    <h3>7.4 — Fallback manual (se a edge falhar) · 7.5 — Reconciliar · 7.6 — Estorno</h3>
+    <blockquote class="warn">Só se <code>delete-organization</code> não estiver disponível. <strong>NÃO</strong> rode em produção sem conferir o <code>&lt;ORG_ID&gt;</code> duas vezes.</blockquote>
+<pre><code>delete from organizations where id = '&lt;ORG_ID&gt;';  -- cascata FK; depois limpe cakto_orders (7.3) + Auth</code></pre>
+    <ul>
+      <li><strong>7.5:</strong> repetir o SELECT do 1.6 → <code>orgs</code>/<code>orders</code>/<code>billings</code> devem bater com o "antes".</li>
+      <li><strong>7.6:</strong> no painel da <strong>Cakto</strong>, estornar o pedido de R$10 (o dinheiro é real).</li>
+    </ul>
+  </div>
+
+  <h2><span class="n">8.</span>RISCOS &amp; GOTCHAS</h2>
+  <table>
+    <tr><th>#</th><th>Risco / Gotcha</th><th>Impacto</th><th>Mitigação</th></tr>
+    <tr class="risk-major"><td>R1 (MAIOR)</td><td><strong>Vazamento do plano R$10 na vitrine pública.</strong> A view <code>public_plans</code> filtra <code>WHERE is_active=true</code> (migration <code>20260704_public_plans_view.sql</code>), <strong>não</strong> <code>is_public</code>. O plano <code>teste</code> é <code>is_active=true, is_public=false</code> → entra na saída da view anônima. A LP só o esconde por um <code>.filter(p=&gt;p.is_public)</code> no React (<code>SalesPage.tsx:187</code>). Ler a view direto (ou esquecer o filtro) expõe o checkout de R$10.</td><td>Cliente real pode comprar por R$10; teste "vaza" ao público.</td><td>Depois do teste, considere <code>is_active=false</code> no plano <code>teste</code> (ou corrigir a view p/ <code>is_public</code>).</td></tr>
+    <tr><td>R2</td><td><strong>É cobrança REAL.</strong> R$10 saem de verdade.</td><td>Custo + estorno manual.</td><td>Passo 7.6.</td></tr>
+    <tr><td>R3</td><td><strong>Segredo do webhook divergente.</strong> <code>webhook_secret</code> ≠ <code>?secret=</code> do painel → 401, venda paga não provisiona (só alerta).</td><td>Cliente paga e não recebe acesso.</td><td>Passo 1.3 antes de pagar.</td></tr>
+    <tr><td>R4</td><td><strong><code>cakto-webhook</code> sem <code>--no-verify-jwt</code>.</strong> Não está em <code>config.toml</code>; redeploy sem a flag faz o gateway rejeitar tudo com 401 antes do código (sem alerta).</td><td>Todas as vendas param silenciosamente.</td><td>Passo 1.4 (curl sem JWT → erro do código).</td></tr>
+    <tr><td>R5</td><td><strong>Promoção de demo em vez de org nova.</strong> Se o e-mail/telefone já tiverem org <code>plan_status='demo'</code>, o provisioning promove a demo in-place (<code>promoted=true</code>).</td><td>Teste mede promoção, não criação.</td><td>E-mail/telefone sem demo prévia, ou espere <code>promoted</code>.</td></tr>
+    <tr><td>R6</td><td><strong>Unidade do <code>amount</code>.</strong> Código assume reais; se a Cakto mandar centavos (1000), <code>isUnderpaid</code> não flagra e o billing grava 1000.</td><td>Billing 100× errado, sem alerta.</td><td>3.2 e 4.3 exigem <code>amount=10</code> exato (FAIL se 1000).</td></tr>
+    <tr><td>R7</td><td><strong><code>EMAIL_SEND_ENABLED=OFF</code>.</strong> Welcome não sai (<code>dry_run</code>).</td><td>Sem link de senha por e-mail.</td><td>Ligar a flag, ou validar por <code>dry_run</code> (5.1) e definir senha via Auth admin.</td></tr>
+    <tr><td>R8</td><td><strong><code>wipe-demo-org</code> não apaga org paga.</strong> Guard <code>plan_status='demo'</code> → 403.</td><td>Cleanup "não funciona" se usar a função errada.</td><td><code>delete-organization</code> (7.1) + resíduos (7.3).</td></tr>
+    <tr><td>R9</td><td><strong>Resíduos sem cascata.</strong> <code>cakto_orders</code> (platform, org_id NULL), logs de e-mail e usuário Auth não somem com o DELETE da org.</td><td>Banco não volta 100%; reuso de e-mail quebra welcome se ficou <code>suppressed</code>.</td><td>Passo 7.3 + reconciliação 7.5.</td></tr>
+  </table>
+
+  <h2><span class="n">9.</span>CHECKLIST FINAL</h2>
+  <div class="checklist">
+    <h4>Pré-voo</h4>
+    <ul>
+      <li>1.1 Checkout <code>34h7jqp</code> mostra <strong>R$ 10,00</strong></li>
+      <li>1.2 <code>platform_plans.slug='teste'</code> com <code>cakto_offer_slug='34h7jqp'</code> e <code>price_monthly=10</code></li>
+      <li>1.3 <code>webhook_secret</code> (platform) confere com o <code>?secret=</code> do painel Cakto (ou <code>tem_secret=false</code>)</li>
+      <li>1.4 <code>curl</code> sem JWT → erro do <strong>código</strong> (404/400/401 do handler), não 401 do gateway</li>
+      <li>1.5 <code>EMAIL_SEND_ENABLED</code> anotado (ON p/ e-mail; OFF p/ <code>dry_run</code>)</li>
+      <li>1.6 Snapshot "antes" anotado (orgs / orders / billings)</li>
+    </ul>
+    <h4>Pagamento &amp; webhook</h4>
+    <ul>
+      <li>2 Pagamento de R$10 aprovado na Cakto (PIX recomendado)</li>
+      <li>3.1 Log da edge <code>cakto-webhook</code> com <code>provisioning result</code> (sem 🚨)</li>
+      <li>3.2 <code>cakto_orders</code>: <code>status='paid'</code>, <strong><code>amount=10</code></strong>, <code>cakto_offer_slug='34h7jqp'</code></li>
+    </ul>
+    <h4>Provisionamento</h4>
+    <ul>
+      <li>4.1 <code>organizations.plan_status='active'</code>, <code>plan_id</code> do <code>teste</code>, <code>enabled_modules</code> (3), <code>demo_expires_at=null</code>, <code>slug</code> ok</li>
+      <li>4.2 Join <code>plan_id → platform_plans.slug='teste'</code></li>
+      <li>4.3 <code>billing_history</code>: <strong><code>amount=10</code></strong>, <code>status='paid'</code>, <code>metadata.cakto_id</code> = o do 3.2</li>
+      <li>4.4 <code>profiles</code> + <code>user_roles.role='admin'</code> para <code>&lt;EMAIL_TESTE&gt;</code></li>
+      <li>4.6 Org aparece <strong>ativa</strong> no super-admin</li>
+    </ul>
+    <h4>Onboarding</h4>
+    <ul>
+      <li>5.1 <code>email_send_log</code> tem <code>welcome-admin-access</code> (<code>pending</code>/<code>sent</code>/<code>dry_run</code>)</li>
+      <li>5.2 E-mail chegou (flag ON) ou <code>dry_run</code> confirmado (flag OFF)</li>
+    </ul>
+    <h4>Automação</h4>
+    <ul>
+      <li>6.1 <code>salon_automation_rules</code>: <strong>4</strong> regras, todas <code>enabled=true</code></li>
+      <li>6.2 <code>servico_catalogo</code>: <strong>10</strong> serviços</li>
+      <li>6.3 <code>opportunity_scan_schedules</code>: <code>Radar Automático</code>, cron <code>0 8 * * *</code></li>
+    </ul>
+    <h4>Cleanup</h4>
+    <ul>
+      <li>7.1 <code>delete-organization</code> executada (super-admin) → <code>{ok:true}</code></li>
+      <li>7.2 Org / billing / regras = <strong>0</strong></li>
+      <li>7.3 Resíduos sem-FK limpos (<code>cakto_orders</code> platform, usuário Auth, <code>suppressed_emails</code> se reuso)</li>
+      <li>7.5 Snapshot bate com o "antes" (1.6)</li>
+      <li>7.6 Estorno dos R$10 solicitado na Cakto</li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    <strong>Apêndice — referências de código (fonte da verdade)</strong>
+    <ul>
+      <li><code>supabase/functions/cakto-webhook/index.ts</code> — recepção, validação de segredo, upsert em <code>cakto_orders</code>, dispatch do provisioning (<code>scope=platform</code>).</li>
+      <li><code>supabase/functions/_shared/cakto-plan-provisioning.ts</code> — <code>provisionFromOrder</code> / <code>provisionPlatformPlan</code> / <code>ensureAdminUser</code> / <code>seedSalonDataForNewOrg</code>.</li>
+      <li><code>supabase/functions/_shared/cakto-client.ts</code> — <code>mapCaktoOrderForUpsert</code>.</li>
+      <li><code>supabase/functions/send-transactional-email/index.ts</code> — enfileira o welcome em <code>transactional_emails</code> + <code>email_send_log</code>.</li>
+      <li><code>supabase/functions/process-email-queue/index.ts</code> — drena a fila; envia via Resend só com <code>EMAIL_SEND_ENABLED=true</code>.</li>
+      <li><code>supabase/functions/delete-organization/index.ts</code> — cleanup da org paga (super-admin; cascata FK).</li>
+      <li><code>supabase/functions/wipe-demo-org/index.ts</code> — <strong>não</strong> usar aqui (guard <code>plan_status='demo'</code>).</li>
+      <li><code>supabase/migrations_salao/20260704_public_plans_view.sql</code> — view <code>public_plans</code> <code>WHERE is_active=true</code> (origem do vazamento R1).</li>
+      <li><code>src/hooks/usePlatformPlans.ts:87</code> — hook interno filtra só <code>is_active</code> (reforça R1).</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -5,6 +5,31 @@
 
 ---
 
+## 🚦 2026-07-17 — LP NO AR + A DISTÂNCIA REAL PRA 100%
+> Checklist tático = [INVENTÁRIO batelada 3](INVENTARIO-PENDENCIAS-GO-LIVE-2026-07-14.md). Assessment VERIFICADO (deploy+flags+DB, 3 verificadores).
+
+**Fechado 07-17:** **LP nova "Clientes de Volta" LIVE no apex** `nexvybeauty.com.br` (substitui a SalesPage) — preço/checkout de `public_plans`, links reais, `/termos` `/privacidade` ligadas, **og:image próprio**. **Área Cofounder** = produto CRM isolado (pipeline próprio + tag + form; lead nasce do Marcelo). Ladder A aplicada + campo admin + de-para na lista. Todos os PRs da maratona mergeados+deployados.
+
+**A DISTÂNCIA REAL PRA COBRAR O 1º CLIENTE = 1 migration + 1 flag + 1 teste:**
+1. **[controladora]** fix R1 (`public_plans` filtrar `is_public` — hoje vaza o Teste R$10 no pricing público).
+2. **[Marcelo]** `EMAIL_SEND_ENABLED=true` (Resend já tem key; senão a credencial não chega ao cliente).
+3. **[controladora+Marcelo]** rodar o **E2E R$10** — a única prova que ainda não existe.
+
+Aquisição (cold/ads/nina) fica **OFF = fast-follow**, fail-safe. **RIPD não bloqueia** o piloto pago (não usa a esteira demo). **Não construir mais nada antes do E2E passar verde** — traga 1-3 salões conhecidos por mão como 1ºs pagantes.
+
+## 🚦 2026-07-16 — ESTADO PÓS-MARATONA + O QUE FALTA
+> Checklist TÁTICO detalhado vive no [INVENTÁRIO batelada 2](INVENTARIO-PENDENCIAS-GO-LIVE-2026-07-14.md) + na foto [ESTADO-GO-LIVE-2026-07-16](ESTADO-GO-LIVE-2026-07-16.md). Aqui = a leitura de FASE (Seção 14: um registro só; não duplico a lista).
+
+**FASE 1 — CORE: essencialmente COMPLETA e construída.** sell→buy→onboard→automate + carteira + retenção + handoff + esteira demo (back+front) + prospecção per-lead + os 3 vetores de aquisição (cold/ads/demo). **Integridade de preço blindada** — #85 mata o link Cakto rançoso na origem (`disabled`), verificado SHIP-READY. Tudo gated, aguardando merge/deploy + ops do Marcelo.
+
+**O QUE FALTA pra ENTREGAR O SOFTWARE PRONTO (não é mais "escrever feature"):** ① **E2E R$10** (gate nº1, runbook 07-16) · ② merge+deploy dos PRs prontos (#85 em voo · #84 cold airtight · #86-88 ads) · ③ LP nova + render "de/por" · ④ Ladder A no banco (450/720/1190) · ⑤ flags de lançamento (`EMAIL_SEND_ENABLED`/`ONBOARDING_HANDOFF_ENABLED`+smokes/duplo-gate cold/`NINA_HEALTH_SCAN`) · ⑥ números (Meta salão-teste/burner/ads) · ⑦ Resend DNS+flag.
+
+**O QUE FALTA pra ENTREGAR TUDO AUTOMATIZADO:** tudo CONSTRUÍDO; ativa por flag/número/secret. Únicos elos que exigem **+código** pra ser 100% automático: **pricing timing** (cron `effective_date` — fast-follow, recomendo manual no lançamento) e **elo final do onboarding pós-compra** (F6 Evolution→carteira + handoff Duda→CS, spec §ONBOARDING). **Nenhum bloqueia o piloto controlado.**
+
+**Corte de lançamento (§Decisões pendentes #2):** recomendação da controladora = **piloto controlado 1-3 salões no CORE** (demo manual), com esteira/retenção/outbound/pricing-cron/ads-management como fast-follow. **Semana, não meses.**
+
+---
+
 ## 📊 PLACAR (atualizado a cada fechamento com prova)
 | Pacote | Status | Prova / Nota |
 |---|---|---|

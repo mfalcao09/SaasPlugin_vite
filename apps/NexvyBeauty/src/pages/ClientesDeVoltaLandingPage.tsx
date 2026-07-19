@@ -256,8 +256,12 @@ function Hero() {
   /* variante rastreável (mutação de DOM direta como no protótipo — sem re-render) */
   useEffect(() => {
     try {
-      const ei = Math.floor(Math.random() * EYEBROWS.length);
-      const hi = Math.floor(Math.random() * HEADS.length);
+      // D2 (2026-07-19): variante CONGELADA na 0 durante o teste A/B de PÚBLICO do
+      // Meta — o sorteio (Math.random) criava uma 2ª variável não-medida que
+      // contaminava o teste e fazia o algoritmo otimizar contra página instável.
+      // Para reativar a rotação: religar o sorteio JUNTO com medição por variante.
+      const ei = 0;
+      const hi = 0;
       if (eyebrowRef.current) eyebrowRef.current.textContent = EYEBROWS[ei];
       const h1 = headlineRef.current;
       if (h1) {
@@ -1522,6 +1526,17 @@ function ChamadaPosPlanos() {
         <p className="fnote rv">
           Suas clientes só percebem uma coisa: o atendimento ficou melhor!
         </p>
+        {/* D4: ponto de maior momentum (pós-preço) terminava SEM saída — o comentário
+            da seção prometia botões que nunca existiram. CTA único, mesmo padrão do hero. */}
+        <div className="hero-ctas rv" style={{ marginTop: 22 }}>
+          <a
+            className="btn btn-rose"
+            href={WHATSAPP_URL}
+            onClick={() => fbqTrack("Lead", { content_name: "pos_planos", content_category: "whatsapp_cta" })}
+          >
+            Quero começar pelo Raio-X grátis
+          </a>
+        </div>
       </div>
     </section>
   );
