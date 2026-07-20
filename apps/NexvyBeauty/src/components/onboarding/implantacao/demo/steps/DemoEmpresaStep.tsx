@@ -5,9 +5,12 @@
 // já existe (save_onboarding_draft_public via useImplantacao).
 
 import type { FC } from 'react';
-import { Store, MessageCircle, Instagram, Tag, DollarSign } from 'lucide-react';
+import { Store, MessageCircle, Instagram, Tag, DollarSign, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -74,7 +77,11 @@ export const DemoEmpresaStep: FC<{
             placeholder="@seuespaco"
           />
         </Field>
-        <Field label="Segmento" icon={Tag}>
+        <Field
+          label="Segmento"
+          icon={Tag}
+          hint="Serve pra gente calibrar o cálculo com a média do seu tipo de atendimento. Se não achar o seu exato, escolhe o mais próximo."
+        >
           <Select value={empresa?.segmento ?? ''} onValueChange={handleSegmento}>
             <SelectTrigger><SelectValue placeholder="Escolha seu segmento" /></SelectTrigger>
             <SelectContent>
@@ -88,7 +95,11 @@ export const DemoEmpresaStep: FC<{
 
       {/* Ticket médio — obrigatório: é o insumo da fórmula do dinheiro. */}
       <div className="pt-4 border-t">
-        <Field label="Quanto custa, em média, um atendimento seu?" icon={DollarSign}>
+        <Field
+          label="Quanto custa, em média, um atendimento seu?"
+          icon={DollarSign}
+          hint="É com esse valor que a gente calcula, em reais, quanto cada cliente que sumiu representa pra você. Pode ser aproximado — dá pra ajustar depois."
+        >
           <div className="flex items-center gap-2 max-w-xs">
             <span className="text-sm text-muted-foreground">R$</span>
             <Input
@@ -103,20 +114,36 @@ export const DemoEmpresaStep: FC<{
             />
           </div>
         </Field>
-        <p className="text-xs text-muted-foreground mt-2">
-          É com esse valor que a gente calcula, em reais, quanto cada cliente sumida
-          representa pra você.
-        </p>
       </div>
     </div>
   );
 };
 
-function Field({ label, icon: Icon, children }: { label: string; icon: typeof Store; children: React.ReactNode }) {
+/** Espelha o HelpTip do wizard pago (ImplantacaoWizard.tsx:727-740). Duplicado de
+ *  propósito: extrair para componente compartilhado exigiria EDITAR o wizard pago,
+ *  que é o caminho do cliente pagante, está live e não tem teste de render.
+ *  Trocar risco em produção por elegância seria mau negócio. */
+function HelpTip({ text }: { text: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" aria-label="Ajuda" className="inline-flex">
+            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/70" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs leading-relaxed">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function Field({ label, icon: Icon, hint, children }: { label: string; icon: typeof Store; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5 text-primary" /> {label}
+        {hint && <HelpTip text={hint} />}
       </Label>
       {children}
     </div>
