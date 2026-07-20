@@ -80,6 +80,9 @@ export default function ImplantacaoPublic() {
         organizationId={organizationId}
         initialStep={initialStep}
         ownerEmail={ownerEmail}
+        // Habilitam a 10ª etapa (criar senha e entrar): sem ela o wizard
+        // terminava redirecionando pra sessão que já estivesse no navegador.
+        token={token} sessionToken={sessionToken}
         onChange={updateSection} onSubmit={submit}
         onFinish={() => navigate('/')}
         onStepChange={reportStep}

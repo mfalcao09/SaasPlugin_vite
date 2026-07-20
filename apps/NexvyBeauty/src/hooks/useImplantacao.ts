@@ -7,16 +7,20 @@ import { toast } from 'sonner';
 export const DEFAULT_PRIMARY_COLOR = '#F97316';
 
 /** Conexão caiu no meio da chamada (fetch aborta com TypeError) — não é erro de
- *  negócio: o servidor sequer recebeu o pedido. */
-function isNetworkError(e: unknown): boolean {
-  const msg = String((e as any)?.message ?? e ?? '');
+ *  negócio: o servidor sequer recebeu o pedido.
+ *  `FunctionsFetchError` é o envelope do supabase-js pro MESMO caso quando a
+ *  chamada é `functions.invoke` (ele não relança o TypeError original). */
+export function isNetworkError(e: unknown): boolean {
+  const err = e as { message?: unknown; name?: unknown } | null | undefined;
+  const msg = String(err?.message ?? e ?? '');
   return e instanceof TypeError
-    || /failed to fetch|networkerror|network request failed|load failed/i.test(msg);
+    || err?.name === 'FunctionsFetchError'
+    || /failed to fetch|networkerror|network request failed|load failed|failed to send a request/i.test(msg);
 }
 
 /** Reexecuta SÓ em falha de rede (Wi-Fi de salão oscila), com backoff 1s/2s.
  *  Erro de negócio sobe na hora — retentar não mudaria a resposta. */
-async function withNetworkRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+export async function withNetworkRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < tries; attempt++) {
     try {
