@@ -34,6 +34,39 @@ function fakeQrDataUri(): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
+// ─── Estados simuláveis do relatório (deep-link ?estado=) ───────────────────
+// O relatório tem 4 desfechos além do AHA, e todos eram indistinguíveis na tela
+// antiga (tudo virava "sua base está em dia"). O preview precisa exercitar CADA
+// um — senão a verificação passa só pelo caminho feliz do mock.
+export type MockEstado = 'ok' | 'erro' | 'ingerindo' | 'janela' | 'emdia';
+
+function mockReportEstado(estado: MockEstado, ticket: number): DemoReport {
+  switch (estado) {
+    case 'ingerindo':
+      // varredura rodando: nada ingerido ainda → não dá pra afirmar nada.
+      return {
+        ok: true, count: 0, total: 0, ticket, items: [],
+        base_total: 0, sem_data: 0, ativos: 0, scan_status: 'ingerindo',
+      };
+    case 'janela':
+      // ingeriu 412 contatos, mas nenhum caiu na janela dos 45+ dias.
+      return {
+        ok: true, count: 0, total: 0, ticket, items: [],
+        base_total: 412, sem_data: 287, ativos: 125,
+        faixas: { m2_6: 0, m6_12: 0, m12_plus: 0 }, scan_status: 'pronto',
+      };
+    case 'emdia':
+      // ingeriu e a maioria falou com ela há pouco → aí sim "base em dia".
+      return {
+        ok: true, count: 0, total: 0, ticket, items: [],
+        base_total: 412, sem_data: 12, ativos: 380,
+        faixas: { m2_6: 0, m6_12: 0, m12_plus: 0 }, scan_status: 'pronto',
+      };
+    default:
+      return mockReport(ticket);
+  }
+}
+
 // Relatório canned — nomes/telefones sintéticos, conta forte (o AHA).
 function mockReport(ticket: number): DemoReport {
   const raw: Array<[string, string, number]> = [
@@ -54,12 +87,18 @@ function mockReport(ticket: number): DemoReport {
     name, phone, dealValue: ticket, reason: `Sumiu há ${dias} dias`,
   }));
   const count = 23; // mais sumidos do que os 12 cards exibidos
-  return { ok: true, count, total: count * ticket, ticket, items };
+  return {
+    ok: true, count, total: count * ticket, ticket, items,
+    // contrato novo: denominador + segmentação (a tela mostra as faixas).
+    base_total: 640, sem_data: 84, ativos: 533,
+    faixas: { m2_6: 9, m6_12: 8, m12_plus: 6 }, scan_status: 'pronto',
+  };
 }
 
 export default function DemoPreview() {
   const [params] = useSearchParams();
   const initialStep = (params.get('step') as DemoStepId) || 'empresa';
+  const estado = (params.get('estado') as MockEstado) || 'ok';
 
   const [empresa, setEmpresa] = useState<ImplantacaoPayload['empresa']>({
     nome_fantasia: 'Espaço Bella Vita',
@@ -79,17 +118,23 @@ export default function DemoPreview() {
         statusHits += 1;
         return { ok: true, status: statusHits >= 3 ? 'connected' : 'qr_pending', qr_code: null };
       },
-      report: async () => mockReport(empresa?.ticket_medio ?? 120),
+      report: async () => {
+        // ?estado=erro → a edge falha (401/403/500). A tela TEM que dizer que
+        // deu problema, nunca "sua base está em dia".
+        if (estado === 'erro') throw new Error('Edge devolveu 401 (simulado no preview).');
+        return mockReportEstado(estado, empresa?.ticket_medio ?? 120);
+      },
       sendReport: async () => ({ ok: true }),
       requestDeletion: async () => ({ ok: true }),
     };
-  }, [empresa?.ticket_medio]);
+  }, [empresa?.ticket_medio, estado]);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 pt-4">
         <div className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           PREVIEW DEV (dados mock) · deep-link: <code>?step=empresa|whatsapp_qr|relatorio_dinheiro|planos</code>
+          {' · '}relatório: <code>&amp;estado=ok|erro|ingerindo|janela|emdia</code> (atual: <code>{estado}</code>)
         </div>
       </div>
       <DemoWizard
