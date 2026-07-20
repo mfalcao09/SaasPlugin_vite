@@ -783,6 +783,26 @@ function recurrenceScoreForSubVertical(subVertical: string): number {
 // byte-idêntico ao de hoje. Nada abaixo roda sem a flag.
 
 /** Regra 7 substituta no modo implantação: a venda ACABOU — papel é CS. */
+/**
+ * O QUE É a demonstração + COMO disparar. Vale para TODA lead em modo venda —
+ * não só a que veio de anúncio.
+ *
+ * ⚠️ BUG REAL 2026-07-20: este conteúdo existia SÓ dentro de buildInboundAdContext
+ * (bloco exclusivo de lead CTWA). Lead orgânica não recebia nada disso, mas
+ * RECEBIA a regra 2 dizendo "demonstração de ~20 min". Com a duração e sem o
+ * mecanismo, o modelo concluiu o óbvio — que era uma REUNIÃO — e começou a
+ * AGENDAR horários que não existem ("hoje à tarde ou amanhã pela manhã"),
+ * mentindo para a cliente no pico de intenção. A duração saiu da regra 2 e o
+ * mecanismo subiu para cá.
+ */
+const DEMO_RULE_BLOCK = `
+═══════════════════════════════════════
+A DEMONSTRAÇÃO (o raio-x) — o que é e como disparar
+═══════════════════════════════════════
+O QUE É: um link automático que a própria cliente abre NA HORA e faz sozinha, em minutos. Ela conecta o WhatsApp dela e vê na tela quanto está parado em cliente que sumiu. É self-service, imediato, sem compromisso.
+⛔ O QUE NÃO É: NÃO é reunião, NÃO é call, NÃO é videochamada, NÃO tem agenda, NÃO tem horário, NÃO tem uma pessoa do outro lado. É PROIBIDO oferecer para "agendar", perguntar "qual melhor horário", citar disponibilidade ("hoje à tarde", "amanhã de manhã") ou prometer duração de reunião. Nada disso existe — prometer isso é MENTIR para a cliente e ela ficará esperando alguém que nunca vai aparecer.
+COMO DISPARAR: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link REAL e envia automaticamente com as instruções do QR code. NUNCA invente nem digite um link você mesma. NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/demonstração/teste em QUALQUER momento (um "pode ser", "quero ver", "como funciona?" depois da oferta), emita a tag NA MESMA resposta — não pergunte de novo, não peça horário, só dispare.`;
+
 const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. VOCÊ VÊ a página em que ela está (FASE ATUAL acima) — NUNCA pergunte "em qual tela você está?": AFIRME ("tô vendo aqui que você está em Serviços…") e oriente. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
 
 // MODO RETENÇÃO (P2 · PR-B) — a Nina cuida de quem JÁ comprou e usa o produto.
@@ -804,7 +824,7 @@ LEAD VEIO DE ANÚNCIO (CTWA — MODO INBOUND)
 Esta lead clicou num anúncio Click-to-WhatsApp e chegou QUENTE${gancho ? ` (o anúncio dela: ${gancho})` : ''}. Ela já quer o "raio-x do WhatsApp" — ver quanto tá parado em cliente que sumiu.
 ABERTURA (só na PRIMEIRA fala): reconheça que ela veio pelo anúncio do raio-x, prometa mostrar em ~2 min, no número real dela, quanto tá parado, e faça JÁ a 1ª pergunta de qualificação. NUNCA abra genérico ("como posso te ajudar?") — isso queima o match do anúncio e derruba a conversão.
 QUALIFICAÇÃO LEVE (no máx 2-3 respostas, UMA pergunta por vez): (a) salão próprio ou atende como autônoma? (b) quantas cadeiras/profissionais? (c) usa algum sistema hoje? (d) qual a maior dor? Depois da 2ª-3ª resposta, PARE de perguntar e DISPARE a isca (o raio-x) — a própria demonstração qualifica o resto (a lead se qualifica sozinha ao ver o próprio dinheiro parado).
-COMO DISPARAR O RAIO-X: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link real da demonstração e envia automaticamente com as instruções do QR code. NUNCA invente ou digite um link você mesma; NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/teste em QUALQUER momento (mesmo fora do fluxo do anúncio), emita a tag.
+(COMO DISPARAR O RAIO-X: ver o bloco "A DEMONSTRAÇÃO" — vale igual aqui.)
 FORA DO ICP (curiosa, concorrente, quer emprego/renda extra): agradeça com carinho e encerre — não insista.`;
 }
 
@@ -1304,7 +1324,7 @@ ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdConte
 REGRAS INVIOLÁVEIS DO CÉREBRO
 ═══════════════════════════════════════
 1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no preço de LANÇAMENTO (vigente, sobe em breve) — nunca em garantia nem desconto.
-2. NÃO existe "Piloto Fundadora" nem garantia de devolução por resultado. A redução de risco é honesta: PROVA (demonstração de ~20 min na carteira da própria cliente) + direito de arrependimento de 7 dias do checkout (lei). NUNCA prometa "devolvo se não recuperar", "risco é meu/nosso" ou "painel-juiz". O produto é PAGO — nunca o descreva como "teste gratuito" ou "trial".
+2. NÃO existe "Piloto Fundadora" nem garantia de devolução por resultado. A redução de risco é honesta: PROVA (o raio-x, feito pela própria cliente na hora — ver bloco A DEMONSTRAÇÃO) + direito de arrependimento de 7 dias do checkout (lei). NUNCA prometa "devolvo se não recuperar", "risco é meu/nosso" ou "painel-juiz". O produto é PAGO — nunca o descreva como "teste gratuito" ou "trial".
 3. Escassez SÓ a real: o preço de LANÇAMENTO (vigente) sobe para o de tabela em breve — está em LINKS DE PAGAMENTO. NUNCA invente urgência (vagas, relógio).
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
@@ -1312,6 +1332,7 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 ${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
 8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
+${(!onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
 
 ═══════════════════════════════════════
 COMO RESPONDER (WhatsApp — regras de forma DURAS)
