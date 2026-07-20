@@ -202,6 +202,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Reembolso / chargeback / cancelamento: MARCA a org como suspensa (antes só
+    // virava tag — o acesso ficava 'active' para sempre). Idempotente. Nota: o
+    // ENFORCEMENT de plan_status (bloquear o uso quando != active) é trabalho de
+    // produto separado (gate de acesso calibrado p/ não derrubar trial/demo/graça);
+    // aqui garantimos ao menos que o estado reflete a realidade financeira.
+    if (scopeParam === 'platform') {
+      const st = (row.status ?? '').toLowerCase();
+      const ev = (event ?? '').toLowerCase();
+      const isRevocation =
+        st === 'refunded' || st === 'chargeback' ||
+        ev.includes('refund') || ev.includes('chargeback') ||
+        ev.includes('subscription_cancel') || ev.includes('subscription_canceled');
+      if (isRevocation && row.customer_email) {
+        const { data: org } = await admin
+          .from('organizations').select('id, plan_status')
+          .eq('cakto_customer_email', row.customer_email).maybeSingle();
+        if (org && org.plan_status !== 'suspended') {
+          await admin.from('organizations')
+            .update({ plan_status: 'suspended' })
+            .eq('id', org.id);
+          await sendTelegramAlert(
+            `⚠️ Cakto: acesso SUSPENSO por ${st || ev}\n` +
+              `Org: ${org.id}\nComprador: ${row.customer_email}`,
+          );
+        }
+      }
+    }
+
     // Provisionamento do plano da plataforma + usuário admin (escopo platform, pedidos pagos).
     if (scopeParam === 'platform') {
       const buyer = row.customer_email ?? '(sem e-mail)';

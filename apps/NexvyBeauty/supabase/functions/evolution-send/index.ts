@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateTenant, resolveOrgId } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,18 +76,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Auth: if Bearer present, derive org from user
-    if (!organization_id) {
-      const auth = req.headers.get("Authorization");
-      if (auth) {
-        const { data: { user } } = await supabase.auth.getUser(auth.replace("Bearer ", ""));
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles").select("organization_id").eq("id", user.id).single();
-          organization_id = profile?.organization_id || undefined;
-        }
-      }
-    }
+    // Auth OBRIGATÓRIA (P1): antes, a autenticação só rodava `if (!organization_id)`
+    // — mandar organization_id no body PULAVA o gate e um atacante enviava WhatsApp
+    // em nome de qualquer salão. Agora reautentica SEMPRE e a org do usuário de
+    // tenant IGNORA o organization_id do body (só service_role/super_admin operam
+    // em org arbitrária — ex.: start-whatsapp-conversation chamando via service_role).
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+    organization_id = resolveOrgId(auth, organization_id) ?? undefined;
 
     if (!organization_id) {
       return new Response(JSON.stringify({ error: "organization_id required" }), {

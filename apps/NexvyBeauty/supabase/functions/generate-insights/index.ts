@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { resolveAIConfig, logAIConfig, prepareAIRequestBody } from "../_shared/ai-router.ts";
+import { authenticateTenant, resolveOrgId } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,11 +27,25 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, productId, organizationId } = await req.json();
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e lia o
+    // pipeline (+ custo de LLM) de qualquer org via organizationId do body.
+    // Agora reautentica SEMPRE; a org do usuário de tenant IGNORA o body (só
+    // service_role/super_admin operam em org arbitrária).
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
+    const { userId, productId, organizationId: bodyOrgId } = await req.json();
+    const organizationId = resolveOrgId(auth, bodyOrgId);
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: "organization_id required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch pipeline data
     let leadsQuery = supabase

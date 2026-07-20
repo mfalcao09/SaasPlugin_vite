@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateTenant, resolveOrgId } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +63,16 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e lia catálogo
+    // de qualquer org (+ custo de IA) via organization_id do body. Agora
+    // reautentica SEMPRE; a org do usuário de tenant IGNORA o body (só
+    // service_role/super_admin operam em org arbitrária — ex.: webchat-bot).
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const body = (await req.json()) as SearchBody;
-    if (!body.organization_id) {
+    const organizationId = resolveOrgId(auth, body.organization_id);
+    if (!organizationId) {
       return new Response(JSON.stringify({ error: "organization_id required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,7 +84,7 @@ Deno.serve(async (req) => {
 
     // Chama a RPC inteligente que faz fulltext → fuzzy → fallback
     const { data, error } = await supabase.rpc("search_catalog_smart", {
-      p_organization_id: body.organization_id,
+      p_organization_id: organizationId,
       p_product_id: body.product_id ?? null,
       p_query: body.query?.trim() || null,
       p_price_min: expandedPrice.price_min ?? null,

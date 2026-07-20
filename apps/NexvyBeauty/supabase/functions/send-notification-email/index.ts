@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { sendPlatformEmail } from "../_shared/platform-email-send.ts";
+import { authenticateTenant, assertOrgAccess } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,13 +23,45 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e disparava
+    // e-mail para recipients arbitrários (phishing pela infra da plataforma).
+    // Agora reautentica SEMPRE e, para usuário de tenant, valida que a
+    // notificação pertence à sua org E escopa os destinatários a MEMBROS da org
+    // (só service_role/super_admin enviam para recipients arbitrários).
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { adminNotificationId, recipients, title, message, actionUrl, type }: NotificationEmailRequest = await req.json();
 
     if (!recipients || recipients.length === 0) {
       return new Response(JSON.stringify({ error: "No recipients provided" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Anti-phishing para usuário de tenant: a notificação tem que ser da sua org
+    // e os destinatários são filtrados aos membros ativos da org.
+    let allowedRecipients = recipients;
+    if (!auth.isServiceRole && !auth.isSuperAdmin) {
+      if (!adminNotificationId) {
+        return new Response(JSON.stringify({ error: "adminNotificationId required" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+      const { data: notif } = await supabase
+        .from("admin_notifications").select("organization_id").eq("id", adminNotificationId).maybeSingle();
+      const orgGuard = assertOrgAccess(auth, (notif as any)?.organization_id ?? null, corsHeaders);
+      if (orgGuard) return orgGuard;
+
+      const { data: members } = await supabase
+        .from("profiles").select("email").eq("organization_id", auth.organizationId).eq("is_active", true);
+      const allowed = new Set(
+        (members ?? []).map((m: any) => String(m.email || "").toLowerCase()).filter(Boolean)
+      );
+      allowedRecipients = recipients.filter((r) => allowed.has(String(r.email || "").toLowerCase()));
+      if (allowedRecipients.length === 0) {
+        return new Response(JSON.stringify({ error: "No valid org recipients" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+    }
+
     const { data: platformSettings } = await supabase
       .from("platform_settings")
       .select("platform_name")
@@ -43,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     let emailsFailed = 0;
     const errors: string[] = [];
 
-    for (const recipient of recipients) {
+    for (const recipient of allowedRecipients) {
       const result = await sendPlatformEmail({
         slug: "admin_notification",
         to: recipient.email,

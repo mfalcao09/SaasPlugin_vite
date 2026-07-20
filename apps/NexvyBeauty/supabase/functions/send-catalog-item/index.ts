@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateTenant, assertOrgAccess } from "../_shared/tenant-auth.ts";
 
 declare const OffscreenCanvas: {
   new (width: number, height: number): {
@@ -94,6 +95,13 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e injetava
+    // mídia em conversa de qualquer org via conversation_id+item_id. Agora
+    // reautentica SEMPRE e valida (abaixo) que a conversa pertence à org do
+    // usuário. service_role/super_admin (ex.: webchat-bot) passam.
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const body = (await req.json()) as SendBody;
     if (!body.conversation_id || !body.item_id) {
       return new Response(JSON.stringify({ error: "conversation_id and item_id required" }), {
@@ -119,6 +127,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Posse do recurso: usuário de tenant só opera na conversa da própria org.
+    const orgGuard = assertOrgAccess(auth, conv.organization_id, corsHeaders);
+    if (orgGuard) return orgGuard;
 
     // Load catalog item
     const { data: item, error: itemErr } = await supabase

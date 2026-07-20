@@ -3,6 +3,7 @@
 // (que monta prompt com contexto + histórico do lead) e agenda o próximo step.
 
 import { createServiceClient } from "../_shared/campaign-audience.ts";
+import { assertCron } from "../_shared/cron-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +95,8 @@ async function getStepContext(supabase: any, step: any): Promise<string> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const cronErr = assertCron(req, corsHeaders);
+  if (cronErr) return cronErr;
   try {
     const supabase = createServiceClient();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
