@@ -60,18 +60,20 @@ http:
         scheme: https
         permanent: true
     # CSP ISOLADO do NexvyBeauty (NÃO mexe no security-headers@file compartilhado
-    # pelos outros apps). Fase atual: REPORT-ONLY — o browser reporta violações no
-    # console mas NÃO bloqueia nada, para validarmos que o Meta Pixel, Supabase,
-    # ViaCEP, Google Fonts e embeds seguem funcionando antes de fazer enforce.
-    # Origens liberadas (inventário do runtime, 2026-07-20):
+    # pelos outros apps). Fase atual: ENFORCE — validado em Report-Only no browser
+    # (2026-07-20): Meta Pixel carrega e dispara o beacon facebook.com/tr, Supabase
+    # (api/wss/storage) conecta, Google Fonts carrega, app+LP renderizam, ZERO
+    # violações. Origens liberadas (inventário do runtime):
     #  script: self + inline (pixel inline no index.html + Vite) + connect.facebook.net
     #  connect: Supabase (api/wss/storage) + viacep + facebook (pixel /tr)
     #  style/font: self + inline + Google Fonts | img: https genérico (storage/qr/yt)
     #  frame-ancestors none (anti-clickjacking) + object-src none + base-uri self
+    # Se um recurso novo for bloqueado no futuro, o console mostra "Refused to..."
+    # com a diretiva — adicione a origem aqui e re-deploy.
     csp-nexvybeauty:
       headers:
         customResponseHeaders:
-          Content-Security-Policy-Report-Only: >-
+          Content-Security-Policy: >-
             default-src 'self';
             base-uri 'self';
             object-src 'none';
