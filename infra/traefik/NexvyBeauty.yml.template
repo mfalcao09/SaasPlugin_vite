@@ -20,7 +20,7 @@ http:
       tls:
         certResolver: letsencrypt
       service: __CONTAINER__-svc
-      middlewares: [security-headers@file]
+      middlewares: [security-headers@file, csp-nexvybeauty@file]
       priority: 110
     __CONTAINER__-app-http-redirect:
       rule: "Host(`app.nexvybeauty.com.br`)"
@@ -35,7 +35,7 @@ http:
       tls:
         certResolver: letsencrypt
       service: __CONTAINER__-svc
-      middlewares: [security-headers@file]
+      middlewares: [security-headers@file, csp-nexvybeauty@file]
       priority: 100
     __CONTAINER__-http-redirect:
       rule: "Host(`nexvybeauty.com.br`) || Host(`www.nexvybeauty.com.br`)"
@@ -59,3 +59,27 @@ http:
       redirectScheme:
         scheme: https
         permanent: true
+    # CSP ISOLADO do NexvyBeauty (NÃO mexe no security-headers@file compartilhado
+    # pelos outros apps). Fase atual: REPORT-ONLY — o browser reporta violações no
+    # console mas NÃO bloqueia nada, para validarmos que o Meta Pixel, Supabase,
+    # ViaCEP, Google Fonts e embeds seguem funcionando antes de fazer enforce.
+    # Origens liberadas (inventário do runtime, 2026-07-20):
+    #  script: self + inline (pixel inline no index.html + Vite) + connect.facebook.net
+    #  connect: Supabase (api/wss/storage) + viacep + facebook (pixel /tr)
+    #  style/font: self + inline + Google Fonts | img: https genérico (storage/qr/yt)
+    #  frame-ancestors none (anti-clickjacking) + object-src none + base-uri self
+    csp-nexvybeauty:
+      headers:
+        customResponseHeaders:
+          Content-Security-Policy-Report-Only: >-
+            default-src 'self';
+            base-uri 'self';
+            object-src 'none';
+            frame-ancestors 'none';
+            script-src 'self' 'unsafe-inline' https://connect.facebook.net;
+            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+            font-src 'self' data: https://fonts.gstatic.com;
+            img-src 'self' data: blob: https:;
+            connect-src 'self' https://*.supabase.co wss://*.supabase.co https://viacep.com.br https://www.facebook.com https://connect.facebook.net;
+            frame-src 'self' https:;
+            worker-src 'self' blob:
