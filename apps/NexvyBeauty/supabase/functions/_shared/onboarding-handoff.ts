@@ -53,6 +53,64 @@ const LIA_GREETING_BUBBLES = [
   'Seu acesso já está no seu e-mail. Quando abrir, me chama aqui que a gente monta tudo junto, um passo por vez. Bora?',
 ];
 
+// Variante com o link de implantação tokenizado ({url}): a compradora entra na
+// montagem SEM depender do e-mail (action link do Supabase é uso-único e morre
+// em scanner de antispam). A 3ª bolha resolve o gap cross-device do QR: o passo
+// 8 do wizard exige escanear com o PRÓPRIO celular, então o link deve abrir em
+// outro aparelho.
+const LIA_GREETING_BUBBLES_WITH_LINK = [
+  'Oi{nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.',
+  'Esse é o link da montagem: {url} — seu acesso por e-mail e senha também já está na sua caixa de entrada.',
+  'Dica: abre esse link no computador (ou em outro celular) 😉 No final tem um QR code pra conectar o WhatsApp do espaço, e ele precisa ser escaneado com o SEU celular. Qualquer dúvida, me chama aqui!',
+];
+
+const ONBOARDING_LINK_TTL_MS = 72 * 60 * 60 * 1000;
+const APP_URL = (Deno.env.get('APP_URL') ?? 'https://app.nexvybeauty.com.br').replace(/\/+$/, '');
+
+// Token no MESMO formato do demo-start/create_onboarding_link: 32 bytes
+// aleatórios → base64url; no banco vive só o sha256 hex (token_hash).
+function makeOnboardingToken(): string {
+  const raw = crypto.getRandomValues(new Uint8Array(32));
+  let bin = '';
+  for (const b of raw) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Cria a submission tokenizada (mode='link') da org recém-provisionada e devolve
+ * a URL pública /implantacao/<token>. Best-effort: falha vira null e a Lia cai
+ * nas bolhas sem link (comportamento anterior) — nunca derruba o handoff.
+ */
+async function createOnboardingLinkForOrg(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<string | null> {
+  try {
+    const token = makeOnboardingToken();
+    const { error } = await admin.from('onboarding_submissions').insert({
+      organization_id: organizationId,
+      token_hash: await sha256Hex(token),
+      mode: 'link',
+      status: 'draft',
+      expires_at: new Date(Date.now() + ONBOARDING_LINK_TTL_MS).toISOString(),
+      payload: {},
+    });
+    if (error) {
+      console.warn('[onboarding-handoff] criar link de implantação falhou:', error.message);
+      return null;
+    }
+    return `${APP_URL}/implantacao/${token}`;
+  } catch (e) {
+    console.warn('[onboarding-handoff] criar link de implantação exception:', String(e).slice(0, 160));
+    return null;
+  }
+}
+
 /**
  * Dispara o greeting proativo da Lia na conversa recém-pinada e registra cada
  * bolha como mensagem do bot (sender_type='bot'). Best-effort por design (igual
@@ -73,10 +131,12 @@ async function sendLiaGreeting(
   conversation: ConversationConnectionHints | null,
   destPhone: string | null,
   customerName: string | null,
+  onboardingUrl: string | null = null,
 ): Promise<boolean> {
   try {
     const firstName = (customerName || '').trim().split(/\s+/)[0] || '';
     const to = String(destPhone ?? '').replace(/\D/g, '');
+    const bubbles = onboardingUrl ? LIA_GREETING_BUBBLES_WITH_LINK : LIA_GREETING_BUBBLES;
 
     // Conexão de saída: resolvida UMA vez p/ as 2 bolhas.
     let phoneNumberId: string | null = null;
@@ -98,8 +158,12 @@ async function sendLiaGreeting(
     }
 
     let persistedAny = false;
-    for (let i = 0; i < LIA_GREETING_BUBBLES.length; i++) {
-      const body = LIA_GREETING_BUBBLES[i].replace('{nome}', firstName ? ` ${firstName}` : '').replace(/\s{2,}/g, ' ').trim();
+    for (let i = 0; i < bubbles.length; i++) {
+      const body = bubbles[i]
+        .replace('{nome}', firstName ? ` ${firstName}` : '')
+        .replace('{url}', onboardingUrl ?? '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
       // 1) Persiste como bot ANTES de entregar (padrão do brain).
       const { data: msg, error: msgErr } = await admin
@@ -114,7 +178,7 @@ async function sendLiaGreeting(
             channel: 'whatsapp_cloud',
             proactive_greeting: 'lia',
             bubble_n: i + 1,
-            bubble_total: LIA_GREETING_BUBBLES.length,
+            bubble_total: bubbles.length,
             ...(connectionId ? { connection_id: connectionId } : {}),
           },
         })
@@ -293,12 +357,16 @@ export async function handoffConversationToOnboarding(
       } else {
         const destPhone = (convRow as any)?.visitor_whatsapp ?? (convRow as any)?.visitor_phone ?? args.customerPhone ?? null;
         const name = (convRow as any)?.visitor_name ?? null;
+        // Link de implantação tokenizado gerado SÓ na 1ª saudação (o gate
+        // priorGreeting acima garante que retry de webhook não cria token novo).
+        const onboardingUrl = await createOnboardingLinkForOrg(admin, args.organizationId);
         greeted = await sendLiaGreeting(
           admin,
           conversationId,
           (convRow as ConversationConnectionHints | null) ?? null,
           destPhone,
           name,
+          onboardingUrl,
         );
       }
     } catch (e) {
