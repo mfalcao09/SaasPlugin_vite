@@ -87,6 +87,13 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   // _takeover=true — o RPC emite session_token novo e derruba a aba anterior.
   const takeoverRef = useRef(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  // Retomada cross-device: etapa salva (current_step 1-based do banco → 0-based
+  // pro wizard). Preenchida no load; o wizard abre direto nela.
+  const [initialStep, setInitialStep] = useState(0);
+  // Último payload ainda não persistido (autosave debounced). flushSave() o
+  // grava IMEDIATAMENTE — chamado na troca de página, garantindo que "preencheu
+  // e avançou" está no banco (é o que a Lia lê pra ver onde a cliente está).
+  const pendingRef = useRef<ImplantacaoPayload | null>(null);
 
   // Carrega ou cria submission
   useEffect(() => {
@@ -129,6 +136,9 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
         setStatus(data.status);
         setSessionToken(nextSession);
         setMode(data.mode ?? null);
+        // current_step é 1-based (null = nunca reportou) → wizard é 0-based.
+        const savedStep = Number(data.current_step);
+        setInitialStep(Number.isFinite(savedStep) && savedStep > 0 ? savedStep - 1 : 0);
         const loaded = data.payload && Object.keys(data.payload).length > 0
           ? { ...EMPTY_PAYLOAD, ...data.payload }
           : EMPTY_PAYLOAD;
@@ -185,29 +195,46 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
     setReloadNonce((n) => n + 1);
   }, []);
 
-  // Autosave debounced
+  // Persistência imediata (compartilhada pelo autosave debounced e pelo flush).
+  const persistNow = useCallback(async (next: ImplantacaoPayload) => {
+    if (!submissionId) return;
+    setSaving(true);
+    let err: any;
+    if (token && sessionToken) {
+      const { error: e } = await supabase.rpc('save_onboarding_draft_public', {
+        _token: token, _session_token: sessionToken, _payload: next as any,
+      });
+      err = e;
+    } else {
+      const { error: e } = await supabase.rpc('save_onboarding_draft', {
+        _submission_id: submissionId, _payload: next as any,
+      });
+      err = e;
+    }
+    setSaving(false);
+    if (err) console.error('autosave', err);
+  }, [submissionId, token, sessionToken]);
+
+  // Autosave debounced (800ms — perto de "salvou ao sair do campo" sem spam).
   const scheduleSave = useCallback((next: ImplantacaoPayload) => {
     setPayload(next);
     if (!submissionId) return;
+    pendingRef.current = next;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(async () => {
-      setSaving(true);
-      let err: any;
-      if (token && sessionToken) {
-        const { error: e } = await supabase.rpc('save_onboarding_draft_public', {
-          _token: token, _session_token: sessionToken, _payload: next as any,
-        });
-        err = e;
-      } else {
-        const { error: e } = await supabase.rpc('save_onboarding_draft', {
-          _submission_id: submissionId, _payload: next as any,
-        });
-        err = e;
-      }
-      setSaving(false);
-      if (err) console.error('autosave', err);
-    }, 1500);
-  }, [submissionId, token, sessionToken]);
+    saveTimer.current = window.setTimeout(() => {
+      const p = pendingRef.current;
+      pendingRef.current = null;
+      if (p) void persistNow(p);
+    }, 800);
+  }, [submissionId, persistNow]);
+
+  // Grava AGORA o que estiver pendente (troca de página não pode perder dado).
+  const flushSave = useCallback(() => {
+    if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null; }
+    const p = pendingRef.current;
+    pendingRef.current = null;
+    if (p) void persistNow(p);
+  }, [persistNow]);
 
   const updateSection = useCallback(<K extends keyof ImplantacaoPayload>(
     key: K, value: ImplantacaoPayload[K]
@@ -220,12 +247,15 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   // RPCs criadas na migration 20260714_onboarding_fase_handoff (fora dos types → cast).
   const reportStep = useCallback((stepIndex: number, stepId: string) => {
     if (!submissionId) return;
+    // Troca de página = checkpoint: o payload pendente vai pro banco JÁ (a Lia
+    // e a retomada cross-device dependem dele fresco).
+    flushSave();
     const args = token && sessionToken
       ? { fn: 'set_onboarding_step_public', params: { _token: token, _session_token: sessionToken, _step: stepIndex + 1, _step_id: stepId } }
       : { fn: 'set_onboarding_step', params: { _submission_id: submissionId, _step: stepIndex + 1, _step_id: stepId } };
     void (supabase.rpc as any)(args.fn, args.params)
       .then(({ error: e }: { error: unknown }) => { if (e) console.warn('set_onboarding_step', e); });
-  }, [submissionId, token, sessionToken]);
+  }, [submissionId, token, sessionToken, flushSave]);
 
   const submit = useCallback(async () => {
     if (!submissionId) return false;
@@ -278,7 +308,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   return {
     submissionId, organizationId, payload, status,
     loading, saving, error,
-    updateSection, submit, reportStep, takeover,
+    updateSection, submit, reportStep, takeover, flushSave, initialStep,
     // Esteira: `mode` roteia demo vs pago; `sessionToken` autentica a lead na edge demo-evolution.
     mode, sessionToken, token: token ?? null,
   };
