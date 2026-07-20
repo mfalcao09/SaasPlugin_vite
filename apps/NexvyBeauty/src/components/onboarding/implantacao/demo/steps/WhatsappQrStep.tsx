@@ -44,6 +44,11 @@ export const WhatsappQrStep: FC<{
   const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const firedRef = useRef(false);
+  // Sempre aponta para o onConnected mais recente. Necessário porque o avanço
+  // vive num efeito que NÃO pode ter a callback nas deps: `goNext` (DemoWizard:66)
+  // é recriado a cada render e reiniciaria o timer indefinidamente.
+  const onConnectedRef = useRef(onConnected);
+  onConnectedRef.current = onConnected;
 
   const handleConectar = async () => {
     if (!consent || busy) return;
@@ -80,13 +85,12 @@ export const WhatsappQrStep: FC<{
         if (!alive) return;
         if (s.qr_code && s.qr_code !== qr) setQr(s.qr_code);
         if (s.status === 'connected') {
-          setPhase('connected');
           if (!firedRef.current) {
             firedRef.current = true;
             toast.success('WhatsApp conectado! Analisando suas conversas…');
-            // dá um respiro pra os chunks async começarem a cair na carteira.
-            setTimeout(() => { if (alive) onConnected(); }, 1800);
           }
+          // O AVANÇO não mora aqui — ver o efeito logo abaixo. Ver comentário lá.
+          setPhase('connected');
         }
       } catch {
         /* transiente — o próximo tick tenta de novo */
@@ -96,6 +100,29 @@ export const WhatsappQrStep: FC<{
     return () => { alive = false; clearInterval(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, qr]);
+
+  // AVANÇO para o relatório — efeito PRÓPRIO, disparado quando a fase vira
+  // 'connected'.
+  //
+  // ⚠️ BUG CORRIGIDO 2026-07-20 (a lead ficava presa PARA SEMPRE em "Estamos
+  // analisando suas conversas"): o setTimeout do avanço morava dentro do efeito
+  // de polling, cujas deps incluem `phase`. A sequência era mortal e 100%
+  // determinística:
+  //   1. tick() vê 'connected' e chama setPhase('connected');
+  //   2. `phase` mudou → o efeito de polling é RECRIADO → o cleanup do efeito
+  //      ANTIGO roda e faz `alive = false`;
+  //   3. 1800ms depois o timeout dispara, testa `if (alive)` — que é a variável
+  //      capturada no closure JÁ DERRUBADO, agora false — e NÃO chama onConnected();
+  //   4. o efeito novo aborta de cara no guard `if (phase !== 'qr') return`.
+  // Ou seja: o próprio setPhase matava o timer que dependia dele. Aqui o timer
+  // vive num efeito que só é limpo no unmount real, e a callback vem de ref
+  // (deps só [phase]) para `goNext` recriado não reiniciar o relógio.
+  useEffect(() => {
+    if (phase !== 'connected') return;
+    // respiro pra os chunks async começarem a cair na carteira antes do relatório
+    const t = setTimeout(() => onConnectedRef.current(), 1800);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   const img = qr ? qrSrc(qr) : null;
 

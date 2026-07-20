@@ -93,8 +93,17 @@ export const DemoWizard: FC<Props> = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <div className="text-center space-y-3">
+    <div className="max-w-4xl mx-auto px-4 pt-10 pb-8 space-y-6">
+      <div className="text-center space-y-4">
+        {/* Logo: espelha o wizard pago (ImplantacaoWizard.tsx:304), mesmo asset.
+            NÃO trocar pelo componente <Logo/> — em host gestao.* ele degrada para
+            o wordmark textual "Nexvy." e a marca NexvyBeauty sumiria justo na
+            tela de demonstração. */}
+        <img
+          src="/email/logo-v1.png"
+          alt="NexvyBeauty"
+          className="h-10 md:h-12 mx-auto mb-5"
+        />
         <Badge variant="outline" className="px-4 py-1 text-sm">Demonstração NexvyBeauty</Badge>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
           Veja o dinheiro parado na sua base
