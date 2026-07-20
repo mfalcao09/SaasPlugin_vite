@@ -7,6 +7,11 @@ import { decryptSecret } from './meta-crypto.ts';
 import { normalizePhoneBR } from './phone.ts';
 import { handoffConversationToOnboarding } from './onboarding-handoff.ts';
 import { sendTelegramAlert } from './platform-alerts.ts';
+import {
+  connectionErrorCode,
+  reportUnresolvedConnection,
+  resolveConnectionForPhone,
+} from './whatsapp-connection.ts';
 
 export interface CaktoOrderLike {
   cakto_id?: string | null;
@@ -465,18 +470,18 @@ async function sendWelcomeWhatsApp(
   }
 
   try {
-    const { data: conn } = await admin
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, phone_number_id, access_token_encrypted')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!conn?.access_token_encrypted || !conn?.phone_number_id) {
-      return { ok: false, skipped: 'no_active_connection' };
+    // Resolução determinística (mesmo contrato dos deliverers): conversa mais
+    // recente do telefone → conexão dela; nunca chutar entre 2+ ativas.
+    const resolved = await resolveConnectionForPhone(admin, to);
+    if (!resolved.conn) {
+      await reportUnresolvedConnection('cakto-provisioning/welcome-whatsapp', resolved, {
+        phone: to,
+      });
+      return { ok: false, skipped: connectionErrorCode(resolved) };
     }
+    const conn = resolved.conn;
 
-    const token = await decryptSecret(conn.access_token_encrypted as string);
+    const token = await decryptSecret(conn.access_token_encrypted);
     const firstName = (args.fullName || '').trim().split(/\s+/)[0] || '';
     const saudacao = firstName ? `Olá, ${firstName}!` : 'Olá!';
     const planoTxt = args.planName ? ` do plano ${args.planName}` : '';
