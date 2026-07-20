@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import AccountSuspended from '@/pages/AccountSuspended';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, roles, isLoading } = useAuth();
+  const { user, roles, orgPlanStatus, isLoading } = useAuth();
   const [stuck, setStuck] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,15 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Gate de suspensão. FAIL-OPEN por design: SÓ o valor 'suspended' explícito
+  // bloqueia (active/demo/trial/null/desconhecido passam direto). super_admin
+  // nunca é bloqueado — opera o painel do grupo, não é um tenant pagante. Um
+  // gate mal-calibrado derruba cliente legítimo, então erra para o lado de deixar
+  // passar, nunca para o de barrar.
+  if (orgPlanStatus === 'suspended' && !roles.includes('super_admin')) {
+    return <AccountSuspended />;
   }
 
   if (requiredRole) {

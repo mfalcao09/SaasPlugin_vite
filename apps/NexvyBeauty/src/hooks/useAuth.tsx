@@ -27,6 +27,9 @@ interface AuthContextType {
   profile: Tables<'profiles'> | null;
   roles: AppRole[];
   permissions: UserPermissions | null;
+  /** plan_status da org do usuário. null = desconhecido/ainda carregando (o gate
+   *  de suspensão é FAIL-OPEN: só bloqueia o valor 'suspended' explícito). */
+  orgPlanStatus: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
+  const [orgPlanStatus, setOrgPlanStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Avoid duplicate fetches for the same user (getSession + onAuthStateChange race)
@@ -153,7 +157,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const [profileRes, rolesRes, permsRes] = results;
 
       if (profileRes.status === 'fulfilled' && !profileRes.value.error) {
-        setProfile((profileRes.value.data as any) ?? null);
+        const prof = (profileRes.value.data as any) ?? null;
+        setProfile(prof);
+        // plan_status da org (gate de suspensão). FAIL-OPEN: qualquer erro/valor
+        // desconhecido deixa orgPlanStatus null → o gate NÃO bloqueia. Só
+        // 'suspended' explícito trava o acesso.
+        const orgId = prof?.organization_id;
+        if (orgId) {
+          supabase.from('organizations').select('plan_status').eq('id', orgId).maybeSingle()
+            .then(({ data }) => setOrgPlanStatus((data?.plan_status as string) ?? null))
+            .catch(() => setOrgPlanStatus(null));
+        } else {
+          setOrgPlanStatus(null);
+        }
       } else if (profileRes.status === 'rejected') {
         console.warn('[auth] profile fetch failed:', profileRes.reason);
       }
@@ -249,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       roles,
       permissions,
+      orgPlanStatus,
       isLoading,
       signIn,
       signUp,

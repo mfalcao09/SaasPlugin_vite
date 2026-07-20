@@ -31,10 +31,14 @@ const clean = (v: unknown, max = 200): string =>
   (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for") || "";
-  return (xff.split(",")[0] || "").trim() ||
-    req.headers.get("x-real-ip") ||
-    req.headers.get("cf-connecting-ip") || "unknown";
+  // P2: cf-connecting-ip PRIMEIRO — é setado pelo Cloudflare (proxy na frente do
+  // app) e NÃO é forjável pelo cliente. Antes usávamos xff.split(',')[0], que é o
+  // 1º token do X-Forwarded-For — TOTALMENTE controlado pelo atacante (spoofar
+  // rotacionando o header zerava o rate-limit por IP).
+  return (req.headers.get("cf-connecting-ip") || "").trim() ||
+    (req.headers.get("x-real-ip") || "").trim() ||
+    (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    "unknown";
 }
 
 // 32 bytes aleatórios → base64url (mesmo formato de create_onboarding_link)
@@ -95,6 +99,15 @@ Deno.serve(async (req) => {
         .gte("created_at", new Date(nowMs - 3_600_000).toISOString());
       if ((sameIp ?? 0) >= 10) return json({ error: "rate_limited", scope: "ip" }, 429);
     }
+
+    // Teto GLOBAL (circuit breaker): mesmo distribuindo IP/telefone, um flood em
+    // massa cria muitas orgs demo (custo + poluição). >=200 tentativas/hora no
+    // total → recusa geral até acalmar. Folga alta p/ nunca pegar tráfego real.
+    const { count: globalHour } = await admin
+      .from("demo_start_attempts")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", new Date(nowMs - 3_600_000).toISOString());
+    if ((globalHour ?? 0) >= 200) return json({ error: "rate_limited", scope: "global" }, 429);
 
     await admin.from("demo_start_attempts").insert({ ip, phone });
 
