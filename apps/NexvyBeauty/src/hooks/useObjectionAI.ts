@@ -30,13 +30,16 @@ export function useHandleObjection() {
     setResponse('');
 
     try {
+      // Token da SESSÃO do usuário (não a anon key): a edge agora exige auth de
+      // tenant e valida posse do produto. Mandar a anon key retornava 401.
+      const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/handle-objection`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session?.access_token ?? ''}`,
           },
           body: JSON.stringify({ objection, productId }),
         }
@@ -101,13 +104,15 @@ export function useHandleObjection() {
 export function useGenerateObjections() {
   return useMutation({
     mutationFn: async (productId: string): Promise<GeneratedObjection[]> => {
+      // Token da SESSÃO do usuário (não a anon key): a edge exige auth de tenant.
+      const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-objections`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session?.access_token ?? ''}`,
           },
           body: JSON.stringify({ productId }),
         }

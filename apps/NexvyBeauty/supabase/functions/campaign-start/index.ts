@@ -3,6 +3,7 @@
 // POST { campaign_id }
 
 import { resolveAudience, createServiceClient, type CampaignFilters } from "../_shared/campaign-audience.ts";
+import { authenticateTenant, assertOrgAccess } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,6 +42,13 @@ function weightedPick<T extends { weight?: number }>(items: T[]): T | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
+    const supabase = createServiceClient();
+
+    // campaign-start é acionável pelo painel (JWT de usuário) — autentica o TENANT,
+    // não é cron. authenticateTenant rejeita a anon key pública.
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { campaign_id } = (await req.json()) as { campaign_id: string };
     if (!campaign_id) {
       return new Response(JSON.stringify({ error: "Missing campaign_id" }), {
@@ -49,14 +57,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createServiceClient();
-
     const { data: campaign, error: cErr } = await supabase
       .from("campaigns")
       .select("*")
       .eq("id", campaign_id)
       .single();
     if (cErr || !campaign) throw new Error("Campaign not found");
+
+    // A campanha precisa pertencer à org do usuário (super_admin/service_role liberados).
+    const orgErr = assertOrgAccess(auth, campaign.organization_id, corsHeaders);
+    if (orgErr) return orgErr;
 
     if (campaign.status === "active") {
       return new Response(JSON.stringify({ error: "Campaign already active" }), {

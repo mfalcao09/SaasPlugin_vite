@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { aiChat, describeAIError } from "../_shared/ai-call.ts";
+import { authenticateTenant, assertOrgAccess } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e vazava
+    // pitch/ICP/preço de qualquer produto (+ custo de IA) via productId. Agora
+    // reautentica SEMPRE e valida (abaixo) a posse do produto pela org do
+    // usuário. service_role/super_admin passam.
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     // Fetch product details (incl. org for routing)
     const { data: product, error: productError } = await supabase
       .from("products")
@@ -40,6 +48,10 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Posse do recurso: usuário de tenant só gera objeções de produto da sua org.
+    const orgGuard = assertOrgAccess(auth, organizationId, corsHeaders);
+    if (orgGuard) return orgGuard;
 
     // Fetch knowledge base
     const { data: knowledge } = await supabase

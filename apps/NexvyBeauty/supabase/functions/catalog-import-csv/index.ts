@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateTenant, resolveOrgId } from "../_shared/tenant-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,15 +34,29 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Auth OBRIGATÓRIA (P1): a anon key pública chamava esta edge e inseria em
+    // qualquer org via organization_id do body. Agora reautentica SEMPRE e a org
+    // do usuário de tenant IGNORA o body (só service_role/super_admin operam em
+    // org arbitrária).
+    const auth = await authenticateTenant(req, supabase, corsHeaders);
+    if (auth.errorResponse) return auth.errorResponse;
+
     const body = (await req.json()) as ImportBody;
-    if (!body.organization_id || !Array.isArray(body.items) || body.items.length === 0) {
-      return new Response(JSON.stringify({ error: "organization_id and items required" }), {
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return new Response(JSON.stringify({ error: "items required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const organizationId = resolveOrgId(auth, body.organization_id);
+    if (!organizationId) {
+      return new Response(JSON.stringify({ error: "organization_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const rows = body.items.slice(0, 1000).map((it) => ({
-      organization_id: body.organization_id,
+      organization_id: organizationId,
       product_id: body.product_id ?? null,
       title: it.title,
       description: it.description ?? null,
