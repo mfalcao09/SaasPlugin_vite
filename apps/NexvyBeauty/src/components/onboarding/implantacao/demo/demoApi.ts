@@ -16,6 +16,16 @@ export interface DemoReportItem {
   reason: string;
 }
 
+/** Segmentação dos sumidos por tempo desde a última interação. */
+export interface DemoReportFaixas {
+  /** 2 a 6 meses sem falar. */
+  m2_6: number;
+  /** 6 a 12 meses sem falar. */
+  m6_12: number;
+  /** mais de 1 ano sem falar. */
+  m12_plus: number;
+}
+
 export interface DemoReport {
   ok: boolean;
   /** nº de clientes que sumiram (ultima_interacao_wa entre 45 e 180 dias). */
@@ -25,6 +35,22 @@ export interface DemoReport {
   /** ticket médio usado no cálculo (payload da submission ou default). */
   ticket: number;
   items: DemoReportItem[];
+
+  // ── Contrato NOVO ────────────────────────────────────────────────────────
+  // Todos OPCIONAIS de propósito: a edge em cache ainda responde o shape antigo.
+  // Sem eles a tela não consegue distinguir "base vazia" de "ainda ingerindo" de
+  // "erro" — e acaba dizendo "sua base está em dia" sobre um R$ 0,00 que era
+  // falha de leitura. Quem consome DEVE tratar `undefined` sem quebrar.
+  /** DENOMINADOR: total de contatos ingeridos na varredura. */
+  base_total?: number;
+  /** ingeridos SEM data de interação — invisíveis ao cálculo da janela. */
+  sem_data?: number;
+  /** interagiram há menos de 45 dias (logo, não são "sumidos"). */
+  ativos?: number;
+  /** segmentação dos sumidos por tempo. */
+  faixas?: DemoReportFaixas;
+  /** a varredura ainda está rodando? ausente = contrato antigo (desconhecido). */
+  scan_status?: 'ingerindo' | 'pronto';
 }
 
 export interface DemoConnectResult {

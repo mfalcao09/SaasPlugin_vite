@@ -71,21 +71,62 @@ function extractInstance(payload: any): string {
   return "";
 }
 
+// Contadores de descarte — sem isto a perda é INVISÍVEL (bug real 2026-07-20:
+// a varredura importou 1 contato de uma carteira inteira e ninguém soube por quê).
+const drops = { lid: 0, grupo: 0, vazio: 0 };
+function resetDrops() { drops.lid = 0; drops.grupo = 0; drops.vazio = 0; }
+
 // JID individual → telefone canônico BR (ou null se não for contato válido).
+// ⚠️ @lid NÃO é telefone: é o endereçamento "LID" do WhatsApp, hoje maioria das
+// conversas. Esta função não o resolve sozinha — quem chama deve tentar os campos
+// alternativos via resolvePhone() ANTES de desistir.
 function jidToPhone(jid: unknown): string | null {
   if (typeof jid !== "string" || !jid) return null;
   const j = jid.trim();
   if (
     j.endsWith("@g.us") ||        // grupos
     j.endsWith("@broadcast") ||   // broadcast e status@broadcast
-    j.endsWith("@newsletter") ||  // canais
-    j.includes("@lid")            // LID sem telefone real resolvido
+    j.endsWith("@newsletter")     // canais
   ) {
+    drops.grupo += 1;
     return null;
   }
+  if (j.includes("@lid")) return null; // não conta drop aqui — resolvePhone tenta o alt
   const raw = j.split("@")[0].split(":")[0].replace(/\D/g, "");
   if (!raw) return null;
   return normalizePhoneBR(raw);
+}
+
+/**
+ * Campos onde a Evolution/Baileys traz o telefone REAL quando o jid principal
+ * veio em LID. A ordem importa: o primeiro que resolver vence.
+ *
+ * ⚠️ BUG CORRIGIDO 2026-07-20: antes, todo jid contendo "@lid" era descartado
+ * cegamente e o contato sumia SEM LOG. Como LID é o endereçamento padrão do
+ * WhatsApp moderno, isso derrubava a maior parte da carteira — o raio-x saía
+ * vazio e a demonstração não demonstrava nada.
+ */
+const ALT_JID_FIELDS = [
+  "remoteJidAlt", "senderPn", "participantPn", "participantAlt",
+  "phoneNumber", "pn", "jid", "number", "id",
+] as const;
+
+/** Tenta o jid principal e, se ele for LID/inválido, varre os campos alternativos. */
+function resolvePhone(primary: unknown, ...objs: any[]): string | null {
+  const direct = jidToPhone(primary);
+  if (direct) return direct;
+  for (const o of objs) {
+    if (!o || typeof o !== "object") continue;
+    for (const f of ALT_JID_FIELDS) {
+      const v = (o as Record<string, unknown>)[f];
+      if (v === primary) continue;
+      const p = jidToPhone(v);
+      if (p) return p;
+    }
+  }
+  const isLid = typeof primary === "string" && primary.includes("@lid");
+  if (isLid) drops.lid += 1; else drops.vazio += 1;
+  return null;
 }
 
 // messageTimestamp chega como number (unix s), string numérica ou Long
@@ -192,10 +233,12 @@ Deno.serve(async (req) => {
       if (ultimaMs && (!prev.ultimaMs || ultimaMs > prev.ultimaMs)) prev.ultimaMs = ultimaMs;
     };
 
+    resetDrops();
+
     // MESSAGES_SET: { key: { remoteJid, fromMe, id }, pushName, messageTimestamp }
     for (const m of messages) {
       const key = m?.key || {};
-      const phone = jidToPhone(key.remoteJid || m?.remoteJid);
+      const phone = resolvePhone(key.remoteJid || m?.remoteJid, key, m);
       if (!phone) continue;
       const fromMe = key.fromMe === true;
       // pushName em fromMe é o nome do PRÓPRIO salão — nunca vira nome do contato.
@@ -207,7 +250,7 @@ Deno.serve(async (req) => {
 
     // CHATS_SET: { id|remoteJid, name?, conversationTimestamp? }
     for (const c of chats) {
-      const phone = jidToPhone(c?.id || c?.remoteJid || c?.jid);
+      const phone = resolvePhone(c?.id || c?.remoteJid || c?.jid, c);
       if (!phone) continue;
       const nome = c?.name || c?.pushName || null;
       // fallback de última interação (não distingue direção — melhor que nada)
@@ -217,7 +260,7 @@ Deno.serve(async (req) => {
 
     // CONTACTS_SET: { id|remoteJid, name?|pushName?|notify?|verifiedName? }
     for (const c of contacts) {
-      const phone = jidToPhone(c?.id || c?.remoteJid || c?.jid);
+      const phone = resolvePhone(c?.id || c?.remoteJid || c?.jid, c);
       if (!phone) continue;
       const nome = c?.name || c?.pushName || c?.notify || c?.verifiedName || null;
       add(phone, nome, null);
@@ -251,9 +294,13 @@ Deno.serve(async (req) => {
       updated += Number((result as any)?.updated ?? 0);
     }
 
+    // dropped_* torna a PERDA visível. Se dropped_lid for alto, a resolução por
+    // campo alternativo não cobriu o payload desta versão da Evolution — é o
+    // primeiro lugar a olhar quando a carteira vier rasa.
     console.log(
       `[evolution-history-sync] ✅ ${eventName} instance=${instance.name} org=${instance.organization_id} ` +
-      `contacts=${rows.length} inserted=${inserted} updated=${updated}`,
+      `contacts=${rows.length} inserted=${inserted} updated=${updated} ` +
+      `dropped_lid=${drops.lid} dropped_grupo=${drops.grupo} dropped_vazio=${drops.vazio}`,
     );
     return json({ ok: true, event: eventName, contacts: rows.length, inserted, updated });
   } catch (err: any) {

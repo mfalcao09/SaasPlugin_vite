@@ -79,6 +79,7 @@ const COFOUNDER_PILLARS: Array<{ title: string; body: string }> = [
 const WelcomeAdminAccessEmail = ({
   fullName,
   planName,
+  onboardingLink,
   recoveryLink,
   email,
 }: Props) => (
