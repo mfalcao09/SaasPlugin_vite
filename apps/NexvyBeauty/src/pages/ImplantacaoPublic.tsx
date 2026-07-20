@@ -10,7 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_token: 'Link inválido. Verifique se a URL está completa.',
   expired_token: 'Este link expirou. Solicite um novo ao seu contato.',
   link_revoked: 'Este link foi revogado pelo administrador.',
-  link_already_in_use: 'Este link já está sendo usado em outro navegador ou aba. Por segurança, só pode ser aberto em um lugar.',
+  link_already_in_use: 'Este link está aberto em outro navegador ou aba. Por segurança, ele funciona em um lugar por vez.',
   already_applied: 'A implantação desta empresa já foi concluída. Para alterar dados, entre em contato com o suporte.',
   org_not_found: 'Empresa não encontrada.',
 };
@@ -21,7 +21,7 @@ export default function ImplantacaoPublic() {
 
   const {
     payload, status, saving, loading, error, organizationId,
-    updateSection, submit, reportStep, mode, sessionToken,
+    updateSection, submit, reportStep, mode, sessionToken, takeover,
   } = useImplantacao({ token });
 
   // API da esteira (demo-evolution). Construída SEMPRE (regra de hooks); só é
@@ -41,7 +41,15 @@ export default function ImplantacaoPublic() {
           </div>
           <h1 className="text-2xl font-bold">Não foi possível abrir</h1>
           <p className="text-muted-foreground text-sm">{friendly}</p>
-          <Button onClick={() => navigate('/')}>Voltar</Button>
+          {error === 'link_already_in_use' ? (
+            <div className="flex flex-col items-center gap-2">
+              {/* Padrão WhatsApp Web: assumir a sessão aqui derruba a aba anterior. */}
+              <Button onClick={takeover}>Usar neste navegador</Button>
+              <Button variant="ghost" onClick={() => navigate('/')}>Voltar</Button>
+            </div>
+          ) : (
+            <Button onClick={() => navigate('/')}>Voltar</Button>
+          )}
         </div>
       </div>
     );
