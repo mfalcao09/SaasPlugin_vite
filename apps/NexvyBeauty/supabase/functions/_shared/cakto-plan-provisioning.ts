@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { GRAPH_BASE } from './meta-graph.ts';
 import { decryptSecret } from './meta-crypto.ts';
 import { normalizePhoneBR } from './phone.ts';
-import { handoffConversationToOnboarding } from './onboarding-handoff.ts';
+import { createOnboardingLinkForOrg, handoffConversationToOnboarding } from './onboarding-handoff.ts';
 import { sendTelegramAlert } from './platform-alerts.ts';
 import {
   connectionErrorCode,
@@ -341,6 +341,10 @@ interface EnsureAdminArgs {
   organizationId: string;
   planName?: string | null;
   phone?: string | null;
+  /** Link /implantacao/<token> do wizard. Quando existe, o botão do e-mail leva
+   *  DIRETO ao wizard (a senha é criada na última etapa dele). Sem ele, o e-mail
+   *  degrada para o recoveryLink — nunca sai sem CTA. */
+  onboardingUrl?: string | null;
 }
 
 /**
@@ -439,6 +443,10 @@ export async function ensureAdminUser(
         templateData: {
           fullName: args.fullName ?? null,
           planName: args.planName ?? null,
+          // Destino PREFERIDO do botão: o wizard, onde ela cria a senha na última
+          // etapa. recoveryLink fica como degradação (o action_link é uso-único e
+          // morre em scanner antispam — por isso o link tokenizado veio primeiro).
+          onboardingLink: args.onboardingUrl ?? null,
           recoveryLink,
           email,
         },
@@ -633,12 +641,24 @@ export async function provisionFromOrder(
   const offerSlug = extractOfferSlug(order.raw_payload, order.cakto_offer_slug ?? null);
   const plan = await resolvePlatformPlan(admin, offerSlug, order.product_cakto_id ?? null);
 
+  // Link de implantação criado UMA ÚNICA VEZ, ANTES do e-mail — e reusado depois
+  // pela Lia no WhatsApp. O botão do e-mail precisa levar direto ao WIZARD (onde a
+  // senha é criada na última etapa); antes ele ia para /reset-password, uma tela
+  // separada. Emitir aqui e passar adiante garante que e-mail e WhatsApp carreguem
+  // a MESMA URL — o token é irrecuperável depois de criado (só o sha256 é
+  // persistido), então dois links seriam impossíveis de reconciliar.
+  // Só na 1ª ativação: retry de webhook e renovação não podem cunhar token novo.
+  const onboardingUrl = (planRes.org_created || planRes.promoted)
+    ? await createOnboardingLinkForOrg(admin, planRes.organization_id)
+    : null;
+
   const userRes = await ensureAdminUser(admin, {
     email: order.customer_email!,
     fullName: order.customer_name ?? null,
     phone: order.customer_phone ?? null,
     organizationId: planRes.organization_id,
     planName: plan?.name ?? null,
+    onboardingUrl,
   });
 
   // SÓ na primeira ativação (org recém-criada OU org demo promovida in-place).
@@ -664,6 +684,8 @@ export async function provisionFromOrder(
         organizationId: planRes.organization_id,
         customerPhone: order.customer_phone ?? null,
         customerEmail: order.customer_email ?? null,
+        // MESMA URL que foi no e-mail (ver comentário na criação, acima).
+        onboardingUrl,
       });
       greeted = handoff.greeted === true;
       console.log('[cakto-provisioning] onboarding handoff:', JSON.stringify(handoff));

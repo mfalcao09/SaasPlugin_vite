@@ -17,6 +17,11 @@ import type { TemplateEntry } from './registry.ts'
 interface Props {
   fullName?: string | null
   planName?: string | null
+  /** PREFERIDO: /implantacao/<token> — leva direto ao wizard, onde ela cria a
+   *  senha na ÚLTIMA etapa. Evita a tela avulsa de senha. */
+  onboardingLink?: string | null
+  /** Degradação: action_link de recovery do Supabase (uso-único; morre em
+   *  scanner antispam). Só entra se onboardingLink não vier. */
   recoveryLink?: string | null
   email?: string | null
 }
@@ -108,9 +113,9 @@ const WelcomeAdminAccessEmail = ({
             Prepare-se para transformar a experiência no seu salão e impulsionar
             o sucesso do seu negócio com inteligência e sofisticação.
           </Text>
-          {recoveryLink ? (
+          {onboardingLink || recoveryLink ? (
             <Section style={ctaWrap}>
-              <Button href={recoveryLink} style={pinkButton}>
+              <Button href={onboardingLink || recoveryLink!} style={pinkButton}>
                 Começar meu Onboarding
               </Button>
             </Section>
@@ -120,6 +125,12 @@ const WelcomeAdminAccessEmail = ({
               <strong> {email}</strong> para criar sua senha de acesso.
             </Text>
           )}
+          {onboardingLink ? (
+            <Text style={muted}>
+              O botão abre a montagem do seu espaço. Você cria sua senha no
+              último passo — não precisa de senha para começar.
+            </Text>
+          ) : null}
           <Text style={muted}>
             Se você não reconhece esta compra, basta ignorar este e-mail.
           </Text>
@@ -214,6 +225,7 @@ export const template = {
     fullName: 'Maria',
     planName: 'Pro',
     email: 'maria@exemplo.com',
+    onboardingLink: 'https://app.exemplo.com/implantacao/token-de-exemplo',
     recoveryLink: 'https://app.exemplo.com/reset?token=abc',
   },
 } satisfies TemplateEntry

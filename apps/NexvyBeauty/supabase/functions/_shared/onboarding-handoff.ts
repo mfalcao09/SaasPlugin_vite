@@ -29,6 +29,12 @@ export interface OnboardingHandoffArgs {
   organizationId: string;
   customerPhone?: string | null;
   customerEmail?: string | null;
+  /** Link de implantação JÁ criado pelo provisionamento (mesma URL que foi no
+   *  e-mail de boas-vindas). Quando vem preenchido, a Lia REUSA esta URL em vez
+   *  de emitir um segundo token — senão a cliente receberia dois links
+   *  diferentes (um no e-mail, outro no WhatsApp) e o token é irrecuperável
+   *  depois de criado (só o sha256 é persistido), impossibilitando reconciliar. */
+  onboardingUrl?: string | null;
 }
 
 export interface OnboardingHandoffResult {
@@ -50,7 +56,7 @@ export interface OnboardingHandoffResult {
 // com nome e "Oi!" sem nome (nunca "Oi !").
 const LIA_GREETING_BUBBLES = [
   'Oi{nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.',
-  'Seu acesso já está no seu e-mail. Quando abrir, me chama aqui que a gente monta tudo junto, um passo por vez. Bora?',
+  'Te mandei no e-mail o link pra montar seu espaço. Quando abrir, me chama aqui que a gente faz junto, um passo por vez. Bora?',
 ];
 
 // Variante com o link de implantação tokenizado ({url}): a compradora entra na
@@ -60,8 +66,8 @@ const LIA_GREETING_BUBBLES = [
 // outro aparelho.
 const LIA_GREETING_BUBBLES_WITH_LINK = [
   'Oi{nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.',
-  'Esse é o link da montagem: {url} — seu acesso por e-mail e senha também já está na sua caixa de entrada.',
-  'Funciona assim: são 9 passos rapidinhos (seu espaço, horários, serviços, profissionais, sua EquipIA…) e tudo que você preenche salva sozinho — pode parar e voltar depois de onde parou, até em outro aparelho.',
+  'Esse é o link da montagem: {url} — é o mesmo que te mandei no e-mail, pode abrir por onde preferir.',
+  'Funciona assim: são 10 passos rapidinhos (seu espaço, horários, serviços, profissionais, sua EquipIA…) e tudo que você preenche salva sozinho — pode parar e voltar depois de onde parou, até em outro aparelho. Sua senha você cria no último passo.',
   'Duas dicas: o link abre em um navegador por vez (se aparecer "em uso", é só tocar em "Usar neste navegador"). E o último passo tem um QR code pra conectar o WhatsApp do espaço — abre o link no computador ou em outro celular, porque o QR precisa ser escaneado com o SEU 😉 Qualquer dúvida, me chama aqui!',
 ];
 
@@ -87,7 +93,7 @@ async function sha256Hex(input: string): Promise<string> {
  * a URL pública /implantacao/<token>. Best-effort: falha vira null e a Lia cai
  * nas bolhas sem link (comportamento anterior) — nunca derruba o handoff.
  */
-async function createOnboardingLinkForOrg(
+export async function createOnboardingLinkForOrg(
   admin: SupabaseClient,
   organizationId: string,
 ): Promise<string | null> {
@@ -360,7 +366,10 @@ export async function handoffConversationToOnboarding(
         const name = (convRow as any)?.visitor_name ?? null;
         // Link de implantação tokenizado gerado SÓ na 1ª saudação (o gate
         // priorGreeting acima garante que retry de webhook não cria token novo).
-        const onboardingUrl = await createOnboardingLinkForOrg(admin, args.organizationId);
+        // REUSA o link que o provisionamento já criou e mandou por e-mail. Só
+        // emite um novo se não veio nenhum (ex.: chamada fora do fluxo de compra).
+        const onboardingUrl = args.onboardingUrl
+          ?? await createOnboardingLinkForOrg(admin, args.organizationId);
         greeted = await sendLiaGreeting(
           admin,
           conversationId,
