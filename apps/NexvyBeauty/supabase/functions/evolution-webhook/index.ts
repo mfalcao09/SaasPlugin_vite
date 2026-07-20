@@ -868,11 +868,19 @@ Deno.serve(async (req) => {
     // instância→org e faz o upsert batch em `clientes`) e responde 200 na hora
     // pro Evolution não re-tentar. Processa em background via waitUntil quando
     // o runtime suporta.
+    // ⚠️ AMPLIADO 2026-07-20: a Evolution v2/Baileys entrega histórico também em
+    // eventos *_UPSERT (incrementais), não só nos *_SET. Antes, esses payloads
+    // caíam no caminho de "mensagem ao vivo", viravam kind="unknown" e eram
+    // DESCARTADOS SEM LOG — parte da razão de a carteira chegar rasa e o raio-x
+    // sair vazio.
     const HISTORY_EVENTS = new Set([
       "messages.set", "MESSAGES_SET",
       "chats.set", "CHATS_SET",
       "contacts.set", "CONTACTS_SET",
       "messaging-history.set", "MESSAGING_HISTORY_SET",
+      "contacts.upsert", "CONTACTS_UPSERT",
+      "contacts.update", "CONTACTS_UPDATE",
+      "chats.upsert", "CHATS_UPSERT",
     ]);
     if (typeof rawEvent === "string" && HISTORY_EVENTS.has(rawEvent)) {
       const historyForward = fetch(
