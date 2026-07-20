@@ -9,10 +9,11 @@
 // colisão (23505) acontece no apply — aqui só mantemos o slug sanitizado no
 // payload.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Store, Clock, Scissors, Users, Bot, KeyRound, CheckCircle2, Smartphone,
   Sparkles, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Upload, X, Link2,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ImplantacaoPayload,
   uploadOnboardingFile,
@@ -47,6 +49,8 @@ interface Props {
   skipsRemaining?: number;
   /** Telemetria de fase (handoff Duda→CS): chamada a cada mudança de página. */
   onStepChange?: (stepIndex: number, stepId: string) => void;
+  /** Etapa inicial (0-based) — retomada cross-device a partir da etapa salva. */
+  initialStep?: number;
 }
 
 // Labels EXATOS aprovados pelo Marcelo — não parafrasear.
@@ -70,6 +74,46 @@ const DAYS: Array<[string, string]> = [
   ['friday', 'Sexta'], ['saturday', 'Sábado'], ['sunday', 'Domingo'],
 ];
 
+// Rótulos amigáveis pros fusos IANA. O VALUE continua IANA (o backend depende);
+// fuso fora do mapa exibe o próprio IANA.
+const TIMEZONE_LABELS: Record<string, string> = {
+  'America/Sao_Paulo': 'Brasil — Horário de Brasília',
+  'America/Manaus': 'Brasil — Manaus (AM)',
+  'America/Cuiaba': 'Brasil — Cuiabá (MT/MS)',
+  'America/Fortaleza': 'Brasil — Fortaleza (NE)',
+  'America/Recife': 'Brasil — Recife',
+  'America/Bahia': 'Brasil — Bahia',
+  'America/Belem': 'Brasil — Belém',
+  'America/Boa_Vista': 'Brasil — Boa Vista (RR)',
+  'America/Porto_Velho': 'Brasil — Porto Velho (RO)',
+  'America/Rio_Branco': 'Brasil — Rio Branco (AC)',
+  'America/Noronha': 'Brasil — Fernando de Noronha',
+};
+const TIMEZONE_OPTIONS = ['America/Sao_Paulo', 'America/Manaus', 'America/Cuiaba', 'America/Fortaleza'];
+
+// Agentes prontos da EquipIA. O apply-onboarding recebe equipia = { nome, tom }
+// (UM agente; ver supabase/functions/apply-onboarding/index.ts:334-336) e o tom
+// passa pelo TONE_MAP de lá — só amigável/consultivo/formal/técnico são
+// reconhecidos, qualquer outro degrada silenciosamente pra "friendly". Por isso
+// os presets usam SÓ o vocabulário canônico do select de tom.
+const EQUIPIA_PRESETS = [
+  {
+    nome: 'Recepcionista virtual',
+    tom: 'Amigável',
+    descricao: 'Responde clientes no WhatsApp, agenda e confirma horários — com um jeito acolhedor.',
+  },
+  {
+    nome: 'Assistente de reativação',
+    tom: 'Amigável',
+    descricao: 'Chama clientes sumidas com mensagens calorosas, no seu tom.',
+  },
+  {
+    nome: 'Consultora de serviços',
+    tom: 'Consultivo',
+    descricao: 'Tira dúvidas sobre serviços, preços e indicações antes de agendar.',
+  },
+] as const;
+
 // Paleta canônica do espaço (espelha CompanySettings/GuidedOnboarding).
 const PRESET_COLORS = [
   '#F97316', '#EC4899', '#8B5CF6', '#10B981',
@@ -90,9 +134,10 @@ const sanitizeSlugTyping = (v: string) =>
 
 export function ImplantacaoWizard({
   payload, status, saving, organizationId, onChange, onSubmit, onFinish, onSkip, skipsRemaining,
-  onStepChange,
+  onStepChange, initialStep,
 }: Props) {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() =>
+    Math.min(Math.max(initialStep ?? 0, 0), STEPS.length - 1));
 
   // Reporta a página atual (1-based na RPC) em TODA transição — pills, Voltar,
   // Continuar e os saltos pós-apply (8/9). Fire-and-forget; cobre também o
@@ -131,6 +176,41 @@ export function ImplantacaoWizard({
   const previewSlug = sanitizeSlug(payload.empresa?.slug ?? '') || 'seu-espaco';
   const cor = payload.empresa?.cor_principal || DEFAULT_PRIMARY_COLOR;
 
+  // ── CEP → endereço (ViaCEP) ──
+  // O ref espelha a empresa mais recente: a resposta do fetch chega DEPOIS de
+  // re-renders (o closure do handler fica stale), e o preenchimento não pode
+  // sobrescrever nada que a pessoa digitou nesse meio-tempo.
+  const empresaRef = useRef(payload.empresa);
+  empresaRef.current = payload.empresa;
+  const [cepLoading, setCepLoading] = useState(false);
+
+  const handleCepChange = async (raw: string) => {
+    updateEndereco({ cep: raw });
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (!data || data.erro) return; // CEP inexistente: falha silenciosa
+      const empresa = empresaRef.current ?? {};
+      const atual = (empresa as any).endereco ?? {};
+      // Só preenche campo VAZIO — nunca sobrescreve o que já foi digitado.
+      const patch: Record<string, string> = {};
+      if (!atual.rua && data.logradouro) patch.rua = data.logradouro;
+      if (!atual.bairro && data.bairro) patch.bairro = data.bairro;
+      if (!atual.cidade && data.localidade) patch.cidade = data.localidade;
+      if (!atual.uf && data.uf) patch.uf = data.uf;
+      if (Object.keys(patch).length) {
+        onChange('empresa', { ...empresa, endereco: { ...atual, ...patch } });
+      }
+    } catch (err) {
+      console.warn('ViaCEP indisponível:', err);
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
   const handleApply = async () => {
     setSubmitting(true);
     const ok = await onSubmit();
@@ -168,6 +248,7 @@ export function ImplantacaoWizard({
         </button>
       )}
       <div className="text-center space-y-3">
+        <img src="/email/logo-v1.png" alt="NexvyBeauty" className="h-7 mx-auto" />
         <Badge variant="outline" className="px-4 py-1 text-sm">Primeiros passos</Badge>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Vamos montar seu espaço</h1>
         <p className="text-muted-foreground">Conta pra gente como seu espaço funciona — em poucos minutos deixamos tudo pronto.</p>
@@ -234,6 +315,7 @@ export function ImplantacaoWizard({
               <Label className="mb-2 flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-primary" />
                 Link de agendamento
+                <HelpTip text="Esse é o endereço que suas clientes usam para agendar online. Dicas: use o nome do seu espaço, curto, sem acentos ou espaços (ex.: studio-ana-lima). Dá para mudar depois nas configurações." />
               </Label>
               <div className="flex items-stretch rounded-md border focus-within:ring-1 focus-within:ring-ring overflow-hidden">
                 <span className="hidden sm:flex items-center px-3 bg-muted text-xs text-muted-foreground border-r whitespace-nowrap">
@@ -282,8 +364,9 @@ export function ImplantacaoWizard({
 
             <div className="pt-4 border-t">
               <h3 className="font-semibold mb-3">Endereço</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                <Field label="CEP"><Input value={payload.empresa?.endereco?.cep ?? ''} onChange={e => updateEndereco({ cep: e.target.value })} /></Field>
+              {/* Enquanto o ViaCEP busca, o grupo fica translúcido (loading discreto). */}
+              <div className={cn('grid md:grid-cols-3 gap-4 transition-opacity', cepLoading && 'opacity-60')}>
+                <Field label="CEP"><Input value={payload.empresa?.endereco?.cep ?? ''} onChange={e => handleCepChange(e.target.value)} /></Field>
                 <Field label="Rua" className="md:col-span-2"><Input value={payload.empresa?.endereco?.rua ?? ''} onChange={e => updateEndereco({ rua: e.target.value })} /></Field>
                 <Field label="Número"><Input value={payload.empresa?.endereco?.numero ?? ''} onChange={e => updateEndereco({ numero: e.target.value })} /></Field>
                 <Field label="Complemento"><Input value={payload.empresa?.endereco?.complemento ?? ''} onChange={e => updateEndereco({ complemento: e.target.value })} /></Field>
@@ -302,10 +385,9 @@ export function ImplantacaoWizard({
               <Select value={payload.horarios?.timezone ?? 'America/Sao_Paulo'} onValueChange={v => updateHorarios({ timezone: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="America/Sao_Paulo">America/Sao_Paulo</SelectItem>
-                  <SelectItem value="America/Manaus">America/Manaus</SelectItem>
-                  <SelectItem value="America/Cuiaba">America/Cuiaba</SelectItem>
-                  <SelectItem value="America/Fortaleza">America/Fortaleza</SelectItem>
+                  {TIMEZONE_OPTIONS.map(tz => (
+                    <SelectItem key={tz} value={tz}>{TIMEZONE_LABELS[tz] ?? tz}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -340,10 +422,10 @@ export function ImplantacaoWizard({
               label="serviço" addLabel="+ Adicionar serviço"
               renderItem={(s, update) => (
                 <div className="grid md:grid-cols-2 gap-3">
-                  <Field label="Nome do serviço"><Input value={s.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Corte feminino" /></Field>
-                  <Field label="Categoria"><Input value={s.categoria ?? ''} onChange={e => update({ categoria: e.target.value })} placeholder="Ex: Cabelo, Unhas, Estética..." /></Field>
-                  <Field label="Duração (min)"><Input type="number" min={0} value={s.duracao_min ?? ''} onChange={e => update({ duracao_min: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })} placeholder="60" /></Field>
-                  <Field label="Preço (R$)"><Input type="number" min={0} step="0.01" value={s.preco ?? ''} onChange={e => update({ preco: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })} placeholder="120" /></Field>
+                  <Field label="Nome do serviço" hint="O nome que a cliente vê ao agendar. Seja específica: 'Corte feminino', 'Manicure completa'."><Input value={s.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Corte feminino" /></Field>
+                  <Field label="Categoria" hint="Agrupa os serviços no agendamento online (ex.: Cabelo, Unhas, Estética). Ajuda a cliente a achar o que procura."><Input value={s.categoria ?? ''} onChange={e => update({ categoria: e.target.value })} placeholder="Ex: Cabelo, Unhas, Estética..." /></Field>
+                  <Field label="Duração (min)" hint="Tempo que o serviço ocupa na agenda. Isso define quantas clientes cabem no seu dia — duração certa = agenda sem furos nem atrasos."><Input type="number" min={0} value={s.duracao_min ?? ''} onChange={e => update({ duracao_min: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })} placeholder="60" /></Field>
+                  <Field label="Preço (R$)" hint="Valor exibido no agendamento online. Dá para ajustar por profissional depois."><Input type="number" min={0} step="0.01" value={s.preco ?? ''} onChange={e => update({ preco: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })} placeholder="120" /></Field>
                 </div>
               )}
             />
@@ -373,6 +455,35 @@ export function ImplantacaoWizard({
             <p className="text-sm text-muted-foreground">
               A EquipIA é a equipe de inteligência artificial do seu espaço — ela atende suas clientes no WhatsApp.
             </p>
+
+            {/* Presets prontos: 1 clique preenche nome + tom no payload (equipia
+                é UM agente {nome, tom} — o mesmo shape que o apply-onboarding
+                grava em product_agents). Nome e tom continuam editáveis abaixo. */}
+            <div>
+              <Label className="mb-2 block">Comece com uma agente pronta</Label>
+              <div className="grid md:grid-cols-3 gap-3">
+                {EQUIPIA_PRESETS.map((p) => {
+                  const selected = payload.equipia?.nome === p.nome && payload.equipia?.tom === p.tom;
+                  return (
+                    <div key={p.nome} className={cn(
+                      'p-4 rounded-lg border flex flex-col gap-2 transition-colors',
+                      selected ? 'border-primary bg-primary/5' : 'bg-muted/30',
+                    )}>
+                      <div className="font-medium text-sm">{p.nome}</div>
+                      <p className="text-xs text-muted-foreground flex-1">{p.descricao}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-muted-foreground">Tom: {p.tom}</span>
+                        <Button type="button" size="sm" variant={selected ? 'default' : 'outline'}
+                          onClick={() => updateEquipia({ nome: p.nome, tom: p.tom })}>
+                          {selected ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Adicionada</> : 'Adicionar'}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <Field label="Nome da sua atendente IA">
                 <Input value={payload.equipia?.nome ?? ''} onChange={e => updateEquipia({ nome: e.target.value })} placeholder="Lia" />
@@ -388,6 +499,10 @@ export function ImplantacaoWizard({
                 </Select>
               </Field>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Você encontra e adiciona outros agentes depois, na área Agentes de IA do painel.
+            </p>
           </div>
         )}
 
@@ -431,7 +546,7 @@ export function ImplantacaoWizard({
             <div className="grid md:grid-cols-2 gap-3">
               <SummaryCard label="Seu espaço" value={payload.empresa?.nome_fantasia || '—'} />
               <SummaryCard label="Link de agendamento" value={`${publicBase}/s/${previewSlug}`} />
-              <SummaryCard label="Fuso horário" value={payload.horarios?.timezone ?? '—'} />
+              <SummaryCard label="Fuso horário" value={payload.horarios?.timezone ? (TIMEZONE_LABELS[payload.horarios.timezone] ?? payload.horarios.timezone) : '—'} />
               <SummaryCard label="Serviços" value={`${payload.servicos?.length ?? 0} cadastrado(s)`} />
               <SummaryCard label="Profissionais" value={`${payload.profissionais?.length ?? 0} cadastrado(s)`} />
               <SummaryCard label="EquipIA" value={payload.equipia?.nome ? `${payload.equipia.nome} · ${payload.equipia?.tom ?? 'Amigável'}` : '—'} />
@@ -500,10 +615,29 @@ export function ImplantacaoWizard({
   );
 }
 
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+// Interrogação pequena ao lado de um label; conteúdo no Tooltip do shadcn.
+function HelpTip({ text }: { text: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" aria-label="Ajuda" className="text-muted-foreground hover:text-foreground transition-colors">
+            <HelpCircle className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs leading-relaxed">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function Field({ label, hint, children, className }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-1.5", className)}>
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+        {label}
+        {hint && <HelpTip text={hint} />}
+      </Label>
       {children}
     </div>
   );

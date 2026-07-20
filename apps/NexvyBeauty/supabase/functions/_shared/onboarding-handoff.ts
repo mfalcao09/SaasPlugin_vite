@@ -61,7 +61,8 @@ const LIA_GREETING_BUBBLES = [
 const LIA_GREETING_BUBBLES_WITH_LINK = [
   'Oi{nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.',
   'Esse é o link da montagem: {url} — seu acesso por e-mail e senha também já está na sua caixa de entrada.',
-  'Dica: abre esse link no computador (ou em outro celular) 😉 No final tem um QR code pra conectar o WhatsApp do espaço, e ele precisa ser escaneado com o SEU celular. Qualquer dúvida, me chama aqui!',
+  'Funciona assim: são 9 passos rapidinhos (seu espaço, horários, serviços, profissionais, sua EquipIA…) e tudo que você preenche salva sozinho — pode parar e voltar depois de onde parou, até em outro aparelho.',
+  'Duas dicas: o link abre em um navegador por vez (se aparecer "em uso", é só tocar em "Usar neste navegador"). E o último passo tem um QR code pra conectar o WhatsApp do espaço — abre o link no computador ou em outro celular, porque o QR precisa ser escaneado com o SEU 😉 Qualquer dúvida, me chama aqui!',
 ];
 
 const ONBOARDING_LINK_TTL_MS = 72 * 60 * 60 * 1000;

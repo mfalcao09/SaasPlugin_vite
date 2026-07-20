@@ -660,7 +660,7 @@ function recurrenceScoreForSubVertical(subVertical: string): number {
 // byte-idêntico ao de hoje. Nada abaixo roda sem a flag.
 
 /** Regra 7 substituta no modo implantação: a venda ACABOU — papel é CS. */
-const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
+const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. VOCÊ VÊ a página em que ela está (FASE ATUAL acima) — NUNCA pergunte "em qual tela você está?": AFIRME ("tô vendo aqui que você está em Serviços…") e oriente. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
 
 // MODO RETENÇÃO (P2 · PR-B) — a Nina cuida de quem JÁ comprou e usa o produto.
 // Espelha o ONBOARDING_RULE_BLOCK (pós-venda, sem venda), mas com foco em cuidado
@@ -747,21 +747,25 @@ function buildOnboardingPhaseContext(sub: Record<string, any> | null): string {
 
   let fase: string;
   if (!sub) {
-    fase = 'Ela ainda NÃO abriu o assistente de implantação. Dê boas-vindas pela compra e convide-a a começar (o acesso chegou no e-mail dela).';
+    fase = 'Ela ainda NÃO abriu o assistente de implantação. Dê boas-vindas pela compra e convide-a a começar (o link da montagem foi enviado aqui no WhatsApp e o acesso chegou no e-mail dela).';
   } else if (status === 'applied' && (step == null || step >= 9)) {
     fase = 'Implantação CONCLUÍDA — o espaço dela já está no ar. Parabenize e oriente os primeiros passos no painel (agenda, atendente virtual).';
   } else if (step != null) {
     const pg = WIZARD_PAGES.find((p) => p.n === step);
-    fase = `Ela está na PÁGINA ${step} de 9${pg ? ` — "${pg.titulo}"` : ''}${stepId ? ` (id: ${stepId})` : ''}. Oriente a partir DESSA página.`;
+    fase = `Ela está na PÁGINA ${step} de 9${pg ? ` — "${pg.titulo}"` : ''}${stepId ? ` (id: ${stepId})` : ''}. Oriente a partir DESSA página, AFIRMANDO que você vê onde ela está.`;
   } else {
-    fase = 'Ela abriu o assistente, mas a página atual ainda não foi registrada — pergunte com leveza em que tela ela está.';
+    fase = 'Ela abriu o assistente há pouco (página ainda não registrada — deve estar no comecinho, página 1 "Seu espaço"). Oriente a partir do início; NÃO pergunte em qual tela ela está.';
   }
 
   const playbook = WIZARD_PAGES.map((p) => `${p.n}. ${p.titulo}: ${p.guia}`).join('\n');
   return (
     `\n═══════════════════════════════════════\nFASE DA IMPLANTAÇÃO (pós-compra — MODO IMPLANTAÇÃO ATIVO)\n═══════════════════════════════════════\n` +
     `A cliente JÁ COMPROU e agora monta o espaço dela no assistente de implantação (9 páginas).\nFASE ATUAL: ${fase}\n\n` +
-    `PLAYBOOK DO ASSISTENTE (por página: o que ela vê · dúvidas comuns · como orientar):\n${playbook}\n`
+    `PLAYBOOK DO ASSISTENTE (por página: o que ela vê · dúvidas comuns · como orientar):\n${playbook}\n\n` +
+    `COMO O ASSISTENTE FUNCIONA (explique proativamente no início e sempre que fizer sentido):\n` +
+    `- Tudo que ela preenche SALVA AUTOMATICAMENTE — pode parar e retomar depois de onde parou, inclusive em outro aparelho (o assistente reabre na mesma página).\n` +
+    `- O link abre em UM navegador por vez. Se aparecer "link em uso em outro navegador", basta tocar em "Usar neste navegador" — a sessão vem pra onde ela está.\n` +
+    `- O passo 8 tem um QR code que precisa ser escaneado com o CELULAR DELA — por isso o ideal é abrir o link no computador (ou em outro celular).\n`
   );
 }
 
