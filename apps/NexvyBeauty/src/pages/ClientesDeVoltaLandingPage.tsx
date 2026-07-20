@@ -191,8 +191,11 @@ export default function LandingPage() {
     };
   }, []);
 
+  // data-theme="light" trava a paleta oficial: o bloco prefers-color-scheme:dark
+  // do clientes-de-volta-lp.css exclui [data-theme="light"] — sem isso, celular em
+  // modo escuro rendia a variante dark nunca aprovada.
   return (
-    <div className="lp-root" ref={rootRef} id="top">
+    <div className="lp-root" data-theme="light" ref={rootRef} id="top">
       <div id="progress" ref={progressRef} />
 
       <Nav />
