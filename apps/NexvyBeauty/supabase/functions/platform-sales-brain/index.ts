@@ -72,15 +72,35 @@ const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
 const DEDUP_WINDOW_MS = 5000;
 // Debounce: agrega mensagens curtas da lead que chegam em rajada numa só resposta.
-const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '25000');
+// 12s (era 25s): a Nina usa 10s e o ritmo dela foi aprovado; 12s dá margem pra lead
+// B2B, que digita frases mais longas. 25s deixava a lead no vácuo tempo demais.
+const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '12000');
 // Re-entrega velha do Meta: inbound com timestamp mais velho que isto = ignorar
 // (bug real: Meta re-entregou msg de 13 min atrás e a Duda se reapresentou).
 const STALE_REDELIVERY_MS = 10 * 60 * 1000;
 // Guardrails de forma (reclamação real: textão + várias perguntas juntas).
-const MAX_BUBBLES = 3;
-const MAX_BUBBLE_CHARS = 300;
-const BUBBLE_PAUSE_PER_CHAR_MS = 30;
-const BUBBLE_PAUSE_CAP_MS = 4000;
+// INVARIANTE deste pipeline: nenhuma função pode REDUZIR o número de caracteres
+// entregues — só reagrupar. Perder o preço/link no meio da palavra custa a venda;
+// uma bolha comprida custa só estilo. Bug > estilo.
+const MAX_BUBBLES = 4;      // era 3 — 3 forçava o merge que decepava a última bolha
+const MAX_BUBBLE_CHARS = 160; // era 300 — 300 era "textão" e saturava a pausa
+// ─── Ritmo de digitação humana ──────────────────────────────────────────────
+// Humano em celular: 25-40 wpm ≈ 2,1-3,3 chars/s ≈ 300-470 ms/char.
+// 70 ms/char ≈ 171 wpm — de propósito 4-6x mais rápido que humano (ninguém espera
+// 2 min por um SDR). O que torna a compressão aceitável é o INDICADOR DE DIGITANDO:
+// com "digitando…" visível, "digitador rápido" passa; sem ele, nada passa.
+// Estado anterior: 30 ms/char com teto de 4s → saturava em 134 chars, ou seja
+// QUASE TODA bolha saía com 4s fixos (intervalo determinístico = assinatura de bot).
+const TYPING_MS_PER_CHAR = Number(Deno.env.get('AI_BRAIN_TYPING_MS_PER_CHAR') ?? '70');
+const TYPING_FLOOR_MS = 1400;
+const TYPING_CAP_MS = 8000;
+// Jitter ±18% mata a assinatura determinística. Zerável por env no smoke test.
+const TYPING_JITTER = Number(Deno.env.get('AI_BRAIN_TYPING_JITTER') ?? '0.18');
+// Tempo de "ler o que a lead escreveu" antes da 1ª bolha. Leitura adulta pt-BR
+// ~200 wpm ≈ 60 ms/char, comprimido pelo mesmo motivo acima.
+const READ_MS_PER_CHAR = 18;
+const READ_FLOOR_MS = 1200;
+const READ_CAP_MS = 4200;
 // Tags de escalada — o modelo emite no fim.
 const HANDOFF_TAG = '[HANDOFF_HUMANO]';   // lead pediu humano / reclamou grave
 const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível — JAMAIS por perfil (venda nunca é rejeitada)
@@ -136,6 +156,52 @@ function isAuthorized(req: Request): boolean {
  * da lead) é pior do que falhar visível.
  * Retorna o wamid pra casar com os statuses (sent/delivered/read) do webhook.
  */
+/**
+ * Pausa de "digitação" proporcional ao texto, com piso, teto e jitter.
+ * O jitter existe para matar a assinatura determinística: antes, QUALQUER bolha
+ * ≥134 chars saía com exatamente 4000ms — intervalo idêntico e mensurável por
+ * quem quisesse detectar bot.
+ */
+function typingPauseMs(text: string): number {
+  const base = Math.min(Math.max(text.length * TYPING_MS_PER_CHAR, TYPING_FLOOR_MS), TYPING_CAP_MS);
+  const jitter = 1 + (Math.random() * 2 - 1) * TYPING_JITTER;
+  return Math.round(base * jitter);
+}
+
+/**
+ * Marca a última inbound como lida E liga o indicador "digitando…" no WhatsApp.
+ * Sem isto, aumentar a pausa só produz SILÊNCIO suspeito — é o indicador que
+ * transforma espera em "ela está escrevendo". Nem a Nina tem isso.
+ *
+ * NON-FATAL por contrato: qualquer falha aqui (versão do Graph sem suporte,
+ * token, wamid ausente) é logada e ignorada — nunca aborta a entrega.
+ */
+async function sendTypingIndicator(
+  supabase: any,
+  conversation: ConversationConnectionHints | null,
+  inboundWamid: string | null,
+): Promise<void> {
+  if (!inboundWamid) return; // régua de inatividade não tem inbound recente
+  try {
+    const resolved = await resolveConnectionForConversation(supabase, conversation);
+    const conn = resolved.conn;
+    if (!conn) return;
+    const token = await decryptSecret(conn.access_token_encrypted as string);
+    await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: inboundWamid,
+        typing_indicator: { type: 'text' },
+      }),
+    });
+  } catch (e) {
+    console.warn('[platform-sales-brain] typing indicator falhou (ignorado):', String(e).slice(0, 200));
+  }
+}
+
 async function deliverViaWhatsAppCloud(
   supabase: any,
   conversation: ConversationConnectionHints | null,
@@ -388,9 +454,38 @@ function sanitizeReply(input: string): { text: string; sanitized: boolean } {
 }
 
 /**
+ * Normaliza markdown para a sintaxe REAL do WhatsApp. CONVERTE, nunca remove
+ * conteúdo. O WhatsApp usa UM asterisco para negrito — `**Essencial**` aparece
+ * com asterisco CRU na tela da lead (aconteceu em produção 2026-07-20).
+ * Por que em código e não no prompt: o prompt JÁ manda ("sem markdown, sem
+ * asteriscos") e o modelo escorregou mesmo assim. Instrução probabilística não
+ * é guardrail. Ordem importa: `**`→`*` ANTES de qualquer regra que toque `*`
+ * isolado, senão negrito duplo vira bullet.
+ */
+function normalizeWhatsAppMarkup(input: string): { text: string; changed: boolean } {
+  const before = input;
+  let text = input;
+  text = text.replace(/```[a-zA-Z]*\n?([\s\S]*?)```/g, '$1'); // cercas → conteúdo cru
+  text = text.replace(/`([^`\n]+)`/g, '$1');                  // inline code
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1: $2'); // link md
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '*$1*');          // negrito md → WhatsApp
+  text = text.replace(/__([^_\n]+)__/g, '_$1_');              // itálico/underline
+  text = text.replace(/~~([^~\n]+)~~/g, '~$1~');              // tachado
+  text = text.replace(/^\s{0,3}#{1,6}\s*/gm, '');             // headings
+  text = text.replace(/^\s*[-*+]\s+/gm, '• ');                // bullets
+  return { text, changed: text !== before };
+}
+
+/**
  * EXATAMENTE UMA pergunta por resposta: se o modelo emitiu >1 '?', mantém só até
- * a primeira interrogação (trunca no fim dessa frase). Melhor perder uma pergunta
- * que sobrecarregar a lead com um formulário.
+ * a primeira interrogação. Melhor perder uma pergunta que sobrecarregar a lead.
+ *
+ * ⚠️ GUARD DE VENDA (bug real 2026-07-20): a regra 7 do prompt OBRIGA a URL do
+ * checkout na resposta de quem já decidiu. Se o modelo escrevesse
+ * "Quer o Essencial? Aqui: https://…", o corte na 1ª '?' APAGAVA O LINK — venda
+ * perdida em silêncio, sem erro no log. Agora: se o descarte contiver URL ou
+ * valor em R$, NÃO descartamos nada — removemos apenas as PERGUNTAS extras e
+ * mantemos todo o conteúdo declarativo (preço, link, despedida).
  */
 function keepFirstQuestion(input: string): string {
   // '?' dentro de URL é querystring, NÃO pergunta (bug D3: o link de checkout
@@ -402,6 +497,24 @@ function keepFirstQuestion(input: string): string {
   const marks = (masked.match(/\?/g) || []).length;
   if (marks <= 1) return input.trim();
   const firstQ = masked.indexOf('?');
+
+  // GUARD DE VENDA: o que seria jogado fora carrega link/preço? Então não corta —
+  // só tira as perguntas EXTRAS e preserva todo o declarativo.
+  const discarded = masked.slice(firstQ + 1).split(SENT).join('?');
+  if (/https?:\/\//i.test(discarded) || /R\$\s*\d/i.test(discarded)) {
+    const restored = masked.split(SENT).join('?');
+    const sentences = restored.match(/[^.!?]+[.!?]*\s*/g) ?? [restored];
+    let keptQuestion = false;
+    const kept = sentences.filter((s) => {
+      if (!s.trim().endsWith('?')) return true;   // declarativo: SEMPRE mantém
+      if (keptQuestion) return false;              // 2ª pergunta em diante: descarta
+      keptQuestion = true;
+      return true;                                 // 1ª pergunta: mantém
+    });
+    console.warn('[platform-sales-brain] keepFirstQuestion: descarte continha link/preço — preservado');
+    return kept.join('').trim();
+  }
+
   return masked.slice(0, firstQ + 1).split(SENT).join('?').trim();
 }
 
@@ -435,10 +548,20 @@ function splitIntoBubbles(input: string): string[] {
     }
     if (buf.trim()) out.push(buf.trim());
   }
-  // Corte duro: no máximo MAX_BUBBLES bolhas (o excedente vira a última, aparado).
+  // Teto de BOLHAS (não de caracteres): o excedente é REAGRUPADO na última bolha,
+  // INTEIRO. Nunca cortado.
+  //
+  // ⚠️ BUG CORRIGIDO 2026-07-20: aqui havia `.slice(0, MAX_BUBBLE_CHARS)`, que
+  // cortava cego por índice e DESCARTAVA o resto para sempre — foi o que produziu
+  // "…O preço de la" (decepado no meio de "lançamento", matando a âncora de preço).
+  // O WhatsApp aceita 4096 chars por mensagem, então nada precisa ser perdido.
   if (out.length > MAX_BUBBLES) {
     const head = out.slice(0, MAX_BUBBLES - 1);
-    const tail = out.slice(MAX_BUBBLES - 1).join(' ').slice(0, MAX_BUBBLE_CHARS).trim();
+    const tail = out.slice(MAX_BUBBLES - 1).join(' ').trim();
+    if (tail.length > MAX_BUBBLE_CHARS) {
+      // Sinal de que o PROMPT está produzindo textão — não é para ser normal.
+      console.warn(`[platform-sales-brain] bolha final longa (${tail.length} chars) — revisar regras de forma do prompt`);
+    }
     return [...head, tail].filter(Boolean);
   }
   return out.filter(Boolean);
@@ -1194,13 +1317,31 @@ ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto 
 COMO RESPONDER (WhatsApp — regras de forma DURAS)
 ═══════════════════════════════════════
 - Responda em pt-BR, tom de conversa de WhatsApp: curto, humano, direto.
-- MÁXIMO ~300 caracteres. Sem parede de texto.
+- CADA MENSAGEM = UMA IDEIA, em 2-3 linhas (~140 caracteres). Ninguém digita parede
+  de texto no WhatsApp — parece robô e a lead percebe na hora.
+- SE precisar de duas ideias, separe por LINHA EM BRANCO. Cada parágrafo vira uma
+  mensagem SEPARADA no WhatsApp. Máximo 2 parágrafos por resposta.
 - EXATAMENTE UMA pergunta por resposta (ou nenhuma). Nunca faça duas perguntas juntas.
-- Sem listas, sem markdown, sem asteriscos. Texto corrido.
+- NUNCA use ** ou __ ou # ou listas com hífen: o WhatsApp NÃO renderiza isso e o
+  asterisco aparece CRU na tela da cliente. Para dar ênfase use *um asterisco só*.
 - No máximo 1 emoji, e só quando couber.
 - Reaja com calor ao que a lead disse antes de perguntar (micro-ack).
 - Use o nome do cliente quando souber. Nunca repergunte o que já está em "O QUE JÁ SABEMOS DA LEAD".
-- Sempre avance a conversa (qualifique ou proponha próximo passo).`;
+- Sempre avance a conversa (qualifique ou proponha próximo passo).
+
+ANTES DE ENVIAR, revise (obrigatório):
+1) Cabe em 2-3 linhas por mensagem?  2) Tem só UMA pergunta?
+3) Tem asterisco duplo ou lista? (se sim, tire)  4) As duas ideias estão separadas por linha em branco?
+
+❌ ERRADO (parede de texto, markdown, 2 perguntas):
+"Que ótimo! O plano **Essencial** vai organizar sua agenda, otimizar atendimentos e ainda usar IA pra trazer de volta clientes sumidos, e olha, com seu ticket você recupera 2 ou 3 e já paga o mês. Quer que eu te mande o link? Ou prefere entender melhor antes?"
+
+✅ CERTO (uma ideia por mensagem, separadas por linha em branco, uma pergunta):
+"Com ticket de R$89 e 200 clientes na base, bastam 2 ou 3 voltarem pra pagar o mês inteiro.
+
+O Essencial faz exatamente isso: acha quem sumiu e chama de volta sozinho.
+
+Quer que eu te mostre no seu número?"`;
 
     // 10) LLM: gateway da casa. Modelo resolvido POR-PERSONA: a Bia (closer) roda
     //     num modelo mais forte via AI_SALES_BRAIN_MODEL_CLOSER (fallback →
@@ -1355,10 +1496,17 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     }
 
     // GUARDRAILS DE FORMA (pós-processamento, na ordem certa):
-    // (a) censura de vocabulário; (b) 1 pergunta só; (c) divisão em bolhas.
+    // (a) censura de vocabulário; (b) markdown → sintaxe WhatsApp; (c) 1 pergunta
+    // só (preservando link/preço); (d) divisão em bolhas (sem truncar).
     const san = sanitizeReply(reply);
     reply = san.text;
     const sanitized = san.sanitized;
+    const markup = normalizeWhatsAppMarkup(reply);
+    reply = markup.text;
+    const markupNormalized = markup.changed;
+    if (markupNormalized) {
+      console.warn('[platform-sales-brain] markdown do modelo normalizado p/ WhatsApp (** → *)');
+    }
     // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
     // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
     if (!needsHandoff && !passedToBia && !sentRaiox) reply = keepFirstQuestion(reply);
@@ -1380,8 +1528,34 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
     const currentScore = typeof currentQual.score_0_100 === 'number' ? currentQual.score_0_100 : null;
     const currentRota = typeof currentQual.rota === 'string' ? currentQual.rota : null;
 
+    // wamid da inbound que disparou este turno — necessário para o "digitando…".
+    const inboundWamid: string | null =
+      (triggerInbound?.metadata && typeof triggerInbound.metadata === 'object'
+        ? ((triggerInbound.metadata as Record<string, any>).wamid ?? null)
+        : null);
+    // Tempo de LEITURA da mensagem da lead, descontando o que o LLM já demorou
+    // (senão a espera é cobrada duas vezes e a lead acha que morremos).
+    const inboundLen = String(triggerInbound?.content ?? '').length;
+    const readDelayMs = Math.min(
+      Math.max(inboundLen * READ_MS_PER_CHAR, READ_FLOOR_MS),
+      READ_CAP_MS,
+    );
+    const tDeliveryStart = Date.now();
+
     for (let i = 0; i < total; i++) {
       const bubbleText = bubbles[i];
+
+      // RITMO HUMANO: pausa ANTES de cada bolha, com "digitando…" visível.
+      // Antes: a pausa vinha DEPOIS do envio e era `min(len*30, 4000)` — teto que
+      // saturava em 134 chars, entregando 300 chars em ~6s (≈610 wpm, ~200x humano).
+      const pauseMs = i === 0
+        ? Math.max(0, readDelayMs - (Date.now() - tDeliveryStart))
+        : typingPauseMs(bubbleText);
+      if (pauseMs > 0) {
+        await sendTypingIndicator(supabase, conversation, inboundWamid);
+        await sleep(pauseMs);
+      }
+
       const baseMeta = {
         channel: 'whatsapp_cloud',
         agent_id: persona.id,
@@ -1389,6 +1563,8 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
         rota: currentRota,
         debounce_waited_ms: debounceWaitedMs,
         sanitized,
+        markup_normalized: markupNormalized,
+        typing_pause_ms: pauseMs,
         bubble_n: i + 1,
         bubble_total: total,
         delivery_status: 'sent',
@@ -1442,12 +1618,9 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
 
       await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
 
-      // Pausa proporcional ao tamanho da PRÓXIMA bolha (ritmo humano), só entre bolhas.
-      if (i < total - 1) {
-        const next = bubbles[i + 1] ?? '';
-        await sleep(Math.min(next.length * BUBBLE_PAUSE_PER_CHAR_MS, BUBBLE_PAUSE_CAP_MS));
-      }
+      // (a pausa agora acontece ANTES de cada bolha, no topo do loop)
     }
+    console.log(`[platform-sales-brain] entrega: ${total} bolha(s) em ${Date.now() - tDeliveryStart}ms`);
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
