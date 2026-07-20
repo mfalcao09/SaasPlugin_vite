@@ -6,6 +6,30 @@ import { toast } from 'sonner';
 // Cor default do espaço (laranja canônico — espelha CompanySettings/GuidedOnboarding).
 export const DEFAULT_PRIMARY_COLOR = '#F97316';
 
+/** Conexão caiu no meio da chamada (fetch aborta com TypeError) — não é erro de
+ *  negócio: o servidor sequer recebeu o pedido. */
+function isNetworkError(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e ?? '');
+  return e instanceof TypeError
+    || /failed to fetch|networkerror|network request failed|load failed/i.test(msg);
+}
+
+/** Reexecuta SÓ em falha de rede (Wi-Fi de salão oscila), com backoff 1s/2s.
+ *  Erro de negócio sobe na hora — retentar não mudaria a resposta. */
+async function withNetworkRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < tries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (!isNetworkError(e) || attempt === tries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 // ─── Contrato NexvyBeauty (labels aprovados pelo Marcelo) ───────────────────
 // A key `empresa` é mantida (compat com autosave/apply); na UI o step chama-se
 // "Seu espaço". Campos novos: slug (link de agendamento) e cor_principal.
@@ -273,16 +297,16 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
       const ua = navigator.userAgent.slice(0, 200);
 
       if (token && sessionToken) {
-        await supabase.rpc('save_onboarding_draft_public', {
+        await withNetworkRetry(() => supabase.rpc('save_onboarding_draft_public', {
           _token: token, _session_token: sessionToken, _payload: payload as any,
-        });
-        const { error: e1 } = await supabase.rpc('submit_onboarding_public', {
+        }));
+        const { error: e1 } = await withNetworkRetry(() => supabase.rpc('submit_onboarding_public', {
           _token: token, _session_token: sessionToken, _ip: null, _ua: ua,
-        });
+        }));
         if (e1) throw e1;
-        const { data, error: e2 } = await supabase.functions.invoke('apply-onboarding', {
+        const { data, error: e2 } = await withNetworkRetry(() => supabase.functions.invoke('apply-onboarding', {
           body: { token, session_token: sessionToken },
-        });
+        }));
         if (e2) throw e2;
         if (data?.warnings?.length) {
           toast('Implantação concluída com avisos', { description: `${data.warnings.length} item(s) precisam de revisão` });
@@ -290,14 +314,14 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
           toast('Implantação concluída', { description: 'Tudo configurado com sucesso!' });
         }
       } else {
-        await supabase.rpc('save_onboarding_draft', { _submission_id: submissionId, _payload: payload as any });
-        const { error: e1 } = await supabase.rpc('submit_onboarding', {
+        await withNetworkRetry(() => supabase.rpc('save_onboarding_draft', { _submission_id: submissionId, _payload: payload as any }));
+        const { error: e1 } = await withNetworkRetry(() => supabase.rpc('submit_onboarding', {
           _submission_id: submissionId, _ip: null, _ua: ua,
-        });
+        }));
         if (e1) throw e1;
-        const { data, error: e2 } = await supabase.functions.invoke('apply-onboarding', {
+        const { data, error: e2 } = await withNetworkRetry(() => supabase.functions.invoke('apply-onboarding', {
           body: { submission_id: submissionId },
-        });
+        }));
         if (e2) throw e2;
         if (data?.warnings?.length) {
           toast('Implantação concluída com avisos', { description: `${data.warnings.length} item(s) precisam de revisão` });
@@ -309,7 +333,15 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
       if (token) sessionStorage.removeItem(sessionKey(token));
       return true;
     } catch (e: any) {
-      toast.error('Erro ao enviar', { description: e.message ?? 'Tente novamente' });
+      // Queda de rede é o caso mais comum no salão (Wi-Fi oscilando) — nada foi
+      // perdido: o rascunho já está salvo, ela só reenvia.
+      if (isNetworkError(e)) {
+        toast.error('Sem conexão com a internet', {
+          description: 'Nada foi perdido — tudo que você preencheu está salvo. Confira a rede e toque em Confirmar de novo.',
+        });
+      } else {
+        toast.error('Erro ao enviar', { description: e.message ?? 'Tente novamente' });
+      }
       return false;
     }
   }, [submissionId, payload, token, sessionToken]);
