@@ -1,0 +1,53 @@
+# Traefik dynamic (FILE PROVIDER) — CRM do GRUPO (branded house) @ gestao.nexvy.tech
+# Aponta pro MESMO container nexvy-beauty (o super-admin/CRM da plataforma ja vive la).
+# Router-only + middleware proprio; reusa o service nexvy-beauty-svc (merge do file-provider).
+# Reversivel: apagar este arquivo remove o host. NAO e tocado pelo deploy-vps.sh do beauty.
+#
+# ATENCAO (2026-07-20): este arquivo NAO era versionado — vivia so no VPS em
+# /opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml. Foi trazido pro repo porque
+# essa invisibilidade causou um bug real: o CSP dos commits 9bbecd4/1ef544e foi
+# ligado nos routers de NexvyBeauty.yml.template (app. + apex) e o gestao.nexvy.tech
+# ficou de fora — headers de seguranca chegavam (security-headers@file) mas CSP nao.
+# Ao editar aqui, copiar pro VPS (o deploy-vps.sh NAO faz isso):
+#   scp infra/traefik/nexvy-gestao-grupo.yml vps-hostinger:/opt/stacks/traefik/dynamic/
+http:
+  routers:
+    nexvy-gestao-grupo:
+      rule: "Host(`gestao.nexvy.tech`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: nexvy-beauty-svc
+      # ENFORCE desde 2026-07-20. Validado em Report-Only ANTES de promover: varredura
+      # das 45 telas do CRM super-admin LOGADO (Dashboard, Mia, Pipeline, Leads, Agenda,
+      # Chat/Painel de atendimentos, Radar IA, Agentes IA, Campanhas, Cadencias,
+      # Automacoes Instagram, Webhooks, ANUNCIOS, Prospeccao, Captacao, Gestao,
+      # Configuracoes) -> ZERO violacoes. Inventario real de origens contatadas: apenas
+      # gestao.nexvy.tech + fzhlbwhdejumkyqosuvq.supabase.co + fonts.googleapis.com.
+      # Controle positivo aplicado (script + fetch p/ origem proibida dispararam
+      # securitypolicyviolation com disposition=report), provando que o header estava
+      # ativo e que o zero era real — nao ausencia de policy.
+      #
+      # Reutiliza o MESMO middleware do app./apex (definido em nexvy-beauty.yml): uma
+      # policy so, sem copia que possa divergir. Pra voltar a Report-Only numa proxima
+      # mudanca de origens, definir aqui um middleware csp-nexvybeauty-report com o
+      # header Content-Security-Policy-Report-Only e a mesma policy (ver git log deste
+      # arquivo), trocar a referencia abaixo, validar no browser e promover de novo.
+      middlewares: [security-headers@file, csp-nexvybeauty@file]
+      priority: 120
+    nexvy-gestao-grupo-http-redirect:
+      rule: "Host(`gestao.nexvy.tech`)"
+      entryPoints: [web]
+      service: nexvy-beauty-svc
+      middlewares: [gestao-grupo-redirect]
+      priority: 120
+  middlewares:
+    gestao-grupo-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    # NAO redefinir a policy de CSP aqui. O host usa csp-nexvybeauty@file, definido em
+    # infra/traefik/NexvyBeauty.yml.template -> dynamic/nexvy-beauty.yml, que e a fonte
+    # unica compartilhada por app./apex/gestao. Uma copia local so pra Report-Only
+    # existiu entre 15:16 e 15:47 de 2026-07-20 e foi removida na promocao pra enforce
+    # justamente pra nao virar uma segunda policy divergindo em silencio (ver git log).
