@@ -37,7 +37,13 @@ export interface ImplantacaoPayload {
   };
   servicos: Array<{ nome?: string; categoria?: string; duracao_min?: number; preco?: number }>;
   profissionais: Array<{ nome?: string; especialidade?: string }>;
-  equipia: { nome?: string; tom?: string };
+  equipia: {
+    /** NOVO shape (multi-agente): lista de agentes da EquipIA. */
+    agentes?: Array<{ nome: string; tom: string; papel: string }>;
+    /** Shape LEGADO (1 agente) — só leitura de drafts antigos; o wizard converte pra agentes[] ao montar. */
+    nome?: string;
+    tom?: string;
+  };
   usuarios: Array<{ nome?: string; email?: string; perfil?: string }>;
 }
 
@@ -57,7 +63,7 @@ export const EMPTY_PAYLOAD: ImplantacaoPayload = {
   },
   servicos: [],
   profissionais: [],
-  equipia: { nome: 'Lia', tom: 'Amigável' },
+  equipia: { agentes: [] },
   usuarios: [],
 };
 
@@ -90,6 +96,8 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   // Retomada cross-device: etapa salva (current_step 1-based do banco → 0-based
   // pro wizard). Preenchida no load; o wizard abre direto nela.
   const [initialStep, setInitialStep] = useState(0);
+  // E-mail da compra (= usuária master) — exibido MASCARADO no Resumo.
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   // Último payload ainda não persistido (autosave debounced). flushSave() o
   // grava IMEDIATAMENTE — chamado na troca de página, garantindo que "preencheu
   // e avançou" está no banco (é o que a Lia lê pra ver onde a cliente está).
@@ -139,6 +147,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
         // current_step é 1-based (null = nunca reportou) → wizard é 0-based.
         const savedStep = Number(data.current_step);
         setInitialStep(Number.isFinite(savedStep) && savedStep > 0 ? savedStep - 1 : 0);
+        setOwnerEmail(typeof data.owner_email === 'string' && data.owner_email ? data.owner_email : null);
         const loaded = data.payload && Object.keys(data.payload).length > 0
           ? { ...EMPTY_PAYLOAD, ...data.payload }
           : EMPTY_PAYLOAD;
@@ -308,7 +317,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   return {
     submissionId, organizationId, payload, status,
     loading, saving, error,
-    updateSection, submit, reportStep, takeover, flushSave, initialStep,
+    updateSection, submit, reportStep, takeover, flushSave, initialStep, ownerEmail,
     // Esteira: `mode` roteia demo vs pago; `sessionToken` autentica a lead na edge demo-evolution.
     mode, sessionToken, token: token ?? null,
   };

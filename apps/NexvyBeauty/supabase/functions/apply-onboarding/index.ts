@@ -38,7 +38,12 @@ type Payload = {
   horarios?: { timezone?: string; schedule?: any };
   servicos?: Array<{ nome?: string; categoria?: string; duracao_min?: number; preco?: number }>;
   profissionais?: Array<{ nome?: string; especialidade?: string }>;
-  equipia?: { nome?: string; tom?: string };
+  equipia?: {
+    nome?: string;
+    tom?: string;
+    /** Shape novo (wizard rodada 2): múltiplos agentes. Tem precedência sobre nome/tom legados. */
+    agentes?: Array<{ nome?: string; tom?: string; papel?: string }>;
+  };
   usuarios?: Array<{ nome?: string; email?: string; perfil?: string }>;
 };
 
@@ -332,26 +337,42 @@ serve(async (req) => {
     refs.agents = refs.agents ?? [];
     try {
       const eq = payload.equipia ?? {};
-      const agentName = eq.nome?.trim() || "Lia";
-      const tone = TONE_MAP[normalizeKey(eq.tom || "amigavel")] ?? "friendly";
+      // Shape novo (agentes[]) tem precedência; sem ele, cai no legado {nome, tom}
+      // — submissions em voo continuam aplicáveis. Sempre ≥1 item no loop.
+      const agentList = (Array.isArray(eq.agentes) && eq.agentes.length > 0
+        ? eq.agentes
+        : [{ nome: eq.nome, tom: eq.tom, papel: "" }])
+        .map((a) => ({
+          nome: a?.nome?.trim() || "Lia",
+          tom: a?.tom || "amigavel",
+          papel: (a?.papel ?? "").trim(),
+        }));
 
-      const { data: existingAgent } = await admin.from("product_agents")
-        .select("id").eq("organization_id", orgId).eq("is_active", true)
-        .ilike("name", agentName).maybeSingle();
+      // Produto-âncora resolvido UMA vez (1º serviço da org).
+      const { data: anchor } = await admin.from("products")
+        .select("id").eq("organization_id", orgId).eq("tipo", "servico")
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      const anchorId = anchor?.id ?? null;
 
-      if (existingAgent?.id) {
-        const { error: uErr } = await admin.from("product_agents")
-          .update({ tone_style: tone }).eq("id", existingAgent.id);
-        if (uErr) errors.push(`equipe IA ${agentName}: ${uErr.message}`);
-        if (!refs.agents.includes(existingAgent.id)) refs.agents.push(existingAgent.id);
-      } else {
-        // Produto-âncora: 1º serviço da org.
-        const { data: anchor } = await admin.from("products")
-          .select("id").eq("organization_id", orgId).eq("tipo", "servico")
-          .order("created_at", { ascending: true }).limit(1).maybeSingle();
-        const anchorId = anchor?.id ?? null;
+      for (const a of agentList) {
+        const agentName = a.nome;
+        const tone = TONE_MAP[normalizeKey(a.tom)] ?? "friendly";
 
-        // is_default automático no 1º agente do produto (espelha useCreateAgent).
+        const { data: existingAgent } = await admin.from("product_agents")
+          .select("id").eq("organization_id", orgId).eq("is_active", true)
+          .ilike("name", agentName).maybeSingle();
+
+        if (existingAgent?.id) {
+          const { error: uErr } = await admin.from("product_agents")
+            .update({ tone_style: tone, ...(a.papel ? { primary_objective: a.papel } : {}) })
+            .eq("id", existingAgent.id);
+          if (uErr) errors.push(`equipe IA ${agentName}: ${uErr.message}`);
+          if (!refs.agents.includes(existingAgent.id)) refs.agents.push(existingAgent.id);
+          continue;
+        }
+
+        // is_default automático no 1º agente do produto (espelha useCreateAgent);
+        // recontado a cada inserção — só o 1º da lista o recebe num produto vazio.
         let isDefault = false;
         if (anchorId) {
           const { count } = await admin.from("product_agents")
@@ -364,9 +385,9 @@ serve(async (req) => {
           product_id: anchorId,
           organization_id: orgId,
           created_by: createdBy,
-          // primary_objective é NOT NULL; useCreateAgent usa `|| ''` quando não há
-          // missão — o wizard não coleta missão, então segue o mesmo fallback.
-          primary_objective: "",
+          // primary_objective é NOT NULL; o `papel` do wizard (o que a agente
+          // faz) vira a missão; sem papel, fallback '' (padrão do useCreateAgent).
+          primary_objective: a.papel || "",
           agent_type: "custom",
           can_do: [],
           cannot_do: [],

@@ -51,6 +51,8 @@ interface Props {
   onStepChange?: (stepIndex: number, stepId: string) => void;
   /** Etapa inicial (0-based) — retomada cross-device a partir da etapa salva. */
   initialStep?: number;
+  /** E-mail da compra (acesso master) — exibido MASCARADO no card "Seu acesso" do Resumo. */
+  ownerEmail?: string | null;
 }
 
 // Labels EXATOS aprovados pelo Marcelo — não parafrasear.
@@ -91,28 +93,41 @@ const TIMEZONE_LABELS: Record<string, string> = {
 };
 const TIMEZONE_OPTIONS = ['America/Sao_Paulo', 'America/Manaus', 'America/Cuiaba', 'America/Fortaleza'];
 
-// Agentes prontos da EquipIA. O apply-onboarding recebe equipia = { nome, tom }
-// (UM agente; ver supabase/functions/apply-onboarding/index.ts:334-336) e o tom
-// passa pelo TONE_MAP de lá — só amigável/consultivo/formal/técnico são
+// Agentes prontos da EquipIA. O payload grava equipia = { agentes: [{ nome,
+// tom, papel }] } (MÚLTIPLOS agentes — contrato novo do apply-onboarding). O
+// tom passa pelo TONE_MAP de lá — só amigável/consultivo/formal/técnico são
 // reconhecidos, qualquer outro degrada silenciosamente pra "friendly". Por isso
 // os presets usam SÓ o vocabulário canônico do select de tom.
-const EQUIPIA_PRESETS = [
+export interface EquipiaAgente { nome: string; tom: string; papel: string }
+
+// Tons canônicos (espelham o TONE_MAP do apply-onboarding).
+const EQUIPIA_TONS = ['Amigável', 'Formal', 'Consultivo', 'Técnico'] as const;
+
+const EQUIPIA_PRESETS: readonly EquipiaAgente[] = [
   {
     nome: 'Recepcionista virtual',
     tom: 'Amigável',
-    descricao: 'Responde clientes no WhatsApp, agenda e confirma horários — com um jeito acolhedor.',
+    papel: 'Responde clientes no WhatsApp, agenda e confirma horários — com um jeito acolhedor.',
   },
   {
     nome: 'Assistente de reativação',
     tom: 'Amigável',
-    descricao: 'Chama clientes sumidas com mensagens calorosas, no seu tom.',
+    papel: 'Chama clientes sumidas com mensagens calorosas, no seu tom.',
   },
   {
     nome: 'Consultora de serviços',
     tom: 'Consultivo',
-    descricao: 'Tira dúvidas sobre serviços, preços e indicações antes de agendar.',
+    papel: 'Tira dúvidas sobre serviços, preços e indicações antes de agendar.',
   },
 ] as const;
+
+// Máscara do e-mail master no Resumo: 2 primeiros chars do local + ••• + @dominio.
+// Ex.: "claudia@nexvy.tech" → "cl•••@nexvy.tech".
+const maskEmail = (email: string) => {
+  const at = email.indexOf('@');
+  if (at <= 0) return email;
+  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
+};
 
 // Paleta canônica do espaço (espelha CompanySettings/GuidedOnboarding).
 const PRESET_COLORS = [
@@ -134,7 +149,7 @@ const sanitizeSlugTyping = (v: string) =>
 
 export function ImplantacaoWizard({
   payload, status, saving, organizationId, onChange, onSubmit, onFinish, onSkip, skipsRemaining,
-  onStepChange, initialStep,
+  onStepChange, initialStep, ownerEmail,
 }: Props) {
   const [step, setStep] = useState(() =>
     Math.min(Math.max(initialStep ?? 0, 0), STEPS.length - 1));
@@ -162,8 +177,29 @@ export function ImplantacaoWizard({
   const updateEndereco = (patch: any) =>
     onChange('empresa', { ...payload.empresa, endereco: { ...payload.empresa?.endereco, ...patch } });
   const updateHorarios = (patch: any) => onChange('horarios', { ...payload.horarios, ...patch });
-  const updateEquipia = (patch: Partial<ImplantacaoPayload['equipia']>) =>
-    onChange('equipia', { ...payload.equipia, ...patch });
+
+  // ── EquipIA multi-agente ──
+  // Leitura com compat: payload antigo {nome, tom} (sem .agentes) vira 1 agente.
+  const agentes: EquipiaAgente[] = payload.equipia?.agentes
+    ?? (payload.equipia?.nome
+      ? [{ nome: payload.equipia.nome, tom: payload.equipia.tom ?? 'Amigável', papel: '' }]
+      : []);
+  const setAgentes = (list: EquipiaAgente[]) => onChange('equipia', { agentes: list });
+  const updateAgente = (i: number, patch: Partial<EquipiaAgente>) =>
+    setAgentes(agentes.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  const removeAgente = (i: number) => setAgentes(agentes.filter((_, idx) => idx !== i));
+
+  // Converte o shape legado pro novo NO ESTADO assim que detectado — garante que
+  // o payload autosalvo/submetido já sai como { agentes: [...] }.
+  const legacyEquipia = !payload.equipia?.agentes && !!payload.equipia?.nome;
+  useEffect(() => {
+    if (legacyEquipia) {
+      onChange('equipia', {
+        agentes: [{ nome: payload.equipia!.nome!, tom: payload.equipia!.tom ?? 'Amigável', papel: '' }],
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legacyEquipia]);
 
   // Nome do espaço: enquanto o usuário não tocar no slug, ele deriva vivo do
   // nome (mesmo comportamento do IdentityStep do GuidedOnboarding).
@@ -236,7 +272,7 @@ export function ImplantacaoWizard({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 relative">
+    <div className="max-w-4xl mx-auto px-4 pt-10 pb-8 space-y-6 relative">
       {onSkip && !postSubmit && (
         <button
           onClick={onSkip}
@@ -247,8 +283,10 @@ export function ImplantacaoWizard({
           <X className="w-4 h-4" />
         </button>
       )}
-      <div className="text-center space-y-3">
-        <img src="/email/logo-v1.png" alt="NexvyBeauty" className="h-7 mx-auto" />
+      {/* Header com respiro: logo maior, mb próprio, e space-y-4 entre
+          logo → badge → título → subtítulo (feedback "amontoamento"). */}
+      <div className="text-center space-y-4">
+        <img src="/email/logo-v1.png" alt="NexvyBeauty" className="h-10 md:h-12 mx-auto mb-5" />
         <Badge variant="outline" className="px-4 py-1 text-sm">Primeiros passos</Badge>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Vamos montar seu espaço</h1>
         <p className="text-muted-foreground">Conta pra gente como seu espaço funciona — em poucos minutos deixamos tudo pronto.</p>
@@ -419,7 +457,7 @@ export function ImplantacaoWizard({
             <p className="text-sm text-muted-foreground">O que suas clientes encontram no seu espaço. Dá pra ajustar tudo depois.</p>
             <Repeater
               items={payload.servicos ?? []} onChange={items => onChange('servicos', items)}
-              label="serviço" addLabel="+ Adicionar serviço"
+              label="serviço" addLabel="Adicionar serviço"
               renderItem={(s, update) => (
                 <div className="grid md:grid-cols-2 gap-3">
                   <Field label="Nome do serviço" hint="O nome que a cliente vê ao agendar. Seja específica: 'Corte feminino', 'Manicure completa'."><Input value={s.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Corte feminino" /></Field>
@@ -438,7 +476,7 @@ export function ImplantacaoWizard({
             <p className="text-sm text-muted-foreground">Quem atende no seu espaço — esses nomes aparecem na agenda.</p>
             <Repeater
               items={payload.profissionais ?? []} onChange={items => onChange('profissionais', items)}
-              label="profissional" addLabel="+ Adicionar profissional"
+              label="profissional" addLabel="Adicionar profissional"
               renderItem={(p, update) => (
                 <div className="grid md:grid-cols-2 gap-3">
                   <Field label="Nome"><Input value={p.nome ?? ''} onChange={e => update({ nome: e.target.value })} placeholder="Ex: Ana Paula" /></Field>
@@ -456,25 +494,26 @@ export function ImplantacaoWizard({
               A EquipIA é a equipe de inteligência artificial do seu espaço — ela atende suas clientes no WhatsApp.
             </p>
 
-            {/* Presets prontos: 1 clique preenche nome + tom no payload (equipia
-                é UM agente {nome, tom} — o mesmo shape que o apply-onboarding
-                grava em product_agents). Nome e tom continuam editáveis abaixo. */}
+            {/* Presets = TOGGLE: clicar adiciona à lista de agentes; clicar de
+                novo ("Adicionada") remove. Identidade do preset = nome. */}
             <div>
               <Label className="mb-2 block">Comece com uma agente pronta</Label>
               <div className="grid md:grid-cols-3 gap-3">
                 {EQUIPIA_PRESETS.map((p) => {
-                  const selected = payload.equipia?.nome === p.nome && payload.equipia?.tom === p.tom;
+                  const selected = agentes.some(a => a.nome === p.nome);
                   return (
                     <div key={p.nome} className={cn(
                       'p-4 rounded-lg border flex flex-col gap-2 transition-colors',
                       selected ? 'border-primary bg-primary/5' : 'bg-muted/30',
                     )}>
                       <div className="font-medium text-sm">{p.nome}</div>
-                      <p className="text-xs text-muted-foreground flex-1">{p.descricao}</p>
+                      <p className="text-xs text-muted-foreground flex-1">{p.papel}</p>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[11px] text-muted-foreground">Tom: {p.tom}</span>
                         <Button type="button" size="sm" variant={selected ? 'default' : 'outline'}
-                          onClick={() => updateEquipia({ nome: p.nome, tom: p.tom })}>
+                          onClick={() => selected
+                            ? setAgentes(agentes.filter(a => a.nome !== p.nome))
+                            : setAgentes([...agentes, { ...p }])}>
                           {selected ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Adicionada</> : 'Adicionar'}
                         </Button>
                       </div>
@@ -484,21 +523,45 @@ export function ImplantacaoWizard({
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Nome da sua atendente IA">
-                <Input value={payload.equipia?.nome ?? ''} onChange={e => updateEquipia({ nome: e.target.value })} placeholder="Lia" />
-              </Field>
-              <Field label="Tom de voz">
-                <Select value={payload.equipia?.tom ?? 'Amigável'} onValueChange={v => updateEquipia({ tom: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Amigável">Amigável</SelectItem>
-                    <SelectItem value="Consultivo">Consultivo</SelectItem>
-                    <SelectItem value="Formal">Formal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+            {/* Lista dos agentes adicionados — nome, tom (POR agente) e papel
+                editáveis; remover pelo ícone de lixeira. */}
+            {agentes.length > 0 && (
+              <div className="space-y-3">
+                <Label className="block">Suas agentes ({agentes.length})</Label>
+                {agentes.map((a, i) => (
+                  <Card key={i} className="p-4 space-y-3 bg-muted/20">
+                    <div className="flex items-start gap-3">
+                      <div className="grid md:grid-cols-2 gap-3 flex-1">
+                        <Field label="Nome">
+                          <Input value={a.nome} onChange={e => updateAgente(i, { nome: e.target.value })} placeholder="Ex: Lia" />
+                        </Field>
+                        <Field label="Tom de voz">
+                          <Select value={a.tom || 'Amigável'} onValueChange={v => updateAgente(i, { tom: v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {EQUIPIA_TONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeAgente(i)}
+                        className="text-destructive shrink-0 mt-5" aria-label="Remover agente">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Field label="O que ela faz?">
+                      <Input value={a.papel} onChange={e => updateAgente(i, { papel: e.target.value })}
+                        placeholder="Ex: Responde clientes no WhatsApp e agenda horários" />
+                    </Field>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <Button type="button" variant="outline"
+              onClick={() => setAgentes([...agentes, { nome: '', tom: 'Amigável', papel: '' }])}>
+              <Plus className="w-4 h-4 mr-1" />Adicionar agente personalizado
+            </Button>
 
             <p className="text-xs text-muted-foreground">
               Você encontra e adiciona outros agentes depois, na área Agentes de IA do painel.
@@ -515,7 +578,7 @@ export function ImplantacaoWizard({
             </p>
             <Repeater
               items={payload.usuarios ?? []} onChange={items => onChange('usuarios', items)}
-              label="usuário" addLabel="+ Adicionar usuário"
+              label="usuário" addLabel="Adicionar usuário"
               renderItem={(u, update) => (
                 <div className="space-y-3">
                   <div className="grid md:grid-cols-3 gap-3">
@@ -543,13 +606,33 @@ export function ImplantacaoWizard({
         {step === 6 && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Confira se está tudo certo. Ao confirmar, a gente aplica essas configurações e começa a montar seu espaço.</p>
+
+            {/* Seu acesso master — PRIMEIRO card, destacado: deixa claro quem é
+                a usuária administradora (e-mail da compra, mascarado). */}
+            <div className="p-4 rounded-lg border-2 border-primary/40 bg-primary/5 space-y-1.5">
+              <div className="font-semibold flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-primary" /> Seu acesso de administradora
+              </div>
+              {ownerEmail && <div className="font-medium">{maskEmail(ownerEmail)}</div>}
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {ownerEmail
+                  ? 'Esse é o e-mail da sua compra — ele é o acesso master do espaço. '
+                  : 'O e-mail da sua compra é o acesso master do espaço. '}
+                O link para criar sua senha chegou nele (assunto "Bem-vinda ao NexvyBeauty"). Depois, entre sempre
+                por <span className="font-medium text-foreground">app.nexvybeauty.com.br</span>. Não achou? Confira
+                o spam ou fale comigo no WhatsApp.
+              </p>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-3">
               <SummaryCard label="Seu espaço" value={payload.empresa?.nome_fantasia || '—'} />
               <SummaryCard label="Link de agendamento" value={`${publicBase}/s/${previewSlug}`} />
               <SummaryCard label="Fuso horário" value={payload.horarios?.timezone ? (TIMEZONE_LABELS[payload.horarios.timezone] ?? payload.horarios.timezone) : '—'} />
               <SummaryCard label="Serviços" value={`${payload.servicos?.length ?? 0} cadastrado(s)`} />
               <SummaryCard label="Profissionais" value={`${payload.profissionais?.length ?? 0} cadastrado(s)`} />
-              <SummaryCard label="EquipIA" value={payload.equipia?.nome ? `${payload.equipia.nome} · ${payload.equipia?.tom ?? 'Amigável'}` : '—'} />
+              <SummaryCard label="EquipIA" value={agentes.length
+                ? `${agentes.length} agente(s): ${agentes.map(a => `${a.nome || 'Sem nome'} (${a.tom || 'Amigável'})`).join(', ')}`
+                : '—'} />
               <SummaryCard label="Usuários da Plataforma" value={`${payload.usuarios?.length ?? 0} convite(s)`} />
             </div>
 

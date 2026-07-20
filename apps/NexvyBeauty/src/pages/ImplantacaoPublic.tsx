@@ -21,7 +21,7 @@ export default function ImplantacaoPublic() {
 
   const {
     payload, status, saving, loading, error, organizationId,
-    updateSection, submit, reportStep, mode, sessionToken, takeover, initialStep,
+    updateSection, submit, reportStep, mode, sessionToken, takeover, initialStep, ownerEmail,
   } = useImplantacao({ token });
 
   // API da esteira (demo-evolution). Construída SEMPRE (regra de hooks); só é
@@ -79,6 +79,7 @@ export default function ImplantacaoPublic() {
         payload={payload} status={status} saving={saving}
         organizationId={organizationId}
         initialStep={initialStep}
+        ownerEmail={ownerEmail}
         onChange={updateSection} onSubmit={submit}
         onFinish={() => navigate('/')}
         onStepChange={reportStep}
