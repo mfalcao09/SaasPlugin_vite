@@ -633,9 +633,9 @@ export function ImplantacaoWizard({
                 {ownerEmail
                   ? 'Esse é o e-mail da sua compra — ele é o acesso master do espaço. '
                   : 'O e-mail da sua compra é o acesso master do espaço. '}
-                O link para criar sua senha chegou nele (assunto "Bem-vinda ao NexvyBeauty"). Depois, entre sempre
-                por <span className="font-medium text-foreground">app.nexvybeauty.com.br</span>. Não achou? Confira
-                o spam ou fale comigo no WhatsApp.
+                {pedeSenha
+                  ? <>No <span className="font-medium text-foreground">último passo</span> você cria sua senha — não precisa procurar nada no e-mail. Depois, entre sempre por <span className="font-medium text-foreground">app.nexvybeauty.com.br</span>.</>
+                  : <>Entre sempre por <span className="font-medium text-foreground">app.nexvybeauty.com.br</span> com esse e-mail. Esqueceu a senha? Use “Esqueci minha senha” na tela de login.</>}
               </p>
             </div>
 
