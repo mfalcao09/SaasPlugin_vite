@@ -1,5 +1,12 @@
 project_id = "fzhlbwhdejumkyqosuvq"
 
+# Fim do onboarding: a dona (ainda SEM sessão) define a própria senha. Auth real
+# na função = token do link de implantação + session_token da sessão corrente,
+# e o token é queimado depois. Sem esta entrada, um redeploy religa o JWT e a
+# compradora fica sem conseguir criar a senha.
+[functions.onboarding-set-password]
+verify_jwt = false
+
 [functions.platform-webhook-receiver]
 verify_jwt = false
 

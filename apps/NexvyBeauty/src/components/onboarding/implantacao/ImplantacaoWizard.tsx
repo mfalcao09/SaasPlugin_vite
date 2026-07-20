@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Store, Clock, Scissors, Users, Bot, KeyRound, CheckCircle2, Smartphone,
   Sparkles, ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Upload, X, Link2,
-  HelpCircle,
+  HelpCircle, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,8 @@ import {
 import { getPublicAppUrl } from '@/lib/publicUrl';
 import { ConectarWhatsAppStep } from './steps/ConectarWhatsAppStep';
 import { MontandoEspacoStep } from './steps/MontandoEspacoStep';
-import { cn } from '@/lib/utils';
+import { CriarSenhaStep } from './steps/CriarSenhaStep';
+import { cn, maskEmail } from '@/lib/utils';
 
 interface Props {
   payload: ImplantacaoPayload;
@@ -53,7 +54,14 @@ interface Props {
   initialStep?: number;
   /** E-mail da compra (acesso master) — exibido MASCARADO no card "Seu acesso" do Resumo. */
   ownerEmail?: string | null;
+  /** Token do link público de implantação. Presente + sessionToken ⇒ o wizard
+   *  ganha a 10ª etapa (criar senha e entrar). No fluxo logado vêm vazios. */
+  token?: string | null;
+  /** Sessão corrente do link público (prova de posse junto com o token). */
+  sessionToken?: string | null;
 }
+
+interface WizardStep { id: string; title: string; icon: LucideIcon }
 
 // Labels EXATOS aprovados pelo Marcelo — não parafrasear.
 const STEPS = [
@@ -68,8 +76,15 @@ const STEPS = [
   { id: 'montando', title: 'Montando seu Espaço 💆🏻‍♀️💅🏻💄', icon: Sparkles },
 ] as const;
 
+// 10ª etapa, SÓ no fluxo público por token: a dona cria a senha dela e entra na
+// conta do próprio espaço (sem ela, o wizard terminava numa sessão alheia).
+const SENHA_STEP = { id: 'senha', title: 'Crie sua senha e entre', icon: KeyRound } as const;
+const STEPS_COM_SENHA = [...STEPS, SENHA_STEP] as const;
+
 // Último step de DADOS (Resumo). Depois dele vem o pós-apply (WhatsApp/Montagem).
 const LAST_DATA_STEP = 6;
+// Índice da etapa de senha (logo depois de "Montando seu Espaço").
+const PASSWORD_STEP = STEPS.length; // 9
 
 const DAYS: Array<[string, string]> = [
   ['monday', 'Segunda'], ['tuesday', 'Terça'], ['wednesday', 'Quarta'], ['thursday', 'Quinta'],
@@ -121,13 +136,8 @@ const EQUIPIA_PRESETS: readonly EquipiaAgente[] = [
   },
 ] as const;
 
-// Máscara do e-mail master no Resumo: 2 primeiros chars do local + ••• + @dominio.
-// Ex.: "claudia@nexvy.tech" → "cl•••@nexvy.tech".
-const maskEmail = (email: string) => {
-  const at = email.indexOf('@');
-  if (at <= 0) return email;
-  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
-};
+// A máscara do e-mail master (Resumo e etapa de senha) vive em @/lib/utils —
+// compartilhada com o CriarSenhaStep sem criar ciclo de import.
 
 // Paleta canônica do espaço (espelha CompanySettings/GuidedOnboarding).
 const PRESET_COLORS = [
@@ -149,15 +159,20 @@ const sanitizeSlugTyping = (v: string) =>
 
 export function ImplantacaoWizard({
   payload, status, saving, organizationId, onChange, onSubmit, onFinish, onSkip, skipsRemaining,
-  onStepChange, initialStep, ownerEmail,
+  onStepChange, initialStep, ownerEmail, token, sessionToken,
 }: Props) {
+  // Fluxo público por link: token + sessão ⇒ a jornada termina na criação de
+  // senha (10 etapas). Fluxo logado (AdminImplantacao): 9, como sempre.
+  const pedeSenha = !!token && !!sessionToken;
+  const steps: readonly WizardStep[] = pedeSenha ? STEPS_COM_SENHA : STEPS;
+
   const [step, setStep] = useState(() =>
     Math.min(Math.max(initialStep ?? 0, 0), STEPS.length - 1));
 
   // Reporta a página atual (1-based na RPC) em TODA transição — pills, Voltar,
-  // Continuar e os saltos pós-apply (8/9). Fire-and-forget; cobre também o
+  // Continuar e os saltos pós-apply (8/9/10). Fire-and-forget; cobre também o
   // primeiro render quando o submission carrega (identidade de onStepChange muda).
-  useEffect(() => { onStepChange?.(step, STEPS[step].id); }, [step, onStepChange]);
+  useEffect(() => { onStepChange?.(step, steps[step].id); }, [step, steps, onStepChange]);
   const [submitting, setSubmitting] = useState(false);
   // true depois do apply DESTA sessão — libera os steps 8/9 e congela os 1-7.
   const [postSubmit, setPostSubmit] = useState(false);
@@ -167,8 +182,8 @@ export function ImplantacaoWizard({
   // Slug já editado à mão (ou já existente) → para de derivar do nome.
   const [slugTouched, setSlugTouched] = useState(() => !!payload.empresa?.slug);
 
-  const pct = Math.round(((step + 1) / STEPS.length) * 100);
-  const StepIcon = STEPS[step].icon;
+  const pct = Math.round(((step + 1) / steps.length) * 100);
+  const StepIcon = steps[step].icon;
   const isApplied = status === 'applied';
   const publicBase = getPublicAppUrl();
 
@@ -297,12 +312,12 @@ export function ImplantacaoWizard({
 
       <div className="space-y-3">
         <div className="flex justify-between text-sm font-medium">
-          <span className="text-muted-foreground">Etapa {step + 1} de {STEPS.length}</span>
+          <span className="text-muted-foreground">Etapa {step + 1} de {steps.length}</span>
           <span className="text-muted-foreground">{pct}% {saving && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}</span>
         </div>
         <Progress value={pct} className="h-2" />
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {STEPS.map((s, i) => {
+          {steps.map((s, i) => {
             const Icon = s.icon;
             const done = i < step;
             const active = i === step;
@@ -331,7 +346,7 @@ export function ImplantacaoWizard({
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <StepIcon className="w-5 h-5 text-primary" />
           </div>
-          <h2 className="text-xl font-bold">{STEPS[step].title}</h2>
+          <h2 className="text-xl font-bold">{steps[step].title}</h2>
         </div>
 
         {/* ── 1. Seu espaço ── */}
@@ -669,8 +684,18 @@ export function ImplantacaoWizard({
           <MontandoEspacoStep
             organizationId={organizationId}
             instanceId={instanceId}
-            onFinish={onFinish}
+            // Fluxo público: o espaço está montado, mas ela ainda não tem senha
+            // — sem esta etapa o redirect cairia numa sessão anterior do
+            // navegador (o bug do super_admin). Fluxo logado: termina aqui.
+            onFinish={pedeSenha ? () => setStep(PASSWORD_STEP) : onFinish}
           />
+        )}
+
+        {/* ── 10. Crie sua senha e entre (só no fluxo público por token) ──
+            Terminal: a edge queima o token ao definir a senha, então daqui não
+            se volta pro wizard — o próprio step navega pra Home já logada. */}
+        {pedeSenha && step === PASSWORD_STEP && (
+          <CriarSenhaStep token={token!} sessionToken={sessionToken!} ownerEmail={ownerEmail} />
         )}
 
         {/* Footer de navegação — só nos steps de dados (1-7). Os steps 8/9 têm
