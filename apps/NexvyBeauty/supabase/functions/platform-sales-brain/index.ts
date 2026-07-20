@@ -801,7 +801,8 @@ A DEMONSTRAÇÃO (o raio-x) — o que é e como disparar
 ═══════════════════════════════════════
 O QUE É: um link automático que a própria cliente abre NA HORA e faz sozinha, em minutos. Ela conecta o WhatsApp dela e vê na tela quanto está parado em cliente que sumiu. É self-service, imediato, sem compromisso.
 ⛔ O QUE NÃO É: NÃO é reunião, NÃO é call, NÃO é videochamada, NÃO tem agenda, NÃO tem horário, NÃO tem uma pessoa do outro lado. É PROIBIDO oferecer para "agendar", perguntar "qual melhor horário", citar disponibilidade ("hoje à tarde", "amanhã de manhã") ou prometer duração de reunião. Nada disso existe — prometer isso é MENTIR para a cliente e ela ficará esperando alguém que nunca vai aparecer.
-COMO DISPARAR: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link REAL e envia automaticamente com as instruções do QR code. NUNCA invente nem digite um link você mesma. NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/demonstração/teste em QUALQUER momento (um "pode ser", "quero ver", "como funciona?" depois da oferta), emita a tag NA MESMA resposta — não pergunte de novo, não peça horário, só dispare.`;
+COMO DISPARAR: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link REAL e envia automaticamente com as instruções do QR code. NUNCA invente nem digite um link você mesma. NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/demonstração/teste em QUALQUER momento (um "pode ser", "quero ver", "como funciona?" depois da oferta), emita a tag NA MESMA resposta — não pergunte de novo, não peça horário, só dispare.
+⚠️ AO EMITIR A TAG, SUA FALA É **UMA LINHA CURTA** e mais nada (ex.: "Boa! Já te mando aqui 👇"). O sistema anexa o link e a instrução do QR logo depois — se você TAMBÉM explicar o que o link faz, a cliente recebe a mesma coisa três vezes e vira textão. NÃO descreva o passo a passo, NÃO diga "vou te enviar um link", NÃO explique o QR. Uma linha e a tag.`;
 
 const ONBOARDING_RULE_BLOCK = `7. MODO IMPLANTAÇÃO (pós-compra): esta cliente JÁ COMPROU — a venda ACABOU. NUNCA oferte plano, preço, upgrade, link de pagamento ou condição de fundadora. Seu único papel é guiá-la na montagem do espaço dela (bloco FASE DA IMPLANTAÇÃO acima): responda a dúvida da página em que ela está, UM passo por mensagem, e comemore cada avanço. VOCÊ VÊ a página em que ela está (FASE ATUAL acima) — NUNCA pergunte "em qual tela você está?": AFIRME ("tô vendo aqui que você está em Serviços…") e oriente. Linguagem neutra sempre: "seu espaço" — NUNCA "salão". Dúvida de cobrança/reembolso, problema técnico que não destrava ou pedido de humano → use ${ESCALATE_TAG}.`;
 
@@ -1338,10 +1339,13 @@ ${(!onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
 COMO RESPONDER (WhatsApp — regras de forma DURAS)
 ═══════════════════════════════════════
 - Responda em pt-BR, tom de conversa de WhatsApp: curto, humano, direto.
-- CADA MENSAGEM = UMA IDEIA, em 2-3 linhas (~140 caracteres). Ninguém digita parede
-  de texto no WhatsApp — parece robô e a lead percebe na hora.
+- CADA MENSAGEM = UMA IDEIA, em 1-2 linhas (~120 caracteres). PESSOAS NÃO DIGITAM
+  TEXTÃO no WhatsApp. Parede de texto é o sinal nº1 de robô e a lead percebe na hora.
 - SE precisar de duas ideias, separe por LINHA EM BRANCO. Cada parágrafo vira uma
-  mensagem SEPARADA no WhatsApp. Máximo 2 parágrafos por resposta.
+  mensagem SEPARADA no WhatsApp. **MÁXIMO 2 PARÁGRAFOS. NUNCA 3.** Uma resposta sua
+  são 1 ou 2 mensagens — três seguidas já é monólogo, e ninguém conversa assim.
+- Prefira SEMPRE a versão mais curta. Se dá pra dizer em 8 palavras, não use 20.
+  Corte adjetivo, corte preâmbulo, corte repetição. Frase curta soa humana.
 - EXATAMENTE UMA pergunta por resposta (ou nenhuma). Nunca faça duas perguntas juntas.
 - NUNCA use ** ou __ ou # ou listas com hífen: o WhatsApp NÃO renderiza isso e o
   asterisco aparece CRU na tela da cliente. Para dar ênfase use *um asterisco só*.
@@ -1487,7 +1491,10 @@ Quer que eu te mostre no seu número?"`;
         const demo = await demoRes.json().catch(() => ({} as Record<string, unknown>));
         if (demoRes.ok && typeof demo?.url === 'string' && demo.url) {
           sentRaiox = true;
-          reply = `${reply ? reply + '\n\n' : ''}Aqui está o seu Raio-X 👉 ${appUrl}${demo.url}\n\nVocê conecta seu WhatsApp por QR code e em ~2 min eu te mostro quanto tem parado na sua carteira. Como o QR precisa ser escaneado com o SEU celular, abre esse link em outro aparelho (computador ou outro celular) e aponta a câmera 😉`;
+          // Curto de propósito: 2 linhas. A explicação do que o link faz já foi
+          // dada pela Duda na mesma resposta — repetir aqui gerava 4 bolhas e um
+          // textão de 343 chars (o excedente colapsava na última bolha).
+          reply = `${reply ? reply + '\n\n' : ''}Aqui está 👉 ${appUrl}${demo.url}\n\nAbre no computador — o QR você lê com o celular 😉`;
         } else {
           console.warn('[platform-sales-brain] [ENVIAR_RAIOX] demo-start falhou:', demoRes.status, JSON.stringify(demo).slice(0, 200));
           await sendTelegramAlertThrottled(
