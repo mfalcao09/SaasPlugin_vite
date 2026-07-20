@@ -83,6 +83,10 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   const [mode, setMode] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Takeover (padrão WhatsApp Web): "Usar neste navegador" re-roda o load com
+  // _takeover=true — o RPC emite session_token novo e derruba a aba anterior.
+  const takeoverRef = useRef(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   // Carrega ou cria submission
   useEffect(() => {
@@ -91,18 +95,24 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
       // Sem token e sem login: nada a carregar
       if (!token && !user?.id) { setLoading(false); return; }
       setLoading(true);
+      setError(null);
       try {
         let data: any;
         let nextSession: string | null = null;
         if (token) {
           // Recupera session_token salvo (se já abriu antes nesta aba)
           const stored = sessionStorage.getItem(sessionKey(token));
+          const wantsTakeover = takeoverRef.current;
+          takeoverRef.current = false;
+          // _takeover ainda não está nos types gerados → cast (padrão do repo
+          // p/ colunas/args recém-migrados).
           const { data: r, error: e } = await supabase.rpc('validate_onboarding_token', {
             _token: token,
             _session_token: stored,
             _ip: null,
             _ua: navigator.userAgent.slice(0, 200),
-          });
+            _takeover: wantsTakeover,
+          } as any);
           if (e) throw e;
           data = Array.isArray(r) ? r[0] : r;
           nextSession = data?.session_token ?? stored ?? null;
@@ -167,7 +177,13 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
     }
     load();
     return () => { active = false; };
-  }, [user?.id, token]);
+  }, [user?.id, token, reloadNonce]);
+
+  // "Usar neste navegador": assume a sessão do link (derruba a aba anterior).
+  const takeover = useCallback(() => {
+    takeoverRef.current = true;
+    setReloadNonce((n) => n + 1);
+  }, []);
 
   // Autosave debounced
   const scheduleSave = useCallback((next: ImplantacaoPayload) => {
@@ -262,7 +278,7 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
   return {
     submissionId, organizationId, payload, status,
     loading, saving, error,
-    updateSection, submit, reportStep,
+    updateSection, submit, reportStep, takeover,
     // Esteira: `mode` roteia demo vs pago; `sessionToken` autentica a lead na edge demo-evolution.
     mode, sessionToken, token: token ?? null,
   };
