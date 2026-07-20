@@ -3,6 +3,21 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+/** Token FRESCO da sessão do usuário. As edges de objeção passaram a exigir auth
+ *  de tenant (authenticateTenant) e RECUSAM a anon key pública — mandá-la dava
+ *  401. getSession() a cada chamada porque o cache do useAuth fica atrás do
+ *  auto-refresh do Supabase e gera 401 logo após o JWT expirar. */
+async function getFreshAccessToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+  return token;
+}
+
 interface GeneratedObjection {
   category: 'price' | 'trust' | 'timing' | 'thinking' | 'partner' | 'competitor';
   what_they_say: string;
@@ -30,16 +45,17 @@ export function useHandleObjection() {
     setResponse('');
 
     try {
-      // Token da SESSÃO do usuário (não a anon key): a edge agora exige auth de
-      // tenant e valida posse do produto. Mandar a anon key retornava 401.
-      const { data: { session } } = await supabase.auth.getSession();
+      // A edge valida posse do produto pela org do JWT — daí o token do usuário,
+      // com a publishable key no header `apikey` (contrato do gateway de Functions).
+      const accessToken = await getFreshAccessToken();
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/handle-objection`,
+        `${SUPABASE_URL}/functions/v1/handle-objection`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token ?? ''}`,
+            apikey: PUBLISHABLE_KEY,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ objection, productId }),
         }
@@ -104,15 +120,15 @@ export function useHandleObjection() {
 export function useGenerateObjections() {
   return useMutation({
     mutationFn: async (productId: string): Promise<GeneratedObjection[]> => {
-      // Token da SESSÃO do usuário (não a anon key): a edge exige auth de tenant.
-      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = await getFreshAccessToken();
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-objections`,
+        `${SUPABASE_URL}/functions/v1/generate-objections`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token ?? ''}`,
+            apikey: PUBLISHABLE_KEY,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ productId }),
         }
