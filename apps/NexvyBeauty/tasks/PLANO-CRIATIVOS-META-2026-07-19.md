@@ -244,8 +244,24 @@ Nenhum foi detectado por `identify` — todos só apareceram na revisão visual.
 
 **Consequência prática:** trocar uma headline é 1 edição, não 9. E quando a logo do NexvyBeauty existir, as 9 peças são regeradas com um laço.
 
-### Pendente (não bloqueia a subida)
+### Fechamento — 2026-07-19, fim do ciclo
 
-- ☐ Logo NexvyBeauty — hoje é wordmark tipográfico
-- ☐ `"50 vagas"` do Cofounder ainda vivo na LP (decisão do Marcelo)
-- ☐ Criar o Teste A/B e os anúncios via Meta Ads MCP — **só sob comando explícito**
+| Item | Estado |
+|---|---|
+| ✅ **Logo NexvyBeauty** | Resolvido. Marca refinada (2 passadas sobre a v3-01) e aplicada nas 9 peças. Versão **chapada**, não 3D: a ~52px num canvas de 1080 o logo sai a ~18px no celular, faixa em que a 3D perde a gota. Assinatura = monograma **+ nome escrito** (monograma sozinho não identifica um público frio) |
+| ✅ **Trava de copy** | C3 passou a exibir **"Manutenções que sumiram."**, redação idêntica à da LP corrigida |
+| ✅ **CTA divergente** | Decisão do Marcelo: **espelho + canônico no texto**. As peças mantêm os CTAs reais da LP; a frase canônica da Oferta entra como texto primário do anúncio, na alçada da sessão de ads |
+| ☐ `"50 vagas"` do Cofounder | Segue vivo na LP — decisão do Marcelo, fora da alçada de criativo |
+| ☐ Subir no Meta | Alçada da sessão de gestão de ads. Campanha e células A/B prontas e pausadas |
+
+### Dois defeitos que só a verificação pegou
+
+**1. Refino por IA devolvendo a entrada.** Na 1ª rodada de logo, 2 das 4 saídas eram cópia da referência, não refino — RMSE de 0,020 e 0,037 contra 0,167 e 0,166 das reais. Em miniatura eu havia pré-selecionado justamente uma das cópias. **`magick compare -metric RMSE entrada.png saida.png` antes de julgar de olho** virou etapa obrigatória.
+
+**2. Fallback estático furando a trava de copy.** O C3 monta a linha de nicho por JS a partir de um array, mas o `<div>` tinha um texto de fallback ainda com a palavra vetada. Se o script não rodasse antes do screenshot, era o fallback que iria para o PNG. **Em template com fallback, a trava vale para o fallback também.**
+
+Correlato: o primeiro grep de conformidade acusou falha que era **do teste**, não do arquivo — a palavra sobrevivia dentro de um comentário meu, e o filtro de exclusão não pegava linha de continuação. Em vez de refinar o filtro, tirei a palavra do comentário. **Check que só passa por filtro artesanal é frágil.**
+
+### Armadilha de upload
+
+A pasta `png/` também contém `LOGO-MAGNIFIC-vetor.png`, `LOGO-MAGNIFIC-vetor-v2.png` e `LOGO-NVB-exploracao.png`, deixados pela rodada de logo. **Só os `NB-*.png` são criativos** — arrastar a pasta inteira sobe 3 folhas de estudo como anúncio.
