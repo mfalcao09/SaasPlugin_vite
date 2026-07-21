@@ -676,6 +676,10 @@ export function ImplantacaoWizard({
             organizationId={organizationId}
             onConnected={(id) => { setInstanceId(id); setStep(8); }}
             onSkip={() => { setInstanceId(null); setStep(8); }}
+            /* Link público ⇒ a dona ainda não tem sessão neste passo: o step
+               troca o evolution-proxy (JWT) pela edge onboarding-evolution. */
+            token={token}
+            sessionToken={sessionToken}
           />
         )}
 

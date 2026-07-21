@@ -135,6 +135,9 @@ export async function createOnboardingLinkForOrg(
 async function sendLiaGreeting(
   admin: SupabaseClient,
   conversationId: string,
+  /** Org DESTA compra. Vai no metadata da bolha para que a idempotência do
+   *  greeting seja por PROVISIONAMENTO, não por conversa-para-sempre. */
+  organizationId: string,
   conversation: ConversationConnectionHints | null,
   destPhone: string | null,
   customerName: string | null,
@@ -184,6 +187,11 @@ async function sendLiaGreeting(
           metadata: {
             channel: 'whatsapp_cloud',
             proactive_greeting: 'lia',
+            // Carimbo do provisionamento: é ele que a guarda de idempotência lê.
+            // Sem isto, uma RECOMPRA na mesma conversa fica muda (a guarda antiga
+            // via o greeting da compra anterior e suprimia tudo, inclusive o
+            // welcome genérico).
+            onboarding_org_id: organizationId,
             bubble_n: i + 1,
             bubble_total: bubbles.length,
             ...(connectionId ? { connection_id: connectionId } : {}),
@@ -337,8 +345,11 @@ export async function handoffConversationToOnboarding(
     }
 
     // 5) Greeting proativo da Lia (A4): 1ª fala calorosa SEM esperar a cliente.
-    //    Idempotente — se a Lia já greetou esta conversa (metadata
-    //    proactive_greeting='lia'), não redispara, mas ainda sinaliza greeted=true
+    //    Idempotente POR PROVISIONAMENTO — se a Lia já greetou ESTA org
+    //    (metadata.onboarding_org_id == organizationId), não redispara e sinaliza
+    //    greeted=true. ⚠️ Antes o gate era por conversa-para-sempre: uma RECOMPRA
+    //    (ou recompra após reembolso) na mesma conversa ficava MUDA — nem greeting
+    //    novo, nem o welcome genérico (que o provisioning pula quando greeted).
     //    (o provisioning pula o welcome genérico de qualquer forma). Destino = o
     //    WhatsApp da própria conversa (fonte canônica do inbound); fallback pro
     //    telefone Cakto. Non-fatal: falha aqui não derruba o handoff nem a compra.
@@ -351,12 +362,18 @@ export async function handoffConversationToOnboarding(
         .select('id, visitor_whatsapp, visitor_phone, visitor_name, meta_connection_id, product_id')
         .eq('id', conversationId)
         .maybeSingle();
+      // Idempotência por PROVISIONAMENTO (não por conversa): só considera "já
+      // greetei" se a saudação anterior foi DESTA org. Retry de webhook (mesma
+      // org) continua não duplicando; RECOMPRA (org nova) volta a falar.
+      // Greetings legados (sem onboarding_org_id) não casam de propósito — a
+      // cliente que recomprou precisa ser avisada.
       const { data: priorGreeting } = await admin
         .from('platform_crm_messages')
         .select('id')
         .eq('conversation_id', conversationId)
         .eq('sender_type', 'bot')
         .filter('metadata->>proactive_greeting', 'eq', 'lia')
+        .filter('metadata->>onboarding_org_id', 'eq', args.organizationId)
         .limit(1)
         .maybeSingle();
       if (priorGreeting?.id) {
@@ -373,6 +390,7 @@ export async function handoffConversationToOnboarding(
         greeted = await sendLiaGreeting(
           admin,
           conversationId,
+          args.organizationId,
           (convRow as ConversationConnectionHints | null) ?? null,
           destPhone,
           name,

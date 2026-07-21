@@ -161,8 +161,15 @@ function PlatformBrandingLoader() {
   return null;
 }
 
+/** Falha de import dinâmico (chunk hasheado sumiu num deploy) — o ÚNICO caso em
+ *  que "recarregue a página" é de fato a solução. Qualquer outro erro é bug de
+ *  render: mandar recarregar não resolve e ainda joga o diagnóstico para cima de
+ *  cache/deploy em vez do código. */
+const isStaleChunkError = (message: string) =>
+  /chunk|dynamically imported|importing a module script failed|failed to fetch dynamically/i.test(message);
+
 class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null };
+  state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) {
     return { error };
@@ -188,8 +195,18 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Err
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-lg font-semibold text-foreground">Não foi possível carregar a aplicação</h1>
-              <p className="text-sm text-muted-foreground">A versão local ficou desatualizada. Recarregue para buscar a versão mais recente.</p>
+              {isStaleChunkError(this.state.error.message ?? '') ? (
+                <>
+                  <h1 className="text-lg font-semibold text-foreground">Nova versão disponível</h1>
+                  <p className="text-sm text-muted-foreground">A versão local ficou desatualizada. Recarregue para buscar a versão mais recente.</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-lg font-semibold text-foreground">Erro inesperado nesta tela</h1>
+                  <p className="text-sm text-muted-foreground">Recarregar provavelmente não resolve. Copie a mensagem abaixo ao reportar.</p>
+                  <p className="text-xs font-mono text-destructive break-all">{this.state.error.message}</p>
+                </>
+              )}
             </div>
             <button
               type="button"

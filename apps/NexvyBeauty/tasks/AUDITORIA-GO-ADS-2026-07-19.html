@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoria GO-ADS — NexvyBeauty · 2026-07-19</title>
+<style>
+  :root{
+    --bg:#0b0e14; --card:#141b2b; --card2:#182236;
+    --ink:#e8edf6; --muted:#9fb0c8; --dim:#6c7c96;
+    --line:#243149; --line2:#2e3d5a;
+    --gold:#f2c14e; --gold-dim:#a9862f;
+    --green:#57d99a; --cyan:#5ad1e6; --pink:#ff7eb6; --violet:#b79cff; --red:#ff6b7a;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0a0d13,#0b0e14 40%,#0c1018);color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
+  header.hero{padding:52px 22px 26px;text-align:center;background:radial-gradient(1100px 360px at 50% -80px,rgba(255,107,122,.10),transparent 70%);border-bottom:1px solid var(--line)}
+  .kicker{color:var(--cyan);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12.5px}
+  h1{font-size:30px;margin:12px 0 6px;line-height:1.15;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);max-width:760px;margin:8px auto 0;font-size:15px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px}
+  .chip{background:var(--card);border:1px solid var(--line2);color:var(--muted);padding:5px 12px;border-radius:999px;font-size:12.5px}
+  .chip b{color:var(--ink)}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+  .toc a{background:var(--card2);border:1px solid var(--line2);padding:6px 12px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:13px}
+  .toc a:hover{border-color:var(--gold-dim);color:var(--ink)}
+  section{margin:30px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 26px;box-shadow:var(--shadow)}
+  h2{font-size:21px;margin:2px 0 12px;letter-spacing:-.01em}
+  h2 .n{color:var(--gold);font-weight:800;margin-right:6px}
+  h3{font-size:15px;margin:20px 0 8px;color:var(--cyan)}
+  p{margin:9px 0}
+  strong{color:#fff}
+  em{color:var(--muted)}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.6px;background:#0e1522;border:1px solid var(--line2);border-radius:5px;padding:1px 6px;color:var(--gold)}
+  pre{background:#0e1522;border:1px solid var(--line2);border-radius:10px;padding:13px 16px;overflow-x:auto;font-size:12.6px;line-height:1.55;margin:10px 0}
+  pre code{background:none;border:none;padding:0;color:#cfe0f5}
+  pre .cm{color:var(--dim)}
+  ol,ul{margin:10px 0;padding-left:22px}
+  li{margin:6px 0}
+  .tblwrap{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:13.6px;min-width:560px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--card2);color:var(--cyan);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  .verdict{border:1px solid var(--red);background:rgba(255,107,122,.07);border-radius:14px;padding:18px 22px;margin:14px 0}
+  .verdict .big{font-size:19px;font-weight:800;color:var(--red)}
+  .verdict .big em{color:var(--green);font-style:normal}
+  .gocrit{border:1px dashed var(--green);background:rgba(87,217,154,.06);border-radius:12px;padding:13px 17px;margin:14px 0;font-size:14.5px}
+  .blk{border:1px solid var(--red);border-left:4px solid var(--red);background:#131019;border-radius:0 12px 12px 0;padding:15px 19px;margin:14px 0}
+  .blk h3{color:var(--red);margin-top:0}
+  .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:2px 8px;margin-right:6px}
+  .tag.red{background:rgba(255,107,122,.14);color:var(--red);border:1px solid rgba(255,107,122,.4)}
+  .tag.gold{background:rgba(242,193,78,.12);color:var(--gold);border:1px solid rgba(242,193,78,.4)}
+  .tag.green{background:rgba(87,217,154,.12);color:var(--green);border:1px solid rgba(87,217,154,.4)}
+  .rulebox{border:1px dashed var(--gold-dim);background:rgba(242,193,78,.06);border-radius:12px;padding:14px 18px;margin:14px 0}
+  .okbox{border:1px solid rgba(87,217,154,.35);background:rgba(87,217,154,.05);border-radius:12px;padding:12px 16px;margin:10px 0;font-size:14px}
+  .minor{color:var(--muted);font-size:13.5px;border-top:1px dashed var(--line2);margin-top:16px;padding-top:12px}
+  .foot{color:var(--dim);font-size:12.5px;text-align:center;margin-top:36px;padding-top:20px;border-top:1px solid var(--line)}
+  @media (max-width:600px){h1{font-size:23px}section{padding:18px 15px}.wrap{padding:0 13px}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="kicker">🚦 Auditoria pré-anúncio · síntese das 6 dimensões</div>
+  <h1>GO-ADS — <span>NexvyBeauty</span></h1>
+  <div class="sub">Funil completo clique→LP→WhatsApp/checkout→provisionamento→acesso. Código em origin/main (204e679) + verificação adversarial com queries read-only no banco live (<code>fzhlbwhdejumkyqosuvq</code>).</div>
+  <div class="meta-row">
+    <span class="chip">📅 <b>2026-07-19</b></span>
+    <span class="chip">6 dimensões</span>
+    <span class="chip">1 bloqueador <b>confirmado live</b></span>
+    <span class="chip">pareado: <b>AUDITORIA-GO-ADS-2026-07-19.md</b></span>
+  </div>
+  <nav class="toc">
+    <a href="#veredito">1 · Veredito</a>
+    <a href="#bloq">2 · Bloqueador</a>
+    <a href="#plano">3 · Plano 2h</a>
+    <a href="#degrada">4 · Degrada</a>
+    <a href="#duda">5 · Duda delta</a>
+    <a href="#funciona">6 · Funciona</a>
+    <a href="#naoverif">7 · Não verificado</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+<section id="veredito">
+  <h2><span class="n">1 ·</span> Veredito go/no-go (ligar anúncio em 2h)</h2>
+  <div class="verdict">
+    <div class="big">NO-GO no estado atual. <em>Vira GO dentro da janela de 2h com 1 flip + 1 prova.</em></div>
+    <p>O único bloqueador real é o gate de e-mail em dry-run — <strong>confirmado live nesta auditoria</strong>: resposta do cron <code>process-email-queue</code> às 2026-07-19 18:27 UTC = <code>{"processed":0,"dry_run":true}</code>, e <code>email_send_log</code> tem <strong>zero</strong> <code>sent</code> na história do projeto. Com esse gate OFF, quem comprar hoje paga, é provisionada com senha aleatória, e <strong>não existe nenhum caminho para a primeira senha</strong> — nem o welcome, nem o "Esqueci minha senha" (mesma fila, mesmo dispatcher). O WhatsApp de boas-vindas manda a cliente olhar um e-mail que nunca chega.</p>
+  </div>
+  <div class="gocrit"><strong>Critério binário de GO:</strong> <code>SELECT status FROM email_send_log ORDER BY created_at DESC LIMIT 1</code> retorna <code>sent</code> de um disparo real feito hoje, <strong>e</strong> o link do e-mail abre o form em <code>/reset-password</code>. Bateu isso → liga o anúncio. Todo o resto da esteira (webhook→Duda→checkout→provisionamento) está funcional e sem flag desligando o caminho inbound.</div>
+</section>
+
+<section id="bloq">
+  <h2><span class="n">2 ·</span> Bloqueadores CONFIRMADOS (verificação adversarial, prova live)</h2>
+  <p>Os dois achados <code>bloqueia_venda</code> das dimensões <em>Checkout→Acesso</em> e <em>Infra+Flags</em> são <strong>o mesmo defeito raiz</strong> visto de dois ângulos — consolidados como 1 bloqueador:</p>
+  <div class="blk">
+    <h3><span class="tag red">B1</span> Gate de e-mail em DRY-RUN mata o único caminho de acesso pós-compra</h3>
+    <p><strong>Estado live provado:</strong> <code>net._http_response</code> id 191627 (2026-07-19 18:27 UTC): <code>{"processed":0,"dry_run":true}</code> · cron <code>process-email-queue</code> jobid 23 ativo <code>* * * * *</code> · <code>email_send_log</code> com apenas 2 linhas na vida: 1 <code>pending</code> (E2E 07-08) e o mesmo message_id em <code>dlq</code> "TTL exceeded (60 minutes)" (07-16). <strong>Zero <code>sent</code> jamais.</strong></p>
+    <p><strong>Cadeia do defeito (código, origin/main):</strong></p>
+    <ul>
+      <li><code>process-email-queue/index.ts:149-151</code> — <code>dryRun = EMAIL_DRY_RUN==='true' || !sendEnabled || !resendApiKey</code>; default OFF. Em dry-run <strong>loga e DELETA a mensagem da fila</strong> (<code>:352-363</code>) — o e-mail se perde de vez.</li>
+      <li><code>cakto-plan-provisioning.ts:364</code> — senha inicial = <code>randomPassword()</code>; <code>:414-441</code> — welcome com recovery link <strong>só enfileira</strong> (<code>send-transactional-email</code> → <code>enqueue_email</code>).</li>
+      <li>"Esqueci minha senha" <strong>não escapa</strong>: <code>Login.tsx:134</code> → <code>resetPasswordForEmail</code> → <code>auth-email-hook/index.ts:255-268</code> enfileira em <code>auth_emails</code> → <strong>mesmo dispatcher, mesmo gate</strong>.</li>
+      <li>WhatsApp de boas-vindas (<code>cakto-plan-provisioning.ts:484-486</code>): "Enviamos ao seu e-mail o link para definir a senha" — sem link no WhatsApp.</li>
+    </ul>
+    <p><strong>Doc corrobora:</strong> <code>tasks/PLANO-MESTRE-GO-LIVE-2026-07-11.md:15</code> — "[Marcelo] EMAIL_SEND_ENABLED=true ... senão a credencial não chega ao cliente"; item ⑤ ainda em "O QUE FALTA". <code>tasks/RESEND-GO-LIVE-OPS-2026-07-15.md</code> — flag é "o switch de go-live"; <strong>passo 1 = DNS verde na Resend ANTES do flip</strong> (senão Resend 403 → DLQ do mesmo jeito).</p>
+    <p><strong>Destravar:</strong> <code>supabase secrets set EMAIL_SEND_ENABLED=true --project-ref fzhlbwhdejumkyqosuvq</code> — zero mudança de código. Pré-condição: domínio verificado na Resend (SPF/DKIM). Prova: 1 disparo real com <code>status='sent'</code> + link abrindo <code>/reset-password</code>.</p>
+  </div>
+</section>
+
+<section id="plano">
+  <h2><span class="n">3 ·</span> Plano das 2h (ordenado, mínima mudança)</h2>
+  <div class="tblwrap"><table>
+    <tr><th>#</th><th>Janela</th><th>Ação</th><th>Check binário</th></tr>
+    <tr><td>1</td><td>0–10min</td><td>Painel Resend: domínio <code>nexvybeauty.com.br</code> <strong>verificado</strong> (SPF/DKIM verde). Runbook <code>RESEND-GO-LIVE-OPS</code> passo 1 — sem isso o flip vira 403→DLQ</td><td>Status "Verified" no painel</td></tr>
+    <tr><td>2</td><td>10–15min</td><td><code>supabase secrets list</code> (confirmar <code>RESEND_API_KEY</code>) → <code>supabase secrets set EMAIL_SEND_ENABLED=true --project-ref fzhlbwhdejumkyqosuvq</code></td><td>Flag listada como setada</td></tr>
+    <tr><td>3</td><td>15–25min</td><td>Disparo real de teste via <code>send-transactional-email</code> (welcome p/ e-mail próprio); aguardar cron 60s</td><td><code>email_send_log</code> → <code>status='sent'</code> E o link abre o form em <code>/reset-password</code></td></tr>
+    <tr><td>4</td><td>25–45min</td><td>Sanity live — 5 queries (§7): planos (checkout_url + is_public + 450/720/1190), <code>cakto_credentials.webhook_secret</code> não-nulo, conexão Meta ativa = 5511955021205, Duda+Bia <code>is_active AND active_in_whatsapp</code>, <code>cron.job</code> ativos</td><td>Todas retornam o esperado</td></tr>
+    <tr><td>5</td><td>45–70min</td><td>Smoke E2E do funil: celular → "oi" no 5511955021205 → Duda responde em ~30s; CTA da LP abre wa.me; abrir checkout de 1 plano (não pagar)</td><td>Resposta da Duda chega; checkout carrega com preço certo</td></tr>
+    <tr><td>6</td><td>70–90min</td><td><em>(Opcional, decisão Marcelo — 2 edits de front + deploy-vps.sh)</em> fixar 1 variante de headline (2 linhas) + CTA pós-planos (1 linha). Se não aprovar, liga sem tocar código</td><td>Deploy no ar OU pulado conscientemente</td></tr>
+    <tr><td>7</td><td>90–120min</td><td>Ligar campanha. <strong>Preferir formato CTWA direto</strong> (ativa modo inbound espelhando anúncio + atribuição ctwa_clid — zero código). Briefar humano de plantão: Duda promete o Raio-X mas <strong>não tem mecanismo de entrega</strong> (D1)</td><td>Campanha ativa + plantão ciente</td></tr>
+  </table></div>
+  <p class="minor">Passos 1–3 são o gate. 4–5 são verificação (nenhum item ali é bloqueador conhecido — é confirmação de estado de banco que a auditoria read-only não enxergou). 6 é melhoria opcional. 7 é o go.</p>
+</section>
+
+<section id="degrada">
+  <h2><span class="n">4 ·</span> Degrada mas NÃO bloqueia (ranqueado por impacto na conversão)</h2>
+  <div class="tblwrap"><table>
+    <tr><th>#</th><th>Achado</th><th>Dimensão</th><th>Menor destravamento</th></tr>
+    <tr><td>D1</td><td><strong>Raio-X prometido sem mecanismo de entrega</strong>: prompt inbound manda a Duda "disparar a isca", mas <code>demo-start</code> tem <strong>zero callers</strong> no repo inteiro e o brain nunca o chama. Lead quente recebe promessa que a IA não cumpre — vira vácuo</td><td>Inbound</td><td>Sem deploy: instruir na persona (banco) "raio-x = link da demo pública OU [ESCALAR_HUMANO]"; ou 1 frase em <code>buildInboundAdContext</code> + redeploy do brain. <strong>Pra hoje: humano de plantão</strong></td></tr>
+    <tr><td>D2</td><td><strong>A/B de headline aleatório a cada mount</strong> (9 combinações, cookie <code>nx_lp_var</code> sobrescrito e não-lido, sem variante nos eventos do Pixel) — Meta otimiza contra página que muda de promessa e ninguém mede qual converteu</td><td>LP</td><td>Fixar 1 variante: trocar os 2 <code>Math.floor(Math.random()*…)</code> por índice constante — 2 linhas (LP:257-276)</td></tr>
+    <tr><td>D3</td><td><strong>keepFirstQuestion trunca no <code>?</code> da URL de checkout</strong>: todo link carrega <code>?src=</code> (atribuição); resposta de fechamento com link + pergunta de cortesia é cortada NO MEIO da URL — mensagem decisiva da venda mutilada</td><td>Duda</td><td>Mascarar URLs antes de contar/cortar <code>?</code> — ~4 linhas em função pura (brain:386-391) + redeploy</td></tr>
+    <tr><td>D4</td><td><strong>LP termina sem CTA depois dos Planos</strong>: ChamadaPosPlanos sem botão (comentário promete 3), FAQ e footer sem CTA — tráfego frio que rola até o fim precisa voltar pra agir</td><td>LP</td><td>1 <code>&lt;a&gt;</code> em ChamadaPosPlanos → <code>WHATSAPP_URL</code> com <code>fbqTrack("Lead",{content_name:"pos_planos"})</code></td></tr>
+    <tr><td>D5</td><td><strong>Zero few-shot no prompt da Duda</strong> (D1 do plano NINA, "a maior lacuna" segundo o próprio doc): só proibições em prosa, nenhum par ✅/❌; gemini-2.5-flash aprende por exemplo — risco de soar formulário nas primeiras leads pagas</td><td>Duda</td><td>Colar 4-5 exemplos rotulados no fim do systemPrompt (casos já escritos nos goldens); validar com os 14 goldens</td></tr>
+    <tr><td>D6</td><td><strong>Atribuição LP→WhatsApp se perde</strong>: CTA usa wa.me estático sem UTM/click-id; webhook só captura atribuição com bloco <code>referral</code> (CTWA direto). Lead via LP chega como orgânico</td><td>Pixel/Atribuição</td><td>Zero código: rodar a campanha como <strong>CTWA direto</strong>. Pela LP, aceitar medição só no Pixel (Lead)</td></tr>
+    <tr><td>D7</td><td><strong>ensureAdminUser ignora <code>res.ok</code></strong> do send-transactional-email: welcome que falha (404/500/suprimido) morre em silêncio — o alerta Telegram de provisionamento nunca dispara</td><td>Checkout→Acesso</td><td>3 linhas (<code>if (!res.ok) errors.push(...)</code>) + redeploy cakto-webhook</td></tr>
+    <tr><td>D8</td><td><strong>Link de senha morto sem mensagem</strong>: retry de webhook regenera recovery token (invalida o link enviado; reenvio dropado por Idempotency-Key 24h) e <code>ResetPassword.tsx</code> não trata hash de erro — spinner infinito "Validando link…"</td><td>Checkout→Acesso</td><td>~10 linhas no front: ler <code>window.location.hash</code>, se <code>error_code</code> → "Link expirado" + botão pro fluxo Esqueci minha senha</td></tr>
+    <tr><td>D9</td><td><strong>CAPI duplamente inerte</strong>: <code>CAPI_ENABLED</code> OFF <strong>e</strong> nenhum cron chama <code>platform-capi-send</code> — zero evento server-side pra Meta. Pixel browser segura o topo (Lead)</td><td>Pixel/CAPI</td><td>Quando quiser: 4 secrets + 1 <code>cron.schedule</code> (5min) — zero código. Não é pré-requisito</td></tr>
+    <tr><td>D10</td><td><strong>Purchase nunca chega à Meta por nenhum caminho</strong>: sem <code>fbq Purchase</code> (checkout off-domain na Cakto), e o CAPI Purchase depende de <code>sale_completed</code> que o cakto-webhook não emite</td><td>Pixel/CAPI</td><td>Zero código: mover lead pra etapa "ganho" no CRM quando vender OU configurar o pixel 1024632956928840 no painel da Cakto</td></tr>
+    <tr><td>D11</td><td><strong>auth-email-hook e handle-email-suppression sem bloco no config.toml</strong>: próximo redeploy religa verify_jwt no gateway → 401 antes da função → e-mails de auth e supressão morrem em silêncio</td><td>Infra</td><td>2 blocos de 2 linhas no config.toml (<code>verify_jwt = false</code>)</td></tr>
+    <tr><td>D12</td><td><strong>Primeira resposta da Duda em ~27-35s</strong>: debounce de 25s aplica também à 1ª mensagem — teto da janela de atenção pós-clique</td><td>Duda</td><td>Zero código: <code>AI_BRAIN_DEBOUNCE_MS=10000</code> nos secrets</td></tr>
+  </table></div>
+  <p class="minor"><strong>Observações menores</strong> (não ranqueadas): links mortos <code>#careers</code>/<code>#about</code> no footer · modal Cofounder ramo "Não" sem atalho pra #planos · claim "50 vagas" sem fonte (TODO P7 — decisão do dono) · <code>.float-wa</code> estilizado mas não renderizado · viewport bloqueia zoom · form Cofounder lê tracking da querystring em vez do cookie <code>nxv_track</code> · fbc/fbp gravados sem consumidor CAPI website · UTMs do checkout só em <code>raw_payload</code> · welcome re-enviado em renovação mensal (dedupe só 24h) · seed B5 insere em view <code>servico_catalogo</code> não versionada (warn-only; wizard cobre) · cakto-webhook fail-open se <code>webhook_secret</code> NULL · URL pode ser partida entre bolhas no split · numeração de regra "8." duplicada no prompt · welcome da main sem o card Cofounder (WIP em branch, não commitado).</p>
+</section>
+
+<section id="duda">
+  <h2><span class="n">5 ·</span> Duda delta — implementado vs ficou-no-plano</h2>
+  <div class="rulebox"><strong>Veredito franco:</strong> a Duda de hoje <strong>segura uma lead paga</strong> — o esqueleto operacional é acima da média do mercado. Derrapagem real: o bug de truncamento (D3) e a dependência 100% de campos do banco (persona/objeções/KB) que a auditoria read-only não enxergou, rodando em gemini-2.5-flash <strong>sem um único exemplo no prompt</strong>.</div>
+
+  <h3><span class="tag green">Implementado</span> (origin/main 9493904, deno check limpo)</h3>
+  <ul>
+    <li><strong>Preço fonte-única</strong>: <code>public_plans</code> + filtro <code>is_public</code> (Teste R$10 não vaza) + de-para lançamento/tabela + REGRA DE PREÇO INVIOLÁVEL (brain:238-273, 1057-1066)</li>
+    <li><strong>Score QCR-V determinístico em TS</strong> (não recalculado pelo LLM), injetado como fato imperativo com rota de oferta; BANT derivado e persistido (554-620, 322-343, 1405-1432)</li>
+    <li><strong>Handoffs wired ponta a ponta</strong>: [PASSAR_BIA] com pin + dossiê + transição calorosa + alerta se Bia não existe; pin órfão curado + alarme; sem-persona grita em vez de calar (951-987, 1187-1222)</li>
+    <li><strong>Anti-desconto em dupla camada</strong>: regras 1-6 + <code>sanitizeReply</code> pós-geração (361-379, 1114-1119)</li>
+    <li><strong>Forma humanizada</strong>: ≤3 bolhas ≤300 chars, 1 pergunta só, debounce 25s, anti-re-entrega 10min, dedup 5s</li>
+    <li><strong>Modo inbound CTWA</strong>: abre espelhando o anúncio, proíbe abertura genérica (661-670, 1028-1040)</li>
+    <li><strong>Eval harness existe</strong>: 14 goldens em <code>tmp-eval-agents/goldens.ts</code> (PR #65) — não executados nesta auditoria (exigiria LLM real)</li>
+  </ul>
+
+  <h3><span class="tag gold">Ficou 100% no plano</span> (<code>NINA-EXTRACAO-DUDA-EQUIPIA-2026-07-19.md</code> §4 — trilha DUDA, 0 de 7)</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Item</th><th>Estado</th><th>Evidência</th></tr>
+    <tr><td>D1 few-shot (✅/❌ no prompt)</td><td><strong>NÃO</strong></td><td>única ocorrência de "exemplo" no arquivo é a regra de preço (brain:262)</td></tr>
+    <tr><td>D2 scaffold cognitivo (ANALISAR→REVISAR)</td><td><strong>NÃO</strong></td><td>grep <code>PROCESSO INTERNO|ANALISAR|REVISAR</code> = 0 hits</td></tr>
+    <tr><td>D3 tags XML na estrutura do prompt</td><td><strong>NÃO</strong></td><td>segue delimitador <code>═══</code></td></tr>
+    <tr><td>D4 anti-alucinação na description da tool</td><td><strong>NÃO</strong></td><td><code>gerar_link_pagamento.ts:7-8</code> sem "nunca invente URL" — e o brain nem usa tools (1158-1162)</td></tr>
+    <tr><td>D5 filtro de planos</td><td><strong>parcial</strong></td><td>só o <code>is_public</code> que já existia do PR #65</td></tr>
+    <tr><td>D6 gate de confiança</td><td><strong>NÃO</strong></td><td>—</td></tr>
+    <tr><td>D7 temperature/max_tokens por fase</td><td><strong>NÃO</strong></td><td>chamada principal sem ambos (1158-1162); a extração de fatos tem (457-458)</td></tr>
+  </table></div>
+  <p><strong>Coerente com o próprio doc</strong>: a Fase 0 exige decisão contratual do Marcelo antes de qualquer extração — não é falha de execução. <strong>Mas D1+D2 são baratos, sem dependência contratual</strong> (o conteúdo é nosso; só o padrão vem da Nina) e são o maior ganho de qualidade disponível pré-anúncio. Se couber 1 melhoria: D1, validando com os 14 goldens.</p>
+</section>
+
+<section id="funciona">
+  <h2><span class="n">6 ·</span> O que está comprovadamente funcionando</h2>
+  <div class="okbox"><strong>LP</strong> — nav 6 âncoras íntegras; CTAs Raio-X → wa.me com evento Lead; PlanoCta nunca vira link morto (fallback WhatsApp + Contact); preços 100% de <code>public_plans</code> (SELECT anon, GRANT reaplicado pós-DROP); modal Cofounder posta de verdade na edge; mobile sem scroll horizontal; fallback de animação (conteúdo nunca invisível).</div>
+  <div class="okbox"><strong>Pixel/atribuição</strong> — guard de host (nunca em app./gestao.) e fail-safe sem env; públicos de remarketing se formam hoje (PageView/Lead/Contact/InitiateCheckout); cookie <code>nxv_track</code> sólido (fbclid→fbc, _fbp, 30d 1st-party); checkout Cakto leva tracking inteiro; captura CTWA direta completa, race-safe e non-fatal.</div>
+  <div class="okbox"><strong>Checkout→Acesso</strong> — webhook com alarme Telegram em todas as falhas ruidosas; idempotência estrutural; org nasce utilizável (slug único, plano ativo); underpay provisiona MESMO ASSIM e alerta; <code>/reset-password</code> público em qualquer host; wizard grava serviços direto em <code>products tipo='servico'</code> com dedupe.</div>
+  <div class="okbox"><strong>Inbound</strong> — HMAC timing-safe + 200-sempre pro Meta; idempotência dupla por wamid; brain fire-and-forget (&lt;5s pro Meta); roteamento de persona à prova de casca (golden suite 10/10 verde rodada nesta auditoria); resposta sai pelo mesmo número que recebeu (fix de hoje confirmado); maquininha da Duda com links reais do banco.</div>
+  <div class="okbox"><strong>Infra</strong> — config.toml blindado (26 functions verify_jwt=false, working tree == origin/main); cron do dispatcher versionado e ativo; Service Worker network-only + reload em chunk stale (deploy não derruba usuários); auth fail-closed nas bordas; BRAIN_INTERNAL_SECRET setada desde 07-13; onboarding pós-venda dispara sozinho e o step WhatsApp é pulável.</div>
+</section>
+
+<section id="naoverif">
+  <h2><span class="n">7 ·</span> NÃO VERIFICADO — agregado, com queries prontas</h2>
+  <p>Auditoria read-only sobre código + queries pontuais no live. O que segue <strong>não foi provado</strong> e tem a query/checagem pronta. Itens ①–⑤ entram no passo 4 do plano das 2h.</p>
+
+  <h3>① E-mail saindo de verdade (decide o GO — pós-flip)</h3>
+<pre><code>SELECT status, count(*) AS n, max(created_at) AS ultimo
+FROM email_send_log GROUP BY status ORDER BY ultimo DESC;
+
+SELECT created_at, status, recipient_email, error_message
+FROM email_send_log WHERE template_name='welcome-admin-access'
+ORDER BY created_at DESC LIMIT 20;</code></pre>
+  <p><em>Estado já provado: dry-run ON às 18:27 UTC de hoje; zero <code>sent</code> na história. Pós-flip, esta query é a prova do GO.</em></p>
+
+  <h3>② Planos: mapeamento Cakto + preços Ladder A + checkout_url (e vazamento do E2E R$10)</h3>
+<pre><code>SELECT slug, name, price_monthly, list_price_monthly, is_active, is_public,
+       checkout_url, cakto_offer_slug, cakto_product_id
+FROM platform_plans ORDER BY display_order;
+<span class="cm">-- conferir: starter/pro/premium is_active AND is_public, checkout_url não-nulo,
+-- último segmento do checkout_url == cakto_offer_slug (é assim que o webhook resolve o plano),
+-- preços 450/720/1190. Plano "Teste E2E R$10" vaza SÓ se is_active AND is_public.</span>
+
+SELECT slug, name, is_public, price_monthly, list_price_monthly, checkout_url, checkout_url_yearly
+FROM public.public_plans WHERE slug IN ('starter','pro','premium') ORDER BY display_order;</code></pre>
+
+  <h3>③ Credencial do webhook Cakto (fail-open se NULL)</h3>
+<pre><code>SELECT scope, organization_id,
+       (webhook_secret IS NOT NULL AND webhook_secret &lt;&gt; '') AS tem_secret, updated_at
+FROM cakto_credentials WHERE scope='platform';
+<span class="cm">-- sem linha → webhook 404 e NENHUMA venda provisiona; NULL → aceita qualquer payload</span></code></pre>
+
+  <h3>④ WhatsApp: conexão ativa = número da LP + agentes ativos</h3>
+<pre><code>SELECT id, display_name, phone_number_id, status, product_id
+FROM platform_crm_whatsapp_meta_connections WHERE status='active';
+<span class="cm">-- conferir na Meta se o phone_number_id corresponde ao 5511955021205 hardcoded na LP</span>
+
+SELECT id, phone_number, display_name, status
+FROM public.platform_whatsapp_connections WHERE phone_number ILIKE '%955021205%';
+
+SELECT id, name, agent_type, is_active, active_in_whatsapp, product_id
+FROM platform_crm_product_agents WHERE is_active AND active_in_whatsapp;
+<span class="cm">-- sem SDR ativa o brain CALA (alarma, mas a lead fica sem resposta); conferir closer (Bia)</span></code></pre>
+
+  <h3>⑤ Conteúdo real da persona/produto (70% do prompt efetivo vem do banco)</h3>
+<pre><code>SELECT id, name, agent_type, is_active, active_in_whatsapp,
+       length(additional_prompt) AS add_prompt_len, length(tone_style) AS tone_len,
+       qualification_schema IS NOT NULL AS tem_qualif, prohibited_phrases
+FROM platform_crm_product_agents
+WHERE product_id IN (SELECT id FROM platform_crm_products WHERE name ILIKE '%beauty%');
+
+SELECT name, length(knowledge_base) AS kb, length(objections) AS objecoes,
+       length(pitch_2min) AS pitch, length(icp) AS icp,
+       plans IS NOT NULL AS tem_plans, pricing IS NOT NULL AS tem_pricing
+FROM platform_crm_products WHERE name ILIKE '%beauty%';
+<span class="cm">-- grep por 'raio'/'demo'/URL no retorno: verifica se D1 (Raio-X) já está mitigado por dado</span></code></pre>
+
+  <h3>⑥ Form do Cofounder existe e está ativo (criado fora de migration)</h3>
+<pre><code>SELECT f.id, f.slug, f.status, b.block_type, b.label, b.order_index
+FROM platform_crm_forms f
+LEFT JOIN platform_crm_form_blocks b ON b.form_id=f.id
+WHERE f.slug='interesse-cofounder' ORDER BY b.order_index;</code></pre>
+
+  <h3>⑦ Crons ativos + CAPI sem consumidor</h3>
+<pre><code>SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;
+SELECT jobname, schedule, command FROM cron.job WHERE command ILIKE '%capi%';  <span class="cm">-- esperado: vazio</span>
+SELECT status, count(*) FROM public.ads_capi_events GROUP BY 1;</code></pre>
+
+  <h3>⑧ Schema ads aplicado no live</h3>
+<pre><code>SELECT to_regclass('public.ads_attribution') AS attr,
+       to_regclass('public.ads_capi_events') AS capi,
+       EXISTS(SELECT 1 FROM pg_proc WHERE proname='ads_capi_pending') AS fn;</code></pre>
+
+  <h3>⑨ Cakto ecoa trackingParameters no webhook</h3>
+<pre><code>SELECT raw_payload-&gt;'trackingParameters'
+FROM public.cakto_orders ORDER BY created_at DESC LIMIT 5;</code></pre>
+
+  <h3>⑩ View servico_catalogo insertable com tipo correto (seed B5)</h3>
+<pre><code>SELECT pg_get_viewdef('public.servico_catalogo'::regclass, true);
+SELECT tgname FROM pg_trigger WHERE tgrelid='public.servico_catalogo'::regclass;
+<span class="cm">-- spot-check da última org provisionada:</span>
+SELECT tipo, count(*) FROM products WHERE organization_id='&lt;org_id&gt;' GROUP BY tipo;</code></pre>
+
+  <h3>⑪ Migrations aplicadas + RPCs assumidas</h3>
+<pre><code>SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 40;
+<span class="cm">-- candidatas possivelmente NÃO aplicadas (nenhuma bloqueia o funil de ads):
+-- cold_outreach_engine/cron, agent_type_backfill, nina_*, seed_platform_email_templates,
+-- 20260718_seed_cofounder (UNTRACKED — certamente não aplicada, aguarda aprovação do SQL)</span>
+
+SELECT proname FROM pg_proc WHERE proname IN
+  ('get_or_create_first_access_onboarding','validate_onboarding_token',
+   'get_or_create_meta_master_key','enqueue_email','delete_email',
+   'get_auth_user_id_by_email');</code></pre>
+
+  <h3>⑫ Checagens ops (fora de SQL)</h3>
+<pre><code><span class="cm"># Secrets em prod (valores reais; código só mostra defaults)</span>
+supabase secrets list --project-ref fzhlbwhdejumkyqosuvq | grep -E \
+ 'EMAIL_SEND_ENABLED|EMAIL_DRY_RUN|RESEND_API_KEY|CAPI_ENABLED|ONBOARDING_HANDOFF_ENABLED|TELEGRAM_ALERT|AI_API_KEY|AI_GATEWAY_URL|AI_BRAIN_DEBOUNCE_MS|BRAIN_INTERNAL_SECRET|AI_SALES_BRAIN_MODEL'</code></pre>
+  <ul>
+    <li><strong>Deploy drift</strong>: 3 pipelines manuais sem CI — conferir se as edges deployadas (cakto-webhook, send-transactional-email, process-email-queue, platform-meta-whatsapp-webhook, platform-sales-brain, platform-capi-send) acompanham origin/main; e se o bundle do front no VPS == origin/main com <code>VITE_META_PIXEL_ID</code> no .env de build.</li>
+    <li><strong>Config hosted do Auth</strong> (fora do repo): allowlist de Redirect URLs com <code>https://app.nexvybeauty.com.br/reset-password</code>; OTP/recovery expiry (se 1h, agrava D8); Send Email Hook apontando pra <code>auth-email-hook</code>; secret <code>APP_URL</code>.</li>
+    <li><strong>Painel Cakto</strong>: pixel 1024632956928840 no checkout (fecharia D10 sem código); URL de webhook cadastrada nas ofertas; retry de evento <code>paid</code> (frequência real do cenário D8).</li>
+    <li><strong>Painel Resend</strong>: domínio verificado (pré-condição do passo 1 do plano).</li>
+    <li><strong>Runtime real</strong>: nenhuma renderização em browser exercitada (slides, chat EquipIA, modal Cofounder); goldens da Duda não executados contra LLM real; latência do debounce não medida; <code>instagram.com/nexvytech</code> não navegado; LP externa do Lovable não inspecionada.</li>
+  </ul>
+</section>
+
+<div class="foot">Auditoria GO-ADS · síntese das 6 dimensões + verificação adversarial live · 2026-07-19 · sem commits · pareado: AUDITORIA-GO-ADS-2026-07-19.md</div>
+</div>
+</body>
+</html>
