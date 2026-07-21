@@ -108,6 +108,19 @@ export function useEvolutionInstances() {
       return (data || []) as EvolutionInstance[];
     },
     enabled: !!profile?.organization_id,
+    // O estado da conexão muda FORA do app: a dona pareia no celular, ou a
+    // sessão do WhatsApp cai sozinha. Sem refetch, a tela congela no estado do
+    // primeiro carregamento — foi o que fez a UI mostrar "Aguardando QR" com a
+    // instância JÁ conectada e o histórico entrando (21/07/2026 00:04). Pior:
+    // a faixa vermelha convida a clicar em "Reconectar", que derruba a sessão
+    // boa. Enquanto houver instância fora de `connected` (janela do QR),
+    // pergunta de 3 em 3s; estabilizado, 30s.
+    refetchInterval: (query) => {
+      const rows = (query.state.data ?? []) as EvolutionInstance[];
+      if (!rows.length) return 30_000;
+      return rows.some((r) => r.status !== 'connected') ? 3_000 : 30_000;
+    },
+    refetchOnWindowFocus: true,
   });
 }
 
