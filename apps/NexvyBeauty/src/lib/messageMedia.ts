@@ -1,22 +1,41 @@
 import type { MediaPayload, MediaKind } from '@/components/seller/inbox/MediaAttachment';
 
 /**
+ * Mídia extraída de uma mensagem. Estende o payload de render com a REFERÊNCIA
+ * de storage (`bucket`+`path`) quando ela existe.
+ *
+ * ⚠️ Por que a referência importa (frente "guardar path, não URL", 2026-07-20):
+ * os buckets de mídia de conversa vão de `public=true` para privado, e a `url`
+ * pública persistida em `metadata.media.url` deixa de servir. Quem tem
+ * `bucket`+`path` é assinável on-demand (ver `useSignedMediaUrl`); quem só tem
+ * `url` é legado e depende de backfill.
+ */
+export type ExtractedMedia = MediaPayload & {
+  bucket?: string | null;
+  path?: string | null;
+};
+
+/**
  * Lê `metadata.media` de uma mensagem e devolve um payload normalizado para
  * o componente <MediaAttachment/>. Retorna null se a mensagem não tem mídia.
  *
  * Aceita formatos legados (campos espalhados em metadata.* — audio_url,
  * image_url, etc.) e o formato canônico novo (metadata.media = {...}).
  */
-export function extractMedia(metadata: any): MediaPayload | null {
+export function extractMedia(metadata: any): ExtractedMedia | null {
   if (!metadata || typeof metadata !== 'object') return null;
 
   // Formato canônico
   if (metadata.media && typeof metadata.media === 'object') {
     const m = metadata.media;
-    if (!m.url || !m.kind) return null;
+    // `url` OU `path`: com bucket privado a mídia nova pode chegar sem URL
+    // pública nenhuma — o path sozinho já basta para renderizar (assinado).
+    if ((!m.url && !m.path) || !m.kind) return null;
     return {
       kind: normalizeKind(m.kind, m.mime),
-      url: String(m.url),
+      url: m.url ? String(m.url) : '',
+      bucket: m.bucket ? String(m.bucket) : null,
+      path: m.path ? String(m.path) : null,
       mime: m.mime ?? null,
       filename: m.filename ?? null,
       size_bytes: typeof m.size_bytes === 'number' ? m.size_bytes : null,

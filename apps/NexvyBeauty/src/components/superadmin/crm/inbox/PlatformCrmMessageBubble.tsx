@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatWhatsAppText, formatMessageTime, formatSenderLabel } from '@/lib/messageFormat';
 import { extractMedia } from '@/lib/messageMedia';
+import { useSignedMediaUrl, describeMediaFailure } from '@/hooks/useSignedMediaUrl';
 import { PlatformCrmMediaAttachment } from './PlatformCrmMediaAttachment';
 import { PlatformCrmReactionPicker, PlatformCrmReactionList } from './PlatformCrmMessageReactions';
 import type { ReactionSummary } from '../data/usePlatformCrmMessageReactions';
@@ -96,6 +97,14 @@ export function PlatformCrmMessageBubble({
   const isBot = senderType === 'bot';
   const isOwnMessage = senderType === 'agent' && senderId === currentUserId;
   const media = useMemo(() => extractMedia(metadata), [metadata]);
+  // Bucket privado: a URL exibível é assinada sob demanda a partir de
+  // bucket+path (frente "guardar path, não URL"). Mídia legada, que só tem a
+  // URL pública persistida, passa direto — até o backfill alcançá-la.
+  const {
+    media: displayMedia,
+    isResolving: isResolvingMedia,
+    failureReason: mediaFailure,
+  } = useSignedMediaUrl(media);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
   const [showActions, setShowActions] = useState(false);
@@ -381,7 +390,18 @@ export function PlatformCrmMessageBubble({
             )}
             {media && (
               <div className={cn(content && content.trim() ? 'mb-2' : '')}>
-                <PlatformCrmMediaAttachment media={media} isOwn={!isVisitor && !isBot} />
+                {displayMedia ? (
+                  <PlatformCrmMediaAttachment media={displayMedia} isOwn={!isVisitor && !isBot} />
+                ) : mediaFailure ? (
+                  // Falha explícita, nunca balão mudo: o operador precisa saber
+                  // que HAVIA mídia ali e que ela não abriu.
+                  <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs opacity-70">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{describeMediaFailure(mediaFailure)}</span>
+                  </div>
+                ) : isResolvingMedia ? (
+                  <div className="h-24 w-48 animate-pulse rounded-md bg-muted" />
+                ) : null}
               </div>
             )}
             {content && content.trim() && !(media && media.caption === content) && !(Array.isArray((metadata as any)?.contacts) && (metadata as any).contacts.length > 0) && (

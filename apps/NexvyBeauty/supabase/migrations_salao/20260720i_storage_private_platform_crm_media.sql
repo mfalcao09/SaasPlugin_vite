@@ -1,0 +1,80 @@
+-- ============================================================================
+-- CONFIDENCIALIDADE DE PII (2026-07-20) — `platform-crm-media` vira PRIVADO.
+--
+-- ⚠️⚠️ NÃO APLICAR AINDA. Ver "ORDEM DE APLICAÇÃO" abaixo. ⚠️⚠️
+--
+-- CONTEXTO. A 20260720g fechou a ENUMERAÇÃO anônima (dropou a policy SELECT
+-- {public} em storage.objects) e deixou o residual explícito nas linhas 30-32:
+--   "public=true mantém download por path-conhecido; confidencialidade real de
+--    PII (chat/crm) pede bucket privado + signed URL on-demand".
+-- A 20260720h repetiu o mesmo diagnóstico para product-documents (linhas 47-53).
+-- Esta migration é esse passo, para o PRIMEIRO bucket da fila.
+--
+-- POR QUE public=true ainda vaza. O endpoint /storage/v1/object/public/<b>/<p>
+-- IGNORA RLS por design. Sem enumeração o path precisa ser conhecido — mas
+-- "conhecido" inclui todo mundo que um dia teve acesso legítimo: ex-membro,
+-- usuário removido, tenant suspenso. Para esses, a mitigação da 20260720g não
+-- vale nada: o acesso é vitalício e não há como revogar sem apagar o objeto.
+--
+-- ---------------------------------------------------------------------------
+-- ORDEM DE APLICAÇÃO — a inversão quebra a inbox.
+-- ---------------------------------------------------------------------------
+-- No instante em que `public` vira false, TODA URL pública persistida em
+-- `platform_crm_messages.metadata.media.url` para de servir. A UI só sobrevive
+-- se já estiver assinando a partir de bucket+path. Sequência obrigatória:
+--
+--   1. supabase functions deploy media-sign
+--   2. deploy do front (useSignedMediaUrl + PlatformCrmMessageBubble)
+--   3. abrir a inbox do CRM e confirmar que a mídia carrega via /object/sign/
+--   4. SÓ ENTÃO aplicar esta migration
+--   5. reconferir a inbox + provar que /object/public/... devolve 400/404
+--
+-- Aplicar antes do passo 2 deixa a inbox do CRM cega.
+--
+-- ---------------------------------------------------------------------------
+-- POR QUE NÃO REPOR UMA POLICY SELECT (a alternativa óbvia, e por que não é ela)
+-- ---------------------------------------------------------------------------
+-- createSignedUrl exige SELECT sob RLS, e a 20260720g dropou justamente essa
+-- policy neste bucket. Repor uma para {authenticated} devolveria o `list` — a
+-- enumeração que acabou de ser fechada. Por isso a assinatura acontece na edge
+-- `media-sign`, com service_role: ignora RLS sem reabrir nada, e reautentica
+-- por conta própria (o gateway do Supabase aceita a anon key pública como
+-- Authorization — ver _shared/tenant-auth.ts).
+-- A decisão de acesso vive em _shared/media-access.ts, com golden suite
+-- (media-access.test.ts, 15 casos: cross-tenant, fail-closed, allowlist).
+--
+-- ---------------------------------------------------------------------------
+-- ESCOPO E DÍVIDA CONHECIDA
+-- ---------------------------------------------------------------------------
+-- Só `platform-crm-media` (single-org, super_admin, menor histórico) — é o POC.
+-- `chat-media` e `inbox-media` vêm em migration própria depois que este caminho
+-- estiver provado em produção. A prioridade de RISCO é INVERSA à ordem de
+-- execução: `chat-media` é o mais exposto (o path `<org>/<user>/<epoch>-<nome>`
+-- de useMediaUpload.ts:109 não tem nenhum componente aleatório) e é o que
+-- guarda PII de cliente final. Ele não deve ficar público muito tempo depois
+-- deste POC.
+--
+-- Mídia CRM antiga cujo metadata.media não tem `bucket`+`path` (só a `url`
+-- pública) deixa de renderizar quando isto for aplicado. O front sinaliza esses
+-- casos via `isLegacyPublicUrl` (useSignedMediaUrl.ts) — MEDIR a quantidade
+-- antes do passo 4. Se for material, backfill primeiro:
+--   select count(*) from platform_crm_messages
+--    where metadata->'media' is not null
+--      and metadata->'media'->>'path' is null;
+--
+-- REVERSÃO (imediata, sem perda de dados):
+--   update storage.buckets set public = true where id = 'platform-crm-media';
+-- Volta a servir as URLs públicas antigas. Use se a inbox quebrar.
+-- ============================================================================
+
+update storage.buckets
+   set public = false
+ where id = 'platform-crm-media';
+
+-- Verificação pós-aplicação (esperado: platform-crm-media | f):
+--   select id, public from storage.buckets where id = 'platform-crm-media';
+--
+-- Prova (b) da frente — o download público deve MORRER:
+--   curl -sS -o /dev/null -w '%{http_code}\n' \
+--     "$SUPABASE_URL/storage/v1/object/public/platform-crm-media/<path-conhecido>"
+--   esperado: 400 (bucket not found / not public), NÃO 200.
