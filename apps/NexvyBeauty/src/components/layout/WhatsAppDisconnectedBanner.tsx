@@ -29,8 +29,16 @@ export function WhatsAppDisconnectedBanner() {
       return { total, connected };
     },
     enabled: !!orgId,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    // Com 60s fixos, a dona escaneia o QR e continua vendo "WhatsApp
+    // desconectado" por até um minuto — com um botão "Reconectar" que derruba
+    // a sessão recém-criada. Com o alarme ACESO conferimos de 5 em 5s (estado
+    // transitório); apagado, 60s bastam.
+    refetchInterval: (query) => {
+      const d = query.state.data as { total: number; connected: number } | undefined;
+      return d && d.total > 0 && d.connected === 0 ? 5_000 : 60_000;
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 3_000,
   });
 
   if (!data || data.total === 0 || data.connected > 0) return null;
