@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, isValidElement } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -36,11 +36,28 @@ const fmtBRL = (v: number | null | undefined) =>
 const fmtDate = (d?: string | null) =>
   d ? format(new Date(d), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—';
 
-function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+/**
+ * `raw_payload` é jsonb: chega aqui como `any`, então o TS não protege nada.
+ * Se um campo vier objeto (ex.: `subscription`, `customer.phone`), o React
+ * lança "Objects are not valid as a React child" DURANTE o render — e como o
+ * SuperAdmin não tem boundary de seção, isso derruba a aplicação inteira.
+ * Coagimos aqui, no único ponto por onde todos esses campos passam.
+ */
+function toDisplay(value: unknown): React.ReactNode {
+  if (value === null || value === undefined || value === '') return '—';
+  if (isValidElement(value)) return value;
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id;
+    return typeof id === 'string' ? id : JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function Field({ label, value, mono }: { label: string; value: unknown; mono?: boolean }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm ${mono ? 'font-mono' : ''} break-all`}>{value ?? '—'}</div>
+      <div className={`text-sm ${mono ? 'font-mono' : ''} break-all`}>{toDisplay(value)}</div>
     </div>
   );
 }
@@ -165,7 +182,7 @@ export function CaktoOrderDetailDialog({ order, open, onOpenChange, canReprocess
               <Field label="Nome" value={order.customer_name} />
               <Field label="E-mail" value={order.customer_email} mono />
               <Field label="Telefone" value={raw?.customer?.phone ?? order.customer_phone} mono />
-              <Field label="Documento" value={raw?.customer?.docNumber ? `${(raw.customer.docType ?? '').toUpperCase()} ${raw.customer.docNumber}` : null} mono />
+              <Field label="Documento" value={raw?.customer?.docNumber ? `${String(raw.customer.docType ?? '').toUpperCase()} ${raw.customer.docNumber}` : null} mono />
             </div>
             {prov?.org && (
               <>
@@ -188,7 +205,7 @@ export function CaktoOrderDetailDialog({ order, open, onOpenChange, canReprocess
           <TabsContent value="pedido" className="space-y-4 pt-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Produto" value={order.product_name} />
-              <Field label="Slug da oferta" value={order.cakto_offer_slug ?? raw?.checkoutUrl?.split('/')?.pop()} mono />
+              <Field label="Slug da oferta" value={order.cakto_offer_slug ?? (typeof raw?.checkoutUrl === 'string' ? raw.checkoutUrl.split('/').pop() : null)} mono />
               <Field label="Valor" value={fmtBRL(order.amount)} />
               <Field label="Método" value={<PaymentMethodBadge method={order.payment_method} />} />
               <Field label="Criado em" value={fmtDate(order.created_at_cakto)} />
