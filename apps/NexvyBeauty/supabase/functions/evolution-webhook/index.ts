@@ -845,6 +845,69 @@ async function processMediaToText(
   }
 }
 
+// ============================================================================
+// B3 — Prova de posse da instância (gate anti-injeção do webhook PÚBLICO)
+// ----------------------------------------------------------------------------
+// verify_jwt=false: qualquer um POSTa aqui. A ÚNICA prova de que o evento veio
+// da NOSSA instância é o token que a Evolution API v2 ecoa no corpo de todo
+// evento (campo `apikey` == evolution_instances.instance_token). Sem isto, quem
+// descobrir o NOME da instância injeta no inbox e faz o WhatsApp REAL do salão
+// ENVIAR. Mesma régua da evolution-history-sync: timingSafeEq (R11) + lookup
+// .eq() injection-safe (nunca instanceRef interpolado no .or()).
+//
+// ⚠️ MODO SHADOW (2026-07-21): por decisão do revisor de não-regressão, este
+// gate roda em LOG-ONLY neste webhook do tenant — NUNCA retorna 401. Não há
+// prova de que o Evolution Go ecoa `instance_token` no corpo; enforce cego
+// mataria a ingestão em silêncio. Só flipar para 401 depois de o log mostrar
+// `B3-SHADOW would_pass` em tráfego REAL (reconectar meuteste1-sal-o1 + 1 msg).
+function timingSafeEq(a: string, b: string): boolean {
+  const ab = new TextEncoder().encode(a);
+  const bb = new TextEncoder().encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
+/** Token reenviado pela Evolution: corpo (apikey, v2) OU header (fallback). */
+function extractWebhookToken(payload: any, headers: Headers): string {
+  const body =
+    (typeof payload?.apikey === "string" && payload.apikey.trim()) ||
+    (typeof payload?.data?.apikey === "string" && payload.data.apikey.trim()) ||
+    "";
+  if (body) return body;
+  const h = (headers.get("apikey") || headers.get("x-webhook-token") || "").trim();
+  if (h) return h;
+  const m = (headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : "";
+}
+
+/** Resolve a instância (injection-safe) e EXIGE token válido. */
+async function authenticateInstance(
+  supabase: any,
+  instanceRef: string,
+  payload: any,
+  headers: Headers,
+): Promise<{ ok: true; instance: any } | { ok: false; reason: string }> {
+  const token = extractWebhookToken(payload, headers);
+  if (!token) return { ok: false, reason: "no_token" };
+  const SEL = "id, instance_token";
+  let inst: any = null;
+  for (const q of [
+    supabase.from("evolution_instances").select(SEL).eq("instance_id", instanceRef).limit(1),
+    supabase.from("evolution_instances").select(SEL).eq("name", instanceRef).limit(1),
+    supabase.from("evolution_instances").select(SEL).eq("metadata->>instance_name", instanceRef).limit(1),
+    supabase.from("evolution_instances").select(SEL).eq("metadata->>instance_uuid", instanceRef).limit(1),
+  ]) {
+    const { data } = await q;
+    if (data && data.length) { inst = data[0]; break; }
+  }
+  if (!inst) return { ok: false, reason: "unknown_instance" };
+  const known = String(inst.instance_token || "").trim();
+  if (!known || !timingSafeEq(token, known)) return { ok: false, reason: "token_mismatch" };
+  return { ok: true, instance: inst };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -860,6 +923,17 @@ Deno.serve(async (req) => {
     const rawEvent = payload.event || payload.type || payload.Event;
     const rawInstance = extractInstance(payload);
     console.log("[evolution-webhook] raw event:", rawEvent, "instance:", rawInstance || "<MISSING>");
+
+    // ---- B3 (SHADOW/LOG-ONLY): observa o que o gate BLOQUEARIA, sem retornar
+    //      401 e sem alterar o processamento. Rodado o mais cedo possível — ANTES
+    //      do branch de histórico abaixo — para cobrir também o caminho que monta
+    //      a carteira. Flipar para enforcement (return 401) SÓ quando o log mostrar
+    //      `B3-SHADOW would_pass` em tráfego real.
+    const gate = await authenticateInstance(supabase, String(rawInstance || "").trim(), payload, req.headers);
+    console.log(`[evolution-webhook] B3-SHADOW ${gate.ok ? "would_pass" : "would_block:" + gate.reason}`
+      + ` instance=${rawInstance || "<none>"} event=${rawEvent}`
+      + ` tokenPresent=${extractWebhookToken(payload, req.headers) !== ""}`);
+    // SEM return — segue o processamento normal
 
     // ---- F6: HISTÓRICO (syncFullHistory) → carteira de clientes ----
     // Chunks de histórico (MESSAGES_SET/CHATS_SET/CONTACTS_SET) são volumosos
