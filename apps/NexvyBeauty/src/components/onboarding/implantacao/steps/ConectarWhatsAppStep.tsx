@@ -28,6 +28,7 @@ import {
   useCreateEvolutionInstanceSelf,
   useConnectEvolutionInstance,
 } from '@/hooks/useEvolutionInstances';
+import { useOnboardingEvolution } from '@/hooks/useOnboardingEvolution';
 import { toast } from 'sonner';
 
 /**
@@ -76,10 +77,23 @@ export const ConectarWhatsAppStep: FC<{
   organizationId: string;
   onConnected: (instanceId: string) => void;
   onSkip: () => void;
-}> = ({ organizationId, onConnected, onSkip }) => {
+  /** Link público de implantação. Presentes ⇒ a compradora NÃO tem sessão:
+   *  fala com a edge `onboarding-evolution` (token+session_token) em vez do
+   *  `evolution-proxy`, que exige JWT e devolvia 401 (bug de 20/07/2026).
+   *  Ausentes ⇒ contexto logado, segue pelo proxy como sempre. */
+  token?: string | null;
+  sessionToken?: string | null;
+}> = ({ organizationId, onConnected, onSkip, token, sessionToken }) => {
   const createInstance = useCreateEvolutionInstanceSelf();
   const connectInstance = useConnectEvolutionInstance();
   const { profile } = useAuth();
+
+  // Hooks não podem ser condicionais — instancia sempre, usa só quando há link.
+  const semSessao = !!token && !!sessionToken;
+  const publicApi = useOnboardingEvolution({
+    token: token ?? '',
+    sessionToken: sessionToken ?? '',
+  });
 
   const [lgpdOk, setLgpdOk] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -117,11 +131,15 @@ export const ConectarWhatsAppStep: FC<{
   useEffect(() => {
     if (!instanceId || isConnected) return;
     const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from('evolution_instances')
-        .select('status, qr_code, phone_number')
-        .eq('id', instanceId)
-        .maybeSingle();
+      // Sem sessão a RLS esconde `evolution_instances` do front — perguntar o
+      // status pela edge não é preferência, é o único caminho que enxerga algo.
+      const data = semSessao
+        ? await publicApi.status().catch(() => null)
+        : (await supabase
+            .from('evolution_instances')
+            .select('status, qr_code, phone_number')
+            .eq('id', instanceId)
+            .maybeSingle()).data;
       if (!data) return;
       if (data.qr_code && data.qr_code !== qr) setQr(data.qr_code);
       if (data.status && data.status !== status) setStatus(data.status);
@@ -138,6 +156,23 @@ export const ConectarWhatsAppStep: FC<{
     if (!lgpdOk || starting) return;
     setStarting(true);
     try {
+      // Caminho SEM SESSÃO (link de implantação): a edge resolve tudo — acha ou
+      // cria a instância da org DA SUBMISSION e devolve o QR. O front não
+      // consulta tabela nenhuma aqui, porque a RLS não deixaria.
+      if (semSessao) {
+        const r = await publicApi.connect();
+        if (!r?.ok) throw new Error(r?.error || 'Não foi possível gerar o QR Code.');
+        if (r.instance_id) setInstanceId(r.instance_id);
+        if (r.already_connected && r.instance_id) {
+          setStatus('connected');
+          await handleConnected(r.instance_id);
+          return;
+        }
+        if (r.qr_code) setQr(r.qr_code);
+        setStatus('qr_pending');
+        return;
+      }
+
       // 1) Se a organização já tem uma conexão (refresh da página, retomada do
       //    wizard), reusa em vez de criar duplicata — o edge rejeita nome repetido.
       const { data: existing } = await supabase
@@ -178,7 +213,12 @@ export const ConectarWhatsAppStep: FC<{
       if (result?.qr_code) setQr(result.qr_code);
       setStatus('qr_pending');
     } catch (err) {
-      // Erros já são exibidos em toast pelos hooks; aqui só liberamos o botão.
+      // No caminho logado os hooks já exibem toast. No caminho público não há
+      // hook nenhum — errar em silêncio aqui deixaria a dona olhando um botão
+      // que "não faz nada", que foi exatamente o sintoma do 401.
+      if (semSessao) {
+        toast.error(err instanceof Error ? err.message : 'Não foi possível gerar o QR Code.');
+      }
       console.warn('[ConectarWhatsAppStep] handleGerarQr', err);
     } finally {
       setStarting(false);

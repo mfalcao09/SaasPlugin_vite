@@ -103,6 +103,17 @@ verify_jwt = false
 [functions.apply-onboarding]
 verify_jwt = false
 
+# QR do WhatsApp DENTRO do wizard de implantação paga. A compradora só cria a
+# senha no ÚLTIMO passo — no passo do QR ela ainda NÃO TEM SESSÃO, então o
+# gateway não pode exigir JWT. (Sem este bloco o fluxo volta a dar 401 e a venda
+# morre no "coração do espaço" — foi o bug de 20/07/2026 23:20.)
+# Auth real na função = token do link (sha256 → onboarding_submissions.token_hash)
+# + session_token da aba + link não revogado/expirado + mode != 'demo'. A org vem
+# SEMPRE da submission, nunca do body. Expõe só `connect` e `status`: nada
+# destrutivo, para que um link vazado não consiga apagar instância de ninguém.
+[functions.onboarding-evolution]
+verify_jwt = false
+
 # ESTEIRA DEMO — endpoints PÚBLICOS pré-venda (a lead é anônima, sem JWT).
 # demo-start: cria a org demo + link do wizard (auth real = honeypot + rate-limit
 #   durável por IP/telefone; nada sensível é exposto).
