@@ -144,7 +144,24 @@ Deno.serve(async (req) => {
           .order('created_at', { ascending: false }).limit(JANELA_PONTAS),
       ])
       const recentes = (recentesDesc ?? []).slice().reverse()
-      if (!antigas?.length && !recentes.length) { semConversa++; continue }
+
+      // Conversa só de áudio/foto/figurinha: existe, mas não há TEXTO para ler.
+      // Antes isto fazia `continue` sem marcar nada — e o contato voltava ao topo da
+      // fila para sempre, travando a drenagem (medido: 59 lotes girando nos mesmos 10).
+      // Marcar como 'indefinido' é a verdade (não há evidência) e destrava a fila.
+      if (!antigas?.length && !recentes.length) {
+        semConversa++
+        await db.rpc('carteira_classificar_aplicar', {
+          p_cliente_id: c.cliente_id,
+          p_assunto: 'indefinido',
+          p_sinais: {
+            assunto: 'indefinido', confianca: null, versao: VERSAO,
+            evidencias: ['conversa sem nenhuma mensagem de texto (só mídia)'],
+            sinais: {}, janela: { msgs_lidas: 0, de: null, ate: null },
+          },
+        })
+        continue
+      }
 
       const { texto, usadas } = montarJanela(antigas ?? [], recentes)
 
