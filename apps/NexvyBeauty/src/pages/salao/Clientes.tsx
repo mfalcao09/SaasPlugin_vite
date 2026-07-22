@@ -75,6 +75,26 @@ function idadeDe(iso: string): number | null {
 
 type SortMode = 'default' | 'hottest'
 
+// [B4] Fatias da carteira produzidas pela classificação Camada 1.
+// 'principal'  = carteira real (o que a dona trabalha)
+// 'a_revisar'  = número BR discável que chegou pelo sync do WhatsApp sem nome
+// 'lixeira'    = LID/0800/DDD inexistente — ruído, mas recuperável
+type CarteiraView = 'principal' | 'a_revisar' | 'lixeira'
+
+const CARTEIRA_TABS: { value: CarteiraView; label: string; hint: string }[] = [
+  { value: 'principal', label: 'Minha carteira', hint: 'Seus clientes.' },
+  {
+    value: 'a_revisar',
+    label: 'A revisar',
+    hint: 'Contatos do WhatsApp com telefone válido, mas sem nome. Podem ser clientes — marque os que forem.',
+  },
+  {
+    value: 'lixeira',
+    label: 'Ruído',
+    hint: 'Números não discáveis no Brasil (IDs internos do WhatsApp, 0800, DDD inexistente). Nada foi apagado — se algum for cliente, é só marcar.',
+  },
+]
+
 // ─── Tier do lead vinculado (Quente/Morno/Frio) ─────────────────────────
 // Reusa o helper canônico do LeadScoreBadge (mesmos cortes 70/40 + cores).
 function TierBadge({ score }: { score: number }) {
@@ -147,20 +167,49 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [cepLoading, setCepLoading] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('default')
+  const [carteiraView, setCarteiraView] = useState<CarteiraView>('principal')
   const [mergeTarget, setMergeTarget] = useState<DupGroup | null>(null)
   // Perfil 360: cliente selecionado abre o Sheet de detalhe.
   const [selected, setSelected] = useState<Cliente | null>(null)
 
   const { data: fetched = [], isLoading } = useQuery({
-    queryKey: ['salao-clientes', organizationId],
+    queryKey: ['salao-clientes', organizationId, carteiraView],
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes').select('*')
         .eq('organization_id', organizationId!)
+        // [B4] A carteira operacional é só 'principal'. As outras fatias vêm da
+        // classificação Camada 1 (20260722_b4_backfill_camada1_*.sql) e continuam
+        // acessíveis pelas abas — filtrar não pode parecer perder.
+        // Seguro porque a Camada 1 POSITIVA trava em 'principal' todo cliente com
+        // agendamento/pagamento: nenhum cliente real cai fora daqui.
+        .eq('carteira_estado', carteiraView)
         .order('created_at', { ascending: false })
+        .limit(500)
       if (error) throw error
       return (data ?? []) as Cliente[]
+    },
+  })
+
+  // [B4] Contagem por fatia — alimenta as abas. Sem este número a dona não teria
+  // como saber que 80 mil contatos foram classificados, e "filtrado" viraria "sumiu".
+  const { data: carteiraCounts } = useQuery({
+    queryKey: ['salao-clientes-carteira-counts', organizationId],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        CARTEIRA_TABS.map(async ({ value }) => {
+          const { count, error } = await supabase
+            .from('clientes')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId!)
+            .eq('carteira_estado', value)
+          if (error) throw error
+          return [value, count ?? 0] as const
+        }),
+      )
+      return Object.fromEntries(entries) as Record<CarteiraView, number>
     },
   })
 
@@ -296,9 +345,32 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salao-clientes', organizationId] })
+      qc.invalidateQueries({ queryKey: ['salao-clientes-carteira-counts', organizationId] })
       toast.success('Cliente excluído.')
     },
     onError: () => toast.error('Erro ao excluir cliente.'),
+  })
+
+  // [B4] Resgate manual: a dona diz "isto é cliente". Grava revisado_em, que TRAVA a
+  // linha — nenhuma reclassificação automática futura pode devolvê-la para a lixeira.
+  // É o contrapeso obrigatório de classificar automaticamente: a máquina erra, e a
+  // pessoa que conhece a clientela precisa poder desfazer em um clique.
+  const promover = useMutation({
+    mutationFn: async (c: Cliente) => {
+      const { error } = await supabase.from('clientes').update({
+        carteira_estado: 'principal',
+        tipo_contato: 'cliente',
+        revisado_em: new Date().toISOString(),
+        classificacao_motivo: 'resgatado manualmente na revisão da carteira',
+      }).eq('id', c.id).eq('organization_id', organizationId!)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['salao-clientes', organizationId] })
+      qc.invalidateQueries({ queryKey: ['salao-clientes-carteira-counts', organizationId] })
+      toast.success('Movido para a sua carteira.')
+    },
+    onError: () => toast.error('Não deu pra mover agora.'),
   })
 
   // ─── Feature #4: merge transacional via RPC ───────────────────────────
@@ -401,6 +473,33 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
           </Link>
         )}
 
+        {/* [B4] Abas da carteira — só aparecem se a classificação separou alguma coisa.
+            Existem para que "filtrado" nunca seja confundido com "sumiu". */}
+        {!isDemo && ((carteiraCounts?.a_revisar ?? 0) > 0 || (carteiraCounts?.lixeira ?? 0) > 0) && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {CARTEIRA_TABS.map((tab) => (
+                <Button
+                  key={tab.value}
+                  size="sm"
+                  variant={carteiraView === tab.value ? 'default' : 'outline'}
+                  onClick={() => setCarteiraView(tab.value)}
+                >
+                  {tab.label}
+                  <Badge variant="secondary" className="ml-2 tabular-nums">
+                    {(carteiraCounts?.[tab.value] ?? 0).toLocaleString('pt-BR')}
+                  </Badge>
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {CARTEIRA_TABS.find((t) => t.value === carteiraView)?.hint}
+              {(carteiraCounts?.[carteiraView] ?? 0) > 500 &&
+                ` Mostrando os 500 mais recentes de ${(carteiraCounts?.[carteiraView] ?? 0).toLocaleString('pt-BR')}.`}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -422,7 +521,13 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
           ) : visible.length === 0 ? (
             <div className="py-16 text-center">
               <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">{search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</p>
+              <p className="text-sm text-muted-foreground">
+                {search
+                  ? 'Nenhum cliente encontrado.'
+                  : carteiraView === 'principal'
+                    ? 'Nenhum cliente cadastrado ainda.'
+                    : 'Nada nesta aba.'}
+              </p>
             </div>
           ) : (
             <Table>
@@ -464,6 +569,17 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
+                          {carteiraView !== 'principal' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={promover.isPending}
+                              onClick={(e) => { e.stopPropagation(); promover.mutate(c) }}
+                              title="Mover para a minha carteira"
+                            >
+                              É cliente
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelected(c) }} title="Ver perfil 360"><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(c) }} title="Editar"><Pencil className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(c) }} title="Excluir" className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>

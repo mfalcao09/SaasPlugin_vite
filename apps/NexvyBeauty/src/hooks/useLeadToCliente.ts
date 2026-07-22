@@ -57,9 +57,17 @@ export async function convertLeadToCliente(input: LeadToClienteInput): Promise<L
     existing = data?.[0] ?? null;
   }
   if (existing) {
-    if (!existing.lead_id) {
-      await db.from('clientes').update({ lead_id: leadId }).eq('id', existing.id);
-    }
+    // [B4] Converter um lead é prova de negócio: esta pessoa É cliente. Se o número
+    // caiu na classificação automática (lixeira/a_revisar por ter vindo do sync de
+    // WhatsApp sem nome), promove e TRAVA com revisado_em — senão o cliente recém-
+    // convertido continuaria invisível na carteira.
+    await db.from('clientes').update({
+      ...(existing.lead_id ? {} : { lead_id: leadId }),
+      carteira_estado: 'principal',
+      tipo_contato: 'cliente',
+      revisado_em: new Date().toISOString(),
+      classificacao_motivo: 'promovido: lead convertido em cliente',
+    }).eq('id', existing.id);
     return { clienteId: existing.id, created: false };
   }
 

@@ -116,6 +116,7 @@ export default function Agenda({ demo, bare }: { demo?: Agendamento[]; bare?: bo
     queryKey: ['clientes-opt', organizationId], enabled,
     queryFn: async () => {
       const { data: rows, error } = await db.from('clientes').select('id, nome').eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] seletor de cliente sem as 84k linhas de ruído
       if (error) throw error
       return (rows ?? []) as ClienteOption[]
     },

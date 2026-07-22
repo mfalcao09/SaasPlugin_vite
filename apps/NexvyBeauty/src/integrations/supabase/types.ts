@@ -5095,14 +5095,18 @@ export type Database = {
       clientes: {
         Row: {
           bairro: string | null
+          carteira_estado: string
           cep: string | null
           cidade: string | null
+          classificacao_motivo: string | null
+          client_score: number | null
           complemento: string | null
           cpf_cnpj: string | null
           created_at: string
           data_nascimento: string | null
           email: string | null
           endereco: string | null
+          excluded_at: string | null
           id: string
           lead_id: string | null
           logradouro: string | null
@@ -5111,24 +5115,32 @@ export type Database = {
           numero: string | null
           observacoes: string | null
           organization_id: string
+          revisado_em: string | null
+          revisado_por: string | null
+          sinais_wa: Json | null
           status: string
           tags: string[] | null
           telefone: string | null
           telefone_normalizado: string | null
+          tipo_contato: string
           uf: string | null
           ultima_interacao_wa: string | null
           updated_at: string
         }
         Insert: {
           bairro?: string | null
+          carteira_estado?: string
           cep?: string | null
           cidade?: string | null
+          classificacao_motivo?: string | null
+          client_score?: number | null
           complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
+          excluded_at?: string | null
           id?: string
           lead_id?: string | null
           logradouro?: string | null
@@ -5137,24 +5149,32 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           organization_id: string
+          revisado_em?: string | null
+          revisado_por?: string | null
+          sinais_wa?: Json | null
           status?: string
           tags?: string[] | null
           telefone?: string | null
           telefone_normalizado?: string | null
+          tipo_contato?: string
           uf?: string | null
           ultima_interacao_wa?: string | null
           updated_at?: string
         }
         Update: {
           bairro?: string | null
+          carteira_estado?: string
           cep?: string | null
           cidade?: string | null
+          classificacao_motivo?: string | null
+          client_score?: number | null
           complemento?: string | null
           cpf_cnpj?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
+          excluded_at?: string | null
           id?: string
           lead_id?: string | null
           logradouro?: string | null
@@ -5163,10 +5183,14 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           organization_id?: string
+          revisado_em?: string | null
+          revisado_por?: string | null
+          sinais_wa?: Json | null
           status?: string
           tags?: string[] | null
           telefone?: string | null
           telefone_normalizado?: string | null
+          tipo_contato?: string
           uf?: string | null
           ultima_interacao_wa?: string | null
           updated_at?: string
