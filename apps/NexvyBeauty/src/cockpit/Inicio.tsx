@@ -151,6 +151,7 @@ export default function Inicio() {
         .from('clientes')
         .select('id, nome, telefone, data_nascimento, ultima_interacao_wa')
         .eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] alavancas só sobre carteira real
         .limit(5000)
       if (error) throw error
       return (data ?? []) as unknown as LeverCliente[]

@@ -105,7 +105,7 @@ export default function Pacotes() {
   const { data: clientes = [] } = useQuery({
     queryKey: ['pacotes-clientes-opt', orgId], enabled: !!orgId && showVenda,
     queryFn: async () => {
-      const { data, error } = await supabase.from('clientes').select('id, nome').eq('organization_id', orgId!).order('nome').limit(500)
+      const { data, error } = await supabase.from('clientes').select('id, nome').eq('organization_id', orgId!).eq('carteira_estado', 'principal').order('nome').limit(500)
       if (error) throw error
       return (data ?? []) as { id: string; nome: string }[]
     },

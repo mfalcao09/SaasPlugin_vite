@@ -378,6 +378,7 @@ export default function Relatorios({ demo }: { demo?: RelatoriosData } = {}) {
         .from('clientes')
         .select('id, created_at')
         .eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] "novos clientes" não conta ruído de WA
       if (error) throw error
       return (data ?? []) as ClienteRow[]
     },

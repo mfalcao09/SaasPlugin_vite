@@ -277,6 +277,9 @@ export default function AiGrowth({ demo, embedded }: { demo?: AiGrowthDemoData; 
         .from('clientes')
         .select('id, nome, telefone, data_nascimento, ultima_interacao_wa, cidade, uf')
         .eq('organization_id', organizationId!)
+        // [B4] CRÍTICO: esta segmentação alimenta disparo. Mandar campanha para
+        // 'a_revisar' (não confirmado) ou 'lixeira' queima número e reputação da instância.
+        .eq('carteira_estado', 'principal')
       if (error) throw error
       // as unknown as: types.ts gerado está defasado (sem ultima_interacao_wa em
       // clientes, apesar da coluna existir no banco — F6). Runtime OK. TODO: regenerar types.

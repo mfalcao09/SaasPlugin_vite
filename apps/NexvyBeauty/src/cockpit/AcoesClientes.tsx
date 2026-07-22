@@ -159,6 +159,7 @@ export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[
         .from('clientes')
         .select('id, nome, telefone, data_nascimento')
         .eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] ações/disparos só sobre carteira real
       if (error) throw error
       return (data ?? []) as ClienteRow[]
     },

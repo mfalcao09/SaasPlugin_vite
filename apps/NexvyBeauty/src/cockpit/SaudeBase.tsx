@@ -48,6 +48,7 @@ export default function SaudeBase({ demo }: { demo?: HealthMetrics } = {}) {
         .from('clientes')
         .select('nome, telefone, email, cpf_cnpj, data_nascimento, observacoes, status')
         .eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] higiene mede a carteira real, não o ruído
       if (error) throw error
       return (data ?? []) as ClienteHigiene[]
     },

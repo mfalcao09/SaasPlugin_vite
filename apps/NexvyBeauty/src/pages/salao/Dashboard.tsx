@@ -91,6 +91,7 @@ export default function Dashboard({ demo }: { demo?: DashboardData } = {}) {
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
       const { data, error } = await supabase.from('clientes').select('id').eq('organization_id', organizationId!)
+        .eq('carteira_estado', 'principal') // [B4] contagem não pode incluir ruído de WhatsApp
       if (error) throw error
       return data ?? []
     },
