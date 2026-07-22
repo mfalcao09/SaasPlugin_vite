@@ -71,17 +71,54 @@ IMPORTAÇÃO
 
 ## 3. Fases, com check binário
 
-### FASE 0 — Reconhecimento que falta ⛔ GATE
-Nenhuma linha de código antes disto fechar.
+### FASE 0 — Reconhecimento ✅ EXECUTADA (22/07)
 
-| # | Passo | Check binário |
+Resolvida **sem reconexão e sem ação do Marcelo**: o Evolution roda no VPS com Postgres
+próprio, e o histórico estava lá o tempo todo. Nós é que o descartávamos na entrada.
+
+| # | Check | Resultado |
 |---|---|---|
-| 0.1 | Logar **um** payload real de `MESSAGES_SET` | O JSON contém `message.conversation` **ou** `extendedTextMessage.text` não-vazio? **SIM/NÃO** |
-| 0.2 | Medir volume da instância | Nº de mensagens e bytes estimados no histórico completo |
+| 0.1 | O corpo da mensagem existe? | ✅ **SIM** — 128.434 de 166.383 mensagens com `conversation` não-vazio |
+| 0.2 | Volume | 166.383 msgs · 73 MB · 860 contatos · 17/06/2025 → 21/07/2026 |
 
-> **Se 0.1 for NÃO, o plano morre aqui e muda de forma — não no meio da implementação.**
-> Sem corpo de mensagem no payload, classificar o legado é impossível e resta só o
-> regime ao vivo. Este é exatamente o tipo de descoberta que hoje aconteceu tarde demais.
+**Distribuição por tipo de contato** (o que reescreve o custo do Eixo 3):
+
+| Balde | Contatos | Mensagens | Msgs/contato |
+|---|---|---|---|
+| **BR com telefone** | **350** | **81.476** | **233** |
+| Grupo (`@g.us`) | 117 | 76.024 | 650 |
+| LID sem telefone | 389 | 8.852 | 23 |
+| Outro | 4 | 31 | 8 |
+
+**Achados que mudaram o plano:**
+
+1. **São 350 contatos a classificar, não 84.194.** Só 860 trocaram mensagem; o resto veio
+   da agenda. Descontando grupos e LID, o alvo real é 350. O custo do Eixo 3 deixa de ser
+   preocupação.
+2. **A Fase 6 morre.** O legado não depende de reconexão — leio do Evolution direto.
+   **Risco R3 eliminado e o plano perde seu único bloqueio humano.**
+3. **Grupos são a maior massa de mensagem** (76 mil, 650 por grupo). Ingerir "conversa"
+   sem separar por tipo de JID faria o classificador ler papo de grupo e concluir que a
+   carteira inteira é pessoal. O Eixo 1 já evita isso de graça.
+4. **Cobertura confirmada:** amostra de 10 dos 350 → 10/10 presentes em `clientes`, todos
+   em `a_revisar`, **zero na lixeira**. Nenhuma cliente foi perdida.
+5. **API do Evolution serve o carregador:** `chat/findMessages/{instance}` responde 200,
+   aceita `where.key.remoteJid` (filtro por contato) e `offset` como tamanho de página
+   (1.000 registros em ~318 ms). **Nenhuma credencial nova precisa ir para lugar algum** —
+   a edge function usa `EVOLUTION_API_URL`/`EVOLUTION_API_KEY` que já existem.
+
+**Alarme falso registrado:** medi `is_br_dialable` contra JIDs crus e concluí que 72
+contatos (82% da conversa) estavam na lixeira. Errado — `normalize_phone_br` insere o nono
+dígito antes da checagem, e nenhuma linha foi afetada. A regra estava mesmo errada para
+12 dígitos e foi corrigida (`b4_fix_is_br_dialable_celular_antigo`, 20/20 na suíte), mas o
+impacto em produção era zero.
+
+**⚠️ Reordenação obrigatória descoberta aqui:** existem **6 crons de disparo ativos**
+(`campaign-dispatcher` a cada minuto, `ai-followup-cron` a cada 5, `salon-automation-daily`
+diário) e `salon-automation-run` seleciona clientes **sem filtro de `carteira_estado`**.
+Hoje nada dispara porque as 4 regras ativas partem de evento transacional que os 84 mil não
+têm — segurança **acidental, não projetada**. Portanto **a Fase 3 (gate) vem ANTES** de
+qualquer migração que torne contatos visíveis.
 
 ### FASE 1 — Persistir conteúdo na ingestão
 | # | Passo | Check binário |
@@ -119,28 +156,27 @@ Nenhuma linha de código antes disto fechar.
 | 5.2 | Ações "É cliente" / "É pessoal" gravam `revisado_em` | Linha trava contra reclassificação |
 | 5.3 | Painel de análise de carteira (o que se vende) | Mostra distribuição + evidência por contato |
 
-### FASE 6 — Re-sync ⛔ IRREVERSÍVEL
-Só depois de 1-4 verdes. A reconexão da instância acontece **uma vez**: se o código não
-estiver pronto, o histórico passa e é descartado de novo — exatamente o que já ocorreu.
+### ~~FASE 6 — Re-sync~~ ⚰️ ELIMINADA pela Fase 0
 
-| # | Passo | Check binário |
-|---|---|---|
-| 6.1 | Reconectar `meuteste1-sal-o1` (HITL Marcelo) | Instância `connected` |
-| 6.2 | Histórico chega **com conteúdo** | `webchat_messages` cresce com `content <> ''` |
-| 6.3 | Classificador roda sobre o legado | ≥ 90% dos discáveis com conversa saem de `indefinido` |
-| 6.4 | Prova de ponta a ponta | Painel mostra distribuição real da carteira do salão |
+Ela existia porque eu achava que só a reconexão traria o histórico de volta. **Errado** —
+os dados estão no Postgres do Evolution, no VPS, e a API `chat/findMessages` os serve sob
+demanda. A carga do legado virou a Fase 1: banco-a-banco, repetível quantas vezes eu
+quiser, reversível, sem tiro único. **Risco R3 eliminado; o plano não tem mais bloqueio
+humano.**
+
+A prova de ponta a ponta que morava aqui migrou para o fim da Fase 5.
 
 ---
 
 ## 4. Riscos que podem matar o plano — e onde eles aparecem
 
-| # | Risco | Onde aparece | Mitigação |
+| # | Risco | Onde aparece | Situação |
 |---|---|---|---|
-| R1 | `MESSAGES_SET` não traz corpo da mensagem | Fase 0.1 | **Gate.** Descobrir antes, não no meio |
-| R2 | Volume estoura storage/custo | Fase 0.2 | Medir antes; política de janela por conversa |
-| R3 | Reconexão gasta a chance com código incompleto | Fase 6 | Ordem travada: 6 só depois de 1-4 verdes |
-| R4 | Classificador marca cliente real como `pessoal` | Fase 4 | Transação nunca é rebaixada · `revisado_em` trava · botão de resgate |
-| R5 | Campanha dispara antes da classificação | Fase 3 | Gate exige assunto resolvido |
+| R1 | Payload não traz corpo da mensagem | Fase 0.1 | ✅ **RESOLVIDO** — 128.434 msgs com corpo |
+| R2 | Volume estoura storage/custo | Fase 0.2 | ✅ **RESOLVIDO** — 81.476 msgs para 350 contatos, trivial |
+| R3 | Reconexão gasta a chance com código incompleto | ~~Fase 6~~ | ✅ **ELIMINADO** — leitura direta do Evolution, sem reconexão |
+| R4 | Classificador marca cliente real como `pessoal` | Fase 4 | Aberto · Transação nunca rebaixa · `revisado_em` trava · botão de resgate |
+| R5 | Campanha dispara antes da classificação | Fase 3 | ⚠️ **AGRAVADO** — `salon-automation-run` não filtra `carteira_estado` e há 6 crons ativos. Fase 3 promovida para ANTES de tornar contato visível |
 
 ---
 
@@ -156,8 +192,11 @@ estiver pronto, o histórico passa e é descartado de novo — exatamente o que 
 ## 6. Caminho crítico
 
 ```
-FASE 0 (gate) → 1 → 2 → 3 → 4 → 5 → 6 (HITL, irreversível)
-                     └── 3 pode correr em paralelo com 2 e 4
+FASE 0 ✅ → 3 (gate de disparo) → 1 (carga do legado) → 2 (tag) → 4 (classificador) → 5 (tela)
 ```
 
-O único bloqueio humano está na Fase 6. Tudo antes disso é executável sem você.
+**Reordenado após a Fase 0.** A Fase 3 subiu para primeiro: enquanto
+`salon-automation-run` não filtrar `carteira_estado`, nenhuma migração pode tornar
+contato visível com segurança. A Fase 6 deixou de existir.
+
+**Não há mais bloqueio humano.** Todo o caminho é executável sem o Marcelo.
