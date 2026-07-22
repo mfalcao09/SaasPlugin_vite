@@ -76,36 +76,36 @@ export default function AcceptInvite() {
     setIsCreatingAccount(true);
     
     try {
-      // Create account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
+      // Cadastro-e-aceite 100% SERVER-SIDE (Edge accept-invite, service_role).
+      // Fecha o exploit do accept_invitation: o cliente NÃO faz mais signUp +
+      // accept_invitation direto. A Edge valida o convite + e-mail, cria o usuário
+      // (email_confirm por posse do token) e faz o vínculo atômico. Aqui só logamos
+      // depois, para obter a sessão. Independe do toggle mailer_autoconfirm.
+      const { data: result, error: fnError } = await supabase.functions.invoke('accept-invite', {
+        body: { token: token!, email, password, full_name: fullName },
       });
-      
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Não foi possível criar a conta. Tente novamente.');
 
-      // Detecta email já cadastrado: Supabase retorna um user "fake" sem identities
-      // quando o email já existe (proteção contra enumeração). Nesse caso o user_id
-      // não está em auth.users e o accept_invitation falharia na FK.
-      const identities = (authData.user as any).identities;
-      if (Array.isArray(identities) && identities.length === 0) {
-        toast.error('Este e-mail já possui uma conta. Faça login para aceitar o convite.');
-        setTimeout(() => navigate(`/login?redirect=/accept-invite?token=${token}`), 1500);
+      const errCode: string | null = (result as any)?.error ?? (fnError ? 'internal' : null);
+      if (errCode) {
+        const map: Record<string, string> = {
+          invalid_or_expired: 'Este convite não existe, já foi usado ou expirou.',
+          email_mismatch: 'O e-mail não corresponde ao convite. Use o e-mail que recebeu o convite.',
+          already_registered: 'Este e-mail já possui uma conta. Faça login para aceitar o convite.',
+          invalid_input: 'Dados inválidos. Verifique e tente novamente.',
+        };
+        if (errCode === 'already_registered') {
+          toast.error(map[errCode]);
+          setTimeout(() => navigate(`/login?redirect=/accept-invite?token=${token}`), 1500);
+          return;
+        }
+        toast.error(map[errCode] ?? 'Erro ao criar conta. Tente novamente.');
         return;
       }
 
-      // Accept invitation
-      await acceptInvitation.mutateAsync({ 
-        token: token!, 
-        userId: authData.user.id 
-      });
-      
+      // Conta criada + vinculada no servidor. Agora obtém a sessão.
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) throw signInError;
+
       setAccepted(true);
       toast.success('Conta criada e convite aceito!');
       setTimeout(() => navigate('/'), 2000);
