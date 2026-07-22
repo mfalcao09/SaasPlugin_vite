@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Placar GO LIVE NexvyBeauty — 2026-07-22</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.28rem;margin:2em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.4em 0 .4em 14px;margin:0 0 1em;font-size:.92rem}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.86em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffd7ec}
+  .verdict{background:linear-gradient(135deg,rgba(248,81,73,.13),rgba(210,153,34,.08));
+    border:1px solid rgba(248,81,73,.42);border-radius:14px;padding:20px 24px;margin:1.4em 0}
+  .verdict h2{border:0;margin:0 0 .2em;font-size:1.34rem;color:var(--red)}
+  .verdict ol{margin:.7em 0 0;padding-left:1.15em}
+  .verdict li{margin:.55em 0}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1em 0}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:.9rem;
+    background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:.82rem;
+    text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .ok{color:var(--green);font-weight:700}
+  .bad{color:var(--red);font-weight:700}
+  .warn{color:var(--yellow);font-weight:700}
+  .gates{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:14px 18px;font-size:.9rem;color:var(--muted)}
+  .gates b{color:var(--green)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:1.2em 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+  .card .n{font-size:2rem;font-weight:800;line-height:1.1}
+  .card .l{color:var(--muted);font-size:.83rem;margin-top:.25em}
+  .mea{background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.32);
+    border-radius:12px;padding:18px 22px;margin:1.4em 0}
+  .mea h2{border:0;margin:0 0 .4em;color:var(--accent2);font-size:1.12rem}
+  footer{color:var(--muted);font-size:.82rem;margin-top:3em;padding-top:1em;
+    border-top:1px solid var(--border)}
+  @media (max-width:640px){ h1{font-size:1.45rem} .wrap{padding:22px 14px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Placar GO LIVE — NexvyBeauty</h1>
+<p class="lead">22/07/2026 · Cada linha tem prova executada, não alegação.
+Onde não houve prova, está escrito <b>“não provado”</b> — não “pronto”.</p>
+
+<div class="verdict">
+  <h2>Não libere o anúncio ainda.</h2>
+  <p style="margin:.3em 0 0">Faltam 2 coisas, e nenhuma é código de produto. O funil e a
+  segurança fecharam hoje; o que trava é o outro lado:</p>
+  <ol>
+    <li><b><code>ads_capi_events = 0</code></b> — nenhum evento de <code>Purchase</code>
+    jamais chegou ao Meta. Tráfego pago sem CAPI é pagar por clique e não devolver sinal
+    de conversão: o algoritmo não tem o que otimizar. É o item que mais custa dinheiro
+    se for ignorado.</li>
+    <li><b>Duas policies de <code>INSERT</code> abertas a qualquer anônimo</b>
+    (<code>booking_requests</code>, <code>sales_leads</code>), sem rate limit. Hoje
+    ninguém acha essas URLs. Com tráfego pago, acham — e o bot chega junto com o cliente.</li>
+  </ol>
+</div>
+
+<h2>Fechado hoje, com prova</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Prova executada</th></tr></thead>
+<tbody>
+<tr><td><b>B4</b></td><td>Ingestão do WhatsApp poluía a carteira com 84.194 linhas, 0 nomes reais</td>
+    <td>45.237 <code>lixeira/lid</code> · 35.745 <code>lixeira/nao_br</code> ·
+        3.212 <code>a_revisar</code> · <span class="ok">0</span> nome curado na lixeira ·
+        <span class="ok">0</span> transacional na lixeira</td></tr>
+<tr><td><b>B4-origem</b></td><td><code>upsert_clientes_whatsapp</code> gravava o telefone/LID no campo <i>nome</i></td>
+    <td>RPC corrigida (<code>coalesce(r.nome,'')</code>); sem isso a próxima sync recriaria tudo</td></tr>
+<tr><td><b>B4-regex</b></td><td>Guard de “nome é lixo” usava <code>\\s</code> (barra literal, não espaço)</td>
+    <td><code>(11) 99999-9999</code> era <code>false</code>, agora <code>true</code>;
+        <code>Maria Silva</code> segue <code>false</code></td></tr>
+<tr><td><b>B4-tela</b></td><td>9 pontos liam <code>clientes</code> sem filtro — inclusive contagens e segmentação de disparo</td>
+    <td>todos com <code>carteira_estado='principal'</code>; abas + botão “É cliente” no ar
+        (<code>Clientes-BoEZrX3B.js</code> servido em produção contém os 4 marcadores)</td></tr>
+<tr><td><b>SEC</b></td><td><code>platform_vendas_por_seller</code> legível por <b>anônimo</b></td>
+    <td>antes: <code>{"vendas":2,"receita_total":100.99,…}</code> sem login →
+        depois: <code>{"code":"42501","permission denied"}</code></td></tr>
+<tr><td><b>B6</b></td><td>Limite de plano falhava em silêncio</td>
+    <td><code>apply-onboarding v19</code> ACTIVE, devolve <code>quota_blocks</code></td></tr>
+<tr><td><b>B5</b></td><td>Agente de tenant nascia sem rota para humano</td>
+    <td>migration de backfill aplicada</td></tr>
+<tr><td><b>B3</b></td><td>Webhook Evolution sem validação de origem</td>
+    <td><span class="warn">shadow</span>, logando <code>B3-SHADOW would_pass</code></td></tr>
+<tr><td><b>D1</b></td><td>E-mail de recompra: <code>Resend 409 invalid_idempotent_req</code></td>
+    <td><code>cakto-webhook v58</code> + <code>cakto-reprocess-order v50</code> deployadas
+        21/07 23:28 — <span class="warn">não provado</span> (nenhuma compra desde)</td></tr>
+</tbody></table>
+</div>
+
+<div class="gates">
+  <b>Gates:</b> <code>npm run build</code> verde · <code>tsc</code> 40 → 32 erros
+  (os 8 introduzidos eliminados; 32 são pré-existentes) ·
+  <code>/demo/salao/clientes</code> renderiza com 0 erro de console ·
+  <code>DEPLOY-VERDE</code> com gate anti-phantom em
+  <a href="https://gestao.nexvy.tech/">gestao.nexvy.tech</a>.
+</div>
+
+<h2>Aberto — bloqueia o anúncio</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Estado real</th></tr></thead>
+<tbody>
+<tr><td><b>B7/D5</b></td><td>Meta Purchase / CAPI</td>
+    <td><span class="bad">ads_capi_events = 0</span>. Nunca disparou.</td></tr>
+<tr><td><b>B8a</b></td><td><code>booking_requests</code> e <code>sales_leads</code>:
+    <code>INSERT</code> com <code>WITH CHECK</code> sempre verdadeiro</td>
+    <td><span class="bad">Qualquer anônimo insere sem limite.</span> Superfície de flood sob tráfego pago.</td></tr>
+<tr><td><b>B8b</b></td><td>Proteção de senha vazada (HaveIBeenPwned)</td>
+    <td><span class="warn">Desligada.</span> É um toggle no painel Supabase.</td></tr>
+<tr><td><b>B9</b></td><td>Alerta de WhatsApp caído + PITR</td>
+    <td><span class="warn">Não configurado.</span></td></tr>
+<tr><td>—</td><td>5 buckets públicos permitem <b>listagem</b></td>
+    <td><span class="warn">Enumeração de arquivos de outros tenants.</span></td></tr>
+<tr><td>—</td><td>8 funções com <code>search_path</code> mutável</td>
+    <td>Risco de shadowing; não explorável sozinho.</td></tr>
+</tbody></table>
+</div>
+
+<h2>Depende de você (HITL) — eu não consigo destravar</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>O que precisa</th><th>Por quê</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Reconectar <code>meuteste1-sal-o1</code></b> e mandar 1 mensagem real</td>
+    <td>Destrava <b>duas</b> coisas: o flip do B3 (preciso ver <code>B3-SHADOW would_pass</code>
+        em tráfego real antes de passar a bloquear) e a Camada 2 do B4 (preciso de uma
+        amostra provando <code>key.fromMe</code>)</td></tr>
+<tr><td>2</td><td><b>Uma compra real no Essencial</b></td>
+    <td>Única prova possível do D1 (o e-mail de fato entregar) e do funil ponta-a-ponta
+        com dinheiro real</td></tr>
+<tr><td>3</td><td><b>Ligar o toggle</b> de senha vazada no painel Supabase</td>
+    <td>B8b — 30 segundos, eu não tenho acesso ao painel</td></tr>
+<tr><td>4</td><td>Decidir se os <b>3.212 <code>a_revisar</code></b> vão pra campanha</td>
+    <td>É a carteira de leads da dona-teste; ninguém deve disparar nela sem revisão</td></tr>
+</tbody></table>
+</div>
+
+<h2>Números da carteira <span style="font-weight:400;color:var(--muted);font-size:.8em">(org de teste 5da38ea6…)</span></h2>
+<div class="cards">
+  <div class="card"><div class="n ok">0</div>
+    <div class="l">Minha carteira — zero clientes reais; a org de teste nunca teve venda no salão</div></div>
+  <div class="card"><div class="n warn">3.212</div>
+    <div class="l">A revisar — número BR discável, sem nome. Podem ser clientes.</div></div>
+  <div class="card"><div class="n" style="color:var(--muted)">80.982</div>
+    <div class="l">Ruído — LID do Evolution, 0800, DDD inexistente. Recuperável a 1 clique.</div></div>
+</div>
+<p style="color:var(--muted);font-size:.9rem">Nada foi apagado. <code>carteira_estado</code>
+volta com um <code>UPDATE</code>; o botão <b>“É cliente”</b> grava <code>revisado_em</code>,
+que trava a linha contra qualquer reclassificação futura.</p>
+
+<div class="mea">
+  <h2>Correção de rumo que eu devo registrar</h2>
+  <p style="margin:0 0 .6em">Eu havia dito que <b>“todos os gaps de segurança de hoje cedo
+  foram fechados”</b>. Não tinham. O vazamento de faturamento por anônimo sobreviveu a B1,
+  B2 e B3 porque essas ondas olharam <i>funções</i> e <i>policies de tabela</i> — e o furo
+  estava numa <b>view</b>, que tem um <code>SECURITY DEFINER</code> implícito que nenhuma
+  daquelas varreduras cobria.</p>
+  <p style="margin:0">A lição operacional: varredura por categoria de objeto deixa buraco
+  na categoria que ninguém listou. O advisor do Supabase pegou; eu só o rodei porque fui
+  conferir em vez de repetir o que já tinha afirmado.</p>
+</div>
+
+<footer>
+  NexvyBeauty · Placar GO LIVE 22/07/2026 · par do arquivo
+  <code>PLACAR-GO-LIVE-2026-07-22.md</code>
+</footer>
+
+</div>
+</body>
+</html>
