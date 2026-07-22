@@ -391,7 +391,15 @@ serve(async (req) => {
           agent_type: "custom",
           can_do: [],
           cannot_do: [],
-          handoff_triggers: [],
+          // [B5] Agente nascia sem rota de escalonamento (triggers vazios + can_transfer=false)
+          // → a cliente que pedia "quero falar com uma pessoa" falava com o robô pra sempre.
+          // Defaults sãos para salão; a dona pode ajustar/remover depois.
+          handoff_triggers: [
+            "A cliente pede explicitamente para falar com uma pessoa, atendente ou humano",
+            "A cliente reclama, está insatisfeita, irritada ou ameaça cancelar",
+            "Cobrança errada, reembolso ou problema de pagamento que você não resolve",
+            "Você não consegue responder mesmo consultando a base de conhecimento",
+          ],
           end_conversation_triggers: [],
           tone_style: tone,
           message_style: "balanced",
@@ -408,7 +416,7 @@ serve(async (req) => {
           can_send_emails: false,
           can_send_materials: false,
           can_trigger_flows: false,
-          can_transfer: false,
+          can_transfer: true, // [B5] liga a tool transfer_to_human (gated por can_transfer em webchat-bot:2659)
           can_notify: false,
           can_add_notes: false,
           can_start_cadence: false,
