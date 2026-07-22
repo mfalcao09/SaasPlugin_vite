@@ -175,3 +175,12 @@ verify_jwt = false
 # Descadastro one-click de e-mail (token no query; Gmail/Apple mandam POST one-click), sem JWT.
 [functions.handle-email-unsubscribe]
 verify_jwt = false
+
+# Cadastro-e-aceite de convite de equipe (fecha o exploit de takeover do accept_invitation).
+# O convidado ainda NÃO tem sessão ao criar a conta — o gateway não pode exigir JWT. Auth
+# real na função = convite pendente cujo e-mail bate com o cadastro (service_role internamente,
+# createUser com email_confirm + vínculo atômico via accept_invitation_service). Não é signup
+# aberto: só cria conta quando há convite válido. Sem este bloco, redeploy religa verify_jwt=true
+# (default) e o cadastro-por-convite morre no gateway (401).
+[functions.accept-invite]
+verify_jwt = false

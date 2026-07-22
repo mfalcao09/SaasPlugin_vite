@@ -82,6 +82,14 @@ export function translateAuthError(input: unknown): string {
   if (lower.includes('convite inválido') || lower.includes('invitation not found')) {
     return 'Convite inválido ou expirado.';
   }
+  // Guards do accept_invitation (fluxo logado): e-mail do convite não bate com o do usuário.
+  if (lower.includes('invitation_email_mismatch')) {
+    return 'Este convite foi enviado para outro e-mail. Entre com a conta que recebeu o convite.';
+  }
+  // Guard de posse: só o próprio usuário pode aceitar o convite dele.
+  if (lower.includes('not_authorized')) {
+    return 'Você não pode aceitar este convite por outra conta. Faça login com o e-mail convidado.';
+  }
 
   // PostgREST / Postgres
   if (lower.includes('user_roles_user_id_fkey') || lower.includes('foreign key constraint')) {
