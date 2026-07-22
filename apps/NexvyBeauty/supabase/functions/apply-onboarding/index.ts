@@ -156,6 +156,9 @@ serve(async (req) => {
     const orgId = sub.organization_id;
     const refs: any = sub.applied_refs ?? {};
     const errors: string[] = [];
+    // [B6] Falhas de LIMITE DE PLANO (agente/usuário além da quota) NÃO podem virar
+    // "aviso" vago: a dona pagou por N e recebeu menos. Surfaçadas explicitamente.
+    const quotaBlocks: string[] = [];
     const createdBy = actorUserId ?? sub.created_by ?? null;
 
     // ===== 1. EMPRESA =====
@@ -391,7 +394,15 @@ serve(async (req) => {
           agent_type: "custom",
           can_do: [],
           cannot_do: [],
-          handoff_triggers: [],
+          // [B5] Agente nascia sem rota de escalonamento (triggers vazios + can_transfer=false)
+          // → a cliente que pedia "quero falar com uma pessoa" falava com o robô pra sempre.
+          // Defaults sãos para salão; a dona pode ajustar/remover depois.
+          handoff_triggers: [
+            "A cliente pede explicitamente para falar com uma pessoa, atendente ou humano",
+            "A cliente reclama, está insatisfeita, irritada ou ameaça cancelar",
+            "Cobrança errada, reembolso ou problema de pagamento que você não resolve",
+            "Você não consegue responder mesmo consultando a base de conhecimento",
+          ],
           end_conversation_triggers: [],
           tone_style: tone,
           message_style: "balanced",
@@ -408,7 +419,7 @@ serve(async (req) => {
           can_send_emails: false,
           can_send_materials: false,
           can_trigger_flows: false,
-          can_transfer: false,
+          can_transfer: true, // [B5] liga a tool transfer_to_human (gated por can_transfer em webchat-bot:2659)
           can_notify: false,
           can_add_notes: false,
           can_start_cadence: false,
@@ -432,7 +443,16 @@ serve(async (req) => {
           evolution_instance_id: null,
           humanization: {},
         }).select("id").maybeSingle();
-        if (aErr) errors.push(`equipe IA ${agentName}: ${aErr.message}`);
+        if (aErr) {
+          // [B6] Falha por LIMITE do plano (trigger enforce_max_ai_agents) vira bloco
+          // EXPLÍCITO — a dona precisa saber que o agente não entrou por causa da quota,
+          // não por um "aviso" genérico. Outras falhas seguem como warning técnico.
+          if (/limite|plano|m[aá]ximo|\bmax\b|excede|quota|agentes/i.test(aErr.message)) {
+            quotaBlocks.push(`O agente "${agentName}" não foi criado: o limite de agentes de IA do seu plano foi atingido. Faça upgrade para ativá-lo.`);
+          } else {
+            errors.push(`equipe IA ${agentName}: ${aErr.message}`);
+          }
+        }
         if (ag?.id) refs.agents.push(ag.id);
       }
     } catch (err: any) { errors.push(`equipe IA: ${err.message}`); }
@@ -511,7 +531,7 @@ serve(async (req) => {
       });
     } catch { /* ignore */ }
 
-    return json({ ok: true, refs, warnings: errors });
+    return json({ ok: true, refs, warnings: errors, quota_blocks: quotaBlocks });
   } catch (e: any) {
     console.error("[apply-onboarding]", e);
     return json({ error: e.message ?? String(e) }, 500);

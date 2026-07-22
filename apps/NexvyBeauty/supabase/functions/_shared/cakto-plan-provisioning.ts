@@ -439,7 +439,15 @@ export async function ensureAdminUser(
       body: JSON.stringify({
         templateName: 'welcome-admin-access',
         recipientEmail: email,
-        idempotencyKey: `welcome-admin-${userId}`,
+        // [D1] A chave era `welcome-admin-${userId}` — ESTÁVEL por usuário. O corpo
+        // muda a cada provisionamento (onboardingLink/recoveryLink novos), então a 2ª
+        // compra do mesmo e-mail em 24h batia no Resend 409 invalid_idempotent_request
+        // e NENHUM e-mail saía. A chave passa a incluir o TOKEN do onboarding (único por
+        // provisionamento, estável num retry do MESMO envio → dedupe preservado). Sem
+        // onboardingUrl (caminho só-recovery, raro) cai em timestamp: manda em vez de travar.
+        idempotencyKey: args.onboardingUrl
+          ? `welcome-admin-${userId}-${args.onboardingUrl.split('/').filter(Boolean).pop()}`
+          : `welcome-admin-${userId}-${Date.now()}`,
         templateData: {
           fullName: args.fullName ?? null,
           planName: args.planName ?? null,

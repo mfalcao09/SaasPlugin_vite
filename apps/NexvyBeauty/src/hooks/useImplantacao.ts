@@ -312,7 +312,15 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
           body: { token, session_token: sessionToken },
         }));
         if (e2) throw e2;
-        if (data?.warnings?.length) {
+        if (data?.quota_blocks?.length) {
+          // [B6] Falha de LIMITE DE PLANO — mensagem específica e visível, nunca "aviso" vago.
+          toast.warning('Implantação concluída — atenção ao seu plano', {
+            description: data.quota_blocks.length === 1
+              ? data.quota_blocks[0]
+              : `${data.quota_blocks.length} itens não foram ativados pelo limite do seu plano. Faça upgrade para liberá-los.`,
+            duration: 9000,
+          });
+        } else if (data?.warnings?.length) {
           toast('Implantação concluída com avisos', { description: `${data.warnings.length} item(s) precisam de revisão` });
         } else {
           toast('Implantação concluída', { description: 'Tudo configurado com sucesso!' });
@@ -327,7 +335,15 @@ export function useImplantacao({ token }: UseImplantacaoOptions = {}) {
           body: { submission_id: submissionId },
         }));
         if (e2) throw e2;
-        if (data?.warnings?.length) {
+        if (data?.quota_blocks?.length) {
+          // [B6] Falha de LIMITE DE PLANO — mensagem específica e visível, nunca "aviso" vago.
+          toast.warning('Implantação concluída — atenção ao seu plano', {
+            description: data.quota_blocks.length === 1
+              ? data.quota_blocks[0]
+              : `${data.quota_blocks.length} itens não foram ativados pelo limite do seu plano. Faça upgrade para liberá-los.`,
+            duration: 9000,
+          });
+        } else if (data?.warnings?.length) {
           toast('Implantação concluída com avisos', { description: `${data.warnings.length} item(s) precisam de revisão` });
         } else {
           toast('Implantação concluída', { description: 'Tudo configurado com sucesso!' });
