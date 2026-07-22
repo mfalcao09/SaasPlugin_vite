@@ -156,6 +156,9 @@ serve(async (req) => {
     const orgId = sub.organization_id;
     const refs: any = sub.applied_refs ?? {};
     const errors: string[] = [];
+    // [B6] Falhas de LIMITE DE PLANO (agente/usuário além da quota) NÃO podem virar
+    // "aviso" vago: a dona pagou por N e recebeu menos. Surfaçadas explicitamente.
+    const quotaBlocks: string[] = [];
     const createdBy = actorUserId ?? sub.created_by ?? null;
 
     // ===== 1. EMPRESA =====
@@ -440,7 +443,16 @@ serve(async (req) => {
           evolution_instance_id: null,
           humanization: {},
         }).select("id").maybeSingle();
-        if (aErr) errors.push(`equipe IA ${agentName}: ${aErr.message}`);
+        if (aErr) {
+          // [B6] Falha por LIMITE do plano (trigger enforce_max_ai_agents) vira bloco
+          // EXPLÍCITO — a dona precisa saber que o agente não entrou por causa da quota,
+          // não por um "aviso" genérico. Outras falhas seguem como warning técnico.
+          if (/limite|plano|m[aá]ximo|\bmax\b|excede|quota|agentes/i.test(aErr.message)) {
+            quotaBlocks.push(`O agente "${agentName}" não foi criado: o limite de agentes de IA do seu plano foi atingido. Faça upgrade para ativá-lo.`);
+          } else {
+            errors.push(`equipe IA ${agentName}: ${aErr.message}`);
+          }
+        }
         if (ag?.id) refs.agents.push(ag.id);
       }
     } catch (err: any) { errors.push(`equipe IA: ${err.message}`); }
@@ -519,7 +531,7 @@ serve(async (req) => {
       });
     } catch { /* ignore */ }
 
-    return json({ ok: true, refs, warnings: errors });
+    return json({ ok: true, refs, warnings: errors, quota_blocks: quotaBlocks });
   } catch (e: any) {
     console.error("[apply-onboarding]", e);
     return json({ error: e.message ?? String(e) }, 500);
