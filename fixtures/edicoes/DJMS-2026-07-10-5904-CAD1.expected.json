@@ -1,0 +1,46 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5904",
+  "data_publicacao": "2026-07-10",
+  "arquivo": "DJMS-2026-07-10-5904-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 3,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2123",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2139",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar RICARDO ACHUTTI POERNER, Juiz de Direito da comarca de Anaurilândia, para responder cumulativamente pela 1ª Vara da comarca de Bataguassu, no período de 13 a 24/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2146",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [],
+  "revisar": [
+    "Portaria 2123/2026: não foi possível isolar a ementa",
+    "Portaria 2146/2026: não foi possível isolar a ementa"
+  ]
+}

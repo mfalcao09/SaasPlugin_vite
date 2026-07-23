@@ -1,0 +1,114 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5912",
+  "data_publicacao": "2026-07-22",
+  "arquivo": "DJMS-2026-07-22-5912-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 8,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2262",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2257",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2264",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar RAFAEL GUSTAVO MATEUCCI CASSIA, Juiz de Direito da comarca de Rio Verde de Mato Grosso, para coadjuvar a Vara Criminal da comarca de Aquidauana, no dia 28/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2265",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar LARISSA LUIZ RIBEIRO, Juíza de Direito da Vara Criminal da comarca de Coxim, para coadjuvar a Vara Criminal da comarca de Aquidauana, no dia 27/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2267",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2270",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2220",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2256",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "1896",
+        "ano": 2026
+      },
+      "trecho": "Revogar, a Portaria n.º 1896/2026"
+    },
+    {
+      "tipo": "altera",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "950",
+        "ano": 2025
+      },
+      "trecho": "Alterar, a pedido, a Portaria n.º 950/2025"
+    }
+  ],
+  "revisar": [
+    "Portaria 2262/2026: não foi possível isolar a ementa",
+    "Portaria 2257/2026: não foi possível isolar a ementa",
+    "Portaria 2267/2026: não foi possível isolar a ementa",
+    "Portaria 2270/2026: não foi possível isolar a ementa",
+    "Portaria 2220/2026: não foi possível isolar a ementa",
+    "Portaria 2256/2026: não foi possível isolar a ementa"
+  ]
+}

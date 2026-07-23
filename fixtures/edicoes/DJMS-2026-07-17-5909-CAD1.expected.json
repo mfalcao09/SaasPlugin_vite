@@ -1,0 +1,153 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5909",
+  "data_publicacao": "2026-07-17",
+  "arquivo": "DJMS-2026-07-17-5909-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 11,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2181",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2182",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2186",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2194",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar VALTER TADEU CARVALHO, Juiz de Direito da comarca de Terenos, para responder cumulativamente pela 2ª Vara da comarca de Camapuã, no dia 24/7/2026 e no período de 27 a 31/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2195",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2217",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2202",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2204",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar DEYVIS ECCO, Juiz de Direito da 7ª Vara Criminal da comarca de Campo Grande, para responder cumulativamente pela 1ª Vara Criminal da referida comarca, no período de 27 a 31/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2212",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2216",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2158",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "2033",
+        "ano": 2026
+      },
+      "trecho": "Revogar, a pedido, a Portaria n.º 2033/2026"
+    },
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "1974",
+        "ano": 2026
+      },
+      "trecho": "Revogar, com efeitos a partir de 27/7/2026, a Portaria n.º 1974/2026"
+    },
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "145",
+        "ano": 2024
+      },
+      "trecho": "REVOGAR, a pedido, a Portaria n. 145/2024"
+    }
+  ],
+  "revisar": [
+    "Portaria 2181/2026: não foi possível isolar a ementa",
+    "Portaria 2182/2026: não foi possível isolar a ementa",
+    "Portaria 2186/2026: não foi possível isolar a ementa",
+    "Portaria 2195/2026: não foi possível isolar a ementa",
+    "Portaria 2217/2026: não foi possível isolar a ementa",
+    "Portaria 2202/2026: não foi possível isolar a ementa",
+    "Portaria 2212/2026: não foi possível isolar a ementa",
+    "Portaria 2216/2026: não foi possível isolar a ementa",
+    "Portaria 2158/2026: não foi possível isolar a ementa"
+  ]
+}

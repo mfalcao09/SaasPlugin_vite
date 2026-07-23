@@ -1,0 +1,1001 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DOMS",
+  "edicao": "12225",
+  "data_publicacao": "2026-07-17",
+  "arquivo": "DOMS-2026-07-17-12225.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 48,
+  "atos": [
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO",
+      "numero": "16790",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO O",
+      "numero": "091",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA FUNDTUR",
+      "numero": "012",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA /JUCEMS/GP",
+      "numero": "47",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA /JUCEMS/GP",
+      "numero": "48",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA /JUCEMS/GP",
+      "numero": "49",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO P",
+      "numero": "716",
+      "ano": 2026,
+      "data_ato": "2026-07-10",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO P",
+      "numero": "424",
+      "ano": 2026,
+      "data_ato": "2026-04-30",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO P",
+      "numero": "425",
+      "ano": 2026,
+      "data_ato": "2026-04-30",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "731",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "732",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "733",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "734",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "735",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1389",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1390",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1391",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1392",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1393",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1394",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1395",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1396",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1397",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1398",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1399",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1400",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1401",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1402",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1403",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1404",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1405",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1406",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1407",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1408",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1409",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1410",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1411",
+      "ano": 2026,
+      "data_ato": "2026-07-15",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SAD",
+      "numero": "1412",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEAD",
+      "numero": "367",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEAD",
+      "numero": "369",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P SECMOV/GABCMTG/PMMS",
+      "numero": "558",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P SECMOV/GABCMTG/PMMS",
+      "numero": "559",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "660",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "661",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "662",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "663",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "664",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P FUNTRAB",
+      "numero": "61",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "3954",
+        "ano": 2010
+      },
+      "trecho": "Lei nº 3.954, de 11 de agosto de 2010"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6525",
+        "ano": 2025
+      },
+      "trecho": "Lei Estadual nº 6.525, de 15 de dezembro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "3150",
+        "ano": 2005
+      },
+      "trecho": "Lei nº 3.150, de 22 de dezembro de 2005"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16121",
+        "ano": 2023
+      },
+      "trecho": "Decreto Estadual nº 16.121, de 9 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16366",
+        "ano": 2024
+      },
+      "trecho": "Decreto nº 16.366, de 16 de janeiro de 2024"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6527",
+        "ano": 2025
+      },
+      "trecho": "Lei nº 6.527, de 15 de dezembro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15938",
+        "ano": 2022
+      },
+      "trecho": "Decreto n. 15.938, de 26 de maio de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "5724",
+        "ano": 2021
+      },
+      "trecho": "Lei nº 5.724, de 23 de setembro de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15909",
+        "ano": 2022
+      },
+      "trecho": "Decreto Estadual nº 15.909, de 29 de março de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14494",
+        "ano": 2016
+      },
+      "trecho": "Decreto Estadual n. 14.494 de 02 de junho de 2016"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "13019",
+        "ano": 2014
+      },
+      "trecho": "Lei nº 13.019 de 31 de julho de 2014"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "4072",
+        "ano": 2011
+      },
+      "trecho": "Lei n. 4.072, de 17 de agosto de 2011"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "11346",
+        "ano": 2006
+      },
+      "trecho": "Lei nº 11.346, de 15 de setembro de 2006"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "9503",
+        "ano": 1997
+      },
+      "trecho": "Lei nº 9.503, de 23 de setembro de 1997"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16294",
+        "ano": 2023
+      },
+      "trecho": "Decreto Estadual nº 16.294, de 09 de outubro de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2363",
+        "ano": 2001
+      },
+      "trecho": "Lei Estadual nº 2.363, de 19 de dezembro de 2001"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "5976",
+        "ano": 2022
+      },
+      "trecho": "Lei Estadual nº 5.976, de 20 de dezembro de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "14133",
+        "ano": 2021
+      },
+      "trecho": "Lei nº 14.133 de 01 de abril de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16159",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.159, de 19 de abril de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "3709",
+        "ano": 2009
+      },
+      "trecho": "Lei Estadual n. 3.709, de 16 de julho de 2009"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12909",
+        "ano": 2009
+      },
+      "trecho": "Decreto Estadual n. 12.909, de 29 de dezembro de 2009"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "12334",
+        "ano": 2010
+      },
+      "trecho": "Lei nº 12.334, de 20 de setembro de 2010"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "13632",
+        "ano": 2013
+      },
+      "trecho": "Decreto nº 13.632 de 16 de maio de 2013"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12638",
+        "ano": 2008
+      },
+      "trecho": "Decreto nº 12.638, de 24 de outubro de 2008"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "9602",
+        "ano": 1998
+      },
+      "trecho": "Lei nº 9.602, de 21 de janeiro de 1998"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "12977",
+        "ano": 2014
+      },
+      "trecho": "Lei nº 12.977, de 20 de maio de 2014"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "99658",
+        "ano": 1990
+      },
+      "trecho": "Decreto nº 99.658, de 30 de outubro de 1990"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "10406",
+        "ano": 2002
+      },
+      "trecho": "Lei nº 10.406, de 10 de janeiro de 2002"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "1089",
+        "ano": 1981
+      },
+      "trecho": "Decreto nº 1.089, de 12 de junho de 1981"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "1541",
+        "ano": 1982
+      },
+      "trecho": "Decreto nº 1.541, de 25 de fevereiro de 1982"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14903",
+        "ano": 2017
+      },
+      "trecho": "Decreto nº 14.903, de 27 de dezembro de 2017"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16079",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.079, de 2 de janeiro de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2065",
+        "ano": 1999
+      },
+      "trecho": "Lei nº 2.065, de 29 de dezembro de 1999"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6038",
+        "ano": 2023
+      },
+      "trecho": "Lei nº 6.038, de 30 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "1102",
+        "ano": 1990
+      },
+      "trecho": "Lei nº 1.102, de 10 de outubro de 1990"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16262",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.262, de 25 de agosto de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2590",
+        "ano": 2002
+      },
+      "trecho": "Lei Estadual n. 2.590, de 26 de dezembro de 2002"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "3855",
+        "ano": 2010
+      },
+      "trecho": "Lei n. 3.855, de 30 de março de 2010"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "87",
+        "ano": 2000
+      },
+      "trecho": "Lei n. 87, de 31 de janeiro de 2000"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6035",
+        "ano": 2022
+      },
+      "trecho": "Lei n. 6.035, de 26 de dezembro de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "13571",
+        "ano": 2013
+      },
+      "trecho": "Decreto nº 13.571, de 28 de fevereiro de 2013"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15572",
+        "ano": 2020
+      },
+      "trecho": "Decreto Estadual nº 15.572, de 28 de dezembro de 2020"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "667",
+        "ano": 1969
+      },
+      "trecho": "Lei n. 667, de 2 de julho de 1969"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6880",
+        "ano": 1980
+      },
+      "trecho": "Lei n. 6.880, de 9 de dezembro de 1980"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "1148",
+        "ano": 1981
+      },
+      "trecho": "Decreto n. 1.148 de 13 de julho de 1981"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "1091",
+        "ano": 1981
+      },
+      "trecho": "Decreto n. 1.091, de 12 de junho de 1981"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "1093",
+        "ano": 1981
+      },
+      "trecho": "Decreto n. 1.093, de 12 de junho de 1981"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12093",
+        "ano": 2006
+      },
+      "trecho": "Decreto nº 12.093, de 27 de abril de 2006"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15839",
+        "ano": 2021
+      },
+      "trecho": "Decreto nº 15.839, de 22 de dezembro de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15655",
+        "ano": 2021
+      },
+      "trecho": "Decreto n. 15.655, de 19 de abril de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2583",
+        "ano": 2002
+      },
+      "trecho": "Lei nº 2.583, de 23 de dezembro de 2002"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15855",
+        "ano": 2022
+      },
+      "trecho": "Decreto Estadual nº 15.855, de 11 de janeiro de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "046",
+        "ano": 2025
+      },
+      "trecho": "Decreto n° 046, de 19 de fevereiro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "11462",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 11.462, de 31 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "157",
+        "ano": 2025
+      },
+      "trecho": "Portaria n° 157, de 09 de janeiro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "5905",
+        "ano": 1973
+      },
+      "trecho": "Lei n 5.905, de 12 de julho de 1973"
+    }
+  ],
+  "revisar": []
+}

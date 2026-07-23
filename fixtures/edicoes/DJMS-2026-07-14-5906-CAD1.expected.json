@@ -1,0 +1,111 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5906",
+  "data_publicacao": "2026-07-14",
+  "arquivo": "DJMS-2026-07-14-5906-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 10,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2160",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar BRUCE HENRIQUE DOS SANTOS BUENO SILVA, Juiz de Direito da Vara Criminal da comarca de Sidrolândia, para responder cumulativamente pela comarca de Deodápolis, no período de 28/7 a 3/8/2026, nos termos do artigo 46 do CODJ/ MS. P. R.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2161",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar ALEXANDRE TSUYOSHI ITO, Juiz de Direito da 6ª Vara de Família da comarca de Campo Grande, para responder cumulativamente pela 1ª Vara da comarca de Ivinhema, no período de 27/7 a 3/8/2026, nos termos do artigo 46 do CODJ/MS. P. R. ",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2170",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2171",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar MARILSA APARECIDA DA SILVA BAPTISTA, Juíza de Direito da 3ª Vara Cível da comarca de Dourados, para responder cumulativamente pela 1ª Vara da comarca de Fátima do Sul, no dia 13/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2172",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar LARISSA DITZEL CORDEIRO AMARAL, Juíza de Direito da 2ª Vara Cível da comarca de Dourados, para responder cumulativamente pela 2ª Vara da comarca de Fátima do Sul, no dia 13/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2175",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2173",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2176",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2177",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar RAFAEL CONDE TOSTES, Juiz de Direito da 1ª Vara Cível da comarca de Aquidauana, para responder cumulativamente pela 1ª Vara Criminal da comarca de Corumbá, no período de 21 a 24/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2179",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar TULIO NADER CHRYSOSTOMO, Juiz de Direito da 1ª Vara Cível da comarca de Nova Andradina, para coadjuvar a 2ª Vara da comarca de Miranda, no período de 13 a 27/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    }
+  ],
+  "relacoes_sugeridas": [],
+  "revisar": [
+    "Portaria 2170/2026: não foi possível isolar a ementa",
+    "Portaria 2175/2026: não foi possível isolar a ementa",
+    "Portaria 2173/2026: não foi possível isolar a ementa",
+    "Portaria 2176/2026: não foi possível isolar a ementa"
+  ]
+}

@@ -1,0 +1,546 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DOMS",
+  "edicao": "12229",
+  "data_publicacao": "2026-07-22",
+  "arquivo": "DOMS-2026-07-22-12229.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 16,
+  "atos": [
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO O",
+      "numero": "092",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO CONJUNTA",
+      "tipo_completo": "RESOLUÇÃO CONJUNTA SEFAZ/SEMADESC",
+      "numero": "103",
+      "ano": 2026,
+      "data_ato": "2026-07-13",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO SEJUSP/MS",
+      "numero": "1084",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO SEJUSP/MS",
+      "numero": "1085",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "741",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEGOV",
+      "numero": "742",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SES",
+      "numero": "518",
+      "ano": 2026,
+      "data_ato": "2026-07-20",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SES",
+      "numero": "519",
+      "ano": 2026,
+      "data_ato": "2026-07-20",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SES",
+      "numero": "520",
+      "ano": 2026,
+      "data_ato": "2026-07-20",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SES",
+      "numero": "521",
+      "ano": 2026,
+      "data_ato": "2026-07-20",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SES",
+      "numero": "522",
+      "ano": 2026,
+      "data_ato": "2026-07-20",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "RESOLUÇÃO",
+      "tipo_completo": "RESOLUÇÃO P SEAD",
+      "numero": "363",
+      "ano": 2026,
+      "data_ato": "2026-07-14",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "679",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P DGPC/MS",
+      "numero": "680",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P FCMS",
+      "numero": "853",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P FUNDESPORTE",
+      "numero": "216",
+      "ano": 2026,
+      "data_ato": "2026-07-21",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6527",
+        "ano": 2025
+      },
+      "trecho": "Lei nº 6.527, de 15 de dezembro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "11176",
+        "ano": 2003
+      },
+      "trecho": "Decreto nº 11.176, de 11 de abril de 2003"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "9203",
+        "ano": 1998
+      },
+      "trecho": "Decreto nº 9.203, de 18 de setembro de 1998"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14644",
+        "ano": 2016
+      },
+      "trecho": "Decreto nº 14.644, de 29 de dezembro de 2016"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6035",
+        "ano": 2022
+      },
+      "trecho": "Lei Estadual nº 6.035, de 26 de dezembro de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "13571",
+        "ano": 2013
+      },
+      "trecho": "Decreto n. 13.571, de 28 de fevereiro de 2013"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "11033",
+        "ano": 2002
+      },
+      "trecho": "Decreto nº 11.033, de 20 de dezembro de 2002"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "9503",
+        "ano": 1997
+      },
+      "trecho": "Lei nº 9.503, de 23 de setembro de 1997"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16294",
+        "ano": 2023
+      },
+      "trecho": "Decreto Estadual nº 16.294, de 09 de outubro de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15938",
+        "ano": 2022
+      },
+      "trecho": "Decreto Estadual nº 15.938 de 26 de maio de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16119",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.119, de 6 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15816",
+        "ano": 2021
+      },
+      "trecho": "Decreto Estadual nº 15.816, de 30 de novembro de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16118",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.118, de 3 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16189",
+        "ano": 2023
+      },
+      "trecho": "Decreto n° 16.189, de 17 de maio de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "5615",
+        "ano": 2020
+      },
+      "trecho": "Lei Estadual nº 5.615 de 14 de dezembro de 2020"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15581",
+        "ano": 2021
+      },
+      "trecho": "Decreto Estadual nº 15.581 de 19 de janeiro de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "13990",
+        "ano": 2014
+      },
+      "trecho": "Decreto n. 13.990, de 02 de julho de 2014"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12725",
+        "ano": 2009
+      },
+      "trecho": "Decreto nº 12.725, de 10 de março de 2009"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2799",
+        "ano": 2003
+      },
+      "trecho": "Lei Estadual nº 2.799, de 18 de dezembro de 2003"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12639",
+        "ano": 2008
+      },
+      "trecho": "Decreto Estadual nº 12.639, de 24 de outubro de 2008"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14903",
+        "ano": 2017
+      },
+      "trecho": "Decreto nº 14.903, de 27 de dezembro de 2017"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16079",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.079, de 2 de janeiro de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "8666",
+        "ano": 1993
+      },
+      "trecho": "Lei nº 8.666 de 21 de junho de 1993"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15530",
+        "ano": 2020
+      },
+      "trecho": "Decreto Estadual nº 15.530, de 8 de outubro de 2020"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "1102",
+        "ano": 1990
+      },
+      "trecho": "Lei n. 1.102, de 10 de outubro de 1990"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "5844",
+        "ano": 2022
+      },
+      "trecho": "Lei n. 5.844, de 28 de março de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "3150",
+        "ano": 2005
+      },
+      "trecho": "Lei n. 3.150, de 22 de dezembro de 2005"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "13770",
+        "ano": 2013
+      },
+      "trecho": "Decreto n. 13.770, de 19 de setembro de 2013"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16232",
+        "ano": 2023
+      },
+      "trecho": "Decreto n° 16.232, de 7 de julho de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14494",
+        "ano": 2016
+      },
+      "trecho": "Decreto nº 14.494, de 02 de junho de 2016"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12218",
+        "ano": 2006
+      },
+      "trecho": "Decreto Estadual n. 12.218, de 28 de dezembro de 2006"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "12093",
+        "ano": 2006
+      },
+      "trecho": "Decreto nº 12.093, de 27 de abril de 2006"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15911",
+        "ano": 2022
+      },
+      "trecho": "Decreto nº 15.911, de 31 de março de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16520",
+        "ano": 2024
+      },
+      "trecho": "Decreto nº 16.520, de 11 de novembro de 2024"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "267",
+        "ano": 2023
+      },
+      "trecho": "Portaria n.267, de 7 de julho de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16171",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.171, de 26 de abril de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "11754",
+        "ano": 2004
+      },
+      "trecho": "Decreto n. 11.754, de 22 de dezembro de 2004"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "4135",
+        "ano": 2011
+      },
+      "trecho": "Lei n. 4.135, de 15 de dezembro de 2011"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "14133",
+        "ano": 2021
+      },
+      "trecho": "Lei n. 14.133, de 01 de abril de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15913",
+        "ano": 2022
+      },
+      "trecho": "Decreto nº 15.913, de 31 de março de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "2583",
+        "ano": 2002
+      },
+      "trecho": "Lei nº 2.583, de 23 de dezembro de 2002"
+    }
+  ],
+  "revisar": []
+}

@@ -1,0 +1,247 @@
+#!/usr/bin/env node
+// ============================================================================
+// Card C1.1a — PRÉ-ANOTAÇÃO do gabarito (PRD v2.1 §8.5, §9)
+//
+//   node scripts/pre-anotar.mjs [--fonte DJMS|DOMS] [--forcar]
+//
+// Gera um `.expected.json` por fixture, marcado `validado: false`.
+//
+// NÃO É O EXTRATOR DE PRODUÇÃO — é andaime heurístico para produzir uma
+// PROPOSTA que Marcelo + AGDM validam (C1.1b). O extrator real usa IA e é o
+// card C1.2, medido CONTRA este gabarito depois de validado.
+// Por isso a heurística mora aqui, e não nos parsers: ela é descartável.
+// O que sobrevive é o `.expected.json` confirmado por humano.
+//
+// Regra de ouro: na dúvida, NÃO inventa. Campo que a heurística não consegue
+// determinar sai `null` e entra na lista `revisar`, para o humano decidir.
+// ============================================================================
+
+import { readdir, readFile, writeFile, stat } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { dirname, join, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const execFileP = promisify(execFile);
+const AQUI = dirname(fileURLToPath(import.meta.url));
+const RAIZ = join(AQUI, '..');
+const FIXTURES = join(RAIZ, 'fixtures/edicoes');
+
+const arg = (n, p) => {
+  const i = process.argv.indexOf(`--${n}`);
+  return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : p;
+};
+const temFlag = (n) => process.argv.includes(`--${n}`);
+const FILTRO_FONTE = arg('fonte', null);
+const FORCAR = temFlag('forcar');
+
+const log = (...a) => console.error(...a);
+const existe = async (p) => { try { await stat(p); return true; } catch { return false; } };
+
+const MESES = {
+  janeiro: 1, fevereiro: 2, 'março': 3, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+const iso = (d, m, a) => `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const limpar = (s) => s.replace(/\s+/g, ' ').trim();
+
+// ============================================================================
+// HEURÍSTICA · TJMS (DJMS) — Caderno 1 Administrativo
+//
+// Formato real (verificado nas fixtures): o número do ato vem NO FIM do
+// parágrafo, entre parênteses — "(Port. n.º 2262/2026)". NÃO existe cabeçalho
+// "PORTARIA Nº X" em linha própria. Um bloco "Portarias assinadas…" contém
+// VÁRIOS atos, um por parágrafo.
+// ============================================================================
+const RE_PORT_TJMS = /\(Port\.?\s*n\.?\s*º?\s*(\d+)\s*\/\s*(\d{4})\)/gi;
+// Relação declarada no texto: "Revogar, a Portaria n.º 1896/2026, publicada no D.J. n.º 5893"
+const RE_RELACAO_TJMS =
+  /(Revogar|Alterar|Tornar sem efeito|Retificar)[,\s][\s\S]{0,80}?Portaria\s*n\.?\s*º?\s*(\d+)\s*\/\s*(\d{4})/gi;
+
+function anotarDJMS(texto) {
+  const atos = [];
+  const revisar = [];
+
+  // Cada ocorrência de (Port. n.º N/AAAA) fecha um ato; o corpo é o trecho
+  // desde o fim do ato anterior até essa marca.
+  let anterior = 0;
+  for (const m of texto.matchAll(RE_PORT_TJMS)) {
+    const corpo = limpar(texto.slice(anterior, m.index));
+    anterior = m.index + m[0].length;
+
+    const disp = corpo.match(
+      /(Conceder|Designar|Revogar|Exonerar|Nomear|Dispensar|Tornar sem efeito|Retificar|Autorizar|Prorrogar|Instituir|Alterar)[\s\S]{0,240}$/i,
+    );
+    atos.push({
+      tipo: 'Portaria',
+      numero: m[1],
+      ano: Number(m[2]),
+      data_ato: null,            // não aparece por ato; fica para o humano
+      orgao_emissor: 'Tribunal de Justiça de Mato Grosso do Sul',
+      ementa: disp ? limpar(disp[0]).slice(0, 240) : null,
+      confianca_heuristica: disp ? 'media' : 'baixa',
+    });
+    if (!disp) revisar.push(`Portaria ${m[1]}/${m[2]}: não foi possível isolar a ementa`);
+  }
+
+  const relacoes = [];
+  for (const m of texto.matchAll(RE_RELACAO_TJMS)) {
+    relacoes.push({
+      tipo: m[1].toLowerCase().startsWith('revog') ? 'revoga' : 'altera',
+      destino: { tipo: 'Portaria', numero: m[2], ano: Number(m[3]) },
+      trecho: limpar(m[0]).slice(0, 160),
+    });
+  }
+  return { atos, relacoes, revisar };
+}
+
+// ============================================================================
+// HEURÍSTICA · DO/MS (DOMS)
+//
+// Formato real: cabeçalho em linha própria —
+//   DECRETO "O" Nº 092/2026, DE 21 DE JULHO DE 2026
+//   RESOLUÇÃO CONJUNTA SEFAZ/SEMADESC Nº 103, DE 13 DE JULHO DE 2026.
+//
+// ARMADILHA: o SUMÁRIO da 1ª página casa com o mesmo padrão
+// ("DECRETO ORÇAMENTÁRIO......... 2"). Linha com pontilhado é descartada.
+// ============================================================================
+// SEM flag 'i': o cabeçalho real vem em CAIXA ALTA ("DECRETO Nº 092/2026"),
+// enquanto CITAÇÃO a norma antiga vem em caixa mista no corpo do texto
+// ("Decreto nº 11.176, de 11 de abril de 2003"). Ignorar a caixa fazia a
+// heurística registrar normas de 2003 e 2023 como atos publicados hoje —
+// falso positivo que contaminaria o gabarito inteiro.
+const RE_CAB_DOMS = new RegExp(
+  String.raw`^\s*(DECRETO|RESOLU[ÇC][ÃA]O(?:\s+CONJUNTA)?|PORTARIA|INSTRU[ÇC][ÃA]O NORMATIVA|DELIBERA[ÇC][ÃA]O)` +
+  String.raw`([^\n]{0,60}?)\s*N[º°]\s*([\d.]+)\s*(?:\/\s*(\d{4}))?\s*,?\s*DE\s+(\d{1,2})\s+DE\s+([A-Za-zÀ-ÿ]+)\s+DE\s+(\d{4})`,
+);
+
+// Citação em caixa mista — não é ato publicado, mas é PISTA DE RELAÇÃO
+// normativa. Não entra em `atos`; entra em `relacoes_sugeridas`.
+const RE_CITACAO_DOMS =
+  /\b(Decreto|Resolu[çc][ãa]o|Portaria|Lei)\s+(?:Estadual\s+)?n[º°.]?\s*([\d.]+)\s*,?\s*de\s+(\d{1,2})\s+de\s+([a-zà-ÿ]+)\s+de\s+(\d{4})/g;
+
+function anotarDOMS(texto) {
+  const atos = [];
+  const revisar = [];
+  const vistos = new Set();
+
+  for (const linha of texto.split('\n')) {
+    if (/\.{6,}/.test(linha)) continue;      // linha de sumário
+
+    const m = RE_CAB_DOMS.exec(linha);
+    if (!m) continue;
+
+    const [, tipoBruto, complemento, numero, anoNum, dia, mesNome, anoData] = m;
+    const mes = MESES[mesNome.toLowerCase()];
+    if (!mes) {
+      revisar.push(`mês não reconhecido: "${mesNome}" em "${limpar(linha).slice(0, 80)}"`);
+      continue;
+    }
+
+    const tipoCompleto = limpar(`${tipoBruto} ${complemento || ''}`)
+      .replace(/["“”]/g, '')
+      .replace(/[\/\-–,;:]+$/, '')           // sobra de "RESOLUÇÃO SEJUSP/MS/"
+      .trim();
+    const chave = `${tipoCompleto}|${numero}|${anoData}`;
+    if (vistos.has(chave)) continue;         // mesmo ato citado no corpo
+    vistos.add(chave);
+
+    atos.push({
+      tipo: limpar(tipoBruto),
+      tipo_completo: tipoCompleto,
+      numero: numero.replace(/\./g, ''),
+      ano: Number(anoNum || anoData),
+      data_ato: iso(Number(dia), mes, Number(anoData)),
+      orgao_emissor: null,       // não vem no cabeçalho; humano decide
+      ementa: null,              // fica para o humano/IA (C1.2)
+      confianca_heuristica: 'media',
+    });
+  }
+  // Citações a normas anteriores: não são atos publicados, mas indicam
+  // relação normativa. Só interessam as que NÃO são o próprio ato da edição.
+  const relacoes = [];
+  const numerosPublicados = new Set(atos.map((a) => `${a.numero}/${a.ano}`));
+  const vistasRel = new Set();
+  for (const m of texto.matchAll(RE_CITACAO_DOMS)) {
+    const num = m[2].replace(/\./g, '');
+    const chave = `${m[1]}|${num}|${m[5]}`;
+    if (numerosPublicados.has(`${num}/${Number(m[5])}`) || vistasRel.has(chave)) continue;
+    vistasRel.add(chave);
+    relacoes.push({
+      tipo: 'referencia',            // o vínculo exato é decisão humana/IA
+      destino: { tipo: m[1], numero: num, ano: Number(m[5]) },
+      trecho: limpar(m[0]).slice(0, 160),
+    });
+  }
+
+  return { atos, relacoes, revisar };
+}
+
+const HEURISTICAS = { DJMS: anotarDJMS, DOMS: anotarDOMS };
+
+/** Extrai texto preservando layout (essencial para cabeçalhos em coluna). */
+async function textoDoPdf(caminho) {
+  const { stdout } = await execFileP('pdftotext', ['-layout', caminho, '-'], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return stdout;
+}
+
+async function main() {
+  const arquivos = (await readdir(FIXTURES))
+    .filter((f) => f.endsWith('.pdf'))
+    .filter((f) => !FILTRO_FONTE || f.startsWith(`${FILTRO_FONTE}-`))
+    .sort();
+
+  if (arquivos.length === 0) throw new Error('nenhuma fixture .pdf encontrada');
+  log(`[C1.1a] ${arquivos.length} fixture(s) para pré-anotar\n`);
+
+  let totalAtos = 0, totalRel = 0, pulados = 0;
+
+  for (const nome of arquivos) {
+    const base = basename(nome, '.pdf');
+    const destino = join(FIXTURES, `${base}.expected.json`);
+
+    // NUNCA sobrescreve gabarito já validado por humano.
+    if (!FORCAR && (await existe(destino))) {
+      const atual = JSON.parse(await readFile(destino, 'utf8'));
+      if (atual.validado) { log(`  ${base} — JÁ VALIDADO, preservado`); pulados++; continue; }
+    }
+
+    const [sigla, ano, mes, dia, numero] = base.split('-');
+    const heuristica = HEURISTICAS[sigla];
+    if (!heuristica) { log(`  ${base} — sem heurística para '${sigla}', pulando`); pulados++; continue; }
+
+    const texto = await textoDoPdf(join(FIXTURES, nome));
+    const { atos, relacoes, revisar } = heuristica(texto);
+
+    const gabarito = {
+      $schema: 'gabarito-v1',
+      fonte: sigla,
+      edicao: numero,
+      data_publicacao: `${ano}-${mes}-${dia}`,
+      arquivo: nome,
+      // ---- só vira gabarito depois que um humano confirmar (C1.1b) --------
+      validado: false,
+      validado_por: null,
+      validado_em: null,
+      // --------------------------------------------------------------------
+      origem_anotacao: 'heuristica-c1.1a',
+      total_atos: atos.length,
+      atos,
+      relacoes_sugeridas: relacoes,
+      revisar,
+    };
+
+    await writeFile(destino, `${JSON.stringify(gabarito, null, 2)}\n`);
+    totalAtos += atos.length;
+    totalRel += relacoes.length;
+    log(`  ${base} → ${String(atos.length).padStart(3)} ato(s) · ${relacoes.length} relação(ões)` +
+        (revisar.length ? ` · ⚠ ${revisar.length} a revisar` : ''));
+  }
+
+  log(`\n[C1.1a] ${totalAtos} atos · ${totalRel} relações sugeridas · ${pulados} pulado(s)`);
+  log('[C1.1a] TODOS marcados validado:false — aguardam C1.1b (Marcelo + AGDM)');
+}
+
+main().catch((e) => { log(`[C1.1a] FALHA: ${e.message}`); process.exit(1); });
