@@ -16,7 +16,10 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as DOMS from '../src/services/ingest/parsers/doms.mjs';
+import { resolverParser } from '../src/services/ingest/registry.mjs';
+
+// Resolvido pela parser_key cadastrada em fontes_diarios — sem import fixo.
+const DOMS = await resolverParser('doms-pdf');
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = join(AQUI, '..');
