@@ -8,10 +8,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Store, Loader2, Package, CalendarDays, Sparkles, CalendarPlus } from 'lucide-react';
+import { formatAddress, type OrgAddress } from '@/lib/formatAddress';
 
 type Pacote = { id: string; nome: string; descricao: string | null; total_sessoes: number; valor: number; validade_dias: number };
 type Bootstrap = {
-  org: { name: string; address: string | null; slug: string };
+  // address é jsonb no banco — nunca string. O tipo antigo mentia e derrubava a página.
+  org: { name: string; address: OrgAddress; slug: string };
   pacotes: Pacote[];
 };
 const fmtMoney = (v: number) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -37,6 +39,7 @@ export default function PublicSalaoPacotes() {
     return <Centered><Store className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Negócio não encontrado</p></Centered>;
   }
   const { org, pacotes } = boot.data;
+  const endereco = formatAddress(org.address);
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,7 +49,7 @@ export default function PublicSalaoPacotes() {
             <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0"><Sparkles className="h-5 w-5" /></div>
             <div className="min-w-0">
               <h1 className="font-bold text-foreground truncate">{org.name}</h1>
-              {org.address && <p className="text-xs text-muted-foreground truncate">{org.address}</p>}
+              {endereco && <p className="text-xs text-muted-foreground truncate">{endereco}</p>}
             </div>
           </div>
           <Button asChild variant="outline" size="sm"><Link to={`/s/${slug}`}><CalendarPlus className="h-4 w-4 mr-1" />Agendar</Link></Button>
