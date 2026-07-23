@@ -9,6 +9,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { NexvyShell, NexvyMobileBottomNav, type NexvyModule } from './shell';
+import { TelaFontes, TelaPublicacoes, TelaRevisao } from './pages/Telas';
 
 // ============================================================================
 // DiárioMonitor — casca de navegação (card C0.1c)
@@ -50,13 +51,13 @@ const MODULOS: NexvyModule[] = [
             id: 'publicacoes',
             label: 'Publicações',
             icon: FileText,
-            render: () => <EmConstrucao titulo="Publicações" card="C1.4b" />,
+            render: () => <TelaPublicacoes />,
           },
           {
             id: 'revisao',
             label: 'Fila de Revisão',
             icon: ListChecks,
-            render: () => <EmConstrucao titulo="Fila de Revisão" card="C1.3" />,
+            render: () => <TelaRevisao />,
           },
         ],
       },
@@ -98,7 +99,7 @@ const MODULOS: NexvyModule[] = [
             id: 'fontes',
             label: 'Fontes de Diários',
             icon: Download,
-            render: () => <EmConstrucao titulo="Fontes de Diários" card="F1" />,
+            render: () => <TelaFontes />,
           },
           {
             id: 'ajustes',

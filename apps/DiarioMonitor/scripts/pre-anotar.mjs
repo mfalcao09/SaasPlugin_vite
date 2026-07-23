@@ -20,7 +20,7 @@ import { readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, join, basename } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const execFileP = promisify(execFile);
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -221,6 +221,60 @@ async function textoDoPdf(caminho) {
   return stdout;
 }
 
+/**
+ * Pré-anota UMA edição já baixada em fixtures/.
+ *
+ * Extraída do laço do CLI para que a API (`POST /api/ingest`) possa encadear
+ * captura → extração: sem isso o botão baixa o PDF e a tela de Publicações
+ * continua vazia, porque a extração só existia como passo manual de terminal.
+ *
+ * @returns {{base:string, status:'anotada'|'preservada'|'sem-heuristica',
+ *            atos:number, relacoes:number, revisar:number}}
+ */
+export async function preAnotarArquivo(nome, { forcar = false } = {}) {
+  const base = basename(nome, '.pdf');
+  const destino = join(FIXTURES, `${base}.expected.json`);
+
+  // NUNCA sobrescreve gabarito já validado por humano.
+  if (!forcar && (await existe(destino))) {
+    const atual = JSON.parse(await readFile(destino, 'utf8'));
+    if (atual.validado) {
+      return { base, status: 'preservada', atos: atual.total_atos ?? 0, relacoes: 0, revisar: 0 };
+    }
+  }
+
+  const [sigla, ano, mes, dia, numero] = base.split('-');
+  const heuristica = HEURISTICAS[sigla];
+  if (!heuristica) return { base, status: 'sem-heuristica', atos: 0, relacoes: 0, revisar: 0 };
+
+  const texto = await textoDoPdf(join(FIXTURES, nome));
+  const { atos, relacoes, revisar } = heuristica(texto);
+
+  const gabarito = {
+    $schema: 'gabarito-v1',
+    fonte: sigla,
+    edicao: numero,
+    data_publicacao: `${ano}-${mes}-${dia}`,
+    arquivo: nome,
+    // ---- só vira gabarito depois que um humano confirmar (C1.1b) --------
+    validado: false,
+    validado_por: null,
+    validado_em: null,
+    // --------------------------------------------------------------------
+    origem_anotacao: 'heuristica-c1.1a',
+    total_atos: atos.length,
+    atos,
+    relacoes_sugeridas: relacoes,
+    revisar,
+  };
+
+  await writeFile(destino, `${JSON.stringify(gabarito, null, 2)}\n`);
+  return {
+    base, status: 'anotada',
+    atos: atos.length, relacoes: relacoes.length, revisar: revisar.length,
+  };
+}
+
 async function main() {
   const arquivos = (await readdir(FIXTURES))
     .filter((f) => f.endsWith('.pdf'))
@@ -233,49 +287,23 @@ async function main() {
   let totalAtos = 0, totalRel = 0, pulados = 0;
 
   for (const nome of arquivos) {
-    const base = basename(nome, '.pdf');
-    const destino = join(FIXTURES, `${base}.expected.json`);
+    const r = await preAnotarArquivo(nome, { forcar: FORCAR });
 
-    // NUNCA sobrescreve gabarito já validado por humano.
-    if (!FORCAR && (await existe(destino))) {
-      const atual = JSON.parse(await readFile(destino, 'utf8'));
-      if (atual.validado) { log(`  ${base} — JÁ VALIDADO, preservado`); pulados++; continue; }
-    }
+    if (r.status === 'preservada')     { log(`  ${r.base} — JÁ VALIDADO, preservado`); pulados++; continue; }
+    if (r.status === 'sem-heuristica') { log(`  ${r.base} — sem heurística, pulando`); pulados++; continue; }
 
-    const [sigla, ano, mes, dia, numero] = base.split('-');
-    const heuristica = HEURISTICAS[sigla];
-    if (!heuristica) { log(`  ${base} — sem heurística para '${sigla}', pulando`); pulados++; continue; }
-
-    const texto = await textoDoPdf(join(FIXTURES, nome));
-    const { atos, relacoes, revisar } = heuristica(texto);
-
-    const gabarito = {
-      $schema: 'gabarito-v1',
-      fonte: sigla,
-      edicao: numero,
-      data_publicacao: `${ano}-${mes}-${dia}`,
-      arquivo: nome,
-      // ---- só vira gabarito depois que um humano confirmar (C1.1b) --------
-      validado: false,
-      validado_por: null,
-      validado_em: null,
-      // --------------------------------------------------------------------
-      origem_anotacao: 'heuristica-c1.1a',
-      total_atos: atos.length,
-      atos,
-      relacoes_sugeridas: relacoes,
-      revisar,
-    };
-
-    await writeFile(destino, `${JSON.stringify(gabarito, null, 2)}\n`);
-    totalAtos += atos.length;
-    totalRel += relacoes.length;
-    log(`  ${base} → ${String(atos.length).padStart(3)} ato(s) · ${relacoes.length} relação(ões)` +
-        (revisar.length ? ` · ⚠ ${revisar.length} a revisar` : ''));
+    totalAtos += r.atos;
+    totalRel += r.relacoes;
+    log(`  ${r.base} → ${String(r.atos).padStart(3)} ato(s) · ${r.relacoes} relação(ões)` +
+        (r.revisar ? ` · ⚠ ${r.revisar} a revisar` : ''));
   }
 
   log(`\n[C1.1a] ${totalAtos} atos · ${totalRel} relações sugeridas · ${pulados} pulado(s)`);
   log('[C1.1a] TODOS marcados validado:false — aguardam C1.1b (Marcelo + AGDM)');
 }
 
-main().catch((e) => { log(`[C1.1a] FALHA: ${e.message}`); process.exit(1); });
+// Só roda o CLI quando ESTE arquivo é o entrypoint. Sem a guarda, qualquer
+// `import` do módulo (a API faz isso) reprocessaria todas as fixtures.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { log(`[C1.1a] FALHA: ${e.message}`); process.exit(1); });
+}
