@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # ============================================================================
-# GATE do card C0.3 — isolamento multi-tenant (PRD v2.1 §9)
+# GATE do card C1.3 — fila de revisão (PRD §6.2)
 #
-# Sobe um Postgres EFÊMERO, aplica a migration, roda tests/rls.test.sql e
-# derruba tudo. Não depende de Docker nem toca em nenhum banco existente.
+# Sobe um Postgres EFÊMERO, aplica a migration, roda tests/fila-revisao.test.sql
+# e derruba tudo. Não depende de Docker nem toca em nenhum banco existente.
+# Mesmo padrão de scripts/test-rls.sh (gate gêmeo, card C0.3).
 #
-#   ./scripts/test-rls.sh
+#   ./scripts/test-fila-revisao.sh
 #
 # Saída: 0 se todos os testes PASS, 1 se qualquer FAIL. O loop lê o exit code.
 # ============================================================================
@@ -19,14 +20,14 @@ export LC_ALL=C LANG=C
 # pacote postgresql completo.
 PGBIN="${PGBIN:-/opt/homebrew/opt/postgresql@18/bin}"
 # Socket precisa de caminho CURTO: o limite do Unix domain socket é 103 bytes.
-RUNDIR="${RUNDIR:-/tmp/pgdm-gate-$$}"
+RUNDIR="${RUNDIR:-/tmp/pgdm-fila-$$}"
 PGDATA="$RUNDIR/data"
-PGPORT="${PGPORT:-55433}"
-DB=diariomonitor_gate
+PGPORT="${PGPORT:-55434}"
+DB=diariomonitor_gate_fila
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATION="$HERE/supabase/migrations/20260723000001_schema_inicial.sql"
-TESTE="$HERE/tests/rls.test.sql"
+TESTE="$HERE/tests/fila-revisao.test.sql"
 
 [ -x "$PGBIN/initdb" ] || {
   echo "ERRO: servidor Postgres não encontrado em $PGBIN"
@@ -87,8 +88,14 @@ TOTAL=$(echo "$SAIDA" | grep -cE "PASS|FAIL")
 
 echo "----------------------------------------"
 if [ "$FALHAS" -gt 0 ]; then
-  echo "GATE C0.3: REPROVA — $FALHAS falha(s) de $TOTAL"
+  echo "GATE C1.3: REPROVA — $FALHAS falha(s) de $TOTAL"
+  echo "$SAIDA" | grep -iE "erro|error" | grep -viE "PASS|FAIL" || true
   exit 1
 fi
-echo "GATE C0.3: PASSA — $TOTAL/$TOTAL"
+if [ "$TOTAL" -eq 0 ]; then
+  echo "GATE C1.3: REPROVA — nenhum resultado PASS/FAIL encontrado (o teste travou antes de imprimir)"
+  echo "$SAIDA"
+  exit 1
+fi
+echo "GATE C1.3: PASSA — $TOTAL/$TOTAL"
 exit 0
