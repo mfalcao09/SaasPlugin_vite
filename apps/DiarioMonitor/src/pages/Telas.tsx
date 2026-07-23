@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Download, Loader2, RefreshCw, Search, Check, X, FileText, AlertTriangle, Database,
+  ArrowLeft, ExternalLink,
 } from 'lucide-react';
 
 // ============================================================================
@@ -327,6 +328,161 @@ type EdicaoRevisao = {
   atos: Ato[];
 };
 
+// Um ato na coluna de validação: o que a máquina extraiu + ✓/✗. O operador
+// confere contra o PDF do diário renderizado ao lado.
+function AtoParaJulgar({ a, onJulgar }: {
+  a: Ato; onJulgar: (id: string, d: 'ok' | 'descartado') => void;
+}) {
+  return (
+    <div
+      className={
+        a.julgamento === 'ok' ? 'rounded-lg border border-primary/40 bg-primary/5 p-3'
+        : a.julgamento === 'descartado' ? 'rounded-lg border border-destructive/40 bg-destructive/5 p-3 opacity-70'
+        : 'rounded-lg border border-border p-3'
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-foreground">
+            {a.tipo} n. {a.numero}/{a.ano}
+            {a.confianca !== null && a.confianca < 0.5 && (
+              <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-destructive">
+                confiança baixa
+              </span>
+            )}
+          </div>
+          {a.ementa && (
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{a.ementa}</p>
+          )}
+          {a.trecho_original && (
+            <details className="mt-1.5">
+              <summary className="cursor-pointer select-none font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                trecho extraído
+              </summary>
+              <div className="mt-1 max-h-28 overflow-y-auto rounded border-l-2 border-primary bg-muted/40 p-2 text-[12.5px] leading-relaxed text-foreground">
+                {a.trecho_original}
+              </div>
+            </details>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            title="Confere com o diário ao lado"
+            onClick={() => onJulgar(a.id, 'ok')}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              a.julgamento === 'ok'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border hover:border-primary'}`}
+          >
+            <Check className="h-4 w-4" />
+          </button>
+          <button
+            title="Falso positivo — não confere com o diário"
+            onClick={() => onJulgar(a.id, 'descartado')}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              a.julgamento === 'descartado'
+                ? 'border-destructive bg-destructive text-destructive-foreground'
+                : 'border-border hover:border-destructive'}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Revisão LADO A LADO: PDF do diário à esquerda, atos extraídos à direita.
+// É o coração da fase de validação — o operador lê a fonte e valida cada
+// portaria sem sair do sistema. O `#view=FitH` pede ao visualizador nativo do
+// navegador para ajustar a largura da página.
+function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
+  ed: EdicaoRevisao;
+  onVoltar: () => void;
+  onJulgar: (id: string, d: 'ok' | 'descartado') => void;
+  onConcluir: (ed: EdicaoRevisao) => void;
+}) {
+  const pdfUrl = `/api/edicoes/${ed.id}/pdf`;
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={onVoltar}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground hover:bg-muted/40"
+        >
+          <ArrowLeft className="h-4 w-4" /> Fila
+        </button>
+        <span className="rounded bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
+          {ed.fonte}
+        </span>
+        <h1 className="text-base font-semibold text-foreground">
+          Edição {rotuloEdicao(ed.edicao, ed.numero_suplemento)}
+        </h1>
+        <span className="font-mono text-[11px] text-muted-foreground">{ed.data_publicacao}</span>
+        <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
+          {ed.julgados}/{ed.total} julgados
+        </span>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* ESQUERDA — o diário oficial, fonte da verdade */}
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              diário oficial — fonte
+            </span>
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" /> abrir em nova aba
+            </a>
+          </div>
+          <iframe
+            src={`${pdfUrl}#view=FitH`}
+            title={`Diário ${ed.fonte} ${ed.edicao}`}
+            className="h-[60vh] w-full rounded-lg border border-border bg-white lg:h-[80vh]"
+          />
+        </div>
+
+        {/* DIREITA — os atos extraídos, para validar contra o diário */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              atos extraídos — valide contra o diário
+            </span>
+          </div>
+          <div className="rounded-lg border border-accent/40 bg-accent/5 p-2.5 text-[12px] leading-snug text-muted-foreground">
+            Confira cada ato no PDF ao lado: número, tipo e ano batem? <b className="text-foreground">✓</b>.
+            É falso positivo? <b className="text-foreground">✗</b>. E se houver um ato no diário que
+            <b className="text-foreground"> não está</b> nesta lista, me avise — é falso negativo.
+          </div>
+
+          {ed.atos.map((a) => (
+            <AtoParaJulgar key={a.id} a={a} onJulgar={onJulgar} />
+          ))}
+
+          <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card/95 p-3 backdrop-blur">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[12.5px] text-muted-foreground">
+              Validada quando os {ed.total} atos forem julgados.
+            </span>
+            <button
+              onClick={() => onConcluir(ed)}
+              disabled={ed.julgados < ed.total}
+              className="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Check className="h-4 w-4" /> Concluir validação
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TelaRevisao() {
   const { dados, carregando, erro, recarregar } = useApi<EdicaoRevisao[]>('/api/revisao');
   const [aberta, setAberta] = useState<string | null>(null);
@@ -344,6 +500,7 @@ export function TelaRevisao() {
     setAviso(r.ok
       ? `Edição ${ed.edicao} validada: ${r.mantidos} ato(s) confirmados, ${r.descartados} descartado(s).`
       : `Ainda não: ${r.motivo}`);
+    if (r.ok) setAberta(null);   // some da fila; volta para a lista
     recarregar();
   }
 
@@ -351,12 +508,21 @@ export function TelaRevisao() {
   if (erro) return <Erro mensagem={erro} />;
 
   const pendentes = dados ?? [];
+  const edSel = pendentes.find((e) => e.id === aberta) ?? null;
 
+  // MODO REVISÃO — lado a lado
+  if (edSel) {
+    return (
+      <RevisaoLadoALado ed={edSel} onVoltar={() => setAberta(null)} onJulgar={julgar} onConcluir={concluir} />
+    );
+  }
+
+  // MODO LISTA
   return (
     <div>
       <Cabecalho
         titulo="Fila de Revisão"
-        sub="A extração propõe; a pessoa decide. Nenhum ato entra no acervo validado ou no boletim sem passar por aqui."
+        sub="A extração propõe; a pessoa decide. Abra uma edição para validar cada ato com o diário oficial ao lado."
       />
 
       {aviso && (
@@ -370,98 +536,25 @@ export function TelaRevisao() {
       )}
 
       <div className="space-y-3">
-        {pendentes.map((ed) => {
-          const aberto = aberta === ed.id;
-          return (
-            <div key={ed.id} className="surface-card overflow-hidden">
-              <button
-                onClick={() => setAberta(aberto ? null : ed.id)}
-                className="flex w-full flex-wrap items-center gap-3 p-4 text-left hover:bg-muted/40"
-              >
-                <span className="rounded bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
-                  {ed.fonte}
-                </span>
-                <span className="text-sm font-semibold text-foreground">
-                  Edição {rotuloEdicao(ed.edicao, ed.numero_suplemento)}
-                </span>
-                <span className="font-mono text-[11px] text-muted-foreground">{ed.data_publicacao}</span>
-                <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {ed.julgados}/{ed.total} julgados
-                </span>
-              </button>
-
-              {aberto && (
-                <div className="divide-y divide-border border-t border-border">
-                  {ed.atos.map((a) => (
-                    <div
-                      key={a.id}
-                      className={
-                        a.julgamento === 'ok' ? 'bg-primary/5 p-4'
-                        : a.julgamento === 'descartado' ? 'bg-destructive/5 p-4 opacity-60'
-                        : 'p-4'
-                      }
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-foreground">
-                            {a.tipo} n. {a.numero}/{a.ano}
-                            {a.confianca !== null && a.confianca < 0.5 && (
-                              <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-destructive">
-                                confiança baixa
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border-l-2 border-primary bg-muted/40 p-3 text-[13px] leading-relaxed text-foreground">
-                            <div className="mb-1 font-mono text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground">
-                              texto no diário oficial
-                            </div>
-                            {a.trecho_original ?? a.ementa ?? '(sem texto capturado — verificar parser)'}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            title="Confere com o texto publicado"
-                            onClick={() => julgar(a.id, 'ok')}
-                            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
-                              a.julgamento === 'ok'
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border hover:border-primary'}`}
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                          <button
-                            title="Falso positivo — não é um ato publicado nesta edição"
-                            onClick={() => julgar(a.id, 'descartado')}
-                            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
-                              a.julgamento === 'descartado'
-                                ? 'border-destructive bg-destructive text-destructive-foreground'
-                                : 'border-border hover:border-destructive'}`}
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="flex flex-wrap items-center gap-3 bg-muted/30 p-4">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-[13px] text-muted-foreground">
-                      A edição só é validada quando os {ed.total} atos forem julgados.
-                    </span>
-                    <button
-                      onClick={() => concluir(ed)}
-                      disabled={ed.julgados < ed.total}
-                      className="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Check className="h-4 w-4" /> Concluir validação
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {pendentes.map((ed) => (
+          <button
+            key={ed.id}
+            onClick={() => setAberta(ed.id)}
+            className="surface-card flex w-full flex-wrap items-center gap-3 p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+          >
+            <span className="rounded bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
+              {ed.fonte}
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              Edição {rotuloEdicao(ed.edicao, ed.numero_suplemento)}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">{ed.data_publicacao}</span>
+            <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
+              {ed.julgados}/{ed.total} julgados
+            </span>
+            <ArrowLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+          </button>
+        ))}
       </div>
 
       <button
