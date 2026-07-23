@@ -17,6 +17,7 @@
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
       "ementa": null,
+      "trecho_original": "b Judice 427000874 Wilians Cezar Rodrigues 1,95 1,65 0,75 0,5 0,8 0,8 6,45 Aprovado Sub Judice Secretaria da Magistratura Portarias assinadas pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 17/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, R E S O L V E: Conceder a MONIQUE RAFAELE ANTUNES KRIEGER, Juíza de Direito da 2ª Vara da comarca de Cassilândia, 1 (um) dia de licença compensatória, para ser gozada 7/8/2026, correspondente ao plantão permanente realizado no período de 8 a 11/3/2024, nos termos do art. 13 do Provimento-CSM n.º 696/2025, designando Bruna Tafarelo, Juíza de Direito da 2ª Vara da comarca de Chapadão do Sul, para substituí-la no referido lapso temporal, nos termos do art. 46 do CODJ/MS. P. R. C. (Port.\nn.º 2238/2026)",
       "confianca_heuristica": "baixa"
     },
     {
@@ -26,6 +27,7 @@
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
       "ementa": null,
+      "trecho_original": "Conceder a ALESSANDRO LEITE PEREIRA, Juiz de Direito da 1ª Vara Cível da comarca de Dourados, 3 (três) dias de licença compensatória, para ser gozada nos dias 23, 24 e 27/7/2026, correspondente ao plantão permanente realizado nos períodos de 22 a 26/7/2024 e 26 a 29/7/2024, nos termos do artigo 13 do Provimento-CSM n.º 696/2025, designando Marilsa Aparecida da Silva Baptista, Juíza de Direito da 3ª Vara Cível da referida, para substituí-lo no referido lapso temporal, nos termos do art. 46 do CODJ/MS. P. R. C. (Port. n.º 2242/2026)",
       "confianca_heuristica": "baixa"
     },
     {
@@ -34,14 +36,14 @@
       "ano": 2026,
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
-      "ementa": null,
-      "confianca_heuristica": "baixa"
+      "ementa": "Designar EDUARDO AUGUSTO ALVES, Juiz de Direito da 3ª Vara Cível da comarca de Nova Andradina, para responder cumulativamente pela 5ª Vara Cível e Regional de Falências e Recuperações da comarca de Dourados, nos dias 23, 24 e 27/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "trecho_original": "Designar EDUARDO AUGUSTO ALVES, Juiz de Direito da 3ª Vara Cível da comarca de Nova Andradina, para responder cumulativamente pela 5ª Vara Cível e Regional de Falências e Recuperações da comarca de Dourados, nos dias 23, 24 e 27/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2243/2026)",
+      "confianca_heuristica": "media"
     }
   ],
   "relacoes_sugeridas": [],
   "revisar": [
     "Portaria 2238/2026: não foi possível isolar a ementa",
-    "Portaria 2242/2026: não foi possível isolar a ementa",
-    "Portaria 2243/2026: não foi possível isolar a ementa"
+    "Portaria 2242/2026: não foi possível isolar a ementa"
   ]
 }
