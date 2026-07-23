@@ -9,3 +9,6 @@ tools/validar-gabarito.html
 # fixtures de gate: versionadas apesar do *.zip da raiz (hash precisa ser estavel)
 !fixtures/dou/*.zip
 .dev-db/
+
+# STJ dados abertos: metadados versionados; ZIPs pesados ignorados
+fixtures/stjda/*.zip
