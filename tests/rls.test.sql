@@ -70,9 +70,12 @@ exception
     raise notice 'PASS T4: insert cross-tenant bloqueado pela policy';
 end $$;
 
--- T5 — o acervo público (fontes) É visível: 6 fontes semeadas
-select case when count(*) = 6 then 'PASS' else 'FAIL' end as resultado,
-       'T5: fontes publicas visiveis para autenticado' as teste
+-- T5 — o acervo público (fontes) É visível para o autenticado.
+-- Não fixamos a contagem (fonte nova como STJDA não pode reprovar o gate de
+-- RLS): o critério é que o autenticado veja PELO MENOS as 6 fontes-base do
+-- seed. A política de leitura pública é para-todos, então mais é esperado.
+select case when count(*) >= 6 then 'PASS' else 'FAIL' end as resultado,
+       'T5: autenticado ve as fontes publicas (' || count(*) || ')' as teste
   from public.fontes_diarios;
 
 -- ---------------------------------------------------------------------------
