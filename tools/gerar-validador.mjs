@@ -27,8 +27,18 @@ const SAIDA = join(AQUI, 'validar-gabarito.html');
 const log = (...a) => console.error(...a);
 
 async function main() {
-  const arquivos = (await readdir(FIXTURES)).filter((f) => f.endsWith('.expected.json')).sort();
-  if (arquivos.length === 0) throw new Error('nenhum .expected.json — rode antes: npm run gabarito');
+  // Filtro opcional: `--edicao 5912` gera a página de UMA edição só, para
+  // validar contra o PDF daquela edição sem o ruído das outras 20.
+  const iEd = process.argv.indexOf('--edicao');
+  const filtro = iEd > -1 ? process.argv[iEd + 1] : null;
+
+  let arquivos = (await readdir(FIXTURES)).filter((f) => f.endsWith('.expected.json')).sort();
+  if (filtro) arquivos = arquivos.filter((f) => f.includes(`-${filtro}-`));
+  if (arquivos.length === 0) {
+    throw new Error(filtro
+      ? `nenhuma fixture casa com edição "${filtro}"`
+      : 'nenhum .expected.json — rode antes: npm run gabarito');
+  }
 
   const gabaritos = [];
   for (const nome of arquivos) {

@@ -36,9 +36,9 @@
 //   POST /api/revisao/concluir       fecha a edição
 // ============================================================================
 
-import { writeFile, stat } from 'node:fs/promises';
+import { writeFile, readFile, stat } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
@@ -221,6 +221,30 @@ async function pendentesDeRevisao(sessao) {
   });
 }
 
+/**
+ * Caminho absoluto do PDF de uma edição, para servir na revisão lado a lado.
+ *
+ * Duas travas:
+ *  - a leitura de `edicoes` passa pela RLS (poolApp + identidade), então só
+ *    devolve o que a instituição da sessão pode ver;
+ *  - o caminho vem do banco, mas é resolvido e CONFERIDO contra FIXTURES antes
+ *    de abrir o arquivo — um arquivo_path com "../" não escapa da pasta.
+ *
+ * Em produção isto vira uma URL assinada do Supabase Storage (expira em min);
+ * a tela não muda, só a origem do PDF.
+ */
+async function caminhoPdfDaEdicao(sessao, id) {
+  const rows = await comIdentidade(sessao, async (c) =>
+    (await c.query('select arquivo_path from public.edicoes where id = $1', [id])).rows);
+  if (!rows.length || !rows[0].arquivo_path) return null;
+
+  const abs = resolve(RAIZ, rows[0].arquivo_path);
+  if (abs !== FIXTURES && !abs.startsWith(`${FIXTURES}/`)) {
+    throw new Error('caminho do PDF fora de fixtures/');
+  }
+  return (await existe(abs)) ? abs : null;
+}
+
 // ---------------------------------------------------------------------------
 // Escritas do usuário — o julgamento NÃO altera o ato (append-only); vive em
 // revisao_extracao, por tenant. Ver migration 0005.
@@ -394,6 +418,17 @@ export default function apiDev() {
           if (req.method === 'GET' && rota === '/api/edicoes') return responder(200, await listarEdicoes(sessao));
           if (req.method === 'GET' && rota === '/api/atos')    return responder(200, await listarAtos(sessao, url.searchParams));
           if (req.method === 'GET' && rota === '/api/revisao') return responder(200, await pendentesDeRevisao(sessao));
+
+          // PDF do diário para a revisão lado a lado. `:id` é o uuid da edição.
+          const mPdf = rota.match(/^\/api\/edicoes\/([^/]+)\/pdf$/);
+          if (req.method === 'GET' && mPdf) {
+            const abs = await caminhoPdfDaEdicao(sessao, mPdf[1]);
+            if (!abs) return responder(404, { erro: 'PDF da edição não encontrado' });
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline'); // exibir, não baixar
+            return res.end(await readFile(abs));
+          }
 
           if (req.method === 'POST' && rota === '/api/ingest')           return responder(200, await ingerir(await corpoDaRequisicao()));
           if (req.method === 'POST' && rota === '/api/revisao/julgar')   return responder(200, await julgar(sessao, await corpoDaRequisicao()));
