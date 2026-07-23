@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Placar GO LIVE NexvyBeauty — v3</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1020px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.26rem;margin:2.1em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.5em 0 .5em 14px;margin:0 0 1em;font-size:.92rem}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.86em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffd7ec}
+  blockquote{border-left:3px solid var(--accent);margin:1em 0;padding:.5em 0 .5em 16px;color:var(--muted);font-size:.93rem}
+  .verdict{background:linear-gradient(135deg,rgba(210,153,34,.13),rgba(168,85,247,.07));
+    border:1px solid rgba(210,153,34,.45);border-radius:14px;padding:20px 24px;margin:1.4em 0}
+  .verdict h2{border:0;margin:0 0 .3em;font-size:1.3rem;color:var(--yellow)}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1em 0}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:.89rem;
+    background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:.79rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .ok{color:var(--green);font-weight:700} .bad{color:var(--red);font-weight:700} .warn{color:var(--yellow);font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:1.2em 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .card .n{font-size:1.7rem;font-weight:800;line-height:1.1} .card .l{color:var(--muted);font-size:.78rem;margin-top:.25em}
+  .mea{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.32);border-radius:12px;padding:18px 22px;margin:1.4em 0}
+  .mea h2{border:0;margin:0 0 .4em;color:var(--red);font-size:1.1rem}
+  .blk{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:18px 22px;margin:1.4em 0}
+  .blk h2{border:0;margin:0 0 .4em;color:var(--blue);font-size:1.1rem}
+  footer{color:var(--muted);font-size:.82rem;margin-top:3em;padding-top:1em;border-top:1px solid var(--border)}
+  @media (max-width:640px){ h1{font-size:1.42rem} .wrap{padding:22px 14px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Placar GO LIVE — NexvyBeauty</h1>
+<p class="lead"><b>v3 — 23/07/2026, madrugada.</b> Substitui o v2.
+<b>Tudo reverificado agora</b>, não copiado.</p>
+
+<div class="verdict">
+  <h2>Ainda não liberado — mas o motivo mudou.</h2>
+  <p style="margin:.3em 0 0">Na v2 o bloqueio era <i>“o encanamento do CAPI não
+  existe”</i>. Agora existe, provado ponta a ponta. O que falta <b>deixou de ser
+  código</b>:</p>
+  <div class="tablewrap"><table>
+  <thead><tr><th>#</th><th>O que falta</th><th>De quem depende</th></tr></thead>
+  <tbody>
+  <tr><td>1</td><td><code>META_CAPI_TOKEN</code> + <code>META_CAPI_DATASET_ID</code></td><td><b>você</b> — Events Manager</td></tr>
+  <tr><td>2</td><td>Um anúncio CTWA rodando (gera <code>ads_attribution</code>)</td><td><b>você</b></td></tr>
+  <tr><td>3</td><td>Flip do B3</td><td><b>tráfego real</b> (reconectar + 1 msg)</td></tr>
+  </tbody></table></div>
+  <p style="margin:.5em 0 0"><b>Nenhum é código.</b> É a primeira vez que o placar chega
+  nesse estado.</p>
+</div>
+
+<h2>O que fechou no Bloco A</h2>
+<p>Advisor de segurança: <b class="ok">77 → 60 alertas</b>, quatro regras zeradas.</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Prova executada</th></tr></thead>
+<tbody>
+<tr><td><b>A1</b></td><td>CAPI produtor</td><td>compra Essencial R$275 → <code>sale_completed</code>/<code>sale</code>/NexvyBeauty · remarcar pago <b>não duplica</b> · <code>cakto_product_id</code> desconhecido <b>não é chutado</b></td></tr>
+<tr><td><b>A1b</b></td><td>Plano → produto explícito</td><td>5/5 planos com <code>product_id</code></td></tr>
+<tr><td><b>A2</b></td><td>CAPI consumidor</td><td>cron <code>*/5</code> ativo · invocação pelo vault → <code>200</code>, <code>mode: dry_run</code></td></tr>
+<tr><td><b>A3</b></td><td>Policies <code>INSERT</code> abertas</td><td>anônimo <code>42501</code> nas duas · <code>capture-lead</code> → <code>{"ok":true}</code></td></tr>
+<tr><td><b>A4</b></td><td>Flip do B3</td><td class="bad">NÃO FEITO — ver abaixo</td></tr>
+<tr><td><b>A5</b></td><td><code>search_path</code> mutável</td><td class="ok">8 → 0</td></tr>
+<tr><td><b>A6</b></td><td>Enumeração de bucket</td><td class="ok">5 → 0</td></tr>
+<tr><td><b>A7</b></td><td>Alerta de WhatsApp caído</td><td>1º disparo alertou · 2º silenciou · cron <code>*/15</code></td></tr>
+</tbody></table>
+</div>
+
+<div class="blk">
+<h2>A4 — por que eu não flipei</h2>
+<p>O comentário do próprio <code>evolution-webhook</code> registra:</p>
+<blockquote>“Não há prova de que o Evolution Go ecoa <code>instance_token</code> no
+corpo; enforce cego mataria a ingestão em silêncio.”</blockquote>
+<p>Meu teste sintético prova que <b>o mecanismo funciona quando o token chega</b>. Isso
+não é a mesma afirmação que <b>“o Evolution manda esse token”</b> — e eu quase tratei
+uma como a outra. <code>instance_token</code> é gerado por <i>nós</i> e enviado
+<i>para</i> o Evolution; que ele volte no webhook é suposição.</p>
+<p style="margin-bottom:0">Instância desconectada = sem tráfego real. Flipar agora
+significa: se o Evolution não ecoar, o WhatsApp <b>para de entrar no minuto em que você
+reconectar</b>, sem sintoma óbvio.</p>
+</div>
+
+<h2>Estado reverificado agora</h2>
+<div class="cards">
+  <div class="card"><div class="n ok">0</div><div class="l">policies INSERT abertas</div></div>
+  <div class="card"><div class="n ok">2</div><div class="l">crons novos ativos</div></div>
+  <div class="card"><div class="n ok">346</div><div class="l">carteira classificada</div></div>
+  <div class="card"><div class="n" style="color:var(--muted)">0</div><div class="l">ads_capi_events · correto sem anúncio</div></div>
+  <div class="card"><div class="n" style="color:var(--muted)">0</div><div class="l">ads_attribution · correto sem clique</div></div>
+  <div class="card"><div class="n warn">off</div><div class="l">instância WhatsApp · desde 21/07</div></div>
+</div>
+
+<h2>Aberto</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Estado</th></tr></thead>
+<tbody>
+<tr><td><b>B7/D5</b></td><td>Meta CAPI</td><td>encanamento <span class="ok">✅</span> · <b>credenciais faltam</b></td></tr>
+<tr><td><b>B8b</b></td><td>Senha vazada (HaveIBeenPwned)</td><td><span class="warn">ainda desligada</span> — toggle no painel</td></tr>
+<tr><td><b>B9</b></td><td>PITR</td><td>não configurado · <i>alerta de queda já feito no A7</i></td></tr>
+<tr><td><b>B3</b></td><td>Webhook Evolution</td><td><span class="warn">shadow</span> — depende de tráfego real</td></tr>
+<tr><td><b>D1</b></td><td>E-mail de recompra</td><td>deployado 21/07 · <b>0 e-mails desde</b> → não provado</td></tr>
+<tr><td>—</td><td>View <code>SECURITY DEFINER</code></td><td>1 restante (<code>public_plans</code>, intencional)</td></tr>
+<tr><td>—</td><td><code>rls_enabled_no_policy</code></td><td>3 (tabelas internas de cron)</td></tr>
+</tbody></table>
+</div>
+
+<h2>Depende de você — todas curtas</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Ação</th><th>Destrava</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Events Manager</b>: gerar token da Conversions API + copiar o ID do dataset</td><td>CAPI real. O <code>WABA_ID</code> eu tiro do banco</td></tr>
+<tr><td>2</td><td><b>Toggle</b> de senha vazada no painel Supabase</td><td>B8b — 30 s</td></tr>
+<tr><td>3</td><td><b>Reconectar</b> <code>meuteste1-sal-o1</code> + 1 mensagem</td><td>Flip do B3 <b>e</b> prova do classificador</td></tr>
+<tr><td>4</td><td><b>Uma compra real</b> no Essencial</td><td>D1 <b>e</b> o <code>sale_completed</code> de verdade</td></tr>
+<tr><td>5</td><td><b>Um WhatsApp de salão REAL</b></td><td>A demonstração comercial — segue o mais importante</td></tr>
+</tbody></table>
+</div>
+
+<div class="mea">
+<h2>Dois erros meus neste bloco</h2>
+<p><b>1. Escrevi na tabela errada e reportei como pronto.</b> O trigger do A1 inseria em
+<code>ads_capi_events</code>, que é o registro de <i>saída</i>. A fila de <i>entrada</i>
+é <code>platform_crm_journey_events</code>. O evento nascia órfão e pareceria correto
+numa inspeção da tabela.</p>
+<p><b>2. Quase flipei o B3 com prova insuficiente.</b> Confundi “o mecanismo funciona”
+com “o Evolution envia o token”.</p>
+<p>O padrão comum aos dois, e ao erro de ontem: <b>contador zerado com aparência de
+sucesso.</b> <code>candidates: 0</code> com a tabela cheia; <code>sem_conversa: 10</code>
+sempre igual. Nos três casos o código respondia <code>200</code> e <code>erros: 0</code>.</p>
+<blockquote style="margin-bottom:0"><b>Ausência de erro não é prova de progresso.</b>
+Passei a tratar contador parado entre execuções como sintoma, não como ruído.</blockquote>
+</div>
+
+<h2>O que o Bloco A realmente entregou</h2>
+<p>Reduziu risco: fechou 17 alertas de segurança, tirou duas portas anônimas de
+<code>INSERT</code>, fechou a enumeração de 5 buckets e pôs de pé o alerta de canal caído.</p>
+<p><b>Não destravou o GO LIVE</b> — e é importante não confundir as duas coisas. O anúncio
+continua parado pelos mesmos motivos de ontem, só que agora <b>nenhum deles é código
+nosso</b>.</p>
+
+<footer>NexvyBeauty · Placar GO LIVE v3 · 23/07/2026 · par de
+<code>PLACAR-GO-LIVE-2026-07-22_v3.md</code></footer>
+
+</div>
+</body>
+</html>
