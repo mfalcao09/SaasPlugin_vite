@@ -5,3 +5,6 @@ tools/validar-gabarito.html
 # segredos — nunca versionar
 .env
 .env.local
+
+# fixtures de gate: versionadas apesar do *.zip da raiz (hash precisa ser estavel)
+!fixtures/dou/*.zip
