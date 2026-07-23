@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   FileText,
@@ -7,9 +7,11 @@ import {
   Scale,
   Download,
   Settings,
+  LogOut,
 } from 'lucide-react';
 import { NexvyShell, NexvyMobileBottomNav, type NexvyModule } from './shell';
 import { TelaFontes, TelaPublicacoes, TelaRevisao } from './pages/Telas';
+import Acesso, { type Identidade } from './pages/Acesso';
 
 // ============================================================================
 // DiárioMonitor — casca de navegação (card C0.1c)
@@ -120,11 +122,42 @@ const ITENS_MOBILE = MODULOS[0].nav
   .slice(0, 5)
   .map(({ id, label, icon }) => ({ id, label, icon }));
 
+/** Faixa fina com quem está logado — e por qual instituição a RLS filtra. */
+function BarraSessao({ sessao, aoSair }: { sessao: Identidade; aoSair: () => void }) {
+  return (
+    <div className="fixed right-3 top-3 z-50 flex items-center gap-3 rounded-lg border border-border bg-card/95 px-3 py-1.5 shadow-sm backdrop-blur">
+      <div className="text-right leading-tight">
+        <div className="text-[12px] font-medium text-foreground">{sessao.nome}</div>
+        <div className="text-[10px] text-muted-foreground">{sessao.instituicao_nome}</div>
+      </div>
+      <button
+        onClick={aoSair}
+        title="Encerrar sessão"
+        className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
+      >
+        <LogOut className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [secao, setSecao] = useState('dashboard');
+  const [sessao, setSessao] = useState<Identidade | null>(null);
+  const [verificando, setVerificando] = useState(true);
   const [escuro, setEscuro] = useState(
     () => document.documentElement.classList.contains('dark'),
   );
+
+  // Quem manda é o cookie no servidor, não o estado do React: recarregar a
+  // página precisa reencontrar a sessão, e um cookie inválido precisa derrubar.
+  useEffect(() => {
+    fetch('/api/sessao')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setSessao)
+      .catch(() => setSessao(null))
+      .finally(() => setVerificando(false));
+  }, []);
 
   const alternarTema = () => {
     const proximo = !escuro;
@@ -133,8 +166,19 @@ export default function App() {
     localStorage.setItem('theme', proximo ? 'dark' : 'light');
   };
 
+  const sair = async () => {
+    await fetch('/api/sessao/sair', { method: 'POST' });
+    setSessao(null);
+    setSecao('dashboard');
+  };
+
+  // Enquanto a sessão não foi verificada, não pisca nem login nem app.
+  if (verificando) return <div className="min-h-screen bg-background" />;
+  if (!sessao) return <Acesso aoEntrar={setSessao} />;
+
   return (
     <>
+      <BarraSessao sessao={sessao} aoSair={sair} />
       <NexvyShell
         modules={MODULOS}
         activeModuleId="diariomonitor"

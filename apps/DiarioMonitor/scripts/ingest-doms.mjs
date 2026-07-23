@@ -96,7 +96,12 @@ async function main() {
   console.log('  (fonte_id, numero, data_publicacao, url_original, arquivo_path, hash_sha256, status)');
   console.log('values');
   console.log(linhas.join(',\n'));
-  console.log('on conflict (fonte_id, data_publicacao, numero) do update set');
+  // A identidade da edição passou a incluir `numero_suplemento` na migration
+  // 0007 (suplemento do DO/MS repete número e data da edição-pai). Este script
+  // ainda embute o suplemento no próprio `numero` ("12228-SUP1"), convenção
+  // antiga; as duas convivem porque a constraint é NULLS NOT DISTINCT.
+  // PENDÊNCIA: unificar numa só — ver docs/FONTES-endpoints-e-extracao.md.
+  console.log('on conflict (fonte_id, data_publicacao, numero, numero_suplemento) do update set');
   console.log('  arquivo_path = excluded.arquivo_path,');
   console.log('  hash_sha256  = excluded.hash_sha256,');
   console.log("  status       = 'baixada';");

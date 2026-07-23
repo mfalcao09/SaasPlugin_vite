@@ -6,204 +6,288 @@
 // (PRD §7.2). Aqui roda como middleware do dev server, para que a aplicação
 // seja OPERÁVEL POR UM HUMANO desde já — sem terminal, sem script.
 //
-// A regra que mantém isso honesto: este arquivo NÃO tem regra de negócio.
-// Ele expõe por HTTP o que já existe em src/services/. Ao virar Edge Function,
-// muda o transporte, não a lógica.
+// ── DOIS CLIENTES, DE PROPÓSITO ────────────────────────────────────────────
+// Espelha a separação do Supabase entre `service_role` e `anon + JWT`:
+//
+//   poolApp     conecta como role `authenticated` e define request.jwt.claims
+//               por requisição. TUDO que o usuário faz passa por aqui, então
+//               a RLS decide o que ele enxerga. Nunca superusuário: superuser
+//               faz BYPASS de policy, e a RLS viraria enfeite.
+//
+//   poolServico conecta como dono do banco. Usado SÓ pela ingestão, que é
+//               processo de sistema (o cron diário), não ação de usuário —
+//               não há tenant a quem atribuir a captura de um diário público.
+//
+// A regra que mantém isto honesto: sem regra de negócio aqui. O arquivo expõe
+// por HTTP o que já existe em src/services/ e scripts/. Ao virar Edge
+// Function, muda o transporte, não a lógica.
 //
 // Rotas:
-//   GET  /api/fontes                 fontes cadastradas + o que já foi ingerido
-//   GET  /api/edicoes                edições em disco
-//   POST /api/ingest {parserKey}     descobre e baixa edições novas
-//   GET  /api/atos?q=&fonte=&de=&ate= atos extraídos, com busca e filtros
+//   GET  /api/sessao                 quem está logado (401 se ninguém)
+//   GET  /api/sessao/identidades     quem pode entrar (só em dev)
+//   POST /api/sessao/entrar {email}  abre sessão
+//   POST /api/sessao/sair            encerra
+//   GET  /api/fontes                 fontes + o que já foi capturado
+//   GET  /api/edicoes                edições no acervo
+//   GET  /api/atos?q=&fonte=&de=&ate= busca full-text no acervo
 //   GET  /api/revisao                edições pendentes de validação humana
+//   POST /api/ingest {parserKey}     descobre, baixa, extrai e grava
 //   POST /api/revisao/julgar         registra ✓/✗ de um ato
-//   POST /api/revisao/concluir       fecha a edição (validado=true)
+//   POST /api/revisao/concluir       fecha a edição
 // ============================================================================
 
-import { readdir, readFile, writeFile, stat } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { writeFile, stat } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = join(AQUI, '../..');
 const FIXTURES = join(RAIZ, 'fixtures/edicoes');
-// URL montada em runtime — ver comentário no `ingerir()`: string literal aqui
-// faria o esbuild bundlar o script (que tem shebang) dentro do vite.config.
+
+// Especificadores COMPUTADOS: o esbuild bundla o vite.config e tudo que ele
+// alcança por string literal — arrastaria estes scripts (que têm shebang) para
+// dentro do bundle e quebraria. Variável = import opaco ao bundler.
 const CAMINHO_PRE_ANOTAR = new URL('../../scripts/pre-anotar.mjs', import.meta.url).href;
+const CAMINHO_CARREGADOR = new URL('../../scripts/carregar-gabarito.mjs', import.meta.url).href;
 
 const existe = async (p) => { try { await stat(p); return true; } catch { return false; } };
 
-/** Catálogo de fontes — espelha o seed de `fontes_diarios` na migration. */
-const FONTES = [
-  { sigla: 'DOMS', nome: 'Diário Oficial do Estado de MS', parser_key: 'doms-pdf',
-    modo: 'scrape', esfera: 'executivo', uf: 'MS', operacional: true },
-  { sigla: 'DJMS', nome: 'Diário da Justiça de MS — Caderno 1', parser_key: 'djms-esaj',
-    modo: 'scrape', esfera: 'judiciario', uf: 'MS', operacional: true },
-  { sigla: 'DOU', nome: 'Diário Oficial da União', parser_key: 'dou-inlabs',
-    modo: 'xml', esfera: 'executivo', uf: null, operacional: false,
-    bloqueio: 'Aguarda credencial do INLABS (cadastro gratuito)' },
-  { sigla: 'CNJ', nome: 'Atos Normativos do CNJ', parser_key: 'cnj-atos',
-    modo: 'api', esfera: 'judiciario', uf: null, operacional: false,
-    bloqueio: 'Parser ainda não implementado' },
-  { sigla: 'STF', nome: 'Atos Normativos do STF', parser_key: 'stf-atos',
-    modo: 'scrape', esfera: 'judiciario', uf: null, operacional: false,
-    bloqueio: 'Sem API; lista curada desatualizada' },
-  { sigla: 'STJ', nome: 'Atos Normativos do STJ', parser_key: 'stj-atos',
-    modo: 'scrape', esfera: 'judiciario', uf: null, operacional: false,
-    bloqueio: 'BDJur atrás de Cloudflare' },
-];
+// Socket Unix local (scripts/db-dev.sh). Nada trafega pela rede, nada aqui é
+// segredo — o servidor sobe com listen_addresses=''.
+const BASE = { host: '/tmp/pgdm-dev', port: 55432, database: 'diariomonitor' };
+const poolApp     = new pg.Pool({ ...BASE, user: 'authenticated', max: 6 });
+const poolServico = new pg.Pool({ ...BASE, user: 'postgres', max: 2 });
 
-async function carregarGabaritos() {
-  if (!(await existe(FIXTURES))) return [];
-  const arquivos = (await readdir(FIXTURES)).filter((f) => f.endsWith('.expected.json')).sort();
-  const saida = [];
-  for (const nome of arquivos) saida.push(JSON.parse(await readFile(join(FIXTURES, nome), 'utf8')));
-  return saida;
-}
-
-const idDoAto = (g, i) => `${g.fonte}-${g.edicao}-${i}`;
-
-async function listarFontes() {
-  const gabs = await carregarGabaritos();
-  return FONTES.map((f) => {
-    const meus = gabs.filter((g) => g.fonte === f.sigla);
-    return {
-      ...f,
-      edicoes_ingeridas: meus.length,
-      atos_extraidos: meus.reduce((s, g) => s + g.atos.length, 0),
-      ultima_edicao: meus.map((g) => g.data_publicacao).sort().pop() ?? null,
-      validadas: meus.filter((g) => g.validado).length,
-    };
-  });
-}
-
-async function listarEdicoes() {
-  const gabs = await carregarGabaritos();
-  const saida = [];
-  for (const g of gabs) {
-    const pdf = join(FIXTURES, g.arquivo);
-    let bytes = 0, hash = null;
-    if (await existe(pdf)) {
-      const buf = await readFile(pdf);
-      bytes = buf.byteLength;
-      hash = createHash('sha256').update(buf).digest('hex').slice(0, 16);
-    }
-    saida.push({
-      fonte: g.fonte, edicao: g.edicao, data_publicacao: g.data_publicacao,
-      arquivo: g.arquivo, bytes, hash,
-      total_atos: g.atos.length,
-      validado: g.validado === true,
-      julgados: g.atos.filter((a) => a.julgamento).length,
-    });
+/**
+ * Roda `fn` dentro de uma transação com a identidade do usuário aplicada.
+ *
+ * `set local` amarra o claim à transação: ao terminar, a conexão volta ao pool
+ * sem identidade grudada. Sem o `local`, a próxima requisição herdaria o
+ * usuário da anterior — vazamento entre tenants pela porta dos fundos.
+ */
+async function comIdentidade(sessao, fn) {
+  const c = await poolApp.connect();
+  try {
+    await c.query('begin');
+    await c.query('select set_config($1, $2, true)', [
+      'request.jwt.claims',
+      JSON.stringify({ sub: sessao.auth_id, role: 'authenticated' }),
+    ]);
+    const r = await fn(c);
+    await c.query('commit');
+    return r;
+  } catch (e) {
+    await c.query('rollback').catch(() => {});
+    throw e;
+  } finally {
+    c.release();
   }
-  return saida.sort((a, b) => b.data_publicacao.localeCompare(a.data_publicacao));
 }
 
-async function listarAtos(query) {
-  const termo = (query.get('q') ?? '').trim().toLowerCase();
+// ---------------------------------------------------------------------------
+// Sessões — em memória, morrem com o dev server. Em produção é o JWT do
+// Supabase que carrega isto, e este Map desaparece.
+// ---------------------------------------------------------------------------
+const SESSOES = new Map();
+const COOKIE = 'dm_sessao';
+
+function sessaoDe(req) {
+  const bruto = req.headers.cookie ?? '';
+  const par = bruto.split(';').map((s) => s.trim()).find((s) => s.startsWith(`${COOKIE}=`));
+  return par ? SESSOES.get(par.slice(COOKIE.length + 1)) ?? null : null;
+}
+
+async function entrar({ email }) {
+  if (!email) throw new Error('informe o e-mail');
+  const { rows } = await poolServico.query(
+    'select * from public.resolver_identidade_dev($1)', [email],
+  );
+  if (!rows.length) throw new Error(`nenhum usuário com o e-mail ${email}`);
+  const token = randomUUID();
+  SESSOES.set(token, rows[0]);
+  return { token, identidade: rows[0] };
+}
+
+const identidadesDisponiveis = async () =>
+  (await poolServico.query('select * from public.identidades_disponiveis_dev()')).rows;
+
+// ---------------------------------------------------------------------------
+// Leituras — todas sob RLS
+// ---------------------------------------------------------------------------
+async function listarFontes(sessao) {
+  return comIdentidade(sessao, async (c) => (await c.query(`
+    select f.sigla, f.nome, f.parser_key, f.modo_acesso as modo, f.esfera, f.uf,
+           f.ativo as operacional, f.config_json->>'bloqueio' as bloqueio,
+           count(distinct e.id)::int                            as edicoes_ingeridas,
+           count(a.id)::int                                     as atos_extraidos,
+           max(e.data_publicacao)::text                         as ultima_edicao,
+           count(distinct v.edicao_id)::int                     as validadas
+      from public.fontes_diarios f
+      left join public.edicoes e on e.fonte_id = f.id
+      left join public.atos a    on a.edicao_id = e.id
+      left join public.validacao_edicao v on v.edicao_id = e.id
+     group by f.id
+     order by f.ativa desc, f.sigla`)).rows);
+}
+
+async function listarEdicoes(sessao) {
+  return comIdentidade(sessao, async (c) => (await c.query(`
+    select f.sigla as fonte, e.numero as edicao, e.data_publicacao::text,
+           e.numero_suplemento, e.arquivo_path as arquivo,
+           left(e.hash_sha256, 16) as hash,
+           count(a.id)::int as total_atos,
+           (v.id is not null) as validado
+      from public.edicoes e
+      join public.fontes_diarios f on f.id = e.fonte_id
+      left join public.atos a on a.edicao_id = e.id
+      left join public.validacao_edicao v on v.edicao_id = e.id
+     group by e.id, f.sigla, v.id
+     order by e.data_publicacao desc, e.numero_suplemento nulls first`)).rows);
+}
+
+async function listarAtos(sessao, query) {
+  const termo = (query.get('q') ?? '').trim();
   const fonte = query.get('fonte') ?? '';
   const de = query.get('de') ?? '';
   const ate = query.get('ate') ?? '';
-  const pagina = Number(query.get('pagina') ?? 1);
-  const porPagina = Number(query.get('porPagina') ?? 25);
+  const pagina = Math.max(1, Number(query.get('pagina') ?? 1));
+  const porPagina = Math.min(200, Math.max(1, Number(query.get('porPagina') ?? 25)));
 
-  const gabs = await carregarGabaritos();
-  let itens = [];
-  for (const g of gabs) {
-    g.atos.forEach((a, i) => {
-      itens.push({
-        id: idDoAto(g, i),
-        fonte: g.fonte, edicao: g.edicao, data_publicacao: g.data_publicacao,
-        arquivo: g.arquivo,
-        tipo: a.tipo_completo || a.tipo, numero: a.numero, ano: a.ano,
-        data_ato: a.data_ato ?? null, ementa: a.ementa ?? null,
-        trecho_original: a.trecho_original ?? null,
-        confianca: a.confianca_heuristica ?? 'media',
-        julgamento: a.julgamento ?? null,
-        // Enquanto o gabarito não foi validado por humano, o ato é PROPOSTA,
-        // não fato. Mesma regra do trigger do banco (§6.2).
-        status: g.validado ? 'ok' : 'revisao',
-      });
-    });
-  }
+  return comIdentidade(sessao, async (c) => {
+    // Busca pelo índice full-text português (conteudo_ts, alimentado pelo
+    // trigger): acento e radical resolvidos no banco, não com LIKE na memória.
+    const filtros = [];
+    const p = [];
+    if (fonte) { p.push(fonte); filtros.push(`f.sigla = $${p.length}`); }
+    if (de)    { p.push(de);    filtros.push(`e.data_publicacao >= $${p.length}`); }
+    if (ate)   { p.push(ate);   filtros.push(`e.data_publicacao <= $${p.length}`); }
+    if (termo) { p.push(termo); filtros.push(`a.conteudo_ts @@ plainto_tsquery('portuguese', $${p.length})`); }
+    const onde = filtros.length ? `where ${filtros.join(' and ')}` : '';
 
-  if (fonte) itens = itens.filter((x) => x.fonte === fonte);
-  if (de) itens = itens.filter((x) => x.data_publicacao >= de);
-  if (ate) itens = itens.filter((x) => x.data_publicacao <= ate);
-  if (termo) {
-    itens = itens.filter((x) =>
-      `${x.tipo} ${x.numero} ${x.ementa ?? ''} ${x.trecho_original ?? ''}`
-        .toLowerCase().includes(termo));
-  }
+    const { rows: [{ total }] } = await c.query(
+      `select count(*)::int as total from public.atos a
+         join public.edicoes e on e.id = a.edicao_id
+         join public.fontes_diarios f on f.id = a.fonte_id ${onde}`, p);
 
-  itens.sort((a, b) =>
-    b.data_publicacao.localeCompare(a.data_publicacao) || Number(b.numero) - Number(a.numero));
+    p.push(porPagina, (pagina - 1) * porPagina);
+    const { rows: itens } = await c.query(
+      `select a.id, f.sigla as fonte, e.numero as edicao,
+              a.data_publicacao::text, e.arquivo_path as arquivo,
+              a.tipo, a.numero, a.ano, a.data_ato::text, a.orgao_emissor,
+              a.ementa, a.texto_bruto as trecho_original,
+              a.confianca_extracao::float as confianca, a.status,
+              r.decisao as julgamento
+         from public.atos a
+         join public.edicoes e on e.id = a.edicao_id
+         join public.fontes_diarios f on f.id = a.fonte_id
+         left join public.revisao_extracao r on r.ato_id = a.id
+         ${onde}
+        order by a.data_publicacao desc, a.numero desc
+        limit $${p.length - 1} offset $${p.length}`, p);
 
-  const total = itens.length;
-  const ini = (pagina - 1) * porPagina;
-  return { itens: itens.slice(ini, ini + porPagina), total, pagina, porPagina };
+    return { itens, total, pagina, porPagina };
+  });
 }
 
-async function pendentesDeRevisao() {
-  const gabs = await carregarGabaritos();
-  return gabs
-    .filter((g) => !g.validado)
-    .map((g) => ({
-      fonte: g.fonte, edicao: g.edicao, data_publicacao: g.data_publicacao,
-      arquivo: g.arquivo, total: g.atos.length,
-      julgados: g.atos.filter((a) => a.julgamento).length,
-      atos: g.atos.map((a, i) => ({ id: idDoAto(g, i), indice: i, ...a })),
-    }))
-    .sort((a, b) => b.data_publicacao.localeCompare(a.data_publicacao));
-}
+async function pendentesDeRevisao(sessao) {
+  return comIdentidade(sessao, async (c) => {
+    const { rows: edicoes } = await c.query(`
+      select e.id, f.sigla as fonte, e.numero as edicao, e.data_publicacao::text,
+             e.numero_suplemento, e.arquivo_path as arquivo,
+             count(a.id)::int                                  as total,
+             count(r.id)::int                                  as julgados
+        from public.edicoes e
+        join public.fontes_diarios f on f.id = e.fonte_id
+        left join public.atos a on a.edicao_id = e.id
+        left join public.revisao_extracao r on r.ato_id = a.id
+       where not exists (select 1 from public.validacao_edicao v where v.edicao_id = e.id)
+       group by e.id, f.sigla
+      having count(a.id) > 0
+       order by e.data_publicacao desc, e.numero_suplemento nulls first`);
 
-/** Registra o julgamento humano de UM ato, persistindo no gabarito. */
-async function julgar({ arquivo, indice, decisao, campos }) {
-  const alvo = join(FIXTURES, arquivo.replace(/\.pdf$/, '.expected.json'));
-  const g = JSON.parse(await readFile(alvo, 'utf8'));
-  const a = g.atos[indice];
-  if (!a) throw new Error(`ato ${indice} não existe em ${arquivo}`);
-
-  a.julgamento = decisao;                     // 'ok' | 'descartado'
-  if (campos && typeof campos === 'object') {
-    for (const [k, v] of Object.entries(campos)) {
-      if (v !== undefined && v !== null && v !== '') {
-        a[k] = k === 'ano' ? Number(v) : v;
-        a.editado_por_humano = true;
-      }
+    for (const ed of edicoes) {
+      ed.atos = (await c.query(
+        `select a.id, a.tipo, a.numero, a.ano, a.data_ato::text, a.orgao_emissor,
+                a.ementa, a.texto_bruto as trecho_original,
+                a.confianca_extracao::float as confianca, r.decisao as julgamento
+           from public.atos a
+           left join public.revisao_extracao r on r.ato_id = a.id
+          where a.edicao_id = $1
+          order by a.numero`, [ed.id])).rows;
     }
-  }
-  await writeFile(alvo, `${JSON.stringify(g, null, 2)}\n`);
-  return { ok: true, julgados: g.atos.filter((x) => x.julgamento).length, total: g.atos.length };
+    return edicoes;
+  });
 }
 
-/**
- * Fecha a edição. Só marca validado=true se TODOS os atos foram julgados —
- * não existe gabarito parcial. Atos descartados saem (eram falso positivo).
- */
-async function concluir({ arquivo, validadoPor }) {
-  if (!validadoPor) throw new Error('validado_por é obrigatório: gabarito precisa de autoria');
-  const alvo = join(FIXTURES, arquivo.replace(/\.pdf$/, '.expected.json'));
-  const g = JSON.parse(await readFile(alvo, 'utf8'));
+// ---------------------------------------------------------------------------
+// Escritas do usuário — o julgamento NÃO altera o ato (append-only); vive em
+// revisao_extracao, por tenant. Ver migration 0005.
+// ---------------------------------------------------------------------------
+async function julgar(sessao, { atoId, decisao, observacao }) {
+  if (!['ok', 'descartado'].includes(decisao)) throw new Error(`decisão inválida: ${decisao}`);
+  return comIdentidade(sessao, async (c) => {
+    const { rows: [u] } = await c.query(
+      'select id from public.usuarios where auth_id = $1', [sessao.auth_id]);
+    if (!u) throw new Error('usuário da sessão não existe mais');
 
-  const semJulgar = g.atos.filter((a) => !a.julgamento).length;
-  if (semJulgar > 0) return { ok: false, motivo: `${semJulgar} ato(s) ainda sem julgamento`, semJulgar };
+    await c.query(
+      `insert into public.revisao_extracao
+         (ato_id, instituicao_id, decisao, observacao, decidido_por)
+       values ($1,$2,$3,$4,$5)
+       on conflict (ato_id, instituicao_id)
+       do update set decisao = excluded.decisao,
+                     observacao = excluded.observacao,
+                     decidido_por = excluded.decidido_por,
+                     decidido_em = now()`,
+      [atoId, sessao.instituicao_id, decisao, observacao ?? null, u.id]);
 
-  const mantidos = g.atos.filter((a) => a.julgamento === 'ok');
-  g.descartados_na_validacao = g.atos.length - mantidos.length;
-  g.atos = mantidos;
-  g.total_atos = mantidos.length;
-  g.validado = true;
-  g.validado_por = validadoPor;
-  g.validado_em = new Date().toISOString();
-  g.origem_anotacao = 'heuristica-c1.1a + validacao-humana-c1.1b';
-
-  await writeFile(alvo, `${JSON.stringify(g, null, 2)}\n`);
-  return { ok: true, validado: true, mantidos: mantidos.length, descartados: g.descartados_na_validacao };
+    const { rows: [t] } = await c.query(`
+      select count(a.id)::int as total, count(r.id)::int as julgados
+        from public.atos a
+        left join public.revisao_extracao r on r.ato_id = a.id
+       where a.edicao_id = (select edicao_id from public.atos where id = $1)`, [atoId]);
+    return { ok: true, ...t };
+  });
 }
 
-/** Dispara a ingestão real da fonte — o mesmo caminho que o cron usará. */
+/** Fecha a edição. Não existe gabarito parcial: ou todos julgados, ou nada. */
+async function concluir(sessao, { edicaoId }) {
+  return comIdentidade(sessao, async (c) => {
+    const { rows: [u] } = await c.query(
+      'select id from public.usuarios where auth_id = $1', [sessao.auth_id]);
+
+    const { rows: [t] } = await c.query(`
+      select count(a.id)::int                                              as total,
+             count(r.id)::int                                              as julgados,
+             count(*) filter (where r.decisao = 'ok')::int                 as mantidos,
+             count(*) filter (where r.decisao = 'descartado')::int         as descartados
+        from public.atos a
+        left join public.revisao_extracao r on r.ato_id = a.id
+       where a.edicao_id = $1`, [edicaoId]);
+
+    if (t.julgados < t.total) {
+      return { ok: false, motivo: `${t.total - t.julgados} ato(s) ainda sem julgamento` };
+    }
+
+    await c.query(
+      `insert into public.validacao_edicao
+         (edicao_id, instituicao_id, total_atos, mantidos, descartados, validado_por)
+       values ($1,$2,$3,$4,$5,$6)
+       on conflict (edicao_id, instituicao_id) do update
+         set total_atos = excluded.total_atos, mantidos = excluded.mantidos,
+             descartados = excluded.descartados, validado_por = excluded.validado_por,
+             validado_em = now()`,
+      [edicaoId, sessao.instituicao_id, t.total, t.mantidos, t.descartados, u.id]);
+
+    return { ok: true, ...t };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ingestão — processo de SISTEMA (poolServico). Mesmo caminho que o cron usará.
+// ---------------------------------------------------------------------------
 async function ingerir({ parserKey, datas = 3 }) {
   const { resolverParser } = await import('../services/ingest/registry.mjs');
   const P = await resolverParser(parserKey);
@@ -230,12 +314,7 @@ async function ingerir({ parserKey, datas = 3 }) {
     await writeFile(destino, buffer);
     resultado.baixadas++;
 
-    // Captura sem extração não entrega nada: a tela de Publicações continuaria
-    // vazia. Pré-anota já aqui para o operador ver o resultado no mesmo clique.
-    //
-    // O especificador é COMPUTADO de propósito: o esbuild bundla o vite.config
-    // e tudo que ele importa; com string literal ele arrastaria o script pra
-    // dentro do bundle e quebraria no shebang. Variável = import opaco.
+    // Captura sem extração não entrega nada: Publicações continuaria vazia.
     const { preAnotarArquivo } = await import(CAMINHO_PRE_ANOTAR);
     const anotacao = await preAnotarArquivo(`${id}.pdf`);
     resultado.atosExtraidos += anotacao.atos;
@@ -245,6 +324,16 @@ async function ingerir({ parserKey, datas = 3 }) {
       hash: createHash('sha256').update(buffer).digest('hex').slice(0, 16),
       atos: anotacao.atos,
     });
+  }
+
+  // Grava no acervo pelo MESMO caminho do CLI (idempotente). Reimplementar o
+  // mapeamento gabarito→banco aqui criaria uma segunda verdade que divergiria.
+  const { carregarTudo } = await import(CAMINHO_CARREGADOR);
+  const c = await poolServico.connect();
+  try {
+    resultado.gravado = await carregarTudo(c);
+  } finally {
+    c.release();
   }
   return resultado;
 }
@@ -261,9 +350,10 @@ export default function apiDev() {
 
         const url = new URL(req.url, 'http://localhost');
         const rota = url.pathname;
-        const responder = (status, corpo) => {
+        const responder = (status, corpo, cookie) => {
           res.statusCode = status;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          if (cookie) res.setHeader('Set-Cookie', cookie);
           res.end(JSON.stringify(corpo));
         };
         const corpoDaRequisicao = () => new Promise((resolve, reject) => {
@@ -274,13 +364,41 @@ export default function apiDev() {
         });
 
         try {
-          if (req.method === 'GET'  && rota === '/api/fontes')  return responder(200, await listarFontes());
-          if (req.method === 'GET'  && rota === '/api/edicoes') return responder(200, await listarEdicoes());
-          if (req.method === 'GET'  && rota === '/api/atos')    return responder(200, await listarAtos(url.searchParams));
-          if (req.method === 'GET'  && rota === '/api/revisao') return responder(200, await pendentesDeRevisao());
+          // --- rotas abertas (é o que se usa ANTES de ter sessão) ----------
+          if (req.method === 'GET' && rota === '/api/sessao/identidades') {
+            return responder(200, await identidadesDisponiveis());
+          }
+          if (req.method === 'POST' && rota === '/api/sessao/entrar') {
+            const { token, identidade } = await entrar(await corpoDaRequisicao());
+            return responder(200, identidade,
+              `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax`);
+          }
+
+          const sessao = sessaoDe(req);
+
+          if (req.method === 'POST' && rota === '/api/sessao/sair') {
+            const bruto = req.headers.cookie ?? '';
+            const par = bruto.split(';').map((s) => s.trim()).find((s) => s.startsWith(`${COOKIE}=`));
+            if (par) SESSOES.delete(par.slice(COOKIE.length + 1));
+            return responder(200, { ok: true }, `${COOKIE}=; Path=/; HttpOnly; Max-Age=0`);
+          }
+
+          // --- daqui pra baixo, exige sessão ------------------------------
+          // Não é formalidade: as policies de atos/edicoes/fontes exigem
+          // auth.uid() não-nulo. Sem sessão o banco devolveria zero linhas —
+          // melhor um 401 claro do que uma tela vazia inexplicável.
+          if (!sessao) return responder(401, { erro: 'sem sessão' });
+
+          if (req.method === 'GET' && rota === '/api/sessao')  return responder(200, sessao);
+          if (req.method === 'GET' && rota === '/api/fontes')  return responder(200, await listarFontes(sessao));
+          if (req.method === 'GET' && rota === '/api/edicoes') return responder(200, await listarEdicoes(sessao));
+          if (req.method === 'GET' && rota === '/api/atos')    return responder(200, await listarAtos(sessao, url.searchParams));
+          if (req.method === 'GET' && rota === '/api/revisao') return responder(200, await pendentesDeRevisao(sessao));
+
           if (req.method === 'POST' && rota === '/api/ingest')           return responder(200, await ingerir(await corpoDaRequisicao()));
-          if (req.method === 'POST' && rota === '/api/revisao/julgar')   return responder(200, await julgar(await corpoDaRequisicao()));
-          if (req.method === 'POST' && rota === '/api/revisao/concluir') return responder(200, await concluir(await corpoDaRequisicao()));
+          if (req.method === 'POST' && rota === '/api/revisao/julgar')   return responder(200, await julgar(sessao, await corpoDaRequisicao()));
+          if (req.method === 'POST' && rota === '/api/revisao/concluir') return responder(200, await concluir(sessao, await corpoDaRequisicao()));
+
           return responder(404, { erro: `rota ${req.method} ${rota} não existe` });
         } catch (e) {
           // Falha explícita: o app mostra o erro real, não engole.
