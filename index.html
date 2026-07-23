@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DiárioMonitor — Gestão de Atos Normativos</title>
+    <script>
+      // Tema institucional (Nexvy Lux: navy #213156 + ouro #9f702f) aplicado
+      // antes do primeiro paint. O DiarioMonitor e produto de gestao — nunca
+      // Beauty Rose. Ver PRD v2.1 §7.1.1.
+      (function () {
+        var el = document.documentElement;
+        el.classList.add('theme-nexvy-institucional');
+        if (localStorage.getItem('theme') === 'dark') el.classList.add('dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
