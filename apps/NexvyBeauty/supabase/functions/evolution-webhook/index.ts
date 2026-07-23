@@ -933,6 +933,38 @@ Deno.serve(async (req) => {
     console.log(`[evolution-webhook] B3-SHADOW ${gate.ok ? "would_pass" : "would_block:" + gate.reason}`
       + ` instance=${rawInstance || "<none>"} event=${rawEvent}`
       + ` tokenPresent=${extractWebhookToken(payload, req.headers) !== ""}`);
+
+    // ---- B3-PROBE: instrumentação para decidir o flip sem uma 2ª rodada de espera.
+    // `tokenPresent` acima diz SE achou token, não DE ONDE veio. A dúvida que trava o
+    // flip é exatamente essa: o Evolution Go ecoa o `instance_token` no corpo, ou o
+    // token que aparece é outro (a global api key, por exemplo)? Sem saber a origem,
+    // enforce é chute.
+    // Loga só NOMES de campo e qual slot continha o token — nunca valores. Uma linha
+    // por request; sai daqui quando o flip acontecer.
+    try {
+      const slot =
+        (typeof payload?.apikey === "string" && payload.apikey.trim() && "body.apikey") ||
+        (typeof payload?.data?.apikey === "string" && payload.data.apikey.trim() && "body.data.apikey") ||
+        (req.headers.get("apikey")?.trim() && "header.apikey") ||
+        (req.headers.get("x-webhook-token")?.trim() && "header.x-webhook-token") ||
+        (/^Bearer\s+.+$/i.test(req.headers.get("authorization") ?? "") && "header.authorization") ||
+        "<nenhum>";
+      console.log(`[evolution-webhook] B3-PROBE origem=${slot}`
+        + ` bodyKeys=[${Object.keys(payload ?? {}).join(",")}]`
+        + ` dataKeys=[${Object.keys(payload?.data ?? {}).slice(0, 12).join(",")}]`);
+
+      // Grava tambem em TABELA: a API de logs que conseguimos consultar devolve so
+      // as linhas de requisicao, nao o console. Sem isto, decidir o flip dependeria
+      // de alguem abrir o painel e ler log na mao.
+      await supabase.from("b3_probe_webhook").insert({
+        instancia: String(rawInstance || ""),
+        evento: String(rawEvent || ""),
+        origem_token: slot,
+        token_confere: gate.ok,
+        body_keys: Object.keys(payload ?? {}),
+        data_keys: Object.keys(payload?.data ?? {}).slice(0, 12),
+      });
+    } catch { /* diagnóstico nunca derruba o webhook */ }
     // SEM return — segue o processamento normal
 
     // ---- F6: HISTÓRICO (syncFullHistory) → carteira de clientes ----
