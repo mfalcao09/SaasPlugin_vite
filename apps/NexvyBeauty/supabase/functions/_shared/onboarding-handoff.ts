@@ -71,7 +71,10 @@ const LIA_GREETING_BUBBLES_WITH_LINK = [
   'Duas dicas: o link abre em um navegador por vez (se aparecer "em uso", é só tocar em "Usar neste navegador"). E o último passo tem um QR code pra conectar o WhatsApp do espaço — abre o link no computador ou em outro celular, porque o QR precisa ser escaneado com o SEU 😉 Qualquer dúvida, me chama aqui!',
 ];
 
-const ONBOARDING_LINK_TTL_MS = 72 * 60 * 60 * 1000;
+// 21 dias (era 72h). Quem compra numa sexta e só senta na terça seguinte NÃO pode
+// ficar trancado do lado de fora do que pagou — e não há tela de reemissão de link.
+// 21 dias cobre folga/viagem sem deixar o token válido eternamente.
+const ONBOARDING_LINK_TTL_MS = 21 * 24 * 60 * 60 * 1000;
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://app.nexvybeauty.com.br').replace(/\/+$/, '');
 
 // Token no MESMO formato do demo-start/create_onboarding_link: 32 bytes
