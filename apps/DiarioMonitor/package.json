@@ -16,7 +16,8 @@
     "gates": "npm run test:rls && npm run test:ingest:doms && npm run test:parser:contract && npm run test:gabarito:formato",
     "ingest": "node scripts/ingest.mjs",
     "gabarito": "node scripts/pre-anotar.mjs",
-    "test:gabarito:formato": "./scripts/test-gabarito-formato.sh"
+    "test:gabarito:formato": "./scripts/test-gabarito-formato.sh",
+    "validador": "node tools/gerar-validador.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
