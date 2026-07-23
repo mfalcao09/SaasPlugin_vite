@@ -131,4 +131,25 @@ select case when count(*) = 1 then 'PASS' else 'FAIL' end as resultado,
   join public.edicoes e on e.id = a.edicao_id
  where e.numero = 'T9' and a.origem_extracao = 'xml' and a.confianca_extracao = 1.00;
 
+-- ---------------------------------------------------------------------------
+-- T11/T12 — VIEWS. Adicionados apos vazamento real encontrado no card C1.3:
+-- view sem security_invoker roda com privilegio do DONO e IGNORA a RLS da
+-- tabela base. O gate anterior so testava TABELAS e por isso passou 10/10
+-- com o isolamento furado. Um gate so protege a superficie que mede.
+-- ---------------------------------------------------------------------------
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated"}';
+
+select case when (select count(*) from public.fila_revisao_relacoes)
+                 = (select count(*) from public.norma_relacoes where status = 'proposta')
+            then 'PASS' else 'FAIL' end as resultado,
+       'T11: view fila_revisao_relacoes nao expoe mais que a tabela (cross-tenant)' as teste;
+
+reset role;
+
+select case when count(*) = 0 then 'PASS' else 'FAIL' end as resultado,
+       'T12: nenhuma view de public sem security_invoker (' ||
+       coalesce(string_agg(view_name, ', '), 'nenhuma') || ')' as teste
+  from public.views_sem_security_invoker();
+
 rollback;

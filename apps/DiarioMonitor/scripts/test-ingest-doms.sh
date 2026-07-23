@@ -55,7 +55,10 @@ create table if not exists auth.users (id uuid primary key, email text);
 create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
 SQL
 
-"$PGBIN/psql" -v ON_ERROR_STOP=1 -q -d "$DB" -f "$MIGRATION"   >/dev/null 2>&1 || { echo "ERRO: migration";      exit 1; }
+for M in "$HERE"/supabase/migrations/*.sql; do
+  "$PGBIN/psql" -v ON_ERROR_STOP=1 -q -d "$DB" -f "$M" >/dev/null 2>&1 \
+    || { echo "ERRO: migration $(basename "$M")"; exit 1; }
+done
 "$PGBIN/psql" -v ON_ERROR_STOP=1 -q -d "$DB" -f "$SQL_EDICOES" >/dev/null 2>&1 || { echo "ERRO: insert edicoes"; exit 1; }
 
 echo "=== GATE C0.4 — ingestão DO/MS ==="
