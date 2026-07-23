@@ -58,6 +58,28 @@ const RE_PORT_TJMS = /\(Port\.?\s*n\.?\s*º?\s*(\d+)\s*\/\s*(\d{4})\)/gi;
 const RE_RELACAO_TJMS =
   /(Revogar|Alterar|Tornar sem efeito|Retificar)[,\s][\s\S]{0,80}?Portaria\s*n\.?\s*º?\s*(\d+)\s*\/\s*(\d{4})/gi;
 
+// Âncoras de INÍCIO de ato, da mais específica para a mais genérica.
+//
+// Recortar por contagem de caracteres (o antigo `corpo.slice(-900)`) errava de
+// dois jeitos, os dois vistos na Fila de Revisão: corpo longo -> os 900 caíam no
+// meio do acórdão anterior ("fo único, do CPC)"); corpo curto -> devolvia o
+// corpo inteiro, que começa na ASSINATURA do ato anterior ("(a) Desembargador
+// FULANO Presidente"). O texto tem fronteira explícita — usar ela.
+const ANCORAS_DJMS = [
+  /Portarias?\s+assinadas?\s+pel[oa]\s+Excelent[íi]ssim[oa]/gi,
+  /\bR\s?E\s?S\s?O\s?L\s?V\s?E\s?:/g,
+  /(?:Conceder|Designar|Revogar|Exonerar|Nomear|Dispensar|Tornar sem efeito|Retificar|Autorizar|Prorrogar|Instituir|Alterar)\b/g,
+];
+
+/** Recorta o corpo a partir da última âncora encontrada (fim do ato anterior). */
+function recortarAtoDJMS(corpo) {
+  for (const re of ANCORAS_DJMS) {
+    const ms = [...corpo.matchAll(re)];
+    if (ms.length) return corpo.slice(ms[ms.length - 1].index);
+  }
+  return corpo.slice(-900);   // nenhuma âncora: mantém o comportamento antigo
+}
+
 function anotarDJMS(texto) {
   const atos = [];
   const revisar = [];
@@ -73,8 +95,8 @@ function anotarDJMS(texto) {
       /(Conceder|Designar|Revogar|Exonerar|Nomear|Dispensar|Tornar sem efeito|Retificar|Autorizar|Prorrogar|Instituir|Alterar)[\s\S]{0,400}$/i,
     );
     // TRECHO ORIGINAL: o humano nao consegue julgar sem ver o texto do diario.
-    // Guardamos o fim do corpo (onde o ato de fato esta) + a marca do numero.
-    const trecho = limpar(corpo.slice(-900)) + ' ' + m[0];
+    // Recorta da fronteira do ato (ver ANCORAS_DJMS) + a marca do numero.
+    const trecho = limpar(recortarAtoDJMS(corpo)) + ' ' + m[0];
 
     atos.push({
       tipo: 'Portaria',

@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Download, Loader2, RefreshCw, Search, Check, X, FileText, AlertTriangle,
+  Download, Loader2, RefreshCw, Search, Check, X, FileText, AlertTriangle, Database,
 } from 'lucide-react';
 
 // ============================================================================
 // Telas do DiárioMonitor — camada de APRESENTAÇÃO (PRD §7.2.3)
 //
-// Nenhuma query, nenhuma regra de negócio: tudo vem de /api/*, que em produção
-// vira Edge Function. Estilo token-only (bg-primary, text-muted-foreground) —
-// o componente nunca sabe o hue; o tema entra pela classe no <html>.
+// Nenhuma query, nenhuma regra de negócio: tudo vem de /api/*, que consulta o
+// Postgres sob RLS com a identidade da sessão. O que aparece aqui é o que a
+// política do banco permite à instituição de quem está logado — não um filtro
+// de front-end, que qualquer um contornaria.
+//
+// Estilo token-only (bg-primary, text-muted-foreground): o componente nunca
+// sabe o hue; o tema entra pela classe no <html>.
 // ============================================================================
 
-/** Leitura de API sem biblioteca: useState + AbortController + gatilho de recarga. */
+/** Leitura de API sem biblioteca: useState + AbortController + gatilho. */
 function useApi<T>(url: string, deps: unknown[] = []) {
   const [dados, setDados] = useState<T | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -76,20 +80,25 @@ const Erro = ({ mensagem }: { mensagem: string }) => (
   </div>
 );
 
+/** "12228 · supl. 2" — sem isto três edições do mesmo dia ficam idênticas. */
+const rotuloEdicao = (numero: string, suplemento: number | null) =>
+  suplemento ? `${numero} · supl. ${suplemento}` : numero;
+
 // ---------------------------------------------------------------------------
 // 1. FONTES — onde a captura é disparada
 // ---------------------------------------------------------------------------
 type Fonte = {
   sigla: string; nome: string; parser_key: string; modo: string;
-  esfera: string; uf: string;
-  operacional: boolean; bloqueio?: string;
+  esfera: string; uf: string | null;
+  operacional: boolean; bloqueio: string | null;
   edicoes_ingeridas: number; atos_extraidos: number;
   ultima_edicao: string | null; validadas: number;
 };
 
 type Ingestao = {
   fonte: string; encontradas: number; baixadas: number; jaExistiam: number;
-  atosExtraidos?: number;
+  atosExtraidos: number;
+  gravado?: { edicoes: number; atos: number };
   edicoes: { id: string; status: string; data: string; bytes?: number; hash?: string }[];
 };
 
@@ -100,7 +109,7 @@ export function TelaFontes() {
 
   async function executar(f: Fonte) {
     setRodando(f.parser_key);
-    setSaida((s) => { const { [f.sigla]: _, ...resto } = s; return resto; });
+    setSaida((s) => { const { [f.sigla]: _descartado, ...resto } = s; return resto; });
     try {
       const r = await postar<Ingestao>('/api/ingest', { parserKey: f.parser_key, datas: 3 });
       setSaida((s) => ({ ...s, [f.sigla]: r }));
@@ -135,7 +144,7 @@ export function TelaFontes() {
                     <h3 className="text-sm font-semibold text-foreground">{f.nome}</h3>
                   </div>
                   <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    {f.parser_key} · {f.modo} · {f.esfera}/{f.uf}
+                    {f.parser_key} · {f.modo} · {f.esfera}{f.uf ? `/${f.uf}` : ''}
                     {f.ultima_edicao && ` · última: ${f.ultima_edicao}`}
                   </p>
                   {!f.operacional && f.bloqueio && (
@@ -164,23 +173,27 @@ export function TelaFontes() {
                 </div>
               </div>
 
-              {typeof r === 'string' && (
-                <p className="mt-3 text-[13px] text-destructive">{r}</p>
-              )}
+              {typeof r === 'string' && <p className="mt-3 text-[13px] text-destructive">{r}</p>}
               {r && typeof r !== 'string' && (
                 <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
                   <p className="text-[13px] text-foreground">
                     <b className="tabular-nums">{r.baixadas}</b> nova(s) ·{' '}
                     <b className="tabular-nums">{r.jaExistiam}</b> já ingerida(s) de{' '}
-                    <b className="tabular-nums">{r.encontradas}</b> encontrada(s)
-                    {typeof r.atosExtraidos === 'number' && <> · <b className="tabular-nums">{r.atosExtraidos}</b> ato(s) extraído(s)</>}
+                    <b className="tabular-nums">{r.encontradas}</b> encontrada(s) ·{' '}
+                    <b className="tabular-nums">{r.atosExtraidos}</b> ato(s) extraído(s)
                   </p>
+                  {r.gravado && (
+                    <p className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                      <Database className="h-3 w-3" />
+                      gravado no acervo: {r.gravado.edicoes} edição(ões), {r.gravado.atos} ato(s)
+                    </p>
+                  )}
                   <ul className="mt-2 space-y-0.5">
                     {r.edicoes.map((e) => (
                       <li key={e.id} className="font-mono text-[11px] text-muted-foreground">
                         {e.status === 'baixada' ? '↓' : '·'} {e.id} — {e.data}
-                        {e.bytes && ` · ${Math.round(e.bytes / 1024)} KB`}
-                        {e.hash && ` · sha256:${e.hash}`}
+                        {e.bytes ? ` · ${Math.round(e.bytes / 1024)} KB` : ''}
+                        {e.hash ? ` · sha256:${e.hash}` : ''}
                       </li>
                     ))}
                   </ul>
@@ -195,14 +208,14 @@ export function TelaFontes() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. PUBLICAÇÕES — o resultado da captura
+// 2. PUBLICAÇÕES — o acervo, com busca full-text do Postgres
 // ---------------------------------------------------------------------------
 type Ato = {
   id: string; fonte: string; edicao: string; data_publicacao: string; arquivo: string;
   tipo: string; numero: string; ano: number; data_ato: string | null;
-  orgao_emissor?: string;
+  orgao_emissor: string | null;
   ementa: string | null; trecho_original: string | null;
-  status?: string; julgamento?: string | null;
+  confianca: number | null; status: string; julgamento: string | null;
 };
 
 export function TelaPublicacoes() {
@@ -216,7 +229,10 @@ export function TelaPublicacoes() {
 
   return (
     <div>
-      <Cabecalho titulo="Publicações" sub="Atos normativos extraídos das edições já capturadas." />
+      <Cabecalho
+        titulo="Publicações"
+        sub="Atos normativos extraídos das edições capturadas. A busca usa o índice full-text em português do banco."
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-[220px] flex-1">
@@ -266,6 +282,11 @@ export function TelaPublicacoes() {
                     <span className="text-sm font-semibold text-foreground">
                       {a.tipo} n. {a.numero}/{a.ano}
                     </span>
+                    {a.julgamento === 'ok' && (
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary">
+                        conferido
+                      </span>
+                    )}
                     <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
                       ed. {a.edicao} · {a.data_publicacao}
                     </span>
@@ -297,29 +318,28 @@ export function TelaPublicacoes() {
 }
 
 // ---------------------------------------------------------------------------
-// 3. FILA DE REVISÃO — a validação acontece aqui dentro, não em planilha
+// 3. FILA DE REVISÃO — a validação acontece aqui dentro
 // ---------------------------------------------------------------------------
 type EdicaoRevisao = {
-  fonte: string; edicao: string; data_publicacao: string; arquivo: string;
+  id: string; fonte: string; edicao: string; data_publicacao: string;
+  numero_suplemento: number | null; arquivo: string;
   total: number; julgados: number;
-  atos: (Ato & { indice: number; confianca_heuristica?: string })[];
+  atos: Ato[];
 };
 
 export function TelaRevisao() {
   const { dados, carregando, erro, recarregar } = useApi<EdicaoRevisao[]>('/api/revisao');
   const [aberta, setAberta] = useState<string | null>(null);
-  const [quem, setQuem] = useState('');
   const [aviso, setAviso] = useState('');
 
-  const julgar = async (ed: EdicaoRevisao, indice: number, decisao: 'ok' | 'descartado') => {
-    await postar('/api/revisao/julgar', { arquivo: ed.arquivo, indice, decisao });
+  const julgar = async (atoId: string, decisao: 'ok' | 'descartado') => {
+    await postar('/api/revisao/julgar', { atoId, decisao });
     recarregar();
   };
 
   async function concluir(ed: EdicaoRevisao) {
-    if (!quem.trim()) { setAviso('Informe seu nome — o gabarito precisa de autoria.'); return; }
     const r = await postar<{ ok: boolean; motivo?: string; mantidos?: number; descartados?: number }>(
-      '/api/revisao/concluir', { arquivo: ed.arquivo, validadoPor: quem.trim() },
+      '/api/revisao/concluir', { edicaoId: ed.id },
     );
     setAviso(r.ok
       ? `Edição ${ed.edicao} validada: ${r.mantidos} ato(s) confirmados, ${r.descartados} descartado(s).`
@@ -336,21 +356,12 @@ export function TelaRevisao() {
     <div>
       <Cabecalho
         titulo="Fila de Revisão"
-        sub="A extração propõe; a pessoa decide. Nenhum ato entra no acervo ou no boletim sem passar por aqui."
+        sub="A extração propõe; a pessoa decide. Nenhum ato entra no acervo validado ou no boletim sem passar por aqui."
       />
 
-      <div className="surface-card mb-4 flex flex-wrap items-center gap-3 p-4">
-        <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Validado por
-        </label>
-        <input
-          value={quem}
-          onChange={(e) => setQuem(e.target.value)}
-          placeholder="seu nome"
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-        />
-        {aviso && <span className="text-[13px] text-foreground">{aviso}</span>}
-      </div>
+      {aviso && (
+        <div className="surface-card mb-4 p-4 text-[13px] text-foreground">{aviso}</div>
+      )}
 
       {pendentes.length === 0 && (
         <div className="surface-card p-8 text-center text-sm text-muted-foreground">
@@ -360,17 +371,19 @@ export function TelaRevisao() {
 
       <div className="space-y-3">
         {pendentes.map((ed) => {
-          const aberto = aberta === ed.arquivo;
+          const aberto = aberta === ed.id;
           return (
-            <div key={ed.arquivo} className="surface-card overflow-hidden">
+            <div key={ed.id} className="surface-card overflow-hidden">
               <button
-                onClick={() => setAberta(aberto ? null : ed.arquivo)}
+                onClick={() => setAberta(aberto ? null : ed.id)}
                 className="flex w-full flex-wrap items-center gap-3 p-4 text-left hover:bg-muted/40"
               >
                 <span className="rounded bg-primary px-2 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
                   {ed.fonte}
                 </span>
-                <span className="text-sm font-semibold text-foreground">Edição {ed.edicao}</span>
+                <span className="text-sm font-semibold text-foreground">
+                  Edição {rotuloEdicao(ed.edicao, ed.numero_suplemento)}
+                </span>
                 <span className="font-mono text-[11px] text-muted-foreground">{ed.data_publicacao}</span>
                 <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
                   {ed.julgados}/{ed.total} julgados
@@ -392,7 +405,7 @@ export function TelaRevisao() {
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-foreground">
                             {a.tipo} n. {a.numero}/{a.ano}
-                            {a.confianca_heuristica === 'baixa' && (
+                            {a.confianca !== null && a.confianca < 0.5 && (
                               <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-destructive">
                                 confiança baixa
                               </span>
@@ -408,7 +421,7 @@ export function TelaRevisao() {
                         <div className="flex shrink-0 gap-2">
                           <button
                             title="Confere com o texto publicado"
-                            onClick={() => julgar(ed, a.indice, 'ok')}
+                            onClick={() => julgar(a.id, 'ok')}
                             className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
                               a.julgamento === 'ok'
                                 ? 'border-primary bg-primary text-primary-foreground'
@@ -417,8 +430,8 @@ export function TelaRevisao() {
                             <Check className="h-4 w-4" />
                           </button>
                           <button
-                            title="Falso positivo — não é um ato publicado hoje"
-                            onClick={() => julgar(ed, a.indice, 'descartado')}
+                            title="Falso positivo — não é um ato publicado nesta edição"
+                            onClick={() => julgar(a.id, 'descartado')}
                             className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
                               a.julgamento === 'descartado'
                                 ? 'border-destructive bg-destructive text-destructive-foreground'
