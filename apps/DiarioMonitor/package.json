@@ -13,7 +13,7 @@
     "test:ingest:doms": "./scripts/test-ingest-doms.sh",
     "test:parser:contract": "./scripts/test-parser-contract.sh",
     "ingest:doms": "node scripts/ingest-doms.mjs",
-    "gates": "npm run test:rls && npm run test:schema:campos && npm run test:fila-revisao && npm run test:ingest:doms && npm run test:ingest:dou && npm run test:ingest:cnj && npm run test:parser:contract && npm run test:hooks:publicacoes && npm run test:gabarito:formato",
+    "gates": "npm run test:rls && npm run test:schema:campos && npm run test:fila-revisao && npm run test:ingest:doms && npm run test:ingest:dou && npm run test:ingest:cnj && npm run test:ingest:stjda && npm run test:parser:contract && npm run test:hooks:publicacoes && npm run test:gabarito:formato",
     "ingest": "node scripts/ingest.mjs",
     "gabarito": "node scripts/pre-anotar.mjs",
     "db": "./scripts/db-dev.sh",
@@ -27,7 +27,8 @@
     "test:fila-revisao": "./scripts/test-fila-revisao.sh",
     "test:hooks:publicacoes": "./scripts/test-hooks-publicacoes.sh",
     "test:ingest:dou": "./scripts/test-ingest-dou.sh",
-    "test:ingest:cnj": "./scripts/test-ingest-cnj.sh"
+    "test:ingest:cnj": "./scripts/test-ingest-cnj.sh",
+    "test:ingest:stjda": "./scripts/test-ingest-stjda.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",
