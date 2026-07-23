@@ -16,8 +16,9 @@
       "ano": 2026,
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
-      "ementa": null,
-      "confianca_heuristica": "baixa"
+      "ementa": "Conceder ao Des. JOÃO MARIA LÓS, Membro do Tribunal de Justiça do Estado de Mato Grosso do Sul, 7 (sete) dias de licença luto, no período de 17 a 23/7/2026, nos termos do artigo 42, inciso III, alínea “b”, e art. 152, inciso XIV, ambos do RITJ/MS, designando a magistrada Denize de Barros Dodero para substituí-lo no referido lapso temporal, em todos os órgãos colegiados deste Sodalício. P. R. C.",
+      "trecho_original": "a Portaria entra em vigor na data de sua publicação. Leia-se: Art. 2º Esta Portaria entra em vigor na data de sua publicação, com efeitos a partir de 1º de agosto de 2026. Secretaria da Magistratura Portaria assinada pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 16/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, RESOLVE: Conceder ao Des. JOÃO MARIA LÓS, Membro do Tribunal de Justiça do Estado de Mato Grosso do Sul, 7 (sete) dias de licença luto, no período de 17 a 23/7/2026, nos termos do artigo 42, inciso III, alínea “b”, e art. 152, inciso XIV, ambos do RITJ/MS, designando a magistrada Denize de Barros Dodero para substituí-lo no referido lapso temporal, em todos os órgãos colegiados deste Sodalício. P. R. C. (Port. n.º 2227/2026)",
+      "confianca_heuristica": "media"
     },
     {
       "tipo": "Portaria",
@@ -25,8 +26,9 @@
       "ano": 2026,
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
-      "ementa": null,
-      "confianca_heuristica": "baixa"
+      "ementa": "Alterar, a pedido, a Portaria n.º 1586/2026, publicada no D.J. n.º 5877, de 1º/6/2026, na parte em que estabeleceu as férias de JOSÉ HENRIQUE NEIVA DE CARVALHO E SILVA, Juiz de Direito da Vara Regional de Falências, Recuperações e de Cartas Precatórias Cíveis em Geral da comarca de Campo Grande, referentes ao ano de 2026, de 24/7 a 7/8/2026 para serem gozadas no período de 4 a 18/12/2026. P. R. C.",
+      "trecho_original": ". 2º Os magistrados plantonistas substituir-se-ão entre si em casos de impedimento ou suspeição. P. R. C. Campo Grande, 15 de julho de 2026. (a)Desembargador DORIVAL RENATO PAVAN Presidente Portaria assinada pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 15/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, R E S O L V E: Alterar, a pedido, a Portaria n.º 1586/2026, publicada no D.J. n.º 5877, de 1º/6/2026, na parte em que estabeleceu as férias de JOSÉ HENRIQUE NEIVA DE CARVALHO E SILVA, Juiz de Direito da Vara Regional de Falências, Recuperações e de Cartas Precatórias Cíveis em Geral da comarca de Campo Grande, referentes ao ano de 2026, de 24/7 a 7/8/2026 para serem gozadas no período de 4 a 18/12/2026. P. R. C. (Port. n.º 2214/2026)",
+      "confianca_heuristica": "media"
     }
   ],
   "relacoes_sugeridas": [
@@ -40,8 +42,5 @@
       "trecho": "Alterar, a pedido, a Portaria n.º 1586/2026"
     }
   ],
-  "revisar": [
-    "Portaria 2227/2026: não foi possível isolar a ementa",
-    "Portaria 2214/2026: não foi possível isolar a ementa"
-  ]
+  "revisar": []
 }

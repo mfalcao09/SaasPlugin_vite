@@ -107,6 +107,11 @@ function montarHtml(gabaritos) {
   .ementa{font-size:13.5px;color:var(--fg-dim);margin-bottom:5px}
   .ementa.vazia{color:#b91c1c;font-style:italic}
   .meta{font:11.5px/1.5 var(--mono);color:var(--fg-mute)}
+  .fonte-txt{margin:8px 0 4px;padding:10px 13px;background:#fffdf5;border:1px solid #f0e6cc;
+    border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font:13px/1.65 Georgia,'Times New Roman',serif;
+    color:#3f3f46;max-height:150px;overflow-y:auto}
+  .fonte-lbl{font:700 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:5px;display:block}
   .tag{display:inline-block;padding:1px 7px;border-radius:4px;font:600 10.5px/1.6 var(--mono);margin-right:5px}
   .t-baixa{background:#fee2e2;color:#991b1b} .t-media{background:#fef3c7;color:#92400e}
   .acoes{display:flex;gap:6px}
@@ -141,11 +146,15 @@ function montarHtml(gabaritos) {
 
 <div class="wrap">
   <div class="aviso">
-    <b>O que é isto.</b> A máquina propôs estes atos por heurística — ela erra, e nada aqui
-    vale como gabarito até você julgar. <b>✓</b> confirma que o ato existe e está correto;
-    <b>✗</b> descarta (falso positivo). Os campos podem ser corrigidos direto.
-    Atos marcados <span class="tag t-baixa">baixa</span> são os que a heurística não conseguiu
-    ler bem — comece por eles. Ao terminar, <b>Baixar validados</b> gera os arquivos do repositório.
+    <b>O que você está fazendo aqui.</b> A máquina leu os PDFs do diário e propôs esta lista
+    de atos. Ela erra. Seu julgamento é o que vira <i>gabarito</i> — a régua contra a qual a IA
+    será medida depois. Sem isso, a IA seria avaliada por ela mesma.<br><br>
+    <b>Como julgar cada ato:</b> leia o bloco bege (<i>texto no diário oficial</i>) e compare com
+    o cabeçalho acima dele. Bate o tipo, o número e o ano? Clique <b>✓</b>. É um falso positivo —
+    algo que não é ato, ou está duplicado? Clique <b>✗</b>. Se um campo estiver errado, corrija no
+    formulário: o que você digitar é o que vale.<br><br>
+    <b>Se notar um ato do diário que NÃO está na lista</b>, me avise a edição — falso negativo é
+    mais grave, porque nenhum teste detecta ausência.
   </div>
   <div id="lista"></div>
 </div>
@@ -161,6 +170,7 @@ function montarHtml(gabaritos) {
 const GABARITOS = ${dados};
 const estado = {};   // "arquivo#indice" -> 'ok' | 'bad'
 const chave = (a, i) => a + '#' + i;
+const esc = (t) => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 function render() {
   document.getElementById('lista').innerHTML = GABARITOS.map((g, gi) => {
@@ -172,7 +182,8 @@ function render() {
         <div class="idx">\${String(i + 1).padStart(2, '0')}</div>
         <div>
           <div class="cab">\${a.tipo_completo || a.tipo} <span class="num">n. \${a.numero}/\${a.ano}</span></div>
-          <div class="ementa \${a.ementa ? '' : 'vazia'}">\${a.ementa || 'sem ementa — a heurística não isolou o dispositivo'}</div>
+          \${a.trecho_original ? \`<div class="fonte-txt"><span class="fonte-lbl">texto no diário oficial</span>\${esc(a.trecho_original)}</div>\` : ''}
+          <div class="ementa \${a.ementa ? '' : 'vazia'}">\${a.ementa ? '<b>Ementa extraída:</b> ' + esc(a.ementa) : 'ementa não isolada — confira no texto acima'}</div>
           <div class="meta"><span class="tag t-\${conf}">\${conf}</span>
             data do ato: \${a.data_ato || '—'} · órgão: \${a.orgao_emissor || '—'}</div>
           <div class="campos">

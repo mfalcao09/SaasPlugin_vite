@@ -70,15 +70,20 @@ function anotarDJMS(texto) {
     anterior = m.index + m[0].length;
 
     const disp = corpo.match(
-      /(Conceder|Designar|Revogar|Exonerar|Nomear|Dispensar|Tornar sem efeito|Retificar|Autorizar|Prorrogar|Instituir|Alterar)[\s\S]{0,240}$/i,
+      /(Conceder|Designar|Revogar|Exonerar|Nomear|Dispensar|Tornar sem efeito|Retificar|Autorizar|Prorrogar|Instituir|Alterar)[\s\S]{0,400}$/i,
     );
+    // TRECHO ORIGINAL: o humano nao consegue julgar sem ver o texto do diario.
+    // Guardamos o fim do corpo (onde o ato de fato esta) + a marca do numero.
+    const trecho = limpar(corpo.slice(-900)) + ' ' + m[0];
+
     atos.push({
       tipo: 'Portaria',
       numero: m[1],
       ano: Number(m[2]),
       data_ato: null,            // não aparece por ato; fica para o humano
       orgao_emissor: 'Tribunal de Justiça de Mato Grosso do Sul',
-      ementa: disp ? limpar(disp[0]).slice(0, 240) : null,
+      ementa: disp ? limpar(disp[0]).slice(0, 400) : null,
+      trecho_original: trecho,
       confianca_heuristica: disp ? 'media' : 'baixa',
     });
     if (!disp) revisar.push(`Portaria ${m[1]}/${m[2]}: não foi possível isolar a ementa`);
@@ -125,38 +130,67 @@ function anotarDOMS(texto) {
   const revisar = [];
   const vistos = new Set();
 
-  for (const linha of texto.split('\n')) {
-    if (/\.{6,}/.test(linha)) continue;      // linha de sumário
+  // Varre o texto COMPLETO (não linha a linha): é preciso saber onde cada
+  // cabeçalho começa para recortar o trecho que pertence àquele ato — sem o
+  // trecho, o humano não tem como julgar se a extração está correta.
+  const linhas = texto.split('\n');
+  const marcas = [];   // { idx, ...campos }  idx = posição da linha no array
 
+  linhas.forEach((linha, idx) => {
+    if (/\.{6,}/.test(linha)) return;        // linha de sumário
     const m = RE_CAB_DOMS.exec(linha);
-    if (!m) continue;
+    if (!m) return;
 
     const [, tipoBruto, complemento, numero, anoNum, dia, mesNome, anoData] = m;
     const mes = MESES[mesNome.toLowerCase()];
     if (!mes) {
       revisar.push(`mês não reconhecido: "${mesNome}" em "${limpar(linha).slice(0, 80)}"`);
-      continue;
+      return;
     }
 
     const tipoCompleto = limpar(`${tipoBruto} ${complemento || ''}`)
       .replace(/["“”]/g, '')
-      .replace(/[\/\-–,;:]+$/, '')           // sobra de "RESOLUÇÃO SEJUSP/MS/"
+      .replace(/[\/\-–,;:]+$/, '')
       .trim();
     const chave = `${tipoCompleto}|${numero}|${anoData}`;
-    if (vistos.has(chave)) continue;         // mesmo ato citado no corpo
+    if (vistos.has(chave)) return;            // mesmo ato citado no corpo
     vistos.add(chave);
 
+    marcas.push({ idx, tipoBruto, tipoCompleto, numero, anoNum, dia, mes, anoData, cabecalho: limpar(linha) });
+  });
+
+  marcas.forEach((mk, i) => {
+    // O trecho vai deste cabeçalho até o próximo (ou 40 linhas, o que vier
+    // antes) — é o corpo do ato como publicado no diário.
+    const fimLinha = Math.min(
+      i + 1 < marcas.length ? marcas[i + 1].idx : linhas.length,
+      mk.idx + 40,
+    );
+    const bruto = linhas.slice(mk.idx, fimLinha).join(' ');
+    const trecho = limpar(bruto).slice(0, 1200);
+
+    // A ementa costuma vir logo após "resolve:" / "RESOLVE:" / "DECRETA:".
+    // Se não houver marcador, usa o texto após o cabeçalho como aproximação —
+    // sempre sinalizando confiança baixa para o humano conferir.
+    const corpo = limpar(bruto.slice(mk.cabecalho.length));
+    const apos = corpo.match(/(?:resolve|decreta|resolvem)\s*:\s*([\s\S]{20,400})/i);
+    const ementa = apos ? limpar(apos[1]).slice(0, 400)
+                        : (corpo ? corpo.slice(0, 400) : null);
+
     atos.push({
-      tipo: limpar(tipoBruto),
-      tipo_completo: tipoCompleto,
-      numero: numero.replace(/\./g, ''),
-      ano: Number(anoNum || anoData),
-      data_ato: iso(Number(dia), mes, Number(anoData)),
-      orgao_emissor: null,       // não vem no cabeçalho; humano decide
-      ementa: null,              // fica para o humano/IA (C1.2)
-      confianca_heuristica: 'media',
+      tipo: limpar(mk.tipoBruto),
+      tipo_completo: mk.tipoCompleto,
+      numero: mk.numero.replace(/\./g, ''),
+      ano: Number(mk.anoNum || mk.anoData),
+      data_ato: iso(Number(mk.dia), mk.mes, Number(mk.anoData)),
+      orgao_emissor: null,          // não vem no cabeçalho; humano decide
+      ementa,
+      trecho_original: trecho,
+      confianca_heuristica: apos ? 'media' : 'baixa',
     });
-  }
+    if (!apos) revisar.push(`${mk.tipoCompleto} ${mk.numero}: sem marcador resolve/decreta — ementa aproximada`);
+  });
+
   // Citações a normas anteriores: não são atos publicados, mas indicam
   // relação normativa. Só interessam as que NÃO são o próprio ato da edição.
   const relacoes = [];

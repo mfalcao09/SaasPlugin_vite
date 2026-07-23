@@ -17,6 +17,7 @@
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
       "ementa": "Conceder a YURI PETRONI DE SENZI BARREIRA, Juiz de Direito da comarca de Pedro Gomes, 8 (oito) dias de licença gala para ser gozada no período de 8 a 15/8/2026, nos termos do artigo 238, inciso IV, do CODJ/MS. P. R. C.",
+      "trecho_original": "a de Campo Grande: autos n.º 0911831-02.2026.8.12.0001 (SEI n.º 00079718-57.2026.8.12.9201); - YURI PETRONI DE SENZI BARREIRA, Juiz de Direito da comarca de Pedro Gomes: autos n.º 0000320-83.2024.8.12.0039 (SEI n.º 00083710-74.2026.8.12.9239). Relator: Exmo. Sr. Des. Dorival Renato Pavan Decisão: Referendadas. Votação unânime. (a) Desembargador DORIVAL RENATO PAVAN Presidente Portaria assinada pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 6/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, RESOLVE: Conceder a YURI PETRONI DE SENZI BARREIRA, Juiz de Direito da comarca de Pedro Gomes, 8 (oito) dias de licença gala para ser gozada no período de 8 a 15/8/2026, nos termos do artigo 238, inciso IV, do CODJ/MS. P. R. C. (Port. n.º\n2094/2026)",
       "confianca_heuristica": "media"
     },
     {
@@ -26,6 +27,7 @@
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
       "ementa": "Designar JESSE CRUCIOL JUNIOR, Juiz de Direito da 2ª Vara Cível da comarca de Corumbá, para responder cumulativamente pela 1ª Vara Criminal da referida comarca, no dia 20/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "trecho_original": "(a) Desembargador DORIVAL RENATO PAVAN Presidente Portarias assinadas pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 14/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, R E S O L V E: Designar JESSE CRUCIOL JUNIOR, Juiz de Direito da 2ª Vara Cível da comarca de Corumbá, para responder cumulativamente pela 1ª Vara Criminal da referida comarca, no dia 20/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2183/2026)",
       "confianca_heuristica": "media"
     },
     {
@@ -35,6 +37,7 @@
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
       "ementa": null,
+      "trecho_original": "Estabelecer as férias de LILIANA DE OLIVEIRA MONTEIRO, Juíza de Direito da 2ª Vara de Família da comarca de Campo Grande, referentes ao segundo período de 2026, para serem gozadas de 16/11 a 5/12/2026. P. R. C. (Port. n.º 2185/2026)",
       "confianca_heuristica": "baixa"
     },
     {
@@ -43,13 +46,13 @@
       "ano": 2026,
       "data_ato": null,
       "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
-      "ementa": null,
-      "confianca_heuristica": "baixa"
+      "ementa": "Designar RICARDO DA MATA REIS, Juiz de Direito da Vara do Juiz das Garantias, Tribunal do Júri e Execução Penal da comarca de Dourados, para coadjuvar a 2ª Vara Cível da comarca de Naviraí, a partir de 15/7/2026 até ulterior deliberação, nos termos do artigo 46 do CODJ/MS, revogando-se, com efeitos a partir de 15/7/2026, a Portaria n.º 1605/2026, publicada no D.J. n.º 5877, de 1º/6/2026. P. R. C.",
+      "trecho_original": "Designar RICARDO DA MATA REIS, Juiz de Direito da Vara do Juiz das Garantias, Tribunal do Júri e Execução Penal da comarca de Dourados, para coadjuvar a 2ª Vara Cível da comarca de Naviraí, a partir de 15/7/2026 até ulterior deliberação, nos termos do artigo 46 do CODJ/MS, revogando-se, com efeitos a partir de 15/7/2026, a Portaria n.º 1605/2026, publicada no D.J. n.º 5877, de 1º/6/2026. P. R. C. (Port. n.º 2187/2026)",
+      "confianca_heuristica": "media"
     }
   ],
   "relacoes_sugeridas": [],
   "revisar": [
-    "Portaria 2185/2026: não foi possível isolar a ementa",
-    "Portaria 2187/2026: não foi possível isolar a ementa"
+    "Portaria 2185/2026: não foi possível isolar a ementa"
   ]
 }
