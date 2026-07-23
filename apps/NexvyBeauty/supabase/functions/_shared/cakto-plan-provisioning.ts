@@ -644,7 +644,13 @@ export async function provisionFromOrder(
   order: CaktoOrderLike,
 ): Promise<ProvisionResult & { user_id?: string }> {
   const planRes = await provisionPlatformPlan(admin, order);
-  if (!planRes.ok || !planRes.organization_id) return planRes;
+  // FATAL vs NÃO-FATAL: o único erro que impede seguir é NÃO TER a organização
+  // (org create falhou). Erros não-fatais — billing_history, slug backfill, plan
+  // update — deixam `ok=false` mas com organization_id presente; abortar aqui por
+  // causa deles trancava a compradora do lado de fora (org com plano ativo, SEM
+  // usuário admin, sem senha, sem e-mail). Melhor entrar com o admin e o erro
+  // logado do que não ter conta nenhuma. Os erros seguem em planRes.errors[].
+  if (!planRes.organization_id) return planRes;
 
   const offerSlug = extractOfferSlug(order.raw_payload, order.cakto_offer_slug ?? null);
   const plan = await resolvePlatformPlan(admin, offerSlug, order.product_cakto_id ?? null);

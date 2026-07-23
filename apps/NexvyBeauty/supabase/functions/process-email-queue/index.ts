@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { sendTelegramAlert } from '../_shared/platform-alerts.ts'
 
 interface OutboundEmail {
   run_id?: string
@@ -129,6 +130,18 @@ async function moveToDlq(
   if (error) {
     console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, error })
   }
+
+  // Venda não pode falhar em silêncio. Um e-mail na DLQ significa que alguém não
+  // recebeu o que devia — no pior caso, o link de acesso da compradora (o
+  // welcome-admin-access morreu 7x na DLQ sem ninguém saber). Aciona o operador na
+  // hora. Non-fatal por design: sendTelegramAlert degrada gracioso sem os secrets.
+  const critico = String(payload.label || queue).includes('welcome-admin')
+  await sendTelegramAlert(
+    `${critico ? '🔴 ACESSO DA COMPRADORA' : '⚠️ E-mail'} na DLQ (${queue})\n` +
+    `template: ${payload.label || queue}\n` +
+    `para: ${payload.to ?? '?'}\n` +
+    `motivo: ${reason}`
+  ).catch(() => {})
 }
 
 Deno.serve(async (req) => {
