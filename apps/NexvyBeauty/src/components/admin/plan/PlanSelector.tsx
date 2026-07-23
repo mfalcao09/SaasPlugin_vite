@@ -36,7 +36,7 @@ const FEATURE_LABELS: Record<string, string> = {
   feature_campaigns: 'Campanhas',
   feature_outreach: 'Cadência de follow-up',
   feature_ai_agents: 'Agentes de IA',
-  feature_voice_agents: 'Agentes de voz',
+  feature_voice_agents: 'Agentes de voz (em breve)',
   feature_audio_transcription_ai: 'Transcrição de áudio IA',
   feature_text_correction_ai: 'Correção de texto IA',
   feature_capture_funnels: 'Funis de captura',
