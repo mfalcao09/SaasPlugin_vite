@@ -16,11 +16,13 @@ import {
   User, Phone, Mail, Sparkles, Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatAddress, type OrgAddress } from '@/lib/formatAddress';
 
 type Servico = { id: string; nome: string; categoria: string | null; duracao_minutos: number | null; valor: number | null };
 type Profissional = { id: string; nome: string; especialidades: string[] | null; hora_inicio: string | null; hora_fim: string | null };
 type Bootstrap = {
-  org: { id: string; name: string; logo_url: string | null; phone: string | null; address: string | null; slug: string };
+  // address é jsonb no banco — nunca string. O tipo antigo mentia e derrubava a página.
+  org: { id: string; name: string; logo_url: string | null; phone: string | null; address: OrgAddress; slug: string };
   servicos: Servico[]; profissionais: Profissional[];
   pacotes: { id: string; nome: string }[];
 };
@@ -113,6 +115,7 @@ export default function PublicSalaoBooking() {
   }
 
   const canNext = step === 1 ? !!servicoId : step === 2 ? !!profId : step === 3 ? !!hora : step === 4 ? (nome.trim().length >= 2 && telefone.replace(/\D/g, '').length >= 8) : true;
+  const endereco = formatAddress(org.address);
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,7 +125,7 @@ export default function PublicSalaoBooking() {
             <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0"><Sparkles className="h-5 w-5" /></div>
             <div className="min-w-0">
               <h1 className="font-bold text-foreground truncate">{org.name}</h1>
-              {org.address && <p className="text-xs text-muted-foreground truncate">{org.address}</p>}
+              {endereco && <p className="text-xs text-muted-foreground truncate">{endereco}</p>}
             </div>
           </div>
           {boot.data.pacotes.length > 0 && (
