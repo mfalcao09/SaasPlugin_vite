@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Placar GO LIVE NexvyBeauty — 22/07 v2</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  .wrap{max-width:1020px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.26rem;margin:2.1em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:1rem;color:var(--accent);margin:1.5em 0 .4em}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.5em 0 .5em 14px;margin:0 0 1em;font-size:.92rem}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.86em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffd7ec}
+  blockquote{border-left:3px solid var(--accent);margin:1em 0;padding:.5em 0 .5em 16px;color:var(--muted);font-size:.93rem}
+  .verdict{background:linear-gradient(135deg,rgba(248,81,73,.13),rgba(210,153,34,.08));
+    border:1px solid rgba(248,81,73,.42);border-radius:14px;padding:20px 24px;margin:1.4em 0}
+  .verdict h2{border:0;margin:0 0 .2em;font-size:1.32rem;color:var(--red)}
+  .verdict ol{margin:.7em 0 0;padding-left:1.15em} .verdict li{margin:.55em 0}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1em 0}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:.89rem;
+    background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:.79rem;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .ok{color:var(--green);font-weight:700} .bad{color:var(--red);font-weight:700} .warn{color:var(--yellow);font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:1.2em 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .card .n{font-size:1.8rem;font-weight:800;line-height:1.1} .card .l{color:var(--muted);font-size:.8rem;margin-top:.25em}
+  .mea{background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.32);border-radius:12px;padding:18px 22px;margin:1.4em 0}
+  .mea h2{border:0;margin:0 0 .4em;color:var(--accent2);font-size:1.1rem}
+  .disc{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:18px 22px;margin:1.4em 0}
+  .disc h2{border:0;margin:0 0 .4em;color:var(--blue);font-size:1.1rem}
+  ol.defeitos li{margin:.7em 0}
+  footer{color:var(--muted);font-size:.82rem;margin-top:3em;padding-top:1em;border-top:1px solid var(--border)}
+  @media (max-width:640px){ h1{font-size:1.42rem} .wrap{padding:22px 14px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Placar GO LIVE — NexvyBeauty</h1>
+<p class="lead">22/07/2026 · <b>v2, fim do dia</b>. Substitui o placar da manhã.
+<b>Tudo aqui foi reverificado agora</b>, não copiado da versão anterior.</p>
+
+<div class="verdict">
+  <h2>Continua não liberado.</h2>
+  <p style="margin:.3em 0 0">Os dois bloqueadores da manhã seguem intactos — nada do que
+  foi feito hoje tocou neles, porque nenhum é código de produto:</p>
+  <ol>
+    <li><b><code>ads_capi_events = 0</code></b> — reverificado agora. Nenhum evento de
+    <code>Purchase</code> jamais chegou ao Meta.</li>
+    <li><b>Duas policies de <code>INSERT</code> abertas a qualquer anônimo</b>
+    (<code>booking_requests</code>, <code>sales_leads</code>), sem rate limit. Reverificado: 2.</li>
+  </ol>
+  <p style="margin:.8em 0 0">O que mudou hoje foi <b>abaixo</b> desses dois: a carteira
+  deixou de ser um lixão e o disparo ganhou trava. Não libera o anúncio — mas era o que
+  tornava o anúncio perigoso mesmo se liberado.</p>
+</div>
+
+<h2>O que fechou hoje <span style="font-weight:400;color:var(--muted);font-size:.8em">— 14 commits, todos com prova executada</span></h2>
+
+<h3>Frente B4 — carteira inteligente, 5 fases</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Fase</th><th>Entrega</th><th>Prova</th></tr></thead>
+<tbody>
+<tr><td><b>0 · Reconhecimento</b></td><td>O histórico estava no Postgres do Evolution, no VPS, o tempo todo</td>
+    <td>166.383 msgs, 128.434 com corpo. <span class="ok">Sem reconexão, sem ação do Marcelo</span></td></tr>
+<tr><td><b>1 · Carga do legado</b></td><td><code>carteira-import-legacy</code> puxa via <code>chat/findMessages</code></td>
+    <td><b>81.045 mensagens</b>, 348 contatos, <span class="ok">0 erro</span>. Idempotência: 60.677 linhas reenviadas → diferença <b>0</b></td></tr>
+<tr><td><b>2 · Tag de assunto</b></td><td><code>pessoal | misto | indefinido</code> em <code>tipo_contato</code></td>
+    <td>valor inválido rejeitado pela constraint</td></tr>
+<tr><td><b>3 · Gate de disparo</b></td><td><code>salon-automation-run</code> filtra <code>principal</code> + ≠ <code>pessoal</code></td>
+    <td>sogra → 🚫 BLOQUEADO · cliente real → 📨 RECEBE</td></tr>
+<tr><td><b>4 · Agente classificador</b></td><td><code>carteira-classify</code> lê janela de 40 msgs e devolve <b>evidência</b></td>
+    <td><span class="ok">346/346 classificados, 0 erro</span>, 100% com evidência</td></tr>
+<tr><td><b>5 · Tela</b></td><td>Filtro por assunto, evidência a um hover, revisão em 1 clique</td>
+    <td><code>tsc</code> limpo · build verde · demo 0 erro de console</td></tr>
+</tbody></table>
+</div>
+
+<h3>Distribuição final da carteira (346 classificados)</h3>
+<div class="cards">
+  <div class="card"><div class="n warn">163</div><div class="l">pessoal · 47,1% · conf. 0,94</div></div>
+  <div class="card"><div class="n" style="color:var(--muted)">142</div><div class="l">indefinido · 41,0% · conf. 0,89</div></div>
+  <div class="card"><div class="n ok">36</div><div class="l">salão · 10,4% · conf. 0,94</div></div>
+  <div class="card"><div class="n" style="color:var(--accent2)">5</div><div class="l">misto · 1,4% · conf. 0,91</div></div>
+</div>
+
+<h3>Segurança</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Item</th><th>Antes</th><th>Agora</th></tr></thead>
+<tbody>
+<tr><td><code>security_definer_view</code> (ERROR)</td><td class="bad">2</td>
+    <td class="ok">1 — fechei o vazamento de faturamento por anônimo; sobra <code>public_plans</code>, intencional</td></tr>
+<tr><td><code>anon_security_definer_function</code></td><td>13</td>
+    <td>13 — subiu para 14 com um trigger meu, <b>revogado no mesmo dia</b></td></tr>
+</tbody></table>
+</div>
+
+<h2>Aberto — bloqueia o anúncio</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Item</th><th>Estado reverificado</th></tr></thead>
+<tbody>
+<tr><td><b>B7/D5</b></td><td>Meta Purchase / CAPI</td><td><span class="bad">ads_capi_events = 0</span>. Nunca disparou.</td></tr>
+<tr><td><b>B8a</b></td><td><code>booking_requests</code> + <code>sales_leads</code>: <code>INSERT</code> sempre verdadeiro</td>
+    <td><span class="bad">2 policies</span>, inalterado</td></tr>
+<tr><td><b>B8b</b></td><td>Proteção de senha vazada (HaveIBeenPwned)</td><td><span class="warn">Ainda desligada</span> (advisor confirma)</td></tr>
+<tr><td><b>B9</b></td><td>Alerta de WhatsApp caído + PITR</td><td><span class="warn">Não configurado</span></td></tr>
+<tr><td>—</td><td>5 buckets públicos permitem <b>listagem</b></td><td>Inalterado (13 públicos no total)</td></tr>
+<tr><td>—</td><td>8 funções com <code>search_path</code> mutável</td><td>Inalterado</td></tr>
+<tr><td><b>B3</b></td><td>Webhook Evolution</td><td><span class="warn">Ainda em shadow</span> — depende de tráfego real</td></tr>
+<tr><td><b>D1</b></td><td>E-mail de boas-vindas na recompra</td>
+    <td>Fix deployado 21/07 23:28 · <b>0 e-mails desde então</b> → <span class="warn">não provado</span></td></tr>
+</tbody></table>
+</div>
+
+<h2>Depende de você (HITL)</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>O que precisa</th><th>Destrava</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Ligar o toggle</b> de senha vazada no painel Supabase</td><td>B8b — 30 s, não tenho acesso ao painel</td></tr>
+<tr><td>2</td><td><b>Uma compra real no Essencial</b></td><td>Única prova possível do D1 e do funil com dinheiro real</td></tr>
+<tr><td>3</td><td><b>Reconectar <code>meuteste1-sal-o1</code></b> + 1 mensagem</td><td>Flip do B3</td></tr>
+<tr><td>4</td><td><b>Um WhatsApp de salão REAL conectado</b></td><td>Ver abaixo — é o mais importante</td></tr>
+</tbody></table>
+</div>
+<blockquote>A Fase 0 <b>eliminou</b> o antigo item 1 da lista de manhã: o re-sync do
+histórico não depende mais de reconexão — leio do Evolution direto. Sobrou só o flip do B3.</blockquote>
+
+<div class="disc">
+<h2>A descoberta que muda a conversa comercial</h2>
+<p>O agente classificou os 346 contatos: <b>47% pessoal contra 10% salão</b>. As
+evidências que ele citou nos contatos de maior volume:</p>
+<blockquote>“responsabilidades e viagens de lazer” · “declarações de afeto” ·
+<b>“notas do IGC e Enade”</b> · <b>“autorização de cursos pelo MEC”</b> · <b>“diplomas e XML”</b></blockquote>
+<p>Isso não é conversa de salão de beleza. <b>O número conectado como
+<code>meuteste1-sal-o1</code> é um WhatsApp pessoal/profissional, não de um salão.</b>
+O classificador não errou — ele acertou, e o que acertou é que essa carteira não é de salão.</p>
+<p><b>Consequência ruim:</b> não dá para demonstrar “análise de carteira” com essa base.
+A frase da tela — <i>“N contatos falam de serviço e nunca agendaram”</i> — aparece com N pequeno.</p>
+<p><b>Consequência boa, e talvez maior:</b> este é o caso de uso real mais comum. A dona
+usa o mesmo WhatsApp para tudo — cliente, filho, igreja, fornecedor. O classificador
+demonstrou que separa isso, com evidência citável, num telefone genuinamente misturado.
+É validação mais dura do que um salão limpo teria dado.</p>
+<p style="margin-bottom:0"><b>O que falta não é código: é um WhatsApp de salão real
+conectado</b>, nem que seja de uma cliente-piloto.</p>
+</div>
+
+<h2>Três defeitos que só apareceram executando</h2>
+<ol class="defeitos">
+  <li><b><code>is_br_dialable</code> rejeitava celular pré-2012.</b> Assumi que 12 dígitos
+  = fixo. O alarme inicial de que 82% da conversa estava na lixeira era <b>falso</b> —
+  <code>normalize_phone_br</code> insere o nono dígito antes da checagem, impacto real
+  zero. A regra estava errada mesmo assim e foi corrigida (20/20 na suíte).</li>
+  <li><b>Idempotência por leitura prévia falhava em conversa grande.</b> O PostgREST tem
+  teto de linhas e devolvia conjunto incompleto numa conversa de 37.848 mensagens.
+  Corrigido promovendo o id do Evolution a coluna real: a idempotência virou
+  <b>garantia do banco</b> em vez de disciplina da aplicação.</li>
+  <li><b>Um <code>continue</code> sem gravar estado travou a fila para sempre.</b> Contato
+  com conversa só de áudio voltava ao topo da fila a cada chamada. Rodou 59 lotes girando
+  nos mesmos 10, <b>relatando <code>erros: 0</code> o tempo todo</b> — do ponto de vista
+  do código, nada falhou.</li>
+</ol>
+<blockquote><b>Ausência de erro não é prova de progresso.</b> Foi o contador
+<code>sem_conversa</code> parado entre lotes que denunciou, não o <code>erros</code>.</blockquote>
+
+<div class="mea">
+<h2>Correção de rumo desta versão</h2>
+<p style="margin:0">O placar da manhã afirmava que os gaps de segurança estavam fechados.
+Ao reverificar para escrever esta v2 — em vez de copiar — encontrei <b>uma função de
+trigger que eu mesmo deixei executável por anônimo hoje</b>. Revogada e provada no mesmo
+dia. É o segundo dia seguido em que reverificar encontra algo que afirmar de memória
+teria deixado passar.</p>
+</div>
+
+<footer>NexvyBeauty · Placar GO LIVE 22/07/2026 v2 · par do arquivo
+<code>PLACAR-GO-LIVE-2026-07-22_v2.md</code></footer>
+
+</div>
+</body>
+</html>

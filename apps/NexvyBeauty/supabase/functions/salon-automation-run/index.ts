@@ -106,8 +106,17 @@ Deno.serve(async (req) => {
 
   for (const [orgId, orgRules] of porOrg) {
     // Base de clientes da org → telefone/nascimento + GUARDA de ambiguidade por nome.
+    // [B4/Fase 3] GATE DE DISPARO. Ver e disparar não podem ter a mesma régua:
+    // visualizar não exige classificação, DISPARAR exige.
+    //   carteira_estado='principal' → fora lixeira (ruído do sync) e a_revisar (não confirmado)
+    //   tipo_contato <> 'pessoal'   → a sogra da dona não recebe campanha do salão
+    // Sem isto, os 80 mil contatos importados do WhatsApp ficam elegíveis a disparo.
+    // Hoje nada dispara porque as 4 regras partem de evento transacional que eles não
+    // têm — mas essa segurança é acidental, não projetada. Este filtro a torna projetada.
     const { data: clientes } = await db.from('clientes')
       .select('id, nome, telefone, data_nascimento, status').eq('organization_id', orgId)
+      .eq('carteira_estado', 'principal')
+      .neq('tipo_contato', 'pessoal')
     const telById = new Map<string, string | null>()
     const telByNome = new Map<string, string | null>() // null = ambíguo
     const cliByNome = new Map<string, string | null>() // id por nome (null = ambíguo)

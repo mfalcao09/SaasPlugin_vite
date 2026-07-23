@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano — Carteira Inteligente · 2026-07-22</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --border:#2b3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#f472b6; --accent2:#a855f7;
+    --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:0 0 80px}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 22px}
+  h1{font-size:1.9rem;margin:.2em 0 .1em;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+  h2{font-size:1.28rem;margin:2.1em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--border);color:#fff}
+  h3{font-size:1rem;color:var(--accent);margin:1.5em 0 .4em;letter-spacing:.01em}
+  .lead{color:var(--muted);border-left:3px solid var(--accent2);padding:.5em 0 .5em 14px;margin:0 0 1em;font-size:.92rem}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code{background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.86em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffd7ec}
+  pre{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-size:.84rem;line-height:1.55;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe3ff}
+  .mea{background:linear-gradient(135deg,rgba(210,153,34,.12),rgba(168,85,247,.06));
+    border:1px solid rgba(210,153,34,.4);border-radius:14px;padding:18px 22px;margin:1.3em 0}
+  .mea b{color:var(--yellow)}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1em 0}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:.89rem;
+    background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:.79rem;
+    text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .ok{color:var(--green);font-weight:700}
+  .bad{color:var(--red);font-weight:700}
+  .warn{color:var(--yellow);font-weight:700}
+  .gate{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.45);
+    border-radius:12px;padding:16px 20px;margin:1em 0}
+  .gate b{color:var(--red)}
+  .phase{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent2);
+    border-radius:10px;padding:2px 18px 12px;margin:1.2em 0}
+  footer{color:var(--muted);font-size:.82rem;margin-top:3em;padding-top:1em;border-top:1px solid var(--border)}
+  @media (max-width:640px){ h1{font-size:1.45rem} .wrap{padding:22px 14px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Plano — Carteira Inteligente</h1>
+<p class="lead">22/07/2026 · Ingestão + classificação. Escrito <b>depois</b> do
+reconhecimento completo, não durante a implementação.</p>
+
+<div class="mea">
+  <b>Por que este documento existe.</b> Hoje foram aplicadas 6 migrations em produção em
+  sequência, cada uma corrigindo a anterior: backfill → faltava trigger → o conteúdo das
+  conversas nunca fora salvo → o modelo de eixos estava errado. Cada volta custou tempo de
+  lançamento, e a causa foi sempre a mesma: <b>a implementação começou antes de o
+  reconhecimento terminar.</b> Este plano inverte isso — nada é escrito antes da Fase 0
+  fechar, e cada passo tem check binário.
+</div>
+
+<h2>1 · Estado atual — o que já está PROVADO</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Fato</th><th>Prova</th></tr></thead>
+<tbody>
+<tr><td><code>is_br_dialable()</code> no ar, 15/15 casos</td><td><code>b4_carteira_classificacao_camada1</code></td></tr>
+<tr><td>84.194 classificados: 80.982 lixeira · 3.212 a_revisar · 0 principal</td><td>query de contagem</td></tr>
+<tr><td>RPC não grava mais o telefone no campo <i>nome</i></td><td><code>b4_upsert_clientes_wa_nome_vazio</code></td></tr>
+<tr><td>Trigger de FORMA no ar, 4/4 casos sintéticos</td><td><code>b4_eixo1_forma_trigger_ingestao</code></td></tr>
+<tr><td class="bad">O conteúdo das conversas NUNCA foi salvo</td><td><code>evolution-history-sync</code> :238-249 extraem só telefone, pushName e timestamp</td></tr>
+<tr><td class="bad">Não há log de payload bruto</td><td><code>platform_crm_webhook_logs</code> = 0 linhas</td></tr>
+<tr><td class="ok">Substrato ao vivo funciona</td><td>11 conversas WhatsApp, <b>100%</b> com <code>visitor_phone_normalized</code>; 88 msgs, <b>83 com texto</b></td></tr>
+<tr><td>Chave de junção conversa↔cliente</td><td><code>visitor_phone_normalized</code> ↔ <code>telefone_normalizado</code></td></tr>
+<tr><td class="warn"><code>detected_intent</code> não serve como sinal</td><td>coluna existe, <b>0 preenchidos</b></td></tr>
+<tr><td class="ok">Filtro de forma não descartou ninguém ativo</td><td><b>0 de 80.982</b> na lixeira têm conversa</td></tr>
+<tr><td>Classificáveis hoje, sem re-sync</td><td><b>3 contatos</b></td></tr>
+<tr><td>Disparo do tenant sai de</td><td><code>salon-automation-run</code> (cron) + <code>ai-followup-cron</code></td></tr>
+</tbody></table>
+</div>
+
+<h2>2 · As decisões (tomadas, não em aberto)</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Decisão</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Eixo RELAÇÃO não limita importação.</b> No dia zero de um legado não há agendamento; se fosse ramo da entrada, a carteira nasceria vazia — quebra de fluxo</td></tr>
+<tr><td>2</td><td><b><code>pessoal</code> é tag/classificação, igual a <code>cliente</code></b> — vive em <code>tipo_contato</code></td></tr>
+<tr><td>3</td><td><b>Disparo exige classificação resolvida; visualização não</b></td></tr>
+<tr><td>4</td><td><b>Tudo precisa estar pronto antes do re-sync</b></td></tr>
+<tr><td>5</td><td>Proteção de dados via <b>ZDR</b></td></tr>
+</tbody></table>
+</div>
+
+<h3>O modelo em uma frase</h3>
+<p><b>Classificação é faxineiro, não porteiro.</b> A importação deixa entrar quem tem forma
+de telefone; o agente tira depois quem não é do salão.</p>
+
+<pre>IMPORTAÇÃO
+│
+├─ EIXO 1 · FORMA ──── não discável → lixeira ⛔  (determinístico, 100%, custo zero)
+│                      discável     → ENTRA na carteira
+│
+├─ EIXO 2 · RELAÇÃO ── carimbo CONTÍNUO. Só promove, nunca rebaixa.
+│                      Vazio no dia zero — e isso é normal.
+│
+└─ EIXO 3 · ASSUNTO ── agente lê a conversa DEPOIS
+                        ├─ salão   → tipo_contato = lead (ou cliente, se houver transação)
+                        ├─ misto   → tipo_contato = cliente/lead + flag em sinais_wa
+                        ├─ pessoal → tipo_contato = pessoal  (visível, fora de campanha)
+                        └─ incerto → tipo_contato = indefinido + carteira_estado = a_revisar</pre>
+
+<p><b>Precedência, sem exceção:</b> decisão humana (<code>revisado_em</code>) &gt; transação
+&gt; forma &gt; agente.</p>
+
+<div class="mea">
+  <b>Leitura a confirmar em uma linha:</b> “<code>pessoal</code> é tag como <code>cliente</code>”
+  foi lido como <i>mesmo campo</i> (<code>tipo_contato</code>), não novo <code>carteira_estado</code>.
+  Contato pessoal continua <b>visível</b> na carteira; o que muda é que campanha não o alcança.
+  Se a intenção era tirá-lo da vista, é trocar um valor — o resto do plano não muda.
+</div>
+
+<h2>3 · Fases, com check binário</h2>
+
+<div class="phase">
+<h3>FASE 0 — Reconhecimento que falta ⛔ GATE</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>0.1</td><td>Logar <b>um</b> payload real de <code>MESSAGES_SET</code></td>
+<td>O JSON contém <code>message.conversation</code> <b>ou</b> <code>extendedTextMessage.text</code> não-vazio? <b>SIM/NÃO</b></td></tr>
+<tr><td>0.2</td><td>Medir volume da instância</td><td>Nº de mensagens e bytes estimados</td></tr>
+</tbody></table></div>
+<div class="gate"><b>Se 0.1 for NÃO, o plano morre aqui e muda de forma — não no meio da
+implementação.</b> Sem corpo de mensagem no payload, classificar o legado é impossível e
+resta só o regime ao vivo. É exatamente o tipo de descoberta que hoje aconteceu tarde demais.</div>
+</div>
+
+<div class="phase">
+<h3>FASE 1 — Persistir conteúdo na ingestão</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>1.1</td><td><code>evolution-history-sync</code> grava msg em <code>webchat_messages</code> + casa <code>webchat_conversations</code></td><td>Sync de teste insere N msgs com <code>content &lt;&gt; ''</code></td></tr>
+<tr><td>1.2</td><td>Idempotência</td><td>Rodar 2×: contagem <b>não muda</b></td></tr>
+<tr><td>1.3</td><td>Deploy</td><td><code>deno check</code> limpo + função <b>ACTIVE</b></td></tr>
+</tbody></table></div>
+</div>
+
+<div class="phase">
+<h3>FASE 2 — Tag de assunto</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>2.1</td><td>Valores <code>pessoal</code>/<code>misto</code>/<code>indefinido</code> + CHECK constraint</td><td><code>insert</code> com valor inválido <b>falha</b></td></tr>
+<tr><td>2.2</td><td>Contrato do classificador em <code>sinais_wa</code></td><td>Linha de exemplo grava e lê</td></tr>
+</tbody></table></div>
+</div>
+
+<div class="phase">
+<h3>FASE 3 — Gate de disparo ⚠️ evita o pior dano</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>3.1</td><td><code>salon-automation-run</code> exclui <code>tipo_contato='pessoal'</code> e exige assunto resolvido</td><td>Contato <code>pessoal</code> <b>não</b> recebe</td></tr>
+<tr><td>3.2</td><td><code>ai-followup-cron</code> idem</td><td>idem</td></tr>
+<tr><td>3.3</td><td>Front (AiGrowth, AcoesClientes)</td><td>Segmentação não lista <code>pessoal</code></td></tr>
+<tr><td>3.4</td><td>Varredura de outros caminhos de envio</td><td><code>grep</code> cruzado = <b>0 escapes</b></td></tr>
+</tbody></table></div>
+</div>
+
+<div class="phase">
+<h3>FASE 4 — Agente classificador</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>4.1</td><td>Edge <code>carteira-classify</code>: janela limitada (N recentes + N antigas, teto de caracteres)</td><td>JSON válido no schema, <b>com evidências</b></td></tr>
+<tr><td>4.2</td><td>Fila + cron incremental</td><td>Contato novo classificado em ≤ 1 ciclo</td></tr>
+<tr><td>4.3</td><td>Nunca sobrescreve <code>revisado_em</code>, nunca rebaixa quem tem transação</td><td>2 casos de teste: estado <b>não muda</b></td></tr>
+<tr><td>4.4</td><td>Versionamento</td><td>v2 re-avalia só v1 <b>e</b> sem <code>revisado_em</code></td></tr>
+</tbody></table></div>
+</div>
+
+<div class="phase">
+<h3>FASE 5 — Tela</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>5.1</td><td>Filtro por <code>tipo_contato</code> + contagens</td><td>Números batem com o SQL</td></tr>
+<tr><td>5.2</td><td>Ações “É cliente” / “É pessoal”</td><td>Gravam <code>revisado_em</code> e travam a linha</td></tr>
+<tr><td>5.3</td><td>Painel de análise de carteira <i>(o que se vende)</i></td><td>Distribuição + evidência por contato</td></tr>
+</tbody></table></div>
+</div>
+
+<div class="phase">
+<h3>FASE 6 — Re-sync ⛔ IRREVERSÍVEL</h3>
+<p style="font-size:.9rem;color:var(--muted);margin:.4em 0 0">Só depois de 1-4 verdes. A
+reconexão acontece <b>uma vez</b>: se o código não estiver pronto, o histórico passa e é
+descartado de novo — exatamente o que já ocorreu.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Passo</th><th>Check binário</th></tr></thead>
+<tbody>
+<tr><td>6.1</td><td>Reconectar <code>meuteste1-sal-o1</code> <i>(HITL Marcelo)</i></td><td>Instância <code>connected</code></td></tr>
+<tr><td>6.2</td><td>Histórico chega <b>com conteúdo</b></td><td><code>webchat_messages</code> cresce com <code>content &lt;&gt; ''</code></td></tr>
+<tr><td>6.3</td><td>Classificador roda sobre o legado</td><td>≥ 90% dos discáveis com conversa saem de <code>indefinido</code></td></tr>
+<tr><td>6.4</td><td>Prova ponta a ponta</td><td>Painel mostra a distribuição real da carteira</td></tr>
+</tbody></table></div>
+</div>
+
+<h2>4 · Riscos que podem matar o plano</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>#</th><th>Risco</th><th>Onde aparece</th><th>Mitigação</th></tr></thead>
+<tbody>
+<tr><td>R1</td><td><code>MESSAGES_SET</code> não traz corpo da mensagem</td><td>Fase 0.1</td><td><b>Gate.</b> Descobrir antes, não no meio</td></tr>
+<tr><td>R2</td><td>Volume estoura storage/custo</td><td>Fase 0.2</td><td>Medir antes; janela por conversa</td></tr>
+<tr><td>R3</td><td>Reconexão gasta a chance com código incompleto</td><td>Fase 6</td><td>Ordem travada: 6 só depois de 1-4 verdes</td></tr>
+<tr><td>R4</td><td>Classificador marca cliente real como <code>pessoal</code></td><td>Fase 4</td><td>Transação nunca rebaixa · <code>revisado_em</code> trava · botão de resgate</td></tr>
+<tr><td>R5</td><td>Campanha dispara antes da classificação</td><td>Fase 3</td><td>Gate exige assunto resolvido</td></tr>
+</tbody></table>
+</div>
+
+<h2>5 · Fora de escopo <span style="font-weight:400;color:var(--muted);font-size:.8em">(declarado, para não virar Frankenstein)</span></h2>
+<ul style="color:var(--muted);font-size:.92rem">
+  <li>Score de propensão / RFM — outra frente</li>
+  <li>Deduplicação de contatos — já existe merge por RPC</li>
+  <li>Reclassificação retroativa de quem a dona já revisou — <b>nunca</b>, por desenho</li>
+  <li>Qualquer mudança no fluxo de agendamento</li>
+</ul>
+
+<h2>6 · Caminho crítico</h2>
+<pre>FASE 0 (gate) → 1 → 2 → 3 → 4 → 5 → 6 (HITL, irreversível)
+                     └── 3 pode correr em paralelo com 2 e 4</pre>
+<p>O único bloqueio humano está na <b>Fase 6</b>. Tudo antes disso é executável sem você.</p>
+
+<footer>NexvyBeauty · Plano Carteira Inteligente 22/07/2026 · par do arquivo
+<code>PLANO-CARTEIRA-INTELIGENTE-2026-07-22.md</code></footer>
+
+</div>
+</body>
+</html>

@@ -41,6 +41,26 @@ export interface Cliente {
   lead_id?: string | null
   /** data de nascimento (YYYY-MM-DD) — alimenta a alavanca de aniversariantes + faixa etária */
   data_nascimento?: string | null
+  /** [B4] O QUE o contato é — os 3 eixos convivem neste campo:
+   *  forma (determinístico): ruido | grupo | nao_br | lid
+   *  relação (transacional): cliente | lead
+   *  assunto (agente lê a conversa): pessoal | misto | indefinido */
+  tipo_contato?: string | null
+  /** [B4] ONDE aparece: principal | a_revisar | lixeira */
+  carteira_estado?: string | null
+  /** [B4] saída do classificador COM evidência — é o que a dona compra quando
+   *  pergunta "por que essa é pessoal?" */
+  sinais_wa?: {
+    assunto?: string
+    confianca?: number | null
+    versao?: string
+    evidencias?: string[]
+    sinais?: { pediu_horario?: boolean; perguntou_preco?: boolean; servicos_citados?: string[] }
+    janela?: { msgs_lidas?: number; de?: string | null; ate?: string | null }
+  } | null
+  classificacao_motivo?: string | null
+  /** [B4] decisão humana. Preenchido = nenhum classificador toca esta linha. */
+  revisado_em?: string | null
   /** endereço estruturado (CEP preenche logradouro/bairro/cidade/uf; número e complemento manuais) — pra segmentar por região */
   cep?: string | null
   logradouro?: string | null
@@ -80,6 +100,28 @@ type SortMode = 'default' | 'hottest'
 // 'a_revisar'  = número BR discável que chegou pelo sync do WhatsApp sem nome
 // 'lixeira'    = LID/0800/DDD inexistente — ruído, mas recuperável
 type CarteiraView = 'principal' | 'a_revisar' | 'lixeira'
+
+// [B4] O eixo ASSUNTO, decidido pelo agente que lê a conversa. Vive no mesmo campo
+// que `cliente` porque é uma tag do mesmo tipo — decisão do Marcelo. `pessoal`
+// continua VISÍVEL na carteira; quem a exclui de campanha é o gate de disparo.
+type TipoFiltro = 'todos' | 'cliente' | 'lead' | 'misto' | 'pessoal' | 'indefinido'
+
+const TIPO_META: Record<string, { label: string; classe: string; ajuda: string }> = {
+  cliente:    { label: 'Cliente',    classe: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300', ajuda: 'Já agendou ou pagou — relação comprovada.' },
+  lead:       { label: 'Lead',       classe: 'border-blue-500/30 bg-blue-500/15 text-blue-600 dark:text-blue-300',            ajuda: 'Fala de serviço, ainda não comprou.' },
+  misto:      { label: 'Misto',      classe: 'border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-300',    ajuda: 'Fala de salão E de vida pessoal.' },
+  pessoal:    { label: 'Pessoal',    classe: 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-300',        ajuda: 'Conversa pessoal — fora das campanhas do salão.' },
+  indefinido: { label: 'A definir',  classe: 'border-muted-foreground/30 text-muted-foreground',                              ajuda: 'Pouca conversa para afirmar.' },
+}
+
+const TIPO_FILTROS: { value: TipoFiltro; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'cliente', label: 'Clientes' },
+  { value: 'lead', label: 'Leads' },
+  { value: 'misto', label: 'Mistos' },
+  { value: 'pessoal', label: 'Pessoais' },
+  { value: 'indefinido', label: 'A definir' },
+]
 
 const CARTEIRA_TABS: { value: CarteiraView; label: string; hint: string }[] = [
   { value: 'principal', label: 'Minha carteira', hint: 'Seus clientes.' },
@@ -168,23 +210,27 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
   const [cepLoading, setCepLoading] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('default')
   const [carteiraView, setCarteiraView] = useState<CarteiraView>('principal')
+  const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todos')
   const [mergeTarget, setMergeTarget] = useState<DupGroup | null>(null)
   // Perfil 360: cliente selecionado abre o Sheet de detalhe.
   const [selected, setSelected] = useState<Cliente | null>(null)
 
   const { data: fetched = [], isLoading } = useQuery({
-    queryKey: ['salao-clientes', organizationId, carteiraView],
+    queryKey: ['salao-clientes', organizationId, carteiraView, tipoFiltro],
     enabled: !isDemo && !!organizationId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // [B4] A carteira operacional é só 'principal'. As outras fatias vêm da
+      // classificação e continuam acessíveis pelas abas — filtrar não pode parecer
+      // perder. Seguro porque a Camada 1 POSITIVA trava em 'principal' todo cliente
+      // com agendamento/pagamento: nenhum cliente real cai fora daqui.
+      let query = supabase
         .from('clientes').select('*')
         .eq('organization_id', organizationId!)
-        // [B4] A carteira operacional é só 'principal'. As outras fatias vêm da
-        // classificação Camada 1 (20260722_b4_backfill_camada1_*.sql) e continuam
-        // acessíveis pelas abas — filtrar não pode parecer perder.
-        // Seguro porque a Camada 1 POSITIVA trava em 'principal' todo cliente com
-        // agendamento/pagamento: nenhum cliente real cai fora daqui.
         .eq('carteira_estado', carteiraView)
+      // Filtro por ASSUNTO aplicado NO BANCO, não em memória: a lista é limitada a
+      // 500, então filtrar depois esconderia resultado que existe.
+      if (tipoFiltro !== 'todos') query = query.eq('tipo_contato', tipoFiltro)
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(500)
       if (error) throw error
@@ -355,22 +401,48 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
   // linha — nenhuma reclassificação automática futura pode devolvê-la para a lixeira.
   // É o contrapeso obrigatório de classificar automaticamente: a máquina erra, e a
   // pessoa que conhece a clientela precisa poder desfazer em um clique.
-  const promover = useMutation({
-    mutationFn: async (c: Cliente) => {
+  // [B4] Contagem por ASSUNTO dentro da fatia visível — é o número que a análise de
+  // carteira vende: "você tem N contatos que falam de salão e nunca agendaram".
+  const { data: tipoCounts } = useQuery({
+    queryKey: ['salao-clientes-tipo-counts', organizationId, carteiraView],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      const tipos = TIPO_FILTROS.filter((t) => t.value !== 'todos').map((t) => t.value)
+      const entries = await Promise.all(
+        tipos.map(async (t) => {
+          const { count, error } = await supabase
+            .from('clientes')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId!)
+            .eq('carteira_estado', carteiraView)
+            .eq('tipo_contato', t)
+          if (error) throw error
+          return [t, count ?? 0] as const
+        }),
+      )
+      return Object.fromEntries(entries) as Record<string, number>
+    },
+  })
+
+  // [B4] A dona diz "isto é pessoal" — mesma trava do "É cliente": grava revisado_em,
+  // e a partir daí nenhum classificador automático mexe nessa linha.
+  const marcarTipo = useMutation({
+    mutationFn: async ({ c, tipo }: { c: Cliente; tipo: 'cliente' | 'pessoal' }) => {
       const { error } = await supabase.from('clientes').update({
+        tipo_contato: tipo,
         carteira_estado: 'principal',
-        tipo_contato: 'cliente',
         revisado_em: new Date().toISOString(),
-        classificacao_motivo: 'resgatado manualmente na revisão da carteira',
+        classificacao_motivo: `revisao da dona: marcado como ${tipo}`,
       }).eq('id', c.id).eq('organization_id', organizationId!)
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['salao-clientes', organizationId] })
       qc.invalidateQueries({ queryKey: ['salao-clientes-carteira-counts', organizationId] })
-      toast.success('Movido para a sua carteira.')
+      qc.invalidateQueries({ queryKey: ['salao-clientes-tipo-counts', organizationId] })
+      toast.success(v.tipo === 'cliente' ? 'Movido para a sua carteira.' : 'Marcado como pessoal — fora das campanhas.')
     },
-    onError: () => toast.error('Não deu pra mover agora.'),
+    onError: () => toast.error('Não deu pra salvar agora.'),
   })
 
   // ─── Feature #4: merge transacional via RPC ───────────────────────────
@@ -500,6 +572,50 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
           </div>
         )}
 
+        {/* [B4] ANÁLISE DA CARTEIRA — é isto que se vende. O agente leu as conversas
+            e separou o que é do salão do que é vida pessoal, com evidência por contato. */}
+        {!isDemo && (tipoCounts?.pessoal ?? 0) + (tipoCounts?.misto ?? 0) + (tipoCounts?.lead ?? 0) > 0 && (
+          <Card className="p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Análise da carteira</span>
+              <span className="text-xs text-muted-foreground">
+                — o agente leu as conversas e separou o que é do salão
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {TIPO_FILTROS.filter((t) => t.value !== 'todos').map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => setTipoFiltro(tipoFiltro === t.value ? 'todos' : (t.value as TipoFiltro))}
+                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                    tipoFiltro === t.value ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="text-lg font-bold tabular-nums">
+                    {(tipoCounts?.[t.value] ?? 0).toLocaleString('pt-BR')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{t.label}</div>
+                </button>
+              ))}
+            </div>
+            {tipoFiltro !== 'todos' && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {TIPO_META[tipoFiltro]?.ajuda}{' '}
+                <button className="text-primary underline" onClick={() => setTipoFiltro('todos')}>
+                  limpar filtro
+                </button>
+              </p>
+            )}
+            {(tipoCounts?.lead ?? 0) > 0 && tipoFiltro === 'todos' && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                <b className="text-foreground">{(tipoCounts?.lead ?? 0).toLocaleString('pt-BR')} contatos falam de
+                serviço e nunca agendaram.</b> Esse é o dinheiro parado na sua carteira.
+              </p>
+            )}
+          </Card>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -552,9 +668,26 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                       title="Ver perfil 360"
                     >
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>{c.nome}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{c.nome || <span className="text-muted-foreground">(sem nome)</span>}</span>
                           {score != null && <TierBadge score={score} />}
+                          {/* [B4] A tag do agente + a EVIDÊNCIA no title. A dona vai
+                              perguntar "por que essa é pessoal?" — a resposta tem que
+                              estar a um hover, não numa reunião. */}
+                          {c.tipo_contato && TIPO_META[c.tipo_contato] && (
+                            <Badge
+                              variant="outline"
+                              className={TIPO_META[c.tipo_contato].classe}
+                              title={
+                                c.sinais_wa?.evidencias?.length
+                                  ? `Porque: ${c.sinais_wa.evidencias.join(' · ')}`
+                                  : TIPO_META[c.tipo_contato].ajuda
+                              }
+                            >
+                              {TIPO_META[c.tipo_contato].label}
+                              {c.revisado_em ? ' ✓' : ''}
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground sm:table-cell">{c.telefone ?? '—'}</TableCell>
@@ -569,16 +702,43 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
-                          {carteiraView !== 'principal' && (
+                          {/* [B4] Revisão da dona. Os dois botões gravam revisado_em —
+                              a partir daí nenhum classificador automático mexe na linha.
+                              É o contrapeso obrigatório de classificar por IA: a máquina
+                              erra, e quem conhece a clientela precisa desfazer num clique. */}
+                          {/* Resgate: nas abas fora da carteira, trazer de volta. */}
+                          {!isDemo && carteiraView !== 'principal' && (
                             <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={promover.isPending}
-                              onClick={(e) => { e.stopPropagation(); promover.mutate(c) }}
+                              size="sm" variant="outline" disabled={marcarTipo.isPending}
+                              onClick={(e) => { e.stopPropagation(); marcarTipo.mutate({ c, tipo: 'cliente' }) }}
                               title="Mover para a minha carteira"
                             >
                               É cliente
                             </Button>
+                          )}
+                          {/* Correção do agente: só aparece onde ELE opinou (tem sinais_wa)
+                              e a dona ainda não decidiu. Sem isso o botão poluiria 500
+                              linhas de uma carteira que ninguém classificou. */}
+                          {!isDemo && carteiraView === 'principal' && c.sinais_wa && !c.revisado_em && (
+                            c.tipo_contato === 'pessoal' ? (
+                              <Button
+                                size="sm" variant="ghost" disabled={marcarTipo.isPending}
+                                onClick={(e) => { e.stopPropagation(); marcarTipo.mutate({ c, tipo: 'cliente' }) }}
+                                title="Na verdade é cliente do salão"
+                                className="text-muted-foreground hover:text-emerald-600"
+                              >
+                                É cliente
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm" variant="ghost" disabled={marcarTipo.isPending}
+                                onClick={(e) => { e.stopPropagation(); marcarTipo.mutate({ c, tipo: 'pessoal' }) }}
+                                title="Marcar como pessoal — sai das campanhas do salão"
+                                className="text-muted-foreground hover:text-amber-600"
+                              >
+                                É pessoal
+                              </Button>
+                            )
                           )}
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelected(c) }} title="Ver perfil 360"><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(c) }} title="Editar"><Pencil className="h-4 w-4" /></Button>
