@@ -1,0 +1,47 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5911",
+  "data_publicacao": "2026-07-21",
+  "arquivo": "DJMS-2026-07-21-5911-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 3,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2238",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2242",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2243",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [],
+  "revisar": [
+    "Portaria 2238/2026: não foi possível isolar a ementa",
+    "Portaria 2242/2026: não foi possível isolar a ementa",
+    "Portaria 2243/2026: não foi possível isolar a ementa"
+  ]
+}

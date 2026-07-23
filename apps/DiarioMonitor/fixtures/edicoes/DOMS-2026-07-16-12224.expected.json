@@ -1,0 +1,101 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DOMS",
+  "edicao": "12224",
+  "data_publicacao": "2026-07-16",
+  "arquivo": "DOMS-2026-07-16-12224.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 3,
+  "atos": [
+    {
+      "tipo": "DECRETO",
+      "tipo_completo": "DECRETO O",
+      "numero": "090",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P FCMS",
+      "numero": "843",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "PORTARIA",
+      "tipo_completo": "PORTARIA P FCMS",
+      "numero": "844",
+      "ano": 2026,
+      "data_ato": "2026-07-16",
+      "orgao_emissor": null,
+      "ementa": null,
+      "confianca_heuristica": "media"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "6527",
+        "ano": 2025
+      },
+      "trecho": "Lei nº 6.527, de 15 de dezembro de 2025"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "15938",
+        "ano": 2022
+      },
+      "trecho": "Decreto nº 15.938, de 26 de maio de 2022"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16119",
+        "ano": 2023
+      },
+      "trecho": "Decreto nº 16.119, de 6 de março de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "16189",
+        "ano": 2023
+      },
+      "trecho": "Decreto n° 16.189, de 17 de maio de 2023"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Lei",
+        "numero": "14133",
+        "ano": 2021
+      },
+      "trecho": "Lei n. 14.133, de 01 de abril de 2021"
+    },
+    {
+      "tipo": "referencia",
+      "destino": {
+        "tipo": "Decreto",
+        "numero": "14494",
+        "ano": 2016
+      },
+      "trecho": "Decreto Estadual n. 14.494, de 02 de junho de 2016"
+    }
+  ],
+  "revisar": []
+}

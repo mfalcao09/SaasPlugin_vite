@@ -1,0 +1,55 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5907",
+  "data_publicacao": "2026-07-15",
+  "arquivo": "DJMS-2026-07-15-5907-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 4,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2094",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Conceder a YURI PETRONI DE SENZI BARREIRA, Juiz de Direito da comarca de Pedro Gomes, 8 (oito) dias de licença gala para ser gozada no período de 8 a 15/8/2026, nos termos do artigo 238, inciso IV, do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2183",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar JESSE CRUCIOL JUNIOR, Juiz de Direito da 2ª Vara Cível da comarca de Corumbá, para responder cumulativamente pela 1ª Vara Criminal da referida comarca, no dia 20/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2185",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2187",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [],
+  "revisar": [
+    "Portaria 2185/2026: não foi possível isolar a ementa",
+    "Portaria 2187/2026: não foi possível isolar a ementa"
+  ]
+}

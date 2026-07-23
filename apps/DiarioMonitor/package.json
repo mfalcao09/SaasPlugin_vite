@@ -13,7 +13,10 @@
     "test:ingest:doms": "./scripts/test-ingest-doms.sh",
     "test:parser:contract": "./scripts/test-parser-contract.sh",
     "ingest:doms": "node scripts/ingest-doms.mjs",
-    "gates": "npm run test:rls && npm run test:ingest:doms && npm run test:parser:contract"
+    "gates": "npm run test:rls && npm run test:ingest:doms && npm run test:parser:contract && npm run test:gabarito:formato",
+    "ingest": "node scripts/ingest.mjs",
+    "gabarito": "node scripts/pre-anotar.mjs",
+    "test:gabarito:formato": "./scripts/test-gabarito-formato.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",

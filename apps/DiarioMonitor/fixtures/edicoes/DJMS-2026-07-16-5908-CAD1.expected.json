@@ -1,0 +1,34 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5908",
+  "data_publicacao": "2026-07-16",
+  "arquivo": "DJMS-2026-07-16-5908-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 2,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2201",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Conceder a FELIPE BRIGIDO LAGE, Juiz de Direito da comarca de Bandeirantes, 1 (um) dia de licença para tratamento de saúde, em 24/7/2026, nos termos do parágrafo único do artigo 269 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2210",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Conceder a MARCELO GUIMARÃES MARQUES, Juiz de Direito da 2ª Vara Criminal da comarca de Naviraí, 3 (três) dias de licença para tratamento de saúde em pessoa da família, no período de 5 a 7/8/2026, nos termos do artigo 271 do CODJ/MS. P. R. ",
+      "confianca_heuristica": "media"
+    }
+  ],
+  "relacoes_sugeridas": [],
+  "revisar": []
+}

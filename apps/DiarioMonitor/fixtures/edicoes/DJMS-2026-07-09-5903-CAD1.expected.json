@@ -1,0 +1,113 @@
+{
+  "$schema": "gabarito-v1",
+  "fonte": "DJMS",
+  "edicao": "5903",
+  "data_publicacao": "2026-07-09",
+  "arquivo": "DJMS-2026-07-09-5903-CAD1.pdf",
+  "validado": false,
+  "validado_por": null,
+  "validado_em": null,
+  "origem_anotacao": "heuristica-c1.1a",
+  "total_atos": 7,
+  "atos": [
+    {
+      "tipo": "Portaria",
+      "numero": "2134",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2138",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2135",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2125",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Designar FELIPE BRIGIDO LAGE, Juiz de Direito da comarca de Bandeirantes, para responder cumulativamente pela 1ª Vara Cível da comarca de Coxim, nos dias 14 e 15/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2115",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2122",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": "Conceder a HELENA ALICE MACHADO COELHO, Juíza de Direito Auxiliar da Corregedoria-Geral de Justiça, 2 (dois) dias de licença, em 16 e 17/7/2026, nos termos do artigo 98 da Lei n.º 9504, de 30/9/1997. P. R. C.",
+      "confianca_heuristica": "media"
+    },
+    {
+      "tipo": "Portaria",
+      "numero": "2131",
+      "ano": 2026,
+      "data_ato": null,
+      "orgao_emissor": "Tribunal de Justiça de Mato Grosso do Sul",
+      "ementa": null,
+      "confianca_heuristica": "baixa"
+    }
+  ],
+  "relacoes_sugeridas": [
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "070",
+        "ano": 2022
+      },
+      "trecho": "REVOGAR, a Portaria n. 070/2022"
+    },
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "065",
+        "ano": 2025
+      },
+      "trecho": "REVOGAR, a pedido, a Portaria n. 065/2025"
+    },
+    {
+      "tipo": "revoga",
+      "destino": {
+        "tipo": "Portaria",
+        "numero": "032",
+        "ano": 2025
+      },
+      "trecho": "REVOGAR, a Portaria n. 032/2025"
+    }
+  ],
+  "revisar": [
+    "Portaria 2134/2026: não foi possível isolar a ementa",
+    "Portaria 2138/2026: não foi possível isolar a ementa",
+    "Portaria 2135/2026: não foi possível isolar a ementa",
+    "Portaria 2115/2026: não foi possível isolar a ementa",
+    "Portaria 2131/2026: não foi possível isolar a ementa"
+  ]
+}
