@@ -36,11 +36,16 @@
 //   POST /api/revisao/concluir       fecha a edição
 // ============================================================================
 
-import { writeFile, readFile, stat } from 'node:fs/promises';
+import { writeFile, readFile, stat, unlink } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { tmpdir } from 'node:os';
 import pg from 'pg';
+
+const execFileP = promisify(execFile);
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = join(AQUI, '../..');
@@ -129,7 +134,7 @@ async function listarFontes(sessao) {
       left join public.atos a    on a.edicao_id = e.id
       left join public.validacao_edicao v on v.edicao_id = e.id
      group by f.id
-     order by f.ativa desc, f.sigla`)).rows);
+     order by f.ativo desc, f.sigla`)).rows);
 }
 
 async function listarEdicoes(sessao) {
@@ -243,6 +248,102 @@ async function caminhoPdfDaEdicao(sessao, id) {
     throw new Error('caminho do PDF fora de fixtures/');
   }
   return (await existe(abs)) ? abs : null;
+}
+
+/**
+ * Renderiza UMA página do diário como PNG (Poppler/pdftoppm, já usado na
+ * extração — zero dependência nova). É o que permite a visualização LIMPA:
+ * sem toolbar nem painel lateral do visualizador nativo, e com a camada de
+ * destaque desenhada por cima (impossível sobre o <iframe> nativo, que é
+ * caixa-preta). O pdftoppm não escreve em stdout: arquivo temporário + unlink.
+ */
+async function renderizarPaginaPng(abs, n) {
+  const raiz = join(tmpdir(), `dm-pg-${randomUUID()}`);
+  await execFileP('pdftoppm', [
+    '-png', '-singlefile', '-f', String(n), '-l', String(n), '-r', '130', abs, raiz,
+  ], { maxBuffer: 64 * 1024 * 1024 });
+  const png = await readFile(`${raiz}.png`);
+  await unlink(`${raiz}.png`).catch(() => {});
+  return png;
+}
+
+// ̀-ͯ = diacríticos combinantes (á->a+́). Escapes explícitos: a faixa
+// com caracteres combinantes literais dentro do regex quebra em qualquer
+// editor/merge que renormalize o arquivo.
+const normalizarToken = (t) => t
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * Onde, na página N, está o texto deste ato? Usa `pdftotext -bbox-layout`
+ * (coordenadas de cada palavra, em pontos) e casa a sequência de tokens do
+ * texto extraído contra as palavras da página. Devolve caixas POR LINHA em
+ * frações 0–1 — o front escala para o tamanho renderizado da imagem.
+ *
+ * Determinístico e honesto: se a âncora não casar (OCR, hifenização), devolve
+ * caixas vazias e a tela simplesmente não destaca — nunca destaca errado.
+ */
+async function mapaDeDestaque(abs, n, textoAlvo) {
+  const { stdout } = await execFileP('pdftotext', [
+    '-f', String(n), '-l', String(n), '-bbox-layout', abs, '-',
+  ], { maxBuffer: 64 * 1024 * 1024 });
+
+  const pg = stdout.match(/<page width="([\d.]+)" height="([\d.]+)"/);
+  if (!pg) return { caixas: [] };
+  const W = Number(pg[1]), H = Number(pg[2]);
+
+  // Palavras na ordem do layout, anotadas com o índice da LINHA a que pertencem.
+  const palavras = [];
+  let linha = -1;
+  for (const m of stdout.matchAll(
+    /<line [^>]*>|<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g,
+  )) {
+    if (m[0].startsWith('<line')) { linha++; continue; }
+    const t = normalizarToken(m[5]);
+    if (t) palavras.push({ t, x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4], linha });
+  }
+
+  const alvo = String(textoAlvo ?? '').split(/\s+/).map(normalizarToken).filter(Boolean).slice(0, 400);
+  if (alvo.length < 4 || !palavras.length) return { caixas: [] };
+
+  // Âncora: primeira janela de K tokens do alvo encontrada na página
+  // (tolera começo sujo do trecho tentando alguns deslocamentos).
+  let ini = -1, sIni = 0;
+  busca:
+  for (const K of [8, 6, 4]) {
+    for (let s = 0; s + K <= Math.min(alvo.length, 12 + K); s++) {
+      for (let i = 0; i + K <= palavras.length; i++) {
+        let ok = true;
+        for (let j = 0; j < K; j++) if (palavras[i + j].t !== alvo[s + j]) { ok = false; break; }
+        if (ok) { ini = i; sIni = s; break busca; }
+      }
+    }
+  }
+  if (ini < 0) return { caixas: [] };
+
+  // Estende o casamento token a token; até 3 divergências seguidas (hífens,
+  // números colados) antes de considerar que o ato terminou.
+  let i = ini, s = sIni, ruins = 0;
+  const casadas = [];
+  while (i < palavras.length && s < alvo.length && ruins < 3) {
+    if (palavras[i].t === alvo[s]) { casadas.push(palavras[i]); i++; s++; ruins = 0; }
+    else { i++; s++; ruins++; }
+  }
+
+  // Uma caixa por linha (união das palavras casadas da linha).
+  const porLinha = new Map();
+  for (const p of casadas) {
+    const c = porLinha.get(p.linha);
+    if (!c) porLinha.set(p.linha, { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1 });
+    else {
+      c.x0 = Math.min(c.x0, p.x0); c.y0 = Math.min(c.y0, p.y0);
+      c.x1 = Math.max(c.x1, p.x1); c.y1 = Math.max(c.y1, p.y1);
+    }
+  }
+  const caixas = [...porLinha.values()].map((c) => ({
+    x: c.x0 / W, y: c.y0 / H, w: (c.x1 - c.x0) / W, h: (c.y1 - c.y0) / H,
+  }));
+  return { caixas };
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +529,34 @@ export default function apiDev() {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline'); // exibir, não baixar
             return res.end(await readFile(abs));
+          }
+
+          // Página N renderizada como imagem — a visualização LIMPA (sem
+          // toolbar/painel do visualizador nativo) sobre a qual dá para
+          // desenhar a camada de destaque.
+          const mImg = rota.match(/^\/api\/edicoes\/([^/]+)\/pagina\/(\d+)\/imagem$/);
+          if (req.method === 'GET' && mImg) {
+            const abs = await caminhoPdfDaEdicao(sessao, mImg[1]);
+            if (!abs) return responder(404, { erro: 'PDF da edição não encontrado' });
+            const png = await renderizarPaginaPng(abs, Number(mImg[2]));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'image/png');
+            res.setHeader('Cache-Control', 'private, max-age=300');
+            return res.end(png);
+          }
+
+          // Caixas de destaque do ato na página: onde o texto extraído está.
+          const mDst = rota.match(/^\/api\/edicoes\/([^/]+)\/destaque$/);
+          if (req.method === 'GET' && mDst) {
+            const abs = await caminhoPdfDaEdicao(sessao, mDst[1]);
+            if (!abs) return responder(404, { erro: 'PDF da edição não encontrado' });
+            const atoId = url.searchParams.get('ato');
+            const pagina = Number(url.searchParams.get('pagina') || 0);
+            if (!atoId || !pagina) return responder(400, { erro: 'faltam ato e pagina' });
+            const rows = await comIdentidade(sessao, async (c) =>
+              (await c.query('select texto_bruto from public.atos where id = $1', [atoId])).rows);
+            if (!rows.length) return responder(404, { erro: 'ato não encontrado' });
+            return responder(200, await mapaDeDestaque(abs, pagina, rows[0].texto_bruto));
           }
 
           if (req.method === 'POST' && rota === '/api/ingest')           return responder(200, await ingerir(await corpoDaRequisicao()));

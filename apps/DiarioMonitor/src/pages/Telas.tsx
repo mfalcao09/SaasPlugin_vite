@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Download, Loader2, RefreshCw, Search, Check, X, FileText, AlertTriangle, Database,
   ArrowLeft, ExternalLink,
@@ -404,6 +404,66 @@ function AtoParaJulgar({ a, selecionado, aoVer, onJulgar }: {
   );
 }
 
+type Caixa = { x: number; y: number; w: number; h: number };
+
+// Página do diário renderizada como IMAGEM (servida pelo Poppler) em vez do
+// visualizador nativo em <iframe>. Dois motivos, ambos pedidos do operador:
+// 1. Visual limpo — sem toolbar nem painel de miniaturas, zoom de encaixe
+//    por CSS (width:100%), leitura imediata.
+// 2. A CAMADA DE DESTAQUE: o visualizador nativo é caixa-preta (não aceita
+//    overlay); sobre uma imagem, as caixas vindas do /destaque (frações 0–1
+//    calculadas do bbox-layout do Poppler) viram divs absolutas.
+function VisorDiario({ edicaoId, pagina, atoId }: {
+  edicaoId: string; pagina: string; atoId: string | null;
+}) {
+  const [caixas, setCaixas] = useState<Caixa[]>([]);
+  const rolagem = useRef<HTMLDivElement>(null);
+  const imagem = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    setCaixas([]);
+    if (!atoId) return;
+    const ac = new AbortController();
+    fetch(`/api/edicoes/${edicaoId}/destaque?ato=${atoId}&pagina=${pagina}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((j) => setCaixas(j.caixas ?? []))
+      .catch(() => { /* sem destaque é estado válido — nunca destacar errado */ });
+    return () => ac.abort();
+  }, [edicaoId, atoId, pagina]);
+
+  // Leva a rolagem até o destaque assim que imagem E caixas existirem.
+  const rolarAteDestaque = useCallback(() => {
+    if (!rolagem.current || !imagem.current || !caixas.length) return;
+    const topo = caixas[0].y * imagem.current.clientHeight - 120;
+    rolagem.current.scrollTo({ top: Math.max(0, topo), behavior: 'smooth' });
+  }, [caixas]);
+  useEffect(rolarAteDestaque, [rolarAteDestaque]);
+
+  return (
+    <div ref={rolagem} className="h-[60vh] overflow-auto rounded-lg border border-border bg-muted/30 lg:h-[80vh]">
+      <div className="relative">
+        <img
+          ref={imagem}
+          src={`/api/edicoes/${edicaoId}/pagina/${pagina}/imagem`}
+          onLoad={rolarAteDestaque}
+          alt={`Página ${pagina} do diário`}
+          className="w-full bg-white"
+        />
+        {caixas.map((c, i) => (
+          <div
+            key={i}
+            className="pointer-events-none absolute rounded-[2px] bg-accent/30 ring-1 ring-accent"
+            style={{
+              left: `${c.x * 100}%`, top: `${c.y * 100}%`,
+              width: `${c.w * 100}%`, height: `${c.h * 100}%`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Revisão LADO A LADO: PDF do diário à esquerda, atos extraídos à direita.
 // É o coração da fase de validação — o operador lê a fonte e valida cada
 // portaria sem sair do sistema. O `#view=FitH` pede ao visualizador nativo do
@@ -416,10 +476,7 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
 }) {
   const pdfUrl = `/api/edicoes/${ed.id}/pdf`;
 
-  // Ato selecionado -> página que o PDF deve mostrar. O visualizador nativo só
-  // honra #page=N no CARREGAMENTO do documento; mudar apenas o hash de um
-  // iframe não renavega. Daí a `key`: trocar de página REMONTA o iframe
-  // (~1s de reload — aceitável; o refinamento é PDF.js, etapa futura).
+  // Ato selecionado -> página exibida + destaque do trecho dele.
   const [atoVisto, setAtoVisto] = useState<string | null>(null);
   const paginaVista = ed.atos.find((a) => a.id === atoVisto)?.pagina ?? null;
   return (
@@ -460,11 +517,10 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
               <ExternalLink className="h-3 w-3" /> abrir em nova aba
             </a>
           </div>
-          <iframe
-            key={paginaVista ?? 'inicio'}
-            src={`${pdfUrl}#page=${paginaVista ?? 1}&view=FitH`}
-            title={`Diário ${ed.fonte} ${ed.edicao}`}
-            className="h-[60vh] w-full rounded-lg border border-border bg-white lg:h-[80vh]"
+          <VisorDiario
+            edicaoId={ed.id}
+            pagina={paginaVista ?? '1'}
+            atoId={atoVisto}
           />
         </div>
 
