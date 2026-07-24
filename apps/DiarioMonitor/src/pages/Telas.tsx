@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Download, Loader2, RefreshCw, Search, Check, X, FileText, AlertTriangle, Database,
-  ArrowLeft, ExternalLink,
+  ArrowLeft, ExternalLink, Sparkles,
 } from 'lucide-react';
 
 // ============================================================================
@@ -468,17 +468,37 @@ function VisorDiario({ edicaoId, pagina, atoId }: {
 // É o coração da fase de validação — o operador lê a fonte e valida cada
 // portaria sem sair do sistema. O `#view=FitH` pede ao visualizador nativo do
 // navegador para ajustar a largura da página.
-function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
+function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir, onRecarregar }: {
   ed: EdicaoRevisao;
   onVoltar: () => void;
   onJulgar: (id: string, d: 'ok' | 'descartado') => void;
   onConcluir: (ed: EdicaoRevisao) => void;
+  onRecarregar: () => void;
 }) {
   const pdfUrl = `/api/edicoes/${ed.id}/pdf`;
 
   // Ato selecionado -> página exibida + destaque do trecho dele.
   const [atoVisto, setAtoVisto] = useState<string | null>(null);
   const paginaVista = ed.atos.find((a) => a.id === atoVisto)?.pagina ?? null;
+
+  // Extração por IA disparada PELO SISTEMA: o operador clica, o orquestrador
+  // multi-agente roda no servidor e os atos novos caem NESTA fila.
+  const [extraindo, setExtraindo] = useState(false);
+  const [avisoIA, setAvisoIA] = useState('');
+  async function extrairComIA() {
+    setExtraindo(true);
+    setAvisoIA('Extraindo com IA — pode levar alguns minutos em edições grandes…');
+    try {
+      const r = await postar<{ paginas_processadas: number; extraidos: number; inseridos: number; flags: number; modelo: string }>(
+        `/api/edicoes/${ed.id}/extrair-ia`, {});
+      setAvisoIA(`IA (${r.modelo}): ${r.paginas_processadas} pág. · ${r.extraidos} ato(s) extraído(s), ${r.inseridos} novo(s) na fila, ${r.flags} flag(s) do auditor.`);
+      onRecarregar();
+    } catch (e) {
+      setAvisoIA(`Extração IA falhou: ${(e as Error).message}`);
+    } finally {
+      setExtraindo(false);
+    }
+  }
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -495,10 +515,26 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
           Edição {rotuloEdicao(ed.edicao, ed.numero_suplemento)}
         </h1>
         <span className="font-mono text-[11px] text-muted-foreground">{ed.data_publicacao}</span>
+        <button
+          onClick={extrairComIA}
+          disabled={extraindo}
+          title="Roda o orquestrador de IA (Gemini) nesta edição; os atos entram nesta fila"
+          className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {extraindo
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Extraindo…</>
+            : <><Sparkles className="h-4 w-4" /> Extrair com IA</>}
+        </button>
         <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
           {ed.julgados}/{ed.total} julgados
         </span>
       </div>
+
+      {avisoIA && (
+        <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-[13px] text-foreground">
+          {avisoIA}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ESQUERDA — o diário oficial, fonte da verdade */}
@@ -596,7 +632,7 @@ export function TelaRevisao() {
   // MODO REVISÃO — lado a lado
   if (edSel) {
     return (
-      <RevisaoLadoALado ed={edSel} onVoltar={() => setAberta(null)} onJulgar={julgar} onConcluir={concluir} />
+      <RevisaoLadoALado ed={edSel} onVoltar={() => setAberta(null)} onJulgar={julgar} onConcluir={concluir} onRecarregar={recarregar} />
     );
   }
 
