@@ -56,6 +56,7 @@ const FIXTURES = join(RAIZ, 'fixtures/edicoes');
 // dentro do bundle e quebraria. Variável = import opaco ao bundler.
 const CAMINHO_PRE_ANOTAR = new URL('../../scripts/pre-anotar.mjs', import.meta.url).href;
 const CAMINHO_CARREGADOR = new URL('../../scripts/carregar-gabarito.mjs', import.meta.url).href;
+const CAMINHO_ORQUESTRADOR = new URL('../services/extracao/orquestrador.mjs', import.meta.url).href;
 
 const existe = async (p) => { try { await stat(p); return true; } catch { return false; } };
 
@@ -543,6 +544,58 @@ export default function apiDev() {
             res.setHeader('Content-Type', 'image/png');
             res.setHeader('Cache-Control', 'private, max-age=300');
             return res.end(png);
+          }
+
+          // EXTRAÇÃO POR IA disparada PELO SISTEMA (botão na Fila de Revisão).
+          // Roda o orquestrador multi-agente sobre o PDF da edição e insere os
+          // atos como origem_extracao='ia' — eles caem na mesma fila de
+          // validação humana. O operador não roda nada no terminal, nunca.
+          const mIA = rota.match(/^\/api\/edicoes\/([^/]+)\/extrair-ia$/);
+          if (req.method === 'POST' && mIA) {
+            const abs = await caminhoPdfDaEdicao(sessao, mIA[1]);
+            if (!abs) return responder(404, { erro: 'PDF da edição não encontrado' });
+            const corpo = await corpoDaRequisicao();
+
+            const { rows: [ed] } = await poolServico.query(
+              `select e.id, e.fonte_id, e.data_publicacao::text, f.sigla
+                 from public.edicoes e join public.fontes_diarios f on f.id = e.fonte_id
+                where e.id = $1`, [mIA[1]]);
+            if (!ed) return responder(404, { erro: 'edição não encontrada' });
+
+            const { stdout: texto } = await execFileP(
+              'pdftotext', ['-layout', abs, '-'], { maxBuffer: 64 * 1024 * 1024 });
+            const total = texto.split('\f').length - 1;
+            const paginas = Array.isArray(corpo.paginas) && corpo.paginas.length
+              ? corpo.paginas.map(Number)
+              : Array.from({ length: total }, (_, i) => i + 1);
+
+            const { extrairPaginas } = await import(CAMINHO_ORQUESTRADOR);
+            const resultados = await extrairPaginas({ fonte: ed.sigla, textoCompleto: texto, paginas });
+
+            let inseridos = 0, extraidos = 0, flags = 0;
+            for (const r of resultados) {
+              for (const a of r.atos ?? []) {
+                extraidos++;
+                flags += a.auditoria?.flags.length ?? 0;
+                if (!a.numero) continue;
+                const { rowCount } = await poolServico.query(
+                  `insert into public.atos
+                     (edicao_id, fonte_id, data_publicacao, tipo, numero, ano, orgao_emissor,
+                      ementa, texto_bruto, data_ato, pagina, origem_extracao, confianca_extracao)
+                   select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'ia',$12
+                    where not exists (
+                      select 1 from public.atos
+                       where edicao_id = $1 and tipo = $4 and numero = $5 and ano = $6)`,
+                  [ed.id, ed.fonte_id, ed.data_publicacao, a.tipo, a.numero, a.ano,
+                   a.orgao_emissor, a.ementa, a.trecho_original, a.data_ato,
+                   String(a.pagina), a.auditoria?.aprovado ? 0.85 : 0.5]);
+                inseridos += rowCount;
+              }
+            }
+            return responder(200, {
+              paginas_processadas: paginas.length, extraidos, inseridos, flags,
+              modelo: resultados.find((r) => r.modelo)?.modelo ?? null,
+            });
           }
 
           // Caixas de destaque do ato na página: onde o texto extraído está.
