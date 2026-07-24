@@ -22,9 +22,9 @@ services:
       - traefik.http.routers.tribunais-https.rule=Host(`tribunais.nexvylaw.com.br`)
       - traefik.http.routers.tribunais-https.entrypoints=websecure
       - traefik.http.routers.tribunais-https.tls.certresolver=letsencrypt
-      # Piloto: login-dev sem senha => porta fechada com basicAuth na borda.
-      - traefik.http.routers.tribunais-https.middlewares=tribunais-auth
-      - traefik.http.middlewares.tribunais-auth.basicauth.usersfile=/dynamic/tribunais-htpasswd
+      # Piloto: login-dev sem senha => porta fechada com o basicAuth JÁ
+      # existente no Traefik (dashboard-auth, mesma senha do painel/Netdata).
+      - traefik.http.routers.tribunais-https.middlewares=dashboard-auth@file
       - traefik.http.services.tribunais.loadbalancer.server.port=3000
     deploy:
       resources:
