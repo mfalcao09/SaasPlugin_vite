@@ -99,14 +99,15 @@ export async function carregarTudo(cliente, { limpar = false } = {}) {
         const { rowCount } = await cliente.query(
           `insert into public.atos
              (edicao_id, fonte_id, data_publicacao, tipo, numero, ano, orgao_emissor,
-              ementa, texto_bruto, data_ato, origem_extracao, confianca_extracao)
-           select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'heuristica',$11
+              ementa, texto_bruto, data_ato, pagina, origem_extracao, confianca_extracao)
+           select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'heuristica',$12
             where not exists (
               select 1 from public.atos
                where edicao_id = $1 and tipo = $4 and numero = $5 and ano = $6)`,
           [edicaoId, fonte.id, g.data_publicacao, a.tipo, a.numero, a.ano,
            a.orgao_emissor ?? null, a.ementa ?? null, a.trecho_original ?? null,
-           a.data_ato ?? null, a.confianca_heuristica === 'baixa' ? 0.4 : 0.7],
+           a.data_ato ?? null, a.pagina != null ? String(a.pagina) : null,
+           a.confianca_heuristica === 'baixa' ? 0.4 : 0.7],
         );
         atos += rowCount;
       }

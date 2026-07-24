@@ -216,6 +216,7 @@ type Ato = {
   tipo: string; numero: string; ano: number; data_ato: string | null;
   orgao_emissor: string | null;
   ementa: string | null; trecho_original: string | null;
+  pagina: string | null;
   confianca: number | null; status: string; julgamento: string | null;
 };
 
@@ -329,22 +330,33 @@ type EdicaoRevisao = {
 };
 
 // Um ato na coluna de validação: o que a máquina extraiu + ✓/✗. O operador
-// confere contra o PDF do diário renderizado ao lado.
-function AtoParaJulgar({ a, onJulgar }: {
-  a: Ato; onJulgar: (id: string, d: 'ok' | 'descartado') => void;
+// confere contra o PDF do diário renderizado ao lado. CLICAR no card leva o
+// PDF à página do ato — sem isso, validar num diário de 178 páginas é caça
+// ao tesouro, não trabalho assistido.
+function AtoParaJulgar({ a, selecionado, aoVer, onJulgar }: {
+  a: Ato; selecionado: boolean;
+  aoVer: () => void;
+  onJulgar: (id: string, d: 'ok' | 'descartado') => void;
 }) {
+  const tom =
+    a.julgamento === 'ok' ? 'border-primary/40 bg-primary/5'
+    : a.julgamento === 'descartado' ? 'border-destructive/40 bg-destructive/5 opacity-70'
+    : 'border-border';
   return (
     <div
-      className={
-        a.julgamento === 'ok' ? 'rounded-lg border border-primary/40 bg-primary/5 p-3'
-        : a.julgamento === 'descartado' ? 'rounded-lg border border-destructive/40 bg-destructive/5 p-3 opacity-70'
-        : 'rounded-lg border border-border p-3'
-      }
+      onClick={aoVer}
+      className={`cursor-pointer rounded-lg border p-3 transition-shadow ${tom} ${
+        selecionado ? 'ring-2 ring-ring' : 'hover:border-primary/40'}`}
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-foreground">
             {a.tipo} n. {a.numero}/{a.ano}
+            {a.pagina && (
+              <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold text-secondary-foreground">
+                pág. {a.pagina}
+              </span>
+            )}
             {a.confianca !== null && a.confianca < 0.5 && (
               <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-destructive">
                 confiança baixa
@@ -355,7 +367,7 @@ function AtoParaJulgar({ a, onJulgar }: {
             <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{a.ementa}</p>
           )}
           {a.trecho_original && (
-            <details className="mt-1.5">
+            <details className="mt-1.5" onClick={(e) => e.stopPropagation()}>
               <summary className="cursor-pointer select-none font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 trecho extraído
               </summary>
@@ -365,7 +377,7 @@ function AtoParaJulgar({ a, onJulgar }: {
             </details>
           )}
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             title="Confere com o diário ao lado"
             onClick={() => onJulgar(a.id, 'ok')}
@@ -403,6 +415,13 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
   onConcluir: (ed: EdicaoRevisao) => void;
 }) {
   const pdfUrl = `/api/edicoes/${ed.id}/pdf`;
+
+  // Ato selecionado -> página que o PDF deve mostrar. O visualizador nativo só
+  // honra #page=N no CARREGAMENTO do documento; mudar apenas o hash de um
+  // iframe não renavega. Daí a `key`: trocar de página REMONTA o iframe
+  // (~1s de reload — aceitável; o refinamento é PDF.js, etapa futura).
+  const [atoVisto, setAtoVisto] = useState<string | null>(null);
+  const paginaVista = ed.atos.find((a) => a.id === atoVisto)?.pagina ?? null;
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -430,9 +449,10 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
           <div className="mb-1.5 flex items-center justify-between">
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               diário oficial — fonte
+              {paginaVista && <span className="ml-2 text-foreground">· página {paginaVista}</span>}
             </span>
             <a
-              href={pdfUrl}
+              href={paginaVista ? `${pdfUrl}#page=${paginaVista}` : pdfUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
@@ -441,7 +461,8 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
             </a>
           </div>
           <iframe
-            src={`${pdfUrl}#view=FitH`}
+            key={paginaVista ?? 'inicio'}
+            src={`${pdfUrl}#page=${paginaVista ?? 1}&view=FitH`}
             title={`Diário ${ed.fonte} ${ed.edicao}`}
             className="h-[60vh] w-full rounded-lg border border-border bg-white lg:h-[80vh]"
           />
@@ -461,7 +482,13 @@ function RevisaoLadoALado({ ed, onVoltar, onJulgar, onConcluir }: {
           </div>
 
           {ed.atos.map((a) => (
-            <AtoParaJulgar key={a.id} a={a} onJulgar={onJulgar} />
+            <AtoParaJulgar
+              key={a.id}
+              a={a}
+              selecionado={a.id === atoVisto}
+              aoVer={() => setAtoVisto(a.id)}
+              onJulgar={onJulgar}
+            />
           ))}
 
           <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card/95 p-3 backdrop-blur">

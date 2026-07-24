@@ -45,6 +45,16 @@ const MESES = {
 const iso = (d, m, a) => `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 const limpar = (s) => s.replace(/\s+/g, ' ').trim();
 
+// O pdftotext separa páginas com form-feed (\f). Contar quantos existem antes
+// do offset dá a página (1-based) onde o ato está — é o que permite à Fila de
+// Revisão abrir o PDF no ponto exato, em vez de largar o validador na página 1
+// de um diário de 178.
+function paginaDoOffset(texto, offset) {
+  let n = 1;
+  for (let i = 0; i < offset; i++) if (texto.charCodeAt(i) === 12) n++;
+  return n;
+}
+
 // ============================================================================
 // HEURÍSTICA · TJMS (DJMS) — Caderno 1 Administrativo
 //
@@ -106,6 +116,9 @@ function anotarDJMS(texto) {
       orgao_emissor: 'Tribunal de Justiça de Mato Grosso do Sul',
       ementa: disp ? limpar(disp[0]).slice(0, 400) : null,
       trecho_original: trecho,
+      // Página onde a marca "(Port. n.º X/AAAA)" aparece no PDF — o fim do
+      // ato, que é onde o validador precisa olhar.
+      pagina: paginaDoOffset(texto, m.index),
       confianca_heuristica: disp ? 'media' : 'baixa',
     });
     if (!disp) revisar.push(`Portaria ${m[1]}/${m[2]}: não foi possível isolar a ementa`);
@@ -158,6 +171,14 @@ function anotarDOMS(texto) {
   const linhas = texto.split('\n');
   const marcas = [];   // { idx, ...campos }  idx = posição da linha no array
 
+  // Página (1-based) de cada linha: o \f do pdftotext fica embutido na
+  // primeira linha de cada página nova. Cumulativo, uma passada só.
+  const paginaPorLinha = new Array(linhas.length);
+  for (let i = 0, pg = 1; i < linhas.length; i++) {
+    for (let j = 0; j < linhas[i].length; j++) if (linhas[i].charCodeAt(j) === 12) pg++;
+    paginaPorLinha[i] = pg;
+  }
+
   linhas.forEach((linha, idx) => {
     if (/\.{6,}/.test(linha)) return;        // linha de sumário
     const m = RE_CAB_DOMS.exec(linha);
@@ -208,6 +229,7 @@ function anotarDOMS(texto) {
       orgao_emissor: null,          // não vem no cabeçalho; humano decide
       ementa,
       trecho_original: trecho,
+      pagina: paginaPorLinha[mk.idx],   // onde o CABEÇALHO do ato está no PDF
       confianca_heuristica: apos ? 'media' : 'baixa',
     });
     if (!apos) revisar.push(`${mk.tipoCompleto} ${mk.numero}: sem marcador resolve/decreta — ementa aproximada`);
