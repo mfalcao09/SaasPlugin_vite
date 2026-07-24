@@ -1,0 +1,309 @@
+{
+  "$schema": "extracao-ia-v1",
+  "fonte": "DJMS",
+  "edicao": "5913",
+  "data_publicacao": "2026-07-23",
+  "arquivo": "DJMS-2026-07-23-5913-CAD1.pdf",
+  "modelo": "gemini-3.5-flash",
+  "gerado_em": "2026-07-24T06:37:41.827Z",
+  "paginas": [
+    {
+      "fonte": "DJMS",
+      "pagina": 4,
+      "modelo": "gemini-3.5-flash",
+      "candidatos": [
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "R E S O L V E: Revogar a Portaria n.º 1936/2026, publicada",
+          "ancora_fim": "artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2274/2026)",
+          "justificativa": "Parágrafo dispositivo do DJMS fechado pela marca (Port. n.º 2274/2026) — padrão do Diário da Justiça.",
+          "cabecalho": "(Port. n.º 2274/2026)",
+          "flag_recorte": null,
+          "texto_chars": 454
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "(a) Desembargador DORIVAL RENATO PAVAN Presidente",
+          "ancora_fim": "(a) Desembargador DORIVAL RENATO PAVAN Presidente",
+          "justificativa": "Assinatura isolada do ato anterior.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 121
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Portaria assinada pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN",
+          "ancora_fim": "artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2286/2026)",
+          "justificativa": "Ato normativo completo com preâmbulo e parágrafo dispositivo fechado por (Port. n.º 2286/2026).",
+          "cabecalho": "(Port. n.º 2286/2026)",
+          "flag_recorte": null,
+          "texto_chars": 605
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "(a) Desembargador DORIVAL RENATO PAVAN Presidente",
+          "ancora_fim": "(a) Desembargador DORIVAL RENATO PAVAN Presidente",
+          "justificativa": "Assinatura isolada do ato anterior.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 121
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Tribunal de Justiça de Mato Grosso do Sul, 22 de julho de 2026.",
+          "ancora_fim": "Diretora da Secretaria da Magistratura",
+          "justificativa": "Expediente administrativo de encerramento/assinatura de secretaria.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 237
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Portarias assinadas pela Exma. Sr.ª Dr.ª JOSELIZA ALESSANDRA VANZELA TURINE,",
+          "ancora_fim": "RESOLVE:",
+          "justificativa": "Preâmbulo coletivo que antecede as portarias individuais assinadas pela Juíza Auxiliar.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 586
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar",
+          "ancora_fim": "data da publicação até 14/08/2026. P.R.C. (Port. n. 2239/2026).",
+          "justificativa": "Parágrafo dispositivo do DJMS fechado pela marca (Port. n. 2239/2026).",
+          "cabecalho": "(Port. n. 2239/2026)",
+          "flag_recorte": null,
+          "texto_chars": 365
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar",
+          "ancora_fim": "de 14/08/2026 a 14/08/2028. P.R.C. (Port. n. 2240/2026).",
+          "justificativa": "Parágrafo dispositivo do DJMS fechado pela marca (Port. n. 2240/2026).",
+          "cabecalho": "(Port. n. 2240/2026)",
+          "flag_recorte": null,
+          "texto_chars": 649
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar",
+          "ancora_fim": "de 14/08/2026 a 14/08/2028. P.R.C. (Port. n. 2241/2026).",
+          "justificativa": "Parágrafo dispositivo do DJMS fechado pela marca (Port. n. 2241/2026).",
+          "cabecalho": "(Port. n. 2241/2026)",
+          "flag_recorte": null,
+          "texto_chars": 649
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "(a) Dr.ª JOSELIZA ALESSANDRA VANZELA TURINE Juíza Auxiliar da Presidência",
+          "ancora_fim": "Diretora da Secretaria da Magistratura",
+          "justificativa": "Assinaturas e expediente administrativo de encerramento do bloco de portarias.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 1514
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Secretaria de Gestão de Pessoas Portarias baixadas pelo Desembargador DORIVAL",
+          "ancora_fim": "R E S O L V E:",
+          "justificativa": "Preâmbulo coletivo que antecede as portarias de pessoal da Secretaria de Gestão de Pessoas.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 429
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Exonerar FABIANE LIMA FERREIRA DOS ANJOS, matrícula nº 14569, Analista",
+          "ancora_fim": "com efeitos a partir de 20.07.2026. (Portaria nº 0530795/2026)",
+          "justificativa": "Parágrafo dispositivo de exoneração fechado pela marca (Portaria nº 0530795/2026).",
+          "cabecalho": "(Portaria nº 0530795/2026)",
+          "flag_recorte": null,
+          "texto_chars": 398
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "Exonerar, a pedido, RAFAELA GALERA CORRÊA, RG nº 001.903.942",
+          "ancora_fim": "com efeitos a partir de 27.07.2026. (Portaria nº 0531646/2026)",
+          "justificativa": "Parágrafo dispositivo de exoneração fechado pela marca (Portaria nº 0531646/2026).",
+          "cabecalho": "(Portaria nº 0531646/2026)",
+          "flag_recorte": null,
+          "texto_chars": 364
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Publicação Oficial do Tribunal de Justiça do Estado de Mato Grosso",
+          "ancora_fim": "Lei Federal nº 11.419/06, art. 4º.",
+          "justificativa": "Rodapé institucional de publicação oficial.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 110
+        }
+      ],
+      "atos": [
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "2274",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Revogar a Portaria n.º 1936/2026, na parte em que designou KATY BRAUN DO PRADO para responder cumulativamente pela comarca de Bandeirantes.",
+          "trecho_original": "R E S O L V E: Revogar a Portaria n.º 1936/2026, publicada no D.J. n.º 5894 de 26/6/2026, na parte em que designou KATY BRAUN DO PRADO, Juíza de Direito da Vara da Infância, da Adolescência e do Idoso da comarca de Campo Grande, para responder cumulativamente pela comarca de Bandeirantes, no período de 27 a 31/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2274/2026) (a) Desembargador DORIVAL RENATO PAVAN Presidente Portaria assinada",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 2274/2026 no final do texto. Data de assinatura e órgão emissor não constam explicitamente no texto deste candidato.",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": [
+            {
+              "tipo": "revoga_parcialmente",
+              "destino": {
+                "tipo": "Portaria",
+                "numero": "1936",
+                "ano": 2026
+              },
+              "evidencia": "Revogar a Portaria n.º 1936/2026, publicada no D.J. n.º 5894 de 26/6/2026, na parte em que designou",
+              "flags": []
+            }
+          ]
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "2286",
+          "ano": 2026,
+          "data_ato": "2026-07-22",
+          "orgao_emissor": "Tribunal de Justiça do Estado de Mato Grosso do Sul",
+          "ementa": "Designar VALTER TADEU CARVALHO, Juiz de Direito da comarca de Terenos, para responder cumulativamente pela 2ª Vara da comarca de Camapuã, nos dias 22 e 23/7/2026.",
+          "trecho_original": "Portaria assinada pelo Excelentíssimo Senhor Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, em 22/7/2026. O Desembargador DORIVAL RENATO PAVAN, Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul, no uso de suas atribuições, R E S O L V E: Designar VALTER TADEU CARVALHO, Juiz de Direito da comarca de Terenos, para responder cumulativamente pela 2ª Vara da comarca de Camapuã, nos dias 22 e 23/7/2026, nos termos do artigo 46 do CODJ/MS. P. R. C. (Port. n.º 2286/2026) (a) Desembargador DORIVAL RENATO PAVAN Presidente Tribunal de Jus",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Portaria assinada pelo Presidente do Tribunal de Justiça do Estado de Mato Grosso do Sul em 22/7/2026, identificada pelo número 2286/2026.",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": []
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "2239",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, a partir da data da publicação até 14/08/2026.",
+          "trecho_original": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, a partir da data da publicação até 14/08/2026. P.R.C. (Port. n. 2239/2026). Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar d",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 2239/2026. Data de assinatura e órgão emissor não constam no texto deste candidato.",
+          "auditoria": {
+            "aprovado": false,
+            "flags": [
+              "tipo_fora_do_texto"
+            ]
+          },
+          "confianca_heuristica": "baixa",
+          "relacoes_sugeridas": []
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "2240",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, no período de 14/08/2026 a 14/08/2028.",
+          "trecho_original": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, a partir da data da publicação até 14/08/2026. P.R.C. (Port. n. 2239/2026). Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, no período de 14/08/2026 a 14/08/2028. P.R.C. (Port. n. 2240/2026). Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 2240/2026 no trecho final do texto. Data de assinatura e órgão emissor não constam no texto deste candidato.",
+          "auditoria": {
+            "aprovado": false,
+            "flags": [
+              "tipo_fora_do_texto"
+            ]
+          },
+          "confianca_heuristica": "baixa",
+          "relacoes_sugeridas": []
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "2240",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, no período de 14/08/2026 a 14/08/2028.",
+          "trecho_original": "Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, a partir da data da publicação até 14/08/2026. P.R.C. (Port. n. 2239/2026). Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de Justiça Conciliadora/Mediadora, junto ao Centro Judiciário de Solução de Conflitos e Cidadania (CEJUSC)/Insted da comarca de Campo Grande, no período de 14/08/2026 a 14/08/2028. P.R.C. (Port. n. 2240/2026). Designar WILSIENE RAMOS GOMES DA COSTA para exercer a função de Auxiliar de",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 2240/2026 no trecho final do texto. Data de assinatura e órgão emissor não constam no texto deste candidato.",
+          "auditoria": {
+            "aprovado": false,
+            "flags": [
+              "tipo_fora_do_texto"
+            ]
+          },
+          "confianca_heuristica": "baixa",
+          "relacoes_sugeridas": []
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "0530795",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Exonerar FABIANE LIMA FERREIRA DOS ANJOS do cargo em comissão de Assessora de Desembargador, junto ao Gabinete do Desembargador José Eduardo Neder Meneghelli, com efeitos a partir de 20.07.2026.",
+          "trecho_original": "Exonerar FABIANE LIMA FERREIRA DOS ANJOS, matrícula nº 14569, Analista Judiciária - área-fim, serviço interno, símbolo PJJU-1, do cargo em comissão de Assessora de Desembargador, símbolo PJAS-1, junto ao Gabinete do Desembargador José Eduardo Neder Meneghelli, com efeitos a partir de 20.07.2026. (Portaria nº 0530795/2026) Exonerar, a pedido, RAFAELA GALERA CORRÊA, RG nº 001.903.942 SEJUSP/MS, do",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 0530795/2026. Data de assinatura e órgão emissor não constam no texto deste candidato.",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": []
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "0531646",
+          "ano": 2026,
+          "data_ato": null,
+          "orgao_emissor": null,
+          "ementa": "Exonerar, a pedido, RAFAELA GALERA CORRÊA do cargo em comissão de Assessora Jurídica de Juiz, junto ao Gabinete da 1ª Vara de Violência Doméstica e Familiar Contra a Mulher, da comarca de Campo Grande, com efeitos a partir de 27.07.2026.",
+          "trecho_original": "Exonerar, a pedido, RAFAELA GALERA CORRÊA, RG nº 001.903.942 SEJUSP/MS, do cargo em comissão de Assessora Jurídica de Juiz, símbolo PJAS-6, junto ao Gabinete da 1ª Vara de Violência Doméstica e Familiar Contra a Mulher, da comarca de Campo Grande, com efeitos a partir de 27.07.2026. (Portaria nº 0531646/2026) Publicação Oficial do Tribunal de Justiça do Estado d",
+          "pagina": 4,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato do tipo Portaria identificado pelo número 0531646/2026. Data de assinatura não consta no texto. Órgão emissor está incompleto no final do texto ('Tribunal de Justiça do Estado d').",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": []
+        }
+      ],
+      "telemetria": {
+        "chamadas": 3,
+        "tokens_entrada": 10758,
+        "tokens_saida": 3467,
+        "cache": 0
+      }
+    }
+  ]
+}

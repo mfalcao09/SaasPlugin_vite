@@ -12,3 +12,4 @@ tools/validar-gabarito.html
 
 # STJ dados abertos: metadados versionados; ZIPs pesados ignorados
 fixtures/stjda/*.zip
+fixtures/.ia-cache/

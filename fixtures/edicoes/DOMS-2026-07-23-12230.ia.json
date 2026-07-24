@@ -1,0 +1,240 @@
+{
+  "$schema": "extracao-ia-v1",
+  "fonte": "DOMS",
+  "edicao": "12230",
+  "data_publicacao": "2026-07-23",
+  "arquivo": "DOMS-2026-07-23-12230.pdf",
+  "modelo": "gemini-3.5-flash",
+  "gerado_em": "2026-07-24T06:36:44.612Z",
+  "paginas": [
+    {
+      "fonte": "DOMS",
+      "pagina": 12,
+      "modelo": "gemini-3.5-flash",
+      "candidatos": [
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Diário Oficial Eletrônico n. 12.230",
+          "ancora_fim": "23 de julho de 2026 Página 12",
+          "justificativa": "Cabeçalho de página do Diário Oficial.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 109
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270009872026 NE: 007681",
+          "ancora_fim": "Processo numero 27.000.987-2026",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 526
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270009872026 NE: 007682",
+          "ancora_fim": "Processo numero 27.000.987-2026",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 527
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270204502026 NE: 007684",
+          "ancora_fim": "AUTORIZAÇÃO Nº 00471/2026/FESA/SES.",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 611
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270010122026 NE: 007685",
+          "ancora_fim": "Autorização Nº 00472/02026/FESA/SES.",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 550
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270029062020 NE: 007686",
+          "ancora_fim": "CONFORME TERMO DE REFERENCIA",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 547
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270126492023 NE: 007687",
+          "ancora_fim": "RESOLUÇÃO SES/MS Nº 666, DE 18 DE JUNHO DE 2026.",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR. Normas citadas apenas como amparo.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 604
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270200882026 NE: 007688",
+          "ancora_fim": "Embalagem individual e estéril. - FUNSAU.",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 726
+        },
+        {
+          "classe": "lista_empenho",
+          "ancora_inicio": "PROCESSO: 270175902024 NE: 007689",
+          "ancora_fim": "DO HEMOCENTRO DE DOURADOS NO MUNICIPIO DE DOURADOS/MS.",
+          "justificativa": "Bloco administrativo-financeiro de empenho com campos PROCESSO, NE, FONTE, FAVORECIDO, VALOR.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 473
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "A autenticidade deste documento pode ser verificada",
+          "ancora_fim": "no endereço www.diariooficial.ms.gov.br/",
+          "justificativa": "Rodapé institucional de autenticidade do Diário Oficial.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 92
+        }
+      ],
+      "atos": [],
+      "telemetria": {
+        "chamadas": 1,
+        "tokens_entrada": 4682,
+        "tokens_saida": 1222,
+        "cache": 1
+      }
+    },
+    {
+      "fonte": "DOMS",
+      "pagina": 50,
+      "modelo": "gemini-3.5-flash",
+      "candidatos": [
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Dotação Orçamentária: A despesa decorrente do presente",
+          "ancora_fim": "Assinam: Daniel de Barbosa Ingold e Euzi Furtado Alves",
+          "justificativa": "Trecho final de extrato de contrato/aditamento, contendo dotação orçamentária, valor, amparo legal e assinaturas.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 1062
+        },
+        {
+          "classe": "nao_normativo",
+          "ancora_inicio": "Companhia de Gás do Estado de Mato Grosso do Sul EXTRATO DE SEGUNDO ADITAMENTO",
+          "ancora_fim": "MSGÁS/ Gustavo Primi Nieto - GASCAT.",
+          "justificativa": "Extrato de aditamento contratual (CT-020/2024) - publicidade de contrato, não ato normativo.",
+          "cabecalho": null,
+          "flag_recorte": null,
+          "texto_chars": 591
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "PORTARIA Nº 065/2026, DE 22 DE JULHO DE 2026.",
+          "ancora_fim": "Essa portaria entra em vigor na data de sua assinatura. Cristiane Alkmin Junqueira Schmidt",
+          "justificativa": "Cabeçalho próprio em caixa alta + texto integral com dispositivo (resolve) de portaria publicada.",
+          "cabecalho": "PORTARIA Nº 065/2026, DE 22 DE JULHO DE 2026.",
+          "flag_recorte": null,
+          "texto_chars": 1518
+        },
+        {
+          "classe": "ato_publicado",
+          "ancora_inicio": "PORTARIA Nº 066/2026, DE 22 DE JULHO DE 2026.",
+          "ancora_fim": "Essa portaria entra em vigor na data de sua assinatura. Cristiane Alkmin Junqueira Schmidt",
+          "justificativa": "Cabeçalho próprio em caixa alta + texto integral com dispositivo (resolve) de portaria publicada.",
+          "cabecalho": "PORTARIA Nº 066/2026, DE 22 DE JULHO DE 2026.",
+          "flag_recorte": null,
+          "texto_chars": 1165
+        }
+      ],
+      "atos": [
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "065",
+          "ano": 2026,
+          "data_ato": "2026-07-22",
+          "orgao_emissor": "COMPANHIA DE GÁS DO ESTADO DE MATO GROSSO DO SUL - MSGÁS",
+          "ementa": "Revogar a Portaria nº 090/2025, de 28 de novembro de 2025, publicada no Diário Oficial do Estado nº 12.011, pág.49, de 2 de dezembro de 2025. 2º Designar os seguintes empregados para compor a Equipe de Fiscalização do contrato de adesão AD-006/2025",
+          "trecho_original": "PORTARIA Nº 065/2026, DE 22 DE JULHO DE 2026. A DIRETORA-PRESIDENTE DA COMPANHIA DE GÁS DO ESTADO DE MATO GROSSO DO SUL - MSGÁS no uso de suas atribuições legais e conforme o disposto no item 6, do Manual de Fiscalização de Contratos desta Companhia resolve: 1º Revogar a Portaria nº 090/2025, de 28 de novembro de 2025, publicada no Diário Oficial do Estado nº 12.011, pág.49, de 2 de dezembro de 2025. 2º Designar os seguintes empregados para compor a Equipe de Fiscalização do contrato de adesão AD-006/2025, cujo objeto é a adesão ao CENTRO DE INTEGRAÇÃO EMPRESA-ESCOLA – CIEE, para a assistência ao adolescente e a educação profissional, visando firmar contrato para seleção, contratação e formação técnico-profissional metódica de 02 (dois) jovens aprendizes, de acordo com a Constituição Federal, a Consolidação das Leis do Trabalho – CLT, Lei de Aprendizagem e Decreto Federal nº 9.579/2018. Gestor: Paulo Henrique Gomes Antello e Silva - Matrícula: 000172 Fiscal: Bernadete Martins Gaspar Rangel - Matrícula: 000125 Fiscal: Camila Carlos de Souza - Matrícula: 000207 Fiscal: Claudimar Rodrigues Soares - Matrícula: 000035 3° Esta Portaria é válida durante todo o período de vigência dos instrumentos contratuais citados, considerando o prazo inicial e aditamentos, podendo ser revogada a qualquer tempo a critério da autoridade competente. Essa portaria entra em vigor na data de sua assinatura. Cristiane Alkmin Junqueira Schmidt PORTARIA Nº 066/2026, DE 22 DE JULHO DE 2026. A DIRETORA-PRESIDENTE DA COMPANH",
+          "pagina": 50,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato normativo publicado integralmente na página, com cabeçalho e corpo identificáveis.",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": [
+            {
+              "tipo": "revoga",
+              "destino": {
+                "tipo": "Portaria",
+                "numero": "090",
+                "ano": 2025
+              },
+              "evidencia": "Revogar a Portaria nº 090/2025, de 28 de novembro de 2025",
+              "flags": []
+            },
+            {
+              "tipo": "referencia",
+              "destino": {
+                "tipo": "Decreto Federal",
+                "numero": "9579",
+                "ano": 2018
+              },
+              "evidencia": "de acordo com a Constituição Federal, a Consolidação das Leis do Trabalho – CLT, Lei de Aprendizagem e Decreto Federal nº 9.579/2018.",
+              "flags": [
+                "destino_fora_do_texto"
+              ]
+            }
+          ]
+        },
+        {
+          "tipo": "Portaria",
+          "tipo_completo": "PORTARIA",
+          "numero": "066",
+          "ano": 2026,
+          "data_ato": "2026-07-22",
+          "orgao_emissor": "COMPANHIA DE GÁS DO ESTADO DE MATO GROSSO DO SUL - MSGÁS",
+          "ementa": "Revogar a Portaria nº 042/2026, de 19 de maio de 2026, publicada no Diário Oficial do Estado nº 12.162, pág.48, de 20 de maio de 2026. 2º Designar os seguintes empregados para compor a Equipe de Fiscalização do contrato de adesão AD-004/2026",
+          "trecho_original": "PORTARIA Nº 066/2026, DE 22 DE JULHO DE 2026. A DIRETORA-PRESIDENTE DA COMPANHIA DE GÁS DO ESTADO DE MATO GROSSO DO SUL - MSGÁS no uso de suas atribuições legais e conforme o disposto no item 6, do Manual de Fiscalização de Contratos desta Companhia resolve: 1º Revogar a Portaria nº 042/2026, de 19 de maio de 2026, publicada no Diário Oficial do Estado nº 12.162, pág.48, de 20 de maio de 2026. 2º Designar os seguintes empregados para compor a Equipe de Fiscalização do contrato de adesão AD-004/2026, cujo objeto é a realização de estágio e concessão de bolsa estágio a estudantes. Gestor: Paulo Henrique Gomes Antello e Silva - Matrícula: 000172 Fiscal: Bernadete Martins Gaspar Rangel - Matrícula: 000125 Fiscal: Camila Carlos de Souza - Matrícula: 000207 Fiscal: Claudimar Rodrigues Soares - Matrícula: 000035 3° Esta Portaria é válida durante todo o período de vigência dos instrumentos contratuais citados, considerando o prazo inicial e aditamentos, podendo ser revogada a qualquer tempo a critério da autoridade competente. Essa portaria entra em vigor na data de sua assinatura. Cristiane Alkmin Junqueira Schmidt A autenticidade deste documento pode se",
+          "pagina": 50,
+          "origem": "ia",
+          "classe_ia": "ato_publicado",
+          "justificativa": "Ato normativo publicado integralmente na página, com cabeçalho e corpo identificáveis.",
+          "auditoria": {
+            "aprovado": true,
+            "flags": []
+          },
+          "confianca_heuristica": "media",
+          "relacoes_sugeridas": [
+            {
+              "tipo": "revoga",
+              "destino": {
+                "tipo": "Portaria",
+                "numero": "042",
+                "ano": 2026
+              },
+              "evidencia": "Revogar a Portaria nº 042/2026, de 19 de maio de 2026",
+              "flags": []
+            }
+          ]
+        }
+      ],
+      "telemetria": {
+        "chamadas": 3,
+        "tokens_entrada": 9792,
+        "tokens_saida": 1362,
+        "cache": 1
+      }
+    }
+  ]
+}

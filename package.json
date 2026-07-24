@@ -21,6 +21,7 @@
     "db:stop": "./scripts/db-dev.sh stop",
     "db:status": "./scripts/db-dev.sh status",
     "db:carregar": "node scripts/carregar-gabarito.mjs",
+    "ia:extrair": "node scripts/extrair-ia.mjs",
     "test:gabarito:formato": "./scripts/test-gabarito-formato.sh",
     "validador": "node tools/gerar-validador.mjs",
     "test:schema:campos": "./scripts/test-schema-campos-fonte.sh",
