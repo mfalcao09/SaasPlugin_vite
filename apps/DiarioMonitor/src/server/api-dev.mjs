@@ -176,7 +176,7 @@ async function listarAtos(sessao, query) {
       `select a.id, f.sigla as fonte, e.numero as edicao,
               a.data_publicacao::text, e.arquivo_path as arquivo,
               a.tipo, a.numero, a.ano, a.data_ato::text, a.orgao_emissor,
-              a.ementa, a.texto_bruto as trecho_original,
+              a.ementa, a.texto_bruto as trecho_original, a.pagina,
               a.confianca_extracao::float as confianca, a.status,
               r.decisao as julgamento
          from public.atos a
@@ -210,12 +210,12 @@ async function pendentesDeRevisao(sessao) {
     for (const ed of edicoes) {
       ed.atos = (await c.query(
         `select a.id, a.tipo, a.numero, a.ano, a.data_ato::text, a.orgao_emissor,
-                a.ementa, a.texto_bruto as trecho_original,
+                a.ementa, a.texto_bruto as trecho_original, a.pagina,
                 a.confianca_extracao::float as confianca, r.decisao as julgamento
            from public.atos a
            left join public.revisao_extracao r on r.ato_id = a.id
           where a.edicao_id = $1
-          order by a.numero`, [ed.id])).rows;
+          order by a.pagina::int nulls last, a.numero`, [ed.id])).rows;
     }
     return edicoes;
   });
