@@ -32,6 +32,10 @@ async function env() {
       if (m) ENV[m[1]] = m[2].trim();
     }
   } catch { /* sem .env: só MOCK_IA funciona */ }
+  // Container/produção: variáveis de ambiente do processo têm precedência.
+  for (const k of ['GEMINI_API_KEY', 'GEMINI_MODEL', 'MOCK_IA']) {
+    if (process.env[k]) ENV[k] = process.env[k];
+  }
   return ENV;
 }
 
