@@ -60,11 +60,18 @@ const CAMINHO_ORQUESTRADOR = new URL('../services/extracao/orquestrador.mjs', im
 
 const existe = async (p) => { try { await stat(p); return true; } catch { return false; } };
 
-// Socket Unix local (scripts/db-dev.sh). Nada trafega pela rede, nada aqui é
-// segredo — o servidor sobe com listen_addresses=''.
+// DEV: socket Unix local (scripts/db-dev.sh), roles distintos por pool.
+// PROD (DATABASE_URL setada → Supabase): uma credencial; a separação de
+// privilégio passa a ser POR TRANSAÇÃO — comIdentidade faz `set local role
+// authenticated`, então a RLS continua mandando nas leituras do usuário.
+const URL_DB = process.env.DATABASE_URL || null;
 const BASE = { host: '/tmp/pgdm-dev', port: 55432, database: 'diariomonitor' };
-const poolApp     = new pg.Pool({ ...BASE, user: 'authenticated', max: 6 });
-const poolServico = new pg.Pool({ ...BASE, user: 'postgres', max: 2 });
+const poolApp = URL_DB
+  ? new pg.Pool({ connectionString: URL_DB, max: 6 })
+  : new pg.Pool({ ...BASE, user: 'authenticated', max: 6 });
+const poolServico = URL_DB
+  ? new pg.Pool({ connectionString: URL_DB, max: 2 })
+  : new pg.Pool({ ...BASE, user: 'postgres', max: 2 });
 
 /**
  * Roda `fn` dentro de uma transação com a identidade do usuário aplicada.
@@ -77,6 +84,9 @@ async function comIdentidade(sessao, fn) {
   const c = await poolApp.connect();
   try {
     await c.query('begin');
+    // Em produção o pool conecta com a credencial do servidor; assumir o role
+    // authenticated DENTRO da transação é o que mantém a RLS soberana.
+    if (URL_DB) await c.query('set local role authenticated');
     await c.query('select set_config($1, $2, true)', [
       'request.jwt.claims',
       JSON.stringify({ sub: sessao.auth_id, role: 'authenticated' }),
