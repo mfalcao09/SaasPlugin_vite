@@ -3,6 +3,8 @@ FROM node:22-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml* ./
+# pnpm >=10 exige aprovação de build-scripts em pnpm-workspace.yaml
+RUN printf 'onlyBuiltDependencies:\n  - esbuild\n  - "@swc/core"\n' > pnpm-workspace.yaml
 RUN pnpm install --no-frozen-lockfile
 COPY . .
 RUN pnpm build
