@@ -30,7 +30,11 @@ comment on table public.instituicoes is 'Tenant: cada instituição assinante do
 
 create table public.usuarios (
   id              uuid primary key default gen_random_uuid(),
-  auth_id         uuid unique references auth.users(id) on delete cascade,
+  -- FK contra auth.users NÃO nasce aqui: no Supabase, auth.users pertence
+  -- ao auth-admin (FK exigiria REFERENCES que o role do app não tem) e o
+  -- piloto usa login-dev (migration 0011). Quando o Supabase Auth assumir,
+  -- uma migration nova cria o FK com o grant adequado.
+  auth_id         uuid unique,
   instituicao_id  uuid not null references public.instituicoes(id) on delete cascade,
   nome            text not null,
   email           text not null,
