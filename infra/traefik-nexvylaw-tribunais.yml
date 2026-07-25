@@ -1,0 +1,27 @@
+# Traefik file-provider — NexvyLAW Tribunais (piloto TJMS)
+# tribunais.nexvylaw.com.br -> nexvylaw-tribunais:3000
+# Borda com basicAuth (dashboard-auth) porque o login-piloto do app é sem senha.
+http:
+  routers:
+    tribunais-https:
+      rule: "Host(`tribunais.nexvylaw.com.br`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      middlewares: [dashboard-auth]
+      service: tribunais-svc
+    tribunais-http:
+      rule: "Host(`tribunais.nexvylaw.com.br`)"
+      entryPoints: [web]
+      middlewares: [tribunais-redirect]
+      service: tribunais-svc
+  middlewares:
+    tribunais-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  services:
+    tribunais-svc:
+      loadBalancer:
+        servers:
+          - url: "http://nexvylaw-tribunais:3000"
