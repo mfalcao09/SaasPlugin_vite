@@ -30,10 +30,12 @@
 //      (reportUnresolvedConnection). Falhar visível é melhor do que responder
 //      pelo número errado.
 //
-// NÃO É ESCOPO DESTE MÓDULO: disparos PROATIVOS sem conversa de origem
-// (welcome pós-compra, cron da Nina, notificação interna ao vendedor, 1ª
-// mensagem de flow de revival). Lá não existe "número que recebeu" a honrar —
-// esses caminhos seguem com a resolução legada e estão fora do P0.
+// DISPAROS PROATIVOS sem conversa de origem (welcome pós-compra, cron da Nina,
+// notificação interna ao vendedor, 1ª mensagem de revival): não há "número que
+// recebeu" a honrar. Política (decisão Marcelo 2026-07-24): usar SEMPRE o canal
+// COMERCIAL/principal (product-scoped), NUNCA o de DEMO (salão de teste, reativo).
+// Implementado em resolveOutboundConnectionForProduct() — a resolução por conversa
+// (a-d) abaixo continua valendo só para RESPOSTAS a mensagens recebidas.
 
 import { sendTelegramAlert } from './platform-alerts.ts';
 import { phoneVariantsBR } from './phone.ts';
@@ -205,6 +207,54 @@ export async function resolveConnectionForPhone(
     return { ...resolved, reason: 'conversation_by_phone' };
   }
   return resolved;
+}
+
+/**
+ * Resolução para DISPAROS PROATIVOS (welcome pós-compra, greeting, crons): não há
+ * "número que recebeu" a honrar. Política (decisão Marcelo 2026-07-24): o canal de
+ * saída é SEMPRE o COMERCIAL/principal — que é product-scoped — e NUNCA o de DEMO
+ * (salão de teste, `product_id` null, só usado reativamente quando alguém escreve
+ * pra ele). Precedência:
+ *   1. productId informado → conexão ativa product-scoped cujo product_id casa (a
+ *      conexão de vendas daquele produto). 2+ casando → ambíguo (não chuta).
+ *   2. sem productId/sem match → a ÚNICA conexão product-scoped ativa (o comercial
+ *      do mundo mono-produto de hoje).
+ *   3. nenhuma comercial, ou 2+ sem desempate → null (o chamador loga/alerta). O
+ *      DEMO jamais é escolhido aqui.
+ */
+export async function resolveOutboundConnectionForProduct(
+  supabase: SB,
+  productId: unknown,
+): Promise<ResolvedConnection> {
+  const { rows } = await listActiveConnections(supabase);
+  if (rows === null) return { conn: null, reason: 'lookup_failed', activeCount: 0 };
+
+  const sendable = rows
+    .map(toSendable)
+    .filter((c): c is SendableMetaConnection => c !== null);
+  const activeCount = sendable.length;
+  if (activeCount === 0) return { conn: null, reason: 'no_active_connection', activeCount: 0 };
+
+  // Só conexões COM produto — exclui o DEMO (reativo) de qualquer disparo proativo.
+  const commercial = sendable.filter((c) => c.product_id !== null);
+
+  // (1) match direto pelo produto comprado.
+  const pid = str(productId);
+  if (pid) {
+    const matches = commercial.filter((c) => c.product_id === pid);
+    if (matches.length === 1) return { conn: matches[0], reason: 'product', activeCount };
+    if (matches.length > 1) return { conn: null, reason: 'ambiguous', activeCount };
+  }
+
+  // (2) a única conexão comercial ativa (mono-produto de hoje).
+  if (commercial.length === 1) return { conn: commercial[0], reason: 'single_active', activeCount };
+
+  // (3) nenhuma comercial, ou 2+ sem produto p/ desempatar — nunca cai no demo.
+  return {
+    conn: null,
+    reason: commercial.length === 0 ? 'no_active_connection' : 'ambiguous',
+    activeCount,
+  };
 }
 
 /**

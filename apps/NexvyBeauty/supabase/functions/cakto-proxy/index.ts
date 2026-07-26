@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
           if (results.length === 0) break;
           const rows = results.map((o: any) => mapCaktoOrderForUpsert(o, scope, organizationId));
           const { error: upErr } = await admin.from('cakto_orders').upsert(rows, {
-            onConflict: 'scope,organization_id,cakto_id',
+            onConflict: 'scope,cakto_id',
           });
           if (upErr) return json({ error: upErr.message }, 500);
           synced += rows.length;

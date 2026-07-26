@@ -11,6 +11,7 @@
 
 import {
   resolveConnectionForConversation,
+  resolveOutboundConnectionForProduct,
   type ResolvedConnection,
 } from './whatsapp-connection.ts';
 
@@ -157,4 +158,49 @@ Deno.test('nenhuma conexão ativa → reason explícito, nunca crash', async () 
   eq(r.conn, null, 'sem conexão');
   eq(r.reason, 'no_active_connection', 'motivo');
   assert(r.activeCount === 0, 'contagem zerada');
+});
+
+// ─── Disparos PROATIVOS (welcome pós-compra, greeting): SEMPRE o comercial, nunca o demo ───
+// Política Marcelo 2026-07-24. Demo = product_id null (reativo); Comercial = product-scoped.
+
+async function resolveOutbound(
+  rows: FakeRow[],
+  productId: string | null,
+): Promise<ResolvedConnection> {
+  return await resolveOutboundConnectionForProduct(fakeSupabase(rows), productId);
+}
+
+const OUTBOUND_ROWS = [
+  conn({ id: DEMO, created_at: '2026-07-14T01:34:52Z', display_name: 'Demo', product_id: null }),
+  conn({ id: VENDAS, created_at: '2026-07-05T05:19:01Z', display_name: 'Vendas', product_id: 'prod-beauty' }),
+];
+
+Deno.test('PROATIVO: com productId do produto → conexão comercial, JAMAIS a demo', async () => {
+  const r = await resolveOutbound(OUTBOUND_ROWS, 'prod-beauty');
+  eq(r.conn?.id, VENDAS, 'welcome sai pelo comercial do produto');
+  eq(r.reason, 'product', 'motivo');
+  assert(r.conn?.id !== DEMO, 'nunca o número de demo');
+});
+
+Deno.test('PROATIVO: sem productId, Demo+Comercial ativas → a única comercial (demo excluída)', async () => {
+  const r = await resolveOutbound(OUTBOUND_ROWS, null);
+  eq(r.conn?.id, VENDAS, 'proativo default = comercial, ignora o demo');
+  eq(r.reason, 'single_active', 'motivo');
+});
+
+Deno.test('PROATIVO: só a conexão de demo ativa (sem comercial) → null, nunca o demo', async () => {
+  const rows = [conn({ id: DEMO, product_id: null, display_name: 'Demo' })];
+  const r = await resolveOutbound(rows, 'prod-beauty');
+  eq(r.conn, null, 'sem comercial, não dispara proativo pelo demo');
+  eq(r.reason, 'no_active_connection', 'motivo');
+});
+
+Deno.test('PROATIVO: 2 conexões comerciais no mesmo produto → ambíguo, não chuta', async () => {
+  const rows = [
+    conn({ id: 'conn-com-1', product_id: 'prod-beauty' }),
+    conn({ id: 'conn-com-2', product_id: 'prod-beauty' }),
+  ];
+  const r = await resolveOutbound(rows, 'prod-beauty');
+  eq(r.conn, null, 'empate entre comerciais não vira chute');
+  eq(r.reason, 'ambiguous', 'motivo');
 });
