@@ -256,6 +256,50 @@ export async function caktoListProducts(token: string): Promise<CaktoProduct[]> 
   return out;
 }
 
+// ---- Webhooks --------------------------------------------------------------
+// Doc: https://docs.cakto.com.br/api-reference/webhooks/list.md
+// GET /public_api/webhook/ (singular). Filtro ?products=<id,id> e ?status=.
+// Cada webhook traz products[] e events[] — é o que confirma, SEM comprar, se
+// cada produto real tem um webhook ativo apontando para a nossa URL.
+
+export interface CaktoWebhook {
+  id: number;
+  status: 'active' | 'disabled' | 'waiting_config';
+  name: string;
+  url: string;
+  products: Array<{ id: string; name?: string; [k: string]: unknown }>;
+  events: Array<{ id?: string; name?: string } | string>;
+  [k: string]: unknown;
+}
+
+/** Lista todos os webhooks da conta (segue paginação `next`). */
+export async function caktoListWebhooks(
+  token: string,
+  params?: Record<string, string>,
+): Promise<CaktoWebhook[]> {
+  const out: CaktoWebhook[] = [];
+  const qs = new URLSearchParams(params ?? {});
+  let path: string | null = `/public_api/webhook/${qs.toString() ? `?${qs.toString()}` : ''}`;
+  let safety = 0;
+  while (path && safety < 20) {
+    safety++;
+    const data: any = await caktoGet(token, path);
+    const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+    out.push(...(results as CaktoWebhook[]));
+    if (data?.next) {
+      try {
+        const u = new URL(data.next);
+        path = u.pathname + u.search;
+      } catch {
+        path = null;
+      }
+    } else {
+      path = null;
+    }
+  }
+  return out;
+}
+
 /** Monta a URL pública de checkout a partir do slug da oferta. */
 export function buildCaktoCheckoutUrl(slug: string, base: string = CAKTO_CHECKOUT_BASE_DEFAULT): string {
   return `${base.replace(/\/+$/, '')}/${slug}`;
@@ -361,9 +405,8 @@ export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organiza
   const product = order.product ?? {};
   const customer = order.customer ?? order.user ?? {};
   const items = extractCaktoItems(order);
-  return {
+  const mapped: Record<string, unknown> = {
     scope,
-    organization_id: orgId,
     cakto_id: String(order.id),
     seller_ref: extractSellerRef(order),
     cakto_ref_id: order.refId ?? order.ref_id ?? null,
@@ -387,4 +430,9 @@ export function mapCaktoOrderForUpsert(order: any, scope: 'platform' | 'organiza
     items,
     raw_payload: order,
   };
+  // organization_id só entra quando conhecido (organization scope). Em platform scope é
+  // preenchido depois pelo write-back do provisioning; incluí-lo como null aqui faria o
+  // UPSERT (onConflict scope,cakto_id) SOBRESCREVER o vínculo num retry de webhook/re-sync.
+  if (orgId) mapped.organization_id = orgId;
+  return mapped;
 }

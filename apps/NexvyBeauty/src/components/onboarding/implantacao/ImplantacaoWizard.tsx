@@ -30,6 +30,7 @@ import {
   uploadOnboardingFile,
   DEFAULT_PRIMARY_COLOR,
 } from '@/hooks/useImplantacao';
+import { useOrganizationEffectivePlan } from '@/hooks/useOrganizationPlan';
 import { getPublicAppUrl } from '@/lib/publicUrl';
 import { ConectarWhatsAppStep } from './steps/ConectarWhatsAppStep';
 import { MontandoEspacoStep } from './steps/MontandoEspacoStep';
@@ -203,6 +204,15 @@ export function ImplantacaoWizard({
   const updateAgente = (i: number, patch: Partial<EquipiaAgente>) =>
     setAgentes(agentes.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
   const removeAgente = (i: number) => setAgentes(agentes.filter((_, idx) => idx !== i));
+
+  // Limite de agentes de IA do plano — gate de UX; o gate REAL é o trigger
+  // trg_enforce_max_ai_agents no banco. Fail-open: só trava quando a RPC devolve um
+  // número (mesmo padrão de useProductAgents), pra não bloquear a UI se a RPC falhar.
+  const { data: effectivePlan } = useOrganizationEffectivePlan(organizationId);
+  const maxAiAgents = typeof effectivePlan?.limits?.max_ai_agents === 'number'
+    ? effectivePlan.limits.max_ai_agents
+    : null;
+  const agentesNoLimite = maxAiAgents !== null && agentes.length >= maxAiAgents;
 
   // Converte o shape legado pro novo NO ESTADO assim que detectado — garante que
   // o payload autosalvo/submetido já sai como { agentes: [...] }.
@@ -513,6 +523,13 @@ export function ImplantacaoWizard({
                 novo ("Adicionada") remove. Identidade do preset = nome. */}
             <div>
               <Label className="mb-2 block">Comece com uma agente pronta</Label>
+              {maxAiAgents !== null && (
+                <p className={cn('text-xs mb-2', agentesNoLimite ? 'text-amber-600' : 'text-muted-foreground')}>
+                  {agentesNoLimite
+                    ? `Seu plano inclui ${maxAiAgents} agente${maxAiAgents === 1 ? '' : 's'} de IA — limite atingido. Faça upgrade para adicionar mais depois.`
+                    : `Seu plano inclui ${maxAiAgents} agente${maxAiAgents === 1 ? '' : 's'} de IA.`}
+                </p>
+              )}
               <div className="grid md:grid-cols-3 gap-3">
                 {EQUIPIA_PRESETS.map((p) => {
                   const selected = agentes.some(a => a.nome === p.nome);
@@ -526,6 +543,7 @@ export function ImplantacaoWizard({
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[11px] text-muted-foreground">Tom: {p.tom}</span>
                         <Button type="button" size="sm" variant={selected ? 'default' : 'outline'}
+                          disabled={!selected && agentesNoLimite}
                           onClick={() => selected
                             ? setAgentes(agentes.filter(a => a.nome !== p.nome))
                             : setAgentes([...agentes, { ...p }])}>
@@ -573,7 +591,7 @@ export function ImplantacaoWizard({
               </div>
             )}
 
-            <Button type="button" variant="outline"
+            <Button type="button" variant="outline" disabled={agentesNoLimite}
               onClick={() => setAgentes([...agentes, { nome: '', tom: 'Amigável', papel: '' }])}>
               <Plus className="w-4 h-4 mr-1" />Adicionar agente personalizado
             </Button>

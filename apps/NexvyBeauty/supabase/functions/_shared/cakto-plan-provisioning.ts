@@ -10,10 +10,12 @@ import { sendTelegramAlert } from './platform-alerts.ts';
 import {
   connectionErrorCode,
   reportUnresolvedConnection,
-  resolveConnectionForPhone,
+  resolveOutboundConnectionForProduct,
 } from './whatsapp-connection.ts';
 
 export interface CaktoOrderLike {
+  /** PK da linha em cakto_orders — permite re-vincular o pedido à org provisionada. */
+  id?: string | null;
   cakto_id?: string | null;
   cakto_ref_id?: string | null;
   customer_email?: string | null;
@@ -137,7 +139,7 @@ async function resolvePlatformPlan(
   if (offerSlug) {
     const { data } = await admin
       .from('platform_plans')
-      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id')
+      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id, product_id')
       .eq('cakto_offer_slug', offerSlug)
       .maybeSingle();
     if (data) return data;
@@ -145,7 +147,7 @@ async function resolvePlatformPlan(
   if (productCaktoId) {
     const { data } = await admin
       .from('platform_plans')
-      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id')
+      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id, product_id')
       .eq('cakto_product_id', productCaktoId)
       .maybeSingle();
     if (data) return data;
@@ -277,6 +279,18 @@ export async function provisionPlatformPlan(
     // founder_campaign_status saiu do sales-brain/copilot). O carimbo virou
     // cosmético órfão, então foi removido daqui. Ativação de plano, billing,
     // welcome e seeds seguem intactos abaixo.
+  }
+
+  // 1.5) Re-vincula o pedido à org provisionada. Sem isto, cakto_orders.organization_id
+  // fica NULL pra sempre e o alerta "pagou e não tem acesso" nunca casa (o join não fecha).
+  // Idempotente (.is null): nunca sobrescreve um vínculo já feito; non-fatal (só loga em errors).
+  if (order.id && orgId) {
+    const { error: linkErr } = await admin
+      .from('cakto_orders')
+      .update({ organization_id: orgId })
+      .eq('id', order.id)
+      .is('organization_id', null);
+    if (linkErr) errors.push(`order link: ${linkErr.message}`);
   }
 
   // 2) Ativa plano
@@ -476,7 +490,7 @@ export async function ensureAdminUser(
  */
 async function sendWelcomeWhatsApp(
   admin: SupabaseClient,
-  args: { phone?: string | null; fullName?: string | null; planName?: string | null },
+  args: { phone?: string | null; fullName?: string | null; planName?: string | null; productId?: string | null },
 ): Promise<{ ok: boolean; skipped?: string }> {
   const to = normalizePhoneBR(args.phone);
   if (!to) {
@@ -486,12 +500,15 @@ async function sendWelcomeWhatsApp(
   }
 
   try {
-    // Resolução determinística (mesmo contrato dos deliverers): conversa mais
-    // recente do telefone → conexão dela; nunca chutar entre 2+ ativas.
-    const resolved = await resolveConnectionForPhone(admin, to);
+    // Disparo PROATIVO: SEMPRE o canal comercial do produto comprado, NUNCA o DEMO
+    // (política 2026-07-24). Não herda a conexão da conversa de origem — a compradora
+    // pode ter testado no número de demo antes de comprar, e o welcome tem que sair
+    // pelo número principal/oficial de vendas.
+    const resolved = await resolveOutboundConnectionForProduct(admin, args.productId ?? null);
     if (!resolved.conn) {
       await reportUnresolvedConnection('cakto-provisioning/welcome-whatsapp', resolved, {
         phone: to,
+        product_id: args.productId ?? null,
       });
       return { ok: false, skipped: connectionErrorCode(resolved) };
     }
@@ -499,6 +516,48 @@ async function sendWelcomeWhatsApp(
 
     const token = await decryptSecret(conn.access_token_encrypted);
     const firstName = (args.fullName || '').trim().split(/\s+/)[0] || '';
+
+    // Preferência: TEMPLATE HSM aprovado — entrega DENTRO e FORA da janela de 24h.
+    // O comprador acabou de pagar no checkout; quase nunca está na janela de 24h, e
+    // a Meta recusa texto livre fora dela. Só usamos template quando ele existe e está
+    // APPROVED na conexão resolvida (mesma checagem de `platform-meta-whatsapp-send`),
+    // e quando temos primeiro nome ({{1}} não pode ir vazio). Senão, cai pro texto.
+    const WELCOME_TEMPLATE = 'boas_vindas_ativacao';
+    const WELCOME_LANG = 'pt_BR';
+    if (firstName) {
+      const { data: tplRow } = await admin
+        .from('platform_crm_whatsapp_meta_templates')
+        .select('status')
+        .eq('connection_id', conn.id)
+        .eq('name', WELCOME_TEMPLATE)
+        .eq('language', WELCOME_LANG)
+        .maybeSingle();
+      if (tplRow && String(tplRow.status).toUpperCase() === 'APPROVED') {
+        const tplPayload = {
+          messaging_product: 'whatsapp',
+          to,
+          type: 'template',
+          template: {
+            name: WELCOME_TEMPLATE,
+            language: { code: WELCOME_LANG },
+            components: [{ type: 'body', parameters: [{ type: 'text', text: firstName }] }],
+          },
+        };
+        const tplRes = await fetch(`${GRAPH_BASE}/${conn.phone_number_id}/messages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(tplPayload),
+        });
+        if (tplRes.ok) return { ok: true };
+        const tplData = await tplRes.json().catch(() => ({}));
+        const tplMsg = tplData?.error?.message ?? `graph ${tplRes.status}`;
+        console.warn('[cakto-provisioning] welcome WhatsApp (template) falhou, tentando texto:', String(tplMsg).slice(0, 200));
+        // Não retorna: cai pro fallback texto abaixo (última tentativa; só entrega na janela).
+      }
+    }
+
+    // Fallback: texto livre. Só entrega DENTRO da janela de 24h (fora, a Meta recusa) —
+    // comportamento idêntico ao legado, sem regressão enquanto o template não é APPROVED.
     const saudacao = firstName ? `Olá, ${firstName}!` : 'Olá!';
     const planoTxt = args.planName ? ` do plano ${args.planName}` : '';
     const body =
@@ -715,6 +774,7 @@ export async function provisionFromOrder(
         phone: order.customer_phone ?? null,
         fullName: order.customer_name ?? null,
         planName: plan?.name ?? null,
+        productId: plan?.product_id ?? null,
       });
     }
   }

@@ -115,9 +115,11 @@ Deno.serve(async (req) => {
     // Persistência do pedido é PRÉ-REQUISITO do recovery-trigger (que relê do
     // banco) — falha aqui NÃO pode ser silenciosa (lição Onda-3: colunas
     // ausentes engoliram todo pedido sem log).
-    const { error: upsertError } = await admin
+    const { data: upserted, error: upsertError } = await admin
       .from('cakto_orders')
-      .upsert(row, { onConflict: 'scope,organization_id,cakto_id' });
+      .upsert(row, { onConflict: 'scope,cakto_id' })
+      .select('id')
+      .maybeSingle();
     if (upsertError) {
       console.error('[cakto-webhook] FALHA ao persistir pedido em cakto_orders', {
         cakto_id: row.cakto_id,
@@ -126,6 +128,8 @@ Deno.serve(async (req) => {
         code: (upsertError as any).code,
       });
     }
+    // Propaga o id da linha pro provisioning re-vincular a org (cakto_orders.organization_id).
+    row.id = (upserted as any)?.id ?? null;
 
     // ===== Motor de etiquetas automáticas =====
     // Mapeia event/status do Cakto → tipo de evento das tag_automations
