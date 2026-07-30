@@ -1776,6 +1776,37 @@ Deno.serve(async (req) => {
           }));
         }
 
+        // ── GATE anti-conversa-PESSOAL ────────────────────────────────────────
+        // Se o remetente já foi classificado como contato PESSOAL (mãe/amigo/família)
+        // pelo agente de carteira (clientes.tipo_contato='pessoal'), a IA NÃO responde:
+        // rebaixa pra waiting_human e limpa agente/funil. Protege o salão que usa o
+        // WhatsApp pessoal como número do negócio. Non-fatal (fail-open: se a consulta
+        // falhar, mantém o comportamento normal). Limite ACEITO: só pega contatos JÁ
+        // classificados — 1º contato de número novo desconhecido passa até a
+        // reclassificação diária do SUB2 (cron 04h BR).
+        if (newConv.status === "bot_active") {
+          try {
+            const { data: cliPessoal } = await supabase
+              .from("clientes")
+              .select("tipo_contato")
+              .eq("organization_id", instance.organization_id)
+              .eq("telefone_normalizado", phoneCanonical)
+              .eq("tipo_contato", "pessoal")
+              .limit(1)
+              .maybeSingle();
+            if (cliPessoal) {
+              newConv.status = "waiting_human";
+              newConv.current_agent_id = null;
+              newConv.current_flow_id = null;
+              newConv.current_block_id = null;
+              newConv.flow_source = null;
+              console.log("[evolution-webhook] gate tipo_contato=pessoal → IA silenciada, waiting_human:", phoneCanonical);
+            }
+          } catch (e: any) {
+            console.warn("[evolution-webhook] gate tipo_contato lookup falhou (non-fatal):", e?.message || String(e));
+          }
+        }
+
         const { data: created, error: convErr } = await supabase
           .from("webchat_conversations")
           .insert(newConv)

@@ -265,6 +265,20 @@ export const ConectarWhatsAppStep: FC<{
         ))}
       </div>
 
+      {/* Aviso NÃO-bloqueante: recomenda número dedicado ao salão. Se a dona parear o
+          WhatsApp pessoal (mesmo de família/amigos), a IA pode responder essas conversas.
+          O agente de carteira classifica e protege contatos pessoais, mas o número separado
+          é o ideal. Apenas orienta — não impede seguir. */}
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50">
+        <span className="text-lg leading-none shrink-0 mt-0.5" aria-hidden>⚠️</span>
+        <p className="text-sm text-amber-800 dark:text-amber-300">
+          <span className="font-medium">Dica importante:</span> conecte de preferência um número{' '}
+          <span className="font-medium">dedicado ao salão</span>. Se usar seu WhatsApp pessoal (o
+          mesmo de família e amigos), a IA pode acabar respondendo essas conversas. Dá pra seguir
+          com o pessoal — mas um número separado deixa tudo mais organizado.
+        </p>
+      </div>
+
       {/* Consentimento LGPD — obrigatório antes de gerar o QR */}
       {!instanceId && (
         <label className="flex items-start gap-3 p-4 rounded-lg border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors">

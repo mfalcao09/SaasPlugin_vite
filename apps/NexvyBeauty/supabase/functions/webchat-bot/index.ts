@@ -15,6 +15,7 @@ import {
   toolsToOpenAISchema as registryToolsToSchema,
   executeTool as executeRegistryTool,
   getTool as getRegistryTool,
+  checkSafetyLimits,
 } from "../_shared/tools/registry.ts";
 import { resolveAIConfig, logAIConfig, prepareAIRequestBody, type ResolvedAIConfig } from "../_shared/ai-router.ts";
 import { humanize, buildHumanizationPromptBlock, detectReaction, type HumanizationConfig, type HumanizationChannel, type ReactionsConfig } from "../_shared/humanizer.ts";
@@ -4559,6 +4560,20 @@ REGRAS DE USO:
                     console.warn('[webchat-bot] registry tool sem organization_id — pulando:', toolName);
                     responseContent = choice.message?.content || body.agent_config.fallback_message;
                   } else {
+                    // KILL-SWITCH de custo: teto diário por org (default R$500/dia e 5000
+                    // execuções/dia; override em agent_safety_limits). Antes INERTE — a
+                    // função existia mas nunca era chamada. Barra loops de tool descontrolados
+                    // (ex.: pico de tráfego de ads) antes de gerar custo sem teto.
+                    const safety = await checkSafetyLimits({
+                      organizationId: orgIdForTool,
+                      agentId: activeAgent?.id ?? null,
+                      supabase,
+                    } as any);
+                    if (!safety.allowed) {
+                      console.warn('[webchat-bot] 🛑 safety limit atingido — tool bloqueada:', toolName, safety.reason);
+                      await logAction(false, {}, `safety_limit: ${safety.reason}`);
+                      responseContent = choice.message?.content || body.agent_config.fallback_message;
+                    } else {
                     const registryResult = await executeRegistryTool(toolName, args, {
                       organizationId: orgIdForTool,
                       agentId: activeAgent?.id ?? null,
@@ -4576,6 +4591,7 @@ REGRAS DE USO:
                       registryResult.user_message ||
                       ''; // ← vazio força o follow-up completion (linhas abaixo) a gerar resposta natural
                                                                                           // em vez de mandar "Ação executada com sucesso." pro cliente
+                    }
 
                   }
                 } else {
