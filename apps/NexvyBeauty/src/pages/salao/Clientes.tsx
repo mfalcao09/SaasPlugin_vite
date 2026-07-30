@@ -109,8 +109,8 @@ type TipoFiltro = 'todos' | 'cliente' | 'lead' | 'misto' | 'pessoal' | 'indefini
 const TIPO_META: Record<string, { label: string; classe: string; ajuda: string }> = {
   cliente:    { label: 'Cliente',    classe: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300', ajuda: 'Já agendou ou pagou — relação comprovada.' },
   lead:       { label: 'Lead',       classe: 'border-blue-500/30 bg-blue-500/15 text-blue-600 dark:text-blue-300',            ajuda: 'Fala de serviço, ainda não comprou.' },
-  misto:      { label: 'Misto',      classe: 'border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-300',    ajuda: 'Fala de salão E de vida pessoal.' },
-  pessoal:    { label: 'Pessoal',    classe: 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-300',        ajuda: 'Conversa pessoal — fora das campanhas do salão.' },
+  misto:      { label: 'Misto',      classe: 'border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-300',    ajuda: 'Fala do espaço E de vida pessoal.' },
+  pessoal:    { label: 'Pessoal',    classe: 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-300',        ajuda: 'Conversa pessoal — fora das campanhas do espaço.' },
   indefinido: { label: 'A definir',  classe: 'border-muted-foreground/30 text-muted-foreground',                              ajuda: 'Pouca conversa para afirmar.' },
 }
 
@@ -580,7 +580,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
               <Activity className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Análise da carteira</span>
               <span className="text-xs text-muted-foreground">
-                — o agente leu as conversas e separou o que é do salão
+                — o agente leu as conversas e separou o que é do espaço
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -724,7 +724,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                               <Button
                                 size="sm" variant="ghost" disabled={marcarTipo.isPending}
                                 onClick={(e) => { e.stopPropagation(); marcarTipo.mutate({ c, tipo: 'cliente' }) }}
-                                title="Na verdade é cliente do salão"
+                                title="Na verdade é cliente do espaço"
                                 className="text-muted-foreground hover:text-emerald-600"
                               >
                                 É cliente
@@ -733,7 +733,7 @@ export default function Clientes({ demo, bare }: { demo?: Cliente[]; bare?: bool
                               <Button
                                 size="sm" variant="ghost" disabled={marcarTipo.isPending}
                                 onClick={(e) => { e.stopPropagation(); marcarTipo.mutate({ c, tipo: 'pessoal' }) }}
-                                title="Marcar como pessoal — sai das campanhas do salão"
+                                title="Marcar como pessoal — sai das campanhas do espaço"
                                 className="text-muted-foreground hover:text-amber-600"
                               >
                                 É pessoal

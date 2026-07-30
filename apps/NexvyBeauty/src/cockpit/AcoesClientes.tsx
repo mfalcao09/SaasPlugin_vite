@@ -157,7 +157,9 @@ export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, telefone, data_nascimento')
+        // ultima_interacao_wa + tipo_contato = o que o SUB2 (agente de carteira)
+        // entrega: quem só existe no WhatsApp entra na fila; 'pessoal' fica fora.
+        .select('id, nome, telefone, data_nascimento, ultima_interacao_wa, tipo_contato')
         .eq('organization_id', organizationId!)
         .eq('carteira_estado', 'principal') // [B4] ações/disparos só sobre carteira real
       if (error) throw error

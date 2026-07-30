@@ -98,6 +98,9 @@ export interface ClienteRow {
   telefone: string | null
   data_nascimento: string | null
   ultima_interacao_wa?: string | null
+  /** SUB2 (agente de carteira): cliente | lead | misto | pessoal | indefinido.
+   *  'pessoal' NUNCA entra em fila de ação/campanha. */
+  tipo_contato?: string | null
 }
 
 // Ticket-fallback do dia-1: sem agendamento concluído, ticketMedio=0. Pra a tela de

@@ -69,6 +69,28 @@ export function buildClientActions(
     porCliente.set(key, cur)
   }
 
+  // ── SUB2 (agente de carteira): contato PESSOAL nunca entra em fila de ação ──
+  // A dona não pode disparar "que saudade, bora marcar?" pra mãe ou fornecedor.
+  const pessoais = new Set<string>()
+  for (const c of clientesRows) {
+    if (c.tipo_contato !== 'pessoal') continue
+    if (c.id) pessoais.add(c.id)
+    if (c.nome) pessoais.add(`nome:${normNome(c.nome)}`)
+  }
+
+  // ── Carteira do WhatsApp: cliente que NUNCA agendou formalmente, mas conversa
+  // no WhatsApp (histórico importado + classificado pelo SUB2), entra na fila.
+  // Sem isto, quem só existe no WhatsApp — a MAIOR parte da carteira de um espaço
+  // recém-chegado — fica invisível na tela de Ações. Dedupe por chave: não dobra
+  // quem já tem agendamento concluído. Espelha o merge dia-1 de buildLevers.
+  for (const c of clientesRows) {
+    const key = c.id ?? (c.nome ? `nome:${normNome(c.nome)}` : null)
+    if (!key || porCliente.has(key) || pessoais.has(key)) continue
+    const ultimaWa = parseDateLocal(c.ultima_interacao_wa)
+    if (!ultimaWa) continue
+    porCliente.set(key, { key, nome: c.nome ?? 'Cliente', ultima: ultimaWa, gasto: 0, visitas: 0 })
+  }
+
   // ── Lookups da tabela clientes: por id (sempre confiável) e por nome (só
   // quando o nome é ÚNICO na org). Homônimos (≥2 valores distintos pro mesmo
   // nome) viram AMBÍGUOS → não resolvem por nome — pra nunca mandar WhatsApp pro
@@ -135,6 +157,9 @@ export function buildClientActions(
   // ── Monta a fila ────────────────────────────────────────────────────────────
   const fila: ClientAction[] = []
   for (const c of porCliente.values()) {
+    // Cinto-e-suspensório: mesmo com agendamento, quem a dona (ou o SUB2) marcou
+    // como PESSOAL fica fora da fila de disparo.
+    if (pessoais.has(c.key)) continue
     const { cliente_id, telefone, nasc } = resolve(c.key, c.nome)
     const diasSemVoltar = c.ultima ? daysBetween(hoje, c.ultima) : null
     const ticketCliente = c.visitas > 0 ? c.gasto / c.visitas : 0
