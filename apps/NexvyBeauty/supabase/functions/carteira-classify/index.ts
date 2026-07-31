@@ -60,13 +60,20 @@ const SCHEMA = {
   },
 }
 
-const PROMPT = `Você classifica conversas de WhatsApp de um SALÃO DE BELEZA brasileiro.
+const PROMPT = `Você classifica conversas de WhatsApp de um ESPAÇO DE BELEZA brasileiro
+(salão, studio, clínica de estética, nail designer, barbearia).
 
 Decida o ASSUNTO da relação:
-- "salao": trata do dia-a-dia de venda/produto/salão — agendar, remarcar, preço, serviço
-  (cabelo, unha, sobrancelha, depilação, estética), pagamento, endereço, horário.
-- "pessoal": assunto de vida pessoal — família, religião, política, corrente, bom dia,
-  fofoca, saúde, filhos. NÃO fala do salão como negócio.
+- "salao": é um(a) CLIENTE (ou potencial cliente) tratando de SERVIÇO DE BELEZA —
+  agendar/remarcar, confirmar ou lembrar horário, preço de serviço, dúvida sobre
+  cabelo, corte, escova, coloração, mechas, luzes, progressiva, hidratação,
+  unha/manicure/pedicure/alongamento, sobrancelha/design, cílios, depilação,
+  estética, limpeza de pele, massagem, maquiagem, penteado, barba.
+- "pessoal": vida pessoal (família, religião, política, corrente, bom dia, fofoca,
+  saúde, filhos) OU conversa comercial que NÃO é cliente de beleza — fornecedor,
+  distribuidor, contador, banco, cobrança, boleto, plataforma/sistema que o espaço
+  usa, entregador, funcionário tratando de folha/pagamento. Nada disso deve receber
+  campanha do espaço.
 - "misto": tem os dois de verdade. Uma parente ou amiga que TAMBÉM marca horário é
   "misto", não "pessoal".
 - "indefinido": pouca mensagem ou conteúdo insuficiente para afirmar.
@@ -74,9 +81,12 @@ Decida o ASSUNTO da relação:
 REGRAS
 1. Na dúvida entre salao e pessoal, responda "misto". Na falta de evidência, "indefinido".
 2. Prefira errar para "misto"/"indefinido" a errar para "pessoal": marcar cliente real
-   como pessoal a tira das campanhas do salão, e isso custa receita.
-3. "evidencias" deve citar o que você VIU na conversa, curto e concreto. Nunca invente.
-4. Responda SOMENTE o JSON do schema.`
+   como pessoal a tira das campanhas do espaço, e isso custa receita.
+3. ATENÇÃO: falar de "preço", "pagamento" ou "horário" NÃO basta para ser "salao" —
+   fornecedor, contador e cobrança também falam disso. Só é "salao" quando a pessoa
+   é cliente ou potencial cliente de um SERVIÇO DE BELEZA. Na dúvida, "pessoal".
+4. "evidencias" deve citar o que você VIU na conversa, curto e concreto. Nunca invente.
+5. Responda SOMENTE o JSON do schema.`
 
 interface Msg { content: string | null; direction: string; created_at: string }
 

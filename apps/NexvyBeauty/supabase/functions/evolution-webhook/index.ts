@@ -1074,7 +1074,33 @@ Deno.serve(async (req) => {
           updates.phone_number = String(norm.phone).split("@")[0].split(":")[0].replace(/\D/g, "");
         }
       }
+      // Guarda a 1ª conexão ANTES do update: se last_connected_at era null, este é o
+      // momento em que a dona acabou de ler o QR pela primeira vez.
+      const primeiraConexao = mapped === "connected" && !(instance as any).last_connected_at;
+
       await supabase.from("evolution_instances").update(updates).eq("id", instance.id);
+
+      // ── GATILHO do agente de carteira (decisão Marcelo: QR + cron 04h) ────────
+      // Ler o QR é o momento em que a carteira do WhatsApp fica disponível. Em vez de
+      // esperar até as 04h, dispara a análise agora — a dona conecta e já encontra a
+      // tela de Ações preenchida. Só na PRIMEIRA conexão (reconexão do dia-a-dia não
+      // re-processa). Fire-and-forget: nunca atrasa nem derruba o webhook.
+      if (primeiraConexao && instance.organization_id) {
+        try {
+          fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/carteira-reativacao`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ organization_id: instance.organization_id, lote: 50 }),
+          }).catch((e) => console.warn("[evolution-webhook] gatilho carteira falhou:", e?.message));
+          console.log("[evolution-webhook] 1a conexão → disparou análise de carteira:", instance.organization_id);
+        } catch (e: any) {
+          console.warn("[evolution-webhook] gatilho carteira exception (non-fatal):", e?.message);
+        }
+      }
+
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1774,6 +1800,37 @@ Deno.serve(async (req) => {
             funnel_id: funnelToRun.id,
             start_block_id: funnelToRun.start_block_id,
           }));
+        }
+
+        // ── GATE anti-conversa-PESSOAL ────────────────────────────────────────
+        // Se o remetente já foi classificado como contato PESSOAL (mãe/amigo/família)
+        // pelo agente de carteira (clientes.tipo_contato='pessoal'), a IA NÃO responde:
+        // rebaixa pra waiting_human e limpa agente/funil. Protege o salão que usa o
+        // WhatsApp pessoal como número do negócio. Non-fatal (fail-open: se a consulta
+        // falhar, mantém o comportamento normal). Limite ACEITO: só pega contatos JÁ
+        // classificados — 1º contato de número novo desconhecido passa até a
+        // reclassificação diária do SUB2 (cron 04h BR).
+        if (newConv.status === "bot_active") {
+          try {
+            const { data: cliPessoal } = await supabase
+              .from("clientes")
+              .select("tipo_contato")
+              .eq("organization_id", instance.organization_id)
+              .eq("telefone_normalizado", phoneCanonical)
+              .eq("tipo_contato", "pessoal")
+              .limit(1)
+              .maybeSingle();
+            if (cliPessoal) {
+              newConv.status = "waiting_human";
+              newConv.current_agent_id = null;
+              newConv.current_flow_id = null;
+              newConv.current_block_id = null;
+              newConv.flow_source = null;
+              console.log("[evolution-webhook] gate tipo_contato=pessoal → IA silenciada, waiting_human:", phoneCanonical);
+            }
+          } catch (e: any) {
+            console.warn("[evolution-webhook] gate tipo_contato lookup falhou (non-fatal):", e?.message || String(e));
+          }
         }
 
         const { data: created, error: convErr } = await supabase
