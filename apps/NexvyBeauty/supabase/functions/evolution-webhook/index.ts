@@ -1074,7 +1074,33 @@ Deno.serve(async (req) => {
           updates.phone_number = String(norm.phone).split("@")[0].split(":")[0].replace(/\D/g, "");
         }
       }
+      // Guarda a 1ª conexão ANTES do update: se last_connected_at era null, este é o
+      // momento em que a dona acabou de ler o QR pela primeira vez.
+      const primeiraConexao = mapped === "connected" && !(instance as any).last_connected_at;
+
       await supabase.from("evolution_instances").update(updates).eq("id", instance.id);
+
+      // ── GATILHO do agente de carteira (decisão Marcelo: QR + cron 04h) ────────
+      // Ler o QR é o momento em que a carteira do WhatsApp fica disponível. Em vez de
+      // esperar até as 04h, dispara a análise agora — a dona conecta e já encontra a
+      // tela de Ações preenchida. Só na PRIMEIRA conexão (reconexão do dia-a-dia não
+      // re-processa). Fire-and-forget: nunca atrasa nem derruba o webhook.
+      if (primeiraConexao && instance.organization_id) {
+        try {
+          fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/carteira-reativacao`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ organization_id: instance.organization_id, lote: 50 }),
+          }).catch((e) => console.warn("[evolution-webhook] gatilho carteira falhou:", e?.message));
+          console.log("[evolution-webhook] 1a conexão → disparou análise de carteira:", instance.organization_id);
+        } catch (e: any) {
+          console.warn("[evolution-webhook] gatilho carteira exception (non-fatal):", e?.message);
+        }
+      }
+
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
