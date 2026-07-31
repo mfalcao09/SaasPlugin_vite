@@ -24,7 +24,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { useOrganizationId, NoOrg } from '@/pages/salao/_shared'
 import { sendReactivation } from '@/cockpit/reactivation/sendReactivation'
 import { normalizeBrPhone, type OpportunityCardData } from '@/cockpit/types'
-import { buildClientActions, type ClientAction, type ClientAcao, type Selo } from '@/cockpit/clientActions'
+import { buildClientActions, mergePropostas, type ClientAction, type ClientAcao, type Selo, type PropostaRow } from '@/cockpit/clientActions'
 import type { AgendamentoRow, PacoteClienteRow, ClienteRow } from '@/cockpit/levers'
 
 // Estilo de cada selo (cores na linguagem visual do cockpit, dark-aware).
@@ -167,11 +167,34 @@ export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[
     },
   })
 
+  // SUB3 (agente de carteira): propostas de reativação já geradas pelo cron das 04h,
+  // com mensagem escrita por IA. É o que faz a tela abrir CHEIA em vez de só listar
+  // quem tem agendamento formal.
+  const { data: propostas = [], refetch: refProp, isFetching: fProp } = useQuery({
+    queryKey: ['acoes-propostas', organizationId],
+    enabled: !isDemo && !!organizationId,
+    queryFn: async () => {
+      // cast: carteira_acoes_propostas é nova e ainda não está em integrations/supabase/types.ts
+      // (regenerar o types.ts inteiro aqui geraria diff imprevisível — dívida registrada).
+      const { data, error } = await (supabase as any)
+        .from('carteira_acoes_propostas')
+        .select('cliente_id, cliente_nome, telefone, tipo, motivo, mensagem, dias_sem_voltar, urgencia')
+        .eq('organization_id', organizationId!)
+        .eq('status', 'pendente')
+        .order('urgencia', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as PropostaRow[]
+    },
+  })
+
   if (!isDemo && !organizationId) {
     return <div className="p-6"><NoOrg /></div>
   }
 
-  const fila = demo ?? buildClientActions(agendamentos, pacotes, clientesRows)
+  const fila = demo ?? mergePropostas(
+    buildClientActions(agendamentos, pacotes, clientesRows),
+    propostas,
+  )
 
   return (
     <div className={embedded ? 'space-y-6' : 'p-6 space-y-6'}>
@@ -192,10 +215,10 @@ export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[
         <Button
           size="sm"
           variant="outline"
-          onClick={() => { refAg(); refPac(); refCli() }}
-          disabled={fAg || fPac || fCli}
+          onClick={() => { refAg(); refPac(); refCli(); refProp() }}
+          disabled={fAg || fPac || fCli || fProp}
         >
-          <RefreshCw className={`mr-2 h-4 w-4 ${fAg || fPac || fCli ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`mr-2 h-4 w-4 ${fAg || fPac || fCli || fProp ? 'animate-spin' : ''}`} />
           Atualizar agora
         </Button>
       )}
