@@ -121,9 +121,9 @@ const EQUIPIA_TONS = ['Amigável', 'Formal', 'Consultivo', 'Técnico'] as const;
 
 const EQUIPIA_PRESETS: readonly EquipiaAgente[] = [
   {
-    nome: 'Recepcionista virtual',
+    nome: 'Maria Vitória (Mavi)',
     tom: 'Amigável',
-    papel: 'Responde clientes no WhatsApp, agenda e confirma horários — com um jeito acolhedor.',
+    papel: 'Atende suas clientes no WhatsApp: tira dúvidas de serviços e preços, agenda e confirma horários — com um jeito acolhedor, como uma recepcionista experiente.',
   },
   {
     nome: 'Assistente de reativação',
@@ -565,8 +565,8 @@ export function ImplantacaoWizard({
                   <Card key={i} className="p-4 space-y-3 bg-muted/20">
                     <div className="flex items-start gap-3">
                       <div className="grid md:grid-cols-2 gap-3 flex-1">
-                        <Field label="Nome">
-                          <Input value={a.nome} onChange={e => updateAgente(i, { nome: e.target.value })} placeholder="Ex: Lia" />
+                        <Field label="Nome da sua atendente (pode trocar!)">
+                          <Input value={a.nome} onChange={e => updateAgente(i, { nome: e.target.value })} placeholder="Ex: Maria Vitória" />
                         </Field>
                         <Field label="Tom de voz">
                           <Select value={a.tom || 'Amigável'} onValueChange={v => updateAgente(i, { tom: v })}>

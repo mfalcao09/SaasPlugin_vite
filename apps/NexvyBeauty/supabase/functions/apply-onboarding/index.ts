@@ -392,8 +392,27 @@ serve(async (req) => {
           // faz) vira a missão; sem papel, fallback '' (padrão do useCreateAgent).
           primary_objective: a.papel || "",
           agent_type: "custom",
-          can_do: [],
-          cannot_do: [],
+          // Defaults sãos de atendimento de espaço de beleza — o preset nascia VAZIO,
+          // então a agente não sabia o que podia/não podia fazer. A dona edita depois.
+          can_do: [
+            "Informar os serviços e preços que estão no catálogo do espaço",
+            "Consultar horários livres e agendar, remarcar ou confirmar atendimentos",
+            "Tirar dúvidas sobre duração, cuidados e o que está incluso em cada serviço",
+            "Informar endereço, horário de funcionamento e formas de pagamento",
+          ],
+          cannot_do: [
+            "Inventar preço, promoção, desconto ou brinde que não esteja no catálogo",
+            "Prometer resultado de procedimento ou dar qualquer orientação médica",
+            "Falar de assunto que não seja o espaço e seus serviços",
+            "Confirmar agendamento sem ter consultado os horários disponíveis",
+          ],
+          // Tom adaptativo: o público é majoritariamente feminino, mas com homem o
+          // registro é mais direto — sem apelido nem excesso de carinho.
+          additional_prompt:
+            "Adapte o registro a quem está do outro lado: com clientes mulheres, tom acolhedor e caloroso, próximo. " +
+            "Com clientes homens, mantenha a simpatia mas seja mais direta e objetiva — sem apelidos carinhosos, " +
+            "sem excesso de emoji, sem diminutivos. Em qualquer caso: linguagem natural de WhatsApp, frases curtas, " +
+            "nunca robótica. Se não souber o gênero, use um tom neutro e cordial.",
           // [B5] Agente nascia sem rota de escalonamento (triggers vazios + can_transfer=false)
           // → a cliente que pedia "quero falar com uma pessoa" falava com o robô pra sempre.
           // Defaults sãos para salão; a dona pode ajustar/remover depois.
