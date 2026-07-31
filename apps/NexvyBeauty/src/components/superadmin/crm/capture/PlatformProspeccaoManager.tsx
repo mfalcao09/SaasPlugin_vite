@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen, ChevronDown } from 'lucide-react';
+import { Radar, Search, Download, Loader2, Sprout, BadgeCheck, ExternalLink, RefreshCw, HelpCircle, Columns3, ClipboardPaste, Trash2, RotateCcw, Plus, Check, X, DoorOpen, ChevronDown, PackageSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -88,8 +88,12 @@ function toCsv(rows: ExtractedLead[]): string {
 }
 
 export function PlatformProspeccaoManager() {
-  const { effectiveProductId } = useActivePlatformProduct();
+  const { effectiveProductId, activeProductId, products } = useActivePlatformProduct();
   const productId = effectiveProductId ?? null;
+  // "Todos os produtos" (activeProductId === null) é AMBÍGUO numa tela por-produto:
+  // effectiveProductId cai silenciosamente no products[0], então a tela mostraria as buscas
+  // do 1º produto — foi o que fez a base cheia (30k) parecer VAZIA. Detectamos e avisamos.
+  const isAllProducts = activeProductId == null && products.length > 1;
 
   const [keywords, setKeywords] = useState('');
   const [limit, setLimit] = useState(30);
@@ -248,6 +252,19 @@ export function PlatformProspeccaoManager() {
           </Button>
         </div>
       </div>
+
+      {isAllProducts && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
+          <PackageSearch className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">A Prospecção é organizada por produto.</p>
+            <p className="text-muted-foreground">
+              Você está com <b>Todos os produtos</b> no seletor do topo. Escolha um produto
+              (ex.: <b>NexvyBeauty</b>) para ver as buscas e leads — a base <b>não está vazia</b>, está filtrada por produto.
+            </p>
+          </div>
+        </div>
+      )}
 
       {showRules && (
         <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground space-y-1">
@@ -510,7 +527,7 @@ export function PlatformProspeccaoManager() {
             <tbody>
               {leadsLoading && <tr><td colSpan={13} className="p-6 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin inline" /></td></tr>}
               {!leadsLoading && leads.length === 0 && (
-                <tr><td colSpan={13} className="p-6 text-center text-muted-foreground">{showExcluded ? 'Lixeira vazia.' : activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
+                <tr><td colSpan={13} className="p-6 text-center text-muted-foreground">{isAllProducts ? 'Selecione um produto no topo para ver os leads.' : showExcluded ? 'Lixeira vazia.' : activeExtraction ? 'Nenhum lead com esses filtros.' : 'Dispare uma busca acima para começar.'}</td></tr>
               )}
               {leads.map((l) => (
                 <tr key={l.id} className={`border-t border-border hover:bg-muted/30 ${l.approved_at ? 'bg-green-500/[0.06]' : ''}`}>

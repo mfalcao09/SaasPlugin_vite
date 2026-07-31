@@ -59,9 +59,9 @@ import { PlatformProspeccaoManager } from '@/components/superadmin/crm/capture/P
 
 // ── Prospecção Ativa (grupo próprio) ──
 import { PlatformProspeccaoBaseConsolidada } from '@/components/superadmin/crm/prospeccao/PlatformProspeccaoBaseConsolidada';
-import { ProspeccaoCampanhasStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoCampanhasStub';
-import { ProspeccaoDashboardStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoDashboardStub';
-import { ProspeccaoEnriquecimentoStub } from '@/components/superadmin/crm/prospeccao/stubs/ProspeccaoEnriquecimentoStub';
+import { ProspeccaoCampanhas } from '@/components/superadmin/crm/prospeccao/ProspeccaoCampanhas';
+import { ProspeccaoDashboard } from '@/components/superadmin/crm/prospeccao/ProspeccaoDashboard';
+import { ProspeccaoEnriquecimento } from '@/components/superadmin/crm/prospeccao/ProspeccaoEnriquecimento';
 import { ProspeccaoVideoImport } from '@/components/superadmin/crm/prospeccao/ProspeccaoVideoImport';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
@@ -405,19 +405,19 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-prospeccao-campanhas',
         label: 'Campanhas de disparo',
         icon: I.Send,
-        render: () => <ProspeccaoCampanhasStub />,
+        render: () => <ProspeccaoCampanhas />,
       },
       {
         id: 'v-prospeccao-dashboard',
         label: 'Dashboard de prospecção',
         icon: I.BarChart3,
-        render: () => <ProspeccaoDashboardStub />,
+        render: () => <ProspeccaoDashboard />,
       },
       {
         id: 'v-prospeccao-enriquecimento',
         label: 'Enriquecimento (UI)',
         icon: I.Sparkles,
-        render: () => <ProspeccaoEnriquecimentoStub />,
+        render: () => <ProspeccaoEnriquecimento />,
       },
       {
         id: 'v-prospeccao-video',
