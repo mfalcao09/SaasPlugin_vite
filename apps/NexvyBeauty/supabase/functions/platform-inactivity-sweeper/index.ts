@@ -153,6 +153,21 @@ Deno.serve(async (req) => {
       .limit(SWEEP_LIMIT);
     if (convErr) throw convErr;
 
+    // Slug do produto por id — a régua é de VENDAS e só vale no funil B2B.
+    const B2B_SALES_PRODUCT_SLUG = 'nexvybeauty';
+    const slugCache = new Map<string, string>();
+    const slugOf = async (productId: string): Promise<string> => {
+      if (slugCache.has(productId)) return slugCache.get(productId)!;
+      const { data } = await supabase
+        .from('platform_crm_products')
+        .select('slug')
+        .eq('id', productId)
+        .maybeSingle();
+      const slug = (data?.slug as string) ?? '';
+      slugCache.set(productId, slug);
+      return slug;
+    };
+
     // Cache de agentes por produto (isSdrAgent decide se a régua corre).
     const agentCache = new Map<string, Array<Record<string, any>>>();
     const agentsOf = async (productId: string): Promise<Array<Record<string, any>>> => {
@@ -174,6 +189,18 @@ Deno.serve(async (req) => {
         // Régua SÓ corre com persona SDR ativa na conversa (espec). Sem pin =
         // Duda nunca falou (o pin nasce na 1ª fala dela) → nada a retomar.
         if (!conv.product_id || !conv.current_agent_id) { out.skipped++; continue; }
+
+        // FORA DO FUNIL B2B a régua NÃO corre. A Mavi (Demo) é agent_type='sdr'
+        // — herdou o tipo do preset — então passava no isSdrAgent e a Demo caía
+        // na régua de VENDAS: quem testasse a demonstração e fechasse o WhatsApp
+        // levava 4 cobranças em 35min para marcar horário num salão FICTÍCIO.
+        // Ninguém decidiu isso: a régua simplesmente não excluía produto nenhum
+        // (conferido 2026-08-01 — as 2 conversas da Demo qualificavam). Perseguir
+        // curioso é pior que não perseguir, e cada toque é chamada de LLM paga.
+        // Critério idêntico ao do brain (B2B_SALES_PRODUCT_SLUG) de propósito:
+        // duas definições de "funil de verdade" divergiriam com o tempo.
+        if ((await slugOf(conv.product_id)) !== B2B_SALES_PRODUCT_SLUG) { out.skipped++; continue; }
+
         const agents = await agentsOf(conv.product_id);
         const current = agents.find((a) => a.id === conv.current_agent_id) ?? null;
         if (!isSdrAgent(current)) { out.skipped++; continue; }
