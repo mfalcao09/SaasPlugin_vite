@@ -75,6 +75,10 @@ export function PlatformModuleSwitcher() {
         className="w-72 overflow-hidden rounded-xl border border-border p-0 shadow-xl"
         align="start"
         sideOffset={8}
+        // Mesma correção do PlatformProductSwitcher: sem margem de colisão o
+        // popover pode assentar com parte fora da viewport no celular, e os itens
+        // de baixo ficam sem alcance de toque.
+        collisionPadding={12}
       >
         {/* Header */}
         <div className="border-b border-border px-4 py-3">
