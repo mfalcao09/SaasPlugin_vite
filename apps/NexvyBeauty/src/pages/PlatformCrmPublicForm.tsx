@@ -255,6 +255,17 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
       case 'welcome_screen':
         return (
           <div className="text-center space-y-6 flex flex-col items-center">
+            {/* HERO da landing: peça visual de largura total, distinta de
+                logo_url (marca pequena, altura fixa h-16..h-40). Opcional —
+                sem theme.hero_image_url o layout fica idêntico ao anterior. */}
+            {(form!.theme as any).hero_image_url && (
+              <img
+                src={(form!.theme as any).hero_image_url}
+                alt=""
+                className="w-full max-h-[42vh] rounded-2xl shadow-lg object-cover"
+                loading="eager"
+              />
+            )}
             {form!.theme.logo_url && (
               <img
                 src={form!.theme.logo_url}
@@ -676,9 +687,26 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
       )}
 
       {form.settings.show_branding !== false && (
-        <div className="fixed bottom-20 left-0 right-0 text-center py-2 pointer-events-none">
+        // `fixed` posiciona pela VIEWPORT, nao pelo documento: em pagina que
+        // rola (welcome com imagem de capa) a assinatura flutuava POR CIMA do
+        // texto no meio da tela. Nas etapas de pergunta o conteudo cabe na
+        // viewport e o fixed continua correto (fica acima da barra de navegacao).
+        <div
+          className={cn(
+            'text-center py-2 pointer-events-none',
+            isWelcome ? 'pb-6' : 'fixed bottom-20 left-0 right-0',
+          )}
+        >
           <span className="text-xs text-muted-foreground">
-            {poweredByText} <strong>{platformName}</strong>
+            {/* Override POR FORMULÁRIO. O branding global (platform_branding_public)
+                é do NexvyBeauty e aparece em login/splash/docs/LP de vendas —
+                mudá-lo aqui vazaria pros salões. Landing de outro produto assina
+                com o próprio texto; sem settings.branding_text, cai no global. */}
+            {(form.settings as any).branding_text || (
+              <>
+                {poweredByText} <strong>{platformName}</strong>
+              </>
+            )}
           </span>
         </div>
       )}
