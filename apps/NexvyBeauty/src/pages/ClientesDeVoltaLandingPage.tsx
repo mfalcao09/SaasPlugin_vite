@@ -209,6 +209,9 @@ export default function LandingPage() {
       <Equipia />
       <ComoFunciona />
       <Planos />
+      {/* Logo DEPOIS dos planos, de propósito: a objeção "tá caro" nasce ao ver
+          o preço, e é ali que a conta do mercado responde. */}
+      <Comparativo />
       <ChamadaPosPlanos />
       <Cofounder />
       <Faq />
@@ -1512,6 +1515,161 @@ function Planos() {
               <PlanoCta plan={ultra} className="btn btn-quiet" />
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── COMPARATIVO DE MERCADO (pós-planos) ─────────────────────────────────────
+ *  Regra desta seção, em ordem de precedência:
+ *
+ *  1. Só entra dado que exista em página PÚBLICA do concorrente, com a data da
+ *     consulta e o link ao lado. Nada de "a partir de" reconstruído de memória:
+ *     na apuração de 01/08/2026 dois números que circulavam internamente não
+ *     resistiram à fonte (um estava R$ 100 acima do praticado; o outro cobrava
+ *     uma taxa de setup que a empresa anuncia como GRÁTIS). Ambos ficaram fora.
+ *  2. Preço NOSSO não aparece aqui — ele vem de `public_plans` nos cards acima
+ *     (mesma regra do PlanoPreco). Hardcode aqui reintroduziria exatamente a
+ *     divergência que aquele componente existe para evitar.
+ *  3. Comparação honesta > comparação favorável. A soma abaixo dá EMPATE com o
+ *     Essencial, e é assim que ela é apresentada. O que vende não é um desconto
+ *     que não existe: é a unificação (uma assinatura, não duas) e a
+ *     transparência (a nossa tabela inteira está publicada; a deles, não).
+ *
+ *  Ao atualizar: reconferir CADA linha na fonte e mover BENCH_CONSULTA junto.
+ *  Data velha com número novo é pior do que não ter tabela.                    */
+const BENCH_CONSULTA = "01/08/2026";
+
+type BenchRow = {
+  nome: string;
+  tipo: string;
+  preco: string;
+  /** true = não é um valor, é a ausência dele (renderiza em itálico apagado). */
+  vago?: boolean;
+  obs: string;
+  fonte?: string;
+};
+
+const BENCHMARK: readonly BenchRow[] = [
+  {
+    nome: "Trinks",
+    tipo: "Gestão de salão",
+    preco: "R$ 76/mês",
+    obs: "Só a faixa de 1 a 2 profissionais. De 3 em diante, as quatro faixas seguintes aparecem como “sob consulta”.",
+    fonte: "https://negocios.trinks.com/planos/",
+  },
+  {
+    nome: "AppBarber",
+    tipo: "Gestão de salão",
+    preco: "R$ 79,90 a R$ 219,90/mês",
+    obs: "Publica todas as faixas, de 1 profissional a 15 ou mais.",
+    fonte: "https://appbarber.com.br/",
+  },
+  {
+    nome: "BotConversa",
+    tipo: "IA no WhatsApp",
+    preco: "R$ 199/mês",
+    obs: "Plano Pro, com API Oficial do WhatsApp e assistente GPT. R$ 189/mês no anual.",
+    fonte: "https://botconversa.com.br/",
+  },
+  {
+    nome: "Zenvia",
+    tipo: "IA e atendimento",
+    preco: "R$ 600/mês",
+    obs: "Plano Specialist: 10 usuários e 500 interações inclusas.",
+    fonte: "https://www.zenvia.com/precos/",
+  },
+  {
+    nome: "ChatGuru",
+    tipo: "IA no WhatsApp",
+    preco: "sob orçamento",
+    vago: true,
+    obs: "Não publica tabela. O site informa “a partir de R$ 347” e setup gratuito.",
+    fonte: "https://chatguru.com.br/planos-e-precos/",
+  },
+];
+
+function Comparativo() {
+  return (
+    <section className="block" id="comparativo" style={{ paddingTop: "20px", paddingBottom: "40px" }}>
+      <div className="wrap">
+        <div className="bench-box rv">
+          <div className="eyebrow">Transparência</div>
+          <h2 className="serif">
+            A conta que ninguém <em>faz pra você.</em>
+          </h2>
+          <p className="lead">
+            Todo preço abaixo saiu da página pública da própria empresa, na data indicada. Se algum
+            estiver diferente hoje, o link está ali do lado para você conferir.
+          </p>
+
+          <div className="bench-conta">
+            <div className="soma">
+              Para ter gestão de salão <b>e</b> IA no WhatsApp, somando as duas assinaturas mais
+              baratas que publicam preço: <b>R$ 76 + R$ 199 = R$ 275/mês.</b>
+            </div>
+            <p>
+              Duas empresas, duas cobranças, dois logins — e uma agenda que não sabe o que a IA
+              respondeu. Aqui é uma assinatura só, e a IA já vem dentro. O preço está nos planos
+              acima.
+            </p>
+          </div>
+
+          <table className="bench">
+            <thead>
+              <tr>
+                <th>Plataforma</th>
+                <th>Preço publicado</th>
+                <th>O que esse preço cobre</th>
+              </tr>
+            </thead>
+            <tbody>
+              {BENCHMARK.map((r) => (
+                <tr key={r.nome}>
+                  <td>
+                    <div className="n">{r.nome}</div>
+                    <div className="t">{r.tipo}</div>
+                  </td>
+                  <td>
+                    <span className={r.vago ? "p vago" : "p"}>{r.preco}</span>
+                  </td>
+                  <td>
+                    <div className="obs">
+                      {r.obs}{" "}
+                      {r.fonte && (
+                        <a className="src" href={r.fonte} target="_blank" rel="noopener nofollow">
+                          ver fonte
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              <tr className="bench-nos">
+                <td>
+                  <div className="n">NexvyBeauty</div>
+                  <div className="t">Gestão + IA, no mesmo lugar</div>
+                </td>
+                <td>
+                  <span className="p vago">os três planos, na página</span>
+                </td>
+                <td>
+                  <div className="obs">
+                    Agentes de IA de série em todos os planos, do Essencial ao Ultra — sem add-on,
+                    sem taxa de instalação e sem “fale com um consultor” para saber quanto custa.
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p className="bench-fonte">
+            Preços consultados nas páginas públicas de cada empresa em {BENCH_CONSULTA}. Planos e
+            valores mudam sem aviso — confira na fonte antes de decidir. A comparação usa os planos
+            que cada empresa publica; onde a empresa não publica preço, isso está dito na tabela em
+            vez de estimado.
+          </p>
         </div>
       </div>
     </section>
