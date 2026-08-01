@@ -594,9 +594,99 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
   const btn = formButtonProps(form.theme.button_style);
   const hasLogo = !!form.theme.logo_url;
   const showFloatingLogo = hasLogo && !isWelcome;
+  const heroUrl = (form.theme as any).hero_image_url as string | undefined;
   const logoSize = form.theme.logo_size || 'md';
   const belowLogoTopClass = { sm: 'top-14', md: 'top-20', lg: 'top-24', xl: 'top-32' }[logoSize];
   const effectiveProgressPos = progressPos === 'below_logo' && !showFloatingLogo ? 'top' : progressPos;
+
+  // ── WELCOME IMERSIVO ────────────────────────────────────────────────────
+  // Landing de produto precisa de composição própria: o layout padrão espreme
+  // tudo num max-w-2xl centralizado (certo p/ formulário, errado p/ capa).
+  // Aqui a foto SANGRA na tela e se dissolve no fundo por gradiente, em vez de
+  // ficar num card boiando. Opt-in por theme.hero_layout === 'immersive' —
+  // qualquer outro formulário segue pelo caminho de baixo, intocado.
+  if (isWelcome && currentBlock && heroUrl && (form.theme as any).hero_layout === 'immersive') {
+    // "NetB2B — Destravando Empresas" -> título forte + linha de apoio.
+    const [heroTitle, ...heroRest] = (currentBlock.label || '').split('—');
+    const heroSubtitle = heroRest.join('—').trim();
+    return (
+      <FormThemeWrapper theme={form.theme} className="min-h-screen">
+        <div className="relative min-h-screen overflow-hidden bg-[#08090c] text-white">
+          {/* Foto: ocupa o topo no mobile, os 2/3 da direita no desktop. */}
+          <div className="absolute inset-x-0 top-0 h-[52vh] md:inset-y-0 md:left-[38%] md:h-auto">
+            <img
+              src={heroUrl}
+              alt=""
+              // O asset ja vem recortado no sujeito (a assinatura manuscrita do
+              // original foi removida na fonte, nao escondida por gradiente —
+              // letra cortada le como defeito). Por isso object-center basta.
+              className="h-full w-full object-cover object-center"
+              loading="eager"
+            />
+            {/* Gradientes que dissolvem a foto no fundo — sem borda visível. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[#08090c]/35 to-transparent md:hidden" />
+            <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-[#08090c] via-[#08090c]/55 to-transparent" />
+            <div className="absolute inset-0 hidden md:block bg-gradient-to-t from-[#08090c]/80 to-transparent" />
+          </div>
+
+          <div className="relative z-10 flex min-h-screen items-end md:items-center">
+            <div className="w-full max-w-xl px-6 pb-12 pt-[46vh] md:max-w-2xl md:px-14 md:py-16 md:pt-16">
+              <span
+                className="mb-5 inline-block rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  color: form.theme.primary_color || '#E8734A',
+                  border: `1px solid ${form.theme.primary_color || '#E8734A'}55`,
+                  background: `${form.theme.primary_color || '#E8734A'}14`,
+                }}
+              >
+                Comunidade B2B
+              </span>
+
+              <h1 className="text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
+                {heroTitle.trim()}
+              </h1>
+              {heroSubtitle && (
+                <p
+                  className="mt-2 text-2xl font-light md:text-3xl"
+                  style={{ color: form.theme.primary_color || '#E8734A' }}
+                >
+                  {heroSubtitle}
+                </p>
+              )}
+
+              <div
+                className="my-7 h-px w-20"
+                style={{ background: form.theme.primary_color || '#E8734A' }}
+              />
+
+              {currentBlock.description && (
+                <p className="max-w-prose whitespace-pre-line text-[15px] leading-relaxed text-white/65 md:text-base">
+                  {currentBlock.description}
+                </p>
+              )}
+
+              <button
+                onClick={handleNext}
+                className="mt-9 inline-flex items-center gap-2 rounded-xl px-8 py-4 text-base font-semibold text-white shadow-xl transition-transform hover:scale-[1.03] active:scale-100"
+                style={{
+                  background: `linear-gradient(135deg, ${form.theme.primary_color || '#E8734A'}, ${form.theme.secondary_color || '#C75B34'})`,
+                  boxShadow: `0 14px 40px -12px ${form.theme.primary_color || '#E8734A'}80`,
+                }}
+              >
+                Começar <ArrowRight className="h-4 w-4" />
+              </button>
+
+              {form.settings.show_branding !== false && (
+                <p className="mt-10 text-xs text-white/35">
+                  {(form.settings as any).branding_text || `${poweredByText} ${platformName}`}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </FormThemeWrapper>
+    );
+  }
 
   return (
     <FormThemeWrapper theme={form.theme} className="min-h-screen flex flex-col bg-background">
