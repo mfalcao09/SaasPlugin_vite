@@ -326,6 +326,36 @@ function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: st
   return ctx;
 }
 
+/** AGORA — fonte única de data e hora (America/Sao_Paulo).
+ *
+ *  O modelo não tem relógio. Sem este bloco ele CHUTA o dia da semana; pior, ao
+ *  ser desmentido pela cliente não tem DE QUE se corrigir e reafirma o chute.
+ *  Reproduzido na demo em 2026-08-01 (sábado): a Mavi ofereceu "amanhã,
+ *  quarta-feira", o cliente respondeu "amanhã é domingo", ela pediu desculpas e
+ *  repetiu "hoje é terça-feira". Insistir contra o cliente não foi teimosia do
+ *  modelo — foi ausência de chão.
+ *
+ *  Vale para toda persona da plataforma: mesmo as proibidas de agendar podem
+ *  errar o dia numa frase solta, e errar data na frente do cliente custa a venda. */
+function buildNowContext(): string {
+  const TZ = 'America/Sao_Paulo';
+  const now = new Date();
+  const data = now.toLocaleDateString('pt-BR', {
+    timeZone: TZ, weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const hora = now.toLocaleTimeString('pt-BR', {
+    timeZone: TZ, hour: '2-digit', minute: '2-digit',
+  });
+  return `\n═══ AGORA (fonte única de data e hora) ═══\n` +
+    `Hoje é ${data}, ${hora} (horário de Brasília).\n` +
+    `- Calcule "hoje", "amanhã", "depois de amanhã", "essa semana" SEMPRE a partir\n` +
+    `  desta linha. Nunca de memória — sua memória não tem calendário.\n` +
+    `- Se a cliente te corrigir sobre o dia, ELA está certa até esta linha provar o\n` +
+    `  contrário: confira aqui, assuma o erro e NÃO repita o dado errado.\n` +
+    `- Nunca ofereça dia ou horário fora do funcionamento informado na base de\n` +
+    `  conhecimento — confira o dia da semana acima antes de oferecer qualquer data.\n`;
+}
+
 /** FONTE-ÚNICA DE PREÇO (INVIOLÁVEL). Injetado logo após a seção LINKS DE
  *  PAGAMENTO (que vem do banco em runtime). Fixa a REGRA de onde ler o preço
  *  (que não envelhece), no lugar de fixar o número (que envelhece). Precede
@@ -1364,7 +1394,7 @@ Deno.serve(async (req) => {
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
-${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
+${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
 ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}${inactivityContext}
@@ -1400,22 +1430,36 @@ COMO RESPONDER (WhatsApp — regras de forma DURAS)
   asterisco aparece CRU na tela da cliente. Para dar ênfase use *um asterisco só*.
 - No máximo 1 emoji, e só quando couber.
 - Reaja com calor ao que a lead disse antes de perguntar (micro-ack).
-- Use o nome do cliente quando souber. Nunca repergunte o que já está em "O QUE JÁ SABEMOS DA LEAD".
+- COM QUEM VOCÊ FALA: você fala SEMPRE com quem está no chat. Se o assunto é para
+  OUTRA pessoa (esposa, filha, mãe, sócia), fale DELA em 3ª pessoa — jamais se dirija
+  a quem não está na conversa. "Seja bem-vinda" para a esposa que não está no chat é
+  erro grave: mostra que você perdeu de vista com quem está falando.
+- Use o nome do cliente quando souber, mas NÃO em toda mensagem. Repetir o nome a cada
+  bolha soa a script de call center — uma vez, quando fizer sentido, basta.
+- Nunca repergunte o que já está em "O QUE JÁ SABEMOS DA LEAD".
 - Sempre avance a conversa (qualifique ou proponha próximo passo).
 
 ANTES DE ENVIAR, revise (obrigatório):
 1) Cabe em 2-3 linhas por mensagem?  2) Tem só UMA pergunta?
 3) Tem asterisco duplo ou lista? (se sim, tire)  4) As duas ideias estão separadas por linha em branco?
 
-❌ ERRADO (parede de texto, markdown, 2 perguntas):
+${isRealB2bFunnel ? `❌ ERRADO (parede de texto, markdown, 2 perguntas):
 "Que ótimo! O plano **Essencial** vai organizar sua agenda, otimizar atendimentos e ainda usar IA pra trazer de volta clientes sumidos, e olha, com seu ticket você recupera 2 ou 3 e já paga o mês. Quer que eu te mande o link? Ou prefere entender melhor antes?"
 
-✅ CERTO (uma ideia por mensagem, separadas por linha em branco, uma pergunta):
-"Com ticket de R$89 e 200 clientes na base, bastam 2 ou 3 voltarem pra pagar o mês inteiro.
+✅ CERTO (DUAS mensagens, uma ideia cada, UMA pergunta):
+"Com ticket de R$89 e 200 clientes na base, bastam 2 ou 3 voltarem pra pagar o mês inteiro — e o Essencial faz exatamente isso.
 
-O Essencial faz exatamente isso: acha quem sumiu e chama de volta sozinho.
+Quer que eu te mostre no seu número?"` : `❌ ERRADO (empresês, monólogo de 3 bolhas, fala com quem não está no chat):
+"Nosso próximo dia de funcionamento é na terça-feira, a partir das 9h.
 
-Quer que eu te mostre no seu número?"`;
+Ela gostaria de agendar para terça, ou prefere manter hoje às 16h?
+
+Seja bem-vinda ao Studio Flor!"
+
+✅ CERTO (fala de gente, DUAS mensagens, 3ª pessoa para quem não está no chat):
+"Amanhã é domingo e a gente fecha — mas terça já abre 9h 😊
+
+Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
 
     // 10) LLM: gateway da casa. Modelo resolvido POR-PERSONA: a Bia (closer) roda
     //     num modelo mais forte via AI_SALES_BRAIN_MODEL_CLOSER (fallback →
