@@ -19,6 +19,17 @@ export default defineConfig(() => ({
   },
   build: {
     chunkSizeWarningLimit: 1500,
+    // Multi-page: um entry por HOST que precisa de <title>/Open Graph próprios.
+    // Crawler de link (WhatsApp/Facebook) não roda JS, então meta tag por host
+    // só funciona em HTML estático separado. Mesmo bundle JS nos dois; quem
+    // decide o que renderizar é LANDING_HOSTS (src/lib/publicUrl.ts).
+    // O nginx (infra/nginx.conf) escolhe o arquivo por $host.
+    rollupOptions: {
+      input: {
+        index: path.resolve(__dirname, "index.html"),
+        netb2b: path.resolve(__dirname, "netb2b.html"),
+      },
+    },
     // IMPORTANT: do NOT manually split React / Radix / etc. into separate chunks.
     // The previous manualChunks config produced a circular dependency
     // (ui-vendor -> react-vendor -> ui-vendor) which, in production builds,

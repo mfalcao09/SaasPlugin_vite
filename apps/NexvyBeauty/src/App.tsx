@@ -16,7 +16,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
+import { getLandingFormSlug, isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
@@ -78,6 +78,8 @@ const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Install = lazyWithRetry(() => import("./pages/Install"));
 const PublicForm = lazyWithRetry(() => import("./pages/PublicForm"));
+// Servido na RAIZ de um host de landing (LANDING_HOSTS em lib/publicUrl).
+const PlatformCrmPublicForm = lazyWithRetry(() => import("./pages/PlatformCrmPublicForm"));
 const PublicSalaoBooking = lazyWithRetry(() => import("./pages/PublicSalaoBooking"));
 // Booking público do módulo CRM da plataforma (Calendly de reunião de venda).
 const PlatformCrmPublicBooking = lazyWithRetry(() => import("./pages/PlatformCrmPublicBooking"));
@@ -235,7 +237,9 @@ const App = () => (
         <BrowserRouter>
           <SuperAdminViewProvider>
           <SuperAdminViewChoiceDialog />
-          <FooterDecoration />
+          {/* Decoração é da marca NexvyBeauty — não pode vazar em host de
+              landing de outro produto (ex.: netb2b.nexvy.tech). */}
+          {!getLandingFormSlug() && <FooterDecoration />}
           <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <HostConfinementGuard>
@@ -318,6 +322,11 @@ const App = () => (
                     <SuperAdminRoute>
                       <PlatformShell />
                     </SuperAdminRoute>
+                  ) : getLandingFormSlug() ? (
+                    // Host de landing (ex.: netb2b.nexvy.tech) → o formulário
+                    // público do produto renderiza na PRÓPRIA RAIZ, sem path
+                    // `/f/<slug>`. O cliente final nunca enxerga gestao.*.
+                    <PlatformCrmPublicForm slug={getLandingFormSlug()!} />
                   ) : isApexDomain() ? (
                     // apex (nexvybeauty.com.br / www) → LP "Clientes de Volta".
                     <ClientesDeVoltaLandingPage />

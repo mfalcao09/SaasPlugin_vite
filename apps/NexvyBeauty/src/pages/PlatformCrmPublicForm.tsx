@@ -266,7 +266,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               />
             )}
             <h1 className="text-3xl md:text-4xl">{block.label}</h1>
-            {block.description && <p className="text-lg text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-lg text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <Button size="lg" onClick={handleNext} variant={btn.variant} className={`gap-2 ${btn.className}`}>
               Começar <ArrowRight className="h-4 w-4" />
             </Button>
@@ -278,7 +278,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
           <div className="text-center space-y-6">
             <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
             <h1 className="text-3xl md:text-4xl">{block.label}</h1>
-            {block.description && <p className="text-lg text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-lg text-muted-foreground whitespace-pre-line">{block.description}</p>}
           </div>
         );
 
@@ -293,7 +293,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <Input
               type={block.block_type === 'email' ? 'email' : isPhone ? 'tel' : 'text'}
               inputMode={isPhone ? 'numeric' : undefined}
@@ -316,7 +316,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <Input
               type="number"
               placeholder={block.placeholder}
@@ -334,7 +334,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <Textarea
               placeholder={block.placeholder}
               value={(value as string) || ''}
@@ -352,7 +352,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <RadioGroup
               value={(value as string) || ''}
               onValueChange={(v) => handleResponse(block.id, v)}
@@ -384,7 +384,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <div className="space-y-3">
               {multiOptions.map((option) => (
                 <div
@@ -413,7 +413,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <div className="flex gap-4">
               <Button
                 variant={value === true ? 'default' : 'outline'}
@@ -444,7 +444,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               {block.label}
               {block.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <div className="space-y-4">
               <div className="text-center text-4xl font-bold">{sliderValue}</div>
               <Slider
@@ -474,7 +474,7 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
                 {block.required && <span className="text-destructive ml-1">*</span>}
               </Label>
             </div>
-            {block.description && <p className="text-muted-foreground">{block.description}</p>}
+            {block.description && <p className="text-muted-foreground whitespace-pre-line">{block.description}</p>}
             <Textarea
               placeholder={block.placeholder || 'Digite sua resposta...'}
               value={(value as string) || ''}
