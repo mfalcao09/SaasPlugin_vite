@@ -83,6 +83,28 @@ export function usePlatformCrmProductAgents(productId?: string) {
 }
 
 /** Um agente por id (para editor / deep-link). */
+/** TODOS os agentes de TODOS os produtos — só id+name, para resolver nome por id.
+ *
+ *  Existe porque `usePlatformCrmProductAgents` filtra por produto e tem
+ *  `enabled: !!productId`: chamado sem produto, não busca nada. O inbox precisa
+ *  do mapa COMPLETO — a lista de conversas atravessa produtos e o
+ *  `current_agent_id` de uma conversa pode ser de qualquer um deles.
+ *  Sem isto o nome não resolvia e a UI caía num fallback hardcoded 'Duda',
+ *  fazendo TODA conversa exibir "Duda · IA" (bug achado em 2026-08-01). */
+export function usePlatformCrmAllProductAgents() {
+  return useQuery({
+    queryKey: [KEY, 'product-agents', 'all-names'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('platform_crm_product_agents')
+        .select('id, name');
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string }>;
+    },
+    staleTime: 5 * 60 * 1000, // nome de agente muda raramente
+  });
+}
+
 export function usePlatformCrmProductAgent(agentId?: string | null) {
   return useQuery({
     queryKey: [KEY, 'product-agent', agentId],
