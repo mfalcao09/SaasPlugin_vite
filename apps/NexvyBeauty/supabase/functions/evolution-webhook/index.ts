@@ -1087,13 +1087,16 @@ Deno.serve(async (req) => {
       // re-processa). Fire-and-forget: nunca atrasa nem derruba o webhook.
       if (primeiraConexao && instance.organization_id) {
         try {
-          fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/carteira-reativacao`, {
+          // Chama o SUB2 (classify), NÃO o SUB3 direto: o carteira-classify encadeia
+          // pro carteira-reativacao ao terminar. Disparar o SUB3 aqui pulava a
+          // classificação e gerava proposta pra contato que ainda não foi triado.
+          fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/carteira-classify`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ organization_id: instance.organization_id, lote: 50 }),
+            body: JSON.stringify({ organization_id: instance.organization_id, lote: 25 }),
           }).catch((e) => console.warn("[evolution-webhook] gatilho carteira falhou:", e?.message));
           console.log("[evolution-webhook] 1a conexão → disparou análise de carteira:", instance.organization_id);
         } catch (e: any) {

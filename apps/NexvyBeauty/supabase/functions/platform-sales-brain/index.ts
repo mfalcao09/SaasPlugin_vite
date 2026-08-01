@@ -1291,7 +1291,7 @@ Deno.serve(async (req) => {
         supabase
           .from('platform_crm_products')
           .select(
-            'name, description, pitch_2min, icp, objections, guarantee, discount_policy, plans, pricing, knowledge_base',
+            'slug, name, description, pitch_2min, icp, objections, guarantee, discount_policy, plans, pricing, knowledge_base',
           )
           .eq('id', conversation.product_id)
           .maybeSingle(),
@@ -1310,6 +1310,20 @@ Deno.serve(async (req) => {
       plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url && p.is_public);
     }
 
+    // GATE B2B POR PRODUTO (2026-07-31 · decisão Marcelo (a)): os blocos de VENDA
+    // da assinatura Nexvy (checkout real, regra de preço, escada de qualificação,
+    // disparo do raio-x) só valem para o funil B2B de verdade — hoje o único
+    // produto com esse funil é o NexvyBeauty (slug fixo, é o mesmo slug já
+    // seedado em platform_crm_products para Duda/Bia/Nina/Lia/Bento). Critério
+    // ALLOW-LIST (fail-closed): só entra quem casa o slug; qualquer produto novo
+    // (demo, NexvyLAW, NexvyAds, NexvyPayments, Cofounder…) fica de fora por
+    // padrão, sem precisar listar exceções. Todos os agentes de produção hoje
+    // pertencem ao product_id do NexvyBeauty (conferido via MCP em 2026-07-31),
+    // então isRealB2bFunnel é SEMPRE true para Duda/Bia/Nina — zero mudança de
+    // comportamento pra elas.
+    const B2B_SALES_PRODUCT_SLUG = 'nexvybeauty';
+    const isRealB2bFunnel = (product?.slug ?? '') === B2B_SALES_PRODUCT_SLUG;
+
     // knowledgeContext = conhecimento do produto + LINKS DE PAGAMENTO (banco) +,
     // quando há preço, a REGRA DE PREÇO INVIOLÁVEL logo após a seção de links.
     // ?src=<slug> de atribuição: quem fala AGORA (persona) leva o crédito da venda.
@@ -1318,8 +1332,11 @@ Deno.serve(async (req) => {
     // cliente já comprou; instruções de "mande o link" corromperiam o papel de CS
     // (Lia) ou de retenção (Nina). Com onboardingActive=false E retentionActive=
     // false (todo fluxo de venda), a expressão é IDÊNTICA à atual.
+    // FORA DO FUNIL B2B (!isRealB2bFunnel): NUNCA injeta LINKS DE PAGAMENTO nem a
+    // REGRA DE PREÇO — public_plans é global (sem filtro de produto) e vazaria o
+    // checkout REAL da Nexvy pra uma persona de demonstração de outro produto.
     const knowledgeContext = buildKnowledgeContext(product)
-      + ((onboardingActive || retentionActive) ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
+      + ((!isRealB2bFunnel || onboardingActive || retentionActive) ? '' : buildCheckoutContext(plans, persona.name ?? 'duda')
       + (plans.length ? PRICE_RULE_BLOCK : ''));
     const productName = product?.name ?? 'NexvyBeauty';
     const visitorName = conversation.visitor_name ?? null;
@@ -1361,11 +1378,11 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
+${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
 8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
-${(!onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
-${(!onboardingActive && !retentionActive && personaIsSdr) ? QUALIFICACAO_RULE_BLOCK : ''}
+${(isRealB2bFunnel && !onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
+${(isRealB2bFunnel && !onboardingActive && !retentionActive && personaIsSdr) ? QUALIFICACAO_RULE_BLOCK : ''}
 
 ═══════════════════════════════════════
 COMO RESPONDER (WhatsApp — regras de forma DURAS)

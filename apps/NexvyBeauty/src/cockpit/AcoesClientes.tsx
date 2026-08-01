@@ -246,28 +246,43 @@ export default function AcoesClientes({ demo, embedded }: { demo?: ClientAction[
 }
 
 // ─── Seed do modo demonstração ──────────────────────────────────────────────
+// As mensagens de 'reativar'/'aniversario' espelham o estilo do PROMPT do SUB3
+// (supabase/functions/carteira-reativacao): 1-3 frases curtas, 1º nome, cita
+// serviço/histórico quando existe, 1 convite claro, NUNCA promoção/brinde/desconto
+// inventados, 1-3 emojis (tipicamente 2, nunca abrindo a frase). 'pacote'/'upsell'
+// seguem determinísticos (leverMessage) — o SUB3 não os gera, então o mock não finge IA ali.
 export const DEMO_ACOES: ClientAction[] = [
   {
     key: 'a1', cliente_id: 'a1', nome: 'Fernanda Costa', telefone: '11988880008',
     selos: ['vip', 'em-risco'], diasSemVoltar: 72,
     acoes: [
-      { tipo: 'reativar', motivo: 'Sem voltar há 72 dias', mensagem: 'Oi Fernanda! Você faz falta por aqui 👑 Quero reservar um horário especial só pra você — quando fica bom?' },
-      { tipo: 'aniversario', motivo: 'Faz aniversário este mês', mensagem: 'Oi Fernanda! 🎉 Feliz aniversário! Pra comemorar, separei um presentinho seu aqui. Vem buscar? 🎂' },
+      { tipo: 'reativar', motivo: 'Sem voltar há 72 dias', mensagem: 'Oi Fernanda! Faz tempo desde sua última coloração por aqui 💛 Separo um horário especial pra você essa semana? ✨' },
+      { tipo: 'aniversario', motivo: 'Faz aniversário este mês', mensagem: 'Feliz aniversário, Fernanda! 🎉 Que tal comemorar marcando um horário por aqui? Separo um espacinho só seu essa semana 💐' },
     ],
   },
   {
     key: 'a2', cliente_id: 'a2', nome: 'Joana Lima', telefone: '11988880002',
     selos: ['em-risco'], diasSemVoltar: 58,
     acoes: [
-      { tipo: 'reativar', motivo: 'Sem voltar há 58 dias', mensagem: 'Oi Joana! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana? Tenho um mimo te esperando 🎁' },
+      { tipo: 'reativar', motivo: 'Sem voltar há 58 dias', mensagem: 'Oi Joana! Faz 58 dias desde sua última escova por aqui 💕 Bora já marcar um horário pra essa semana? 😊' },
       { tipo: 'pacote', motivo: 'Pacote quase no fim', mensagem: 'Oi Joana! Seu pacote está quase no fim — bora renovar e manter seu cuidado em dia? Posso já deixar separado 😉' },
+    ],
+  },
+  // Agente de carteira (SUB2 + SUB3): cliente que só existe no WhatsApp — nunca
+  // teve agendamento formal no sistema, mas troca mensagem com o espaço — entra
+  // na fila do mesmo jeito. Mensagem gerada por IA (não é template fixo).
+  {
+    key: 'a5', cliente_id: 'a5', nome: 'Camila Ferreira', telefone: '11988880021',
+    selos: ['em-risco'], diasSemVoltar: 51,
+    acoes: [
+      { tipo: 'reativar', motivo: 'Só existe no seu WhatsApp — nunca virou agendamento no sistema', mensagem: 'Oi Camila! Vi que você perguntou sobre o alongamento de cílios faz um tempinho 💕 Ainda bate a vontade? Separo um horário pra você essa semana 😊' },
     ],
   },
   {
     key: 'a4', nome: 'Lúcia Alves', telefone: undefined,
     selos: ['em-risco'], diasSemVoltar: 64,
     acoes: [
-      { tipo: 'reativar', motivo: 'Sem voltar há 64 dias', mensagem: 'Oi Lúcia! Senti sua falta por aqui 💕 Que tal marcar um horário essa semana?' },
+      { tipo: 'reativar', motivo: 'Sem voltar há 64 dias', mensagem: 'Oi Lúcia! Faz tempo desde sua última hidratação por aqui 💕 Que tal marcarmos um horário essa semana? ✨' },
     ],
   },
   {
