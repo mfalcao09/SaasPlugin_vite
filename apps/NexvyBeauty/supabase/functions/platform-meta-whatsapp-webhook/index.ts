@@ -103,6 +103,63 @@ async function resolveDefaultProductId(
   }
 }
 
+/** Conexão dona do número que RECEBEU a mensagem (`value.metadata.phone_number_id`).
+ *
+ *  POR QUE NÃO USAR O connectionId DO PATH: um App Meta tem UMA callback URL por
+ *  produto. Com várias WABAs sob o mesmo app_id (Vendas + Demo +, no futuro,
+ *  tenants com número próprio), o Meta entrega TUDO nessa mesma URL — e o path
+ *  aponta sempre para a MESMA conexão. Rotear pelo path fazia a mensagem enviada
+ *  ao número da Demo ser gravada como Vendas e respondida pela persona errada,
+ *  por outro número (reproduzido em 2026-08-01 04:42 e 05:20 UTC). Com tenant de
+ *  número próprio sob o mesmo app, o mesmo defeito viraria vazamento cross-tenant.
+ *
+ *  O payload sempre soube a resposta: `metadata.phone_number_id` é o número que
+ *  recebeu. Ele é a fonte de verdade do roteamento; o path é só endereço.
+ *
+ *  FALLBACK: número não cadastrado cai na conexão do path e loga WARN — descartar
+ *  a mensagem seria pior que atribuí-la. O WARN existe pra a falha não ser muda. */
+async function resolveConnectionForValue(
+  supabase: ReturnType<typeof getServiceClient>,
+  value: Json,
+  pathConnectionId: string,
+  memo: Map<string, { id: string; product_id: string | null }>,
+): Promise<{ id: string; product_id: string | null } | null> {
+  const meta = (value['metadata'] as Json | undefined) ?? {};
+  const phoneNumberId = meta['phone_number_id'] ? String(meta['phone_number_id']) : '';
+  if (!phoneNumberId) {
+    console.warn('[platform-meta-whatsapp-webhook] payload sem phone_number_id — usando conexão do path');
+    return null;
+  }
+
+  const cached = memo.get(phoneNumberId);
+  if (cached) return cached;
+
+  const { data, error } = await supabase
+    .from('platform_crm_whatsapp_meta_connections')
+    .select('id, product_id')
+    .eq('phone_number_id', phoneNumberId)
+    .maybeSingle();
+
+  if (error || !data?.id) {
+    console.warn(
+      `[platform-meta-whatsapp-webhook] phone_number_id ${phoneNumberId} sem conexão cadastrada` +
+        ` — caindo na conexão do path ${pathConnectionId}${error ? ` (${error.message})` : ''}`,
+    );
+    return null;
+  }
+
+  const resolved = { id: data.id as string, product_id: (data.product_id as string | null) ?? null };
+  if (resolved.id !== pathConnectionId) {
+    // Não é erro: é o caso NORMAL quando várias WABAs dividem o mesmo App Meta.
+    console.log(
+      `[platform-meta-whatsapp-webhook] roteado por phone_number_id: path=${pathConnectionId}` +
+        ` → real=${resolved.id} (phone_number_id=${phoneNumberId})`,
+    );
+  }
+  memo.set(phoneNumberId, resolved);
+  return resolved;
+}
+
 /** Lead por telefone (dedupe) ou cria — espelho do auto-create do webchat. */
 async function ensureLead(
   supabase: ReturnType<typeof getServiceClient>,
@@ -153,10 +210,16 @@ async function ensureConversation(
   connectionId: string,
 ): Promise<Json | null> {
   const visitorId = `wa:${fromDigits}`;
+  // A identidade da conversa é o PAR (quem fala, por qual número NOSSO ele falou).
+  // Com um número só os dois coincidiam; com Vendas + Demo (+ tenants) não mais:
+  // sem o filtro por meta_connection_id, quem escreve pra Demo reencontra a
+  // conversa de Vendas e é atendido pela persona errada — e `product_id` nunca é
+  // sobrescrito em conversa existente (ver INSERT abaixo), então o erro gruda.
   const { data: rows } = await supabase
     .from('platform_crm_conversations')
     .select('*')
     .eq('visitor_id', visitorId)
+    .eq('meta_connection_id', connectionId)
     .order('created_at', { ascending: false })
     .limit(1);
   let conversation = (rows?.[0] as Json) ?? null;
@@ -501,11 +564,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    let sawMessage = false;
     // Conversas bot_active que receberam inbound nesta entrega → gatilho do cérebro.
     const convsForBrain = new Set<string>();
-    // Resolvido no máximo 1x por invocação (memo), e só se houver mensagem.
-    let defaultProductId: string | null | undefined;
+    // Conexões que de fato receberam mensagem. O health check é da conexão REAL,
+    // não da do path — que pode não ter recebido nada nesta entrega.
+    const touchedConnections = new Set<string>();
+    // Uma entrega pode trazer números diferentes; memo evita re-query por número.
+    const connByPhoneNumberId = new Map<string, { id: string; product_id: string | null }>();
+    // Fallback de produto por slug, resolvido no máximo 1x por invocação.
+    let slugProductId: string | null | undefined;
     const entries = (payload['entry'] as Json[] | undefined) ?? [];
     for (const entry of entries) {
       const changes = (entry['changes'] as Json[] | undefined) ?? [];
@@ -518,15 +585,24 @@ Deno.serve(async (req: Request) => {
           for (const s of (value['statuses'] as Json[] | undefined) ?? []) {
             await processStatus(supabase, s);
           }
-          for (const m of (value['messages'] as Json[] | undefined) ?? []) {
-            sawMessage = true;
-            if (defaultProductId === undefined) {
-              // Herança canônica (A1.3): product_id vem DA CONEXÃO por onde a
-              // mensagem entrou; slug fixo é só fallback p/ conexão sem produto.
-              defaultProductId = (conn.product_id as string | null) ??
-                (await resolveDefaultProductId(supabase));
-            }
-            const brainConvId = await processInboundMessage(supabase, connectionId, value, m, defaultProductId);
+          const msgs = (value['messages'] as Json[] | undefined) ?? [];
+          if (msgs.length === 0) continue;
+
+          // Roteamento pelo número que RECEBEU — ver resolveConnectionForValue.
+          const real = await resolveConnectionForValue(supabase, value, connectionId, connByPhoneNumberId);
+          const targetConnectionId = real?.id ?? connectionId;
+
+          // Herança canônica (A1.3): product_id vem DA CONEXÃO por onde a
+          // mensagem entrou; slug fixo é só fallback p/ conexão sem produto.
+          let productId = real ? real.product_id : (conn.product_id as string | null);
+          if (!productId) {
+            if (slugProductId === undefined) slugProductId = await resolveDefaultProductId(supabase);
+            productId = slugProductId;
+          }
+
+          touchedConnections.add(targetConnectionId);
+          for (const m of msgs) {
+            const brainConvId = await processInboundMessage(supabase, targetConnectionId, value, m, productId);
             if (brainConvId) convsForBrain.add(brainConvId);
           }
         } else if (field === 'message_template_status_update') {
@@ -537,11 +613,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (sawMessage) {
+    // Health check por conexão REAL: com App Meta compartilhado, a conexão do
+    // path pode não ter recebido nada — marcá-la mentiria sobre a saúde dela.
+    for (const cid of touchedConnections) {
       await supabase
         .from('platform_crm_whatsapp_meta_connections')
         .update({ last_health_check_at: new Date().toISOString(), last_error: null })
-        .eq('id', connectionId);
+        .eq('id', cid);
     }
 
     // ── Gatilho do cérebro de vendas (F2) ────────────────────────────────
