@@ -1,0 +1,41 @@
+# Traefik dynamic (FILE PROVIDER) — landing NetB2B @ netb2b.nexvy.tech
+# Aponta pro MESMO container nexvy-beauty. Router-only: reusa o service
+# nexvy-beauty-svc (merge do file-provider), igual ao nexvy-gestao-grupo.yml.
+# Reversivel: apagar este arquivo remove o host. NAO e tocado pelo deploy-vps.sh.
+#
+# POR QUE UM HOST PROPRIO: o formulario publico do NetB2B nao pode ser servido
+# em gestao.* (host de super-admin — expor vaza arquitetura interna ao cliente
+# final). Neste host o app renderiza o form na RAIZ, sem path /f/<slug>:
+# ver LANDING_HOSTS em apps/NexvyBeauty/src/lib/publicUrl.ts.
+# O nginx (infra/nginx.conf) serve netb2b.html neste host — HTML proprio com
+# <title>/Open Graph do NetB2B, porque crawler de link nao executa JS e o
+# index.html anuncia a oferta de BELEZA.
+#
+# Ao editar aqui, copiar pro VPS (o deploy-vps.sh NAO faz isso):
+#   scp infra/traefik/netb2b.yml vps-hostinger:/opt/stacks/traefik/dynamic/
+http:
+  routers:
+    netb2b:
+      rule: "Host(`netb2b.nexvy.tech`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: nexvy-beauty-svc
+      # Reusa a MESMA policy de app./apex/gestao (definida em
+      # NexvyBeauty.yml.template -> dynamic/nexvy-beauty.yml). NAO redefinir
+      # aqui: copia local vira segunda policy divergindo em silencio.
+      # A landing e um subconjunto do que a policy ja libera (self + Supabase
+      # + Google Fonts); nao usa Meta Pixel.
+      middlewares: [security-headers@file, csp-nexvybeauty@file]
+      priority: 120
+    netb2b-http-redirect:
+      rule: "Host(`netb2b.nexvy.tech`)"
+      entryPoints: [web]
+      service: nexvy-beauty-svc
+      middlewares: [netb2b-redirect]
+      priority: 120
+  middlewares:
+    netb2b-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
