@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQueryClient } from '@tanstack/react-query';
+// Slot da TRILHA S. Import ESTÁTICO de propósito: import dinâmico de módulo
+// ausente quebra o build do Vite, então o arquivo precisa existir dos dois lados
+// do merge. Hoje é um stub que retorna null (ver o próprio arquivo); a versão
+// real vem da branch claude/priceless-neumann-63c32d e deve vencer no merge.
+import { MetaEmbeddedSignupButton } from './meta/MetaEmbeddedSignupButton';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -264,7 +271,13 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
   );
 }
 
-export function EvolutionInstancesPanel() {
+/** Aba "QR Code (Evolution)" — o painel que já existia, com o conteúdo intacto.
+ *  Virou sub-componente quando a aba "WhatsApp Oficial (Meta)" entrou ao lado.
+ *  O export público `EvolutionInstancesPanel` continua abaixo com a MESMA
+ *  assinatura: App.tsx:62, Admin.tsx:34 e WhatsAppConfig.tsx:3 o importam por
+ *  nome — dois deles via lazy `.then(m => m.EvolutionInstancesPanel)`, que
+ *  quebraria em runtime, não no build, se o nome mudasse. */
+function EvolutionQrTab() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: instances, isLoading } = useEvolutionInstances();
@@ -526,5 +539,67 @@ export function EvolutionInstancesPanel() {
 
       <CreateInstanceDialog open={creating} onClose={() => setCreating(false)} />
     </div>
+  );
+}
+
+/** Aba "WhatsApp Oficial (Meta)" — Cloud API org-scoped.
+ *
+ *  Dois caminhos coexistem por desenho, não por dívida:
+ *   • self-service — o botão da Trilha S (`MetaEmbeddedSignupButton`), em que o
+ *     salão conecta o próprio número sem ver credencial nenhuma;
+ *   • manual — operação cadastra a conexão pelas edge functions org-scoped
+ *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
+ *
+ *  Enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
+ *  mostra só o caminho manual — nunca um botão quebrado na cara do tenant. */
+function MetaCloudTab() {
+  const queryClient = useQueryClient();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">WhatsApp Oficial (Meta)</h3>
+        <p className="text-sm text-muted-foreground">
+          Conexão pela API oficial da Meta. Mais estável que o QR Code e sem risco de
+          desconectar sozinho — o número não fica preso a um aparelho.
+        </p>
+      </div>
+
+      <MetaEmbeddedSignupButton
+        onConnected={() => {
+          queryClient.invalidateQueries({ queryKey: ['whatsapp-meta-connections'] });
+        }}
+      />
+
+      <Card>
+        <CardContent className="py-8 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Nenhum número oficial conectado nesta conta ainda.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Para conectar um número oficial, fale com o suporte — a habilitação é feita
+            junto com a Meta.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** Export público — assinatura preservada de propósito (ver EvolutionQrTab). */
+export function EvolutionInstancesPanel() {
+  return (
+    <Tabs defaultValue="qr" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="qr">QR Code</TabsTrigger>
+        <TabsTrigger value="meta">WhatsApp Oficial</TabsTrigger>
+      </TabsList>
+      <TabsContent value="qr">
+        <EvolutionQrTab />
+      </TabsContent>
+      <TabsContent value="meta">
+        <MetaCloudTab />
+      </TabsContent>
+    </Tabs>
   );
 }

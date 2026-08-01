@@ -31,6 +31,17 @@ verify_jwt = false
 [functions.platform-meta-whatsapp-webhook]
 verify_jwt = false
 
+# Webhook Meta Cloud API do TENANT (org-scoped) — gêmeo do de plataforma acima.
+# Porte reverso de oficial-vendus-v5 (Bloco 1 do cutover Studio Flor). A Meta
+# assina o payload e não manda Authorization: por isso sem JWT no gateway.
+# Auth real DENTRO da função (verificada, index.ts:102-107): HMAC-SHA256 do corpo
+# cru contra o app_secret da conexão, comparado com timingSafeEqual. Assinatura
+# que não bate → descartado.
+# As outras 8 funções desta leva NÃO entram aqui: autenticam por
+# authenticateTenant + assertOrgAccess e devem manter verify_jwt no default.
+[functions.meta-whatsapp-webhook]
+verify_jwt = false
+
 # Registro/re-registro de número na Cloud API (aplica display name aprovado pela Meta).
 # Chamada server-to-server (operação), não pelo frontend — por isso sem JWT no gateway.
 # Auth real DENTRO da função: authenticatePlatformAgent (service_role ou super_admin).

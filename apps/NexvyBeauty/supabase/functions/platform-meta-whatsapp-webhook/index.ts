@@ -118,12 +118,49 @@ async function resolveDefaultProductId(
  *
  *  FALLBACK: número não cadastrado cai na conexão do path e loga WARN — descartar
  *  a mensagem seria pior que atribuí-la. O WARN existe pra a falha não ser muda. */
+/** ── RESOLVEDOR UNIFICADO (Bloco 1 do cutover Studio Flor) ──────────────────
+ *  Passou a existir uma SEGUNDA tabela de conexões: `whatsapp_meta_connections`,
+ *  ORG-scoped (tenant), gêmea da product-scoped. O mesmo App Meta entrega as duas
+ *  na MESMA callback URL, então a resolução tem que olhar as duas.
+ *
+ *  ESTADO ATUAL: `whatsapp_meta_connections` está VAZIA. Enquanto estiver, esta
+ *  função devolve exatamente o que devolvia antes — o ramo tenant não tem como
+ *  acender. É deliberado: torna o deploy verificável POR NÃO-MUDANÇA. Vendas e
+ *  Demo têm que continuar bit-a-bit idênticas, e essa é a prova.
+ *
+ *  COLISÃO É ERRO, NUNCA PREFERÊNCIA. Se o mesmo phone_number_id existir nas
+ *  DUAS tabelas não há escolha certa: preferir uma rotearia silenciosamente a
+ *  mensagem de um tenant para o CRM de plataforma (ou o contrário) — vazamento
+ *  cross-tenant com aparência de funcionamento. O UNIQUE parcial em
+ *  whatsapp_meta_connections.phone_number_id impede duplicata DENTRO do
+ *  org-scoped; ENTRE as duas tabelas o banco não alcança, e o gate é aqui. */
+/** `scope: 'collision'` NÃO é decoração — é o conserto de um bug real.
+ *
+ *  A primeira versão devolvia `null` na colisão, e o consumidor faz
+ *  `real?.id ?? connectionId` — ou seja, caía na conexão DO PATH e roteava a
+ *  mensagem assim mesmo, enquanto o console.error afirmava "mensagem NÃO
+ *  roteada". O log mentia sobre uma garantia de segurança.
+ *
+ *  A causa não era o `??`: era `null` carregando DOIS estados opostos —
+ *  "não achei em lugar nenhum" (fallback ao path é o legado, defensável) e
+ *  "achei nas duas" (não rotear de jeito nenhum). O consumidor não tinha como
+ *  distinguir porque a informação era apagada no retorno.
+ *  Achado pela Trilha S conferindo este arquivo. */
+type ResolvedConn = {
+  /** vazio quando scope === 'collision' — não há conexão eleita. */
+  id: string;
+  product_id: string | null;
+  /** null quando a conexão é de plataforma. */
+  organization_id: string | null;
+  scope: 'platform' | 'tenant' | 'collision';
+};
+
 async function resolveConnectionForValue(
   supabase: ReturnType<typeof getServiceClient>,
   value: Json,
   pathConnectionId: string,
-  memo: Map<string, { id: string; product_id: string | null }>,
-): Promise<{ id: string; product_id: string | null } | null> {
+  memo: Map<string, ResolvedConn>,
+): Promise<ResolvedConn | null> {
   const meta = (value['metadata'] as Json | undefined) ?? {};
   const phoneNumberId = meta['phone_number_id'] ? String(meta['phone_number_id']) : '';
   if (!phoneNumberId) {
@@ -134,11 +171,50 @@ async function resolveConnectionForValue(
   const cached = memo.get(phoneNumberId);
   if (cached) return cached;
 
-  const { data, error } = await supabase
-    .from('platform_crm_whatsapp_meta_connections')
-    .select('id, product_id')
-    .eq('phone_number_id', phoneNumberId)
-    .maybeSingle();
+  // As duas buscas em paralelo. Custo hoje: uma query a mais numa tabela vazia.
+  const [plat, tenant] = await Promise.all([
+    supabase
+      .from('platform_crm_whatsapp_meta_connections')
+      .select('id, product_id')
+      .eq('phone_number_id', phoneNumberId)
+      .maybeSingle(),
+    supabase
+      .from('whatsapp_meta_connections')
+      .select('id, organization_id')
+      .eq('phone_number_id', phoneNumberId)
+      .maybeSingle(),
+  ]);
+
+  // Estado impossível em operação normal. Devolver null joga a mensagem no
+  // caminho de não-resolvido em vez de atribuí-la ao escopo errado.
+  if (plat.data?.id && tenant.data?.id) {
+    console.error(
+      `[platform-meta-whatsapp-webhook] COLISÃO DE ESCOPO: phone_number_id ${phoneNumberId}` +
+        ` existe em platform(${plat.data.id}) E tenant(${tenant.data.id}).` +
+        ` Nenhuma atribuição é segura — mensagem NÃO roteada.`,
+    );
+    // NÃO devolver null aqui: null significa "não achei", e o consumidor trata
+    // isso caindo na conexão do path — que rotearia a mensagem, contradizendo
+    // a linha de log acima. 'collision' é um estado próprio, tratado no gate.
+    return { id: '', product_id: null, organization_id: null, scope: 'collision' };
+  }
+
+  if (tenant.data?.id) {
+    const resolvedTenant: ResolvedConn = {
+      id: tenant.data.id as string,
+      product_id: null,
+      organization_id: (tenant.data.organization_id as string | null) ?? null,
+      scope: 'tenant',
+    };
+    memo.set(phoneNumberId, resolvedTenant);
+    console.log(
+      `[platform-meta-whatsapp-webhook] roteado para TENANT: org=${resolvedTenant.organization_id}` +
+        ` conn=${resolvedTenant.id} (phone_number_id=${phoneNumberId})`,
+    );
+    return resolvedTenant;
+  }
+
+  const { data, error } = plat;
 
   if (error || !data?.id) {
     console.warn(
@@ -148,7 +224,12 @@ async function resolveConnectionForValue(
     return null;
   }
 
-  const resolved = { id: data.id as string, product_id: (data.product_id as string | null) ?? null };
+  const resolved: ResolvedConn = {
+    id: data.id as string,
+    product_id: (data.product_id as string | null) ?? null,
+    organization_id: null,
+    scope: 'platform',
+  };
   if (resolved.id !== pathConnectionId) {
     // Não é erro: é o caso NORMAL quando várias WABAs dividem o mesmo App Meta.
     console.log(
@@ -570,7 +651,7 @@ Deno.serve(async (req: Request) => {
     // não da do path — que pode não ter recebido nada nesta entrega.
     const touchedConnections = new Set<string>();
     // Uma entrega pode trazer números diferentes; memo evita re-query por número.
-    const connByPhoneNumberId = new Map<string, { id: string; product_id: string | null }>();
+    const connByPhoneNumberId = new Map<string, ResolvedConn>();
     // Fallback de produto por slug, resolvido no máximo 1x por invocação.
     let slugProductId: string | null | undefined;
     const entries = (payload['entry'] as Json[] | undefined) ?? [];
@@ -590,6 +671,73 @@ Deno.serve(async (req: Request) => {
 
           // Roteamento pelo número que RECEBEU — ver resolveConnectionForValue.
           const real = await resolveConnectionForValue(supabase, value, connectionId, connByPhoneNumberId);
+
+          // ── GATE DO RAMO TENANT ────────────────────────────────────────────
+          // Conexão org-scoped resolvida: NÃO pode seguir daqui pra baixo. Todo
+          // o caminho abaixo grava em platform_crm_* e despacha platform-sales-brain
+          // — gravaria a conversa de um salão no CRM de plataforma e responderia
+          // com a persona de vendas. A bifurcação de verdade (webchat_conversations
+          // + webchat-bot + meta-whatsapp-send) é o próximo passo do Bloco 1 e
+          // toca o caminho que hoje grava Vendas e Demo; não entra junto com esta
+          // mudança de resolução.
+          //
+          // Até lá o comportamento é RECUSA EXPLÍCITA, não atribuição errada:
+          // registra em whatsapp_meta_webhook_logs (processed=false) e devolve 200
+          // ao Meta. A mensagem não some — fica auditável numa tabela consultável,
+          // em vez de virar linha de log que ninguém lê.
+          //
+          // ⚠️ MAS: tabela não é melhor que log por ser tabela — é melhor por ser
+          // CONSULTADA. Sem ninguém olhando, `processed=false` é a mesma coisa que
+          // um console.warn: registro que existe e que ninguém lê. A obrigação de
+          // olhar é de quem produz o estado, e produzir aqui só é possível gravando
+          // uma conexão em whatsapp_meta_connections. Quem gravar a primeira DEVE:
+          //
+          //   select * from whatsapp_meta_webhook_logs where processed = false;
+          //
+          //   0 linhas   → o ramo tenant nunca foi exercitado (não é sucesso)
+          //   >0 linhas  → mensagem chegou e NÃO foi atendida
+          //
+          // Sem essa consulta, esta "recusa auditável" vira falha silenciosa com
+          // custo de storage.
+          //
+          // HOJE ISTO É INALCANÇÁVEL: whatsapp_meta_connections está vazia, então
+          // `scope` nunca é 'tenant'. É o que torna este deploy verificável por
+          // NÃO-MUDANÇA — Vendas e Demo seguem bit-a-bit idênticas.
+          if (real?.scope === 'tenant') {
+            console.warn(
+              `[platform-meta-whatsapp-webhook] conexão TENANT ${real.id} (org=${real.organization_id})` +
+                ` — ramo tenant ainda não implementado; mensagem registrada e NÃO processada`,
+            );
+            await supabase.from('whatsapp_meta_webhook_logs').insert({
+              organization_id: real.organization_id,
+              connection_id: real.id,
+              event_type: 'messages',
+              payload: value as unknown as Record<string, unknown>,
+              processed: false,
+              error: 'ramo tenant do resolvedor unificado ainda nao implementado',
+            });
+            continue;
+          }
+
+          // ── GATE DA COLISÃO DE ESCOPO ──────────────────────────────────────
+          // TEM que vir antes do `?? connectionId` abaixo: aquele fallback usa a
+          // conexão do PATH, que é exatamente o que o cabeçalho deste arquivo
+          // documenta como o que NÃO se deve usar para rotear. Sem este gate, a
+          // colisão caía no path e a mensagem era entregue ao escopo errado —
+          // enquanto o console.error dizia "mensagem NÃO roteada". O log afirmava
+          // uma garantia que o código não tinha.
+          if (real?.scope === 'collision') {
+            await supabase.from('whatsapp_meta_webhook_logs').insert({
+              organization_id: null,
+              connection_id: null,
+              event_type: 'messages',
+              payload: value as unknown as Record<string, unknown>,
+              processed: false,
+              error: 'colisao de escopo: phone_number_id existe na tabela de plataforma E na org-scoped; nao roteada',
+            });
+            continue;
+          }
+
           const targetConnectionId = real?.id ?? connectionId;
 
           // Herança canônica (A1.3): product_id vem DA CONEXÃO por onde a
