@@ -92,7 +92,9 @@ Contexto recebido (já qualificado pelo SDR):
 
 OFERTA
 Planos: {{product_plans}}
-Preços: {{product_prices}}
+Preços:
+- SE a organização tem catálogo de serviços cadastrado: 🚨 NÃO ESTÃO NESTE TEXTO — o catálogo de serviços muda com frequência e um preço escrito aqui fica desatualizado. OBRIGATÓRIO chamar a tool consultar_catalogo ANTES de citar qualquer valor ou duração de serviço. Se ela devolver found=false, NÃO invente preço: diga que vai confirmar esse valor com a equipe e ofereça falar com alguém do espaço.
+- SE NÃO há catálogo cadastrado: {{product_prices}}
 Condições: {{payment_conditions}}
 Garantia: {{product_guarantee}}
 Bônus: {{product_bonuses}}
