@@ -27,6 +27,7 @@ import { usePlatformCrmNotificationSound } from '../data/usePlatformCrmNotificat
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { usePlatformCrmAgentConfigs } from '../data/usePlatformCrmAgentConfigs';
+import { usePlatformCrmAllProductAgents } from '../data/usePlatformCrmProductAgents';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { usePlatformCrmStages } from '../data/usePlatformCrmStages';
 import { resolveVisitorIdentity } from './platformCrmIdentity';
@@ -165,16 +166,30 @@ export function PlatformCrmInbox({
     return m;
   }, [allProducts]);
 
-  // Agentes IA da plataforma — nome real por id (platform_crm_agent_configs.name;
-  // fallback 'Duda' preserva o comportamento quando o config foi removido).
+  // Agentes IA — nome real por id.
+  //
+  // BUG CORRIGIDO 2026-08-01: este mapa vinha SÓ de platform_crm_agent_configs,
+  // mas `conversations.current_agent_id` aponta para platform_crm_product_agents
+  // — é lá que o platform-sales-brain grava a persona que respondeu. A busca
+  // NUNCA achava o id e caía num fallback hardcoded 'Duda', então TODA conversa
+  // exibia "Duda · IA", inclusive as da Mavi na Demo. Não era a Demo estar
+  // bagunçada: era o rótulo estar errado em todas as conversas, sempre.
+  //
+  // Os dois mapas somam — product_agents por último porque é a fonte real do
+  // current_agent_id e deve vencer em caso de id repetido; configs cobre ids
+  // legados do webchat.
+  const { data: productAgents = [] } = usePlatformCrmAllProductAgents();
   const { data: agentConfigs = [] } = usePlatformCrmAgentConfigs();
   const agentNameById = useMemo(() => {
     const m = new Map<string, string>();
     (agentConfigs || []).forEach((a: any) => {
       if (a?.id && a?.name) m.set(a.id, a.name);
     });
+    (productAgents || []).forEach((a: any) => {
+      if (a?.id && a?.name) m.set(a.id, a.name);
+    });
     return m;
-  }, [agentConfigs]);
+  }, [agentConfigs, productAgents]);
 
   // Setores — badge de setor na lista (paridade v5; sector_id materializado
   // em platform_crm_conversations na migration 20260709 A1.2).
@@ -220,8 +235,11 @@ export function PlatformCrmInbox({
             ? sectorById.get((row as any).sector_id)?.color ?? undefined
             : undefined,
           current_agent_id: row.current_agent_id || null,
+          // Sem fallback inventado: agente desconhecido vira null e a UI omite o
+          // badge. Mentir um nome é pior que não mostrar — foi o que escondeu
+          // por meses que a Mavi atendia e a tela dizia Duda.
           current_agent_name: row.current_agent_id
-            ? agentNameById.get(row.current_agent_id) || 'Duda'
+            ? agentNameById.get(row.current_agent_id) ?? null
             : null,
           current_agent_avatar: null,
           // A1.3/FRENTE 3: ids de conexão materializados pelo backend na
