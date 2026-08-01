@@ -53,10 +53,16 @@ export function PlatformProductSwitcher() {
           <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
+      {/* collisionPadding: sem ele o popover podia se posicionar com a metade de
+          baixo FORA da viewport no celular — a lista aparecia, mas tocar nos itens
+          de baixo não acertava nada ("só consigo selecionar o primeiro",
+          reproduzido em iPhone 2026-08-01). `avoidCollisions` já é default no
+          Radix; faltava a margem para ele ter onde reposicionar. */}
       <PopoverContent
         className="w-72 overflow-hidden rounded-xl border border-border p-0 shadow-xl"
         align="start"
         sideOffset={8}
+        collisionPadding={12}
       >
         {/* Header — espelha o ModuleSwitcher */}
         <div className="border-b border-border px-4 py-3">
@@ -67,7 +73,13 @@ export function PlatformProductSwitcher() {
         </div>
 
         {/* Lista */}
-        <div className="max-h-72 overflow-y-auto p-2">
+        {/* Altura RELATIVA à viewport, não fixa: com `max-h-72` (288px) num
+            iPhone pequeno a lista + header estouravam a tela e o fim ficava
+            inalcançável. A var --radix-popover-content-available-height é o
+            espaço que o Radix mediu até a borda; o min() com 18rem preserva o
+            visual no desktop. overscroll-contain impede o scroll vazar pro
+            drawer atrás, que era o que travava o arrasto no celular. */}
+        <div className="max-h-[min(18rem,var(--radix-popover-content-available-height,18rem))] overflow-y-auto overscroll-contain p-2">
           {/* "Todos os produtos" (default = null) */}
           <ProductRow
             label="Todos os produtos"

@@ -235,7 +235,15 @@ export function PlatformSidebar() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 max-w-[85vw] p-0">
+          {/* safe-area: sem isto o conteúdo do drawer começa em y=0 e a barra de
+              status do iOS (relógio/bateria) fica POR CIMA do switcher de módulo,
+              que então não recebe toque — reproduzido em iPhone 2026-08-01.
+              O <header> fixo acima já tratava o inset-top; o Sheet, não.
+              O inset-bottom cobre a barra de gestos. */}
+          <SheetContent
+            side="left"
+            className="w-72 max-w-[85vw] p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          >
             <SidebarInner onNavigate={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
