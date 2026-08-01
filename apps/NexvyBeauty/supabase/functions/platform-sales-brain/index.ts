@@ -1166,7 +1166,7 @@ Deno.serve(async (req) => {
       const { data: agents } = await supabase
         .from('platform_crm_product_agents')
         .select(
-          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id',
+          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id, model',
         )
         .eq('product_id', conversation.product_id)
         .eq('is_active', true)
@@ -1472,9 +1472,19 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       return json({ error: 'AI_API_KEY não configurada na plataforma.' }, 500);
     }
     const gatewayBase = (Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
-    const model = personaIsCloser
+    // PRECEDÊNCIA: override da PERSONA > env > default. O override existe porque
+    // o env é global: para afinar UMA persona (a Demo é a vitrine dos ads) seria
+    // preciso trocar o modelo da Lia e da Duda junto — o funil que está vendendo.
+    // NULL/vazio na coluna = herda exatamente o comportamento anterior.
+    const personaModel = typeof persona.model === 'string' && persona.model.trim()
+      ? persona.model.trim()
+      : null;
+    const model = personaModel ?? (personaIsCloser
       ? (Deno.env.get('AI_SALES_BRAIN_MODEL_CLOSER') ?? Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL)
-      : (Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL);
+      : (Deno.env.get('AI_SALES_BRAIN_MODEL') ?? DEFAULT_MODEL));
+    if (personaModel) {
+      console.log(`[platform-sales-brain] modelo por persona: ${persona.name} → ${personaModel}`);
+    }
     console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : 'outra'}${inactivityMode ? ` inatividade=${String(inactivityStage)}` : ''}`);
 
     // MODO INATIVIDADE: o histórico termina com fala da PRÓPRIA Duda (não há

@@ -3171,7 +3171,16 @@ Qualquer preço/plano escrito acima neste prompt pode estar DESATUALIZADO — o 
         }
         let aiConfig: ResolvedAIConfig;
         try {
-          aiConfig = await resolveAIConfig(supabase, orgIdForRouting, 'agent_chat');
+          // 5º arg = override POR AGENTE (product_agents.model). Vence
+          // org_ai_routing de propósito: é a config mais específica que existe,
+          // escolhida no painel. NULL/vazio → resolução anterior, intacta.
+          aiConfig = await resolveAIConfig(
+            supabase,
+            orgIdForRouting,
+            'agent_chat',
+            undefined,
+            (activeAgent as { model?: string | null } | null)?.model ?? undefined,
+          );
         } catch (cfgErr: any) {
           console.error('[webchat-bot] AI config error:', cfgErr?.message);
           return new Response(JSON.stringify({

@@ -2796,6 +2796,39 @@ export type Database = {
           },
         ]
       }
+      b3_probe_webhook: {
+        Row: {
+          body_keys: string[] | null
+          data_keys: string[] | null
+          evento: string | null
+          id: number
+          instancia: string | null
+          origem_token: string | null
+          recebido_em: string
+          token_confere: boolean | null
+        }
+        Insert: {
+          body_keys?: string[] | null
+          data_keys?: string[] | null
+          evento?: string | null
+          id?: number
+          instancia?: string | null
+          origem_token?: string | null
+          recebido_em?: string
+          token_confere?: boolean | null
+        }
+        Update: {
+          body_keys?: string[] | null
+          data_keys?: string[] | null
+          evento?: string | null
+          id?: number
+          instancia?: string | null
+          origem_token?: string | null
+          recebido_em?: string
+          token_confere?: boolean | null
+        }
+        Relationships: []
+      }
       billing_history: {
         Row: {
           amount: number
@@ -4887,6 +4920,142 @@ export type Database = {
           },
         ]
       }
+      carteira_acoes_propostas: {
+        Row: {
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          dias_sem_voltar: number | null
+          enviada_em: string | null
+          gerado_em: string
+          gerado_por: string
+          id: string
+          mensagem: string
+          motivo: string
+          organization_id: string
+          origem: string
+          status: string
+          telefone: string | null
+          tipo: string
+          urgencia: number
+        }
+        Insert: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          dias_sem_voltar?: number | null
+          enviada_em?: string | null
+          gerado_em?: string
+          gerado_por?: string
+          id?: string
+          mensagem: string
+          motivo: string
+          organization_id: string
+          origem?: string
+          status?: string
+          telefone?: string | null
+          tipo: string
+          urgencia?: number
+        }
+        Update: {
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          dias_sem_voltar?: number | null
+          enviada_em?: string | null
+          gerado_em?: string
+          gerado_por?: string
+          id?: string
+          mensagem?: string
+          motivo?: string
+          organization_id?: string
+          origem?: string
+          status?: string
+          telefone?: string | null
+          tipo?: string
+          urgencia?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carteira_acoes_propostas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_acoes_propostas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_acoes_propostas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "pilot_activation_funnel"
+            referencedColumns: ["organization_id"]
+          },
+        ]
+      }
+      carteira_import_jobs: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          instance_name: string
+          mensagens_importadas: number
+          motivo_ignorado: string | null
+          organization_id: string
+          remote_jid: string
+          status: string
+          telefone_normalizado: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          instance_name: string
+          mensagens_importadas?: number
+          motivo_ignorado?: string | null
+          organization_id: string
+          remote_jid: string
+          status?: string
+          telefone_normalizado?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          instance_name?: string
+          mensagens_importadas?: number
+          motivo_ignorado?: string | null
+          organization_id?: string
+          remote_jid?: string
+          status?: string
+          telefone_normalizado?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carteira_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carteira_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "pilot_activation_funnel"
+            referencedColumns: ["organization_id"]
+          },
+        ]
+      }
       catalog_sync_logs: {
         Row: {
           base_url: string | null
@@ -5216,6 +5385,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pilot_activation_funnel"
             referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "clientes_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "public_booking_profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -14972,6 +15155,7 @@ export type Database = {
           is_default: boolean | null
           message_delay_seconds: number
           message_style: string | null
+          model: string | null
           name: string
           primary_objective: string
           product_id: string | null
@@ -15055,6 +15239,7 @@ export type Database = {
           is_default?: boolean | null
           message_delay_seconds?: number
           message_style?: string | null
+          model?: string | null
           name: string
           primary_objective: string
           product_id?: string | null
@@ -15138,6 +15323,7 @@ export type Database = {
           is_default?: boolean | null
           message_delay_seconds?: number
           message_style?: string | null
+          model?: string | null
           name?: string
           primary_objective?: string
           product_id?: string | null
@@ -16975,6 +17161,7 @@ export type Database = {
           list_price_monthly: number | null
           max_ai_agents: number
           max_ai_tokens_month: number
+          max_clientes_atendidos_mes: number | null
           max_connections: number
           max_contacts: number
           max_messages_month: number
@@ -16986,6 +17173,7 @@ export type Database = {
           name: string
           price_monthly: number
           price_yearly: number
+          product_id: string | null
           slug: string
           trial_days: number
           updated_at: string
@@ -17027,6 +17215,7 @@ export type Database = {
           list_price_monthly?: number | null
           max_ai_agents?: number
           max_ai_tokens_month?: number
+          max_clientes_atendidos_mes?: number | null
           max_connections?: number
           max_contacts?: number
           max_messages_month?: number
@@ -17038,6 +17227,7 @@ export type Database = {
           name: string
           price_monthly?: number
           price_yearly?: number
+          product_id?: string | null
           slug: string
           trial_days?: number
           updated_at?: string
@@ -17079,6 +17269,7 @@ export type Database = {
           list_price_monthly?: number | null
           max_ai_agents?: number
           max_ai_tokens_month?: number
+          max_clientes_atendidos_mes?: number | null
           max_connections?: number
           max_contacts?: number
           max_messages_month?: number
@@ -17090,11 +17281,20 @@ export type Database = {
           name?: string
           price_monthly?: number
           price_yearly?: number
+          product_id?: string | null
           slug?: string
           trial_days?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_plans_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "platform_crm_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_release_reads: {
         Row: {
@@ -17755,6 +17955,7 @@ export type Database = {
           is_default: boolean | null
           message_delay_seconds: number
           message_style: string | null
+          model: string | null
           name: string
           organization_id: string
           primary_objective: string
@@ -17828,6 +18029,7 @@ export type Database = {
           is_default?: boolean | null
           message_delay_seconds?: number
           message_style?: string | null
+          model?: string | null
           name: string
           organization_id: string
           primary_objective: string
@@ -17901,6 +18103,7 @@ export type Database = {
           is_default?: boolean | null
           message_delay_seconds?: number
           message_style?: string | null
+          model?: string | null
           name?: string
           organization_id?: string
           primary_objective?: string
@@ -21448,6 +21651,7 @@ export type Database = {
           created_at: string | null
           direction: string
           edited_at: string | null
+          evolution_message_id: string | null
           forwarded_from_message_id: string | null
           id: string
           is_deleted: boolean | null
@@ -21468,6 +21672,7 @@ export type Database = {
           created_at?: string | null
           direction: string
           edited_at?: string | null
+          evolution_message_id?: string | null
           forwarded_from_message_id?: string | null
           id?: string
           is_deleted?: boolean | null
@@ -21488,6 +21693,7 @@ export type Database = {
           created_at?: string | null
           direction?: string
           edited_at?: string | null
+          evolution_message_id?: string | null
           forwarded_from_message_id?: string | null
           id?: string
           is_deleted?: boolean | null
@@ -22350,6 +22556,10 @@ export type Database = {
         Args: { invitation_token: string; user_id: string }
         Returns: boolean
       }
+      accept_invitation_service: {
+        Args: { p_email: string; p_token: string; p_user_id: string }
+        Returns: boolean
+      }
       ads_capi_pending: {
         Args: { p_limit?: number }
         Returns: {
@@ -22390,7 +22600,32 @@ export type Database = {
         Args: { p_reason?: string; p_token: string }
         Returns: Json
       }
+      carteira_classificar_aplicar: {
+        Args: { p_assunto: string; p_cliente_id: string; p_sinais: Json }
+        Returns: string
+      }
+      carteira_fila_classificacao: {
+        Args: { p_limite?: number; p_organization_id: string }
+        Returns: {
+          cliente_id: string
+          conversation_id: string
+          mensagens: number
+          telefone: string
+        }[]
+      }
+      carteira_import_enfileirar: {
+        Args: {
+          p_instance_name: string
+          p_jids: string[]
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       claim_first_super_admin: { Args: never; Returns: boolean }
+      contar_clientes_atendidos_mes: {
+        Args: { p_mes?: string; p_org_id: string }
+        Returns: number
+      }
       create_onboarding_link: {
         Args: {
           _force_reopen?: boolean
@@ -22610,6 +22845,7 @@ export type Database = {
         Args: { p_organization_id: string; p_role?: string; p_user_id: string }
         Returns: undefined
       }
+      is_br_dialable: { Args: { p: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_system_initialized: { Args: never; Returns: boolean }
       is_within_business_hours: { Args: { p_org_id: string }; Returns: boolean }
@@ -22870,12 +23106,15 @@ export type Database = {
         Args: {
           _ip?: string
           _session_token?: string
+          _takeover?: boolean
           _token: string
           _ua?: string
         }
         Returns: {
+          current_step: number
           mode: string
           organization_id: string
+          owner_email: string
           payload: Json
           session_token: string
           status: string
@@ -23260,4 +23499,3 @@ export const Constants = {
     },
   },
 } as const
-
