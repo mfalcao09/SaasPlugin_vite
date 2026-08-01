@@ -31,7 +31,15 @@ OUT="$TRAEFIK_DYNAMIC/${CONTAINER}.yml"
 # ── parametros do gate (ajuste se sua imagem diferir) ────────────────────────
 BUILD_NO_CACHE="${BUILD_NO_CACHE:-1}"                  # 1 = --no-cache (default; lição phantom-deploy)
 READY_TIMEOUT="${READY_TIMEOUT:-90}"                   # s — inclui 1a emissao de cert Let's Encrypt
-BUNDLE_RE="${BUNDLE_RE:-index-[A-Za-z0-9_-]+\.js}"     # ⚠ padrao do entry bundle Vite
+# ⚠ padrao do entry bundle Vite. Precisa casar com o nome REAL do entry: se nao
+# casar, os 3 hashes (BEFORE/EXPECTED/SERVED) saem VAZIOS e o gate degrada EM
+# SILENCIO para "OK (parcial)" — deixa de provar que o bundle mudou e passa a
+# provar so que o servidor respondeu 200. Aconteceu em 2026-08-01: com build
+# multi-page (rollupOptions.input) o entry virou `main-<hash>.js` e `index-*`
+# parou de casar; todo DEPLOY-VERDE do beauty ficou verde de "respondeu".
+# Como conferir apos mexer no build:
+#   grep -oE '(index|main)-[A-Za-z0-9_-]+\.js' dist/index.html   # nao pode ser vazio
+BUNDLE_RE="${BUNDLE_RE:-(index|main)-[A-Za-z0-9_-]+\.js}"
 # ⚠ caminhos tentados p/ ler o index.html DA IMAGEM nova (path-agnostic, best-effort):
 IMAGE_INDEX_PATHS="${IMAGE_INDEX_PATHS:-/usr/share/nginx/html/index.html /app/dist/index.html /usr/share/nginx/html/index.htm}"
 
