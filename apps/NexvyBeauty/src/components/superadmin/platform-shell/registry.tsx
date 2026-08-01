@@ -24,6 +24,7 @@ import { HelpManager } from '@/components/superadmin/HelpManager';
 import { SupportTickets } from '@/components/admin/support/SupportTickets';
 import { AgentToolExecutionsPanel } from '@/components/superadmin/AgentToolExecutionsPanel';
 import { AIQualityPanel } from '@/components/superadmin/AIQualityPanel';
+import { AIModelsPanel } from '@/components/superadmin/AIModelsPanel';
 import { ReleasesManager } from '@/components/superadmin/ReleasesManager';
 import { AuditLogs } from '@/components/superadmin/AuditLogs';
 import { SystemHealth } from '@/components/superadmin/SystemHealth';
@@ -220,6 +221,14 @@ const ERP_NAV: PlatformNavGroup[] = [
         label: 'Qualidade da IA',
         icon: I.BarChart3,
         render: () => <AIQualityPanel />,
+      },
+      {
+        // Vizinho de "Qualidade da IA" de propósito: quem vê nota ruim de um
+        // agente quer, no clique seguinte, trocar o modelo dele.
+        id: 'ai-models',
+        label: 'Modelos de IA',
+        icon: I.Wrench,
+        render: () => <AIModelsPanel />,
       },
       {
         id: 'releases',

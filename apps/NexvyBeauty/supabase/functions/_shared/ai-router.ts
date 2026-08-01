@@ -85,9 +85,25 @@ export async function resolveAIConfig(
   supabase: any,
   organizationId: string | null | undefined,
   capability: AICapability | string = 'agent_chat',
-  /** Optional model hint from caller. Will be adapted if provider differs. */
+  /** Optional model hint from caller. PERDE para org_ai_routing.model. */
   preferredModel?: string,
+  /**
+   * Override de modelo do AGENTE (`product_agents.model`). VENCE org_ai_routing —
+   * ao contrário de `preferredModel`.
+   *
+   * POR QUE a precedência difere: `preferredModel` é uma DICA do call site ("pra
+   * esta tarefa flash basta") e a config da org deve poder derrubá-la. Já
+   * `overrideModel` é escolha DELIBERADA por agente, feita no painel — é a
+   * configuração mais específica que existe. Se org-wide pudesse sobrepô-la, o
+   * seletor do painel não faria efeito nenhum em org que tenha routing cadastrado.
+   *
+   * Vazio/undefined = comportamento anterior byte-idêntico.
+   */
+  overrideModel?: string,
 ): Promise<ResolvedAIConfig> {
+  const override = typeof overrideModel === 'string' && overrideModel.trim()
+    ? overrideModel.trim()
+    : null;
   const lovableKey = aiApiKey();
   const lovableConfig: ResolvedAIConfig = {
     endpoint: LOVABLE_GATEWAY,
@@ -95,7 +111,7 @@ export async function resolveAIConfig(
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${lovableKey}`,
     },
-    model: preferredModel || DEFAULT_MODEL,
+    model: override || preferredModel || DEFAULT_MODEL,
     provider: 'lovable',
     source: 'gateway',
     allowFallback: false,
@@ -115,7 +131,8 @@ export async function resolveAIConfig(
     if (!routing) return lovableConfig;
 
     const provider = (routing.provider || 'lovable').toLowerCase();
-    const routedModel = (routing.model || preferredModel || DEFAULT_MODEL) as string;
+    // override (agente) > routing.model (org) > preferredModel (dica) > default
+    const routedModel = (override || routing.model || preferredModel || DEFAULT_MODEL) as string;
     const allowFallback = routing.fallback_to_lovable !== false;
 
     // Lovable: just use the configured model
@@ -138,7 +155,7 @@ export async function resolveAIConfig(
         console.warn(
           `[ai-router] No ${provider} key for org ${organizationId} (cap=${capability}), falling back to Lovable`,
         );
-        return { ...lovableConfig, model: preferredModel || DEFAULT_MODEL, source: 'fallback_gateway' };
+        return { ...lovableConfig, model: override || preferredModel || DEFAULT_MODEL, source: 'fallback_gateway' };
       }
       throw new Error(
         `Sem chave de API para o provedor "${provider}". Cadastre em Integrações → ${provider.toUpperCase()} ou ative o fallback.`,

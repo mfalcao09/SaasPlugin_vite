@@ -41,6 +41,14 @@ export const MODELS_BY_PROVIDER: Record<AIProvider, AIModelInfo[]> = {
     { id: 'openai/gpt-5', label: 'GPT-5 (via Lovable)', description: 'Excelente em tudo — preciso e nuançado', tags: ['vision'], supports: ALL_TEXT_CAPS },
     { id: 'openai/gpt-5-mini', label: 'GPT-5 Mini (via Lovable)', description: 'Equilíbrio entre custo e qualidade', tags: [], supports: ALL_TEXT_CAPS },
     { id: 'openai/gpt-5-nano', label: 'GPT-5 Nano (via Lovable)', description: 'Mais barato da família GPT-5', tags: ['cheapest'], supports: ALL_TEXT_CAPS },
+    // Anthropic via gateway. AI_GATEWAY_URL é openrouter.ai/api/v1 — conferido em
+    // 2026-08-01 comparando o hash do valor candidato com o digest do `secrets
+    // list`, sem nunca ler o segredo. IDs colhidos do endpoint público
+    // /api/v1/models, não chutados. Preço de ENTRADA por milhão de tokens na data.
+    { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5', description: 'Melhor conversa pelo preço — 1M de contexto (US$2/M)', tags: ['recommended', 'new'], supports: ALL_TEXT_CAPS },
+    { id: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5', description: 'Rápido e barato da família Claude (US$1/M)', tags: ['cheapest', 'fastest'], supports: ALL_TEXT_CAPS },
+    { id: 'anthropic/claude-opus-4.7', label: 'Claude Opus 4.7', description: 'Topo — atenção à latência em chat de WhatsApp (US$5/M)', tags: ['most_powerful'], supports: ALL_TEXT_CAPS },
+    { id: 'anthropic/claude-opus-5', label: 'Claude Opus 5', description: 'Topo da geração 5 — mesma ressalva de latência (US$5/M)', tags: ['most_powerful', 'new'], supports: ALL_TEXT_CAPS },
   ],
 
   // ---------------- OPENAI ----------------
