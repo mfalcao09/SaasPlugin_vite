@@ -310,6 +310,26 @@ Deno.serve(async (req) => {
           `⚠️ BACKFILL do raio-x não trouxe NADA\nOrg: ${org.id}\nInstância: ${inst.name}\nfindContacts e findChats vieram vazios — checar rota/versão da Evolution.`,
         ).catch(() => {});
       }
+
+      // ── Handoff SUB1 → SUB2 (carteira-classify) ─────────────────────────────
+      // O import pra evolution-history-sync terminou agora. Fire-and-forget: dispara
+      // o agente de carteira (Eixo 3/assunto) pra já classificar o que acabou de
+      // entrar, sem atrasar a resposta do backfill pra tela do raio-x. Se a fila vier
+      // vazia (nada foi ingerido), o próprio carteira-classify responde "fila vazia"
+      // e não faz nada — non-fatal.
+      try {
+        fetch(`${SUPABASE_URL}/functions/v1/carteira-classify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE}`,
+          },
+          body: JSON.stringify({ organization_id: org.id, lote: 25 }),
+        }).catch((e) => console.warn("[demo-evolution backfill] handoff SUB2 falhou:", String(e).slice(0, 120)));
+      } catch (e) {
+        console.warn("[demo-evolution backfill] handoff SUB2 exception (non-fatal):", String(e).slice(0, 120));
+      }
+
       return json({ ok: true, contacts: nContacts, chats: nChats });
     }
 
@@ -328,18 +348,30 @@ Deno.serve(async (req) => {
       const ticketRaw = Number(sub?.payload?.empresa?.ticket_medio);
       const ticket = Number.isFinite(ticketRaw) && ticketRaw > 0 ? ticketRaw : DEFAULT_TICKET;
 
-      // SUMIDOS = tudo que passou do piso de 45 dias. SEM TETO (ver comentário
-      // em REPORT_MAX_DAYS): quem sumiu há mais tempo é o alvo mais valioso.
+      // SUMIDOS = tudo que passou do piso de 45 dias, dentro da carteira REAL —
+      // mesmo filtro que o motor (SUB2/Eixo3 + Eixo1) e a tela de Ações usam
+      // (AcoesClientes.tsx: carteira_estado='principal'): exclui contato 'pessoal'
+      // (fornecedor, mãe da dona — não é cliente) e quem já caiu pra 'lixeira'
+      // (telefone não discável). Fresh import ainda não classificado pelo SUB2
+      // nasce tipo_contato='cliente' + carteira_estado='principal' (defaults da
+      // migration b4_eixo1) — passa no filtro por padrão, sem timing gap.
+      // SEM TETO de dias (ver comentário em REPORT_MAX_DAYS): quem sumiu há mais
+      // tempo é o alvo mais valioso.
       const { count } = await admin.from("clientes")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", org.id)
+        .neq("tipo_contato", "pessoal")
+        .eq("carteira_estado", "principal")
         .lte("ultima_interacao_wa", maxIso);
-      const sumidos = count ?? 0;
+      const sumidosClientes = count ?? 0;
 
       // ── DENOMINADOR: sem estes números a tela é incapaz de distinguir
       // "ainda não ingeriu" de "ingeriu e não há sumidos". Antes ela só recebia
       // `count` e afirmava "sua base está em dia" sobre um zero que podia ser
       // ingestão vazia OU erro — mentindo para a cliente.
+      // (Diagnóstico de ingestão BRUTA — de propósito não filtra tipo_contato/
+      // carteira_estado: a pergunta aqui é "chegou alguma coisa?", não "é carteira
+      // real?"; senão o alerta de "varredura falhou" ficaria cego a filtro do motor.)
       const { count: baseTotal } = await admin.from("clientes")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", org.id);
@@ -351,10 +383,14 @@ Deno.serve(async (req) => {
         .eq("organization_id", org.id).gt("ultima_interacao_wa", maxIso);
 
       // Faixas de "há quanto tempo sumiu" — informação de valor que ficava escondida.
+      // Mesmo filtro de carteira real do `count` acima (é o detalhamento dele).
       const d = (n: number) => new Date(now - n * 86400000).toISOString();
       const faixaCount = async (deIso: string | null, ateIso: string) => {
         let q = admin.from("clientes").select("id", { count: "exact", head: true })
-          .eq("organization_id", org.id).lte("ultima_interacao_wa", ateIso);
+          .eq("organization_id", org.id)
+          .neq("tipo_contato", "pessoal")
+          .eq("carteira_estado", "principal")
+          .lte("ultima_interacao_wa", ateIso);
         if (deIso) q = q.gt("ultima_interacao_wa", deIso);
         const { count: c } = await q;
         return c ?? 0;
@@ -374,6 +410,8 @@ Deno.serve(async (req) => {
       const { data: items } = await admin.from("clientes")
         .select("nome, telefone_normalizado, ultima_interacao_wa")
         .eq("organization_id", org.id)
+        .neq("tipo_contato", "pessoal")
+        .eq("carteira_estado", "principal")
         .lte("ultima_interacao_wa", maxIso)
         .order("ultima_interacao_wa", { ascending: true }).limit(12);
 
@@ -383,6 +421,20 @@ Deno.serve(async (req) => {
         dealValue: ticket,
         reason: `Sumiu há ${Math.floor((now - new Date(c.ultima_interacao_wa).getTime()) / 86400000)} dias`,
       }));
+
+      // SUB3 (carteira-reativacao) já pode ter materializado a fila real de ações
+      // pra esta org — quando houver linha, ela reflete os DOIS agentes (SUB2
+      // classificou + SUB3 decidiu quem reativar), não só o filtro de data. Nesse
+      // caso o count/valor do relatório vem DE LÁ. Fallback pro cálculo acima
+      // (`sumidosClientes`) se a tabela ainda estiver vazia pra esta org — a
+      // esteira não pode mostrar zero por timing (SUB2→SUB3 rodam fire-and-forget
+      // em background e podem não ter terminado quando a lead abre a tela).
+      const { count: propostasCount } = await admin.from("carteira_acoes_propostas")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", org.id)
+        .eq("status", "pendente");
+      const sumidos = propostasCount && propostasCount > 0 ? propostasCount : sumidosClientes;
+
       // Alerta quando a demonstração sai VAZIA: antes o funil sangrava em
       // silêncio — a lead via nada e ninguém era avisado.
       if (scanStatus === "pronto" && sumidos === 0) {

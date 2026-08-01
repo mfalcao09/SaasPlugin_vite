@@ -226,6 +226,23 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ── Handoff SUB2 → SUB3 (carteira-reativacao) ────────────────────────────
+  // A classificação deste lote terminou. Fire-and-forget: dispara o SUB3 pra
+  // materializar as ações propostas (mensagem de reativação) da mesma org, sem
+  // bloquear esta resposta. Non-fatal: se falhar, o cron das 04h ainda cobre.
+  try {
+    fetch(`${SUPABASE_URL}/functions/v1/carteira-reativacao`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ organization_id: orgId, lote: 50 }),
+    }).catch((e) => console.warn('[carteira-classify] handoff SUB3 falhou:', (e as Error)?.message))
+  } catch (e) {
+    console.warn('[carteira-classify] handoff SUB3 exception (non-fatal):', (e as Error)?.message)
+  }
+
   return json({
     ok: true, versao: VERSAO, avaliados: alvos.length, resultado,
     sem_conversa: semConversa, erros, ultimo_erro: ultimoErro, amostra,
