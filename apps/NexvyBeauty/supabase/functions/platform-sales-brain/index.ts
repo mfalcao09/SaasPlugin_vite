@@ -326,6 +326,36 @@ function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: st
   return ctx;
 }
 
+/** AGORA — fonte única de data e hora (America/Sao_Paulo).
+ *
+ *  O modelo não tem relógio. Sem este bloco ele CHUTA o dia da semana; pior, ao
+ *  ser desmentido pela cliente não tem DE QUE se corrigir e reafirma o chute.
+ *  Reproduzido na demo em 2026-08-01 (sábado): a Mavi ofereceu "amanhã,
+ *  quarta-feira", o cliente respondeu "amanhã é domingo", ela pediu desculpas e
+ *  repetiu "hoje é terça-feira". Insistir contra o cliente não foi teimosia do
+ *  modelo — foi ausência de chão.
+ *
+ *  Vale para toda persona da plataforma: mesmo as proibidas de agendar podem
+ *  errar o dia numa frase solta, e errar data na frente do cliente custa a venda. */
+function buildNowContext(): string {
+  const TZ = 'America/Sao_Paulo';
+  const now = new Date();
+  const data = now.toLocaleDateString('pt-BR', {
+    timeZone: TZ, weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const hora = now.toLocaleTimeString('pt-BR', {
+    timeZone: TZ, hour: '2-digit', minute: '2-digit',
+  });
+  return `\n═══ AGORA (fonte única de data e hora) ═══\n` +
+    `Hoje é ${data}, ${hora} (horário de Brasília).\n` +
+    `- Calcule "hoje", "amanhã", "depois de amanhã", "essa semana" SEMPRE a partir\n` +
+    `  desta linha. Nunca de memória — sua memória não tem calendário.\n` +
+    `- Se a cliente te corrigir sobre o dia, ELA está certa até esta linha provar o\n` +
+    `  contrário: confira aqui, assuma o erro e NÃO repita o dado errado.\n` +
+    `- Nunca ofereça dia ou horário fora do funcionamento informado na base de\n` +
+    `  conhecimento — confira o dia da semana acima antes de oferecer qualquer data.\n`;
+}
+
 /** FONTE-ÚNICA DE PREÇO (INVIOLÁVEL). Injetado logo após a seção LINKS DE
  *  PAGAMENTO (que vem do banco em runtime). Fixa a REGRA de onde ler o preço
  *  (que não envelhece), no lugar de fixar o número (que envelhece). Precede
@@ -1364,7 +1394,7 @@ Deno.serve(async (req) => {
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
-${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
+${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
 ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}${inactivityContext}
