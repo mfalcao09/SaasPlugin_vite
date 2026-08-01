@@ -116,6 +116,50 @@ export default function LandingPage() {
     captureTrackingFromUrl();
   }, []);
 
+  /* ÂNCORA DE HASH (#planos, #faq, …) — sem isto o link de campanha NÃO rola.
+     MEDIDO em produção 2026-08-01 com https://nexvybeauty.com.br/#planos:
+     hash="#planos" ok, elemento existe, topo da seção em 8259px — e scrollY=0.
+     Causa: a LP entra por lazyWithRetry (App.tsx:102). O browser aplica o hash
+     ANTES do chunk montar, não acha o id, desiste — e ninguém rola depois.
+     Consequência real: link de story/anúncio cai no topo, ~10 telas acima do alvo.
+
+     Por que RETENTAR em vez de rolar uma vez: mesmo já montado, a posição muda
+     enquanto webfont e imagens carregam (a própria LP injeta a Playfair no efeito
+     abaixo). Rolar cedo demais acerta o pixel errado. Tentamos por ~2s e paramos
+     assim que a posição se estabiliza. Se a pessoa rolar sozinha, desistimos na
+     hora — sequestrar a página de quem já está lendo seria pior que não rolar. */
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#/, "");
+    if (!id) return;
+
+    let cancelado = false;
+    let ultimoTopo = -1;
+    const inicio = Date.now();
+
+    const aoRolarManual = () => { cancelado = true; };
+    window.addEventListener("wheel", aoRolarManual, { once: true, passive: true });
+    window.addEventListener("touchstart", aoRolarManual, { once: true, passive: true });
+
+    const tentar = () => {
+      if (cancelado || Date.now() - inicio > 2000) return;
+      const el = document.getElementById(id);
+      if (el) {
+        const topo = Math.round(el.getBoundingClientRect().top + window.scrollY);
+        el.scrollIntoView({ behavior: "auto", block: "start" });
+        if (topo === ultimoTopo) return; // estabilizou → alvo final
+        ultimoTopo = topo;
+      }
+      requestAnimationFrame(tentar);
+    };
+    requestAnimationFrame(tentar);
+
+    return () => {
+      cancelado = true;
+      window.removeEventListener("wheel", aoRolarManual);
+      window.removeEventListener("touchstart", aoRolarManual);
+    };
+  }, []);
+
   /* PORTE: injeta a webfont + título de forma ESCOPADA à LP (sem tocar o index.html global).
      VERIFICADO na lp.css (não é suposição): o corpo usa fontes de SISTEMA (-apple-system/SF Pro/Segoe UI/Roboto)
      e o .serif usa `"Didot","Bodoni MT","Playfair Display","Georgia"` → a ÚNICA webfont necessária é a
