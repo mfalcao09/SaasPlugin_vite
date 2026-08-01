@@ -2930,6 +2930,46 @@ REGRAS DE USO:
         console.warn('[webchat-bot] catalog tools setup failed (non-fatal):', catErr);
       }
 
+      // === REGRA DE PREÇO EM RUNTIME (consultar_catalogo) — anti-alucinação ===
+      // A tool consultar_catalogo (registry) já fica disponível pra qualquer
+      // agente ativo (bloco abaixo). Isto aqui é o REFORÇO na regra do
+      // systemPrompt, injetado A CADA mensagem — protege agentes JÁ EM
+      // PRODUÇÃO (system_prompt salvo no banco, gerado antes desta correção)
+      // sem depender de alguém clicar "regenerar prompt" no editor. Só liga
+      // pra tipos que citam preço pro cliente (sdr/closer/custom) e só quando
+      // a org tem serviços reais cadastrados — não afeta o funil B2B
+      // (Duda/Bia/Nina roda em platform_crm_*, nunca tem linha aqui).
+      try {
+        if (activeAgent && ['sdr', 'closer', 'custom'].includes(activeAgent.agent_type)) {
+          const { data: convForPricing } = await supabase
+            .from('webchat_conversations')
+            .select('organization_id')
+            .eq('id', body.conversation_id)
+            .maybeSingle();
+          const pricingOrgId = convForPricing?.organization_id;
+
+          if (pricingOrgId) {
+            const { count: servicosCount } = await supabase
+              .from('servico_catalogo')
+              .select('id', { count: 'exact', head: true })
+              .eq('organization_id', pricingOrgId)
+              .eq('ativo', true);
+
+            if ((servicosCount || 0) > 0) {
+              systemPrompt += `\n\n💰 REGRA DE PREÇO (INVARIANTE — VIOLAÇÃO É ERRO GRAVE):
+Qualquer preço/plano escrito acima neste prompt pode estar DESATUALIZADO — o catálogo real de serviços do salão muda com frequência.
+- ANTES de informar preço, duração ou disponibilidade de QUALQUER serviço → chame a tool consultar_catalogo.
+- PROIBIDO citar valor de memória/cabeça, mesmo que pareça óbvio ou já tenha sido dito antes nesta conversa.
+- Se consultar_catalogo devolver found=false → NÃO invente preço. Diga que vai confirmar esse valor específico e ofereça falar com alguém do espaço.
+- Serviço parecido NÃO é o mesmo serviço — não generalize o preço de um item pra outro.`;
+              console.log('[webchat-bot] 💰 Price safety rule injected — servico_catalogo count:', servicosCount);
+            }
+          }
+        }
+      } catch (pricingErr) {
+        console.warn('[webchat-bot] pricing safety rule setup failed (non-fatal):', pricingErr);
+      }
+
       // === REGISTRY TOOLS (Fase 1 — agentes que agem) ===
       // Adiciona as tools modulares do registry centralizado.
       // Só habilita se temos agente ativo (caso contrário não há contexto pra executar).

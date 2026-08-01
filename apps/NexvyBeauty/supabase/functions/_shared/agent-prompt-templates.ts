@@ -12,6 +12,13 @@ interface BuildArgs {
   product_objections?: string;
   product_plans?: string;
   product_prices?: string;
+  // true quando a organização tem serviços reais cadastrados em
+  // `servico_catalogo` (fonte de verdade de preço/duração do salão) — gate
+  // pra não quebrar verticais que não usam essa tabela (ex.: funil B2B
+  // Duda/Bia/Nina, que roda em platform_crm_* e nunca seta esta flag).
+  // Quando true, o template `closer` troca a injeção de texto livre de
+  // `product_prices` pela instrução de usar a tool `consultar_catalogo`.
+  catalog_pricing_available?: boolean;
   product_guarantee?: string;
   payment_conditions?: string;
   discount_policy?: string;
@@ -71,7 +78,9 @@ COMO TRANSFERIR (regra rígida):
 
 OFERTA
 Planos: ${a.product_plans || '(carregar do cérebro)'}
-Preços: ${a.product_prices || '(carregar do cérebro)'}
+${a.catalog_pricing_available
+    ? `Preços: 🚨 NÃO ESTÃO NESTE TEXTO — o catálogo de serviços muda com frequência e um preço escrito aqui fica desatualizado. OBRIGATÓRIO chamar a tool consultar_catalogo ANTES de citar qualquer valor ou duração de serviço. Se ela devolver found=false, NÃO invente preço: diga que vai confirmar esse valor com a equipe e ofereça falar com alguém do espaço.`
+    : `Preços: ${a.product_prices || '(carregar do cérebro)'}`}
 Condições: ${a.payment_conditions || '(carregar do cérebro)'}
 Garantia: ${a.product_guarantee || '(carregar do cérebro)'}
 
