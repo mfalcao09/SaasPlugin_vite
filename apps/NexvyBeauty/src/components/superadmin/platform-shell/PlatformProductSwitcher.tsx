@@ -63,6 +63,13 @@ export function PlatformProductSwitcher() {
         align="start"
         sideOffset={8}
         collisionPadding={12}
+        // portal={false} É A CORREÇÃO DO SCROLL NO CELULAR. Este switcher vive
+        // dentro do <Sheet> (Radix Dialog) no mobile, e o scroll-lock do Dialog
+        // (react-remove-scroll) bloqueia touchmove em tudo FORA da sua subárvore.
+        // Portalado para o body, o popover caía nesse "fora": aparecia, cabia na
+        // tela, tinha overflow-y-auto — e não rolava. Renderizando no lugar ele
+        // fica DENTRO do Sheet e o arrasto é liberado.
+        portal={false}
       >
         {/* Header — espelha o ModuleSwitcher */}
         <div className="border-b border-border px-4 py-3">

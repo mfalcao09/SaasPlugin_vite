@@ -79,6 +79,9 @@ export function PlatformModuleSwitcher() {
         // popover pode assentar com parte fora da viewport no celular, e os itens
         // de baixo ficam sem alcance de toque.
         collisionPadding={12}
+        // Mesma razão do PlatformProductSwitcher: dentro do Sheet, o scroll-lock
+        // do Radix Dialog engole o toque de um popover portalado para o body.
+        portal={false}
       >
         {/* Header */}
         <div className="border-b border-border px-4 py-3">

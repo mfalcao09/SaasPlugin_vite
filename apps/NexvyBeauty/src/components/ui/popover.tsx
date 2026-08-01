@@ -11,9 +11,26 @@ const PopoverAnchor = PopoverPrimitive.Anchor;
 
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
+    /**
+     * `false` renderiza o conteúdo NO LUGAR, sem Portal para o body.
+     *
+     * POR QUE EXISTE: dentro de um Sheet/Dialog o Radix usa `react-remove-scroll`,
+     * que bloqueia `touchmove` em tudo FORA da subárvore do diálogo — é assim que
+     * a página de trás não rola com o drawer aberto. Um popover portalado para o
+     * body cai nesse "fora": ele aparece, cabe na tela, tem overflow-y-auto — e
+     * mesmo assim NÃO ROLA no toque. Foi o que travou a lista de produtos no
+     * drawer mobile do painel (reproduzido em iPhone, 2026-08-01; duas tentativas
+     * anteriores atacaram altura e posicionamento, que não eram a causa).
+     *
+     * Default `true` = comportamento de sempre, para não mexer nos 40 arquivos
+     * que já usam este primitivo. Use `false` só quando o popover viver dentro
+     * de um Sheet/Dialog E precisar de scroll interno.
+     */
+    portal?: boolean;
+  }
+>(({ className, align = "center", sideOffset = 4, portal = true, ...props }, ref) => {
+  const content = (
     <PopoverPrimitive.Content
       ref={ref}
       align={align}
@@ -24,8 +41,9 @@ const PopoverContent = React.forwardRef<
       )}
       {...props}
     />
-  </PopoverPrimitive.Portal>
-));
+  );
+  return portal ? <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal> : content;
+});
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor };
