@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- ─────────────────────────────────────────────────────────────────────
+         SEGUNDO ENTRY DO BUILD — host de landing netb2b.nexvy.tech.
+         Existe porque o crawler (WhatsApp/Facebook/LinkedIn) NÃO executa JS:
+         título e Open Graph precisam ser ESTÁTICOS e por host. O index.html
+         carrega a promessa da LP de beleza; servir aquele arquivo aqui faria
+         o preview do link B2B anunciar salão de beleza.
+         Serviço: infra/nginx.conf mapeia $host -> este arquivo (try_files).
+         Bundle JS é o MESMO do index.html; quem decide o que renderizar é o
+         LANDING_HOSTS em src/lib/publicUrl.ts.
+         ───────────────────────────────────────────────────────────────────── -->
+    <title>NetB2B — Destravando Empresas</title>
+    <meta name="description" content="Comunidade B2B de donos de empresa. De quem empreende para quem empreende, de quem paga boleto para quem paga boleto.">
+    <meta name="author" content="Nexvy" />
+
+    <link rel="icon" type="image/png" href="/favicon.png">
+
+    <meta name="theme-color" content="#E8734A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="NetB2B" />
+
+    <!-- Open Graph — estático por exigência do crawler. og:image exige URL
+         ABSOLUTA (caminho relativo não resolve no crawler) e usa arte PRÓPRIA
+         do NetB2B (public/og-netb2b.png): apontar para a de beleza
+         reintroduziria exatamente o vazamento que este arquivo existe p/ evitar. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://netb2b.nexvy.tech/" />
+    <meta property="og:title" content="NetB2B — Destravando Empresas">
+    <meta property="og:description" content="Grupo de empresários. Não é lista de conteúdo, não é curso, não é grupo de divulgação. Ferramentas prontas e lives abertas de tira-dúvidas.">
+
+    <meta property="og:image" content="https://netb2b.nexvy.tech/og-netb2b.png">
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NetB2B — Destravando Empresas">
+    <meta name="twitter:description" content="Grupo de empresários. Não é lista de conteúdo, não é curso, não é grupo de divulgação. Ferramentas prontas e lives abertas de tira-dúvidas.">
+    <meta name="twitter:image" content="https://netb2b.nexvy.tech/og-netb2b.png">
+
+    <!-- NÃO instala o Meta Pixel. O pixel do index.html serve retargeting da
+         audiência de BELEZA; visitante B2B entrando naquele público envenena
+         os anúncios dos dois lados. Se o NetB2B ganhar tráfego pago, cria-se
+         um dataset próprio aqui. -->
+
+    <!-- Boot styles: evita flash branco antes do React montar. -->
+    <style>
+      html, body {
+        background: #0a0d14;
+        color: #e5e7eb;
+        margin: 0;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      #root { min-height: 100vh; }
+      #boot-loader {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: #0a0d14;
+        z-index: 9999;
+      }
+      #boot-loader .spinner {
+        width: 36px; height: 36px;
+        border: 3px solid rgba(232, 115, 74, 0.18);
+        border-top-color: #E8734A;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      .app-mounted #boot-loader { display: none; }
+    </style>
+  </head>
+
+  <body>
+    <div id="root">
+      <div id="boot-loader"><div class="spinner"></div></div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

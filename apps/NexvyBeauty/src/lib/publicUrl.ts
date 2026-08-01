@@ -31,6 +31,25 @@ export function isGestaoHostname(hostname = typeof window !== 'undefined' ? wind
   return hostname.startsWith('gestao.');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hosts de LANDING. Subdomínio dedicado que serve UM formulário público na
+// PRÓPRIA RAIZ — sem path `/f/<slug>` e sem nunca expor o host de gestão ao
+// cliente final. Ex.: netb2b.nexvy.tech → formulário de slug 'netb2b'.
+// Allowlist explícita: host fora do mapa segue o fluxo normal (apex/app/gestao),
+// então adicionar landing nova é acrescentar UMA linha aqui.
+// Avaliado ANTES de isApexDomain(), que devolveria true para estes hosts.
+// ─────────────────────────────────────────────────────────────────────────────
+const LANDING_HOSTS: Record<string, string> = {
+  'netb2b.nexvy.tech': 'netb2b',
+  'netb2b.localhost': 'netb2b', // dev
+};
+
+export function getLandingFormSlug(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): string | null {
+  return LANDING_HOSTS[hostname] ?? null;
+}
+
 // Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.*,
 // NÃO é gestao.* e NÃO é dev/preview. Ex.: nexvybeauty.com.br /
 // www.nexvybeauty.com.br → true; app.* e gestao.* → false; localhost → false.
