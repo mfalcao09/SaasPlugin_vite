@@ -265,3 +265,172 @@ Correlato: o primeiro grep de conformidade acusou falha que era **do teste**, n�
 ### Armadilha de upload
 
 A pasta `png/` também contém `LOGO-MAGNIFIC-vetor.png`, `LOGO-MAGNIFIC-vetor-v2.png` e `LOGO-NVB-exploracao.png`, deixados pela rodada de logo. **Só os `NB-*.png` são criativos** — arrastar a pasta inteira sobe 3 folhas de estudo como anúncio.
+
+---
+
+# Review — Ciclo 2 · lote benchmark · 2026-08-01
+
+> **Entrega:** 3 peças (`NB-D1/D2/D3`) em **story `1080×1920`** — ver **§18, correção de formato** — em `~/Downloads/nexvybeauty-criativos-benchmark-2026-08-01/` + seção comparativa na LP + copy dos 3 anúncios.
+> **Não substitui** o lote de 19/07 (`NB-C1/C2/C3`), que segue válido — é uma família paralela, de ângulo de mercado.
+
+## 12 · A auditoria que derrubou 2 dos 3 conceitos
+
+O ciclo começou com 3 conceitos prontos, vindos de um benchmark de 23 empresas. Antes de desenhar, reconferi cada número na fonte. **Dois não resistiram.**
+
+| Dado recebido | Verificado em 01/08/2026 | Veredito |
+|---|---|---|
+| Trinks R$ 76 (1-2 prof.) | R$ 76 | ✅ confere |
+| Trinks esconde preço de 3+ prof. | 3-4, 5-10, 11-20, 21+ → **todas "sob consulta"** | ✅ confere |
+| AppBarber R$ 79,90 → R$ 219,90 | idêntico | ✅ confere |
+| Zenvia Specialist R$ 600 / 500 interações | R$ 600, **10 usuários**, 500 Interactionz | ✅ confere |
+| **Botconversa PRO+IA+API R$ 299** | **R$ 199/mês** (R$ 189 no anual) | ❌ **erra R$ 100** |
+| **ChatGuru R$ 692 (1 usuário) + R$ 500 de setup** | **"a partir de R$ 347"**, **setup GRÁTIS**, sob orçamento | ❌ **erra nos dois** |
+| Huggy R$ 239 / 729 / 989-1.239 | `/precos/` → HTTP 404 | ⚠️ **não verificado** |
+
+**Consequência do erro do Botconversa:** a conta que dava o argumento central — *"R$ 76 + R$ 299 = R$ 375 contra R$ 275, 27% mais barato"* — na verdade é **R$ 76 + R$ 199 = R$ 275**. Empate exato com o Essencial. O conceito nº 1 não era vencedor: era neutro.
+
+**Consequência do erro do ChatGuru:** o conceito nº 2 pedia publicar *"ChatGuru cobra R$ 500 de setup"* com o nome da empresa na LP. O ChatGuru **anuncia setup gratuito como benefício**. Seria afirmação comprovadamente falsa sobre concorrente nomeado.
+
+> **Lição durável — benchmark herdado é insumo, não fato.** O relatório de origem trazia URL para as 8 plataformas de *gestão de salão*, mas **nenhuma URL para as 5 de IA/WhatsApp** — e foi exatamente nesse subconjunto sem fonte que os dois erros estavam. **Assimetria de rastreabilidade dentro de um mesmo relatório é o sinal de onde auditar primeiro.** O próprio relatório continha a contradição: numa passagem dizia que "ChatGuru só publica a estrutura, sem preço" e noutra afirmava R$ 692.
+
+## 13 · Os 3 conceitos que foram ao ar (decisão do Marcelo, 01/08)
+
+| ID | Conceito | Apoio factual | Família visual |
+|---|---|---|---|
+| `NB-D1-PrecoOculto` | **"O preço que não te mostram"** | Tabela pública com 1 faixa precificada e 4 "sob consulta" | Claro + tabela |
+| `NB-D2-IASemPreco` | **"IA de salão não tem preço público"** | Nenhum concorrente publica preço de IA | Escuro vinho + selos |
+| `NB-D3-SoBeleza` | **"Só falamos beleza"** | Nenhum número — argumento de vocabulário | Claro + duas colunas tipográficas |
+
+**Duas decisões do Marcelo moldaram a copy:**
+
+1. **Nome de concorrente: só na LP, nunca no criativo.** O PNG estático não carrega rodapé com data e link de fonte — e é a data que torna a comparação defensável. As peças usam categoria ("plataforma de gestão para salões"); a LP nomeia, com data e link.
+2. **Preço nosso fora do PNG.** Só o preço deles entra. Efeito colateral valioso: **as 9 peças não expiram** quando o preço de lançamento subir para a tabela — problema que o §4 deste plano já antecipava.
+
+## 14 · Copy dos anúncios
+
+Sem nome de concorrente (decisão 1 acima). Nenhum termo da lista de proibições do §4.
+
+### D1 · O preço que não te mostram
+- **Título:** Até 2 profissionais, o preço está na tela
+- **CTA (botão Meta):** Saiba mais · **CTA na peça:** "Quero ver o meu número"
+- **Texto primário:**
+> Já tentou descobrir quanto custa um sistema de gestão pro seu salão, quando você tem equipe?
+>
+> Até 2 profissionais, o preço está lá, na página. A partir de 3 — que é onde está a maioria dos salões com equipe — vira "sob consulta". Nas quatro faixas seguintes, todas.
+>
+> Aqui os três planos estão publicados. Sempre estiveram. Com os agentes de IA já inclusos, do primeiro ao último.
+>
+> A gente não te promete, te mostra: antes de pagar um centavo, você recebe o Raio-X da sua carteira — quantas clientes sumiram e quanto dá pra recuperar em 30 dias, com a sua base.
+
+### D2 · IA de salão não tem preço público
+- **Título:** Todo mundo anuncia IA. Ninguém anuncia o preço.
+- **CTA (botão Meta):** Enviar mensagem · **CTA na peça:** "Quero meu Raio-X grátis"
+- **Texto primário:**
+> Faça o teste: procure quanto custa a IA de atendimento nas plataformas de gestão para salão.
+>
+> Numa é "add-on", sem valor na página. Noutra, só entra no plano mais caro. Numa terceira, "fale com um consultor". No levantamento de jul/ago de 2026, não existe âncora pública de quanto custa IA de recepção para salão no Brasil.
+>
+> Aqui a IA vem de série. Do plano de entrada ao último, no preço que está na página — sem add-on e sem taxa de instalação.
+>
+> E antes de assinar você recebe o Raio-X da sua carteira: quantas clientes sumiram e quanto dá pra recuperar em 30 dias.
+
+### D3 · Só falamos beleza
+- **Título:** A IA genérica atende pet shop, imobiliária e clínica
+- **CTA (botão Meta):** Saiba mais · **CTA na peça:** "Quero ver o meu número"
+- **Texto primário:**
+> Com o mesmo robô.
+>
+> Ela entende "agendamento", "lead", "protocolo", "ticket". Não entende retoque de 21 dias, manutenção do volume, cabine, comissão da profissional — nem que "a escova não durou" é uma reclamação que precisa de resposta hoje.
+>
+> Aqui a gente só fala beleza. E faz o que nenhuma delas faz: acha as clientes que sumiram na sua carteira do WhatsApp e escreve a mensagem de volta, no seu tom. Você só aprova.
+>
+> Antes de pagar, você vê o número: quantas sumiram e quanto dá pra recuperar em 30 dias.
+
+## 15 · Seção comparativa na LP
+
+`ClientesDeVoltaLandingPage.tsx` — componente `Comparativo()`, inserido **entre `<Planos />` e `<ChamadaPosPlanos />`**: a objeção "tá caro" nasce ao ver o preço, e é ali que a conta responde.
+
+- **Nomeia com data e link** os 5 concorrentes que eu verifiquei pessoalmente. Huggy, Avec, Belasis, Gendo, Booksy e Simples Agenda **ficaram fora** — não os reconferi nesta rodada, e a regra é não publicar nome sem fonte própria.
+- **Apresenta o empate como empate.** O bloco de destaque diz `R$ 76 + R$ 199 = R$ 275/mês` e argumenta pela **unificação** (uma assinatura, não duas) e pela **transparência** — não por um desconto inexistente.
+- **Zero preço nosso hardcoded.** Segue a regra já documentada em `PlanoPreco` (*"Preço e checkout SÓ do banco"*): a linha do NexvyBeauty na tabela diz "os três planos, na página" e aponta para os cards acima.
+- CSS anexado ao fim de `clientes-de-volta-lp.css` sob o prefixo `.bench*`, 100% por token — acompanha o dark mode sem regra própria.
+
+## 16 · Verificação executada
+
+| Critério | Resultado |
+|---|---|
+| Dimensão exata das 9 peças | ✅ `magick identify` 9/9 |
+| Sem preço **nosso** no PNG | ✅ grep de 6 valores (lançamento + tabela) → zero |
+| Sem termo da lista do §4 | ✅ grep de 7 termos → zero |
+| Sem nome de concorrente no criativo | ✅ grep de 13 marcas → zero |
+| Número de terceiro sempre acompanhado de data | ✅ 3/3 peças |
+| Zona morta no 1080×1920 | ✅ padding 300 topo / 460 base |
+| Revisão visual peça a peça | ✅ 9/9 |
+| `typecheck` da LP | ✅ **32 erros = baseline**, zero nos arquivos tocados |
+| LP renderizada (desktop) | ✅ 6 linhas, 5 links de fonte, sem overflow |
+| LP dark mode | ✅ tokens flipam; contraste do texto secundário **5,7:1** (AA) |
+| LP mobile 375px | ✅ tabela vira lista, coluna de ressalva sobrevive, zero overflow |
+
+### Três defeitos que só a revisão visual pegou
+
+**1 · `flex-shrink` amputando o argumento (D1 · 1080).** O `.card` era item de um flex column de altura fixa; com o conteúdo excedendo, o navegador **encolheu o item** e o `overflow:hidden` dele comeu a última faixa e a tarja de fecho inteira. O `identify` dava 1080×1080 e passava. Corrigido com `flex-shrink:0` — assim o excesso **vaza visivelmente** em vez de amputar em silêncio — mais redução de corpo/padding só no 1080.
+
+**2 · Linha de fonte atropelando a marca (D2 · 1080).** A soma dos blocos estourava ~95px e o rodapé de fonte caía por cima do logo. Corrigido encurtando a linha de fonte para **uma linha nos três formatos**, preservando a data.
+
+**3 · Tabela não-contígua (D1 · 1350).** Escondi a faixa do *meio* (11-20) em vez da última, e a tabela saltava de "5 a 10" para "21 ou mais" — parecendo erro de dado. **Regra:** a sequência exibida tem de ser sempre contígua a partir da primeira; oculte só pelo fim.
+
+> Nenhum dos três apareceu em `identify` nem em grep. Confirma a lição do ciclo 1: **`identify` prova dimensão, não prova design.**
+
+## 17 · Aberto
+
+| Item | Estado |
+|---|---|
+| ☐ Huggy, Avec, Belasis, Gendo, Booksy, Simples Agenda | Não reconferidos nesta rodada — fora da LP até terem fonte própria |
+| ☐ Subir no Meta | **Nada foi publicado e nenhuma verba foi gasta.** Alçada do Marcelo |
+| ☐ `"50 vagas"` do Cofounder | Segue vivo na LP — decisão do Marcelo, fora da alçada de criativo |
+| ☐ Revalidar preços | Reconferir **cada linha** na fonte e mover `BENCH_CONSULTA` junto. Data velha com número novo é pior do que não ter tabela |
+
+## 18 · Correção de formato — story, não feed (2026-08-01)
+
+Decisão do Marcelo: **o lote benchmark sai em story, não em feed.** Entrega passa de 9 peças (3 conceitos × 3 formatos) para **3 peças em `1080×1920`**.
+
+### Por que não foi só filtrar 3 PNGs
+
+O 1920 existia, mas tinha sido desenhado **feed-first**: o §7 do ciclo 1 fixou *"altura extra vira respiro, nunca corpo maior de headline"* — regra correta quando o formato-mãe é feed e a peça compete dentro de uma coluna estreita. Consequência: no `1920`, D1 e D2 **mantinham o corpo do 1080** e toda a altura extra virava margem. Só o D3 subia a headline.
+
+**A conta que mudou a decisão:** um story `1080×1920` preenche a tela inteira de um telefone de ~390pt — escala ≈ **0,36**. Uma headline de 64px chega ao olho como **~23px**: legível, mas não comanda. A 80px chega como ~29px, patamar de manchete. A regra do ciclo 1 foi **revogada apenas no bloco `data-f="1920"`**; nos blocos `1080`/`1350` ela segue valendo, e os dois formatos de feed continuam renderizáveis do mesmo fonte se a decisão voltar atrás.
+
+### Escala aplicada
+
+| Peça | headline antes → depois | resto |
+|---|---|---|
+| D1 | 64px → **80px** | tabela +18%, CTA 26→30px, fonte 19→21px |
+| D2 | 70px → **76px** (teto de largura, ver abaixo) | chips 29→33px, fecho 32→36px |
+| D3 | 64px → **76px** | colunas 23/27 → 27/32px |
+
+Padding do `.stage` de `300/460` para `270/440` — dentro da zona morta declarada no §7 (250 topo / ~420 base) e devolvendo 50px de área útil.
+
+### O defeito que a escala maior revelou
+
+**A trava anti-órfã do ciclo 1 cobria só metade do problema.** O `<span class="l">` em bloco decide **onde** quebrar *entre* linhas — mas não impede o navegador de quebrar **dentro** de uma linha quando o corpo cresce e o texto deixa de caber na largura útil. Ao subir o D2 para 86px, `"Todo mundo anuncia IA."` (22 caracteres) passou a pedir ~1.002px contra 896px disponíveis e **`IA.` caiu sozinha na segunda linha** — exatamente a órfã que a trava existia para prevenir.
+
+Duas correções:
+1. **`white-space:nowrap` nas linhas do `h1`**, nos três conceitos. Agora corpo grande demais **vaza pela lateral** (defeito visível) em vez de reflowar em silêncio — mesmo princípio do `flex-shrink:0` da §16.
+2. **D2 travado em 76px**, que é o teto real da largura para a linha mais longa. Não é preferência estética: é aritmética de caixa.
+
+O D1 também estourava ~74px de altura e a linha de fonte voltou a cair sobre a marca; resolvido apertando paddings da tabela e margens, **sem** remover faixa — o dek promete "as quatro faixas seguintes", então esconder uma quebraria a copy.
+
+### Zona morta — medida, não presumida
+
+| Faixa | O que é | Desvio-padrão medido |
+|---|---|---|
+| 250px do topo | foto de perfil / nome | 0,006 – 0,030 → **vazia** |
+| **250px reais do fundo** | barra "Enviar mensagem" do IG | **0,007 – 0,014 → vazia** |
+| 1500–1670 | folga nominal de 420px do §7 | 0,070 – 0,076 → só a assinatura |
+| faixa central | referência de "tem conteúdo" | 0,095 – 0,114 |
+
+**Nada da mensagem é coberto pela UI.** A assinatura ocupa a folga nominal do §7 mas fica **acima** da barra real do Instagram — decisão consciente, registrada aqui em vez de escondida atrás de um "passou".
+
+### Armadilha de upload (de novo)
+
+Os 6 PNGs de feed foram movidos para **`_feed-nao-usar/`**, fora de `png/`. A pasta `png/` agora contém **exatamente 3 arquivos**, todos story. Mesma classe de armadilha que o ciclo 1 registrou — a diferença é que desta vez o arquivo indevido saiu da pasta em vez de ganhar um aviso no texto.

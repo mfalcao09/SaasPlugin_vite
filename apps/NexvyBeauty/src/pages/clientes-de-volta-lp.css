@@ -755,3 +755,60 @@
   .lp-root .rv { opacity: 1 !important; transform: none !important; transition: none !important; }
   .lp-root, .lp-root * { animation-duration: .001s !important; }
 }
+
+/* ── Comparativo de mercado (pós-planos) ─────────────────────────────────────
+   Toda cor sai de token — a seção acompanha o dark mode sem regra própria.
+   Abaixo de 720px a tabela vira lista: 4 colunas de texto denso não sobrevivem
+   a 360px de largura. A coluna de observação é onde mora a ressalva honesta
+   ("só até 2 profissionais"), então ela é justamente a que NÃO pode sumir. ── */
+.lp-root .bench-box {
+  background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  padding: 44px 40px; box-shadow: var(--shadow);
+}
+@media (max-width: 720px) { .lp-root .bench-box { padding: 30px 20px; } }
+
+.lp-root .bench-conta {
+  background: var(--terra); border-radius: 16px; padding: 26px 28px; margin: 26px 0 32px;
+}
+.lp-root .bench-conta .soma {
+  font-family: "Didot", "Bodoni MT", "Playfair Display", "Georgia", serif;
+  font-size: clamp(21px, 3.2vw, 29px); line-height: 1.35; color: var(--ink);
+}
+.lp-root .bench-conta .soma b { color: var(--wine); font-weight: 400; }
+.lp-root .bench-conta p { margin: 12px 0 0; font-size: 16px; color: var(--muted); line-height: 1.6; }
+
+.lp-root table.bench { width: 100%; border-collapse: collapse; }
+.lp-root table.bench th {
+  text-align: left; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; padding: 0 14px 12px 0; border-bottom: 1px solid var(--line);
+}
+.lp-root table.bench td { padding: 16px 14px 16px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.lp-root table.bench tr:last-child td { border-bottom: 0; }
+.lp-root table.bench .n { font-size: 17px; font-weight: 600; color: var(--ink); }
+.lp-root table.bench .t { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.lp-root table.bench .p {
+  font-family: "Didot", "Bodoni MT", "Playfair Display", "Georgia", serif;
+  font-size: 21px; color: var(--ink); white-space: nowrap;
+}
+.lp-root table.bench .p.vago { font-family: inherit; font-size: 15px; color: var(--muted); font-style: italic; white-space: normal; }
+.lp-root table.bench .obs { font-size: 15px; color: var(--muted); line-height: 1.5; }
+.lp-root table.bench a.src { color: var(--rose); text-decoration: none; border-bottom: 1px solid var(--rose-soft); }
+.lp-root table.bench a.src:hover { border-bottom-color: var(--rose); }
+
+/* Nossa linha destaca por FUNDO, nunca por afirmação de preço — o preço vive
+   nos cards acima e vem de `public_plans` (mesma regra do PlanoPreco). */
+.lp-root table.bench tr.bench-nos td { background: var(--rose-soft); }
+.lp-root table.bench tr.bench-nos .n { color: var(--rose); }
+
+.lp-root .bench-fonte { margin-top: 22px; font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+
+@media (max-width: 720px) {
+  .lp-root table.bench thead { display: none; }
+  .lp-root table.bench, .lp-root table.bench tbody,
+  .lp-root table.bench tr, .lp-root table.bench td { display: block; width: 100%; }
+  .lp-root table.bench tr { padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .lp-root table.bench tr:last-child { border-bottom: 0; }
+  .lp-root table.bench td { border: 0; padding: 3px 0; }
+  .lp-root table.bench tr.bench-nos td { background: transparent; }
+  .lp-root table.bench tr.bench-nos { background: var(--rose-soft); border-radius: 12px; padding: 16px 14px; }
+}
