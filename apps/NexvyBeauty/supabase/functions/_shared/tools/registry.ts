@@ -7,6 +7,7 @@ import { gerarLinkPagamentoTool } from './impl/gerar_link_pagamento.ts';
 import { aplicarEtiquetaTool } from './impl/aplicar_etiqueta.ts';
 import { agendarFollowupTool } from './impl/agendar_followup.ts';
 import { consultarHistoricoClienteTool } from './impl/consultar_historico_cliente.ts';
+import { consultarCatalogoTool } from './impl/consultar_catalogo.ts';
 
 const ALL_TOOLS: ToolDefinition[] = [
   criarDealTool,
@@ -14,6 +15,7 @@ const ALL_TOOLS: ToolDefinition[] = [
   aplicarEtiquetaTool,
   agendarFollowupTool,
   consultarHistoricoClienteTool,
+  consultarCatalogoTool,
 ];
 
 const TOOLS_BY_NAME = new Map(ALL_TOOLS.map((t) => [t.name, t]));

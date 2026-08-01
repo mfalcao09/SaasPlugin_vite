@@ -212,6 +212,23 @@ serve(async (req) => {
       }
     }
 
+    // ============= Catálogo real de serviços (gate anti-alucinação de preço) =============
+    // Só true quando a ORGANIZAÇÃO tem serviços cadastrados em `servico_catalogo`
+    // (fonte real de preço/duração do salão). Gate por presença de dado, não por
+    // nome de vertical — replica o padrão já usado em webchat-bot/index.ts pra
+    // habilitar o tool search_catalog (conta linhas ativas antes de mudar o
+    // prompt). Sem linhas → catalog_pricing_available fica false e o template
+    // `closer` se comporta exatamente como antes (product_prices em texto).
+    let hasCatalogPricing = false;
+    if (organizationId) {
+      const { count: servicosCount } = await supabase
+        .from('servico_catalogo')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('ativo', true);
+      hasCatalogPricing = (servicosCount || 0) > 0;
+    }
+
     // ============= Build the type-specific template =============
     const templateArgs = {
       organization_name: orgName,
@@ -221,6 +238,7 @@ serve(async (req) => {
       product_objections: productCtx?.objections_text,
       product_plans: pricingToText(productCtx?.pricing),
       product_prices: pricingToText(productCtx?.pricing),
+      catalog_pricing_available: hasCatalogPricing,
       product_guarantee: '',
       payment_conditions: '',
       discount_policy: '',
