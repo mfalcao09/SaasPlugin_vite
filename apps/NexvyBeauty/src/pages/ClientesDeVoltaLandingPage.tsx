@@ -133,22 +133,22 @@ export default function LandingPage() {
     if (!id) return;
 
     let cancelado = false;
-    let ultimoTopo = -1;
     const inicio = Date.now();
 
     const aoRolarManual = () => { cancelado = true; };
     window.addEventListener("wheel", aoRolarManual, { once: true, passive: true });
     window.addEventListener("touchstart", aoRolarManual, { once: true, passive: true });
 
+    /* SEM saída antecipada por "posição repetida" — foi o erro da 1ª versão deste
+       efeito: dois frames consecutivos dão o mesmo topo LOGO NO INÍCIO (a seção
+       nem nasceu), então ela desistia no 2º frame. Medido: o topo de #planos
+       variou 8259 → 24171 → 13094px conforme a página montava, porque os planos
+       vêm de usePublicPlans (fetch) e a seção só existe depois da resposta.
+       Re-ancorar a cada frame por 4s é barato (scrollIntoView numa posição já
+       correta é no-op) e é o único jeito de acompanhar layout que muda sozinho. */
     const tentar = () => {
-      if (cancelado || Date.now() - inicio > 2000) return;
-      const el = document.getElementById(id);
-      if (el) {
-        const topo = Math.round(el.getBoundingClientRect().top + window.scrollY);
-        el.scrollIntoView({ behavior: "auto", block: "start" });
-        if (topo === ultimoTopo) return; // estabilizou → alvo final
-        ultimoTopo = topo;
-      }
+      if (cancelado || Date.now() - inicio > 4000) return;
+      document.getElementById(id)?.scrollIntoView({ behavior: "auto", block: "start" });
       requestAnimationFrame(tentar);
     };
     requestAnimationFrame(tentar);
