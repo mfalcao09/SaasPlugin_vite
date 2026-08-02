@@ -63,6 +63,13 @@ verify_jwt = false
 [functions.platform-capi-send]
 verify_jwt = false
 
+# Web-CAPI (Conversions API, action_source:'website') da LP de vendas — espelho
+# server-side do Pixel de browser p/ recuperar PageView/Lead bloqueados por
+# adblock/ITP (público de remarketing). PÚBLICO por design (LP anônima) → sem JWT.
+# Auth = pública + whitelist de event_name + clamp (Seção 11.3). Token só server-side.
+[functions.platform-web-capi]
+verify_jwt = false
+
 # Runtime PÚBLICO dos formulários de captação da plataforma. Recebe submissão de
 # lead EXTERNO (embed anônimo) e usa SERVICE_ROLE internamente — o gateway não
 # pode exigir JWT, senão o embed público é rejeitado. Auth = pública por design

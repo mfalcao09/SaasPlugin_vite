@@ -77,12 +77,45 @@ function withTracking(url: string): string {
   }
 }
 
-/** Dispara evento do Pixel se ele existir. Sem pixel = no-op silencioso. */
+/** Gera um event_id pra deduplicar o evento entre browser (Pixel) e servidor
+ *  (web-CAPI). O mesmo id nos dois lados → o Meta funde e não conta duas vezes. */
+function newEventId(): string {
+  try {
+    const c = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto;
+    if (c?.randomUUID) return c.randomUUID();
+  } catch { /* segue pro fallback */ }
+  return `${Date.now()}.${Math.random().toString(16).slice(2)}`;
+}
+
+/** Espelho SERVER-SIDE do evento (web-CAPI) — recupera quem o adblock/ITP bloqueia
+ *  no browser. Best-effort e silencioso: nunca pode quebrar o CTA. */
+function sendWebCapi(event: string, eventId: string, custom?: Record<string, unknown>): void {
+  try {
+    const t = getTracking();
+    void supabase.functions
+      .invoke("platform-web-capi", {
+        body: {
+          event_name: event,
+          event_id: eventId,
+          event_source_url: window.location.href.split("#")[0],
+          fbc: t.fbc,
+          fbp: t.fbp,
+          custom_data: custom && Object.keys(custom).length ? custom : undefined,
+        },
+      })
+      .catch(() => { /* CAPI best-effort: nunca quebra o CTA */ });
+  } catch { /* idem */ }
+}
+
+/** Dispara o evento no Pixel (browser) E no web-CAPI (servidor) com o MESMO
+ *  event_id. Sem pixel, o browser é no-op; o servidor ainda captura. */
 function fbqTrack(event: string, params?: Record<string, unknown>): void {
+  const eventId = newEventId();
   try {
     const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
-    if (typeof fbq === "function") fbq("track", event, params ?? {});
+    if (typeof fbq === "function") fbq("track", event, params ?? {}, { eventID: eventId });
   } catch { /* rastreamento nunca pode quebrar o CTA */ }
+  sendWebCapi(event, eventId, params);
 }
 
 /** Acha o plano por slug na lista pública (undefined enquanto carrega / se sumir). */
@@ -114,6 +147,14 @@ export default function LandingPage() {
      antes de qualquer clique, senão o hop LP→checkout/WhatsApp perde a origem. */
   useEffect(() => {
     captureTrackingFromUrl();
+  }, []);
+
+  /* Web-CAPI: espelha o PageView do browser no servidor com o MESMO event_id
+     (window.__nxvPvId, gerado no index.html), pra recuperar o visitante que o
+     adblock/ITP bloqueia no browser SEM duplicar quem já foi contado. Best-effort. */
+  useEffect(() => {
+    const pvId = (window as unknown as { __nxvPvId?: string }).__nxvPvId;
+    if (pvId) sendWebCapi("PageView", pvId);
   }, []);
 
   /* ÂNCORA DE HASH (#planos, #faq, …) — sem isto o link de campanha NÃO rola.
