@@ -69,33 +69,77 @@ declare global {
   }
 }
 
-function loadFacebookSdk(appId: string, version: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.FB) return resolve();
+/** Promise única do SDK, memoizada no módulo. Ver `loadFacebookSdk`. */
+let sdkPromise: Promise<void> | null = null;
 
-    const finish = () => {
+/**
+ * Carrega e inicializa o SDK do Facebook — UMA vez por página.
+ *
+ * ⚠️ A VERSÃO ANTERIOR TRAVAVA O BOTÃO PARA SEMPRE, e o modo de falha vale
+ * registro porque não aparece no primeiro teste:
+ *
+ *   const existing = document.getElementById(FB_SDK_ID);
+ *   if (existing) { window.fbAsyncInit = finish; return; }   // ← sem resolve()
+ *
+ * Na PRIMEIRA abertura funciona: o script é inserido, o SDK chama `fbAsyncInit`,
+ * a promise resolve. Em qualquer REABERTURA a tag já existe, cai no `return`, e
+ * a promise fica pendente PARA SEMPRE — o `await` antes do `FB.login` nunca
+ * passa e o spinner gira eternamente. Pior: se o SDK já executou, ele já
+ * consumiu o `fbAsyncInit`, então reatribuí-lo não dispara nada.
+ *
+ * Medido em produção (2026-08-02): tag no DOM presente, `window.FB` undefined,
+ * `window.fbAsyncInit` undefined, e DOIS `<script src*="facebook">` — a função
+ * foi chamada mais de uma vez e cada chamada deixou uma promise órfã. A rede
+ * entregava o SDK normalmente (fetch no-cors respondeu opaque), então nunca foi
+ * bloqueio: era o `return` sem `resolve()`.
+ *
+ * O conserto não é acrescentar `resolve()` no ramo — é NÃO TER RAMO. Uma promise
+ * memoizada no módulo: quem chegar depois espera a MESMA, e não existe segundo
+ * caminho para divergir. Mesma família do invariante de `selfService.ts` — o
+ * defeito nasce de duas definições do mesmo estado, não de dois leitores.
+ */
+function loadFacebookSdk(appId: string, version: string): Promise<void> {
+  if (window.FB) return Promise.resolve();
+  if (sdkPromise) return sdkPromise;
+
+  sdkPromise = new Promise<void>((resolve, reject) => {
+    // TIMEOUT EXPLÍCITO. Sem ele, bloqueador de anúncio ou rede ruim produzem
+    // "spinner para sempre", que é indistinguível de "está carregando" para
+    // quem olha a tela. Falhar alto em 15s permite mostrar erro e liberar o
+    // botão — e o `sdkPromise = null` deixa o próximo clique tentar de novo.
+    const timer = window.setTimeout(() => {
+      sdkPromise = null;
+      reject(new Error('sdk_timeout'));
+    }, 15_000);
+
+    window.fbAsyncInit = () => {
+      window.clearTimeout(timer);
       // `autoLogAppEvents` off: não queremos telemetria da Meta disparando a
       // partir do painel do tenant sem que ele tenha pedido isso.
       window.FB?.init({ appId, autoLogAppEvents: false, xfbml: false, version });
       resolve();
     };
 
-    const existing = document.getElementById(FB_SDK_ID) as HTMLScriptElement | null;
-    if (existing) {
-      window.fbAsyncInit = finish;
-      return;
+    // Reaproveita a tag se já existir (o StrictMode monta duas vezes em dev). O
+    // `fbAsyncInit` acima já está registrado: se o SDK ainda não executou, ele o
+    // encontra; se já executou, `window.FB` existe e retornamos lá em cima.
+    if (!document.getElementById(FB_SDK_ID)) {
+      const script = document.createElement('script');
+      script.id = FB_SDK_ID;
+      script.src = FB_SDK_SRC;
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = 'anonymous';
+      script.onerror = () => {
+        window.clearTimeout(timer);
+        sdkPromise = null;
+        reject(new Error('sdk_load_failed'));
+      };
+      document.body.appendChild(script);
     }
-
-    const script = document.createElement('script');
-    script.id = FB_SDK_ID;
-    script.src = FB_SDK_SRC;
-    script.async = true;
-    script.defer = true;
-    script.crossOrigin = 'anonymous';
-    script.onerror = () => reject(new Error('sdk_load_failed'));
-    window.fbAsyncInit = finish;
-    document.body.appendChild(script);
   });
+
+  return sdkPromise;
 }
 
 /**
@@ -165,13 +209,30 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
 
     try {
       await loadFacebookSdk(APP_ID, GRAPH_VERSION);
-    } catch {
+    } catch (e) {
       setLoading(false);
-      toast.error('Não foi possível carregar o Facebook. Verifique bloqueadores de anúncio e tente de novo.');
+      toast.error(
+        (e as Error)?.message === 'sdk_timeout'
+          ? 'O Facebook demorou demais para responder. Verifique bloqueadores de anúncio e tente de novo.'
+          : 'Não foi possível carregar o Facebook. Verifique bloqueadores de anúncio e tente de novo.',
+      );
       return;
     }
 
-    window.FB?.login(
+    // ⚠️ SEM O `?.` AQUI, DE PROPÓSITO — e sem cair no `?.` de novo.
+    // `window.FB?.login(...)` parece defensivo e é o oposto: se `FB` for
+    // undefined, o `?.` NÃO CHAMA NADA e NÃO AVISA NADA — o `setLoading(false)`
+    // vive dentro do callback que nunca dispara, e o botão gira para sempre.
+    // É o mesmo defeito que travou este wizard em produção, uma linha adiante:
+    // um símbolo com a forma de "cuidado com o nulo" que transforma erro em
+    // silêncio. Estado impossível merece mensagem, não elegância.
+    if (!window.FB) {
+      setLoading(false);
+      toast.error('O Facebook carregou de forma incompleta. Recarregue a página e tente de novo.');
+      return;
+    }
+
+    window.FB.login(
       async (response) => {
         const code = response?.authResponse?.code;
         if (!code) {
