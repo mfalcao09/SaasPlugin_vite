@@ -7,11 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQueryClient } from '@tanstack/react-query';
-// Slot da TRILHA S. Import ESTÁTICO de propósito: import dinâmico de módulo
-// ausente quebra o build do Vite, então o arquivo precisa existir dos dois lados
-// do merge. Hoje é um stub que retorna null (ver o próprio arquivo); a versão
-// real vem da branch claude/priceless-neumann-63c32d e deve vencer no merge.
-import { MetaEmbeddedSignupButton } from './meta/MetaEmbeddedSignupButton';
+// UI de canais — porte do Intentus (picker de tipo + wizard de 3 etapas).
+// O `MetaEmbeddedSignupButton` que existia aqui (botão único, uma chamada,
+// dependente do `postMessage`) foi substituído pelo wizard: ver o cabeçalho de
+// `MetaChannelWizard.tsx` para por que três etapas são mais robustas que uma.
+import { ChannelTypeChoiceDialog } from './channels/ChannelTypeChoiceDialog';
+import { MetaChannelWizard } from './channels/MetaChannelWizard';
+import { SELF_SERVICE_ENABLED } from './channels/selfService';
+import { useMetaConnections, META_CONNECTIONS_KEY } from '@/hooks/useMetaConnections';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -19,7 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2 } from 'lucide-react';
+import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2, MessageCircle } from 'lucide-react';
 import {
   useEvolutionInstances,
   useSetDefaultEvolutionInstance,
@@ -280,6 +283,7 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
 function EvolutionQrTab() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const { data: instances, isLoading } = useEvolutionInstances();
   const { data: usage } = useOrgChannelUsage(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
@@ -292,6 +296,10 @@ function EvolutionQrTab() {
   const [renaming, setRenaming] = useState<EvolutionInstance | null>(null);
   const [deleting, setDeleting] = useState<EvolutionInstance | null>(null);
   const [creating, setCreating] = useState(false);
+  // Picker de tipo de canal (porte do Intentus). O botão principal deixou de
+  // abrir o QR direto: agora pergunta QUAL canal, e o QR virou uma das opções.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [metaWizardOpen, setMetaWizardOpen] = useState(false);
 
   const displayName = (inst: EvolutionInstance) =>
     (inst.metadata as any)?.display_name || inst.name;
@@ -363,9 +371,9 @@ function EvolutionQrTab() {
               Fazer upgrade
             </Button>
           ) : (
-            <Button onClick={() => setCreating(true)} className="gap-2">
+            <Button onClick={() => setPickerOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Nova conexão
+              Adicionar canal
             </Button>
           )}
         </div>
@@ -583,6 +591,28 @@ function EvolutionQrTab() {
       {renaming && <RenameDialog instance={renaming} onClose={() => setRenaming(null)} />}
 
       <CreateInstanceDialog open={creating} onClose={() => setCreating(false)} />
+
+      {/* Picker → rota para o fluxo do canal escolhido. Os modos desabilitados
+          ("Em breve") nem chegam aqui: o card não dispara `onSelect`. */}
+      <ChannelTypeChoiceDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={(mode) => {
+          if (mode === 'qrcode') setCreating(true);
+          if (mode === 'meta_oficial') setMetaWizardOpen(true);
+        }}
+      />
+
+      <MetaChannelWizard
+        open={metaWizardOpen}
+        onOpenChange={setMetaWizardOpen}
+        onConnected={() => {
+          queryClient.invalidateQueries({ queryKey: META_CONNECTIONS_KEY });
+          // O slot é COMPARTILHADO entre QR e Oficial: conectar um número
+          // oficial muda o badge "x / y canais" desta aba também.
+          queryClient.invalidateQueries({ queryKey: ['org-channel-usage'] });
+        }}
+      />
     </div>
   );
 }
@@ -590,22 +620,23 @@ function EvolutionQrTab() {
 /** Aba "WhatsApp Oficial (Meta)" — Cloud API org-scoped.
  *
  *  Dois caminhos coexistem por desenho, não por dívida:
- *   • self-service — o botão da Trilha S (`MetaEmbeddedSignupButton`), em que o
- *     salão conecta o próprio número sem ver credencial nenhuma;
+ *   • self-service — o wizard `MetaChannelWizard`, em que o salão conecta o
+ *     próprio número sem ver credencial nenhuma;
  *   • manual — operação cadastra a conexão pelas edge functions org-scoped
  *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
  *
- *  ⚠️ ESTE PARÁGRAFO DESCREVIA O MUNDO ANTERIOR AO MERGE d4860fa. Ele dizia
- *  "enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
- *  mostra só o caminho manual". O stub morreu no merge — o componente real
- *  entrou (181 linhas, sentinela ausente).
+ *  O QUE VALE AGORA (porte da UI do Intentus, 2026-08-02): o self-service é um
+ *  wizard de TRÊS etapas — `MetaChannelWizard` —, acionado pelo picker de tipo
+ *  de canal ou pelo botão "Conectar número" desta aba. Três etapas, e não uma,
+ *  porque o fluxo antigo dependia de dois canais assíncronos (callback do
+ *  FB.login + postMessage) e travava sem erro quando o segundo não chegava; e
+ *  porque a etapa de seleção é uma tela NOSSA, que é o que o App Review pediu
+ *  para ver. Detalhes no cabeçalho do wizard.
  *
- *  O QUE VALE AGORA: `MetaEmbeddedSignupButton` retorna null quando
- *  VITE_META_WHATSAPP_APP_ID ou VITE_META_EMBEDDED_SIGNUP_CONFIG_ID faltam no
- *  build. Ele lê `import.meta.env`, que o Vite inlina em BUILD-TIME — e o build
- *  roda DENTRO do container: variável exportada no shell do VPS não chega lá.
- *  O caminho é `apps/NexvyBeauty/.env.production`, versionado de propósito
- *  (`.gitignore` des-ignora) e copiado pelo `Dockerfile.app`.
+ *  A lista de conexões é REAL desde este porte (`useMetaConnections`). Antes
+ *  havia um card "nenhum número conectado" hardcoded e um `invalidateQueries`
+ *  para uma chave que nenhuma query usava: conectar com sucesso deixava a tela
+ *  afirmando, para sempre, que não havia conexão nenhuma.
  *
  *  ACOPLAMENTO QUE EXISTIU E FOI MORTO — fica registrado porque a solução é o
  *  que impede a recaída, não a ausência do problema.
@@ -614,45 +645,120 @@ function EvolutionQrTab() {
  *  metade estava certa isolada; o merge as tornou simultâneas. Nenhum autor
  *  podia ver, porque nenhum autor tinha as duas.
  *  A saída NÃO foi regra de sequência ("mesmo commit", "card nunca antes") —
- *  regra de sequência é coisa que alguém erra. Foi tirar a decisão daqui:
- *  quem sabe se o self-service está habilitado é o `MetaEmbeddedSignupButton`,
- *  e desde 6562225 é ele que renderiza o estado indisponível em vez de sumir.
- *  INVARIANTE A PRESERVAR: um estado, um dono. Se você sentir vontade de
- *  condicionar texto DESTE arquivo às VITE_META_*, pare — é a causa raiz
- *  voltando com outra roupa. */
+ *  regra de sequência é coisa que alguém erra.
+ *
+ *  ⚠️ INVARIANTE A PRESERVAR: UM ESTADO, UM DONO — e o dono é uma DEFINIÇÃO,
+ *  não um componente. A condição "self-service habilitado" mora em
+ *  `channels/selfService.ts` (`SELF_SERVICE_ENABLED`); esta aba e o wizard
+ *  IMPORTAM de lá. Se você sentir vontade de escrever
+ *  `import.meta.env.VITE_META_*` neste arquivo, pare — é a causa raiz voltando
+ *  com outra roupa, e ela já voltou uma vez: a primeira versão deste porte
+ *  redefiniu a condição aqui, e só não divergiu por sorte. Dois LEITORES de uma
+ *  definição não podem divergir; duas DEFINIÇÕES divergem em silêncio, cada uma
+ *  internamente correta. */
 function MetaCloudTab() {
   const queryClient = useQueryClient();
+  const { data: connections, isLoading } = useMetaConnections();
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  // ⚠️ LIDO, não redefinido. O invariante herdado deste arquivo — "um estado,
+  // um dono" — proíbe condicionar texto daqui às `VITE_META_*` diretamente, e
+  // eu violei isso na primeira versão do porte. A condição mora em
+  // `channels/selfService.ts`; aqui só se consome.
+  const selfServiceOn = SELF_SERVICE_ENABLED;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold">WhatsApp Oficial (Meta)</h3>
-        <p className="text-sm text-muted-foreground">
-          Conexão pela API oficial da Meta. Mais estável que o QR Code e sem risco de
-          desconectar sozinho — o número não fica preso a um aparelho.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h3 className="text-lg font-semibold">WhatsApp Oficial (Meta)</h3>
+          <p className="text-sm text-muted-foreground">
+            Conexão pela API oficial da Meta. Mais estável que o QR Code e sem risco de
+            desconectar sozinho — o número não fica preso a um aparelho.
+          </p>
+        </div>
+        {selfServiceOn && (
+          <Button onClick={() => setWizardOpen(true)} className="gap-2 shrink-0">
+            <Plus className="h-4 w-4" />
+            Conectar número
+          </Button>
+        )}
       </div>
 
-      <MetaEmbeddedSignupButton
+      {!selfServiceOn && (
+        <Card>
+          <CardContent className="py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              A conexão automática com a Meta ainda não está habilitada nesta
+              instalação. Fale com o suporte para conectar seu número oficial.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading && (
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-6">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando conexões…
+        </div>
+      )}
+
+      {!isLoading && connections?.length === 0 && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhum número oficial conectado nesta conta ainda.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading &&
+        connections?.map((conn) => (
+          <Card key={conn.id}>
+            <CardContent className="p-4 flex items-start gap-3">
+              <div className="rounded-lg bg-muted p-2.5 shrink-0">
+                <MessageCircle className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-sm truncate">{conn.display_name}</span>
+                  <Badge
+                    variant={conn.status === 'active' ? 'secondary' : 'destructive'}
+                    className="text-[10px] px-1.5 py-0"
+                  >
+                    {conn.status === 'active' ? 'Conectado' : conn.status}
+                  </Badge>
+                </div>
+                {conn.phone_number && (
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                    {conn.phone_number}
+                  </p>
+                )}
+                {conn.business_account_name && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {conn.business_account_name}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+      <MetaChannelWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
         onConnected={() => {
-          queryClient.invalidateQueries({ queryKey: ['whatsapp-meta-connections'] });
+          // Agora esta invalidação TEM consumidor: `useMetaConnections` usa
+          // exatamente esta chave. Até 2026-08-02 ela apontava para o vazio —
+          // a forma perfeita de "atualize a lista", sem lista para atualizar.
+          queryClient.invalidateQueries({ queryKey: META_CONNECTIONS_KEY });
+          // O contador de canais soma Evolution + Meta no mesmo slot, então uma
+          // conexão nova muda o badge da OUTRA aba também. Prefixo sem orgId
+          // atinge a chave `['org-channel-usage', orgId]` de qualquer org.
+          queryClient.invalidateQueries({ queryKey: ['org-channel-usage'] });
         }}
       />
-
-      <Card>
-        <CardContent className="py-8 text-center space-y-2">
-          {/* Empty-state e SÓ isto. A segunda linha daqui dizia "para conectar um
-              número oficial, fale com o suporte" — verdade enquanto o botão acima
-              não existia, contradição direta depois que ele passou a renderizar.
-              Quem sabe se o self-service está habilitado é o próprio
-              `MetaEmbeddedSignupButton`, e desde 6562225 é ELE que informa o
-              estado indisponível. Não replique essa decisão aqui: dois
-              componentes afirmando sobre o mesmo estado foi a causa raiz. */}
-          <p className="text-sm text-muted-foreground">
-            Nenhum número oficial conectado nesta conta ainda.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json().catch(() => ({}));
-    const { code, phone_number_id, waba_id, business_name } = body ?? {};
+    const { code } = body ?? {};
 
     // resolveOrgId IGNORA o organization_id do body para usuário de tenant e
     // deriva da própria org do JWT. Só service_role/super_admin podem apontar
@@ -60,8 +60,22 @@ Deno.serve(async (req: Request) => {
     const orgId = resolveOrgId(auth, body?.organization_id ?? null);
     if (!orgId) return json({ error: 'organizacao nao resolvida para este usuario' }, 403);
 
-    if (!code || !phone_number_id || !waba_id) {
-      return json({ error: 'code, phone_number_id e waba_id sao obrigatorios' }, 400);
+    // ⚠️ `phone_number_id`/`waba_id` NÃO entram mais por aqui. Antes chegavam do
+    // `postMessage` do SDK e esta função gravava a conexão inteira num passo. O
+    // fluxo virou duas chamadas — esta troca o code e LISTA os ativos; a
+    // `-register` grava o que o usuário escolher. Motivos, na ordem em que pesam:
+    //
+    //   1. O `postMessage` era um SEGUNDO canal assíncrono. Se não chegasse
+    //      (bloqueado, popup fechada cedo, sessionInfoVersion divergente), o botão
+    //      ficava em "Conectando…" para sempre, sem erro. E havia corrida: o
+    //      callback do FB.login podia disparar ANTES do postMessage, mandando ids
+    //      vazios. Perguntar ao Graph elimina os dois — é uma requisição que nós
+    //      controlamos, não um evento que torcemos para receber.
+    //   2. A escolha do número passa a acontecer numa tela NOSSA — que é o que o
+    //      analista da Meta pediu para ver ("um usuário fornecendo ao app acesso
+    //      ao recurso"). Um postMessage invisível não aparece em vídeo nenhum.
+    if (!code) {
+      return json({ error: 'code e obrigatorio' }, 400);
     }
 
     const appId = Deno.env.get('META_WHATSAPP_APP_ID');
@@ -140,126 +154,69 @@ Deno.serve(async (req: Request) => {
       }, 409);
     }
 
-    // ── 3. AUTORIZAÇÃO DO RECURSO (não é enriquecimento — é gate) ────────────
-    // `phone_number_id` e `waba_id` chegam do BODY, escolhidos pelo cliente.
-    // Validar o organization_id não basta: sem checar estes dois, um tenant com
-    // um code legítimo do PRÓPRIO WABA pode gravar o número de OUTRO negócio.
-    // Como `phone_number_id` tem UNIQUE parcial, isso não vaza dado — faz pior:
-    // trava o dono real fora, que passa a receber o 409 "já está em outra conta"
-    // sem nenhum rastro de que o número foi tomado.
-    //
-    // O Graph é o árbitro: ele só responde por um asset se o token tiver acesso
-    // a ele. Como o token veio do code que ESTE usuário autorizou, "o Graph
-    // respondeu" é prova de que o asset pertence a quem está conectando.
-    //
-    // FALHA FECHADA, de propósito: se o Graph estiver fora, um tenant legítimo
-    // é recusado e tenta de novo. O inverso — aceitar sem confirmar — grava um
-    // squat permanente. Recusa é reversível; squat não.
-    let phoneInfo: Record<string, unknown>;
-    let wabaInfo: Record<string, unknown>;
-    try {
-      // graphFetch põe o token no header Authorization. Nunca na query string,
-      // que vaza em log de proxy, CDN, APM e histórico de erro.
-      [phoneInfo, wabaInfo] = await Promise.all([
-        graphFetch<Record<string, unknown>>(
-          `/${phone_number_id}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier`,
-          accessToken,
-        ),
-        graphFetch<Record<string, unknown>>(`/${waba_id}?fields=name,id`, accessToken),
-      ]);
-    } catch (e) {
-      // graphFetch lança GraphError em qualquer não-2xx, então este catch vê
-      // erro da API da Meta e não só falha de rede (`fetch` sozinho resolve
-      // normalmente em 4xx — foi assim que a versão anterior deste bloco
-      // prometia um tratamento que nunca executava).
-      console.warn('[embedded-signup-exchange] Graph recusou os assets', String(e));
-      return json({
-        error: 'Nao foi possivel confirmar este numero na conta que voce autorizou. ' +
-          'Refaca a conexao e selecione um numero da sua propria conta.',
-        code: 'asset_not_authorized',
-      }, 403);
-    }
+    // ── 3. RASCUNHO + LISTAGEM DOS ATIVOS ───────────────────────────────────
+    // Limpa rascunhos abandonados desta org ANTES de criar o novo. Quem fecha o
+    // wizard na etapa de seleção deixa uma linha `pending` com o token dentro;
+    // sem esta linha elas se acumulariam para sempre. Autolimpeza no caminho
+    // quente dispensa cron — e cron é a coisa que ninguém lembra de criar.
+    // Seguro porque o índice UNIQUE de `phone_number_id` é PARCIAL
+    // (`WHERE phone_number_id IS NOT NULL`): N rascunhos coexistem sem colidir.
+    await sbAdmin
+      .from('whatsapp_meta_connections')
+      .delete()
+      .eq('organization_id', orgId)
+      .eq('status', 'pending')
+      .is('phone_number_id', null);
 
-    // Defesa em profundidade: 2xx com corpo vazio não é confirmação.
-    if (!phoneInfo?.display_phone_number || String(wabaInfo?.id ?? '') !== String(waba_id)) {
-      console.warn('[embedded-signup-exchange] assets nao confirmados', { phone_number_id, waba_id });
-      return json({
-        error: 'Este numero nao pertence a conta que voce autorizou.',
-        code: 'asset_not_authorized',
-      }, 403);
-    }
-
-    // ── 3. INSERT ÚNICO E COMPLETO ──────────────────────────────────────────
-    // INVARIANTE: este fluxo NUNCA grava conexão parcial. Ou a linha fecha com
-    // token + waba_id + phone_number_id, ou não existe. Ao contrário do wizard
-    // manual (humano preenchendo em minutos, precisa de rascunho), aqui tudo
-    // chega junto e o code morre em 30s — não há estado intermediário legítimo.
-    // Conexão órfã sem phone_number_id nesta tabela não veio deste caminho.
-    //
-    // `status: 'active'` só é honesto porque o bloco 2 falha fechado: chegar
-    // aqui já implica que o Graph confirmou os dois assets contra o token. Se
-    // aquele gate um dia virar degradação silenciosa, este 'active' passa a
-    // mentir e o resolvedor unificado roteia uma conexão não-confirmada.
-    const displayName =
-      (typeof business_name === 'string' && business_name.trim()) ||
-      (wabaInfo?.name as string) ||
-      (phoneInfo?.verified_name as string) ||
-      'WhatsApp Oficial';
-
-    const { data: row, error } = await sbAdmin
+    const { data: draft, error: draftError } = await sbAdmin
       .from('whatsapp_meta_connections')
       .insert({
         organization_id: orgId,
-        display_name: displayName,                   // NOT NULL
+        display_name: 'Conexão em andamento',      // NOT NULL; vira o nome real no register
         webhook_verify_token: generateVerifyToken(), // NOT NULL
         app_id: appId,
-        // No self-service o app é NOSSO: existe UM secret, em env do servidor.
-        // Cifrar por conexão replicaria N vezes o mesmo segredo — mais
-        // superfície, zero ganho. Daí as duas decisões abaixo, pelo mesmo motivo:
-        //
-        //   * `app_secret_source: 'platform'` DECLARA onde o webhook busca o
-        //     secret. Sem esta linha o default é 'connection', o webhook procura
-        //     na conexão, não acha, e NEGA todo inbound com 403. É a linha que
-        //     faz o WhatsApp do salão receber mensagem.
-        //   * `app_secret_encrypted` fica NULL — e agora NULL significa só "não
-        //     tem", não "adivinhe o modelo". O contrato entre o caminho manual
-        //     (app do cliente) e o self-service (app nosso) está declarado na
-        //     coluna, não implícito na ausência de dado.
+        // Ver o bloco do register para o contrato completo: no self-service o app
+        // é NOSSO, então o secret vive em env e esta coluna DECLARA isso. Sem
+        // `app_secret_source: 'platform'` o webhook procura o secret na conexão,
+        // não acha, e nega todo inbound com 403.
         app_secret_source: 'platform',
         access_token_encrypted: await encryptSecret(accessToken),
-        phone_number_id: String(phone_number_id),
-        waba_id: String(waba_id),
-        phone_number: (phoneInfo?.display_phone_number as string) ?? null,
-        business_account_name: (wabaInfo?.name as string) ?? null,
-        quality_rating: (phoneInfo?.quality_rating as string) ?? null,
-        messaging_limit_tier: (phoneInfo?.messaging_limit_tier as string) ?? null,
-        status: 'active',
-        last_health_check_at: new Date().toISOString(),
+        status: 'pending',
         created_by: auth.userId,
       })
       .select('id')
       .single();
 
-    if (error) {
-      // 23505 = unique_violation. `phone_number_id` tem UNIQUE parcial para
-      // impedir no banco a ambiguidade cross-tenant que o webhook resolveria
-      // errado. É situação prevista, logo é erro de NEGÓCIO — não 500.
-      if ((error as { code?: string }).code === '23505') {
-        return json({
-          error: 'Este numero de WhatsApp ja esta conectado a outra conta. ' +
-            'Desconecte-o de la antes de conectar aqui.',
-          code: 'phone_already_connected',
-        }, 409);
-      }
-      console.error('[embedded-signup-exchange] insert falhou', error.message);
-      return json({ error: error.message }, 500);
+    if (draftError) {
+      console.error('[embedded-signup-exchange] rascunho falhou', draftError.message);
+      return json({ error: draftError.message }, 500);
     }
 
-    return json({
-      connection_id: row.id,
-      phone_number: (phoneInfo?.display_phone_number as string) ?? null,
-      business_account_name: (wabaInfo?.name as string) ?? null,
-    });
+    // Pergunta ao Graph o que ESTE token alcança. É daqui que sai a lista da
+    // etapa 2 — e é o que substitui o `postMessage`.
+    //
+    // FALHA FECHADA: sem a lista não há o que escolher, então devolvemos erro em
+    // vez de uma tela vazia que o usuário leria como "não tenho nenhuma conta".
+    let assets: Record<string, unknown>;
+    try {
+      // graphFetch põe o token no header Authorization. NUNCA na query string —
+      // ali ele vaza em log de proxy, CDN, APM e histórico de erro. (O Intentus,
+      // de onde esta tela foi portada, monta `...&access_token=${token}` na URL.)
+      assets = await graphFetch<Record<string, unknown>>(
+        '/me/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,' +
+          'phone_numbers{id,display_phone_number,verified_name,quality_rating}}',
+        accessToken,
+      );
+    } catch (e) {
+      console.warn('[embedded-signup-exchange] Graph recusou a listagem', String(e));
+      return json({
+        error: 'Não foi possível ler as contas de WhatsApp que você autorizou. ' +
+          'Refaça a conexão.',
+        code: 'assets_unavailable',
+      }, 502);
+    }
+
+    return json({ connection_id: draft.id, assets });
   } catch (e) {
     console.error('[embedded-signup-exchange] unhandled', e);
     const msg = e instanceof Error ? e.message : String(e);
