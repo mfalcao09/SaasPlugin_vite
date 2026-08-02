@@ -25,6 +25,36 @@ function supa() {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** ── DE ONDE VEM O APP SECRET — os dois caminhos usam FONTES DIFERENTES ──────
+ *
+ *  Este é o contrato que faltava estar escrito em algum lugar, e cuja ausência
+ *  criou um defeito de COSTURA (achado da controladora lendo os dois fontes no
+ *  ar, não um deles):
+ *
+ *    MANUAL (meta-whatsapp-connect / wizard)  → app é DO CLIENTE.
+ *        Cada conexão tem app_secret próprio, cifrado em app_secret_encrypted.
+ *
+ *    SELF-SERVICE (whatsapp-embedded-signup-exchange / Embedded Signup)
+ *        → app é NOSSO (1289456453376034). Existe UM secret, em env do
+ *        servidor, e a coluna fica NULL DE PROPÓSITO — cifrar por conexão
+ *        replicaria N vezes o mesmo segredo, aumentando superfície sem ganho.
+ *
+ *  O DEFEITO: `decryptSecret('')` NÃO lança — devolve '' (meta-crypto.ts:42).
+ *  Então uma conexão do self-service produzia HMAC com CHAVE VAZIA, nunca
+ *  batia, e o webhook respondia 403 a TODO inbound. A Meta reentrega, leva 403
+ *  de novo, para sempre. Falha 100% fechada, com cara de "o webhook não está
+ *  recebendo nada" — ninguém investigaria HMAC, culpariam a Meta ou o número.
+ *
+ *  Nenhum dos dois lados estava errado sozinho: o defeito morava no contrato.
+ *
+ *  ⚠️ NUNCA transformar "sem secret" em "não verifica". Isso reabriria pela
+ *  porta dos fundos o P0 fechado hoje, com aparência de tratar caso legítimo.
+ *  Ausência de secret NEGA — igual à ausência de header. */
+async function resolveAppSecret(encrypted: string | null | undefined): Promise<string> {
+  if (encrypted) return await decryptSecret(encrypted);   // manual: secret do cliente
+  return Deno.env.get('META_WHATSAPP_APP_SECRET') ?? '';  // self-service: app nosso
+}
+
 function extractConnectionIdFromPath(url: URL): string | null {
   // Aceita /functions/v1/meta-whatsapp-webhook/{uuid}
   const parts = url.pathname.split('/').filter(Boolean);
@@ -102,7 +132,20 @@ Deno.serve(async (req: Request) => {
     const sig = req.headers.get('x-hub-signature-256') ?? '';
     if (!sig.startsWith('sha256=')) return new Response('forbidden', { status: 403 });
     try {
-      const appSecret = await decryptSecret(pinnedConn.app_secret_encrypted);
+      const appSecret = await resolveAppSecret(pinnedConn.app_secret_encrypted);
+      if (!appSecret) {
+        // Fail-closed: sem segredo não há como verificar, e não verificar seria
+        // o P0 de volta. Ver resolveAppSecret.
+        await sb.from('whatsapp_meta_webhook_logs').insert({
+          connection_id: pinnedConn.id,
+          organization_id: pinnedConn.organization_id,
+          event_type: 'invalid_signature',
+          payload,
+          processed: false,
+          error: 'app secret indisponivel (nem na conexao nem em META_WHATSAPP_APP_SECRET)',
+        });
+        return new Response('forbidden', { status: 403 });
+      }
       const expected = 'sha256=' + (await hmacSha256Hex(appSecret, rawBody));
       if (!timingSafeEqual(sig, expected)) {
         await sb.from('whatsapp_meta_webhook_logs').insert({
@@ -187,7 +230,19 @@ Deno.serve(async (req: Request) => {
           return new Response('forbidden', { status: 403 });
         }
         try {
-          const appSecret = await decryptSecret(conn.app_secret_encrypted);
+          const appSecret = await resolveAppSecret(conn.app_secret_encrypted);
+          if (!appSecret) {
+            // Fail-closed — mesma razão do caminho pinned. Ver resolveAppSecret.
+            await sb.from('whatsapp_meta_webhook_logs').insert({
+              connection_id: conn.id,
+              organization_id: conn.organization_id,
+              event_type: 'invalid_signature',
+              payload,
+              processed: false,
+              error: 'app secret indisponivel (nem na conexao nem em META_WHATSAPP_APP_SECRET)',
+            });
+            return new Response('forbidden', { status: 403 });
+          }
           const expected = 'sha256=' + (await hmacSha256Hex(appSecret, rawBody));
           if (!timingSafeEqual(sig, expected)) {
             await sb.from('whatsapp_meta_webhook_logs').insert({
