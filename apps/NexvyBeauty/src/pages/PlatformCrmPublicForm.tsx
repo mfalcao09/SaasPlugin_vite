@@ -628,21 +628,30 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
     return (
       <FormThemeWrapper theme={form.theme} className="min-h-screen">
         <div className="relative min-h-screen overflow-hidden bg-[#08090c] text-white">
-          {/* Foto: ocupa o topo no mobile, os 2/3 da direita no desktop. */}
-          <div className="absolute inset-x-0 top-0 h-[52vh] md:inset-y-0 md:left-[38%] md:h-auto">
+          {/* Foto INTEIRA (asset sem recorte): no desktop sangra por toda a
+              tela; no mobile ocupa o topo. A assinatura manuscrita do original
+              vive no terco esquerdo e some sob mascara solida (abaixo) — cortar
+              mutila a foto, mascarar preserva. */}
+          {/* h-[58vh] no mobile nao e estetica: com 50vh a imagem escalava para
+              ~705px de largura e sobrava so 330px de recorte, insuficiente para
+              tirar a assinatura (que termina em ~337px). Mais altura = mais
+              escala = assinatura fora de quadro. Medido, nao chutado. */}
+          <div className="absolute inset-x-0 top-0 h-[58vh] md:inset-0 md:h-auto">
             <img
               src={heroUrl}
               alt=""
-              // O asset ja vem recortado no sujeito (a assinatura manuscrita do
-              // original foi removida na fonte, nao escondida por gradiente —
-              // letra cortada le como defeito). Por isso object-center basta.
-              className="h-full w-full object-cover object-center"
+              // Desktop: centro — a foto inteira aparece. Mobile: num contentor
+              // estreito o recorte e inevitavel com object-cover, entao ancora
+              // na borda direita, o que mostra o sujeito e exclui a assinatura.
+              className="h-full w-full object-cover object-right md:object-center"
               loading="eager"
             />
-            {/* Gradientes que dissolvem a foto no fundo — sem borda visível. */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[#08090c]/35 to-transparent md:hidden" />
-            <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-[#08090c] via-[#08090c]/55 to-transparent" />
-            <div className="absolute inset-0 hidden md:block bg-gradient-to-t from-[#08090c]/80 to-transparent" />
+            {/* MASCARA (desktop): preto solido ate ~46% cobre a assinatura e
+                vira a cama do texto; dai pra direita abre e revela o sujeito. */}
+            <div className="absolute inset-0 hidden md:block bg-[linear-gradient(to_right,#08090c_0%,#08090c_46%,rgba(8,9,12,0.82)_58%,rgba(8,9,12,0.35)_78%,rgba(8,9,12,0.15)_100%)]" />
+            <div className="absolute inset-0 hidden md:block bg-gradient-to-t from-[#08090c] via-transparent to-[#08090c]/70" />
+            {/* Mobile: dissolve a base da foto no fundo. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[#08090c]/30 to-transparent md:hidden" />
           </div>
 
           <div className="relative z-10 flex min-h-screen items-end md:items-center">
