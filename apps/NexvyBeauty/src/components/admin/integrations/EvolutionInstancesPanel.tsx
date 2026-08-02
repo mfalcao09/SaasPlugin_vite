@@ -595,8 +595,31 @@ function EvolutionQrTab() {
  *   • manual — operação cadastra a conexão pelas edge functions org-scoped
  *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
  *
- *  Enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
- *  mostra só o caminho manual — nunca um botão quebrado na cara do tenant. */
+ *  ⚠️ ESTE PARÁGRAFO DESCREVIA O MUNDO ANTERIOR AO MERGE d4860fa. Ele dizia
+ *  "enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
+ *  mostra só o caminho manual". O stub morreu no merge — o componente real
+ *  entrou (181 linhas, sentinela ausente).
+ *
+ *  O QUE VALE AGORA: `MetaEmbeddedSignupButton` retorna null quando
+ *  VITE_META_WHATSAPP_APP_ID ou VITE_META_EMBEDDED_SIGNUP_CONFIG_ID faltam no
+ *  build. Ele lê `import.meta.env`, que o Vite inlina em BUILD-TIME — e o build
+ *  roda DENTRO do container: variável exportada no shell do VPS não chega lá.
+ *  O caminho é `apps/NexvyBeauty/.env.production`, versionado de propósito
+ *  (`.gitignore` des-ignora) e copiado pelo `Dockerfile.app`.
+ *
+ *  ACOPLAMENTO QUE EXISTIU E FOI MORTO — fica registrado porque a solução é o
+ *  que impede a recaída, não a ausência do problema.
+ *  Durante algumas horas esta aba afirmou duas coisas ao mesmo tempo: um botão
+ *  de auto-conexão e, um card abaixo, "para conectar, fale com o suporte". Cada
+ *  metade estava certa isolada; o merge as tornou simultâneas. Nenhum autor
+ *  podia ver, porque nenhum autor tinha as duas.
+ *  A saída NÃO foi regra de sequência ("mesmo commit", "card nunca antes") —
+ *  regra de sequência é coisa que alguém erra. Foi tirar a decisão daqui:
+ *  quem sabe se o self-service está habilitado é o `MetaEmbeddedSignupButton`,
+ *  e desde 6562225 é ele que renderiza o estado indisponível em vez de sumir.
+ *  INVARIANTE A PRESERVAR: um estado, um dono. Se você sentir vontade de
+ *  condicionar texto DESTE arquivo às VITE_META_*, pare — é a causa raiz
+ *  voltando com outra roupa. */
 function MetaCloudTab() {
   const queryClient = useQueryClient();
 
@@ -618,12 +641,15 @@ function MetaCloudTab() {
 
       <Card>
         <CardContent className="py-8 text-center space-y-2">
+          {/* Empty-state e SÓ isto. A segunda linha daqui dizia "para conectar um
+              número oficial, fale com o suporte" — verdade enquanto o botão acima
+              não existia, contradição direta depois que ele passou a renderizar.
+              Quem sabe se o self-service está habilitado é o próprio
+              `MetaEmbeddedSignupButton`, e desde 6562225 é ELE que informa o
+              estado indisponível. Não replique essa decisão aqui: dois
+              componentes afirmando sobre o mesmo estado foi a causa raiz. */}
           <p className="text-sm text-muted-foreground">
             Nenhum número oficial conectado nesta conta ainda.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Para conectar um número oficial, fale com o suporte — a habilitação é feita
-            junto com a Meta.
           </p>
         </CardContent>
       </Card>

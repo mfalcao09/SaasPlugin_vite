@@ -1509,7 +1509,15 @@ function Planos() {
           </h2>
           <p className="lead">
             Sem fidelidade. Cancele quando quiser, sem multa e sem burocracia.{" "}
-            <b>Uma cliente recuperada por mês já paga a mensalidade — as outras são lucro.</b>
+            {/* NÃO cravar constante aqui ("uma cliente paga a mensalidade", "duas pagam").
+                A frase anterior exigia ticket ≥ R$ 427 — o plano DESTAQUE, que é a
+                referência declarada do "×mensalidade" (ver :1307) — enquanto esta mesma
+                página exibe tickets de R$ 80 a R$ 250 e o simulador abre em R$ 120.
+                Falsificável em segundos por quem sabe o próprio ticket, que é exatamente
+                a leitora. E qualquer constante volta a mentir na próxima mudança de preço:
+                os planos já subiram uma vez (Essencial R$ 217 → R$ 275). A conta é do
+                Raio-X, que tem o ticket e a carteira REAIS dela. Decisão Marcelo 02/08. */}
+            <b>Quantas clientes precisam voltar pra pagar o plano? O Raio-X faz essa conta com o seu ticket.</b>
           </p>
           <div className="serie">
             ✨ <b>Agentes de IA de série</b> em todos os planos — do primeiro ao último.
