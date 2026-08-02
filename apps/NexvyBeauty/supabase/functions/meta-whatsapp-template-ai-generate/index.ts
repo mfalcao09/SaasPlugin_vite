@@ -61,12 +61,18 @@ Deno.serve(async (req: Request) => {
 
   const { data: conn } = await sb.from('whatsapp_meta_connections').select('organization_id, display_name').eq('id', connection_id).maybeSingle();
 
+  // Null-check ANTES do gate (forma de meta-whatsapp-media-upload:58). Estava
+  // invertido: `conn.organization_id` era desreferenciado na linha do gate e o
+  // `if (!conn)` vinha depois — connection_id inexistente virava TypeError/500
+  // em vez de 404. Falha fechada, então não era furo de segurança; era o erro
+  // errado, que manda quem depura procurar bug de servidor em vez de id inválido.
+  if (!conn) return json({ error: 'connection not found' }, 404);
+
   // Gate de org contra a org DA CONEXÃO — nunca contra um org_id vindo do body.
   // Sem isto, qualquer usuário autenticado opera a conexão de outro tenant só
   // por adivinhar ou vazar um connection_id.
   const denied = assertOrgAccess(auth, conn.organization_id as string, corsHeaders);
   if (denied) return denied;
-  if (!conn) return json({ error: 'connection not found' }, 404);
 
   const systemPrompt = `Você é especialista em criar templates HSM aprovados pela Meta WhatsApp Cloud API.
 
