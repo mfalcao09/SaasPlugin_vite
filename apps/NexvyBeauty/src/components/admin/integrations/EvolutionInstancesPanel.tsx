@@ -607,14 +607,19 @@ function EvolutionQrTab() {
  *  O caminho é `apps/NexvyBeauty/.env.production`, versionado de propósito
  *  (`.gitignore` des-ignora) e copiado pelo `Dockerfile.app`.
  *
- *  ⚠️ ACOPLAMENTO COM O CARD ABAIXO — declarado porque é INVISÍVEL no diff:
- *  o texto "fale com o suporte" só é honesto ENQUANTO o botão não renderiza.
- *  Com as env vars no build, a tela passa a afirmar as duas coisas ao mesmo
- *  tempo — um botão de auto-conexão e, logo abaixo, "para conectar, fale com o
- *  suporte" —, desmentindo na própria tela a alegação de self-service que a
- *  gravação do App Review existe para provar.
- *  Por isso env vars e texto do card viajam no MESMO COMMIT: ordem que precisa
- *  ser lembrada é ordem que alguém erra; no mesmo commit não há o que errar. */
+ *  ACOPLAMENTO QUE EXISTIU E FOI MORTO — fica registrado porque a solução é o
+ *  que impede a recaída, não a ausência do problema.
+ *  Durante algumas horas esta aba afirmou duas coisas ao mesmo tempo: um botão
+ *  de auto-conexão e, um card abaixo, "para conectar, fale com o suporte". Cada
+ *  metade estava certa isolada; o merge as tornou simultâneas. Nenhum autor
+ *  podia ver, porque nenhum autor tinha as duas.
+ *  A saída NÃO foi regra de sequência ("mesmo commit", "card nunca antes") —
+ *  regra de sequência é coisa que alguém erra. Foi tirar a decisão daqui:
+ *  quem sabe se o self-service está habilitado é o `MetaEmbeddedSignupButton`,
+ *  e desde 6562225 é ele que renderiza o estado indisponível em vez de sumir.
+ *  INVARIANTE A PRESERVAR: um estado, um dono. Se você sentir vontade de
+ *  condicionar texto DESTE arquivo às VITE_META_*, pare — é a causa raiz
+ *  voltando com outra roupa. */
 function MetaCloudTab() {
   const queryClient = useQueryClient();
 
@@ -636,12 +641,15 @@ function MetaCloudTab() {
 
       <Card>
         <CardContent className="py-8 text-center space-y-2">
+          {/* Empty-state e SÓ isto. A segunda linha daqui dizia "para conectar um
+              número oficial, fale com o suporte" — verdade enquanto o botão acima
+              não existia, contradição direta depois que ele passou a renderizar.
+              Quem sabe se o self-service está habilitado é o próprio
+              `MetaEmbeddedSignupButton`, e desde 6562225 é ELE que informa o
+              estado indisponível. Não replique essa decisão aqui: dois
+              componentes afirmando sobre o mesmo estado foi a causa raiz. */}
           <p className="text-sm text-muted-foreground">
             Nenhum número oficial conectado nesta conta ainda.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Para conectar um número oficial, fale com o suporte — a habilitação é feita
-            junto com a Meta.
           </p>
         </CardContent>
       </Card>
