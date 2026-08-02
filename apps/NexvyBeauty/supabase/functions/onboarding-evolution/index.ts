@@ -27,6 +27,7 @@
 //    (É o que impede pedir QR "para a org do vizinho" com um link válido.)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { fetchChannelUsage, channelLimitMessage, type ChannelUsage } from "../_shared/channel-limit.ts";
 import {
   configureWebhook,
   evoFetch,
@@ -132,26 +133,32 @@ Deno.serve(async (req) => {
     let inst: any = existing;
 
     if (!inst) {
-      // ---- limites do plano (mesma RPC do proxy) ----
-      const { data: limitsData, error: limitsErr } = await admin.rpc(
-        "get_organization_effective_limits",
-        { p_org_id: orgId },
-      );
-      if (limitsErr) {
-        return json({ ok: false, error: "Falha ao carregar limites do plano: " + limitsErr.message });
+      // ---- limite de canais do plano: MESMO resolvedor do evolution-proxy ----
+      // SLOT COMPARTILHADO entre QR e Oficial (decisão Marcelo 2026-08-01,
+      // verbatim: "Consome o mesmo slot"). A contagem não é mais local: vive em
+      // `get_org_channel_usage` e soma as duas tabelas org-scoped. Duplicá-la
+      // aqui é o que deixou este gate cego para o caminho Meta.
+      //
+      // MUDANÇA DE COMPORTAMENTO, DECLARADA: o `?? 1` anterior fazia uma recusa
+      // de leitura da RPC (que devolve NULL SEM `error`) virar "limite 1" — e,
+      // como org nova tem 0 instâncias, o gate passava. Falha invisível que
+      // liberava criação sem limite conhecido. Agora falha FECHA.
+      // Na prática é inalcançável: esta edge usa service_role, que passa o gate
+      // da RPC. Mas se um dia alcançar, é melhor a compradora ver um erro do
+      // que a gente descobrir depois que o plano dela nunca foi respeitado.
+      let usage: ChannelUsage;
+      try {
+        usage = await fetchChannelUsage(admin, orgId);
+      } catch (e) {
+        return json({ ok: false, error: (e as Error).message });
       }
-      const maxConnections: number = (limitsData as any)?.limits?.max_connections ?? 1;
 
-      const { count: currentCount } = await admin
-        .from("evolution_instances")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId);
-
-      if ((currentCount ?? 0) >= maxConnections) {
+      if (usage.used >= usage.limit) {
         return json({
           ok: false,
-          error: `Limite de ${maxConnections} conexão(ões) do seu plano atingido.`,
+          error: channelLimitMessage(usage, "evolution"),
           limit_reached: true,
+          by_type: usage.by_type,
         });
       }
 
@@ -218,7 +225,12 @@ Deno.serve(async (req) => {
           instance_id: uuid || finalName,
           instance_token: instanceTokenNew,
           status: "disconnected",
-          is_default: (currentCount ?? 0) === 0,
+          // `by_type.evolution`, NÃO `usage.used`: os dois valiam o mesmo número
+          // enquanto só existia um tipo de canal. `is_default` é o padrão de
+          // roteamento do Evolution — org com 1 conexão Meta e 0 instâncias QR
+          // tem `used = 1`, e usar esse número faria a PRIMEIRA instância QR
+          // nascer sem ser padrão, quebrando o envio por QR sem erro nenhum.
+          is_default: (usage.by_type.evolution ?? 0) === 0,
           created_by_super_admin: false,
           metadata: {
             instance_uuid: uuid,

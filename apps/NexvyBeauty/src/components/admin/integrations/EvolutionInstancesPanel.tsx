@@ -32,7 +32,7 @@ import {
   type EvolutionInstance,
 } from '@/hooks/useEvolutionInstances';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrganizationEffectivePlan } from '@/hooks/useOrganizationPlan';
+import { useOrgChannelUsage } from '@/hooks/useOrganizationPlan';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PresenceTestButton } from './PresenceTestButton';
@@ -281,7 +281,7 @@ function EvolutionQrTab() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: instances, isLoading } = useEvolutionInstances();
-  const { data: effectivePlan } = useOrganizationEffectivePlan(profile?.organization_id);
+  const { data: usage } = useOrgChannelUsage(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
   const disconnectMut = useDisconnectEvolutionInstance();
   const logoutMut = useLogoutEvolutionInstance();
@@ -298,9 +298,41 @@ function EvolutionQrTab() {
 
   const isLinked = (s: string) => s === 'connected' || s === 'paired';
 
-  const used = instances?.length ?? 0;
-  const limit = effectivePlan?.limits?.max_connections ?? 1;
-  const limitReached = used >= limit;
+  // USO E LIMITE VÊM DO MESMO RESOLVEDOR QUE OS GATES DO SERVIDOR
+  // (`get_org_channel_usage`), não de `instances.length`.
+  //
+  // Com slot compartilhado (decisão Marcelo 2026-08-01, verbatim: "Consome o
+  // mesmo slot"), uma conexão via WhatsApp Oficial ocupa vaga e NÃO aparece
+  // nesta lista — ela vive na aba ao lado. Derivar `used` do tamanho da lista
+  // faria a tela dizer "1 / 4" para uma org que já usa 2 canais, e o botão
+  // "Nova conexão" convidaria para uma criação que o servidor vai recusar.
+  // Tela e gate lendo a mesma função é o que impede essa divergência.
+  const used = usage?.used;
+  const byType = usage?.by_type;
+
+  // O `?? 1` que estava aqui AFIRMAVA um limite que não tinha sido carregado.
+  // Duas formas de errar, as duas na cara do cliente:
+  //
+  //   * enquanto a query do plano está em voo — e ela resolve independente da
+  //     query de instâncias — um cliente Ultra com 4 conexões via badge
+  //     vermelho "4 / 1 usadas", o aviso "Você atingiu o limite de 1
+  //     conexão(ões) do seu plano" e o botão "Nova conexão" substituído por
+  //     "Fazer upgrade". Fato comercial fabricado a partir de "ainda não sei",
+  //     que se conserta sozinho um instante depois e que ninguém reproduz.
+  //
+  //   * a RPC devolve NULL tanto para "org sem limite" quanto para RECUSA DE
+  //     LEITURA (o gate `auth.role()=... is not true` no topo da função). NULL
+  //     não é `error`, então o hook não lança: a recusa chegava aqui como se
+  //     fosse dado, e o `?? 1` a traduzia para política de negócio.
+  //
+  // Gatear em "eu tenho o número?" cobre os dois casos. Gatear em `isLoading`
+  // cobriria só o primeiro — por isso a checagem é de valor, não de estado da
+  // requisição. Enquanto é desconhecido nada é afirmado: o badge mostra "—" e
+  // o caminho de criar conexão continua aberto, que é o fail-open correto aqui
+  // (o gate de verdade é server-side, em evolution-proxy e onboarding-evolution).
+  const rawLimit = usage?.limit;
+  const usageKnown = typeof used === 'number' && typeof rawLimit === 'number';
+  const limitReached = usageKnown && used >= rawLimit;
 
   const handleUpgrade = () => navigate('/plano');
 
@@ -312,10 +344,18 @@ function EvolutionQrTab() {
           <p className="text-sm text-muted-foreground">
             Conecte seus números de WhatsApp escaneando o QR Code com o aparelho.
           </p>
+          {/* Sem esta linha o cliente vê "2 / 4 canais" sobre uma lista com 1
+              item e conclui que a tela está errada. O canal que falta está na
+              outra aba — o contador é de canais, não de instâncias. */}
+          {!!byType?.meta && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Inclui {byType.meta} conexão(ões) via <strong>WhatsApp Oficial</strong>, na aba ao lado.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={limitReached ? 'destructive' : 'secondary'} className="text-sm">
-            {used} / {limit} usadas
+            {usageKnown ? `${used} / ${rawLimit}` : '—'} canais
           </Badge>
           {limitReached ? (
             <Button onClick={handleUpgrade} className="gap-2">
@@ -335,7 +375,12 @@ function EvolutionQrTab() {
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm flex gap-2">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
           <p className="text-foreground">
-            Você atingiu o limite de <strong>{limit}</strong> conexão(ões) do seu plano. Faça upgrade para criar mais conexões de WhatsApp.
+            Seu plano inclui <strong>{rawLimit}</strong> conexão(ões) de WhatsApp
+            {!!byType && (byType.evolution > 0 || byType.meta > 0) && (
+              <> e você já usa{byType.evolution > 0 && <> {byType.evolution} via QR Code</>}
+                {byType.evolution > 0 && byType.meta > 0 && <> e</>}
+                {byType.meta > 0 && <> {byType.meta} via WhatsApp Oficial</>}</>
+            )}. Para conectar outro número, desconecte uma das conexões atuais ou faça upgrade do plano.
           </p>
         </div>
       )}
