@@ -74,6 +74,38 @@ function loadFacebookSdk(appId: string, version: string): Promise<void> {
   });
 }
 
+/** Recupera a mensagem de negócio que a edge devolveu.
+ *
+ * ⚠️ `supabase.functions.invoke` só preenche `data` em 2xx. Em 409/403/503 ele
+ * devolve `FunctionsHttpError` com **`data` NULO**, e o corpo da resposta — onde
+ * vivem as frases que dizem ao tenant o que fazer ("este número já está
+ * conectado a outra conta", "seu plano inclui N conexões…") — só existe em
+ * `error.context`, que é a `Response` crua.
+ *
+ * A versão anterior fazia `error ?? data?.error` e caía sempre no texto
+ * genérico: as mensagens existiam no servidor, estavam corretas, e NENHUMA
+ * chegava à tela. O `error.message` do próprio SDK também não serve — é
+ * "Edge Function returned a non-2xx status code", que não ajuda ninguém.
+ */
+async function serverMessage(error: unknown, data: unknown): Promise<string | null> {
+  const inline = (data as { error?: string } | null)?.error;
+  if (inline) return inline;
+
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (!ctx || typeof ctx.json !== 'function') return null;
+
+  try {
+    const body = await ctx.json();
+    return typeof body?.error === 'string' ? body.error : null;
+  } catch (e) {
+    // Corpo não-JSON (proxy, gateway, 502). Devolver null é honesto: o chamador
+    // mostra o texto genérico em vez de inventar uma causa. O log existe para
+    // quem for depurar, não como tratamento — o usuário já foi avisado.
+    console.warn('[embedded-signup] resposta de erro sem corpo JSON', e);
+    return null;
+  }
+}
+
 interface Props {
   /** Chamado após a conexão ser gravada, para o painel recarregar sua lista. */
   onConnected?: () => void;
@@ -146,9 +178,8 @@ export function MetaEmbeddedSignupButton({ onConnected }: Props) {
         );
         setBusy(false);
 
-        const failure = error ?? (data as { error?: string } | null)?.error;
-        if (failure) {
-          const message = typeof failure === 'string' ? failure : (data as { error?: string })?.error;
+        if (error || (data as { error?: string } | null)?.error) {
+          const message = await serverMessage(error, data);
           toast.error(message || 'Não foi possível concluir a conexão. Tente novamente.');
           return;
         }
