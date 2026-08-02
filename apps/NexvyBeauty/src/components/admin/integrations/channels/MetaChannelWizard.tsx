@@ -203,37 +203,83 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
     }
   }, [open]);
 
-  const handleFacebookLogin = useCallback(async () => {
+  // ⚠️ O SDK CARREGA AO ABRIR O MODAL — NUNCA DENTRO DO CLIQUE. A razão não é
+  // performance:
+  //
+  // `FB.login` abre um POPUP, e popup só é permitido durante a *user
+  // activation* — a janela de ~5s que o clique concede. A versão anterior fazia
+  // `await loadFacebookSdk(...)` DENTRO do handler; na primeira vez de cada
+  // carga de página esse await busca 12KB + 269KB da rede, a ativação expira no
+  // meio, o navegador recusa o popup, o callback do `FB.login` nunca dispara —
+  // e o `setLoading(false)` mora dentro desse callback. Resultado: spinner
+  // eterno, sem erro e sem log. Reproduzido em produção em 2026-08-02
+  // (gravação de tela), duas tentativas seguidas.
+  //
+  // Medido na mesma sessão, e registrado porque quase me fez consertar o lugar
+  // errado: `window.FB` lido pelo console da extensão aparecia `undefined` —
+  // mas aquilo é o ISOLATED WORLD, onde as globais da página não existem. Um
+  // `<script>` inline injetado na própria página respondeu `FB: object`,
+  // `FB.login: function`, e `FB.getLoginStatus` retornou `{status:'unknown'}`.
+  // O SDK sempre esteve carregado e funcional; o instrumento é que lia outro
+  // mundo. Instrumento exato, alvo certo, MUNDO errado.
+  //
+  // Pré-carregar reduz o await do clique a nada: quando o usuário clicar, `FB`
+  // já existe e `FB.login` roda SÍNCRONO no handler, com a ativação viva.
+  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkError, setSdkError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !APP_ID) return;
+    let cancelled = false;
+    setSdkError(null);
+    loadFacebookSdk(APP_ID, GRAPH_VERSION).then(
+      () => { if (!cancelled) setSdkReady(true); },
+      (e: Error) => {
+        if (cancelled) return;
+        setSdkError(
+          e?.message === 'sdk_timeout'
+            ? 'O Facebook demorou demais para responder. Verifique bloqueadores de anúncio e recarregue a página.'
+            : 'Não foi possível carregar o Facebook. Verifique bloqueadores de anúncio e recarregue a página.',
+        );
+      },
+    );
+    return () => { cancelled = true; };
+  }, [open]);
+
+  // ⚠️ NÃO É `async` E NÃO TEM `await` — de propósito. Qualquer `await` antes do
+  // `FB.login` reintroduz o defeito descrito acima. Se algum dia for preciso
+  // buscar algo antes de abrir o login, o lugar é o efeito acima, não aqui.
+  const handleFacebookLogin = useCallback(() => {
     if (!APP_ID || !CONFIG_ID) return;
+
+    // O botão só habilita com `sdkReady`, então este ramo é defesa em
+    // profundidade — e ele AVISA, em vez de sair calado.
+    if (!window.FB) {
+      toast.error('O Facebook ainda não terminou de carregar. Aguarde um instante e tente de novo.');
+      return;
+    }
     setLoading(true);
 
-    try {
-      await loadFacebookSdk(APP_ID, GRAPH_VERSION);
-    } catch (e) {
+    // WATCHDOG. O `setLoading(false)` do caminho feliz vive dentro do callback
+    // do `FB.login`; se o callback não vier — popup recusado, janela fechada
+    // pelo gerenciador, SDK engasgado — ele nunca roda e a tela mente que ainda
+    // está trabalhando. O `clearTimeout` no callback é o que torna este timer
+    // invisível quando tudo dá certo.
+    const watchdog = window.setTimeout(() => {
       setLoading(false);
       toast.error(
-        (e as Error)?.message === 'sdk_timeout'
-          ? 'O Facebook demorou demais para responder. Verifique bloqueadores de anúncio e tente de novo.'
-          : 'Não foi possível carregar o Facebook. Verifique bloqueadores de anúncio e tente de novo.',
+        'A janela do Facebook não abriu. Verifique se o navegador bloqueou pop-ups ' +
+          'para este site (ícone na barra de endereço) e tente de novo.',
       );
-      return;
-    }
-
-    // ⚠️ SEM O `?.` AQUI, DE PROPÓSITO — e sem cair no `?.` de novo.
-    // `window.FB?.login(...)` parece defensivo e é o oposto: se `FB` for
-    // undefined, o `?.` NÃO CHAMA NADA e NÃO AVISA NADA — o `setLoading(false)`
-    // vive dentro do callback que nunca dispara, e o botão gira para sempre.
-    // É o mesmo defeito que travou este wizard em produção, uma linha adiante:
-    // um símbolo com a forma de "cuidado com o nulo" que transforma erro em
-    // silêncio. Estado impossível merece mensagem, não elegância.
-    if (!window.FB) {
-      setLoading(false);
-      toast.error('O Facebook carregou de forma incompleta. Recarregue a página e tente de novo.');
-      return;
-    }
+    }, 120_000);
 
     window.FB.login(
       async (response) => {
+        // Primeira linha do callback: o callback CHEGOU, então o watchdog não
+        // tem mais o que vigiar. Desarmar aqui — e não em cada `return` — é o
+        // que garante que nenhum caminho de saída futuro esqueça de fazê-lo.
+        window.clearTimeout(watchdog);
+
         const code = response?.authResponse?.code;
         if (!code) {
           // Cancelou ou fechou a janela. Não é erro do sistema — é decisão do
@@ -357,14 +403,26 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
               para autorizar a conexão com sua conta WhatsApp Business. Nenhuma
               senha ou token passa por nós.
             </p>
+            {/* O estado do SDK aparece NO BOTÃO. Antes, "carregando o Facebook"
+                e "abrindo a janela do Facebook" eram o mesmo spinner — e a
+                falha de um era indistinguível da espera do outro. */}
             <Button
               onClick={handleFacebookLogin}
-              disabled={loading}
+              disabled={loading || !sdkReady || !!sdkError}
               className="bg-[#1877F2] hover:bg-[#166FE5] text-white"
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Entrar com Facebook
+              {(loading || (!sdkReady && !sdkError)) && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              {sdkError
+                ? 'Facebook indisponível'
+                : !sdkReady
+                  ? 'Carregando Facebook…'
+                  : 'Entrar com Facebook'}
             </Button>
+            {sdkError && (
+              <p className="text-xs text-center text-destructive max-w-sm">{sdkError}</p>
+            )}
           </div>
         )}
 
