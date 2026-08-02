@@ -641,19 +641,35 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               fim do texto e o sujeito — 70% da tela vazia, o que le como
               documento em fundo escuro, nao como composicao. Com teto, telas
               ultra-largas ganham margem simetrica em vez de buraco no meio. */}
-          <div className="absolute inset-x-0 top-0 mx-auto h-[58vh] max-w-[1500px] md:inset-0 md:h-auto">
+          {/* h-[30vh] no mobile: com object-contain a foto inteira cabe em
+              ~27vh (proporcao 1.736 na largura do telefone). Faixa maior so
+              criaria sobra vazia entre a foto e o texto. */}
+          {/* md:h-screen (nao inset-0): com inset-0 o quadro herdava a altura do
+              CONTEUDO — 1169px numa tela de 800 —, e o object-cover ampliava a
+              imagem para 2029px de largura, cortando os DOIS extremos: a
+              assinatura saia pela esquerda (x -276) e o sujeito pela direita
+              (x 1550 numa tela de 1274). Preso a viewport, os dois cabem. */}
+          <div className="absolute inset-x-0 top-0 mx-auto h-[30vh] max-w-[1500px] md:h-screen">
             <img
               src={heroUrl}
               alt=""
-              // Desktop: centro — a foto inteira aparece. Mobile: num contentor
-              // estreito o recorte e inevitavel com object-cover, entao ancora
-              // na borda direita, o que mostra o sujeito e exclui a assinatura.
-              className="h-full w-full object-cover object-right md:object-center"
+              // A assinatura manuscrita do autor e ELEMENTO DE DESIGN — fica.
+              // Mobile: object-contain mostra a foto INTEIRA (assinatura +
+              // sujeito) numa faixa curta; object-cover teria de escolher um
+              // dos dois, porque eles vivem em extremos opostos da imagem.
+              className="h-full w-full object-contain object-top md:object-cover md:object-center"
               loading="eager"
             />
-            {/* MASCARA (desktop): preto solido ate ~46% cobre a assinatura e
-                vira a cama do texto; dai pra direita abre e revela o sujeito. */}
-            <div className="absolute inset-0 hidden md:block bg-[linear-gradient(to_right,#08090c_0%,#08090c_46%,rgba(8,9,12,0.82)_58%,rgba(8,9,12,0.35)_78%,rgba(8,9,12,0.15)_100%)]" />
+            {/* MASCARA (desktop) em DOIS eixos, porque a foto tem dois assuntos
+                em extremos opostos: a assinatura manuscrita no alto-esquerda e o
+                sujeito a direita. Os dois precisam aparecer.
+                - vertical: transparente no topo (a assinatura RESPIRA) e solido
+                  a partir de ~42%, virando a cama do texto logo abaixo dela;
+                - horizontal: escurece a esquerda e abre a direita, revelando o
+                  sujeito sem competir com a leitura.
+                Ordem importa: o vertical entra depois e manda no topo. */}
+            <div className="absolute inset-0 hidden md:block bg-[linear-gradient(to_right,rgba(8,9,12,0.55)_0%,rgba(8,9,12,0.55)_46%,rgba(8,9,12,0.72)_58%,rgba(8,9,12,0.3)_78%,rgba(8,9,12,0.12)_100%)]" />
+            <div className="absolute inset-0 hidden md:block bg-[linear-gradient(to_bottom,rgba(8,9,12,0)_0%,rgba(8,9,12,0)_26%,rgba(8,9,12,0.86)_42%,#08090c_56%,#08090c_100%)]" />
             <div className="absolute inset-0 hidden md:block bg-gradient-to-t from-[#08090c] via-transparent to-[#08090c]/70" />
             {/* Mobile: dissolve a base da foto no fundo. */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[#08090c]/30 to-transparent md:hidden" />
@@ -662,8 +678,11 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
           {/* Mesmo teto de largura da foto: texto e imagem passam a viver no
               MESMO quadro. Sem isto o texto grudava na borda esquerda da tela
               enquanto a foto ficava contida, e o vazio no meio so aumentava. */}
-          <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] items-end md:items-center">
-            <div className="w-full max-w-xl px-6 pb-12 pt-[52vh] md:max-w-[46%] md:px-12 md:py-16 md:pt-16">
+          <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] items-end md:items-start">
+            {/* pt reserva a faixa da foto: no mobile a foto ocupa o topo; no
+                desktop o texto comeca ABAIXO da assinatura manuscrita (que vive
+                entre ~20% e ~38% da altura), para nao competir com ela. */}
+            <div className="w-full max-w-xl px-6 pb-12 pt-[32vh] md:max-w-[46%] md:px-12 md:pb-16 md:pt-[40vh]">
               <span
                 className="mb-5 inline-block rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
                 style={{
