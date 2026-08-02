@@ -230,11 +230,27 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
 
       if (data?.success) {
         setSubmitted(true);
-        const redirect: string | null = data.redirect_url || form.theme.redirect_url || null;
+        let redirect: string | null = data.redirect_url || form.theme.redirect_url || null;
+        // Anexa o lead recem-criado ao destino. Sem isso, um gate de roteamento
+        // do outro lado nao tem como saber QUEM chegou e so consegue decidir por
+        // regra global. Ex.: netb2b-gate usa o lead p/ checar CNPJ e posicao.
+        // Preserva query string existente e nao quebra destinos que ignoram o
+        // parametro. Sem lead_id, a URL segue exatamente como configurada.
+        if (redirect && data.lead_id) {
+          try {
+            const u = new URL(redirect, window.location.origin);
+            u.searchParams.set('lead', String(data.lead_id));
+            redirect = u.toString();
+          } catch {
+            /* URL malformada na config: melhor redirecionar sem o parametro
+               do que travar a pessoa na tela final. */
+          }
+        }
         if (redirect) {
+          const destino = redirect;
           setTimeout(() => {
-            if (data.redirect_new_tab) window.open(redirect, '_blank');
-            else window.location.href = redirect;
+            if (data.redirect_new_tab) window.open(destino, '_blank');
+            else window.location.href = destino;
           }, 2000);
         }
       } else {
