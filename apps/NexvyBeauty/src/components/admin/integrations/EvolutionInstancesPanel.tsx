@@ -595,8 +595,26 @@ function EvolutionQrTab() {
  *   • manual — operação cadastra a conexão pelas edge functions org-scoped
  *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
  *
- *  Enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
- *  mostra só o caminho manual — nunca um botão quebrado na cara do tenant. */
+ *  ⚠️ ESTE PARÁGRAFO DESCREVIA O MUNDO ANTERIOR AO MERGE d4860fa. Ele dizia
+ *  "enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
+ *  mostra só o caminho manual". O stub morreu no merge — o componente real
+ *  entrou (181 linhas, sentinela ausente).
+ *
+ *  O QUE VALE AGORA: `MetaEmbeddedSignupButton` retorna null quando
+ *  VITE_META_WHATSAPP_APP_ID ou VITE_META_EMBEDDED_SIGNUP_CONFIG_ID faltam no
+ *  build. Ele lê `import.meta.env`, que o Vite inlina em BUILD-TIME — e o build
+ *  roda DENTRO do container: variável exportada no shell do VPS não chega lá.
+ *  O caminho é `apps/NexvyBeauty/.env.production`, versionado de propósito
+ *  (`.gitignore` des-ignora) e copiado pelo `Dockerfile.app`.
+ *
+ *  ⚠️ ACOPLAMENTO COM O CARD ABAIXO — declarado porque é INVISÍVEL no diff:
+ *  o texto "fale com o suporte" só é honesto ENQUANTO o botão não renderiza.
+ *  Com as env vars no build, a tela passa a afirmar as duas coisas ao mesmo
+ *  tempo — um botão de auto-conexão e, logo abaixo, "para conectar, fale com o
+ *  suporte" —, desmentindo na própria tela a alegação de self-service que a
+ *  gravação do App Review existe para provar.
+ *  Por isso env vars e texto do card viajam no MESMO COMMIT: ordem que precisa
+ *  ser lembrada é ordem que alguém erra; no mesmo commit não há o que errar. */
 function MetaCloudTab() {
   const queryClient = useQueryClient();
 
