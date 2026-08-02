@@ -636,7 +636,12 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
               ~705px de largura e sobrava so 330px de recorte, insuficiente para
               tirar a assinatura (que termina em ~337px). Mais altura = mais
               escala = assinatura fora de quadro. Medido, nao chutado. */}
-          <div className="absolute inset-x-0 top-0 h-[58vh] md:inset-0 md:h-auto">
+          {/* max-w + mx-auto: SEM teto, o bloco acompanha a largura da tela e o
+              miolo esvazia. Medido em 1990px: sobravam 1385px de preto entre o
+              fim do texto e o sujeito — 70% da tela vazia, o que le como
+              documento em fundo escuro, nao como composicao. Com teto, telas
+              ultra-largas ganham margem simetrica em vez de buraco no meio. */}
+          <div className="absolute inset-x-0 top-0 mx-auto h-[58vh] max-w-[1500px] md:inset-0 md:h-auto">
             <img
               src={heroUrl}
               alt=""
@@ -654,8 +659,11 @@ export default function PlatformCrmPublicForm({ slug: slugProp }: { slug?: strin
             <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[#08090c]/30 to-transparent md:hidden" />
           </div>
 
-          <div className="relative z-10 flex min-h-screen items-end md:items-center">
-            <div className="w-full max-w-xl px-6 pb-12 pt-[46vh] md:max-w-2xl md:px-14 md:py-16 md:pt-16">
+          {/* Mesmo teto de largura da foto: texto e imagem passam a viver no
+              MESMO quadro. Sem isto o texto grudava na borda esquerda da tela
+              enquanto a foto ficava contida, e o vazio no meio so aumentava. */}
+          <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] items-end md:items-center">
+            <div className="w-full max-w-xl px-6 pb-12 pt-[52vh] md:max-w-[46%] md:px-12 md:py-16 md:pt-16">
               <span
                 className="mb-5 inline-block rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
                 style={{
