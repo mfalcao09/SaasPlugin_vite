@@ -16,6 +16,7 @@
 // falhar, o caminho é refazer o login. Nenhum token trafega pelo front.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -159,16 +160,47 @@ export function MetaEmbeddedSignupButton({ onConnected }: Props) {
         config_id: CONFIG_ID,
         response_type: 'code',
         override_default_response_type: true,
-        // Contrato da configuração "Nexvy" (config_id 1140027898257109).
-        // NÃO é o `{ setup: {} }` que aparece na doc genérica da Meta.
+        // ⚠️ NÃO AFERIDO. Este `extras` veio da mesma anotação que trazia um
+        // config_id que se provou INEXISTENTE — a procedência errou no campo
+        // vizinho, então nada aqui vale como medição.
+        //
+        // Forma que RODA em produção (Intentus, mesmo Embedded Signup):
+        //   extras: { setup: {}, featureType: 'whatsapp_embedded_signup',
+        //             sessionInfoVersion: 2 }
+        // Duas formas, uma só testada em campo — e não é esta. Se o fluxo
+        // abrir mas o postMessage não entregar `phone_number_id`/`waba_id`,
+        // é AQUI que se olha primeiro.
         extras: { sessionInfoVersion: 3, version: 'v4' },
       },
     );
   }, [onConnected]);
 
-  // Sem configuração, o botão não existe — o painel segue oferecendo só o
-  // caminho manual. Melhor ausente do que presente e quebrado.
-  if (!APP_ID || !CONFIG_ID) return null;
+  // Sem as env vars de build, o self-service não existe nesta instalação — e
+  // quem SABE disso é este componente. Por isso ele INFORMA, em vez de sumir.
+  //
+  // A versão anterior era `return null`, e o custo não era estético:
+  //   • o painel tinha que ADIVINHAR este estado para escrever o texto certo,
+  //     o que criava uma regra de ordem entre dois commits ("card só depois
+  //     das env vars"). Regra de ordem é coisa que alguém erra;
+  //   • ausência silenciosa é indistinguível de "o componente não subiu no
+  //     bundle" — e um deploy sem env var mandaria alguém depurar um merge
+  //     que está correto.
+  //
+  // Com a mensagem, a tela é honesta nos dois estados por construção: quem
+  // decide informa, o painel não precisa saber, e a ordem dos commits deixa
+  // de importar. (Desenho proposto pelo nó 1 — CUTOVER Studio Flor.)
+  if (!APP_ID || !CONFIG_ID) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            A conexão automática com a Meta ainda não está habilitada nesta
+            instalação. Fale com o suporte para conectar seu número oficial.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Button onClick={handleClick} disabled={busy} className="gap-2">
