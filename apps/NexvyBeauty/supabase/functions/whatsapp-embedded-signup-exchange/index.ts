@@ -163,9 +163,19 @@ Deno.serve(async (req: Request) => {
         display_name: displayName,                   // NOT NULL
         webhook_verify_token: generateVerifyToken(), // NOT NULL
         app_id: appId,
-        // app_secret_encrypted fica NULL de propósito: no self-service o app é
-        // NOSSO e existe UM secret, em env do servidor. Cifrar por conexão
-        // replicaria N vezes o mesmo segredo — mais superfície, zero ganho.
+        // No self-service o app é NOSSO: existe UM secret, em env do servidor.
+        // Cifrar por conexão replicaria N vezes o mesmo segredo — mais
+        // superfície, zero ganho. Daí as duas decisões abaixo, pelo mesmo motivo:
+        //
+        //   * `app_secret_source: 'platform'` DECLARA onde o webhook busca o
+        //     secret. Sem esta linha o default é 'connection', o webhook procura
+        //     na conexão, não acha, e NEGA todo inbound com 403. É a linha que
+        //     faz o WhatsApp do salão receber mensagem.
+        //   * `app_secret_encrypted` fica NULL — e agora NULL significa só "não
+        //     tem", não "adivinhe o modelo". O contrato entre o caminho manual
+        //     (app do cliente) e o self-service (app nosso) está declarado na
+        //     coluna, não implícito na ausência de dado.
+        app_secret_source: 'platform',
         access_token_encrypted: await encryptSecret(accessToken),
         phone_number_id: String(phone_number_id),
         waba_id: String(waba_id),
