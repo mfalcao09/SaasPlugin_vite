@@ -49,10 +49,29 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *
  *  ⚠️ NUNCA transformar "sem secret" em "não verifica". Isso reabriria pela
  *  porta dos fundos o P0 fechado hoje, com aparência de tratar caso legítimo.
- *  Ausência de secret NEGA — igual à ausência de header. */
-async function resolveAppSecret(encrypted: string | null | undefined): Promise<string> {
-  if (encrypted) return await decryptSecret(encrypted);   // manual: secret do cliente
-  return Deno.env.get('META_WHATSAPP_APP_SECRET') ?? '';  // self-service: app nosso
+ *  Ausência de secret NEGA — igual à ausência de header.
+ *
+ *  POR QUE `app_secret_source` E NÃO `app_secret_encrypted IS NULL`:
+ *  a primeira versão desta função decidia pela ausência da coluna. Funcionava,
+ *  mas punha a AUSÊNCIA DE DADO carregando semântica — o mesmo padrão que
+ *  produziu o defeito acima. Modo de falha nomeado pela Trilha S: uma conexão
+ *  MANUAL que perdesse o secret (bug, migração parcial) seria validada com o
+ *  segredo DA PLATAFORMA contra um app DO CLIENTE; o HMAC falharia e quem
+ *  depurasse procuraria no lugar errado, porque o código *parece* ter tratado
+ *  o caso. Agora a fonte é declarada na linha, e NULL volta a significar só
+ *  "não tem" — que nega. */
+async function resolveAppSecret(conn: {
+  app_secret_encrypted?: string | null;
+  app_secret_source?: string | null;
+}): Promise<string> {
+  // 'connection' é o default da coluna: sem declaração, procura NA CONEXÃO —
+  // e se não houver, devolve '' e o chamador nega. Fail-closed.
+  if (conn.app_secret_source === 'platform') {
+    return Deno.env.get('META_WHATSAPP_APP_SECRET') ?? '';  // app NOSSO (Embedded Signup)
+  }
+  return conn.app_secret_encrypted
+    ? await decryptSecret(conn.app_secret_encrypted)        // app DO CLIENTE (wizard)
+    : '';
 }
 
 function extractConnectionIdFromPath(url: URL): string | null {
@@ -122,7 +141,7 @@ Deno.serve(async (req: Request) => {
   if (pathConnectionId) {
     const { data } = await sb
       .from('whatsapp_meta_connections')
-      .select('id, organization_id, app_secret_encrypted, access_token_encrypted')
+      .select('id, organization_id, app_secret_encrypted, app_secret_source, access_token_encrypted')
       .eq('id', pathConnectionId)
       .maybeSingle();
     pinnedConn = data ?? null;
@@ -132,7 +151,7 @@ Deno.serve(async (req: Request) => {
     const sig = req.headers.get('x-hub-signature-256') ?? '';
     if (!sig.startsWith('sha256=')) return new Response('forbidden', { status: 403 });
     try {
-      const appSecret = await resolveAppSecret(pinnedConn.app_secret_encrypted);
+      const appSecret = await resolveAppSecret(pinnedConn);
       if (!appSecret) {
         // Fail-closed: sem segredo não há como verificar, e não verificar seria
         // o P0 de volta. Ver resolveAppSecret.
@@ -178,7 +197,7 @@ Deno.serve(async (req: Request) => {
         if (!phoneNumberId) continue;
         const { data } = await sb
           .from('whatsapp_meta_connections')
-          .select('id, organization_id, app_secret_encrypted, access_token_encrypted')
+          .select('id, organization_id, app_secret_encrypted, app_secret_source, access_token_encrypted')
           .eq('phone_number_id', phoneNumberId)
           .limit(1)
           .maybeSingle();
@@ -230,7 +249,7 @@ Deno.serve(async (req: Request) => {
           return new Response('forbidden', { status: 403 });
         }
         try {
-          const appSecret = await resolveAppSecret(conn.app_secret_encrypted);
+          const appSecret = await resolveAppSecret(conn);
           if (!appSecret) {
             // Fail-closed — mesma razão do caminho pinned. Ver resolveAppSecret.
             await sb.from('whatsapp_meta_webhook_logs').insert({
