@@ -95,8 +95,17 @@
         n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
         document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        // event_id compartilhado browser<->servidor (dedup do web-CAPI): a LP manda
+        // o MESMO id ao servidor (platform-web-capi) via window.__nxvPvId.
+        var pvId;
+        try {
+          pvId = (window.crypto && window.crypto.randomUUID)
+            ? window.crypto.randomUUID()
+            : (String(Date.now()) + '.' + Math.random().toString(16).slice(2));
+        } catch (e) { pvId = String(Date.now()); }
+        window.__nxvPvId = pvId;
         fbq('init', PIXEL_ID);
-        fbq('track', 'PageView');
+        fbq('track', 'PageView', {}, { eventID: pvId });
       } catch (e) { /* pixel nunca pode quebrar a LP */ }
     })();
   </script>
