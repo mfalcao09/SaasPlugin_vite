@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQueryClient } from '@tanstack/react-query';
+// Slot da TRILHA S. Import ESTÁTICO de propósito: import dinâmico de módulo
+// ausente quebra o build do Vite, então o arquivo precisa existir dos dois lados
+// do merge. Hoje é um stub que retorna null (ver o próprio arquivo); a versão
+// real vem da branch claude/priceless-neumann-63c32d e deve vencer no merge.
+import { MetaEmbeddedSignupButton } from './meta/MetaEmbeddedSignupButton';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -25,7 +32,7 @@ import {
   type EvolutionInstance,
 } from '@/hooks/useEvolutionInstances';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrganizationEffectivePlan } from '@/hooks/useOrganizationPlan';
+import { useOrgChannelUsage } from '@/hooks/useOrganizationPlan';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PresenceTestButton } from './PresenceTestButton';
@@ -264,11 +271,17 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
   );
 }
 
-export function EvolutionInstancesPanel() {
+/** Aba "QR Code (Evolution)" — o painel que já existia, com o conteúdo intacto.
+ *  Virou sub-componente quando a aba "WhatsApp Oficial (Meta)" entrou ao lado.
+ *  O export público `EvolutionInstancesPanel` continua abaixo com a MESMA
+ *  assinatura: App.tsx:62, Admin.tsx:34 e WhatsAppConfig.tsx:3 o importam por
+ *  nome — dois deles via lazy `.then(m => m.EvolutionInstancesPanel)`, que
+ *  quebraria em runtime, não no build, se o nome mudasse. */
+function EvolutionQrTab() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: instances, isLoading } = useEvolutionInstances();
-  const { data: effectivePlan } = useOrganizationEffectivePlan(profile?.organization_id);
+  const { data: usage } = useOrgChannelUsage(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
   const disconnectMut = useDisconnectEvolutionInstance();
   const logoutMut = useLogoutEvolutionInstance();
@@ -285,9 +298,41 @@ export function EvolutionInstancesPanel() {
 
   const isLinked = (s: string) => s === 'connected' || s === 'paired';
 
-  const used = instances?.length ?? 0;
-  const limit = effectivePlan?.limits?.max_connections ?? 1;
-  const limitReached = used >= limit;
+  // USO E LIMITE VÊM DO MESMO RESOLVEDOR QUE OS GATES DO SERVIDOR
+  // (`get_org_channel_usage`), não de `instances.length`.
+  //
+  // Com slot compartilhado (decisão Marcelo 2026-08-01, verbatim: "Consome o
+  // mesmo slot"), uma conexão via WhatsApp Oficial ocupa vaga e NÃO aparece
+  // nesta lista — ela vive na aba ao lado. Derivar `used` do tamanho da lista
+  // faria a tela dizer "1 / 4" para uma org que já usa 2 canais, e o botão
+  // "Nova conexão" convidaria para uma criação que o servidor vai recusar.
+  // Tela e gate lendo a mesma função é o que impede essa divergência.
+  const used = usage?.used;
+  const byType = usage?.by_type;
+
+  // O `?? 1` que estava aqui AFIRMAVA um limite que não tinha sido carregado.
+  // Duas formas de errar, as duas na cara do cliente:
+  //
+  //   * enquanto a query do plano está em voo — e ela resolve independente da
+  //     query de instâncias — um cliente Ultra com 4 conexões via badge
+  //     vermelho "4 / 1 usadas", o aviso "Você atingiu o limite de 1
+  //     conexão(ões) do seu plano" e o botão "Nova conexão" substituído por
+  //     "Fazer upgrade". Fato comercial fabricado a partir de "ainda não sei",
+  //     que se conserta sozinho um instante depois e que ninguém reproduz.
+  //
+  //   * a RPC devolve NULL tanto para "org sem limite" quanto para RECUSA DE
+  //     LEITURA (o gate `auth.role()=... is not true` no topo da função). NULL
+  //     não é `error`, então o hook não lança: a recusa chegava aqui como se
+  //     fosse dado, e o `?? 1` a traduzia para política de negócio.
+  //
+  // Gatear em "eu tenho o número?" cobre os dois casos. Gatear em `isLoading`
+  // cobriria só o primeiro — por isso a checagem é de valor, não de estado da
+  // requisição. Enquanto é desconhecido nada é afirmado: o badge mostra "—" e
+  // o caminho de criar conexão continua aberto, que é o fail-open correto aqui
+  // (o gate de verdade é server-side, em evolution-proxy e onboarding-evolution).
+  const rawLimit = usage?.limit;
+  const usageKnown = typeof used === 'number' && typeof rawLimit === 'number';
+  const limitReached = usageKnown && used >= rawLimit;
 
   const handleUpgrade = () => navigate('/plano');
 
@@ -299,10 +344,18 @@ export function EvolutionInstancesPanel() {
           <p className="text-sm text-muted-foreground">
             Conecte seus números de WhatsApp escaneando o QR Code com o aparelho.
           </p>
+          {/* Sem esta linha o cliente vê "2 / 4 canais" sobre uma lista com 1
+              item e conclui que a tela está errada. O canal que falta está na
+              outra aba — o contador é de canais, não de instâncias. */}
+          {!!byType?.meta && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Inclui {byType.meta} conexão(ões) via <strong>WhatsApp Oficial</strong>, na aba ao lado.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={limitReached ? 'destructive' : 'secondary'} className="text-sm">
-            {used} / {limit} usadas
+            {usageKnown ? `${used} / ${rawLimit}` : '—'} canais
           </Badge>
           {limitReached ? (
             <Button onClick={handleUpgrade} className="gap-2">
@@ -322,7 +375,12 @@ export function EvolutionInstancesPanel() {
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm flex gap-2">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
           <p className="text-foreground">
-            Você atingiu o limite de <strong>{limit}</strong> conexão(ões) do seu plano. Faça upgrade para criar mais conexões de WhatsApp.
+            Seu plano inclui <strong>{rawLimit}</strong> conexão(ões) de WhatsApp
+            {!!byType && (byType.evolution > 0 || byType.meta > 0) && (
+              <> e você já usa{byType.evolution > 0 && <> {byType.evolution} via QR Code</>}
+                {byType.evolution > 0 && byType.meta > 0 && <> e</>}
+                {byType.meta > 0 && <> {byType.meta} via WhatsApp Oficial</>}</>
+            )}. Para conectar outro número, desconecte uma das conexões atuais ou faça upgrade do plano.
           </p>
         </div>
       )}
@@ -526,5 +584,67 @@ export function EvolutionInstancesPanel() {
 
       <CreateInstanceDialog open={creating} onClose={() => setCreating(false)} />
     </div>
+  );
+}
+
+/** Aba "WhatsApp Oficial (Meta)" — Cloud API org-scoped.
+ *
+ *  Dois caminhos coexistem por desenho, não por dívida:
+ *   • self-service — o botão da Trilha S (`MetaEmbeddedSignupButton`), em que o
+ *     salão conecta o próprio número sem ver credencial nenhuma;
+ *   • manual — operação cadastra a conexão pelas edge functions org-scoped
+ *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
+ *
+ *  Enquanto o componente da Trilha S for o stub, ele retorna null e esta aba
+ *  mostra só o caminho manual — nunca um botão quebrado na cara do tenant. */
+function MetaCloudTab() {
+  const queryClient = useQueryClient();
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">WhatsApp Oficial (Meta)</h3>
+        <p className="text-sm text-muted-foreground">
+          Conexão pela API oficial da Meta. Mais estável que o QR Code e sem risco de
+          desconectar sozinho — o número não fica preso a um aparelho.
+        </p>
+      </div>
+
+      <MetaEmbeddedSignupButton
+        onConnected={() => {
+          queryClient.invalidateQueries({ queryKey: ['whatsapp-meta-connections'] });
+        }}
+      />
+
+      <Card>
+        <CardContent className="py-8 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Nenhum número oficial conectado nesta conta ainda.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Para conectar um número oficial, fale com o suporte — a habilitação é feita
+            junto com a Meta.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** Export público — assinatura preservada de propósito (ver EvolutionQrTab). */
+export function EvolutionInstancesPanel() {
+  return (
+    <Tabs defaultValue="qr" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="qr">QR Code</TabsTrigger>
+        <TabsTrigger value="meta">WhatsApp Oficial</TabsTrigger>
+      </TabsList>
+      <TabsContent value="qr">
+        <EvolutionQrTab />
+      </TabsContent>
+      <TabsContent value="meta">
+        <MetaCloudTab />
+      </TabsContent>
+    </Tabs>
   );
 }

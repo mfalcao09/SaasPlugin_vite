@@ -68,8 +68,46 @@ Deno.serve(async (req) => {
     .eq("status", "pending")
     .select("*");
 
-  const jobs = claimed || [];
+  let jobs = claimed || [];
   console.log(`[booking-dispatcher] claimed ${jobs.length}/${ids.length} jobs`);
+
+  // ── ORGS DE DEMONSTRAÇÃO NÃO RECEBEM LEMBRETE DE AGENDAMENTO ───────────────
+  // A demo (Studio Flor) tem a Mavi agendando DE VERDADE — quem agenda ali é
+  // curioso vindo do story do Instagram, não cliente. Sem este gate ele recebe,
+  // no dia seguinte, "seu horário é amanhã às 16h no Studio Flor" — de um salão
+  // que não existe, num endereço fictício.
+  //
+  // Gate no DISPATCHER e não em quem cria o job: assim pega o job venha de onde
+  // vier (Mavi, booking público, criação manual), sem depender de cada produtor
+  // lembrar da regra.
+  //
+  // status 'cancelled' e não 'skipped': o CHECK da tabela só aceita
+  // pending|processing|sent|failed|cancelled. 'failed' mentiria na métrica —
+  // não falhou, foi deliberadamente não enviado.
+  const orgIdsDosJobs = [...new Set(jobs.map((j: { organization_id?: string }) => j.organization_id).filter(Boolean))];
+  if (orgIdsDosJobs.length > 0) {
+    const { data: demoOrgs } = await supabase
+      .from("organizations")
+      .select("id")
+      .in("id", orgIdsDosJobs)
+      .eq("settings->>is_demo", "true");
+    const demoSet = new Set((demoOrgs ?? []).map((o: { id: string }) => o.id));
+    if (demoSet.size > 0) {
+      const pulados = jobs.filter((j: { organization_id?: string }) => j.organization_id && demoSet.has(j.organization_id));
+      if (pulados.length > 0) {
+        // Marca como resolvido para não reprocessar a cada tick do cron.
+        await supabase.from("booking_scheduled_jobs")
+          .update({
+            status: "cancelled",
+            last_error: "org is_demo — lembrete deliberadamente nao enviado",
+            processed_at: new Date().toISOString(),
+          })
+          .in("id", pulados.map((j: { id: string }) => j.id));
+        console.log(`[booking-dispatcher] ${pulados.length} job(s) de org is_demo cancelados`);
+      }
+      jobs = jobs.filter((j: { organization_id?: string }) => !j.organization_id || !demoSet.has(j.organization_id));
+    }
+  }
 
   let processed = 0;
   for (const job of jobs) {

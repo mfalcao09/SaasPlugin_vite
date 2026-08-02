@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { fetchChannelUsage, channelLimitMessage, type ChannelUsage } from "../_shared/channel-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -457,29 +458,32 @@ Deno.serve(async (req) => {
         }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Verifica limites efetivos
-      const { data: limitsData, error: limitsErr } = await supabase.rpc("get_organization_effective_limits", {
-        p_org_id: orgId,
-      });
-      if (limitsErr) {
-        return new Response(JSON.stringify({ error: "Falha ao carregar limites do plano: " + limitsErr.message }), {
+      // Limite de canais do plano — SLOT COMPARTILHADO entre QR e Oficial
+      // (decisão Marcelo 2026-08-01, verbatim: "Consome o mesmo slot").
+      //
+      // Aqui havia uma contagem local de `evolution_instances`. Ficou cega
+      // quando o caminho Meta org-scoped nasceu: org com limite 1 passou a
+      // poder ter 1 QR + 1 Oficial, porque este gate — internamente correto —
+      // conhecia só uma das duas tabelas. A contagem agora vem do resolvedor
+      // único (`get_org_channel_usage`), o MESMO que o painel consome.
+      let usage: ChannelUsage;
+      try {
+        usage = await fetchChannelUsage(supabase, orgId);
+      } catch (e) {
+        // Sem fallback para 1: falha de leitura é 500, nunca "seu plano é 1".
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const maxConnections: number = (limitsData as any)?.limits?.max_connections ?? 1;
 
-      const { count: currentCount } = await supabase
-        .from("evolution_instances")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId);
-
-      if ((currentCount ?? 0) >= maxConnections) {
+      if (usage.used >= usage.limit) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `Limite de ${maxConnections} conexão(ões) do seu plano atingido. Faça upgrade para criar mais.`,
+          error: channelLimitMessage(usage, "evolution"),
           limit_reached: true,
-          current: currentCount,
-          limit: maxConnections,
+          current: usage.used,
+          limit: usage.limit,
+          by_type: usage.by_type,
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
@@ -562,14 +566,20 @@ Deno.serve(async (req) => {
           instance_id: uuid || finalName,
           instance_token: instanceToken,
           status: "disconnected",
-          is_default: (currentCount ?? 0) === 0, // primeira da empresa = padrão
+          // "primeira da empresa = padrão" — e aqui é `by_type.evolution`, NÃO
+          // `usage.used`. Os dois valiam o mesmo número enquanto só existia um
+          // tipo de canal; agora não valem. `is_default` é o padrão de ROTEAMENTO
+          // do Evolution: uma org com 1 conexão Meta e 0 instâncias QR tem
+          // `used = 1`, e usar esse número faria a PRIMEIRA instância QR nascer
+          // sem ser padrão — quebrando o envio por QR sem erro nenhum.
+          is_default: (usage.by_type.evolution ?? 0) === 0,
           created_by_super_admin: false,
           metadata: {
             instance_uuid: uuid,
             instance_name: finalName,
             // Nome de exibição = nome do salão (org). 1ª instância = só o nome do salão;
             // adicionais ganham o sufixo técnico pra não colidir na UI.
-            display_name: (currentCount ?? 0) === 0
+            display_name: (usage.by_type.evolution ?? 0) === 0
               ? (orgRow?.name || rawName)
               : `${orgRow?.name || orgSlug} · ${rawName}`,
             created_via: "self_service",

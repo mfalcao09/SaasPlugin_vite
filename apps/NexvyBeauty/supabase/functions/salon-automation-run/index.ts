@@ -102,6 +102,30 @@ Deno.serve(async (req) => {
   const porOrg = new Map<string, typeof rules>()
   for (const r of rules ?? []) (porOrg.get(r.organization_id) ?? porOrg.set(r.organization_id, []).get(r.organization_id)!).push(r)
 
+  // ── ORGS DE DEMONSTRAÇÃO NÃO RECEBEM AUTOMAÇÃO DE SALÃO ────────────────────
+  // A demo (Studio Flor) tem a Mavi agendando DE VERDADE, e quem agenda ali é
+  // curioso vindo do story do Instagram — não cliente. Sem este gate:
+  //   agendamento_24h → "seu horário é amanhã às 16h no Studio Flor" (salão que
+  //                     não existe, endereço fictício)
+  //   retorno_inativo → "sentimos sua falta", 45 dias depois, para quem só testou
+  //
+  // CRITÉRIO NO CRON, NÃO EXCEÇÃO NO DADO: desabilitar as regras da demo uma a
+  // uma resolveria hoje e apodreceria amanhã — qualquer seed novo, clone de
+  // preset ou reativação pela UI recria o problema, e recria calado. A flag
+  // inverte o ônus: a demo nasce marcada e o cron a ignora por construção,
+  // inclusive as orgs efêmeras do demo-start que ainda vão existir.
+  if (porOrg.size > 0) {
+    const { data: demoOrgs } = await db
+      .from('organizations')
+      .select('id')
+      .in('id', [...porOrg.keys()])
+      .eq('settings->>is_demo', 'true')
+    for (const o of demoOrgs ?? []) {
+      console.log(`[salon-automation-run] org ${o.id} é is_demo — automações de salão puladas`)
+      porOrg.delete(o.id as string)
+    }
+  }
+
   const resultadoOrgs: Record<string, { detectados: number; enviados: number; falhas: number; pulados: number; eventos: Evento[] }> = {}
 
   for (const [orgId, orgRules] of porOrg) {

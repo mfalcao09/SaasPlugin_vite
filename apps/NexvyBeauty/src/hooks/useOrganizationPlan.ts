@@ -34,6 +34,46 @@ export function useOrganizationEffectivePlan(orgId?: string | null) {
   });
 }
 
+/**
+ * Uso de CANAIS de WhatsApp da org — a MESMA fonte que os gates das edges.
+ *
+ * REGRA (decisão Marcelo 2026-08-01, verbatim: "Consome o mesmo slot"):
+ * `max_connections` conta canais somando Evolution (QR) + Meta Cloud (Oficial).
+ *
+ * ⚠️ NÃO derive `used` de `instances.length` na tela. Era exatamente isso que o
+ * badge fazia, e por isso exibiria "1 / 1 usadas" numa org com 1 QR + 1 Oficial.
+ * O gate do servidor e a tela têm que ler a MESMA função, senão a tela volta a
+ * divergir do que o servidor impede.
+ *
+ * ⚠️ `data` vem NULL quando a RPC RECUSA a leitura (gate `auth.role()` no topo
+ * dela) — e isso NÃO é `error`: a query resolve com sucesso. Quem consome trata
+ * "não sei" como desconhecido; nunca preenche com default.
+ */
+export interface OrgChannelUsage {
+  limit: number;
+  used: number;
+  by_type: { evolution: number; meta: number };
+}
+
+export function useOrgChannelUsage(orgId?: string | null) {
+  return useQuery({
+    queryKey: ['org-channel-usage', orgId],
+    queryFn: async () => {
+      if (!orgId) return null;
+      // `as any` no nome: a RPC é nova e `types.ts` (gerado) ainda não a
+      // conhece. Mesmo idioma já usado no repo para RPCs recém-criadas
+      // (get_invitation_by_token, get_auth_user_id_by_email, …); some quando
+      // os types forem regenerados, o que aqui é sempre commit próprio.
+      const { data, error } = await supabase.rpc('get_org_channel_usage' as any, {
+        p_org_id: orgId,
+      });
+      if (error) throw error;
+      return data as unknown as OrgChannelUsage | null;
+    },
+    enabled: !!orgId,
+  });
+}
+
 export function useChangeOrganizationPlan() {
   const qc = useQueryClient();
   return useMutation({
