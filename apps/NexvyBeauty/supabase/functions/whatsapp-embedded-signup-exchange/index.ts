@@ -24,6 +24,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { graphFetch } from '../_shared/meta-graph.ts';
 import { encryptSecret, generateVerifyToken } from '../_shared/meta-crypto.ts';
 import { authenticateTenant, resolveOrgId } from '../_shared/tenant-auth.ts';
+import { fetchChannelUsage, channelLimitMessage, type ChannelUsage } from '../_shared/channel-limit.ts';
 
 const GRAPH_VERSION = Deno.env.get('META_GRAPH_VERSION') || 'v21.0';
 
@@ -90,7 +91,56 @@ Deno.serve(async (req: Request) => {
     }
     const accessToken = String(tokenBody.access_token);
 
-    // ── 2. AUTORIZAÇÃO DO RECURSO (não é enriquecimento — é gate) ────────────
+    // ── 2. LIMITE DE CANAIS DO PLANO ────────────────────────────────────────
+    // Slot COMPARTILHADO: `max_connections` conta Evolution (QR) + Meta Cloud
+    // somados. Org com limite 1 escolhe um dos dois, nunca os dois.
+    //
+    // POR QUE DEPOIS DA TROCA, e não antes: o code vale 30s e é perecível. Um
+    // gate antes da troca transforma qualquer lentidão do banco em "refaça todo
+    // o fluxo da Meta" — UX muito pior que "você atingiu o limite". Se o tenant
+    // estiver no limite, perder o code é irrelevante: ele seria recusado de
+    // qualquer forma. O risco assimétrico é um só — check lento que PASSA e
+    // deixa o code expirar. Por isso a troca vem primeiro e nada a antecede.
+    //
+    // POR QUE ANTES DO GRAPH: este é RPC local (milissegundos); o bloco 3 é rede
+    // externa. Recusar barato antes de gastar caro — e não incomodamos a API da
+    // Meta por uma conexão que já sabemos que não vamos gravar.
+    //
+    // A aritmética NÃO vive aqui nem no helper: vive em `get_org_channel_usage`.
+    // O front lê a MESMA função (hook `useOrgChannelUsage`). Reimplementar a
+    // contagem em TS criaria a segunda definição da regra — foi exatamente
+    // assim que o defeito de 2026-08-01 nasceu: três gates contando uma tabela
+    // só, cada um internamente correto, nenhum somando a tabela nova.
+    let usage: ChannelUsage;
+    try {
+      usage = await fetchChannelUsage(sbAdmin, orgId);
+    } catch (e) {
+      // Falha de LEITURA nunca vira política de negócio. Um `?? 1` aqui capava
+      // um cliente Ultra em uma conexão e ainda afirmava isso a ele como se
+      // fosse o plano contratado. 503: é indisponibilidade, e é retentável.
+      console.error('[embedded-signup-exchange] limites indisponiveis', String(e));
+      return json({
+        error: (e as Error).message,
+        code: 'plan_limits_unavailable',
+        retryable: true,
+      }, 503);
+    }
+
+    if (usage.used >= usage.limit) {
+      // Limite atingido é situação PREVISTA — é UX, não erro. A mensagem do
+      // helper diz as três coisas necessárias para agir: o que ela já tem, o
+      // que liberar, e a alternativa. Sem isso a dona do salão conclui que o
+      // produto quebrou — e com slot compartilhado o canal que ocupa a vaga
+      // pode ser de um tipo diferente do que ela está tentando conectar.
+      return json({
+        error: channelLimitMessage(usage, 'meta'),
+        code: 'channel_limit_reached',
+        limit_reached: true,
+        by_type: usage.by_type,
+      }, 409);
+    }
+
+    // ── 3. AUTORIZAÇÃO DO RECURSO (não é enriquecimento — é gate) ────────────
     // `phone_number_id` e `waba_id` chegam do BODY, escolhidos pelo cliente.
     // Validar o organization_id não basta: sem checar estes dois, um tenant com
     // um code legítimo do PRÓPRIO WABA pode gravar o número de OUTRO negócio.
