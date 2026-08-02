@@ -142,7 +142,27 @@ export function useAllEvolutionInstancesAdmin() {
 function useProxyAction() {
   return async (body: Record<string, any>) => {
     const { data, error } = await supabase.functions.invoke('evolution-proxy', { body });
-    if (error) throw error;
+    if (error) {
+      // `invoke` LANÇA em qualquer non-2xx — verificado na fonte da lib:
+      //   functions-js/FunctionsClient.js → `if (!response.ok) throw new FunctionsHttpError(response)`
+      // e nesse caminho `data` vem NULL. O corpo que a edge escreveu só existe
+      // em `error.context`, que é a Response crua.
+      //
+      // Sem ler daqui, TODA mensagem que a edge devolve com status != 2xx morre
+      // antes da tela, e o usuário vê o genérico "Edge Function returned a
+      // non-2xx status code". Mensagem escrita com cuidado, revisada, e que
+      // nunca chega — a forma do cuidado sem o cuidado.
+      // (Achado pela Trilha S no caminho dela; atinge os ramos 500 daqui igual.)
+      //
+      // Fallback preservado: se o corpo não for JSON ou já tiver sido
+      // consumido, cai no `throw error` original — nunca pior que antes.
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === 'function') {
+        const parsed = await ctx.json().catch(() => null);
+        if (parsed?.error) throw new Error(parsed.error);
+      }
+      throw error;
+    }
     if (data?.error) throw new Error(data.error);
     return data;
   };
