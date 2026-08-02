@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQueryClient } from '@tanstack/react-query';
 // UI de canais — porte do Intentus (picker de tipo + wizard de 3 etapas).
 // O `MetaEmbeddedSignupButton` que existia aqui (botão único, uma chamada,
@@ -280,10 +279,15 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
  *  assinatura: App.tsx:62, Admin.tsx:34 e WhatsAppConfig.tsx:3 o importam por
  *  nome — dois deles via lazy `.then(m => m.EvolutionInstancesPanel)`, que
  *  quebraria em runtime, não no build, se o nome mudasse. */
-function EvolutionQrTab() {
+function ChannelsPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  // Lista ÚNICA: os dois tipos de canal na mesma tela, como no HelenaCRM e no
+  // Intentus. Antes viviam em abas separadas, e a separação criava trabalho de
+  // reconciliação para o usuário — o contador somava os dois, cada aba mostrava
+  // um, e a tela precisava de uma frase explicando a diferença.
+  const { data: metaConnections, isLoading: loadingMeta } = useMetaConnections();
   const { data: instances, isLoading } = useEvolutionInstances();
   const { data: usage } = useOrgChannelUsage(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
@@ -348,18 +352,16 @@ function EvolutionQrTab() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="text-lg font-semibold">Suas Instâncias de WhatsApp</h3>
+          <h3 className="text-lg font-semibold">Canais de atendimento</h3>
           <p className="text-sm text-muted-foreground">
-            Conecte seus números de WhatsApp escaneando o QR Code com o aparelho.
+            Conecte o WhatsApp do seu salão — pela API oficial da Meta ou por QR Code.
           </p>
-          {/* Sem esta linha o cliente vê "2 / 4 canais" sobre uma lista com 1
-              item e conclui que a tela está errada. O canal que falta está na
-              outra aba — o contador é de canais, não de instâncias. */}
-          {!!byType?.meta && (
-            <p className="text-sm text-muted-foreground mt-1">
-              Inclui {byType.meta} conexão(ões) via <strong>WhatsApp Oficial</strong>, na aba ao lado.
-            </p>
-          )}
+          {/* A linha "inclui N via WhatsApp Oficial, na aba ao lado" morreu com
+              as abas, e é bom que tenha morrido: ela existia só para explicar
+              por que o contador dizia 2 sobre uma lista de 1 item — explicação
+              necessária apenas porque a tela escondia metade dos canais. Com
+              lista única, o número e a lista contam a mesma coisa e não há o
+              que reconciliar. */}
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={limitReached ? 'destructive' : 'secondary'} className="text-sm">
@@ -393,23 +395,71 @@ function EvolutionQrTab() {
         </div>
       )}
 
-      {isLoading ? (
+      {!SELF_SERVICE_ENABLED && (
+        // ⚠️ ÚNICA VOZ sobre "self-service indisponível" — ver o invariante no
+        // docblock abaixo e a definição em `channels/selfService.ts`.
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+          A conexão pela API oficial da Meta ainda não está habilitada nesta
+          instalação. Fale com o suporte — o QR Code continua disponível.
+        </div>
+      )}
+
+      {isLoading || loadingMeta ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : !instances?.length ? (
+      ) : !instances?.length && !metaConnections?.length ? (
+        // ESTADO VAZIO ÚNICO: só aparece quando NENHUM dos dois tipos existe.
+        // Enquanto havia abas, cada uma tinha o seu — e a do WhatsApp Oficial
+        // dizia "nenhum número conectado" mesmo com um número conectado na
+        // outra, porque nem sequer consultava o banco.
         <Card>
           <CardContent className="py-12 text-center">
             <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Nenhuma conexão criada ainda.</p>
+            <p className="text-muted-foreground">Nenhum canal conectado ainda.</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp.
+              Clique em <strong>Adicionar canal</strong> para conectar o WhatsApp do seu salão.
             </p>
           </CardContent>
         </Card>
 
       ) : (
         <div className="grid gap-3">
+          {/* Canais da API oficial primeiro: é a conexão mais estável, e a que
+              não depende de um celular ligado. */}
+          {metaConnections?.map((conn) => (
+            <Card key={conn.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                      <MessageCircle className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium truncate">{conn.display_name}</p>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          API Oficial
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {conn.phone_number ?? '—'}
+                      </p>
+                      {conn.business_account_name && (
+                        <p className="text-xs text-muted-foreground">
+                          {conn.business_account_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant={conn.status === 'active' ? 'secondary' : 'destructive'}>
+                    {conn.status === 'active' ? 'Conectado' : conn.status}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
           {instances.map((inst) => (
             <Card key={inst.id}>
               <CardContent className="pt-6">
@@ -617,30 +667,23 @@ function EvolutionQrTab() {
   );
 }
 
-/** Aba "WhatsApp Oficial (Meta)" — Cloud API org-scoped.
+/** Export público — assinatura preservada de propósito.
  *
- *  Dois caminhos coexistem por desenho, não por dívida:
+ *  UMA PÁGINA, SEM ABAS (2026-08-02, pedido do Marcelo com o HelenaCRM como
+ *  referência). Antes havia `<Tabs>` com "QR Code" e "WhatsApp Oficial", e a
+ *  separação cobrava do usuário um trabalho de reconciliação: o contador somava
+ *  os dois tipos, cada aba mostrava um, e a tela precisava de uma frase
+ *  explicando por que "2 / 4 canais" aparecia sobre uma lista de 1 item.
+ *
+ *  Dois caminhos de conexão coexistem por desenho, não por dívida:
  *   • self-service — o wizard `MetaChannelWizard`, em que o salão conecta o
  *     próprio número sem ver credencial nenhuma;
  *   • manual — operação cadastra a conexão pelas edge functions org-scoped
  *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
  *
- *  O QUE VALE AGORA (porte da UI do Intentus, 2026-08-02): o self-service é um
- *  wizard de TRÊS etapas — `MetaChannelWizard` —, acionado pelo picker de tipo
- *  de canal ou pelo botão "Conectar número" desta aba. Três etapas, e não uma,
- *  porque o fluxo antigo dependia de dois canais assíncronos (callback do
- *  FB.login + postMessage) e travava sem erro quando o segundo não chegava; e
- *  porque a etapa de seleção é uma tela NOSSA, que é o que o App Review pediu
- *  para ver. Detalhes no cabeçalho do wizard.
- *
- *  A lista de conexões é REAL desde este porte (`useMetaConnections`). Antes
- *  havia um card "nenhum número conectado" hardcoded e um `invalidateQueries`
- *  para uma chave que nenhuma query usava: conectar com sucesso deixava a tela
- *  afirmando, para sempre, que não havia conexão nenhuma.
- *
  *  ACOPLAMENTO QUE EXISTIU E FOI MORTO — fica registrado porque a solução é o
  *  que impede a recaída, não a ausência do problema.
- *  Durante algumas horas esta aba afirmou duas coisas ao mesmo tempo: um botão
+ *  Durante algumas horas esta tela afirmou duas coisas ao mesmo tempo: um botão
  *  de auto-conexão e, um card abaixo, "para conectar, fale com o suporte". Cada
  *  metade estava certa isolada; o merge as tornou simultâneas. Nenhum autor
  *  podia ver, porque nenhum autor tinha as duas.
@@ -649,134 +692,12 @@ function EvolutionQrTab() {
  *
  *  ⚠️ INVARIANTE A PRESERVAR: UM ESTADO, UM DONO — e o dono é uma DEFINIÇÃO,
  *  não um componente. A condição "self-service habilitado" mora em
- *  `channels/selfService.ts` (`SELF_SERVICE_ENABLED`); esta aba e o wizard
+ *  `channels/selfService.ts` (`SELF_SERVICE_ENABLED`); esta tela e o wizard
  *  IMPORTAM de lá. Se você sentir vontade de escrever
  *  `import.meta.env.VITE_META_*` neste arquivo, pare — é a causa raiz voltando
- *  com outra roupa, e ela já voltou uma vez: a primeira versão deste porte
- *  redefiniu a condição aqui, e só não divergiu por sorte. Dois LEITORES de uma
- *  definição não podem divergir; duas DEFINIÇÕES divergem em silêncio, cada uma
- *  internamente correta. */
-function MetaCloudTab() {
-  const queryClient = useQueryClient();
-  const { data: connections, isLoading } = useMetaConnections();
-  const [wizardOpen, setWizardOpen] = useState(false);
-
-  // ⚠️ LIDO, não redefinido. O invariante herdado deste arquivo — "um estado,
-  // um dono" — proíbe condicionar texto daqui às `VITE_META_*` diretamente, e
-  // eu violei isso na primeira versão do porte. A condição mora em
-  // `channels/selfService.ts`; aqui só se consome.
-  const selfServiceOn = SELF_SERVICE_ENABLED;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-lg font-semibold">WhatsApp Oficial (Meta)</h3>
-          <p className="text-sm text-muted-foreground">
-            Conexão pela API oficial da Meta. Mais estável que o QR Code e sem risco de
-            desconectar sozinho — o número não fica preso a um aparelho.
-          </p>
-        </div>
-        {selfServiceOn && (
-          <Button onClick={() => setWizardOpen(true)} className="gap-2 shrink-0">
-            <Plus className="h-4 w-4" />
-            Conectar número
-          </Button>
-        )}
-      </div>
-
-      {!selfServiceOn && (
-        <Card>
-          <CardContent className="py-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              A conexão automática com a Meta ainda não está habilitada nesta
-              instalação. Fale com o suporte para conectar seu número oficial.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {isLoading && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-6">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando conexões…
-        </div>
-      )}
-
-      {!isLoading && connections?.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nenhum número oficial conectado nesta conta ainda.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {!isLoading &&
-        connections?.map((conn) => (
-          <Card key={conn.id}>
-            <CardContent className="p-4 flex items-start gap-3">
-              <div className="rounded-lg bg-muted p-2.5 shrink-0">
-                <MessageCircle className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm truncate">{conn.display_name}</span>
-                  <Badge
-                    variant={conn.status === 'active' ? 'secondary' : 'destructive'}
-                    className="text-[10px] px-1.5 py-0"
-                  >
-                    {conn.status === 'active' ? 'Conectado' : conn.status}
-                  </Badge>
-                </div>
-                {conn.phone_number && (
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                    {conn.phone_number}
-                  </p>
-                )}
-                {conn.business_account_name && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {conn.business_account_name}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-      <MetaChannelWizard
-        open={wizardOpen}
-        onOpenChange={setWizardOpen}
-        onConnected={() => {
-          // Agora esta invalidação TEM consumidor: `useMetaConnections` usa
-          // exatamente esta chave. Até 2026-08-02 ela apontava para o vazio —
-          // a forma perfeita de "atualize a lista", sem lista para atualizar.
-          queryClient.invalidateQueries({ queryKey: META_CONNECTIONS_KEY });
-          // O contador de canais soma Evolution + Meta no mesmo slot, então uma
-          // conexão nova muda o badge da OUTRA aba também. Prefixo sem orgId
-          // atinge a chave `['org-channel-usage', orgId]` de qualquer org.
-          queryClient.invalidateQueries({ queryKey: ['org-channel-usage'] });
-        }}
-      />
-    </div>
-  );
-}
-
-/** Export público — assinatura preservada de propósito (ver EvolutionQrTab). */
+ *  com outra roupa, e ela já voltou uma vez. Dois LEITORES de uma definição não
+ *  podem divergir; duas DEFINIÇÕES divergem em silêncio, cada uma internamente
+ *  correta. */
 export function EvolutionInstancesPanel() {
-  return (
-    <Tabs defaultValue="qr" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="qr">QR Code</TabsTrigger>
-        <TabsTrigger value="meta">WhatsApp Oficial</TabsTrigger>
-      </TabsList>
-      <TabsContent value="qr">
-        <EvolutionQrTab />
-      </TabsContent>
-      <TabsContent value="meta">
-        <MetaCloudTab />
-      </TabsContent>
-    </Tabs>
-  );
+  return <ChannelsPage />;
 }
