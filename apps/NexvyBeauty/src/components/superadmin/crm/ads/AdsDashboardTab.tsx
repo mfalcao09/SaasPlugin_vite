@@ -51,6 +51,7 @@ import {
   fmtPct,
   fmtRoas,
   fmtInt,
+  budgetToMajor,
   isoDaysAgo,
   DATE_RANGE_PRESETS,
 } from './adsFormat';
@@ -201,15 +202,14 @@ export function AdsDashboardTab() {
   }, [metrics, sinceCurrent]);
 
   // Ritmo de orçamento: gasto de hoje vs soma dos daily_budget das campanhas ativas.
-  // TODO(unit): confirmar se `daily_budget` é gravado em unidade da moeda ou em
-  // centavos pelo sync (Graph devolve minor units). Enquanto App Review bloqueia
-  // dados reais, tratamos como unidade da moeda; ajustar se o sync divergir.
+  // O `ads-sync` grava daily_budget CRU da Graph = MINOR UNITS (centavos p/ BRL);
+  // convertemos p/ unidade da moeda antes de comparar com o gasto (que já é maior).
   const totalDailyBudget = useMemo(
     () =>
       campaigns
         .filter(isCampaignActive)
-        .reduce((acc, c) => acc + Number(c.daily_budget ?? 0), 0),
-    [campaigns],
+        .reduce((acc, c) => acc + (budgetToMajor(c.daily_budget, currency) ?? 0), 0),
+    [campaigns, currency],
   );
   const pacePct = totalDailyBudget > 0 ? Math.min((todaySpend / totalDailyBudget) * 100, 100) : 0;
 

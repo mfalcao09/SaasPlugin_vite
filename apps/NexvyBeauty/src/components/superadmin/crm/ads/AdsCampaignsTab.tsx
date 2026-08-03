@@ -68,7 +68,7 @@ import {
   type AdsAdsetRow,
   type AdsAdRow,
 } from '@/components/superadmin/crm/data/usePlatformAdsCampaigns';
-import { fmtMoney, isoDaysAgo, DATE_RANGE_PRESETS } from './adsFormat';
+import { fmtMoney, fmtBudget, isoDaysAgo, DATE_RANGE_PRESETS } from './adsFormat';
 import {
   ALL_CAMPAIGN_COLS,
   DEFAULT_VISIBLE_KEYS,
@@ -157,7 +157,7 @@ function ColCell({
   if (col.kind === 'budget') {
     return (
       <td className="p-2 text-right tabular-nums text-muted-foreground">
-        {budget != null ? fmtMoney(budget, currency) : '—'}
+        {budget != null ? fmtBudget(budget, currency) : '—'}
       </td>
     );
   }

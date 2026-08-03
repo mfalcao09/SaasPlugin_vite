@@ -32,6 +32,34 @@ export function fmtMoney(
   }
 }
 
+/** Fator de subunidade da moeda (100 p/ BRL/USD; 1 p/ JPY e afins). */
+export function currencyMinorFactor(currency = 'BRL'): number {
+  try {
+    const digits =
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency || 'BRL' })
+        .resolvedOptions().maximumFractionDigits ?? 2;
+    return 10 ** digits;
+  } catch {
+    return 100;
+  }
+}
+
+/** Orçamento vem da Graph em MINOR UNITS (centavos p/ BRL). Converte p/ unidade da
+ *  moeda. ATENÇÃO: métricas de insights (spend/cpc/cpm…) JÁ vêm em unidade da moeda
+ *  — NÃO passar por aqui, só budget/bid. */
+export function budgetToMajor(
+  minor: number | null | undefined,
+  currency = 'BRL',
+): number | null {
+  if (minor == null || Number.isNaN(minor)) return null;
+  return minor / currencyMinorFactor(currency);
+}
+
+/** Formata orçamento (minor units → moeda). */
+export function fmtBudget(minor: number | null | undefined, currency = 'BRL'): string {
+  return fmtMoney(budgetToMajor(minor, currency), currency);
+}
+
 /** ctr etc. chegam como fração 0..1 OU como percentual bruto — normaliza p/ %. */
 export function fmtPct(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return '—';
