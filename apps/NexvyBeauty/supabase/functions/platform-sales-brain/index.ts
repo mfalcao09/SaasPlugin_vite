@@ -1655,6 +1655,74 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
     }
 
+    // ── ANTI-REPETIÇÃO: MECANISMO, não pedido ────────────────────────────────
+    //
+    // `botAlreadySpoke` (~linha 1138) já detectava corretamente que a conversa
+    // estava em andamento — e o ÚNICO consumidor dele era uma frase do PROMPT
+    // ("NUNCA se reapresente, NUNCA repita a saudação inicial"). Isso é um
+    // PEDIDO ao modelo, não uma garantia: em 2026-08-03 a Duda reapresentou-se
+    // inteira 20s depois da primeira fala, para o PRIMEIRO lead vindo de
+    // anúncio pago (conversa bb03004c). Detecção certa, execução zero.
+    //
+    // Regra deliberadamente conservadora: só suprime repetição do que a PRÓPRIA
+    // Duda disse DENTRO da janela que o modelo enxergou (`history`). Se está no
+    // contexto dele, não há desculpa para repetir; se caiu fora da janela,
+    // repetir é humano e não suprimimos.
+    //
+    // SEM distância fuzzy, de propósito: derrubar bolha legítima é PIOR que
+    // deixar passar uma quase-repetição — a cliente fica sem resposta, que é
+    // exatamente o sintoma ("a IA travou") que este defeito produziu.
+    const repeatKey = (s: string): string =>
+      (s || '')
+        .toLowerCase()
+        .replace(/[\p{Extended_Pictographic}]/gu, '')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim();
+
+    const jaDito = new Set<string>(
+      history
+        .filter((m: any) => m.sender_type === 'bot' && typeof m.content === 'string')
+        .map((m: any) => repeatKey(m.content))
+        .filter((k: string) => k.length >= 12), // curtas ("ok", "certo") PODEM repetir
+    );
+
+    const bubblesAntes = bubbles.length;
+    bubbles = bubbles.filter((b: string) => {
+      const k = repeatKey(b);
+      if (k.length < 12) return true;
+      if (jaDito.has(k)) {
+        // LOG ALTO de propósito: suprimir em silêncio recria o defeito de hoje
+        // — o problema sai do relatório e continua no produto.
+        console.error('[platform-sales-brain] BOLHA REPETIDA SUPRIMIDA', {
+          conversation_id: conversation.id,
+          preview: b.slice(0, 70),
+        });
+        return false;
+      }
+      jaDito.add(k); // impede repetição DENTRO do próprio turno também
+      return true;
+    });
+
+    if (bubbles.length === 0) {
+      // Tudo que o modelo produziu já havia sido dito. Ficar calada RECRIA o
+      // sintoma original (a cliente vê a própria mensagem como a última da
+      // conversa). Seguimos com uma continuação curta — só se ela for inédita.
+      const continuacao = 'Me conta um pouco mais pra eu te ajudar do jeito certo?';
+      if (!jaDito.has(repeatKey(continuacao))) {
+        console.error('[platform-sales-brain] turno INTEIRO era repetição — enviando continuação', {
+          conversation_id: conversation.id,
+          bolhas_descartadas: bubblesAntes,
+        });
+        bubbles = [continuacao];
+      } else {
+        console.error('[platform-sales-brain] turno INTEIRO repetido E continuação já dita — nada enviado', {
+          conversation_id: conversation.id,
+          bolhas_descartadas: bubblesAntes,
+        });
+        return json({ skipped: 'all_bubbles_repeated', dropped: bubblesAntes });
+      }
+    }
+
     // 12) Entrega bolha a bolha: persiste ANTES de entregar (a msg existe no CRM
     //     mesmo se a entrega externa falhar), depois casa o wamid, broadcast e
     //     pausa proporcional entre bolhas (só entre bolhas, não após a última).
