@@ -79,11 +79,41 @@ Deno.serve(async (req: Request) => {
     }
 
     const appId = Deno.env.get('META_WHATSAPP_APP_ID');
-    const appSecret = Deno.env.get('META_WHATSAPP_APP_SECRET');
+
+    // ⚠️ FALLBACK DELIBERADO para `META_ADS_APP_SECRET` — decisão do Marcelo
+    // (2026-08-03), com a objeção registrada aqui.
+    //
+    // POR QUE FUNCIONA: ads e WhatsApp são o MESMO app da Meta. Provado por
+    // digest: ao cadastrar `META_WHATSAPP_APP_ID=1289456453376034`, o hash
+    // resultante saiu IDÊNTICO ao de `META_ADS_APP_ID` (6aec360d…5588d) — o que
+    // só ocorre se os dois valem a mesma coisa. Mesmo app ⇒ mesmo app secret.
+    //
+    // ⚠️ O QUE **NÃO** ESTÁ PROVADO: que `META_ADS_APP_SECRET` é de fato o
+    // secret DESTE app. Isso é INFERÊNCIA, não medição — não existia um
+    // `META_WHATSAPP_APP_SECRET` com que comparar o digest. Por isso
+    // `secretSource` é logado: se a troca falhar, o log diz QUAL chave foi
+    // usada, em vez de deixar "troca falhou" sem procedência.
+    //
+    // ⚠️ O CUSTO, registrado porque o código não o mostra: isto acopla o
+    // WhatsApp a uma variável cujo NOME diz "ADS". Se um dia os apps forem
+    // separados, o fallback continuará ACHANDO um secret — o do app errado — e
+    // a Meta recusará a troca com erro de credencial, longe daqui. A saída
+    // definitiva é cadastrar `META_WHATSAPP_APP_SECRET`; feito isso, o ramo
+    // próprio ganha e o fallback vira código morto benigno.
+    const ownSecret = Deno.env.get('META_WHATSAPP_APP_SECRET');
+    const appSecret = ownSecret || Deno.env.get('META_ADS_APP_SECRET');
+    const secretSource = ownSecret ? 'META_WHATSAPP_APP_SECRET' : 'META_ADS_APP_SECRET(fallback)';
+
     if (!appId || !appSecret) {
-      console.error('[embedded-signup-exchange] META_WHATSAPP_APP_ID/SECRET ausentes');
+      // Diz QUAL falta. A versão anterior logava as duas juntas, e descobrir
+      // que só o APP_ID estava ausente custou uma investigação inteira.
+      console.error('[embedded-signup-exchange] credenciais ausentes', {
+        appId: appId ? 'ok' : 'AUSENTE',
+        appSecret: 'AUSENTE (nem META_WHATSAPP_APP_SECRET nem META_ADS_APP_SECRET)',
+      });
       return json({ error: 'integracao Meta nao configurada no servidor' }, 500);
     }
+    console.log('[embedded-signup-exchange] app_secret via', secretSource);
 
     // ── 1. TROCA IMEDIATA (a janela é de 30s; nada antes disto) ──────────────
     const tokenUrl = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`);
