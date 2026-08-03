@@ -203,28 +203,42 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
     }
   }, [open]);
 
-  // ⚠️ O SDK CARREGA AO ABRIR O MODAL — NUNCA DENTRO DO CLIQUE. A razão não é
-  // performance:
+  // O SDK carrega ao ABRIR O MODAL, não dentro do clique.
   //
-  // `FB.login` abre um POPUP, e popup só é permitido durante a *user
-  // activation* — a janela de ~5s que o clique concede. A versão anterior fazia
-  // `await loadFacebookSdk(...)` DENTRO do handler; na primeira vez de cada
-  // carga de página esse await busca 12KB + 269KB da rede, a ativação expira no
-  // meio, o navegador recusa o popup, o callback do `FB.login` nunca dispara —
-  // e o `setLoading(false)` mora dentro desse callback. Resultado: spinner
-  // eterno, sem erro e sem log. Reproduzido em produção em 2026-08-02
-  // (gravação de tela), duas tentativas seguidas.
+  // ⚠️ ERRATA (2026-08-02, mesmo dia): uma versão anterior deste comentário
+  // afirmava que o travamento em produção vinha daqui — que o
+  // `await loadFacebookSdk(...)` dentro do handler consumia a *user activation*
+  // e fazia o navegador recusar o popup. **REFUTADO por medição no mesmo dia:**
+  // `window.open` abriu normalmente a partir de um script injetado, SEM
+  // ativação nenhuma. A causa real não estava no código — ver abaixo. Fica
+  // registrado porque código certo com explicação errada é pior que código
+  // errado: o comportamento melhora, o teste passa, e o comentário ensina a
+  // coisa errada para quem vier depois.
   //
-  // Medido na mesma sessão, e registrado porque quase me fez consertar o lugar
+  // 🔴 A CAUSA REAL do spinner eterno: `app.nexvybeauty.com.br` não estava em
+  // *Domínios permitidos para o SDK do JavaScript* no Painel de Apps da Meta
+  // (`business-login/settings/` — lista do APP INTEIRO, não da config, então
+  // trocar `config_id` não resolveria). O popup ABRIA e morria exibindo "O
+  // domínio do host JSSDK é desconhecido"; o callback voltava
+  // `{authResponse: null, status: 'unknown'}` ou não voltava. Daqui de dentro
+  // não havia NADA para ver: zero exceção, zero violação de CSP, zero log.
+  // Se este fluxo travar num host novo (FIC, Intentus, staging), **confira essa
+  // lista ANTES de mexer em qualquer linha deste arquivo.**
+  //
+  // Por que o pré-carregamento FICA, mesmo não tendo sido o conserto: `FB.login`
+  // abre um popup, e a regra de user activation é real — depender dela só
+  // porque neste navegador ela estava frouxa seria construir sobre sorte. Com o
+  // SDK pronto antes, o clique chama `FB.login` de forma síncrona, e o botão
+  // consegue distinguir "carregando o Facebook" de "abrindo a janela", que
+  // antes eram o mesmo spinner.
+  //
+  // 🔬 Outra coisa medida no caminho, e que quase me fez consertar o lugar
   // errado: `window.FB` lido pelo console da extensão aparecia `undefined` —
   // mas aquilo é o ISOLATED WORLD, onde as globais da página não existem. Um
   // `<script>` inline injetado na própria página respondeu `FB: object`,
   // `FB.login: function`, e `FB.getLoginStatus` retornou `{status:'unknown'}`.
-  // O SDK sempre esteve carregado e funcional; o instrumento é que lia outro
-  // mundo. Instrumento exato, alvo certo, MUNDO errado.
-  //
-  // Pré-carregar reduz o await do clique a nada: quando o usuário clicar, `FB`
-  // já existe e `FB.login` roda SÍNCRONO no handler, com a ativação viva.
+  // O SDK sempre esteve carregado; o instrumento é que lia outro mundo.
+  // Instrumento exato, alvo certo, MUNDO errado.
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
@@ -246,9 +260,12 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
     return () => { cancelled = true; };
   }, [open]);
 
-  // ⚠️ NÃO É `async` E NÃO TEM `await` — de propósito. Qualquer `await` antes do
-  // `FB.login` reintroduz o defeito descrito acima. Se algum dia for preciso
-  // buscar algo antes de abrir o login, o lugar é o efeito acima, não aqui.
+  // Não é `async` e não tem `await` — de propósito. Não porque um `await` aqui
+  // tenha causado o bug de 02/08 (não causou, ver a errata acima), mas porque
+  // `FB.login` abre popup e a regra de user activation existe: manter a chamada
+  // síncrona no handler é a forma de não depender de quão frouxa a janela de
+  // ativação está neste ou naquele navegador. Se um dia for preciso buscar algo
+  // antes de abrir o login, o lugar é o efeito acima, não aqui.
   const handleFacebookLogin = useCallback(() => {
     if (!APP_ID || !CONFIG_ID) return;
 
@@ -267,14 +284,46 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
     // invisível quando tudo dá certo.
     const watchdog = window.setTimeout(() => {
       setLoading(false);
+      // ⚠️ A mensagem descreve o FATO ("não recebemos resposta"), não uma causa.
+      // A versão anterior dizia "a janela do Facebook não abriu" — e no caso
+      // real de 02/08 a janela ABRIA, exibindo um erro de configuração nossa.
+      // Afirmar a causa errada manda o tenant caçar bloqueador de pop-up por
+      // um problema que só nós podemos consertar, e ainda faz o suporte
+      // acreditar na pista falsa. Só o que foi observado entra no texto.
       toast.error(
-        'A janela do Facebook não abriu. Verifique se o navegador bloqueou pop-ups ' +
-          'para este site (ícone na barra de endereço) e tente de novo.',
+        'Não recebemos resposta do Facebook. Se a janela abriu e mostrou algum aviso, ' +
+          'nos envie o print — e se ela nem chegou a aparecer, confira se o navegador ' +
+          'bloqueou pop-ups para este site.',
       );
     }, 120_000);
 
     window.FB.login(
-      async (response) => {
+      // ⚠️ ESTE CALLBACK NÃO PODE SER `async`. NUNCA. Este é o defeito que
+      // travou o botão em produção o dia inteiro de 2026-08-02:
+      //
+      //   Uncaught t {message: 'Expression is of type asyncfunction, not function'}
+      //
+      // O SDK do Facebook valida o TIPO do callback e **lança** ao receber uma
+      // `AsyncFunction`. A exceção sobe antes de qualquer janela abrir — nada de
+      // popup, nada de callback, e o `setLoading(false)` (que mora dentro deste
+      // callback) nunca roda. Da tela: spinner eterno. Do código: nada visível,
+      // porque a exceção é engolida pelo próprio SDK.
+      //
+      // 🔬 POR QUE DEMOROU TANTO A APARECER — e a lição vale mais que a correção:
+      // para depurar, instalei um wrapper em `FB.login` que envolvia o callback
+      // num `function(){}` comum antes de repassar ao SDK. **O wrapper
+      // consertava o bug que eu estava investigando.** Toda medição minha
+      // passava (popup abria, `config_id` correto, janela no centro da tela) e
+      // eu concluí "a cadeia inteira funciona" — enquanto o Marcelo, clicando no
+      // botão de verdade, continuava travado. O instrumento alterou o observado.
+      // Quem resolveu foi ele expandindo o `Uncaught` no console.
+      // ⇒ Ao instrumentar um call site, o wrapper tem que reproduzir o
+      //   ARGUMENTO EXATO que o código real passa — inclusive o tipo dele.
+      //
+      // A forma correta é esta: callback síncrono que dispara o trabalho async
+      // por dentro. `void` deixa explícito que a promise é deliberadamente não
+      // aguardada — o SDK não espera retorno nenhum daqui.
+      (response) => {
         // Primeira linha do callback: o callback CHEGOU, então o watchdog não
         // tem mais o que vigiar. Desarmar aqui — e não em cada `return` — é o
         // que garante que nenhum caminho de saída futuro esqueça de fazê-lo.
@@ -288,28 +337,30 @@ export function MetaChannelWizard({ open, onOpenChange, onConnected }: Props) {
           return;
         }
 
-        // O code vale 30 SEGUNDOS. Vai direto para o servidor, que troca de
-        // forma síncrona. Nada de fila, retry ou "tentaremos mais tarde".
-        const { data, error } = await supabase.functions.invoke(
-          'whatsapp-embedded-signup-exchange',
-          { body: { code } },
-        );
-        setLoading(false);
+        void (async () => {
+          // O code vale 30 SEGUNDOS. Vai direto para o servidor, que troca de
+          // forma síncrona. Nada de fila, retry ou "tentaremos mais tarde".
+          const { data, error } = await supabase.functions.invoke(
+            'whatsapp-embedded-signup-exchange',
+            { body: { code } },
+          );
+          setLoading(false);
 
-        if (error || (data as { error?: string } | null)?.error) {
-          const message = await serverMessage(error, data);
-          toast.error(message || 'Não foi possível concluir a conexão. Tente novamente.');
-          return;
-        }
+          if (error || (data as { error?: string } | null)?.error) {
+            const message = await serverMessage(error, data);
+            toast.error(message || 'Não foi possível concluir a conexão. Tente novamente.');
+            return;
+          }
 
-        const result = data as { connection_id: string; assets: unknown };
-        const list = flattenPhones(result.assets);
-        setConnectionId(result.connection_id);
-        setPhones(list);
-        // Um único número é o caso comum: já deixa selecionado para o usuário só
-        // confirmar, sem transformar a etapa em trabalho burocrático.
-        setSelected(list.length === 1 ? list[0] : null);
-        setStep('select');
+          const result = data as { connection_id: string; assets: unknown };
+          const list = flattenPhones(result.assets);
+          setConnectionId(result.connection_id);
+          setPhones(list);
+          // Um único número é o caso comum: já deixa selecionado para o usuário
+          // só confirmar, sem transformar a etapa em trabalho burocrático.
+          setSelected(list.length === 1 ? list[0] : null);
+          setStep('select');
+        })();
       },
       {
         config_id: CONFIG_ID,
