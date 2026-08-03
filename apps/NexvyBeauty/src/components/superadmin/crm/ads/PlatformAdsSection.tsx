@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, BarChart3, Megaphone, Route, Sparkles } from 'lucide-react';
+import { AlertTriangle, BarChart3, LayoutDashboard, Megaphone, Route, Sparkles } from 'lucide-react';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { AdsDashboardTab } from './AdsDashboardTab';
 import { AdsAttributionTab } from './AdsAttributionTab';
 import { AdsCampaignsTab } from './AdsCampaignsTab';
 import { AdsRecommendationsTab } from './AdsRecommendationsTab';
@@ -20,7 +21,7 @@ import { AdsRecommendationsTab } from './AdsRecommendationsTab';
  */
 export function PlatformAdsSection() {
   const { activeProduct, effectiveProductId, isLoading } = useActivePlatformProduct();
-  const [tab, setTab] = useState('atribuicao');
+  const [tab, setTab] = useState('visao-geral');
 
   const productLabel = activeProduct?.name ?? (effectiveProductId ? 'produto ativo' : null);
 
@@ -56,22 +57,28 @@ export function PlatformAdsSection() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="atribuicao" className="gap-1.5">
-            <Route className="h-4 w-4" /> Atribuição
+          <TabsTrigger value="visao-geral" className="gap-1.5">
+            <LayoutDashboard className="h-4 w-4" /> Visão geral
           </TabsTrigger>
           <TabsTrigger value="campanhas" className="gap-1.5">
             <Megaphone className="h-4 w-4" /> Campanhas
+          </TabsTrigger>
+          <TabsTrigger value="atribuicao" className="gap-1.5">
+            <Route className="h-4 w-4" /> Atribuição
           </TabsTrigger>
           <TabsTrigger value="recomendacoes" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Recomendações
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="atribuicao" className="mt-4">
-          <AdsAttributionTab />
+        <TabsContent value="visao-geral" className="mt-4">
+          <AdsDashboardTab />
         </TabsContent>
         <TabsContent value="campanhas" className="mt-4">
           <AdsCampaignsTab />
+        </TabsContent>
+        <TabsContent value="atribuicao" className="mt-4">
+          <AdsAttributionTab />
         </TabsContent>
         <TabsContent value="recomendacoes" className="mt-4">
           <AdsRecommendationsTab />
