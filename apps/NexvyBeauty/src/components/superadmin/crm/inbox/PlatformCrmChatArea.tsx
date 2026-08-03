@@ -306,6 +306,28 @@ export function PlatformCrmChatArea({
     const isOutbound = (m: any) =>
       m?.direction === 'outbound' || m?.sender_type === 'agent' || m?.sender_type === 'bot';
 
+    // ⚠️ DOIS `wamid` DISTINTOS = DUAS ENTREGAS REAIS. Nunca esconder.
+    //
+    // A dedupe abaixo existe para a MESMA mensagem aparecendo duas vezes (eco
+    // "via aparelho", bolha dupla) — e uma mensagem do WhatsApp tem UM wamid só:
+    // o eco reaproveita o wamid do envio original, e a bolha dupla costuma vir
+    // sem nenhum. Quando os dois lados têm wamid e são DIFERENTES, o cliente
+    // recebeu DUAS mensagens no celular dele; esconder uma faz a tela discordar
+    // do aparelho da pessoa com quem se está falando.
+    //
+    // POR QUE ISTO VIROU CÓDIGO (2026-08-03): a Duda repetiu a abertura inteira
+    // para o primeiro lead vindo de anúncio pago, 20s depois da primeira. A
+    // dedupe escondeu as duas bolhas repetidas, a tela passou a mostrar a
+    // mensagem do CLIENTE por último, e o defeito do agente foi lido como "a IA
+    // travou" — diagnóstico errado a partir de tela errada. Medido no banco: em
+    // 30 dias os ÚNICOS pares outbound de texto idêntico em <5min são esses
+    // dois. A dedupe nunca chegou a servir ao caso para o qual foi escrita, e o
+    // único efeito que teve foi ocultar um defeito real.
+    //
+    // Correção cosmética que esconde defeito funcional é pior que o defeito: o
+    // defeito some do relatório, não do produto.
+    const wamidOf = (m: any): string | undefined => m?.metadata?.wamid || undefined;
+
     // Prioridade: 1) agent (verde) 2) plataforma (não-device) 3) device 4) bot/IA
     const priority = (m: any): number => {
       if (m?.sender_type === 'agent' && !isFromDevice(m)) return 4;
@@ -329,6 +351,10 @@ export function PlatformCrmChatArea({
         if (hidden.has(b.id) || !isOutbound(b)) continue;
         if (normalize(b.content) !== contentA) continue;
         if (Math.abs(new Date(b.created_at).getTime() - tsA) > WINDOW_MS) continue;
+        // Duas entregas reais e distintas — repetição genuína, não eco. Mostra as duas.
+        const waA = wamidOf(a);
+        const waB = wamidOf(b);
+        if (waA && waB && waA !== waB) continue;
         // duplicata — esconde a de menor prioridade
         const loser = priority(a) >= priority(b) ? b : a;
         hidden.add(loser.id);
