@@ -433,8 +433,16 @@ function buildScoreFactBlock(q: Record<string, any>): string {
 
   const rotaGuidance: Record<string, string> = {
     premium: 'carteira robusta → conduza para o plano recomendado (Premium/Ultra) com a conta da recuperação.',
+    // ⚠️ NÃO devolver "descubra carteira/ticket" aqui. Medido em 2026-08-03:
+    // em 8 de 8 conversas o score ficou no piso e a rota em 'aprofundar', com
+    // carteira/ticket NULL em todas — a Duda perguntava, ninguém respondia, e
+    // esta linha mandava perguntar de novo. Laço fechado: ela falava de 1,5 a
+    // 9,0 vezes por fala da lead, e um lead passou 1h na conversa para no fim
+    // perguntar "qual é esse serviço".
+    // O RAIO-X calcula carteira e ticket a partir do WhatsApp dela — pedir os
+    // números à mão é pedir que ela faça de cabeça o trabalho da ferramenta.
     aprofundar: provisorio
-      ? 'FALTAM dados de carteira/ticket → descubra-os naturalmente antes de ofertar; se já sabe e ela está cética, mostre VALOR.'
+      ? 'ainda não sabemos os números dela — e está TUDO BEM: OFEREÇA O RAIO-X (é ele que lê o WhatsApp e calcula carteira/ticket). NÃO repita perguntas de qualificação; se ela não respondeu, avance MOSTRANDO o que a ferramenta faz.'
       : 'lead qualificada mas indecisa/cética → aprofunde o VALOR (a conta personalizada + PROVA na carteira) antes de fechar.',
     essencial: 'carteira pequena/começando → recomende o plano de ENTRADA com a conta honesta. NUNCA rejeite.',
   };
