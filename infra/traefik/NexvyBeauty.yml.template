@@ -67,6 +67,7 @@ http:
     #  script: self + inline (pixel inline no index.html + Vite) + connect.facebook.net
     #  connect: Supabase (api/wss/storage) + viacep + facebook (pixel /tr)
     #  style/font: self + inline + Google Fonts | img: https genérico (storage/qr/yt)
+    #  media: self + blob + Supabase storage (áudio de WhatsApp no chat — 2026-08-03)
     #  frame-ancestors none (anti-clickjacking) + object-src none + base-uri self
     # Se um recurso novo for bloqueado no futuro, o console mostra "Refused to..."
     # com a diretiva — adicione a origem aqui e re-deploy.
@@ -83,5 +84,6 @@ http:
             font-src 'self' data: https://fonts.gstatic.com;
             img-src 'self' data: blob: https:;
             connect-src 'self' https://*.supabase.co wss://*.supabase.co https://viacep.com.br https://www.facebook.com https://connect.facebook.net;
+            media-src 'self' blob: https://*.supabase.co;
             frame-src 'self' https:;
             worker-src 'self' blob:
