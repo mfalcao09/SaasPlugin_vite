@@ -25,6 +25,19 @@
 //   needs_template: true, conversation_id } — o FRONT decide oferecer
 //   template (platform-meta-whatsapp-send).
 //
+// ⚠️ RAMO EVOLUTION (PR-BDR-7): o dropdown do inbox mistura conexões Meta com
+//   instâncias Evolution — ids de tabelas DIFERENTES. Quando o connection_id não
+//   existe em platform_crm_whatsapp_meta_connections, procura em
+//   platform_crm_evolution_instances; achando, delega o envio pra
+//   `platform-evolution-send` e cria a conversa com a IDENTIDADE do
+//   platform-evolution-webhook (channel 'whatsapp_evolution',
+//   visitor_id 'wa_evo:<digits>', evolution_instance_id) — é essa tripla que
+//   faz o webhook reencontrar a conversa em vez de abrir outra. Em nenhuma das
+//   duas tabelas → 404 connection_not_found, como antes.
+//   A POSSE, porém, segue a regra da linha 17 e NÃO o webhook: caminho humano
+//   assume (human_active + assigned_to), porque um agente clicou "Iniciar
+//   Conversa"; o webhook fica sem dono porque lá não há dono a registrar.
+//
 // NOTA: helpers de lead/conversa são deliberadamente locais (não _shared) —
 //   mesmo precedente do par webhook/inbox; esta função não toca arquivos
 //   existentes.
@@ -90,6 +103,39 @@ async function resolveActiveMetaConnection(
   }
   if (!conn) return { conn: null, reason: 'no_active_connection' };
   return { conn, reason: null };
+}
+
+// ─── Instância Evolution (canal não-oficial — OUTRA tabela) ─────────────────
+
+interface EvolutionInstance {
+  id: string;
+  name: string | null;
+  product_id: string | null;
+  status: string | null;
+}
+
+/** O dropdown do inbox mistura conexões Meta (platform_crm_whatsapp_meta_
+ *  connections) com instâncias Evolution (platform_crm_evolution_instances) —
+ *  ids de TABELAS diferentes (PlatformCrmStartConversationDialog.tsx:84-88 manda
+ *  o id CRU em connection_id). Só é consultada quando o id NÃO existe na tabela
+ *  Meta; o ramo Meta segue intocado. */
+async function resolveEvolutionInstance(
+  supabase: any,
+  instanceId: string,
+): Promise<EvolutionInstance | null> {
+  const { data, error } = await supabase
+    .from('platform_crm_evolution_instances')
+    .select('id, name, product_id, status')
+    .eq('id', instanceId)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      '[platform-start-whatsapp-conversation] evolution instance fetch error:',
+      JSON.stringify({ instance_id: instanceId, message: error.message }),
+    );
+    return null;
+  }
+  return (data as EvolutionInstance) ?? null;
 }
 
 // ─── Lead (dedupe por telefone, espelho do webhook) ──────────────────────────
@@ -214,6 +260,323 @@ async function ensureConversation(
   return { conversation: created as Record<string, unknown>, isNew: true };
 }
 
+// ─── Conversa Evolution (shape ESPELHADO do webhook) ────────────────────────
+
+/** Cria/reusa a conversa do canal Evolution.
+ *
+ *  IDENTIDADE espelhada de platform-evolution-webhook/index.ts:395-411
+ *  (`ensureConversation`): visitor_id 'wa_evo:<digits>', visitor_phone/whatsapp
+ *  com '+', channel 'whatsapp_evolution', needs_human false,
+ *  evolution_instance_id. Essa paridade é OBRIGATÓRIA: o webhook reencontra a
+ *  conversa por (visitor_id, channel, evolution_instance_id) — webhook:369-376.
+ *  Divergir em qualquer um dos três faria a resposta da lead abrir uma SEGUNDA
+ *  conversa.
+ *
+ *  POSSE diverge do webhook DE PROPÓSITO: aqui um humano clicou "Iniciar
+ *  Conversa", então quem inicia ASSUME (status 'human_active' + assigned_to) —
+ *  regra do cabeçalho deste arquivo, 1:1 com o ramo Meta (:243-244). O webhook
+ *  usa 'waiting_human' sem dono porque lá chega mensagem de desconhecido e não
+ *  há ninguém a registrar. São situações diferentes, não uma inconsistência.
+ *  Prospectivo: quando o cérebro atender 'whatsapp_evolution' (gate em
+ *  status='bot_active'), conversa iniciada por humano em 'human_active' não é
+ *  assumida pelo bot — que é o certo.
+ *
+ *  LIMITAÇÃO CONHECIDA: a reabertura de 'closed' abaixo espelha webhook:379-393,
+ *  que ZERA assigned_to (webhook:388). Ou seja, conversa reaberta perde o dono —
+ *  comportamento do webhook, mantido aqui de propósito para não criar um
+ *  terceiro estado. */
+async function ensureEvolutionConversation(
+  supabase: any,
+  digits: string,
+  instanceId: string,
+  productId: string | null,
+  leadId: string | null,
+  userId: string,
+): Promise<{ conversation: Record<string, unknown> | null; isNew: boolean }> {
+  const visitorId = `wa_evo:${digits}`;
+  const { data: rows, error: selectError } = await supabase
+    .from('platform_crm_conversations')
+    .select('*')
+    .eq('visitor_id', visitorId)
+    .eq('channel', 'whatsapp_evolution')
+    .eq('evolution_instance_id', instanceId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (selectError) {
+    console.error(
+      '[platform-start-whatsapp-conversation] evolution conversation lookup failed:',
+      JSON.stringify({ visitor_id: visitorId, instance_id: instanceId, message: selectError.message }),
+    );
+    return { conversation: null, isNew: false };
+  }
+  let conversation = (rows?.[0] as Record<string, unknown>) ?? null;
+
+  if (conversation) {
+    const patch: Record<string, unknown> = {};
+    // Reabertura ESPELHADA do webhook:379-393 — inclusive o assigned_to: null
+    // (webhook:388). Limitação conhecida e deliberada: conversa reaberta perde
+    // o dono. Divergir aqui criaria um terceiro estado.
+    if (conversation['status'] === 'closed') {
+      patch['status'] = 'waiting_human';
+      patch['needs_human'] = false;
+      patch['accepted_at'] = null;
+      patch['accepted_by'] = null;
+      patch['assigned_to'] = null;
+    }
+    // Só quando ainda não tem: atribuição manual nunca é sobrescrita (A1.3).
+    if (!conversation['product_id'] && productId) patch['product_id'] = productId;
+    if (!conversation['lead_id'] && leadId) patch['lead_id'] = leadId;
+    if (Object.keys(patch).length === 0) return { conversation, isNew: false };
+
+    const { data: updated, error } = await supabase
+      .from('platform_crm_conversations')
+      .update(patch)
+      .eq('id', conversation['id'])
+      .select('*')
+      .single();
+    if (error) {
+      console.error(
+        '[platform-start-whatsapp-conversation] evolution conversation patch failed:',
+        JSON.stringify({ conversation_id: conversation['id'], message: error.message }),
+      );
+    } else if (updated) {
+      conversation = updated as Record<string, unknown>;
+    }
+    return { conversation, isNew: false };
+  }
+
+  const { data: created, error } = await supabase
+    .from('platform_crm_conversations')
+    .insert({
+      visitor_id: visitorId,
+      visitor_phone: `+${digits}`,
+      visitor_whatsapp: `+${digits}`,
+      channel: 'whatsapp_evolution',
+      // Quem inicia ASSUME (cabeçalho :17, ramo Meta :243-244) — diverge do
+      // webhook de propósito; ver docblock desta função.
+      status: 'human_active',
+      assigned_to: userId,
+      needs_human: false,
+      evolution_instance_id: instanceId,
+      ...(productId ? { product_id: productId } : {}),
+      ...(leadId ? { lead_id: leadId } : {}),
+    })
+    .select('*')
+    .single();
+  if (error) {
+    console.error(
+      '[platform-start-whatsapp-conversation] create evolution conversation failed:',
+      JSON.stringify({ visitor_id: visitorId, instance_id: instanceId, message: error.message }),
+    );
+    return { conversation: null, isNew: false };
+  }
+  return { conversation: created as Record<string, unknown>, isNew: true };
+}
+
+// ─── Entrega Evolution (delega pra platform-evolution-send) ─────────────────
+
+interface EvolutionSendResult {
+  messageId: string | null;
+  error: string | null;
+  status: number | null;
+}
+
+/** Delega o envio pra `platform-evolution-send` (SendBody: product_id,
+ *  instance_id, type, to, payload) — mesma invocação do motor de cold outreach
+ *  em platform-cold-outreach/index.ts:383-385. O client é service-role, então o
+ *  Bearer bate com o gate "interno only" daquela função. */
+async function sendTextViaEvolution(
+  supabase: any,
+  productId: string,
+  instanceId: string,
+  toDigits: string,
+  text: string,
+): Promise<EvolutionSendResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+      body: {
+        product_id: productId,
+        instance_id: instanceId,
+        type: 'text',
+        to: toDigits,
+        payload: { text },
+      },
+    });
+    if (error) {
+      return { messageId: null, error: String(error?.message ?? error).slice(0, 300), status: null };
+    }
+    // Envelope da platform-evolution-send: { ok, status, body } (index.ts:49,147).
+    const res = data as { ok?: boolean; status?: number; body?: any } | null;
+    if (!res || res.ok !== true) {
+      return {
+        messageId: null,
+        error: JSON.stringify(res ?? null).slice(0, 300),
+        status: typeof res?.status === 'number' ? res.status : null,
+      };
+    }
+    const rawId = res.body?.key?.id;
+    return {
+      messageId: rawId ? String(rawId) : null,
+      error: null,
+      status: typeof res.status === 'number' ? res.status : 200,
+    };
+  } catch (e) {
+    return { messageId: null, error: String(e).slice(0, 300), status: null };
+  }
+}
+
+// ─── Ramo Evolution: fluxo completo (lead → conversa → envio → persistência) ─
+
+async function startViaEvolution(
+  supabase: any,
+  instance: EvolutionInstance,
+  digits: string,
+  message: string,
+  productIdInput: string | null,
+  leadIdInput: string | null,
+  userId: string,
+): Promise<Response> {
+  // platform-evolution-send resolve a instância por (id, product_id) —
+  // index.ts:80-82. Sem product_id na instância o envio é impossível.
+  if (!instance.product_id) {
+    console.error(
+      '[platform-start-whatsapp-conversation] evolution instance sem product_id:',
+      JSON.stringify({ instance_id: instance.id, name: instance.name }),
+    );
+    return json(
+      { error: 'instance_product_missing', detail: 'instância Evolution sem product_id' },
+      422,
+    );
+  }
+  // O SEND usa o product da instância (senão platform-evolution-send devolve
+  // 404). O product da CONVERSA segue a precedência A1.3 do ramo Meta.
+  const sendProductId = instance.product_id;
+  const effectiveProductId = productIdInput || instance.product_id;
+
+  // 1) Lead — mesma resolução do ramo Meta (helpers reaproveitados).
+  let leadId: string | null = null;
+  if (leadIdInput) {
+    const { data: leadRow } = await supabase
+      .from('platform_crm_leads')
+      .select('id')
+      .eq('id', leadIdInput)
+      .maybeSingle();
+    if (!leadRow?.id) return json({ error: 'lead_not_found' }, 404);
+    leadId = leadRow.id as string;
+  } else {
+    leadId = await ensureLeadByPhone(supabase, digits, effectiveProductId, userId);
+  }
+  if (leadId) await ensurePlatformLeadInPipeline(supabase, leadId);
+
+  // 2) Conversa (shape do webhook)
+  const { conversation, isNew } = await ensureEvolutionConversation(
+    supabase,
+    digits,
+    instance.id,
+    effectiveProductId,
+    leadId,
+    userId,
+  );
+  if (!conversation) return json({ error: 'conversation_create_failed' }, 500);
+  const conversationId = String(conversation['id']);
+
+  // 3) Envia ANTES de persistir — igual ao ramo Meta, falha de entrega não
+  //    suja o histórico com bolha falhada.
+  const sendResult = await sendTextViaEvolution(
+    supabase,
+    sendProductId,
+    instance.id,
+    digits,
+    message,
+  );
+  if (sendResult.error) {
+    console.error(
+      '[platform-start-whatsapp-conversation] entrega Evolution falhou:',
+      JSON.stringify({
+        conversation_id: conversationId,
+        instance_id: instance.id,
+        instance_status: instance.status,
+        http_status: sendResult.status,
+        message: sendResult.error,
+      }),
+    );
+    return json(
+      {
+        error: 'delivery_failed',
+        detail: sendResult.error,
+        channel: 'whatsapp_evolution',
+        needs_template: false,
+        conversation_id: conversationId,
+        lead_id: leadId,
+      },
+      422,
+    );
+  }
+
+  // 4) Persiste outbound — metadata espelhada do webhook (:540-548), que dedupa
+  //    o eco do aparelho por conteúdo recente (webhook:521-529).
+  const { data: messageRow, error: msgError } = await supabase
+    .from('platform_crm_messages')
+    .insert({
+      conversation_id: conversationId,
+      direction: 'outbound',
+      sender_type: 'agent',
+      sender_id: userId,
+      content: message,
+      content_type: 'text',
+      metadata: {
+        evolution_message_id: sendResult.messageId,
+        evolution_instance_id: instance.id,
+        delivery_status: 'sent',
+        channel: 'whatsapp_evolution',
+        origin: 'start_conversation',
+      },
+    })
+    .select('*')
+    .single();
+
+  if (msgError) {
+    // Já entregue na Evolution — devolver erro induziria reenvio (duplicação).
+    console.error(
+      '[platform-start-whatsapp-conversation] persist Evolution failed (mensagem JÁ entregue):',
+      JSON.stringify({ conversation_id: conversationId, message: msgError.message }),
+    );
+    return json({
+      ok: true,
+      conversation_id: conversationId,
+      message_id: null,
+      wamid: sendResult.messageId,
+      lead_id: leadId,
+      is_new_conversation: isNew,
+      channel: 'whatsapp_evolution',
+      persist_warning: 'mensagem entregue mas não persistida — verifique os logs',
+    });
+  }
+
+  const { error: touchError } = await supabase
+    .from('platform_crm_conversations')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', conversationId);
+  if (touchError) {
+    console.error(
+      '[platform-start-whatsapp-conversation] last_message_at update failed (não-fatal):',
+      JSON.stringify({ conversation_id: conversationId, message: touchError.message }),
+    );
+  }
+
+  await broadcastPlatformNewMessage(supabase, conversationId, messageRow as Record<string, unknown>);
+
+  return json({
+    ok: true,
+    conversation_id: conversationId,
+    message_id: messageRow.id,
+    wamid: sendResult.messageId,
+    lead_id: leadId,
+    is_new_conversation: isNew,
+    channel: 'whatsapp_evolution',
+  });
+}
+
 // ─── Entrega Cloud API (texto livre) ─────────────────────────────────────────
 
 interface GraphSendResult {
@@ -316,6 +679,32 @@ Deno.serve(async (req) => {
 
     // 1) Conexão Meta ativa
     const { conn, reason } = await resolveActiveMetaConnection(supabase, connectionIdInput);
+
+    // 1b) RAMO EVOLUTION — o id da instância Evolution NUNCA está na tabela Meta,
+    //     então cai aqui como 'connection_not_found'. SÓ esse reason desvia:
+    //     'connection_lookup_failed', 'connection_status_*' e 'no_active_connection'
+    //     seguem byte-idênticos ao comportamento anterior, e conexão Meta
+    //     ENCONTRADA nunca chega neste bloco.
+    if (!conn && reason === 'connection_not_found' && connectionIdInput) {
+      const instance = await resolveEvolutionInstance(supabase, connectionIdInput);
+      if (instance) {
+        return await startViaEvolution(
+          supabase,
+          instance,
+          digits,
+          message,
+          productIdInput,
+          leadIdInput,
+          user.id,
+        );
+      }
+      // Não é Meta nem Evolution → cai no 404 connection_not_found de sempre.
+      console.error(
+        '[platform-start-whatsapp-conversation] connection_id em nenhuma das duas tabelas:',
+        JSON.stringify({ connection_id: connectionIdInput }),
+      );
+    }
+
     if (!conn) {
       return json({ error: reason ?? 'no_active_connection' }, reason === 'connection_not_found' ? 404 : 422);
     }

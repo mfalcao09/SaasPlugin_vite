@@ -1,0 +1,203 @@
+<meta charset="utf-8"><title>Handoff — Controladora GO LIVE · 2026-08-01</title><style>body{background:#12100f;color:#e8e2dc;font:15px/1.65 -apple-system,Segoe UI,Roboto,sans-serif;max-width:900px;margin:0 auto;padding:44px 26px}
+h1{font-size:30px;border-bottom:2px solid #8b5e6b;padding-bottom:12px;color:#f5ede8}
+h2{font-size:22px;margin-top:38px;color:#e5b8c4;border-bottom:1px solid #332c2c;padding-bottom:6px}
+h3{font-size:17px;margin-top:24px;color:#d6a5b3}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+th{background:#241d1f;color:#e5b8c4;text-align:left}
+th,td{border:1px solid #34292c;padding:7px 10px;vertical-align:top}
+tr:nth-child(even) td{background:#191415}
+code{background:#241d1f;color:#f0c8a0;padding:1.5px 5px;border-radius:3px;font-size:12.5px}
+pre{background:#0d0b0b;border-left:3px solid #8b5e6b;padding:12px 15px;overflow-x:auto;font-size:12.5px;color:#cfc7c0;border-radius:4px}
+blockquote{border-left:3px solid #8b5e6b;margin:12px 0;padding:6px 16px;color:#c4b8b2;background:#191415;font-style:italic}
+hr{border:0;border-top:1px solid #332c2c;margin:32px 0}
+strong{color:#f5ede8}.bul{margin:4px 0 4px 18px}.bul:before{content:"— ";color:#8b5e6b}
+.num{margin:4px 0 4px 8px}</style>
+<h1>HANDOFF — Controladora GO LIVE NexvyBeauty</h1>
+<blockquote><strong>De:</strong> controladora <code>local_d4bae0c2-6fea-4e18-a2fc-9b60ea51a723</code> (encerrada por fim de contexto)</blockquote>
+<blockquote><strong>Para:</strong> controladora nova</blockquote>
+<blockquote><strong>Data:</strong> 2026-08-01, ~22h40 BRT</blockquote>
+<blockquote><strong>Objetivo original da sessão</strong> (1º user message real, não do sumário de compactação): <em>&quot;Pago, tudo certo! Check agora GO GO GO&quot;</em> — verificar o provisionamento pós-compra. Evoluiu para controlar o go-live inteiro.</blockquote>
+<hr>
+<h2>0. LEIA ISTO ANTES DE QUALQUER TOOL CALL</h2>
+<p>Você é a <strong>controladora</strong>. Seu trabalho <strong>não é escrever código</strong> — é:</p>
+<p class=num>1. <strong>verificar</strong> o que as sessões-filhas afirmam, medindo você mesma;</p>
+<p class=num>2. <strong>ratificar ou corrigir</strong> decisões que atravessam frentes;</p>
+<p class=num>3. <strong>levar ao Marcelo</strong> o que só ele decide, em pergunta fechada.</p>
+<p><strong>A regra que mais importa:</strong> <em>ratificação examina a PREMISSA, não só a lógica.</em> Ratifiquei três vezes um argumento excelente construído sobre um fato que ninguém tinha verificado (§5.2). Argumento bom sobre fato não verificado é o erro mais caro do dia — a qualidade do raciocínio silencia a dúvida sobre o dado.</p>
+<hr>
+<h2>1. AS TRÊS SESSÕES — protocolo de triangulação</h2>
+<blockquote><em>&quot;Qualquer comunicação deve ser triangulada.&quot;</em> — Marcelo, 2026-08-01</blockquote>
+<p><strong>Nenhuma mensagem 1:1.</strong> Toda comunicação sai para os <strong>outros dois</strong> nós, mesmo quando interessa a só um.</p>
+<table>
+<tr><th>Nó</th><th>Frente</th><th>sessionId ROTEÁVEL</th><th>worktree</th></tr>
+<tr><td>1</td><td>CUTOVER Studio Flor → tenant</td><td><code>local_2e4d90d8-fa40-41d4-b38a-3405869f5214</code></td><td><code>friendly-colden-b66a94</code></td></tr>
+<tr><td>2</td><td><strong>CONTROLADORA</strong> (você)</td><td><em>(o seu)</em></td><td>—</td></tr>
+<tr><td>3</td><td>TRILHA S — Embedded Signup Meta</td><td><code>local_a18c3c23-9105-4a16-bd3d-e36ab343b3ea</code></td><td><code>priceless-neumann-63c32d</code></td></tr>
+</table>
+<p><strong>Apresente-se aos dois assim que assumir</strong>, com o seu sessionId. Ferramenta: <code>mcp__ccd_session_mgmt__send_message</code>.</p>
+<p>⚠️ <strong>Regra dura, aprendida errando:</strong> <em>id de sessão só entra em mapa depois de mensagem <strong>entregue com sucesso</strong> nele.</em> O nó 3 publicou o cliSessionId interno (<code>d110e542-…</code>), repassei sem testar, e a mensagem sumiria sem erro visível. Endereço não conferido é endereço que não existe.</p>
+<hr>
+<h2>2. GOVERNANÇA JÁ RATIFICADA (não reabrir)</h2>
+<h3>2.1 Escrita destrutiva exige TRÊS coisas, cumulativas</h3>
+<p class=num>1. arquivo/tag/backup <strong>antes</strong>, com parity check</p>
+<p class=num>2. as <strong>duas outras pontas responderam</strong> — não &quot;foram avisadas&quot;</p>
+<p class=num>3. autorização do Marcelo</p>
+<p><strong>A autorização dele é necessária e NÃO suficiente.</strong> Ele opera seis frentes e responde com o que tem na cabeça; o histórico está distribuído entre as sessões. Foi assim que 84.194 contatos da agenda pessoal dele quase viraram base de demo pública <strong>com autorização dele</strong>.</p>
+<h3>2.2 Exceção por IMINÊNCIA (refinamento do nó 1, adotado)</h3>
+<p>O eixo não é reversibilidade — é <strong>iminência</strong>. Ação reversível com relógio correndo pode ser executada com ciclo aberto, <strong>desde que a demonstração de urgência venha junto</strong>.</p>
+<p class=bul>✅ desarmar canal com <code>health_alert_at</code> de hoje → executou sem esperar, correto</p>
+<p class=bul>✅ não desabilitar crons sem gatilho (0 agendamentos, 0 clientes) → esperou, correto</p>
+<h3>2.3 Sequenciamento Trilha S ⟂ Cutover — RATIFICADO</h3>
+<p>A Trilha S roda em <strong>paralelo</strong> e <strong>não</strong> é pré-requisito do flip do número (Bloco 4). Gate externo (fila de review da Meta) não bloqueia passo interno irreversível. Dois caminhos de conexão (manual + self-service) vão coexistir — <strong>intencional, não é dívida</strong>.</p>
+<hr>
+<h2>3. ESTADO DE PRODUÇÃO (verificado 2026-08-01)</h2>
+<table>
+<tr><th>Item</th><th>Prova</th></tr>
+<tr><td><strong>Demo</strong> +55 11 95213-9912 → Mavi</td><td>conversa real 13:08, Sonnet 5</td></tr>
+<tr><td><strong>Vendas</strong> +55 11 95502-1205 → Duda</td><td>conversa real 13:15</td></tr>
+<tr><td><strong>Instagram</strong> <code>@nexvytech</code></td><td>vinculado ao produto Vendas hoje (estava com <code>product_id</code> NULL — perdeu ≥1 DM em 12/07)</td></tr>
+<tr><td>Template <code>boas_vindas_ativacao</code> [pt_BR]</td><td>APPROVED</td></tr>
+<tr><td>Planos com checkout</td><td>4</td></tr>
+<tr><td>Crons ativos</td><td>31</td></tr>
+<tr><td>Alerta de venda no Telegram</td><td>armado (<code>cakto-webhook</code>, 6 pontos)</td></tr>
+</table>
+<p><strong>git:</strong> <code>main == origin/main</code>. ⚠️ <strong>A <code>main</code> avançou depois de mim</strong> — último commit visto <code>dcb379f fix(netb2b): raiz do host de landing servia o index.html de beleza</code>. <strong>Há sessão fora da tríade mergeando na main.</strong> Confira antes de assumir estabilidade. Meu último merge foi <code>9e45785</code>.</p>
+<p><strong>Deploy</strong> — runbook em <code>infra/DEPLOY-NEXVYBEAUTY.md</code>:</p>
+<pre>
+<p>ssh vps-hostinger</p>
+<p>cd /opt/stacks/saasplugin-vite</p>
+<p>git pull --ff-only origin main</p>
+<p>./infra/deploy-vps.sh NexvyBeauty nexvy-beauty app.nexvybeauty.com.br</p>
+</pre>
+<p>Só <code>DEPLOY-VERDE:</code> conta como sucesso. O script <strong>builda do WORKING TREE</strong>, não de checkout limpo.</p>
+<p>⚠️ <strong>Regressão que causei:</strong> commitei um fix numa branch, dei <code>git checkout main</code> (o arquivo no disco <strong>reverteu</strong>), editei essa versão e deployei — <strong>apagando o fix anterior de produção, sem erro nenhum</strong>. Deploy sai da branch que contém o fix, e é conferido contra a função no ar (<code>get_edge_function</code> + grep).</p>
+<p>⚠️ <strong>Tag antes de mexer no VPS.</strong> A produção rodava uma branch deletada do GitHub, 16 commits atrás. Realinhei com <code>git tag pre-deploy-20260801</code> + <code>checkout</code>/<code>branch -f</code> (não <code>reset --hard</code> — checkout se recusa a sobrescrever trabalho não commitado).</p>
+<hr>
+<h2>4. MESA DO MARCELO — em ordem de alavancagem</h2>
+<h3>4.1 🔴 As três perguntas do App Review</h3>
+<p><code>developers.facebook.com/apps/1289456453376034/app-review/</code></p>
+<blockquote><strong>(a)</strong> O review enviado em <strong>22/04/2026</strong> está aprovado, rejeitado ou pendente? <strong>Se rejeitado, qual o motivo da Meta?</strong></blockquote>
+<blockquote><strong>(b)</strong> <code>whatsapp_business_management</code> e <code>whatsapp_business_messaging</code> estão em <strong>Acesso Avançado</strong> ou só Padrão?</blockquote>
+<blockquote><strong>(c)</strong> Na config <code>1140027898257109</code>: <strong><code>gestao.nexvy.tech</code> está nos domínios autorizados?</strong> (hoje: <code>nexvy.tech</code>, <code>intentusrealestate.com.br</code>, <code>ficcassilandia.com.br</code>)</blockquote>
+<p>⚠️ <strong>NÃO virar o toggle de modo do app para &quot;Live&quot;</strong> antes do Advanced Access aprovado. <strong>Vendas e Demo estão nesse app.</strong></p>
+<h3>4.2 🟡 Decisões de produto</h3>
+<table>
+<tr><th>Decisão</th><th>Recomendação conjunta</th></tr>
+<tr><td>Flag <code>is_demo</code> que os 5 crons de salão respeitam</td><td><strong>flag na org</strong>, não desabilitar as 4 regras — há 28 regras ativas em outras orgs e o universo cresce</td></tr>
+<tr><td>Faxina da agenda da demo (TTL)</td><td>reaproveitar padrão do <code>demo-reaper</code></td></tr>
+<tr><td>Slug <code>meuteste1</code> (vaza em URL pública de booking)</td><td>renomear quebra links existentes — decisão dele</td></tr>
+<tr><td>Desinscrever webhook no <strong>servidor Evolution</strong></td><td>infra compartilhada, ninguém tem mapa do blast radius</td></tr>
+</table>
+<h3>4.3 🟡 Sem dono</h3>
+<p class=bul><strong>Fiscalização das 9 edge functions do Bloco 1</strong> — a minha falhou (§7.3), precisa de contexto limpo</p>
+<p class=bul><strong>As 29 funções com <code>verify_jwt=false</code></strong> — contei, não auditei. Pergunta: <em>&quot;quais autenticam por dentro?&quot;</em></p>
+<p class=bul><strong>Memo do padrão §6</strong> — evidência com arquivo e linha nos reportes dos nós 1 e 3</p>
+<hr>
+<h2>5. AS DUAS FRENTES</h2>
+<h3>5.1 NÓ 1 — Cutover Studio Flor → tenant</h3>
+<p><strong>Problema:</strong> &quot;Studio Flor (Demonstração)&quot; é PRODUTO do CRM de plataforma (<code>platform_crm_products</code>, slug <code>demo-studio-flor</code>, id <code>9cc5102e-20b4-4572-958e-76205174f98b</code>), com a Mavi em <code>platform_crm_product_agents</code> (id <code>630634f0-307c-4532-985c-5071549b67a0</code>). Isso impede replicar a Mavi para tenants.</p>
+<p><strong>Decisão do Marcelo:</strong> reaproveitar a org <code>meuteste1</code> (<code>5da38ea6-88fb-40cf-8ee0-096cd2c9dc32</code>) — <em>contra</em> a recomendação minha e do nó 1 de criar org limpa. Decidiu com o quadro completo na segunda vez.</p>
+<table>
+<tr><th>Bloco</th><th>Estado</th></tr>
+<tr><td>0 · mapeamento</td><td>✅</td></tr>
+<tr><td>2 · Studio Flor como tenant</td><td>✅ 19 serviços (0 com preço zerado) · 3 profissionais com agenda · Mavi portada e <strong>evoluída</strong> · <code>business_hours</code> corrigido</td></tr>
+<tr><td>1 · porte Meta org-scoped</td><td>🔄 3 migrations aplicadas · 9 functions portadas (8/8 com <code>authenticateTenant</code>+<code>assertOrgAccess</code>) · faltam 2 abas UI + resolvedor + deploy</td></tr>
+<tr><td>4 · flip do número</td><td>🔒 <strong>BLOQUEADO</strong>: resolvedor unificado + decisão dos crons</td></tr>
+<tr><td>5 · preset = clone da demo</td><td>pendente</td></tr>
+</table>
+<p><strong>Verificado por mim:</strong> clientes 84.194 == arquivo 84.194 (expurgo e restauração sem perda) · 19 serviços · 3 profissionais · prompt Mavi 3.813 chars · desvínculo da <code>evolution_instances</code> (0 na org, <code>organization_id</code> null).</p>
+<p><strong>Tabelas de arquivo — NÃO DROPAR sem ordem do Marcelo:</strong></p>
+<p><code>_arquivo_clientes_meuteste1_20260801</code> (84.194) · <code>_arquivo_carteira_propostas_meuteste1_20260801</code> (8)</p>
+<p><strong>A evolução da Mavi (formulação que vale guardar):</strong> o prompt dela dizia &quot;agendar (fictício)&quot; não por escolha de produto, mas porque o <code>platform-sales-brain</code> tem <strong>zero ferramentas</strong> — era <em>limitação de infraestrutura virando texto</em>. No <code>webchat-bot</code> ela ganha 19 ferramentas reais; evoluir foi ensiná-la a <strong>parar de fingir</strong>.</p>
+<p>⚠️ <strong>Divergência deliberada, não regressão:</strong> a Mavi de plataforma tem <code>can_transfer=false</code> e <code>handoff_triggers=[]</code>. O preset do tenant tem 4 triggers. O nó 1 <strong>não degradou</strong> para bater contagem. No Bloco 5 isso precisa de exceção explícita, senão a demo contamina todo tenant novo.</p>
+<h3>5.2 NÓ 3 — Trilha S (Embedded Signup)</h3>
+<p><strong>A premissa demolida</strong> (achado em <code>ecossistema-monorepo/memory/project_nexvy_whatsapp_sandbox.md</code>, de 20/04):</p>
+<table>
+<tr><th>Item</th><th>Realidade</th></tr>
+<tr><td><code>config_id</code></td><td><strong><code>1140027898257109</code></strong> — existe desde abril</td></tr>
+<tr><td>App Review</td><td><strong>ENVIADO em 22/04/2026</strong>, &quot;em análise&quot;, prazo 10 dias úteis</td></tr>
+<tr><td>Business Verification</td><td>✅ <strong>aprovada 19/04</strong></td></tr>
+<tr><td>App publicado</td><td>✅</td></tr>
+</table>
+<p><strong>Um prazo de 10 dias úteis está aberto há mais de três meses. Não é fila da Meta — é resultado que ninguém foi buscar.</strong></p>
+<table>
+<tr><th>Task</th><th>Estado</th></tr>
+<tr><td>1 · verificar resultado do review</td><td>🔴 <strong>HITL — única coisa que trava a trilha</strong></td></tr>
+<tr><td>2 · criar config FB Login</td><td>✅ obsoleta (já existia)</td></tr>
+<tr><td>3 · contrato org-scoped</td><td>✅ (entregue pelo nó 1)</td></tr>
+<tr><td>4 · edge <code>whatsapp-embedded-signup-exchange</code></td><td>✅ <strong>construída</strong>, <code>deno check</code> limpo</td></tr>
+<tr><td>5 · front <code>MetaEmbeddedSignupButton</code></td><td>✅ <strong>construído</strong>, tsc/eslint limpos</td></tr>
+<tr><td>6 · autorizar <code>gestao.nexvy.tech</code></td><td>pendente</td></tr>
+<tr><td>7 · verificação E2E</td><td>pendente — bloqueada por 1, 6, merge do nó 1, env vars</td></tr>
+</table>
+<p>⚠️ <strong>&quot;Construído&quot; ≠ &quot;entregue&quot;.</strong> Ela mesma diz: <em>&quot;isto compila; não sei se funciona.&quot;</em> Não há prova E2E.</p>
+<p><strong>Env vars faltando:</strong> <code>VITE_META_WHATSAPP_APP_ID</code>, <code>VITE_META_EMBEDDED_SIGNUP_CONFIG_ID</code> (front) · <code>META_WHATSAPP_APP_ID</code>, <code>META_WHATSAPP_APP_SECRET</code> (secrets da edge).</p>
+<p><strong>Roteiro dos 2 vídeos:</strong> <code>~/Downloads/ROTEIRO-APP-REVIEW-TECH-PROVIDER-2026-08-01.md</code> (+ <code>.html</code>).</p>
+<p>⚠️ Correção pendente: o <code>extras</code> do <code>FB.login</code> é <code>{ sessionInfoVersion: 3, version: &#x27;v4&#x27; }</code>, <strong>não</strong> <code>{ setup: {} }</code>.</p>
+<p><strong>Restrição dura:</strong> o code do Embedded Signup <strong>expira em 30 segundos</strong>. Troca síncrona — sem fila, sem retry com backoff, sem job. Conexão parcial <strong>não pode ser gravável</strong>.</p>
+<hr>
+<h2>6. O PADRÃO DO DIA — &quot;o símbolo da proteção sobrevive à proteção&quot;</h2>
+<p>Cinco casos, autores diferentes, um dia:</p>
+<table>
+<tr><th>Caso</th><th>Parece</th><th>É</th></tr>
+<tr><td><code>webhook_subscribed = false</code></td><td>desliga o webhook</td><td>espelho de config que mora em outro servidor — o <code>evolution-webhook</code> <strong>não lê</strong> esse campo</td></tr>
+<tr><td><code>if (organization_id &amp;&amp; conn.org !== organization_id)</code></td><td>autorização</td><td>consistência <strong>opcional</strong> — omita o campo e pula</td></tr>
+<tr><td><code>console.warn</code> no fallback do resolver</td><td>tratamento de erro</td><td>registro que ninguém lê de madrugada</td></tr>
+<tr><td><code>webhook_subscribed_at</code> preenchido</td><td>prova de webhook ativo</td><td>campo que <strong>nada</strong> escreve no fluxo WhatsApp</td></tr>
+<tr><td>meu grep <code>auth=6</code> vs <code>escrita=214</code></td><td>ordem de execução</td><td>linha do <strong>import</strong> vs. linha da escrita</td></tr>
+</table>
+<p><strong>A pergunta que caça todos:</strong> <em>&quot;o que acontece se eu simplesmente não mandar / não ler / não configurar / não medir o certo?&quot;</em> Se a resposta for &quot;passa&quot;, <strong>não é proteção — é decoração.</strong></p>
+<p>Passam em revisão porque <em>parecem</em> certos. É a forma familiar que silencia a dúvida.</p>
+<hr>
+<h2>7. CONHECIMENTO TÉCNICO CRÍTICO (não redescobrir)</h2>
+<h3>7.1 A armadilha do app Meta compartilhado</h3>
+<p>Um App Meta tem <strong>UMA callback URL por produto</strong>. Vendas e Demo estão sob o mesmo <code>app_id 1289456453376034</code>. O webhook <strong>precisa</strong> rotear por <code>value.metadata.phone_number_id</code> do payload — <strong>nunca</strong> pelo id no path da URL. Rotear pelo path fazia mensagem da Demo ser gravada como Vendas e respondida pela persona errada, <strong>por outro número</strong>.</p>
+<p><strong>Segunda metade do mesmo bug:</strong> a conversa era indexada só por <code>visitor_id = wa:{telefone-de-quem-manda}</code>. A identidade correta é o <strong>PAR (quem fala, por qual número NOSSO)</strong>. Sem o filtro por <code>meta_connection_id</code>, quem escreve para a Demo reencontra a conversa de Vendas — e <code>product_id</code> nunca é sobrescrito em conversa existente, então a persona errada gruda.</p>
+<h3>7.2 Modo do app: o sinal que não distingue</h3>
+<p>Doc da Meta: <em>&quot;Once your app switches to live mode, only permissions approved through App Review appear in the flow.&quot;</em></p>
+<p><strong>Vendas e Demo funcionando NÃO prova que o app está em Live</strong> — System User tokens operam sobre assets do próprio BM mesmo em modo dev. É o sinal que qualquer um usaria para concluir &quot;está tudo certo&quot;, e ele não discrimina os dois estados.</p>
+<h3>7.3 Resolvedor unificado — DESENHO APROVADO, não implementado</h3>
+<p>São <strong>4 bifurcações</strong> em <code>platform-meta-whatsapp-webhook</code> (em produção):</p>
+<p class=num>1. <code>resolveConnectionForValue</code> (121-161) → ler as duas tabelas, devolver <code>scope</code></p>
+<p class=num>2. <code>processInboundMessage</code> (:605) → tenant grava em <code>leads</code> + <code>webchat_conversations</code></p>
+<p class=num>3. health check (:618-623) → tabela conforme escopo</p>
+<p class=num>4. dispatch (:630) → tenant chama <code>webchat-bot</code></p>
+<p><strong>Regras aprovadas:</strong></p>
+<p class=bul>achou em AMBAS → <strong>ERRO</strong>. Preferência silenciosa aqui é vazamento cross-tenant com aparência de funcionamento.</p>
+<p class=bul>achou em NENHUMA → <strong>grava em <code>whatsapp_meta_webhook_logs</code> com <code>processed=false</code>, responde 200, não despacha cérebro.</strong> (Terceira via do nó 1 — melhor que o WARN que escrevi e que o erro seco.)</p>
+<p class=bul><strong>bifurcação inerte enquanto <code>whatsapp_meta_connections</code> estiver vazia</strong> → deploy verificável <strong>por não-mudança</strong>.</p>
+<p>⚠️ <strong>Armadilha que passei e precisa ser tratada:</strong> a idempotência por <code>wamid</code> (<code>uq_platform_crm_messages_wamid</code>) existe <strong>só em <code>platform_crm_messages</code></strong>. Se o ramo tenant gravar em <code>webchat_messages</code>, não tem essa proteção — e o Meta re-entrega em qualquer resposta ≠ 200. Resultado: mensagem duplicada na conversa do salão.</p>
+<h3>7.4 Porte tem DUAS origens (achado do nó 1)</h3>
+<pre>
+<p>auth no Vendus:     2/9 funções</p>
+<p>auth na plataforma: 8/9 funções</p>
+</pre>
+<p>A plataforma <strong>endureceu</strong> o que o Vendus tinha aberto. Portar &quot;1:1&quot; entregaria <code>meta-whatsapp-send</code> — que dispara mensagem — <strong>sem auth</strong>, aceitando a anon key pública. <strong>Reintroduzir vulnerabilidade por fidelidade a um porte.</strong> Desenho correto: org-scoping do Vendus, auth da plataforma.</p>
+<h3>7.5 Modelo de LLM por agente (implementado hoje)</h3>
+<p class=bul>coluna <code>model</code> em <code>platform_crm_product_agents</code> e <code>product_agents</code> (nullable = herda)</p>
+<p class=bul>precedência plataforma: <code>persona.model</code> &gt; env &gt; <code>DEFAULT_MODEL</code></p>
+<p class=bul>precedência tenant: <code>agente.model</code> &gt; <code>org_ai_routing.model</code> &gt; <code>preferredModel</code> &gt; default</p>
+<p class=bul>painel: <code>gestão → ERP → Modelos de IA</code></p>
+<p class=bul><code>AI_GATEWAY_URL = https://openrouter.ai/api/v1</code> (confirmado comparando hash com o digest do <code>secrets list</code>, sem ler o segredo)</p>
+<p class=bul>Mavi e Bia em <code>anthropic/claude-sonnet-5</code></p>
+<h3>7.6 Gotchas menores</h3>
+<p class=bul><code>npm run typecheck</code> é <code>tsc -b</code> incremental e <strong>devolve 0 falso</strong>. Use <code>npx tsc -b --force</code>. <strong>Baseline = 32 erros.</strong></p>
+<p class=bul><code>evolution_instances.webhook_subscribed</code> <strong>não é lido</strong> pelo <code>evolution-webhook</code>. <code>is_default</code> <strong>é</strong> (8×), protege só a saída.</p>
+<p class=bul>SSH Hostinger <strong>tarpita</strong> após ~6 conexões seguidas. Agrupe num <code>ssh &#x27;bash -s&#x27; &lt;&lt;EOF</code>.</p>
+<p class=bul><code>metadata._desarmado_em</code> / <code>._desvinculado_em</code> guardam estado anterior para reversão exata.</p>
+<p class=bul>Popover dentro de Sheet (Radix Dialog) <strong>não rola no toque</strong> — <code>react-remove-scroll</code> bloqueia fora da subárvore. Solução: <code>portal={false}</code> no <code>PopoverContent</code>.</p>
+<hr>
+<h2>8. MEUS TRÊS ERROS DE INSTRUMENTAÇÃO</h2>
+<p class=num>1. <strong>Browser headless que não rola.</strong> Concluí três vezes que a âncora <code>#planos</code> estava quebrada, medindo num viewport de altura 0 e depois num browser que não rola nem com <code>window.scrollTo</code>. O Marcelo disse &quot;funcionou no celular&quot; e derrubou tudo. <strong>Calibre o instrumento antes de medir o objeto.</strong></p>
+<p class=num>2. <strong>Li <code>webhook_subscribed_at</code> como prova</strong> sem verificar quem escreve o campo. Ninguém escreve, no fluxo WhatsApp.</p>
+<p class=num>3. <strong>Fiscalização que comparou import com escrita.</strong> Daria verde de qualquer jeito. <strong>Recusei o aval</strong> em vez de reportar verde falso — verde falso é pior que fiscalização não feita.</p>
+<p><strong>A regra:</strong> antes de afirmar, pergunte <em>&quot;o que exatamente eu medi, e isso é o que eu disse que era?&quot;</em></p>
+<hr>
+<h2>9. PRIMEIRAS AÇÕES SUGERIDAS</h2>
+<p class=num>1. <strong>Apresente-se aos dois nós</strong> (§1) e confirme entrega das mensagens.</p>
+<p class=num>2. <strong>Confira o estado da <code>main</code></strong> — avançou por sessão fora da tríade.</p>
+<p class=num>3. <strong>Leve as três perguntas do App Review ao Marcelo</strong> (§4.1) — maior alavancagem disponível.</p>
+<p class=num>4. <strong>Assuma a fiscalização das 9 edge functions</strong> (§4.3) — está entre o trabalho pronto e o merge. Meça <strong>call site</strong>, não import.</p>
+<p class=num>5. <strong>Não escreva código.</strong> Verifique, ratifique, decida o que atravessa frentes.</p>
+<hr>
+<p><em>Escrito no fim do contexto útil da controladora anterior. Tudo aqui foi medido, ou está explicitamente marcado como não medido.</em></p>

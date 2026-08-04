@@ -31,7 +31,6 @@ import {
 } from "../_shared/cold-outreach/segment-gate.ts";
 import { assignVariant, type Channel, renderOpening, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
-import { pickSdrPersona } from "../_shared/cold-outreach/persona.ts";
 import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
 
 const corsHeaders = {
@@ -453,18 +452,57 @@ async function upsertHealth(sb: SupabaseClient, campaignId: string, instanceId: 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ON-INBOUND — opt-out (SAIR/PARE) + handoff pra Duda ("quero")
+// ON-INBOUND — opt-out (SAIR/PARE) + registro da intenção de compra ("quero")
 // ═══════════════════════════════════════════════════════════════════════════
 async function actionOnInbound(sb: SupabaseClient, body: any) {
   const { product_id, conversation_id, telefone, handle, text } = body;
   if (!text) return json({ error: "text required" }, 400);
 
-  // Localiza as linhas de fila do lead (por conversa OU telefone/handle).
-  let queueQ = sb.from("platform_crm_cold_outreach_queue").select("*").in("status", ["sent", "queued", "sending"]);
-  if (conversation_id) queueQ = queueQ.eq("conversation_id", conversation_id);
-  else if (telefone) queueQ = queueQ.eq("telefone", String(telefone));
-  else if (handle) queueQ = queueQ.eq("handle", String(handle));
-  const { data: rows } = await queueQ.limit(10);
+  // Localiza as linhas de fila do lead por QUALQUER identificador presente (OR),
+  // nunca pelo primeiro que existir. Era um else-if e o `conversation_id` vencia
+  // sempre — mas no canal WhatsApp a fila tem conversation_id NULL: a conversa
+  // só NASCE quando a lead responde (criada pelo platform-evolution-webhook),
+  // depois do envio. Resultado: 0 linhas, `queueStatus` (opted_out) não era
+  // aplicado, `next_followup_at` não era limpo e a cadência seguia disparando
+  // pra quem pediu PARE — invisível, porque a supressão em
+  // platform_crm_lead_optout era gravada normalmente.
+  //
+  // `.or()` do PostgREST é uma STRING: vírgula separa filtros e parêntese agrupa.
+  // Valor vindo do body com esses caracteres reescreveria o filtro, então só
+  // entra no OR o identificador que passa por regex estrita (mesma régua
+  // injection-safe do gate de instância do platform-evolution-webhook).
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const PHONE_RE = /^[0-9]{6,20}$/;
+  const HANDLE_RE = /^[A-Za-z0-9._-]{1,64}$/;
+
+  const convId = conversation_id == null ? "" : String(conversation_id);
+  const phoneDigits = telefone == null ? "" : String(telefone).replace(/\D/g, "");
+  const handleStr = handle == null ? "" : String(handle).trim().replace(/^@/, "");
+
+  const idFilters: string[] = [];
+  if (UUID_RE.test(convId)) idFilters.push(`conversation_id.eq.${convId}`);
+  if (PHONE_RE.test(phoneDigits)) idFilters.push(`telefone.eq.${phoneDigits}`);
+  if (HANDLE_RE.test(handleStr)) idFilters.push(`handle.eq.${handleStr}`);
+
+  let rows: any[] = [];
+  if (idFilters.length === 0) {
+    // Sem identificador NENHUM a query filtraria só por status e devolveria
+    // linhas de OUTROS leads — o plano seria aplicado a quem não respondeu.
+    // Guarda dura: nenhuma linha, e o motivo sai no log (nunca em silêncio).
+    console.error(
+      `[cold-outreach][on-inbound] sem identificador válido — nenhuma linha de fila será tocada` +
+        ` (conversation_id=${convId || "-"} telefone_digitos=${phoneDigits.length} handle=${handleStr || "-"})`,
+    );
+  } else {
+    const { data, error } = await sb.from("platform_crm_cold_outreach_queue").select("*")
+      .in("status", ["sent", "queued", "sending"])
+      .or(idFilters.join(","))
+      .limit(10);
+    if (error) {
+      console.error(`[cold-outreach][on-inbound] busca de fila FALHOU reason=${error.message} filters=${idFilters.join(",")}`);
+    }
+    rows = data ?? [];
+  }
 
   // DECISÃO pura (testada em inbound-plan.test.ts); o resto é só executar o plano.
   const plan = planInbound(String(text), (rows ?? []) as any[], { product_id, conversation_id, telefone, handle });
@@ -482,33 +520,28 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
         .eq("id", r.id);
     }
   }
-  // 3) handoff BDR→Duda no mesmo thread
-  let handoff: any = undefined;
-  if (plan.handoff && conversation_id) handoff = await handoffToDuda(sb, productId, conversation_id);
+  // 3) intenção de compra detectada — a BDR NÃO passa o bastão.
+  // Antes daqui saía um handoff BDR→Duda (UPDATE current_agent_id). Morreu: a
+  // Camila foi especificada pra FECHAR sozinha e mandar o link de checkout, e o
+  // caminho era código morto medido (0 conversas em whatsapp_evolution, 0 com a
+  // Bia, e o platform-sales-brain não conhece cold_outreach). Trocar o efeito por
+  // silêncio seria pior que o handoff: o sinal mais valioso do motor é justamente
+  // "a lead disse que quer". Ele fica registrado em DOIS lugares — log (aqui) e
+  // journey durável (`buy_intent` na meta, abaixo) — pra continuar mensurável.
+  if (plan.handoff && conversation_id) {
+    console.warn(
+      `[cold-outreach][on-inbound] INTENÇÃO DE COMPRA detectada — a BDR segue dona da conversa (sem handoff)` +
+        ` conversation_id=${conversation_id} product_id=${productId ?? "-"} intent=${plan.intent}`,
+    );
+  }
   // 4) silencia o brain nesta conversa (opt-out)
   if (plan.silenceConversation && conversation_id) await silenceConversation(sb, conversation_id);
   // 5) instrumentação
   await logJourney(sb, productId, rows?.[0]?.lead_id ?? null, plan.journey.type, plan.journey.category, "whatsapp", plan.journey.title, {
-    matched: plan.journey.matched, intent: plan.intent, handoff,
+    matched: plan.journey.matched, intent: plan.intent, buy_intent: plan.handoff,
   });
 
-  return json({ ok: true, intent: plan.intent, affected: rows?.length ?? 0, handoff });
-}
-
-/** Handoff BDR->Duda no MESMO thread: UPDATE current_agent_id (padrão onboarding-handoff P10). */
-async function handoffToDuda(sb: SupabaseClient, productId: string | undefined, conversationId: string) {
-  if (!productId) return { ok: false, reason: "no product" };
-  // active_in_whatsapp no filtro: o platform-sales-brain (quem conduz daqui pra
-  // frente) só enxerga is_active + active_in_whatsapp. Pinar uma Duda fora do
-  // WhatsApp criaria um current_agent_id ÓRFÃO no thread. Sem Duda utilizável, o
-  // BDR (Bento) segue dono da conversa — ninguém fica sem agente.
-  const { data: agents } = await sb.from("platform_crm_product_agents")
-    .select("id, name, agent_type, is_active, active_in_whatsapp")
-    .eq("product_id", productId).eq("is_active", true).eq("active_in_whatsapp", true);
-  const duda = pickSdrPersona((agents ?? []) as any[]);
-  if (!duda) return { ok: false, reason: "no sdr (Duda) agent active_in_whatsapp" };
-  await sb.from("platform_crm_conversations").update({ current_agent_id: duda.id, updated_at: new Date().toISOString() }).eq("id", conversationId);
-  return { ok: true, to_agent_id: duda.id };
+  return json({ ok: true, intent: plan.intent, affected: rows?.length ?? 0 });
 }
 
 /** Silencia o brain nesta conversa sem editar o brain: 'closed' (≠ 'bot_active').

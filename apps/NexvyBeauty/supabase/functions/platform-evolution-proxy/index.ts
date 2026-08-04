@@ -201,6 +201,35 @@ async function configureWebhook(
   };
 }
 
+/** Número (ownerJid) da instância, lido direto da Evolution — best-effort.
+ *  A fonte normal de `phone_number` é o CONNECTION_UPDATE do webhook; quando ele
+ *  não chega, a instância fica `connected` com número nulo e a UI não tem o que
+ *  mostrar. Aqui buscamos na origem em vez de esperar o evento. */
+async function fetchInstanceNumber(
+  config: EvolutionConfig,
+  instanceName: string,
+  instanceToken: string | null | undefined,
+): Promise<string | null> {
+  try {
+    const res = await evoFetch(
+      config,
+      `/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`,
+      { method: "GET" },
+      instanceToken || undefined,
+    );
+    if (!res.ok) return null;
+    const items = Array.isArray(res.body) ? res.body : [res.body];
+    for (const item of items) {
+      const parsed = parseInstanceFromList(item?.instance ?? item);
+      if (parsed.phone && (!parsed.name || parsed.name === instanceName)) return parsed.phone;
+    }
+    return null;
+  } catch (e) {
+    console.warn(`[fetchInstanceNumber] ${instanceName} falhou (non-fatal): ${e}`);
+    return null;
+  }
+}
+
 function parseInstanceFromList(item: any) {
   const name: string = item?.name || item?.instanceName || item?.instance?.instanceName;
   const uuid: string | null = item?.id ?? item?.instanceId ?? item?.instance?.id ?? null;
@@ -532,6 +561,9 @@ Deno.serve(async (req) => {
           info?.body?.connectionStatus ??
           null;
         if (info.ok && state === "open") {
+          // Já pareada no servidor: reconcilia o estado local. O número vem da
+          // Evolution, não do webhook — senão fica `connected` sem telefone.
+          const ownerPhone = await fetchInstanceNumber(config, instanceName, instanceToken);
           await supabase
             .from("platform_crm_evolution_instances")
             .update({
@@ -539,10 +571,11 @@ Deno.serve(async (req) => {
               qr_code: null,
               qr_code_updated_at: null,
               last_connected_at: new Date().toISOString(),
+              ...(ownerPhone ? { phone_number: ownerPhone } : {}),
             })
             .eq("id", inst.id);
           return new Response(
-            JSON.stringify({ ok: true, qr_code: null, already_connected: true }),
+            JSON.stringify({ ok: true, qr_code: null, already_connected: true, phone_number: ownerPhone }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }

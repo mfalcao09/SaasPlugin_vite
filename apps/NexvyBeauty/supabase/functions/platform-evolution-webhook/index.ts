@@ -29,6 +29,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
+import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -314,7 +315,20 @@ function normalizePayload(payload: any): Normalized | null {
 // ─── Persistência no inbox de plataforma (espelho do meta-whatsapp-webhook) ──
 
 /** Lead por telefone (dedupe) ou cria — espelho do platform-meta-whatsapp-webhook,
- *  com source/lead_channel do canal Evolution. */
+ *  com source/lead_channel do canal Evolution.
+ *
+ *  PR-BDR-2a — o casamento era por DUAS formas só (`fromDigits` OU `+fromDigits`).
+ *  Um lead legado gravado sem o 9º dígito de celular (`+551199998888`, 12 dígitos)
+ *  NÃO casava com o inbound de 13 dígitos (`5511999998888`) e virava lead
+ *  DUPLICADO. Agora casa por todas as variantes de `phoneVariantsWithPlusBR` —
+ *  esse é o helper certo AQUI porque `platform_crm_leads.phone` é convenção
+ *  "+E.164" (medido: 8/8 linhas com "+"); contra colunas de dígitos puros o
+ *  helper CRU (`phoneVariantsBR`) é que serve. O INSERT continua gravando na
+ *  forma com "+", mantendo a convenção da coluna.
+ *
+ *  Devolve null quando não conseguiu NEM resolver NEM criar o lead. Quem chama
+ *  TEM de reagir — ver o alerta de conversa órfã em ensureConversation
+ *  (PR-BDR-3). */
 async function ensureLead(
   supabase: any,
   fromDigits: string,
@@ -323,12 +337,33 @@ async function ensureLead(
 ): Promise<string | null> {
   try {
     const phonePlus = `+${fromDigits}`;
-    const { data: existing } = await supabase
+    // `.in()` e não `.or()`: o array é passado COMO VALOR ao client, que serializa
+    // e cita cada item. No `.or()` os valores viram uma string de filtro PostgREST
+    // onde `,`/`(`/`)` são delimitadores e o escape seria manual. As variantes só
+    // contêm dígitos e "+", mas a construção segura não fica dependendo disso.
+    const variants = phoneVariantsWithPlusBR(fromDigits);
+    // Fallback defensivo: telefone que o helper não consegue variar (<8 dígitos)
+    // preserva exatamente o casamento anterior em vez de virar `.in(…, [])`,
+    // que casaria ZERO e criaria lead novo sempre.
+    const phoneMatches = variants.length > 0 ? variants : [fromDigits, phonePlus];
+    const { data: existing, error: lookupError } = await supabase
       .from("platform_crm_leads")
       .select("id")
-      .or(`phone.eq.${fromDigits},phone.eq.${phonePlus}`)
+      .in("phone", phoneMatches)
+      // Com N variantes o SELECT pode casar mais de um lead; o mais antigo é o
+      // canônico. Torna determinístico o que antes era ordem arbitrária do banco.
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
+    if (lookupError) {
+      // O erro do SELECT era DESCARTADO aqui. O fluxo segue caindo no INSERT
+      // (comportamento preservado), mas o caminho que gera lead duplicado deixa
+      // de ser invisível.
+      console.error(
+        `[platform-evolution-webhook] lead lookup by phone FAILED phone=${phonePlus} ` +
+          `reason=${lookupError?.message ?? JSON.stringify(lookupError)}`,
+      );
+    }
     if (existing?.id) return existing.id as string;
 
     const { data: created, error } = await supabase
@@ -380,7 +415,10 @@ async function ensureConversation(
     const { data: reopened, error } = await supabase
       .from("platform_crm_conversations")
       .update({
-        status: "waiting_human", // até existir send+brain por canal Evolution (era bot_active no V5)
+        // PR-BDR-4: o send+brain por canal Evolution passou a existir (deliver()
+        // no platform-sales-brain + despacho no fim deste arquivo), então a
+        // conversa volta a nascer/reabrir com o bot no comando, como no V5.
+        status: "bot_active",
         needs_human: false,
         accepted_at: null,
         accepted_by: null,
@@ -401,7 +439,11 @@ async function ensureConversation(
         visitor_phone: `+${fromDigits}`,
         visitor_whatsapp: `+${fromDigits}`,
         channel: "whatsapp_evolution",
-        status: "waiting_human", // até existir send+brain por canal Evolution (era bot_active no V5)
+        // PR-BDR-4: ver comentário no reabrir acima — o canal Evolution já tem
+        // envio e cérebro. NOTA: o platform-start-whatsapp-conversation continua
+        // criando 'human_active' de PROPÓSITO (lá um humano clicou e assume);
+        // só o caminho do webhook (a lead falou primeiro) nasce com o bot.
+        status: "bot_active",
         needs_human: false,
         evolution_instance_id: instance.id,
         // Só no INSERT: conversa existente nunca tem product_id sobrescrito.
@@ -435,10 +477,145 @@ async function ensureConversation(
         .eq("id", conversation.id);
       conversation.lead_id = leadId;
       await ensurePlatformLeadInPipeline(supabase, leadId);
+    } else {
+      // PR-BDR-3 — antes daqui se saía em SILÊNCIO: a conversa seguia sem
+      // lead_id e ficava invisível no CRM. Não é hipótese — o mesmo padrão no
+      // canal oficial produziu 4 conversas órfãs, TODAS com telefone
+      // preenchido, uma com 56 mensagens, degradando por semanas sem ninguém
+      // notar.
+      //
+      // Saída escolhida: ALERTA inequívoco. Não pode ser fatal (a mensagem da
+      // lead ainda precisa ser persistida — quem chama segue adiante), e não há
+      // no schema de platform_crm_conversations coluna de "precisa de vínculo"
+      // — inventar uma aqui exigiria migration e não é o escopo desta PR. O
+      // alerta carrega tudo que é preciso pra achar a conversa e vincular
+      // depois, no mesmo formato greppável de notifyColdOutreachInbound.
+      console.error(
+        `[platform-evolution-webhook] ORPHAN CONVERSATION — sem lead_id ` +
+          `conversation_id=${conversation.id} visitor_id=${visitorId} ` +
+          `phone=+${fromDigits} evolution_instance_id=${instance.id} ` +
+          `product_id=${productId ?? "null"} — a conversa NÃO aparece no CRM ` +
+          `enquanto não for vinculada a um lead`,
+      );
     }
   }
 
   return conversation;
+}
+
+/** Veredito do on-inbound do cold outreach.
+ *  `optOut`  → a lead pediu PARE/SAIR: o cérebro NÃO pode responder.
+ *  `ok:false` → não deu pra saber (invoke falhou/rejeitou). Ver a decisão
+ *  registrada em dispatchSalesBrain: desconhecido NÃO é tratado como opt-out. */
+type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean };
+
+// PR-BDR-1 — OPT-OUT VIVO. A action 'on-inbound' do platform-cold-outreach
+// (supressão Art.18 do SAIR/PARE, parada da cadência, silenciamento da conversa
+// e handoff BDR->Duda) existia sem NENHUM invocador: o pg_cron só chama
+// {"action":"tick"}. Este é o invocador. Roda depois da persistência do inbound
+// e ANTES de qualquer despacho de cérebro — desde a PR-BDR-4 esse despacho
+// EXISTE (dispatchSalesBrain, no fim de handleMessage), e a ordem virou
+// requisito duro: quem pediu PARE não pode receber resposta da Duda. Por isso
+// esta função passou a DEVOLVER o veredito em vez de void.
+// Auth interna: o client foi criado com SUPABASE_SERVICE_ROLE_KEY, e
+// functions.invoke propaga `Authorization: Bearer <SERVICE_ROLE_KEY>` — mesmo
+// padrão de platform-cold-outreach -> platform-evolution-send.
+// NUNCA lança (o webhook não pode quebrar por causa disto) e NUNCA falha em
+// silêncio: todo caminho de erro sai em console.error com o conversation_id.
+async function notifyColdOutreachInbound(
+  supabase: any,
+  a: { productId: string | null; conversationId: string; telefone: string; text: string },
+): Promise<ColdOutreachInboundVerdict> {
+  try {
+    const { data, error } = await supabase.functions.invoke("platform-cold-outreach", {
+      body: {
+        action: "on-inbound",
+        product_id: a.productId,
+        conversation_id: a.conversationId,
+        telefone: a.telefone,
+        text: a.text,
+      },
+    });
+    if (error) {
+      console.error(
+        `[platform-evolution-webhook] cold-outreach on-inbound FAILED conversation_id=${a.conversationId} reason=${error?.message ?? String(error)}`,
+      );
+      return { ok: false, optOut: false };
+    }
+    const res = data as
+      | { ok?: boolean; intent?: string; affected?: number; handoff?: unknown; error?: string }
+      | null;
+    if (!res || res.ok !== true) {
+      console.error(
+        `[platform-evolution-webhook] cold-outreach on-inbound REJECTED conversation_id=${a.conversationId} response=${JSON.stringify(res)}`,
+      );
+      return { ok: false, optOut: false };
+    }
+    if (res.intent === "opt_out") {
+      // Lead pediu pra sair: registro legível aqui; o efeito é do motor.
+      console.warn(
+        `[platform-evolution-webhook] cold-outreach OPT-OUT conversation_id=${a.conversationId} telefone=${a.telefone} queue_rows=${res.affected ?? 0}`,
+      );
+      return { ok: true, optOut: true };
+    }
+    console.log(
+      `[platform-evolution-webhook] cold-outreach on-inbound ok conversation_id=${a.conversationId} intent=${res.intent} affected=${res.affected ?? 0} handoff=${JSON.stringify(res.handoff ?? null)}`,
+    );
+    return { ok: true, optOut: false };
+  } catch (e: any) {
+    console.error(
+      `[platform-evolution-webhook] cold-outreach on-inbound EXCEPTION conversation_id=${a.conversationId} reason=${e?.message ?? String(e)}`,
+    );
+    return { ok: false, optOut: false };
+  }
+}
+
+// PR-BDR-4 — DESPACHO DO CÉREBRO. Até aqui o canal Evolution persistia a
+// mensagem da lead e parava: ninguém acordava o platform-sales-brain (o webhook
+// oficial faz isso desde a F2). Este é o invocador — mesmo padrão do
+// platform-meta-whatsapp-webhook: fire-and-forget com waitUntil, porque o
+// cérebro leva DEZENAS DE SEGUNDOS (LLM + pausas humanas de digitação) e a
+// Evolution re-entrega o evento se este webhook não responder rápido.
+// O brain revalida canal/status e tem claim + dedupe próprios.
+async function dispatchSalesBrain(conversationId: string): Promise<void> {
+  const base = Deno.env.get("SUPABASE_URL") ?? "";
+  const brainSecret = Deno.env.get("BRAIN_INTERNAL_SECRET") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!base || (!brainSecret && !serviceKey)) {
+    console.error(
+      `[platform-evolution-webhook] brain NÃO despachado conversation_id=${conversationId} — faltam SUPABASE_URL e/ou credencial interna (BRAIN_INTERNAL_SECRET|SUPABASE_SERVICE_ROLE_KEY); a lead ficaria sem resposta`,
+    );
+    return;
+  }
+  // O brain aceita x-brain-secret OU Bearer service-role (isAuthorized). Usamos
+  // o secret quando existe (padrão do webhook oficial) e caímos no service-role
+  // — que este arquivo já tem — em vez de calar por falta de env.
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (brainSecret) headers["x-brain-secret"] = brainSecret;
+  else headers["Authorization"] = `Bearer ${serviceKey}`;
+
+  const call = fetch(`${base}/functions/v1/platform-sales-brain`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ conversation_id: conversationId }),
+  })
+    .then(async (r) => {
+      if (!r.ok) {
+        console.error(
+          `[platform-evolution-webhook] brain retornou ${r.status} conversation_id=${conversationId} body=${(await r.text()).slice(0, 200)}`,
+        );
+      }
+    })
+    .catch((e) =>
+      console.error(
+        `[platform-evolution-webhook] brain fetch error conversation_id=${conversationId} reason=${e?.message ?? String(e)}`,
+      )
+    );
+
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(call);
+  else await call;
 }
 
 /** Ingestão de 1 mensagem Evolution → inbox de plataforma. Retorna a Response
@@ -607,6 +784,39 @@ async function handleMessage(
     .eq("id", conversation.id);
 
   await broadcastPlatformNewMessage(supabase, String(conversation.id), inserted);
+
+  // PR-BDR-1: mensagem já persistida → leva a resposta da lead ao motor de cold
+  // outreach (opt-out/cadência/handoff). `fromDigits` é o telefone só-dígitos do
+  // remetente, formato que o on-inbound normaliza p/ platform_crm_lead_optout.
+  const coldVerdict = await notifyColdOutreachInbound(supabase, {
+    productId: (conversation.product_id as string | null) ?? productId,
+    conversationId: String(conversation.id),
+    telefone: fromDigits,
+    text: content || "[mensagem]",
+  });
+
+  // PR-BDR-4: cérebro SÓ depois do on-inbound e SÓ se não houve opt-out. A ordem
+  // não é estética: quem pediu PARE não pode receber resposta da Duda, e é o
+  // on-inbound que detecta o PARE (e fecha a conversa via silenceConversation).
+  //
+  // Veredito DESCONHECIDO (invoke falhou/rejeitou) NÃO vira opt-out presumido: o
+  // opt-out nasce do TEXTO da lead, não da saúde do motor de cold outreach, e
+  // presumir "pediu PARE" a cada falha de infra transformaria indisponibilidade
+  // em silêncio para toda lead — que é a troca cara (silêncio perde venda).
+  // Fica registrado alto para não ser uma decisão invisível.
+  if (coldVerdict.optOut) {
+    console.warn(
+      `[platform-evolution-webhook] brain NÃO despachado (opt-out) conversation_id=${conversation.id} telefone=${fromDigits}`,
+    );
+  } else {
+    if (!coldVerdict.ok) {
+      console.error(
+        `[platform-evolution-webhook] brain despachado SEM confirmação de opt-out conversation_id=${conversation.id} — o on-inbound do cold outreach não respondeu; se a lead pediu PARE, a supressão não foi aplicada`,
+      );
+    }
+    await dispatchSalesBrain(String(conversation.id));
+  }
+
   return ok({ stored: "inbound" });
 }
 

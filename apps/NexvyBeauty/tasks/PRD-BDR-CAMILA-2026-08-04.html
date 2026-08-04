@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRD — BDR Camila · NexvyBeauty · 2026-08-04</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2129; --fg:#e6edf3; --dim:#9aa7b4;
+    --line:#2b3440; --accent:#e879a6; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+    --code:#7ee787;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:2rem;line-height:1.2;margin:0 0 8px;letter-spacing:-.02em}
+  h2{font-size:1.4rem;margin:56px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  h3{font-size:1.1rem;margin:32px 0 10px;color:var(--accent)}
+  .sub{color:var(--dim);font-size:.95rem;margin:0 0 32px}
+  blockquote{margin:24px 0;padding:16px 20px;background:var(--bg2);
+             border-left:3px solid var(--accent);border-radius:0 8px 8px 0;color:var(--dim)}
+  blockquote strong{color:var(--fg)}
+  table{width:100%;border-collapse:collapse;margin:20px 0;font-size:.93rem;display:block;overflow-x:auto}
+  th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--bg3);font-weight:600}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  pre{background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+      padding:16px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--code)}
+  pre code{color:var(--fg)}
+  .pr{background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+      padding:20px 24px;margin:24px 0}
+  .pr h3{margin-top:0}
+  .lbl{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+       color:var(--dim);font-weight:700;margin:14px 0 4px}
+  ul,ol{margin:6px 0 0;padding-left:22px}
+  li{margin:4px 0}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .foot{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+        color:var(--dim);font-size:.88rem;font-style:italic}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.75rem;
+         font-weight:600;background:var(--bg3);border:1px solid var(--line);color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>PRD — BDR Camila</h1>
+<p class="sub">Prospecção ativa · canal Evolution · <strong>2026-08-04</strong> · sessão BDR <code>3dcf130b</code> · branch <code>feat/bdr-autonomo</code></p>
+
+<blockquote>
+<strong>Estado do código:</strong> nada implementado, nada deployado, nada escrito no banco.<br>
+<strong>Aprovação:</strong> este documento é o que o Marcelo aprova. O GO para codar vem depois dele, não antes.<br>
+<strong>Antecessor:</strong> <code>LDR-BDR-OUTBOUND-BLUEPRINT-2026-07-15.md</code> — investigação read-only; fatos de infra vencidos (a instância Evolution já existe e está conectada).
+</blockquote>
+
+<h2>0. Filtro de prontidão</h2>
+<p>A pergunta que o Marcelo mandou aplicar antes de pedir GO:</p>
+<table>
+<tr><th>Pergunta dele</th><th>Resposta</th><th>Onde</th></tr>
+<tr><td>Todas as frentes mapeadas?</td><td class="ok">Sim — 7 PRs nomeadas</td><td>§4</td></tr>
+<tr><td>Entregáveis mapeados?</td><td class="ok">Sim — um por PR</td><td>§4</td></tr>
+<tr><td>Dá para mensurar <strong>o quê</strong>?</td><td class="ok">Sim — entregável por PR</td><td>§4</td></tr>
+<tr><td>Dá para mensurar <strong>como</strong>?</td><td class="ok">Sim — check binário por PR</td><td>§4</td></tr>
+<tr><td>Dá para mensurar <strong>quando</strong>?</td><td class="ok">Sim — ordem e dependências</td><td>§5</td></tr>
+<tr><td><strong>Parâmetro de qualidade</strong>?</td><td class="ok">Sim — critério de aceite por PR</td><td>§4</td></tr>
+</table>
+
+<h2>1. Escopo</h2>
+<p>A Camila é a <strong>BDR de prospecção ativa</strong> do NexvyBeauty. Fala por número próprio via Evolution (instância <code>prospeccao-ativa-camila</code>), abre conversa fria com donas de salão a partir do telefone público do perfil, conduz, demonstra, <strong>fecha sozinha e manda o link de checkout</strong>. Depois do pagamento entrega para a <strong>Lia · Implantação</strong>, no número oficial de Vendas.</p>
+<p><strong>Não é escopo desta sessão:</strong> qualquer decisão sobre SDR (Duda/Bia), o prompt da Duda, a unificação SDR/Closer, a reescrita da <code>knowledge_base</code> (escritora única é a controladora) e o agente de onboarding.</p>
+<p><strong>Premissa fixada pelo Marcelo:</strong> SDR e BDR compartilham o <strong>mesmo cérebro</strong> (<code>platform-sales-brain</code>) e a <strong>mesma base de conhecimento</strong> (<code>platform_crm_products.knowledge_base</code>). LDR entra depois, no mesmo. Não se constrói cérebro paralelo.</p>
+
+<h2>2. Estado medido</h2>
+<p>Base do plano — medido, não suposto.</p>
+<table>
+<tr><th>Item</th><th>Valor</th></tr>
+<tr><td>Tabelas do cold outreach (4)</td><td class="ok">aplicadas</td></tr>
+<tr><td>Cron <code>platform-cold-outreach-tick</code></td><td class="ok"><strong>ATIVO, 1×/min</strong></td></tr>
+<tr><td>Campanhas</td><td class="warn"><strong>zero</strong></td></tr>
+<tr><td>Leads extraídos</td><td>30.434 · 13.736 com telefone · 12.935 qualificados</td></tr>
+<tr><td>Leads elegíveis a disparo</td><td class="warn"><strong>3</strong> (8 aprovados, 49 excluídos)</td></tr>
+<tr><td>Conversas <code>whatsapp_evolution</code></td><td class="bad"><strong>0 — o caminho nunca rodou uma vez</strong></td></tr>
+<tr><td>Leads com telefone no CRM</td><td>8 · 6 com 12 dígitos · 2 com 13</td></tr>
+<tr><td>Duplicatas de lead hoje</td><td>0 — por falta de volume, não por acerto</td></tr>
+<tr><td><code>model</code> dos agentes</td><td class="warn">NULL em 5 de 8, inclusive Bento(→Camila) e Lia</td></tr>
+</table>
+
+<h2>3. Contrato compartilhado com a sessão SDR</h2>
+<p><strong>Byte-idêntico no PRD da controladora.</strong> Fechado por medição cruzada: cada seção teve as duas sessões medindo, e cada furo foi achado pela outra.</p>
+
+<h3>3.1 Seção A — âncora de preço</h3>
+<pre><code>FATO MEDIDO (2 medições independentes)
+  public_plans.list_price_monthly EXISTE, preenchido, já lido em runtime
+  Essencial 275→450 (+64%) · Premium 427→720 (+69%) · Ultra 693→1190 (+72%)
+  Trial e Teste E2E: NULL — correto, não são públicos
+
+FORMA
+  "Este preço vale enquanto X" — X verificável PELA LEAD, não por nós
+  a âncora exige os dois lados: o preço de hoje E o de tabela
+
+MOMENTO (mesma regra, gatilho por funil)
+  a âncora só existe DEPOIS de a lead ter um número DELA
+  BDR: depois do Raio-X
+  SDR: depois de carteira OU ticket, ou depois do Raio-X
+
+DECISÃO DO MARCELO (2026-08-04)
+  NÃO EXISTE DATA DE SUBIDA.
+
+CONSEQUÊNCIA — regra final
+  âncora TEMPORAL            ❌ NÃO USAR, em nenhuma das duas agentes
+                                sem data, "vai subir" é a escassez falsa que a base proíbe
+  delta como PREÇO COMPARADO ✅ "o plano custa 450, hoje sai por 275"
+                                fato do PRESENTE, verificável na página de preços
+                                não promete nada sobre o futuro → não pode ser desmentido
+  campo price_anchor_until   ❌ FORA DE ESCOPO — sem data, não há o que guardar
+
+SE UM DIA EXISTIR DATA
+  a regra volta com price_anchor_until em CONFIG (nunca em prosa — prosa apodrece
+  e vira mentira verificável), default silencioso, e a obrigação de CUMPRIR:
+  âncora não cumprida queima a credibilidade da próxima frase.</code></pre>
+
+<h3>3.2 Seção C — identidade de lead</h3>
+<pre><code>MODELO (já existe, nunca exercitado)
+  platform_crm_conversations.lead_id é FK → N conversas : 1 lead é NATIVO
+  "duplicado no atendimento, unificado no CRM" = o esquema atual
+  max conversas por lead hoje: 1 — o padrão nunca engatou
+
+RESOLUÇÃO (escrita — 3 webhooks, toda mensagem)
+  telefone SOZINHO, via helper único de _shared/ que cobre
+  DDI · 9º dígito · E O PREFIXO "+"
+  ⚠️ DUAS CONVENÇÕES coexistem, e as duas são legítimas:
+       lado PLATAFORMA  platform_crm_leads.phone e
+                        platform_crm_conversations.visitor_phone guardam "+E.164"
+                        medido: 8/8 com "+" (6 de 12 dígitos, 2 de 13, 1 sem DDI 55)
+       lado TENANT/PROVEDOR  dígitos puros (JID da Evolution, API do provedor)
+     phoneVariantsBR() devolve SÓ DÍGITOS (_shared/phone.ts:30,33) —
+     CORRETA para o lado tenant/provedor, INSUFICIENTE para o lado plataforma.
+     Usada crua num ponto de resolução de PLATAFORMA, casa ZERO linhas.
+  ⚠️ O lado plataforma não tem adaptador: 4 chamadores escreveram o mesmo
+     ajuste por conta própria (meta-whatsapp-send:112 ·
+     start-whatsapp-conversation:106 · _shared/whatsapp-connection:182 ·
+     _shared/onboarding-handoff:279). Nenhum lugar onde a regra viva.
+  MIGRAM para o helper: os 4 acima + os 3 pontos de resolução abaixo.
+  NÃO MIGRAM (convenção dígitos, corretos como estão):
+     platform-check-whatsapp-number:51 · evolution-webhook:1138 (TENANT)
+     ⚠️ evolution-webhook ≠ platform-evolution-webhook — os dois existem.
+  → o helper encapsula as DUAS coisas: variantes do lado plataforma
+    (dígitos + "+") e desreferência de merged_into.
+    NENHUM ponto de resolução de plataforma chama phoneVariantsBR direto.
+  o resolvedor SEMPRE desreferencia merged_into e devolve o CANÔNICO
+  ↳ um ponto de controle cobre todo caminho automatizado
+  ↳ quem não sabe que merge existe fica correto de graça
+  pontos: platform-evolution-webhook:329 · platform-meta-whatsapp-webhook:388
+          cakto-webhook resolveOrCreateLead:356
+
+LEITURA (display — caminho humano)
+  view platform_crm_leads_ativos = WHERE merged_into IS NULL
+  migração incremental dos 41 pontos; NÃO-MIGRADO É SEGURO (vê a tabela, mostra 1 a mais)
+
+MERGE (remediação — evento raro)
+  gatilho    ≥2 sinais concordantes (núcleo BR + email, OU núcleo BR + org)
+  canônico   vence o MAIS ANTIGO (histórico e vínculos)
+  reaponta   as 20 TABELAS — deals e payment_links são os CRÍTICOS
+  cadeia     achata no ato: reaponta também quem já apontava pro perdedor
+             ↳ cadeia nunca passa de 1 salto; desreferenciador fica trivial
+  descarte   NUNCA deletar — merged_into preserva auditoria
+
+INVARIANTE
+  ensureLead que falha NÃO devolve null e segue.
+  Ou repete, ou marca a conversa como precisando de vínculo, ou alerta.
+  Prova: 4 conversas órfãs no canal oficial, todas COM telefone,
+         uma com 56 mensagens — o caminho de falha degrada por SEMANAS em silêncio.</code></pre>
+<p><strong>Divisão:</strong> <code>platform-evolution-webhook</code> é meu. <code>platform-meta-whatsapp-webhook</code>, <code>cakto-webhook</code>, a view e a migração dos 41 pontos de leitura são da controladora.</p>
+
+<h2>4. As PRs</h2>
+
+<div class="pr">
+<h3>PR-BDR-1 — Opt-out vivo</h3>
+<p><span class="lbl">Problema</span><br>A action <code>on-inbound</code> do <code>platform-cold-outreach</code> está implementada e testada, e <strong>nenhum código a invoca</strong>. Opt-out (<code>SAIR</code>/<code>PARE</code>) não funciona.</p>
+<p><span class="lbl">Entregável</span><br>O <code>platform-evolution-webhook</code> invoca <code>on-inbound</code> ao receber mensagem, <strong>antes</strong> de qualquer outra coisa. O cérebro só roda se o <code>on-inbound</code> não silenciou.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li><code>PARE</code> → linha em <code>platform_crm_lead_optout</code> <strong>e</strong> fila do lead sai de <code>sent</code></li>
+<li><code>PARE</code> → <strong>nenhuma</strong> resposta enviada</li>
+<li><code>oi</code> → fluxo segue normal</li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>Opt-out processado no mesmo ciclo da mensagem; zero resposta após opt-out, sob qualquer ordem de chegada.</p>
+<p><span class="lbl">Por que é a primeira</span><br>Disparar com resposta automática e sem opt-out funcionando é a pior combinação possível. Não depende de nada.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-2 — Resolução de identidade no canal Evolution</h3>
+<p><span class="lbl">Problema</span><br><code>platform-evolution-webhook:329</code> casa lead por duas formas (<code>dígitos</code>, <code>+dígitos</code>). O 9º dígito de celular BR fura o casamento e cria lead duplicado.</p>
+<p><span class="lbl">Entregável</span><br><code>phoneVariantsBR</code> no ponto de resolução + desreferência de <code>merged_into</code>.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li>lead gravado como <code>+551199998888</code>, mensagem chega como <code>5511999998888</code> → <strong>mesma linha</strong>, zero lead novo</li>
+<li>lead com <code>merged_into</code> preenchido → resolvedor devolve o <strong>canônico</strong></li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>Zero criação de lead para pessoa já existente, em qualquer combinação de DDI / 9º dígito / <code>+</code>.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-3 — <code>ensureLead</code> não falha calado</h3>
+<p><span class="lbl">Problema</span><br>O <code>catch</code> é <code>non-fatal</code>, devolve <code>null</code>, a conversa segue órfã. No canal oficial isso já produziu 4 conversas invisíveis no CRM — todas <strong>com</strong> telefone, uma com <strong>56 mensagens</strong>. O caminho de falha degrada por semanas em silêncio.</p>
+<p><span class="lbl">Entregável</span><br>Falha de resolução não produz conversa órfã silenciosa — repete, marca a conversa como precisando de vínculo, ou alerta.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li>forçar falha → conversa <strong>não</strong> fica com <code>lead_id NULL</code> sem sinal</li>
+<li>conversas Evolution órfãs após um ciclo de teste: <strong>0</strong></li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>Nenhum caminho de falha termina em silêncio.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-4 — Cérebro agnóstico de canal <span class="badge">bloqueada</span></h3>
+<p><span class="lbl">Problema</span><br>Quatro portões impedem a Camila de responder — nenhum invocador do brain a partir do webhook Evolution · gate <code>channel='whatsapp'</code> · gate <code>status='bot_active'</code> (<code>platform-sales-brain:1029</code>) · envio hard-wired em Graph (<code>:190</code>, <code>:205</code>, <code>:226</code>, <code>:1809</code>).</p>
+<p><span class="lbl">Entregável</span><br>Gates viram lista; envio vira <code>deliver()</code> roteando por <code>conversation.channel</code>; o webhook invoca o brain; conversa Evolution nasce <code>bot_active</code>.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li><strong>não-regressão:</strong> conversa do canal oficial responde exatamente como antes — caminho <code>channel==='whatsapp'</code> <strong>byte-idêntico</strong></li>
+<li>conversa <code>whatsapp_evolution</code> deixa de retornar <code>skipped:'bot_not_active'</code></li>
+<li>bolha sai pela Evolution com <code>delivery_status='sent'</code> e <strong>zero</strong> chamada a <code>graph.facebook</code></li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>O canal que fatura hoje não muda de comportamento. Isso é critério de aceite, não observação.</p>
+<p class="warn"><span class="lbl">Dependência</span><br><strong>SDR estabilizado.</strong> O arquivo está atendendo lead real agora e a controladora tem urgência que eu não tenho, por decisão do Marcelo. Não encosto antes do aviso dela.</p>
+<p><span class="lbl">Coordenadas</span><br>Minhas regiões (<code>:190/:205/:226/:1029/:1809</code>) não intersectam as dela (~<code>:1666-1731</code> anti-repetição, ~<code>:1480-1530</code> temperatura). Anunciar antes + <code>merge origin/main</code> antes.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-5 — Camila (persona)</h3>
+<p><span class="lbl">Problema</span><br>A Camila não existe no banco. O que existe é <code>Bento · Prospecção</code> (<code>68aeece9-…</code>), de escopo <strong>oposto</strong> — não vende e faz handoff para a Duda.</p>
+<p><span class="lbl">Entregável</span><br>Sobrescrever o Bento transformando-o em Camila (mesmo id, sem segundo <code>prospector</code>); matar <code>handoffToDuda</code> (<code>platform-cold-outreach:487/:499</code>); definir <code>model</code> (hoje NULL).</p>
+<p><span class="lbl">Conteúdo da persona</span><br>Voz, cadência de 3 mensagens, 7 proibições, esqueleto de objeção em 5 tempos e a frase fixa do "vc é robô?" — em <code>memory/project_camila_bdr_spec_2026-08-03.md</code>.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li><code>pickProspectorPersona</code> retorna <strong>Camila</strong></li>
+<li><strong>exatamente um</strong> agente ativo satisfaz <code>isProspectorAgent</code> — <strong>não</strong> "um com <code>agent_type='prospector'</code>". São predicados diferentes: a função casa por <code>agent_type</code> <strong>OU</strong> por substring <code>prospector|prospec|bdr|outbound</code> em <code>agent_type + name</code> (<code>persona.ts:24-28</code>). Medido hoje: só o Bento casa, sem falso-positivo</li>
+<li><code>model</code> <strong>não</strong> é NULL</li>
+<li>nenhum <code>[HANDOFF:sdr]</code> no fluxo do motor</li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>Responde ao "vc é robô?" com a frase fixa, sempre a mesma. Nenhuma abertura contém link (<code>containsLink()</code> prova).</p>
+<p><span class="lbl">Nota</span><br><code>handoffToDuda</code> é código morto — 0 conversas Evolution, 0 leads recebidos pela Duda por ali. Medido pelas duas sessões.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-6 — Travessia para o onboarding</h3>
+<p><span class="lbl">Problema</span><br>A lead paga conversando com a Camila num número, e o onboarding chega de <strong>outro</strong>. Sem aviso prévio é o formato exato do golpe que ela teme, segundos depois de pagar.</p>
+<p><span class="lbl">Entregável</span><br>A Camila anuncia a troca <strong>antes</strong> do fechamento, nomeando o número; encerra a própria conversa com "continuo à disposição"; consome o sinal de pagamento.</p>
+<p><span class="lbl">Coordenadas fixadas pelo Marcelo</span><br>Lia · Implantação · WhatsApp API - Vendas <strong>+55 11 95502-1205</strong> · <code>phone_number_id 1239336002593934</code> · <code>connection_id 1f7ca6e3-a846-493d-908e-b6d74ccf8c84</code> · template <code>boas_vindas_ativacao</code>.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li>a última mensagem antes do checkout <strong>nomeia</strong> o +55 11 95502-1205</li>
+<li>pagamento confirmado → conversa da Camila encerra e não responde mais</li>
+<li>a Lia assume com o <strong>mesmo <code>lead_id</code></strong> (depende de PR-BDR-2)</li>
+</ul>
+<p><span class="lbl">Dependência</span><br>Contrato do sinal de pagamento (<code>cakto_orders</code> + <code>organizations.plan_status</code>), entregue pela controladora.</p>
+<p><span class="lbl">Fronteira</span><br>Checkout enviado e não pago continua sendo da Camila, não do onboarding.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-7 — Ramo Evolution no inbox manual <span class="badge">baixa prioridade</span></h3>
+<p><span class="lbl">Problema</span><br>O botão <em>Iniciar Conversa</em> oferece a instância <code>prospeccao-ativa-camila</code>, e <code>platform-start-whatsapp-conversation</code> só resolve <code>platform_crm_whatsapp_meta_connections</code> → 404 <code>connection_not_found</code>.</p>
+<p><span class="lbl">Entregável</span><br>Ramo Evolution delegando para <code>platform-evolution-send</code>, criando conversa <code>channel='whatsapp_evolution'</code>.</p>
+<p><span class="lbl">Check binário</span><br><em>Iniciar Conversa</em> na instância → <strong>200</strong>, conversa aparece no inbox.</p>
+<p><span class="lbl">Por que é última</span><br><strong>Não bloqueia a Camila</strong> — o motor chama <code>platform-evolution-send</code> direto (<code>platform-cold-outreach:383</code>). Destrava o teste manual humano, não o disparo.</p>
+</div>
+
+<div class="pr">
+<h3>PR-BDR-8 — Rajada e corrida no canal Evolution</h3>
+<p><span class="lbl">Problema</span><br>O guarda <code>superseded</code> do <code>platform-sales-brain</code> (<code>:1118</code>) está <strong>aninhado dentro de <code>if (ageMs &lt; DEBOUNCE_MS)</code></strong> (<code>:1104</code>). Qualquer invocação cujo gatilho tenha mais de 12s <strong>pula o <code>sleep</code>, o reload e o guarda inteiro</strong> — transcrição, download de mídia, retry, cold start e fila entram todos por baixo. O <code>sleep</code> (<code>:1106</code>) não coalesce a rajada: ele <strong>alinha</strong> as invocações no mesmo instante de leitura, e nenhuma vê a escrita da outra.</p>
+<p>Efeito observado no canal oficial em 03/08: 7 bolhas em 39s, duas saudações, pergunta final duplicada com diferença de uma vírgula.</p>
+<p><span class="lbl">Por que é pré-condição do BDR</span><br>No inbound a rajada veio de texto+áudio, que é ocasional. No frio ela é o <strong>caso modal</strong> — quem recebe "oi" de número desconhecido responde 2-3 vezes em segundos. <em>(Inferência, não medida: há zero conversas Evolution.)</em></p>
+<p><span class="lbl">Entregável</span><br>Consumir a correção da controladora (fila no banco + reivindicação) e provar o comportamento no canal Evolution.</p>
+<span class="lbl">Check binário</span>
+<ul>
+<li>duas inbound em &lt;12s <strong>com atraso artificial no insert da segunda</strong> → <strong>UMA</strong> resposta, não duas</li>
+<li>o claim da correção <strong>não vive dentro de nenhum <code>if</code> de latência</strong> — verificado por leitura do diff, não por teste</li>
+<li>ordenação da reivindicação usa estado posterior ao insert, <strong>nunca <code>created_at</code></strong></li>
+</ul>
+<p><span class="lbl">Qualidade</span><br>Duas mensagens rápidas exercitam justamente o caminho que o guarda já cobre — teste que passa e não prova nada. <strong>O critério é o insert atrasado.</strong></p>
+<p><span class="lbl">Dependência</span><br>PR-2b da controladora (a correção mora no arquivo dela).</p>
+</div>
+
+<h2>5. Ordem, dependências e gates</h2>
+<pre><code>PR-1  opt-out            ── sem dependência ── PRIMEIRA (segurança antes de qualquer envio)
+PR-2  resolução          ── sem dependência
+PR-3  ensureLead         ── depende de PR-2 (mesmo arquivo, mesma função)
+PR-4  cérebro por canal  ── ⛔ BLOQUEADA até a controladora estabilizar o SDR
+PR-5  persona Camila     ── depende de PR-4 (sem cérebro respondendo, persona não exercita)
+PR-6  travessia          ── depende de PR-2 (lead_id único) + contrato Cakto
+PR-7  inbox manual       ── independente, baixa prioridade
+PR-8  rajada e corrida   ── depende da PR-2b da controladora (correção no arquivo dela)
+                            ⚠️ altera o critério da PR-4: a não-regressão mede contra
+                            o comportamento CORRIGIDO, não contra o de hoje —
+                            o canal que fatura já tem a corrida dentro</code></pre>
+<p><strong>Nota sobre a PR-4:</strong> o critério original <em>"o canal oficial responde exatamente como antes"</em> carimbaria a corrida como linha de base. Depois da PR-2b da controladora, a referência passa a ser o comportamento corrigido.</p>
+
+<h3>Gates de operação (não são código)</h3>
+<table>
+<tr><th>Gate</th><th>Regra</th><th>Dono</th></tr>
+<tr><td><strong>G — nenhum lead real</strong></td><td>nenhum disparo a lead real antes de um ciclo completo (disparo → resposta → opt-out) provado com número nosso. <strong>Vale só para outbound</strong> — o inbound está vivo por decisão do Marcelo</td><td>eu</td></tr>
+<tr><td><strong>Duplo gate do motor</strong></td><td><code>campaign.dry_run</code> default <code>true</code> + env <code>COLD_OUTREACH_ENABLED</code>. Nada dispara sem os dois</td><td>Marcelo</td></tr>
+<tr><td><strong>Aprovação de leads</strong></td><td>3 elegíveis hoje; <code>approved_by</code> é ato humano. Não auto-aprovo em lote</td><td>Marcelo</td></tr>
+<tr><td><strong>Disparo em massa</strong></td><td>sem fecho. Desaconselhado: audiência provavelmente inservível (navegador embutido do WhatsApp), entrega morre antes dos 10k, e o custo real é o <strong>domínio</strong>, não o número</td><td>Marcelo</td></tr>
+</table>
+
+<h2>6. Fora do PRD, registrado</h2>
+<ul>
+<li><strong>Teste de 200 contatos</strong> com critério binário de leitura da WCA — audiência dedicada por <code>utm_source</code>, domínio descartável, <code>R = A/S</code> com piso <code>S ≥ 30</code>. Desenhado, não executado. Operação, não código.</li>
+<li><strong><code>model</code> NULL na Lia</strong> — ela recebe a cliente logo após o pagamento rodando em modelo indefinido. É da controladora; registrado porque afeta a travessia do PR-BDR-6.</li>
+</ul>
+
+<h2>7. O que depende do Marcelo</h2>
+<ol>
+<li><strong>O GO para codar</strong>, com este escopo</li>
+<li><strong>Aprovação de leads</strong> e <strong>disparo de 10k</strong> — travam operação, não código</li>
+</ol>
+<p class="ok"><strong>Respondido:</strong> a data de subida do preço <strong>não existe</strong> → §3.1 fechada, âncora temporal proibida nas duas agentes.</p>
+
+<p class="foot">Seções A e C fechadas por medição cruzada com a sessão Controladora GO-LIVE. Cada furo foi achado pela outra sessão; nenhum por auto-revisão.</p>
+
+</div>
+</body>
+</html>

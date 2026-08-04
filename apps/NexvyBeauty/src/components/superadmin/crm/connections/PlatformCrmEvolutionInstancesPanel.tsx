@@ -326,7 +326,11 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
                         <StatusBadge status={inst.status} />
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {inst.phone_number ? `+${inst.phone_number}` : 'Não conectado ainda'}
+                        {inst.phone_number
+                          ? `+${inst.phone_number}`
+                          : isLinked(inst.status)
+                            ? 'Conectado — número ainda não identificado'
+                            : 'Não conectado ainda'}
                       </p>
                     </div>
                   </div>
