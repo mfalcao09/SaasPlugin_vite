@@ -102,9 +102,14 @@ async function transcribeInboundAudio(
     const mediaId = String((msg['audio'] as Json | undefined)?.['id'] ?? '');
     if (!mediaId) return null;
 
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) {
-      console.error('[platform-meta-whatsapp-webhook] audio: OPENAI_API_KEY ausente — sem transcrição');
+    // GEMINI, não OpenAI — decisão medida em 2026-08-03 pela sonda de etapas:
+    // a OPENAI_API_KEY dos secrets devolve 401 invalid_api_key (revogada), e a
+    // GEMINI_API_KEY transcreveu com 200 no gemini-2.5-flash. Trocar de
+    // provedor consertou sem depender de chave nova. (gemini-2.0-flash está
+    // APOSENTADO — 404; não "downgrade" o modelo.)
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) {
+      console.error('[platform-meta-whatsapp-webhook] audio: GEMINI_API_KEY ausente — sem transcrição');
       return null;
     }
 
@@ -144,20 +149,33 @@ async function transcribeInboundAudio(
       return null;
     }
 
-    // 3. Whisper. WhatsApp manda voz como audio/ogg (opus) — formato aceito.
-    const form = new FormData();
-    form.append('file', new Blob([bytes], { type: 'audio/ogg' }), 'audio.ogg');
-    form.append('model', 'whisper-1');
-    form.append('language', 'pt');
-    const trRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiKey}` },
-      body: form,
-    });
+    // 3. Gemini transcreve. WhatsApp manda voz como audio/ogg (opus) — aceito
+    //    inline. btoa em blocos: spread de array grande estoura a pilha.
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    }
+    const trRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: 'audio/ogg', data: btoa(bin) } },
+            { text: 'Transcreva este áudio em português brasileiro, fielmente e sem comentários. ' +
+                    'Responda SOMENTE com o texto falado. Se não houver fala, responda exatamente [inaudivel].' },
+          ]}],
+        }),
+      },
+    );
     const trBody = await trRes.json().catch(() => ({}));
-    const transcript = String((trBody as Json | null)?.['text'] ?? '').trim();
-    if (!trRes.ok || !transcript) {
-      console.error('[platform-meta-whatsapp-webhook] audio: whisper falhou',
+    const parts = (trBody as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+      ?.candidates?.[0]?.content?.parts ?? [];
+    const transcript = parts.map((p) => p?.text ?? '').join('').trim();
+    if (!trRes.ok || !transcript || transcript === '[inaudivel]') {
+      console.error('[platform-meta-whatsapp-webhook] audio: gemini falhou',
         trRes.status, JSON.stringify(trBody).slice(0, 200));
       return null;
     }
