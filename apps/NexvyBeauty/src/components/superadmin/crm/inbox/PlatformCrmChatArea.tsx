@@ -277,9 +277,13 @@ export function PlatformCrmChatArea({
     staleTime: 60_000,
     refetchInterval: 60_000,
     queryFn: async () => {
+      // `p_conversation_id`, não `conversation_id`: o PostgREST casa RPC por
+      // NOME de parâmetro, e a função no banco + a edge platform-ig-send + o
+      // types.ts usam o prefixo p_. Este caller era o único destoante — o 404
+      // "Not Found" era isso, não função ausente (2026-08-03).
       const { data, error } = await (supabase.rpc as any)(
         'platform_crm_is_within_24h_window',
-        { conversation_id: conversationId },
+        { p_conversation_id: conversationId },
       );
       if (error) throw error;
       return data as boolean;
