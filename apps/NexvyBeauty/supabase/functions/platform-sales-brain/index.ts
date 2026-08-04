@@ -719,6 +719,22 @@ function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | nul
  * uma promessa de subida que não existe, e nenhuma configuração de banco alcançava
  * isso. A reancoragem agora é VALOR (a conta), nunca pressa.
  */
+/**
+ * ⚠️ GUARD DE NEGAÇÃO (2026-08-04) — sem ele o sanitizador INVERTIA a frase.
+ *
+ * O prompt MANDA a agente dizer "NUNCA ofereça desconto. Se pedirem, reancore no
+ * VALOR". Ela então escreve a palavra proibida em enquadramento NEGATIVO, obedecendo
+ * corretamente — e a substituição cega destruía justamente a frase certa:
+ *
+ *   "não damos desconto"   →  "não damos a conta da recuperação (…)"
+ *   "não fazemos promoção" →  "não fazemos o preço que está valendo hoje"
+ *
+ * A agente saía negando o próprio argumento de venda. Medido em 100% das negações.
+ * Mesmo padrão do detector que pune a proibição junto com a infração — só que aqui
+ * o custo não é ruído num relatório: é o que a lead lê.
+ */
+const NEGACAO_ANTES = /(n[ãa]o|sem|nunca|jamais|nenhum[ao]?|zero)\s+(\w+\s+){0,3}$/i;
+
 function sanitizeReply(input: string): { text: string; sanitized: boolean } {
   let text = input;
   let sanitized = false;
@@ -732,10 +748,17 @@ function sanitizeReply(input: string): { text: string; sanitized: boolean } {
     [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço que está valendo hoje'],
   ];
   for (const [re, rep] of pairs) {
-    if (re.test(text)) {
+    const fonte = text; // congela a origem: o replace lê o contexto ANTES da troca
+    text = text.replace(re, (...args: unknown[]) => {
+      const match = String(args[0]);
+      // String.replace(re, fn) chama fn(match, p1…pn, offset, string).
+      const offset = Number(args[args.length - 2]);
+      const antes = fonte.slice(Math.max(0, offset - 40), offset);
+      // A frase JÁ está negando o termo — trocar aqui inverte o sentido. Sai intacta.
+      if (NEGACAO_ANTES.test(antes)) return match;
       sanitized = true;
-      text = text.replace(re, rep);
-    }
+      return rep;
+    });
   }
   return { text, sanitized };
 }
