@@ -81,6 +81,93 @@ function extractContent(msg: Json): { content: string; contentType: string } {
   }
 }
 
+/**
+ * Transcreve áudio inbound (Cloud API) para TEXTO — o que faltava para a Duda
+ * "ouvir": até 2026-08-03 o webhook reduzia áudio ao rótulo '[audio]' e jogava
+ * fora o media id; sem id não há download, sem download não há transcrição, e
+ * o cérebro respondia "o áudio não tá chegando" com leads REAIS de anúncio
+ * pago mandando voz.
+ *
+ * Cadeia: msg.audio.id → GET graph/<id> (token da conexão) → download do
+ * binário → OpenAI Whisper → texto. FAIL-OPEN de propósito: qualquer falha
+ * devolve null e a mensagem entra como '[audio]' — perder a transcrição é
+ * aceitável, perder a MENSAGEM não. Cada falha loga a etapa que quebrou.
+ */
+async function transcribeInboundAudio(
+  supabase: ReturnType<typeof getServiceClient>,
+  msg: Json,
+  connectionId: string,
+): Promise<{ transcript: string; mediaId: string } | null> {
+  try {
+    const mediaId = String((msg['audio'] as Json | undefined)?.['id'] ?? '');
+    if (!mediaId) return null;
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiKey) {
+      console.error('[platform-meta-whatsapp-webhook] audio: OPENAI_API_KEY ausente — sem transcrição');
+      return null;
+    }
+
+    const { data: conn } = await supabase
+      .from('platform_crm_whatsapp_meta_connections')
+      .select('access_token_encrypted')
+      .eq('id', connectionId)
+      .maybeSingle();
+    const token = conn?.access_token_encrypted
+      ? await decryptSecret(String(conn.access_token_encrypted))
+      : '';
+    if (!token) {
+      console.error('[platform-meta-whatsapp-webhook] audio: conexão sem token utilizável', connectionId);
+      return null;
+    }
+
+    // 1. Graph troca media id por URL efêmera (expira em ~5 min — usar já).
+    const metaRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const metaBody = await metaRes.json().catch(() => ({}));
+    const mediaUrl = String((metaBody as Json | null)?.['url'] ?? '');
+    if (!metaRes.ok || !mediaUrl) {
+      console.error('[platform-meta-whatsapp-webhook] audio: Graph não devolveu URL', metaRes.status);
+      return null;
+    }
+
+    // 2. Download do binário — EXIGE o mesmo Bearer (a URL da Meta não é pública).
+    const binRes = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!binRes.ok) {
+      console.error('[platform-meta-whatsapp-webhook] audio: download falhou', binRes.status);
+      return null;
+    }
+    const bytes = new Uint8Array(await binRes.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > 25 * 1024 * 1024) {
+      console.error('[platform-meta-whatsapp-webhook] audio: tamanho inválido', bytes.length);
+      return null;
+    }
+
+    // 3. Whisper. WhatsApp manda voz como audio/ogg (opus) — formato aceito.
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: 'audio/ogg' }), 'audio.ogg');
+    form.append('model', 'whisper-1');
+    form.append('language', 'pt');
+    const trRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: form,
+    });
+    const trBody = await trRes.json().catch(() => ({}));
+    const transcript = String((trBody as Json | null)?.['text'] ?? '').trim();
+    if (!trRes.ok || !transcript) {
+      console.error('[platform-meta-whatsapp-webhook] audio: whisper falhou',
+        trRes.status, JSON.stringify(trBody).slice(0, 200));
+      return null;
+    }
+    return { transcript, mediaId };
+  } catch (e) {
+    console.error('[platform-meta-whatsapp-webhook] audio: exceção', String(e).slice(0, 200));
+    return null;
+  }
+}
+
 /** Fallback de produto (slug fixo) para conexões SEM product_id cadastrado.
  *  A regra canônica (A1.3) é herdar `product_id` DA CONEXÃO por onde a
  *  mensagem entrou (platform_crm_whatsapp_meta_connections.product_id);
@@ -511,8 +598,17 @@ async function processInboundMessage(
     await captureCtwaAttribution(supabase, conversation, ctwaReferral, connectionId);
   }
 
-  const { content, contentType } = extractContent(msg);
+  let { content, contentType } = extractContent(msg);
   const metadata = (value['metadata'] as Json | undefined) ?? {};
+
+  // Áudio vira TEXTO antes do insert: o cérebro lê `content` do histórico e a
+  // UI mostra a mesma coluna — transcrever aqui conserta os dois consumidores
+  // de uma vez. Se falhar, segue '[audio]' (fail-open; ver o helper).
+  let audioTr: { transcript: string; mediaId: string } | null = null;
+  if (contentType === 'audio') {
+    audioTr = await transcribeInboundAudio(supabase, msg, connectionId);
+    if (audioTr) content = `🎙️ ${audioTr.transcript}`;
+  }
 
   const { data: inserted, error } = await supabase
     .from('platform_crm_messages')
@@ -530,6 +626,7 @@ async function processInboundMessage(
         phone_number_id: metadata['phone_number_id'] ?? null,
         wa_timestamp: msg['timestamp'] ?? null,
         wa_type: msg['type'] ?? null,
+        ...(audioTr ? { media_id: audioTr.mediaId, transcription: audioTr.transcript } : {}),
         ...(ctwaReferral ? { referral: ctwaReferral.raw } : {}),
       },
     })
