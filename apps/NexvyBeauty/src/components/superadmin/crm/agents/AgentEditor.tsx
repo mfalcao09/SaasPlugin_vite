@@ -50,6 +50,7 @@ import {
   CHANNEL_LABELS,
 } from './types';
 import { cn } from '@/lib/utils';
+import { getModelsForCapability, TAG_LABELS } from '@/config/aiModelsCatalog';
 import { useGenerateAgentAI } from './useGenerateAgentAI';
 import { toast } from 'sonner';
 import { AgentTrainingSection } from './AgentTrainingSection';
@@ -94,7 +95,10 @@ const DEFAULT_AGENT: Partial<ProductAgent> = {
   end_conversation_triggers: [],
   tone_style: 'friendly',
   message_style: 'balanced',
-  // ai_model removido — modelo agora vem de org_ai_routing (Integrações > Roteamento de IA)
+  // model=null (não `ai_model`, não `org_ai_routing`): esta é a coluna real de
+  // platform_crm_product_agents (twin de plataforma, sem organization_id).
+  // null = herda o fallback do backend (aba Tom → Modelo de IA).
+  model: null,
   always_end_with_question: true,
   additional_prompt: '',
   required_phrases: [],
@@ -993,12 +997,61 @@ export function AgentEditor({
                   </Select>
                 </div>
 
-                <div className="rounded-md border border-dashed bg-muted/30 p-3">
+                <div className="space-y-2">
+                  <Label>Modelo de IA</Label>
                   <p className="text-xs text-muted-foreground">
-                    💡 O <strong>modelo de IA</strong> usado pelos agentes de conversa é definido em{' '}
-                    <strong>Configurações → Integrações → Roteamento de IA</strong> (capacidade
-                    "Agentes de conversa") e vale para toda a organização.
+                    Modelo usado quando este agente responde (WhatsApp/Chat). Deixe em{' '}
+                    <strong>Padrão da plataforma</strong> para herdar o modelo definido no
+                    backend — não escolha um às cegas: se você não sabe qual usar, deixe herdado.
                   </p>
+                  <Select
+                    value={formData.model || '__inherit__'}
+                    onValueChange={(v) =>
+                      setFormData(prev => ({ ...prev, model: v === '__inherit__' ? null : v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um modelo" />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[420px]">
+                      <SelectItem value="__inherit__">
+                        <div className="flex flex-col gap-0.5 py-0.5">
+                          <span className="font-medium">Padrão da plataforma (não definido)</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            Herda o fallback do backend (platform-sales-brain): variável{' '}
+                            {formData.agent_type === 'closer'
+                              ? 'AI_SALES_BRAIN_MODEL_CLOSER → AI_SALES_BRAIN_MODEL'
+                              : 'AI_SALES_BRAIN_MODEL'}{' '}
+                            → padrão fixo <code>google/gemini-2.5-flash</code> se nenhuma
+                            variável estiver configurada.
+                          </span>
+                        </div>
+                      </SelectItem>
+                      {getModelsForCapability('lovable', 'agent_chat').map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          <div className="flex flex-col gap-1 py-0.5">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="font-medium">{m.label}</span>
+                              {m.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className={`inline-flex items-center rounded border px-1.5 py-0 text-[9px] font-medium ${TAG_LABELS[tag].className}`}
+                                >
+                                  {TAG_LABELS[tag].label}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">{m.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!formData.model && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      ⚠ Sem modelo definido para este agente — está usando o padrão herdado do backend.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between py-2">

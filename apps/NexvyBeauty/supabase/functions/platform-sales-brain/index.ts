@@ -69,6 +69,11 @@ import {
 } from '../_shared/inactivity-cadence.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
+// Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API (número
+// oficial); 'whatsapp_evolution' = Evolution (número não-oficial via QR, criado
+// pelo platform-evolution-webhook). Não é lista de "canais existentes": webchat e
+// Instagram têm outro motor e continuam de fora.
+const BRAIN_CHANNELS: string[] = ['whatsapp', 'whatsapp_evolution'];
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
 const DEDUP_WINDOW_MS = 5000;
 // Debounce: agrega mensagens curtas da lead que chegam em rajada numa só resposta.
@@ -78,6 +83,30 @@ const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '12000');
 // Re-entrega velha do Meta: inbound com timestamp mais velho que isto = ignorar
 // (bug real: Meta re-entregou msg de 13 min atrás e a Duda se reapresentou).
 const STALE_REDELIVERY_MS = 10 * 60 * 1000;
+// ─── CLAIM DA CONVERSA (serialização entre invocações) ──────────────────────
+// O webhook dispara UMA invocação por mensagem recebida. Duas mensagens da lead
+// em rajada (texto + áudio, 1,7s de intervalo) viravam DUAS invocações rodando
+// lado a lado e ENTRELAÇANDO as bolhas: duas saudações, duas explicações, a
+// mesma pergunta final duas vezes — diferindo por uma vírgula (bug real
+// 2026-08-04). O debounce não resolvia porque ele não COALESCE, ele ALINHA: as
+// duas dormem e acordam a ~2s uma da outra e recarregam o histórico no mesmo
+// instante, quando nenhuma escreveu ainda.
+// Agora toda invocação tenta TOMAR a conversa (UPDATE condicional com RETURNING,
+// atômico no Postgres). Quem não toma SAI na hora — nunca espera a vez: fila só
+// reordenaria o entrelaçamento e ainda o disfarçaria de robustez.
+// TTL: invocação que morre (OOM/timeout do isolate, antes do release) não pode
+// travar a conversa para sempre. 120s cobre o pior caso real com folga —
+// debounce 12s + pausa de leitura + LLM + até 4 bolhas com pausa de digitação de
+// até 8s cada + a 2ª chamada de LLM da memória.
+const BRAIN_CLAIM_TTL_MS = Number(Deno.env.get('AI_BRAIN_CLAIM_TTL_MS') ?? '120000');
+// HAND-BACK: mensagem que entra no banco DEPOIS do reload do vencedor não cabe
+// na resposta dele, e a invocação dela já morreu no claim. Sem hand-back
+// trocaríamos resposta dobrada por lead GHOSTADA — que é pior. O caso não é
+// hipotético: o áudio vira linha ~12s depois do próprio wa_timestamp (passa por
+// transcrição), ou seja, DEPOIS da janela de debounce da mensagem irmã.
+// Teto de saltos: cada salto responde mensagem real da lead; acima disso é
+// sintoma de loop, não de conversa.
+const HANDBACK_MAX_DEPTH = 3;
 // Guardrails de forma (reclamação real: textão + várias perguntas juntas).
 // INVARIANTE deste pipeline: nenhuma função pode REDUZIR o número de caracteres
 // entregues — só reagrupar. Perder o preço/link no meio da palavra custa a venda;
@@ -202,6 +231,63 @@ async function sendTypingIndicator(
   }
 }
 
+/**
+ * "Digitando…" no canal Evolution. NÃO existe equivalente ao par
+ * read+typing_indicator do Graph (que se pendura num wamid): a Evolution expõe
+ * presença de chat (`/chat/sendPresence`, type 'presence' no platform-evolution-send),
+ * que é justamente o sinal que transforma a pausa em "ela está escrevendo".
+ * NON-FATAL pelo mesmo contrato do irmão Graph: qualquer falha aqui é logada e
+ * ignorada — a pausa e a entrega seguem.
+ */
+async function sendEvolutionPresence(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+): Promise<void> {
+  const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
+  const instanceId = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  const to = String(toPhone ?? '').replace(/\D/g, '');
+  if (!instanceId || !to) {
+    console.warn(
+      `[platform-sales-brain] presença Evolution pulada conversation_id=${conversationId} instance_id=${instanceId ?? 'null'} to_digits=${to.length}`,
+    );
+    return;
+  }
+  try {
+    const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
+    if (!productId) return; // já logado como error lá dentro
+    const { error } = await supabase.functions.invoke('platform-evolution-send', {
+      body: { product_id: productId, instance_id: instanceId, type: 'presence', to, payload: { state: 'composing' } },
+    });
+    if (error) {
+      console.warn(
+        `[platform-sales-brain] presença Evolution falhou (ignorado) conversation_id=${conversationId} reason=${error.message}`,
+      );
+    }
+  } catch (e) {
+    console.warn(
+      `[platform-sales-brain] presença Evolution exception (ignorado) conversation_id=${conversationId}:`,
+      String(e).slice(0, 200),
+    );
+  }
+}
+
+/** Roteia o "digitando…" pelo canal da conversa. Meta = código de hoje, intacto. */
+async function sendTypingSignal(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  inboundWamid: string | null,
+  toPhone: string,
+): Promise<void> {
+  if (conversation?.channel === 'whatsapp_evolution') {
+    await sendEvolutionPresence(supabase, conversation, toPhone);
+    return;
+  }
+  await sendTypingIndicator(supabase, conversation as ConversationConnectionHints | null, inboundWamid);
+}
+
 async function deliverViaWhatsAppCloud(
   supabase: any,
   conversation: ConversationConnectionHints | null,
@@ -239,6 +325,146 @@ async function deliverViaWhatsAppCloud(
     console.error('[platform-sales-brain] entrega WhatsApp exception:', e);
     return { wamid: null, error: String(e).slice(0, 300), connectionId: null };
   }
+}
+
+/**
+ * Resultado de entrega, agnóstico de canal. `delivered` existe porque no canal
+ * Evolution "entregue" e "tem id de mensagem" não são a mesma coisa (o shape da
+ * resposta varia por versão do servidor); no canal Meta os dois coincidem, e é
+ * assim que a não-regressão se mantém: `delivered = wamid !== null`.
+ */
+interface DeliveryResult {
+  wamid: string | null;
+  error: string | null;
+  connectionId: string | null;
+  delivered: boolean;
+  evolutionMessageId?: string | null;
+}
+
+/**
+ * Resolve o product_id DA INSTÂNCIA Evolution. Não serve o product_id da
+ * CONVERSA: o webhook herda o produto da instância só no INSERT e nunca
+ * sobrescreve atribuição manual — os dois podem divergir, e o
+ * platform-evolution-send casa `id + product_id` (`.eq().eq()`), então
+ * product_id errado devolve 404 "No platform Evolution instance found".
+ */
+async function evolutionInstanceProductId(
+  supabase: any,
+  instanceId: string,
+  conversationId: string | null,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('platform_crm_evolution_instances')
+    .select('id, product_id')
+    .eq('id', instanceId)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      `[platform-sales-brain] instância Evolution não lida conversation_id=${conversationId} instance_id=${instanceId} reason=${error.message}`,
+    );
+    return null;
+  }
+  const productId = typeof data?.product_id === 'string' && data.product_id ? data.product_id : null;
+  if (!productId) {
+    console.error(
+      `[platform-sales-brain] instância Evolution sem product_id conversation_id=${conversationId} instance_id=${instanceId} — envio impossível`,
+    );
+  }
+  return productId;
+}
+
+/**
+ * Entrega no canal Evolution (WhatsApp não-oficial via QR) pela edge
+ * platform-evolution-send — a mesma que o cold outreach usa. O `connectionId`
+ * devolvido aqui é o evolution_instance_id (é ele que diz por qual número saiu a
+ * bolha); e `evolutionMessageId` é o key.id da Evolution, que o
+ * platform-evolution-webhook usa como chave de idempotência — persistir isso
+ * impede que o eco fromMe do nosso próprio envio vire uma segunda linha outbound.
+ */
+async function deliverViaEvolution(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+  content: string,
+): Promise<DeliveryResult> {
+  const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
+  const instanceId = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  if (!instanceId) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution SEM evolution_instance_id conversation_id=${conversationId} — não há por qual número responder`,
+    );
+    return { wamid: null, error: 'no_evolution_instance', connectionId: null, delivered: false };
+  }
+  const to = String(toPhone ?? '').replace(/\D/g, '');
+  if (!to) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution sem telefone de destino conversation_id=${conversationId} instance_id=${instanceId}`,
+    );
+    return { wamid: null, error: 'no_destination_phone', connectionId: instanceId, delivered: false };
+  }
+  try {
+    const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
+    if (!productId) {
+      return {
+        wamid: null,
+        error: 'evolution_instance_product_unresolved',
+        connectionId: instanceId,
+        delivered: false,
+      };
+    }
+    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+      body: { product_id: productId, instance_id: instanceId, type: 'text', to, payload: { text: content } },
+    });
+    // A edge devolve o envelope do evoFetch ({ok,status,body}) — `ok:false` é
+    // falha do servidor Evolution COM HTTP 200 no invoke, então checar só
+    // `error` deixaria passar entrega não feita (mesma régua do cold outreach).
+    if (error || (data as any)?.ok === false || (data as any)?.error) {
+      const reason = error?.message ?? String(JSON.stringify(data ?? null)).slice(0, 300);
+      console.error(
+        `[platform-sales-brain] entrega Evolution FALHOU conversation_id=${conversationId} instance_id=${instanceId} reason=${reason}`,
+      );
+      return { wamid: null, error: String(reason).slice(0, 300), connectionId: instanceId, delivered: false };
+    }
+    const evolutionMessageId = typeof (data as any)?.body?.key?.id === 'string'
+      ? (data as any).body.key.id
+      : null;
+    // Entregue = a Evolution aceitou. O id pode faltar (shape varia por versão) e
+    // isso NÃO é falha — marcar como falha aqui geraria alarme falso e um
+    // delivery_status errado numa bolha que a lead recebeu.
+    return { wamid: evolutionMessageId, error: null, connectionId: instanceId, delivered: true, evolutionMessageId };
+  } catch (e) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution EXCEPTION conversation_id=${conversationId} instance_id=${instanceId}:`,
+      e,
+    );
+    return { wamid: null, error: String(e).slice(0, 300), connectionId: instanceId, delivered: false };
+  }
+}
+
+/**
+ * Roteador de entrega por canal. O ramo 'whatsapp' delega ao
+ * deliverViaWhatsAppCloud INTACTO (mesma sequência de chamadas Graph, mesmo
+ * wamid, mesmo tratamento de erro); `delivered` é derivado de `wamid !== null`,
+ * que é exatamente o critério que o call-site usava antes.
+ */
+async function deliver(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+  content: string,
+): Promise<DeliveryResult> {
+  if (conversation?.channel === 'whatsapp_evolution') {
+    return await deliverViaEvolution(supabase, conversation, toPhone, content);
+  }
+  const r = await deliverViaWhatsAppCloud(
+    supabase,
+    conversation as ConversationConnectionHints | null,
+    toPhone,
+    content,
+  );
+  return { ...r, delivered: r.wamid !== null };
 }
 
 /**
@@ -990,10 +1216,21 @@ Deno.serve(async (req) => {
 
   if (!isAuthorized(req)) return json({ error: 'Unauthorized' }, 401);
 
+  // Estado do claim mora FORA do try DE PROPÓSITO: o `finally` lá embaixo precisa
+  // soltar a conversa em TODA saída — os ~18 `return json({skipped:…})` do meio do
+  // caminho, o erro 5xx e a exceção inclusive. Claim que vaza trava a lead até o
+  // TTL expirar, então o release não pode depender de lembrar de cada return.
+  let releaseClaim: (() => Promise<void>) | null = null;
+  // Só é preenchido quando esta invocação REALMENTE respondeu: hand-back sem
+  // resposta entregue viraria loop de invocação sem fala.
+  let handback: (() => Promise<void>) | null = null;
+
   try {
     const body = await req.json().catch(() => ({}));
     const conversationId: string | null = body?.conversation_id ?? null;
     if (!conversationId) return json({ error: 'conversation_id is required' }, 400);
+    // Profundidade do hand-back (payload interno; ausente = chamada externa = 0).
+    const handbackDepth = Number(body?.handback_depth) || 0;
 
     // ── MODO INATIVIDADE (régua — payload interno do platform-inactivity-sweeper).
     // { conversation_id, occurrence: N, repertoire_stage: 1-4|'janela_24h',
@@ -1011,30 +1248,87 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // 1) Conversa — só age em WhatsApp com bot ativo.
+    // 1) Conversa — só age nos canais de WhatsApp atendidos, com bot ativo.
     const { data: conversation, error: convError } = await supabase
       .from('platform_crm_conversations')
       // meta_connection_id é OBRIGATÓRIO no select: é ele que diz por qual
       // número responder (a conexão que RECEBEU a mensagem da lead).
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id')
+      // evolution_instance_id é o equivalente do canal Evolution (qual número
+      // burner recebeu) — sem ele não há por onde responder naquele canal.
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id')
       .eq('id', conversationId)
       .maybeSingle();
 
     if (convError || !conversation) {
       return json({ error: 'Conversation not found' }, 404);
     }
-    if (conversation.channel !== 'whatsapp') {
+    if (!BRAIN_CHANNELS.includes(String(conversation.channel))) {
       return json({ skipped: 'not_whatsapp', channel: conversation.channel });
     }
     if (conversation.status !== 'bot_active') {
       return json({ skipped: 'bot_not_active', status: conversation.status });
     }
 
+    // 1b) CLAIM DA CONVERSA — INCONDICIONAL, e é o ponto todo desta correção.
+    //     Não existe `if` de idade, de canal, de latência ou de modo antes daqui:
+    //     TODA invocação que chegou até aqui tenta tomar a conversa. O defeito
+    //     anterior nasceu exatamente disso — o guard 'superseded' morava DENTRO
+    //     de `if (ageMs < DEBOUNCE_MS)`, então qualquer invocação com gatilho já
+    //     maduro (áudio transcrito, cold start, retry, download de mídia, fila)
+    //     pulava o sleep, o reload E o guard inteiro, e ia direto responder por
+    //     cima de quem já estava falando. Claim que nasce dentro de um `if`
+    //     herda o mesmo furo — e fica MAIS difícil de enxergar, porque com fila
+    //     o sistema parece robusto.
+    //     UPDATE condicional com RETURNING é atômico: as duas invocações
+    //     serializam na trava da linha e o Postgres reavalia o WHERE na versão
+    //     nova (READ COMMITTED), então só UMA leva a linha de volta.
+    //     Advisory lock de sessão não serve aqui: supabase-js fala por pool HTTP,
+    //     não há sessão persistente onde o lock sobreviva à requisição.
+    const claimToken = crypto.randomUUID();
+    const claimExpiredBefore = new Date(Date.now() - BRAIN_CLAIM_TTL_MS).toISOString();
+    const { data: claimedRows, error: claimError } = await supabase
+      .from('platform_crm_conversations')
+      .update({ brain_claim_at: new Date().toISOString(), brain_claim_token: claimToken })
+      .eq('id', conversationId)
+      // Livre OU abandonado: claim mais velho que o TTL é de invocação morta.
+      .or(`brain_claim_at.is.null,brain_claim_at.lt.${claimExpiredBefore}`)
+      .select('id');
+    if (claimError) {
+      // Sem dono definido, calar é o erro barato; falar por cima é o caro.
+      // 503 (não 200) porque o sweeper só alerta em resposta não-ok — falha de
+      // infra no claim TEM que aparecer.
+      console.error('[platform-sales-brain] claim falhou:', claimError.message);
+      return json({ error: 'claim failed', detail: claimError.message }, 503);
+    }
+    if (!claimedRows || claimedRows.length === 0) {
+      // Outra invocação é a dona AGORA. Perdedor SAI — não espera a vez. A
+      // mensagem que disparou esta invocação é coberta pelo reload pós-debounce
+      // da dona; e se tiver entrado tarde demais pra isso, pelo hand-back dela.
+      return json({ skipped: 'brain_busy', conversation_id: conversationId });
+    }
+    releaseClaim = async () => {
+      // Solta SÓ o que ainda é nosso: se o TTL estourou no meio do caminho e
+      // outra invocação assumiu, limpar aqui derrubaria o claim DELA e traria de
+      // volta o entrelaçamento que este bloco existe pra matar.
+      const { error } = await supabase
+        .from('platform_crm_conversations')
+        .update({ brain_claim_at: null, brain_claim_token: null })
+        .eq('id', conversationId)
+        .eq('brain_claim_token', claimToken);
+      if (error) {
+        console.warn('[platform-sales-brain] release do claim falhou (TTL cobre):', error.message);
+      }
+    };
+
     // Helper: carrega as msgs vivas (desc), com metadata (pro wa_timestamp).
     const loadMessages = async (): Promise<Array<Record<string, any>>> => {
       const { data } = await supabase
         .from('platform_crm_messages')
-        .select('content, sender_type, direction, is_deleted, created_at, metadata')
+        // `seq` (identity, atribuído no INSERT) entra no select só pra marca
+        // d'água da rajada. A ORDENAÇÃO do histórico segue por created_at de
+        // propósito: mudar o critério de ordem das 30 msgs é outro assunto e
+        // outro risco — aqui a régua é não mexer no que já fatura.
+        .select('seq, content, sender_type, direction, is_deleted, created_at, metadata')
         .eq('conversation_id', conversationId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -1057,6 +1351,74 @@ Deno.serve(async (req) => {
 
     let historyDesc = await loadMessages();
     const triggerInbound = lastInboundOf(historyDesc);
+
+    // Marca d'água da rajada JÁ COBERTA por esta execução — base do hand-back.
+    // Usa `seq` (identity, atribuído pelo banco no INSERT) e NUNCA created_at ou
+    // metadata.wa_timestamp: esses dois dizem quando a mensagem existiu NO MUNDO,
+    // não quando a linha ficou VISÍVEL no banco. O áudio prova a diferença — o
+    // wa_timestamp dele é ANTERIOR ao da mensagem de texto irmã, mas a linha só
+    // nasce ~12s depois, quando a transcrição termina. Ordenar visibilidade por
+    // relógio do WhatsApp está errado por construção.
+    const maxInboundSeq = (msgs: Array<Record<string, any>>): number | null =>
+      msgs.reduce<number | null>((acc, m) => {
+        if (m.direction !== 'inbound' || m.sender_type !== 'visitor') return acc;
+        const s = typeof m.seq === 'number' && Number.isFinite(m.seq) ? m.seq : null;
+        return s != null && (acc == null || s > acc) ? s : acc;
+      }, null);
+    let coveredInboundSeq = maxInboundSeq(historyDesc);
+
+    // HAND-BACK — armado AQUI, logo depois do claim, e não lá no fim de propósito:
+    // ele precisa valer para TODA saída que segure a conversa, inclusive as que
+    // desistem no meio (stale_redelivery, erro do provedor de IA, sem persona).
+    // Enquanto seguramos o claim, qualquer mensagem nova da lead bateu nele e saiu
+    // com 'brain_busy'; se ela entrou no banco depois do nosso snapshot, não coube
+    // nesta resposta E não sobrou ninguém pra respondê-la. Sem isto, consertar a
+    // CORRIDA compraria lead GHOSTADA — troca ruim: resposta dobrada incomoda,
+    // silêncio perde venda. Roda no `finally`, DEPOIS do release — senão a
+    // invocação filha bateria no nosso próprio claim.
+    handback = async () => {
+      if (coveredInboundSeq == null) return;
+      if (handbackDepth >= HANDBACK_MAX_DEPTH) {
+        console.warn(
+          `[platform-sales-brain] hand-back no teto (${handbackDepth}) em ${conversationId} — parando: cada salto responde mensagem real, acima disso é loop.`,
+        );
+        return;
+      }
+      const { data: pendentes, error: pendErr } = await supabase
+        .from('platform_crm_messages')
+        .select('seq')
+        .eq('conversation_id', conversationId)
+        .eq('is_deleted', false)
+        .eq('direction', 'inbound')
+        .eq('sender_type', 'visitor')
+        .gt('seq', coveredInboundSeq)
+        .limit(1);
+      if (pendErr) {
+        console.warn('[platform-sales-brain] hand-back não pôde conferir pendências:', pendErr.message);
+        return;
+      }
+      if (!pendentes || pendentes.length === 0) return;
+
+      const base = Deno.env.get('SUPABASE_URL') ?? '';
+      const secret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+      if (!base || !secret) {
+        console.error('[platform-sales-brain] hand-back IMPOSSÍVEL (SUPABASE_URL/BRAIN_INTERNAL_SECRET ausentes) — mensagem nova da lead ficaria sem resposta.');
+        return;
+      }
+      const call = fetch(`${base}/functions/v1/platform-sales-brain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
+        body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
+      }).then(async (r) => {
+        if (!r.ok) console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
+      }).catch((e) => console.error('[platform-sales-brain] hand-back fetch error:', e));
+      // Mesmo padrão do webhook: em produção o waitUntil segura a promise depois
+      // da resposta; sem ele (dev), esperar é melhor que perder a chamada.
+      // deno-lint-ignore no-explicit-any
+      const rt = (globalThis as any).EdgeRuntime;
+      if (rt?.waitUntil) rt.waitUntil(call);
+      else await call;
+    };
 
     // MODO INATIVIDADE — corrida sweep→brain: se a cliente respondeu entre a
     // decisão do sweeper e esta execução, a retomada é OBSOLETA (o fluxo normal
@@ -1092,32 +1454,33 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3) DEBOUNCE / AGREGAÇÃO: a lead digita aos poucos. Se a inbound-gatilho é
-    //    mais nova que DEBOUNCE_MS, esperamos o resto da rajada e RECARREGAMOS.
-    //    Se surgiu uma inbound MAIS NOVA, esta invocação é obsoleta — a da msg
-    //    mais nova responde por todas ⇒ EXIT silencioso ('superseded').
-    //    (Modo inatividade pula o debounce: não há rajada — não há msg nova.)
+    // 3) DEBOUNCE / AGREGAÇÃO (o defeito da RAJADA): a lead manda um pensamento
+    //    só, em pedaços. Aqui NÃO se decide mais QUEM responde — isso foi
+    //    decidido no claim, e somos os donos. Aqui se decide só QUANTO ESPERAR
+    //    antes de ler o histórico, pra que UMA resposta cubra a rajada inteira.
+    //
+    //    Duas mudanças deliberadas em relação à versão que produziu o bug:
+    //    (a) o RELOAD virou incondicional. Antes ele morava dentro de
+    //        `if (ageMs < DEBOUNCE_MS)`, então gatilho maduro nunca reconferia o
+    //        histórico e respondia com uma foto velha do banco.
+    //    (b) o guard 'superseded' foi REMOVIDO. Ele existia pra desempatar
+    //        invocações concorrentes; com claim, quem perdeu JÁ SAIU — se a dona
+    //        também saísse ao ver mensagem mais nova, ninguém responderia e a
+    //        lead levaria silêncio. Mensagem que chega agora ENGROSSA esta
+    //        resposta, não cancela ela.
+    //    (Modo inatividade pula: não há rajada — não há mensagem nova.)
     let debounceWaitedMs = 0;
     if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
       const triggerMs = inboundEpochMs(triggerInbound);
       const ageMs = triggerMs != null ? Date.now() - triggerMs : Number.POSITIVE_INFINITY;
-      if (ageMs < DEBOUNCE_MS) {
-        debounceWaitedMs = DEBOUNCE_MS - ageMs;
-        await sleep(debounceWaitedMs);
-        historyDesc = await loadMessages();
-        const freshInbound = lastInboundOf(historyDesc);
-        const freshMs = inboundEpochMs(freshInbound);
-        // Se a última inbound agora é outra/mais nova, quem responde é ela.
-        if (
-          freshInbound &&
-          triggerMs != null &&
-          freshMs != null &&
-          (freshMs > triggerMs ||
-            (freshInbound.content !== triggerInbound.content && freshMs >= triggerMs))
-        ) {
-          return json({ skipped: 'superseded' });
-        }
-      }
+      // Gatilho maduro (ou sem timestamp confiável) ⇒ espera 0, mas recarrega.
+      debounceWaitedMs = Math.max(0, Math.min(DEBOUNCE_MS, DEBOUNCE_MS - ageMs));
+      if (debounceWaitedMs > 0) await sleep(debounceWaitedMs);
+      historyDesc = await loadMessages();
+      // A rajada engordou: o que entrou durante a espera ESTÁ nesta resposta, então
+      // sobe a marca d'água — senão o hand-back rechamaria o cérebro para responder
+      // de novo o que acabamos de cobrir.
+      coveredInboundSeq = maxInboundSeq(historyDesc);
     }
 
     // 4) Idempotência leve: última msg = outbound do bot com <5s ⇒ não responde.
@@ -1768,12 +2131,12 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         ? Math.max(0, readDelayMs - (Date.now() - tDeliveryStart))
         : typingPauseMs(bubbleText);
       if (pauseMs > 0) {
-        await sendTypingIndicator(supabase, conversation, inboundWamid);
+        await sendTypingSignal(supabase, conversation, inboundWamid, dest);
         await sleep(pauseMs);
       }
 
       const baseMeta = {
-        channel: 'whatsapp_cloud',
+        channel: conversation.channel === 'whatsapp_evolution' ? 'whatsapp_evolution' : 'whatsapp_cloud',
         agent_id: persona.id,
         score: currentScore,
         rota: currentRota,
@@ -1806,16 +2169,24 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         continue;
       }
 
-      const { wamid, error: deliveryError, connectionId } = await deliverViaWhatsAppCloud(
+      const { wamid, error: deliveryError, connectionId, delivered, evolutionMessageId } = await deliver(
         supabase,
         conversation,
         dest,
         bubbleText,
       );
-      if (wamid) anyDelivered = true; else lastDeliveryError = deliveryError;
+      if (delivered) anyDelivered = true; else lastDeliveryError = deliveryError;
 
-      const deliveryMeta = wamid
-        ? { ...baseMeta, wamid, delivery_status: 'sent', ...(connectionId ? { connection_id: connectionId } : {}) }
+      const deliveryMeta = delivered
+        ? {
+            ...baseMeta,
+            wamid,
+            delivery_status: 'sent',
+            ...(connectionId ? { connection_id: connectionId } : {}),
+            // Chave de idempotência do platform-evolution-webhook: sem ela o eco
+            // fromMe do nosso próprio envio viraria uma segunda linha outbound.
+            ...(evolutionMessageId ? { evolution_message_id: evolutionMessageId } : {}),
+          }
         : {
             ...baseMeta,
             delivery_status: 'failed',
@@ -1830,7 +2201,12 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         .select('*')
         .single();
       const finalMessage = updated ?? message;
-      if (!wamid) console.error('[platform-sales-brain] bolha NÃO entregue:', deliveryError);
+      if (!delivered) {
+        console.error(
+          `[platform-sales-brain] bolha NÃO entregue conversation_id=${conversationId} channel=${conversation.channel}:`,
+          deliveryError,
+        );
+      }
 
       await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
 
@@ -1995,5 +2371,26 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       { error: error instanceof Error ? error.message : 'Erro desconhecido' },
       500,
     );
+  } finally {
+    // Soltar o claim é obrigação de TODA saída — sucesso, skip do meio do
+    // caminho ou exceção. O TTL é rede de segurança pra morte do isolate, NÃO a
+    // via normal: contar com ele deixaria a lead esperando 2 min por engano de
+    // código. Erro aqui é logado, nunca propagado — não vale trocar a resposta
+    // já pronta por um 500.
+    if (releaseClaim) {
+      try {
+        await releaseClaim();
+      } catch (e) {
+        console.warn('[platform-sales-brain] release do claim explodiu (TTL cobre):', String(e).slice(0, 200));
+      }
+    }
+    // Só depois de soltar: a invocação filha precisa conseguir tomar a conversa.
+    if (handback) {
+      try {
+        await handback();
+      } catch (e) {
+        console.warn('[platform-sales-brain] hand-back falhou:', String(e).slice(0, 200));
+      }
+    }
   }
 });
