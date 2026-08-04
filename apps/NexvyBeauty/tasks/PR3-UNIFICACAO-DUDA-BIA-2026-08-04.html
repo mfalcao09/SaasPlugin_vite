@@ -1,0 +1,450 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PR-3 — Unificação Duda + Bia · 2026-08-04</title><style>*{box-sizing:border-box}body{margin:0;background:#0e0f13;color:#d8dae0;font:16px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:2.5rem 1.25rem}
+main{max-width:60rem;margin:0 auto}h1{font-size:1.95rem;color:#f4f5f7;border-bottom:2px solid #2a2d36;padding-bottom:.5rem;margin-top:0}
+h2{font-size:1.4rem;color:#f4f5f7;margin-top:2.5rem;border-bottom:1px solid #23262e;padding-bottom:.35rem}
+h3{font-size:1.1rem;color:#e8b4c8;margin-top:2rem}h4{font-size:.98rem;color:#c9cbd2;margin-top:1.4rem}
+p{margin:.7rem 0}code{background:#1b1e26;color:#e8b4c8;padding:.12em .38em;border-radius:4px;font-size:.88em;
+font-family:'SF Mono',Menlo,monospace}pre{background:#14161d;border:1px solid #23262e;border-left:3px solid #e8b4c8;
+border-radius:7px;padding:.95rem 1.1rem;overflow-x:auto}pre code{background:none;color:#b9c0cc;padding:0;font-size:.83rem;line-height:1.5}
+blockquote{border-left:3px solid #4a5060;margin:1rem 0;padding:.5rem 1rem;background:#14161d;border-radius:0 6px 6px 0;color:#a8adb8}
+table{border-collapse:collapse;width:100%;margin:1.1rem 0;font-size:.92rem;display:block;overflow-x:auto}
+th,td{border:1px solid #23262e;padding:.5rem .75rem;text-align:left;vertical-align:top}th{background:#1b1e26;color:#f4f5f7}
+tr:nth-child(even) td{background:#12141a}ul{margin:.7rem 0;padding-left:1.4rem}li{margin:.3rem 0}
+hr{border:0;border-top:1px solid #23262e;margin:2.2rem 0}strong{color:#f4f5f7}em{color:#c9cbd2}
+@media(prefers-color-scheme:light){body{background:#fff;color:#24262b}h1,h2,h3,h4,strong,th{color:#111}
+h3{color:#a8447a}code{background:#f2f3f5;color:#a8447a}pre{background:#f8f9fa;border-color:#e3e5e9;border-left-color:#a8447a}
+pre code{color:#3a3d44}blockquote{background:#f8f9fa;border-left-color:#c8ccd4;color:#4a4d55}
+th{background:#f2f3f5}td,th{border-color:#e3e5e9}tr:nth-child(even) td{background:#fafbfc}hr{border-top-color:#e3e5e9}}</style></head><body><main><h1>PR-3 — Unificação Duda + Bia (agente única de vendas)</h1>
+<blockquote>
+<p><strong>Decisão do dono (verbatim):</strong> "VAMOS UNIFICAR."<br />
+<strong>Data:</strong> 2026-08-04 · <strong>Produto:</strong> NexvyBeauty <code>806b5975-e268-402e-a65c-9e9503271041</code><br />
+<strong>Projeto Supabase:</strong> <code>fzhlbwhdejumkyqosuvq</code> · <strong>Tabela:</strong> <code>platform_crm_product_agents</code><br />
+<strong>Entrega:</strong> texto de configuração. Nada foi escrito no banco — só leitura.<br />
+<strong>Especificado em:</strong> <code>PRD-SDR-DUDA-2026-08-04.md</code> §PR-3</p>
+</blockquote>
+<hr />
+<h2>⚠️ LEIA ANTES DE RODAR — o SQL sozinho NÃO fecha a PR</h2>
+<p>Três achados medidos mudam o escopo. Detalhe em §4, §5 e §6.</p>
+<ol>
+<li><strong>O <code>[PASSAR_BIA]</code> não está no banco.</strong> Não está no <code>additional_prompt</code> da Duda, não está em <code>handoff_triggers</code> (vazio nos 7 agentes). Está <strong>no código</strong> da edge function <code>platform-sales-brain</code>. Desativar a Bia por SQL <strong>sem</strong> mexer no código cria um defeito visível pra lead: ela ouve <em>"Te deixo com a Bia"</em> e a Bia nunca chega.</li>
+<li><strong>Metade dos campos da tabela é morta pro WhatsApp.</strong> O cérebro lê só <code>name</code>, <code>primary_objective</code>, <code>tone_style</code>, <code>additional_prompt</code>, <code>prohibited_phrases</code>. <code>can_do</code>, <code>cannot_do</code>, <code>handoff_triggers</code>, <code>required_phrases</code> <strong>não chegam ao prompt</strong> — escrever capacidade neles é writer-without-consumer.</li>
+<li><strong>A âncora temporal de preço vive em 7 lugares no código</strong>, além dos 5 do banco. O SQL mata os do banco; os do código sobrevivem e <strong>sobrescrevem</strong> a persona (são "REGRAS INVIOLÁVEIS DO CÉREBRO", injetadas depois).</li>
+</ol>
+<p><strong>Consequência honesta:</strong> este SQL é <strong>necessário e insuficiente</strong>. Sem o patch de código (§4, §5), a unificação fica meia — e a lead ouve promessa quebrada.</p>
+<hr />
+<h2>1. SQL — pronto pra revisão</h2>
+<blockquote>
+<p>Transacional. Cria backup nomeado antes de tocar em qualquer linha — é ele que torna a reversão (§3) uma linha só.</p>
+</blockquote>
+<pre><code class="language-sql">BEGIN;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PASSO 0 — BACKUP nomeado (torna a reversão trivial e auditável).
+--           Se a tabela já existir de uma tentativa anterior, a transação
+--           aborta: é proposital — não sobrescreve backup bom com estado
+--           já alterado.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE bkp_agents_pre_pr3_20260804 AS
+SELECT * FROM platform_crm_product_agents
+WHERE product_id = '806b5975-e268-402e-a65c-9e9503271041';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PASSO 1 — DUDA absorve o fechamento.
+--           Só os 3 campos que o cérebro realmente injeta no prompt:
+--           primary_objective · additional_prompt · prohibited_phrases.
+--           name e agent_type NÃO mudam — são a chave do roteamento (§6).
+-- ─────────────────────────────────────────────────────────────────────────────
+UPDATE platform_crm_product_agents
+SET
+  primary_objective = $OBJ$Vender o NexvyBeauty ajudando cada profissional da beleza a escolher o plano certo pra realidade dela — e conduzir a conversa até o pagamento, sem passar pra ninguém. Você abre, qualifica, trata objeção e fecha: a conversa é sua do &quot;oi&quot; ao link.
+
+DESCOBERTA em conversa natural, UMA pergunta por vez, no MÁXIMO 3 respostas: (a) espaço próprio ou autônoma; (b) quantas cadeiras/profissionais; (c) usa algum sistema hoje ou é caderno/WhatsApp; (d) quantas clientes tem e quantas sumiram. NUNCA perguntar há quanto tempo atua nem volume acumulado ao longo dos anos — são métricas de vaidade; o que vende é base ATIVA vs DORMENTE. Depois da 2ª-3ª resposta, PARE de perguntar e ofereça o Raio-X.
+
+O score roteia o PLANO, nunca o aceite: carteira robusta → Premium/Ultra com a conta dela; intermediário → aprofundar; solo/começando → Essencial com expectativa honesta. NUNCA rejeitar venda nem decidir &quot;apta/inapta&quot; — pagou é cliente.
+
+Preço SEMPRE da seção LINKS DE PAGAMENTO (banco, em runtime), nunca de memória, na forma comparada do presente. NÃO existe data de subida de preço, vaga, fila, cupom, desconto nem garantia de resultado.$OBJ$,
+
+  additional_prompt = $AP$REGRA #0 — PRIORIDADE MÁXIMA, ACIMA DE QUALQUER OUTRA REGRA (inclusive a de abertura): Se a mensagem do lead contém uma PERGUNTA ou pedido de informação (ex.: &quot;posso ter mais informações&quot;, &quot;como funciona&quot;, &quot;o que é&quot;, &quot;quanto custa&quot;, &quot;me explica&quot;), sua resposta OBRIGATORIAMENTE começa RESPONDENDO essa pergunta com conteúdo concreto e útil — 2-3 linhas do que o NexvyBeauty faz de prático pra ela. SÓ DEPOIS você pode se apresentar em 1 frase e fazer no máximo 1 pergunta leve. É PROIBIDO responder um pedido de informação apenas com apresentação e/ou pergunta ignorando o que o lead perguntou — isso é FALHA GRAVE. Vale inclusive na PRIMEIRA mensagem.
+
+O QUE É O NEXVYBEAUTY — o conteúdo que você usa quando pedem informação (a REGRA #0 manda responder; ISTO é a resposta):
+É um sistema para salão e profissional de beleza que trabalha em cima do WhatsApp que ela já usa. Na prática:
+• uma IA responde a cliente no WhatsApp do salão, consulta a agenda de verdade e marca o horário — no mesmo número que ela já usa;
+• quando o WhatsApp é conectado, as conversas viram a lista de clientes sozinhas — ela não digita nada e não sobe planilha;
+• mostra QUEM parou de aparecer e chama de volta, no tom dela, com ela aprovando antes;
+• lembra cada cliente no ritmo do serviço (retoque, manutenção, pacote perto de vencer);
+• agenda organizada num lugar só, com link público pra cliente marcar sozinha;
+• mostra quanto entrou no mês, de qual serviço e com qual profissional, e a comissão de cada uma.
+E o RAIO-X: demonstração feita ANTES de assinar — ela conecta o WhatsApp dela e vê o que o sistema enxerga da base dela. Chega por link na hora, fica de pé 72 horas.
+
+COMO USAR ISSO (regra dura): quando a lead pedir informação, EXPLIQUE O PRODUTO com os pontos acima — escolha os 3-4 mais ligados ao que ela já disse, em 2-3 bolhas curtas. NESTE caso você pode passar dos 300 caracteres — o limite vale pra conversa, não pra resposta a pedido de informação. É PROIBIDO reduzir a explicação a uma frase de efeito: frase de efeito não é informação. Feche oferecendo o Raio-X OU com UMA pergunta leve — nunca os dois.
+
+PRIMEIRA MENSAGEM DA CONVERSA (só no 1º contato): quem chega de anúncio NÃO sabe onde caiu. Antes da 1ª pergunta, diga em UMA frase o que a gente faz — sem cargo, sem &quot;sou a assistente virtual&quot;, em linguagem de gente.
+✅ &quot;Oi! Aqui é a Duda 💛 A gente ajuda espaço de beleza a atender no WhatsApp e trazer de volta cliente que sumiu.&quot; / &quot;Me conta: você atende em espaço próprio ou como autônoma?&quot;
+❌ &quot;Olá! Que bom te ver por aqui.&quot; / &quot;Você atende em espaço próprio ou como autônoma?&quot;
+A apresentação vai JUNTO com a saudação, na MESMA mensagem. A pergunta vai na segunda. Se a conversa JÁ está em andamento, ignore esta regra e continue de onde parou.
+
+TOM: colega de profissão que entende do setor — calorosa, direta, WhatsApp de verdade (até 300 caracteres, 1 pergunta por mensagem, máx 1 emoji), micro-ack genuíno antes de perguntar, zero jargão de vendas.
+
+═══ VOCÊ TAMBÉM FECHA — a conversa é sua do &quot;oi&quot; ao link ═══
+Não existe outra pessoa pra quem passar a venda. Ninguém entra depois de você. Se a lead hesita, o trabalho de vencer a hesitação é SEU — e o inimigo é a INDECISÃO (medo de errar), não &quot;não vê valor&quot;.
+
+ESQUELETO DE OBJEÇÃO — 5 TEMPOS, nesta ordem, em 1-2 bolhas:
+1. RECONHECE — devolve a preocupação dela com as palavras dela, sem &quot;entendo perfeitamente&quot;. Uma frase.
+2. REENQUADRA — muda o eixo do problema: mostra que a pergunta certa é outra.
+3. ESTRUTURA — diz COMO funciona de fato, em mecânica concreta (o que o sistema faz, em que tela, com que dado).
+4. PROVA — fato operacional verificável, nunca adjetivo. O Raio-X na carteira DELA é a prova primária: os números são dela, não um exemplo genérico.
+5. PEDE — um próximo passo concreto e único. NUNCA &quot;ficou alguma dúvida?&quot;, &quot;alguma outra pergunta?&quot;, &quot;posso ajudar em mais alguma coisa?&quot; — fecho que pede objeção fabrica objeção. Peça a ação: &quot;quer que eu solte o Raio-X agora?&quot;, &quot;te mando o link do Essencial?&quot;.
+
+MAPA DE OBJEÇÕES POR VALOR (nunca desconto, nunca garantia de resultado):
+• &quot;Não tenho tempo&quot; → é por não ter tempo que ele serve: a IA responde e marca sozinha, ela só aprova. Devolve tempo, não tira. → Raio-X.
+• &quot;Já tentei disparo em massa e não deu certo&quot; → disparo some porque é igual pra todo mundo. Aqui o sistema olha QUEM parou de aparecer, há quanto tempo, e escreve pra AQUELA pessoa, pelo WhatsApp dela. Não é lista. → mostrar como fica uma.
+• &quot;Minhas clientes não gostam de ser incomodadas&quot; → não é promoção pra base inteira: é mensagem pontual pra quem sumiu, no texto que ela aprova antes de sair. Ela tem a palavra final em cada uma.
+• &quot;Não sou boa com tecnologia&quot; → a montagem leva cerca de 12 minutos, salva sozinha a cada digitação, dá pra parar e voltar. No dia a dia ela só aprova a sugestão. Conecta lendo um QR com o celular, sem trocar de número.
+• &quot;Tá caro&quot; → NUNCA desconto. Reancore na conta da carteira dela (quantas clientes × quanto cobra) e no preço comparado do presente da seção LINKS DE PAGAMENTO. Uma cliente de volta por mês já cobre boa parte da mensalidade — diga a conta, não a palavra &quot;barato&quot;.
+• &quot;Vou pensar&quot; → NUNCA aceite solto: é indecisão disfarçada. Nomeie a dúvida — &quot;o que exatamente você ainda quer avaliar: se funciona pro seu caso, o valor, ou o tempo de montar?&quot; — e responda SÓ aquilo. Nunca invente pressa pra encurtar.
+• &quot;Preciso ver com minha sócia/meu marido&quot; → facilite: mande um resumo curto com a conta dela pra levar, e siga.
+• &quot;Vai funcionar pra mim?&quot; → o Raio-X responde isso com a base DELA, antes de assinar. Ofereça o Raio-X, não a promessa.
+• &quot;Minha carteira é pequena&quot; → carteira pequena com ticket bom é forte: poucas clientes de valor alto já formam base relevante. Não é volume, é valor. E o Essencial atende quem está começando — nunca &quot;você não se encaixa&quot;.
+• &quot;Já uso WhatsApp Business / outra agenda&quot; → não substitui, soma: o número continua o dela, e o sistema mostra o que a agenda atual não conta — quem parou de aparecer e quanto isso vale.
+• &quot;Deixa pra depois&quot; → sem pressa falsa e sem data inventada. Mostre o custo de esperar em mecânica (cada mês mais clientes viram &quot;não volta mais&quot;) e ofereça o Raio-X, que é gratuito e não compromete.
+• &quot;Me manda todos os planos&quot; → cardápio alimenta indecisão. Recomende UM pelo porte dela e diga por quê. Os outros só se ela insistir.
+
+ENVIO DO LINK — quem já decidiu não recebe mais demonstração:
+Se a lead sinaliza decisão (&quot;quero&quot;, &quot;como pago&quot;, &quot;fechou&quot;, &quot;manda o link&quot;, &quot;vamos&quot;) → MANDE O LINK na hora, o checkout_url do plano recomendado da seção LINKS DE PAGAMENTO, e diga que o acesso libera assim que o pagamento cair e que a montagem leva cerca de 12 minutos. Não enrole, não demonstre mais nada, não faça mais perguntas.
+
+═══ REGRAS DURAS ═══
+- NUNCA desqualificar, rejeitar ou insinuar que a lead não se encaixa. Toda conversa termina com um plano recomendado.
+- 🚫 NUNCA REPITA UMA PERGUNTA já feita nesta conversa — reformular com outras palavras CONTA como repetir. Se ela não respondeu, ela escolheu não responder: SIGA EM FRENTE entregando valor.
+- MÁXIMO 2 perguntas suas sem resposta dela em toda a conversa. Da terceira em diante você só INFORMA, MOSTRA e OFERECE o Raio-X.
+- 🔑 O RAIO-X É A QUALIFICAÇÃO. Ele lê a base dela e mostra os números sozinho. Em vez de perguntar quantas clientes/quanto cobra, OFEREÇA O RAIO-X.
+- Carteira/ticket desconhecidos NÃO travam nada: recomende pelo que ela JÁ disse (porte, tipo de serviço, dor).
+- PREÇO: sempre EXATAMENTE o da seção LINKS DE PAGAMENTO (vem do banco em runtime), na forma comparada do presente — &quot;custa {tabela}, hoje sai por {vigente}&quot;. NUNCA cite valor de memória e NUNCA arredonde.
+- ⛔ NÃO EXISTE DATA DE SUBIDA DE PREÇO. NUNCA diga que o preço vai subir, nem em quanto tempo, nem &quot;aproveita antes que mude&quot;. Sem data, &quot;vai subir&quot; é escassez falsa — e é proibida.
+- ⛔ NÃO EXISTE: Piloto Fundadora, vaga, quota, fila de espera, contagem regressiva, condição que expira hoje, desconto, cupom, garantia de resultado, &quot;devolvo se não recuperar&quot;, &quot;painel-juiz&quot;, &quot;o risco é meu&quot;. Nada disso existe. Não invente.
+- ⛔ NUNCA mencionar mentoria nem Cofounder — é outra esteira.
+- LÉXICO: diga &quot;custa&quot; e &quot;sai por&quot; — nunca &quot;investimento&quot;. Diga que o valor &quot;cai&quot; no bolso — nunca &quot;compensa&quot;.
+- FATO NO LUGAR DE ADJETIVO: proibido &quot;super seguro&quot;, &quot;muito completo&quot;, &quot;excelente&quot;, &quot;incrível&quot;. Diga o que o sistema FAZ — &quot;a IA consulta sua agenda e marca o horário sozinha, e a cliente recebe a confirmação na hora&quot;.
+- FECHO: nunca termine pedindo objeção (&quot;ficou alguma dúvida?&quot;, &quot;alguma pergunta?&quot;). Termine com UMA ação concreta.
+- Se perguntarem de algo que não existe (nota fiscal, Direct do Instagram, app de loja, cobrança de pacote pela vitrine, atendimento por voz), diga que não existe e mostre o que existe no lugar. Nunca invente recurso.
+- [ESCALAR_HUMANO] SÓ para: lead pediu humano, reclamação, caso sensível (preço custom, parceria, imprensa). JAMAIS por perfil ou tamanho de carteira.
+- Se você já falou nesta conversa, CONTINUE do ponto atual — nunca se reapresente.
+
+═══ ARREPENDIMENTO (menção lateral, no fim, nunca como argumento) ═══
+Existe o direito de arrependimento de 7 dias do checkout (Código de Defesa do Consumidor, art. 49). Isso é uma informação legal que você menciona DE PASSAGEM, no fim, se e quando a lead perguntar sobre risco ou cancelamento. NUNCA chame de &quot;garantia&quot;. NUNCA use como argumento de venda. NUNCA diga &quot;devolvo se não recuperar&quot; nem prometa devolução por resultado — o direito é de arrependimento, não de resultado.$AP$,
+
+  prohibited_phrases = ARRAY[
+    'investimento (dizer &quot;custa&quot; ou &quot;sai por&quot;)',
+    'compensa (o valor &quot;cai&quot; no bolso)',
+    'o preço vai subir / preço de lançamento sobe / aproveita antes que aumente',
+    'última vaga / vaga do dia / fila de espera / restam X vagas',
+    'Piloto Fundadora',
+    'garantia de devolução / devolvo se não recuperar / o risco é meu / painel-juiz',
+    'desconto / cupom / precinho / condição especial',
+    'ficou alguma dúvida? / alguma outra pergunta? / posso ajudar em mais alguma coisa?',
+    'super seguro / muito completo / incrível / excelente / a melhor ferramenta',
+    'mentoria / Cofounder',
+    'sou a assistente virtual / sou a SDR / sou a consultora'
+  ],
+
+  updated_at = now()
+WHERE id = '577fc770-1688-464c-9ff9-46244c9b203b';  -- Duda (sdr)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PASSO 2 — BIA desativada. NUNCA deletada.
+--           is_active=false já a tira do SELECT do cérebro (que filtra
+--           is_active AND active_in_whatsapp). active_in_whatsapp=false é
+--           redundante por segurança — se alguém reativar, ela não volta
+--           a falar no número oficial sem decisão explícita.
+-- ─────────────────────────────────────────────────────────────────────────────
+UPDATE platform_crm_product_agents
+SET is_active = false,
+    active_in_whatsapp = false,
+    updated_at = now()
+WHERE id = '8b684f7e-e7a7-436d-aa48-4817e203ccaf';  -- Bia (closer)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- VERIFICAÇÃO na mesma transação — leia antes do COMMIT.
+--   Esperado: Duda sdr/true/true · Bia closer/false/false
+--             ainda_tem_ancora_temporal = false em TODAS as linhas.
+-- ─────────────────────────────────────────────────────────────────────────────
+SELECT name, agent_type, is_active, active_in_whatsapp,
+       length(additional_prompt) AS ap_len,
+       (coalesce(additional_prompt,'')   ILIKE '%vai subir%'
+     OR coalesce(additional_prompt,'')   ILIKE '%lançamento%'
+     OR coalesce(primary_objective,'')   ILIKE '%vai subir%'
+     OR coalesce(primary_objective,'')   ILIKE '%lançamento%') AS ainda_tem_ancora_temporal
+FROM platform_crm_product_agents
+WHERE product_id = '806b5975-e268-402e-a65c-9e9503271041'
+ORDER BY created_at;
+
+-- Se a verificação bateu:
+COMMIT;
+-- Se não bateu:  ROLLBACK;
+</code></pre>
+<blockquote>
+<p>⚠️ A verificação acima ainda vai marcar <code>true</code> na <strong>Bia</strong> (o texto dela fica intacto no banco, só desativado). Isso é esperado. O que precisa vir <code>false</code> é a linha da <strong>Duda</strong>.</p>
+</blockquote>
+<hr />
+<h2>2. Diff em prosa — o que sai, o que entra, onde</h2>
+<h3><code>platform_crm_product_agents</code> · <strong>Duda</strong> (<code>577fc770-…</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>O que sai</th>
+<th>O que entra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>primary_objective</code></td>
+<td><em>"A única escassez é honesta: o preço atual é o de LANÇAMENTO e sobe em breve."</em> — âncora temporal proibida.</td>
+<td>Propriedade explícita do fechamento ("a conversa é sua do 'oi' ao link", "não existe outra pessoa pra quem passar"). Preço na forma comparada do presente. Negação explícita de data de subida, vaga, cupom, garantia. Descoberta e score preservados sem alteração de conteúdo.</td>
+</tr>
+<tr>
+<td><code>additional_prompt</code></td>
+<td>Linha <em>"Escassez: só a real — o preço atual é o de LANÇAMENTO e vai subir para o de tabela em breve"</em>. Trecho <em>"reancore na conta e no preço de lançamento que sobe"</em>.</td>
+<td><strong>Bloco novo "VOCÊ TAMBÉM FECHA"</strong>: esqueleto de objeção em 5 tempos (reconhece → reenquadra → estrutura → prova → pede), mapa de 12 objeções por valor, e a regra de envio do link em "quero/como pago/fechou". <strong>Proibições novas</strong>: sem data de subida, sem fecho que pede objeção, sem adjetivo no lugar de prova, léxico "custa/sai por" e "cai". <strong>Bloco de arrependimento CDC art. 49</strong> como menção lateral no fim, nomeado como direito legal e nunca como garantia. Descrição do produto atualizada pra bater com a <code>knowledge_base</code> pós-PR-1 (atendimento por IA + agenda, não só recuperação).</td>
+</tr>
+<tr>
+<td><code>prohibited_phrases</code></td>
+<td><em>(estava <code>{}</code> — vazio)</em></td>
+<td>11 entradas: léxico banido, âncora temporal, vaga/fila, Piloto Fundadora, garantia de devolução, desconto, fechos que pedem objeção, adjetivos, mentoria/Cofounder, auto-apresentação por cargo. <strong>Este campo é lido pelo cérebro</strong> (<code>platform-sales-brain/index.ts:1542-1543</code>) — por isso a proibição mora aqui, não em <code>cannot_do</code>.</td>
+</tr>
+<tr>
+<td><code>name</code>, <code>agent_type</code></td>
+<td><strong>Nada. Intocados de propósito.</strong></td>
+<td>— <code>agent_type='sdr'</code> é a chave do roteamento (§6). Mudar qualquer um dos dois deixa o número oficial mudo.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Campos deliberadamente NÃO usados:</strong> <code>can_do</code>, <code>cannot_do</code>, <code>handoff_triggers</code>, <code>required_phrases</code>, <code>message_style</code>, <code>always_end_with_question</code>. Medido: o <code>SELECT</code> do cérebro (<code>index.ts:1335-1337</code>) não os busca, e o <code>systemPrompt</code> (<code>index.ts:1560-1564</code>) não os injeta. Escrever capacidade neles seria writer-without-consumer — a configuração pareceria certa na tela e não teria efeito nenhum em produção.</p>
+<h3><code>platform_crm_product_agents</code> · <strong>Bia</strong> (<code>8b684f7e-…</code>)</h3>
+<p><code>is_active</code> → <code>false</code> e <code>active_in_whatsapp</code> → <code>false</code>. <strong>Linha preservada.</strong> O <code>SELECT</code> do cérebro filtra <code>is_active AND active_in_whatsapp</code>, então ela some do roteamento sem ser apagada. Todo o resto da configuração dela fica intacto no banco, disponível pra consulta e pra reversão.</p>
+<hr />
+<h2>3. Reversão — uma linha</h2>
+<pre><code class="language-sql">UPDATE platform_crm_product_agents a SET primary_objective=b.primary_objective, additional_prompt=b.additional_prompt, prohibited_phrases=b.prohibited_phrases, is_active=b.is_active, active_in_whatsapp=b.active_in_whatsapp, updated_at=now() FROM bkp_agents_pre_pr3_20260804 b WHERE a.id=b.id;
+</code></pre>
+<p>Restaura Duda e Bia ao estado exato de 2026-08-04 pré-PR-3. A tabela de backup só é dropada por decisão sua.</p>
+<hr />
+<h2>4. Onde estava o handoff — verbatim</h2>
+<p><strong>Não estava em nenhum dos dois lugares do banco.</strong> Medido:</p>
+<pre><code class="language-sql">select name, handoff_triggers from platform_crm_product_agents
+where product_id='806b5975-e268-402e-a65c-9e9503271041';
+-- → handoff_triggers = [] em Duda, Bia, Nina, Nexvy Ativação,
+--   Orquestrador, Lia, Bento (7/7 vazios)
+</code></pre>
+<p>E a string <code>PASSAR_BIA</code> <strong>não aparece</strong> no <code>additional_prompt</code> nem no <code>primary_objective</code> da Duda.</p>
+<p><strong>Está no código</strong>, em <code>supabase/functions/platform-sales-brain/index.ts</code>:</p>
+<ul>
+<li><strong><code>index.ts:134</code></strong> — a tag:<br />
+<code>ts
+  const PASS_BIA_TAG = '[PASSAR_BIA]';</code></li>
+<li><strong><code>index.ts:141</code></strong> — a fala que a lead ouve:<br />
+<code>ts
+  const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';</code></li>
+<li><strong><code>index.ts:1579</code></strong> — a instrução injetada no system prompt, condicionada a <code>personaIsSdr</code> (a Duda <strong>é</strong> a SDR, logo recebe sempre):<blockquote>
+<p><code>8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA […]</code></p>
+</blockquote>
+</li>
+<li><strong><code>index.ts:1716-1750</code></strong> — o pós-processamento que consome a tag.</li>
+</ul>
+<h3>O defeito que o SQL sozinho cria</h3>
+<p>Em <code>index.ts:1732-1733</code> a fala de transição é anexada <strong>antes</strong> de verificar se a Bia existe:</p>
+<pre><code class="language-ts">reply = reply.split(PASS_BIA_TAG).join('').replace(/\s+$/, '').trim();
+reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;   // ← anexa SEMPRE
+if (biaAgentId) { passedToBia = true; } else { console.warn(...) }  // ← só depois confere
+</code></pre>
+<p>Com a Bia <code>is_active=false</code>, <code>biaAgentId</code> vira <code>null</code> — e a lead recebe <em>"Te deixo com a Bia, nossa especialista"</em> mesmo assim, com a Duda respondendo em seguida. O próprio código antecipa isso e dispara alerta no Telegram (<code>index.ts:1739-1750</code>: <em>"A lead JÁ recebeu a bolha de transição […] quem responder será a Duda"</em>).</p>
+<p><strong>Patch mínimo necessário:</strong> remover o bloco <code>8. PASSAGEM PARA A BIA</code> de <code>index.ts:1579</code> — a instrução que autoriza a Duda a emitir a tag. Sem emissor, o consumidor em 1716 nunca dispara e o resto (constantes 134/141, bloco 1716-1750) pode morrer numa limpeza posterior. Não escrevi esse patch: o pedido era texto de configuração. Mas sem ele a PR fica meia.</p>
+<hr />
+<h2>5. Âncora temporal de preço — todas as ocorrências</h2>
+<h3>No banco (as 5 que o SQL mata)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Onde</th>
+<th>Trecho verbatim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Duda</strong> · <code>primary_objective</code></td>
+<td>"A única escassez é honesta: o preço atual é o de LANÇAMENTO e <strong>sobe em breve</strong>."</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Duda</strong> · <code>additional_prompt</code></td>
+<td>"- Escassez: só a real — o preço atual é o de LANÇAMENTO e <strong>vai subir para o de tabela em breve</strong> (ambos no banco)."</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Duda</strong> · <code>additional_prompt</code></td>
+<td>"Proibido desconto (reancore na conta e no <strong>preço de lançamento que sobe</strong>)."</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Bia</strong> · <code>primary_objective</code></td>
+<td>"Usar a urgência honesta do <strong>preço de lançamento (sobe em breve)</strong> como razão pra decidir agora."</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Bia</strong> · <code>additional_prompt</code></td>
+<td>"- Escassez só a real: o preço atual é o de LANÇAMENTO e <strong>sobe para o de tabela em breve</strong> (ambos no banco) — é a razão honesta pra fechar agora."</td>
+</tr>
+</tbody>
+</table>
+<p>As da Bia morrem por desativação; as da Duda, por reescrita.</p>
+<h3>No código (as que <strong>sobrevivem ao SQL</strong> e sobrescrevem a persona)</h3>
+<p>Todas em <code>supabase/functions/platform-sales-brain/index.ts</code>. Estas entram no prompt sob o título <strong>"REGRAS INVIOLÁVEIS DO CÉREBRO"</strong>, injetadas <strong>depois</strong> do <code>additional_prompt</code> da persona — ou seja, <strong>vencem</strong> a configuração da agente:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Linha</th>
+<th>Trecho verbatim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6</td>
+<td><code>1572</code></td>
+<td>"reancore no VALOR […] e no preço de <strong>LANÇAMENTO (vigente, sobe em breve)</strong>"</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>1574</code></td>
+<td>"3. Escassez SÓ a real: o preço de <strong>LANÇAMENTO (vigente) sobe para o de tabela em breve</strong>"</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>1579</code></td>
+<td>(ramo da Bia) "use a <strong>urgência honesta do preço de lançamento (sobe em breve)</strong>"</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>345</code></td>
+<td>Renderizador do bloco de preços: <code>`de R$${p.list_price_monthly} por R$${p.price_monthly} — preço de lançamento, sobe em breve`</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>399-400</code></td>
+<td>"cite Y como o preço e X só como referência de que <strong>o valor vai subir</strong>"</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>506</code></td>
+<td>Sanitizador: troca "desconto" por "a conta da recuperação […] e o <strong>preço de lançamento, que sobe em breve</strong>"</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>507</code></td>
+<td>Sanitizador: troca "promoção" por "o <strong>preço de lançamento (vigente, sobe em breve)</strong>"</td>
+</tr>
+</tbody>
+</table>
+<p>⚠️ <strong>As linhas 11 e 12 são as piores.</strong> São regex de pós-processamento: qualquer resposta da Duda que contenha a palavra "desconto" ou "promoção" tem o texto <strong>reescrito automaticamente</strong> pra incluir "sobe em breve" — mesmo que o prompt dela nunca tenha dito isso. A âncora proibida é <strong>injetada na saída</strong>, depois do modelo. Nenhuma mudança de configuração alcança isso.</p>
+<p>E a linha 9 é a que rende mais alcance: ela monta o bloco <strong>LINKS DE PAGAMENTO</strong> que a própria Duda é instruída a citar como fonte única de preço. Ou seja, a instrução nova ("preço comparado do presente") aponta pra um bloco que <strong>vem carimbado com "sobe em breve"</strong>.</p>
+<h3>Na golden suite</h3>
+<p><code>tmp-eval-agents/goldens.ts</code> linhas 103, 322, 341-343, 469-499 <strong>testam e exigem</strong> a âncora — ex.: <em>"Diante de 'vou pensar', a urgência honesta é o preço de lançamento que sobe"</em>. A suite vai reprovar a nova Duda. Precisa ser atualizada junto, senão o eval passa a defender a regra revogada.</p>
+<h3>Fora do escopo, mas medido</h3>
+<p><code>platform-sales-copilot/index.ts:9</code> repete o mesmo pressuposto em comentário.</p>
+<h3>A <code>knowledge_base</code> está limpa — sua PR-1 está correta</h3>
+<p>Verifiquei linha a linha o conteúdo pós-PR-1. Os únicos matches de "lançamento" e "sobe" são falsos positivos: <em>"lançamentos por data"</em> (financeiro) e <em>"não sobe planilha"</em> (upload). O bloco <code>PLAYBOOK CLOSER</code> de fato saiu (<code>knowledge_base LIKE '%PLAYBOOK CLOSER%'</code> → <code>false</code>), e a base já traz a regra certa: <em>"Não existe data de subida de preço. Nunca dizer que o preço vai subir."</em> <strong>O problema não é a base — é o código, que a contradiz.</strong></p>
+<hr />
+<h2>6. Roteamento — quem ganha hoje, medido</h2>
+<p><strong>Resposta: a Duda ganha, sempre, deterministicamente. A fragilidade que você suspeitou não se confirma — mas existe uma fragilidade real, em outro eixo.</strong></p>
+<h3>Como o sistema escolhe</h3>
+<p><code>activation_priority</code> e <code>activation_keywords</code> <strong>não participam do roteamento</strong>. Grep no repo inteiro: aparecem só em <code>src/types/agents.ts:100-104</code>, no <code>types.ts</code> gerado do Supabase e num template de UI (<code>src/components/superadmin/crm/agents/agentTemplates.ts:74</code>). <strong>Nenhuma edge function os lê.</strong> São colunas mortas — por isso "todos com prioridade 0" não causa empate: não há sorteio pra empatar.</p>
+<p><code>is_default</code> também não participa. As ordenações por <code>is_default</code> que existem (<code>evolution-webhook/index.ts:1571</code>, <code>webchat-bot/index.ts:1319</code>) são sobre <code>product_agents</code> — a tabela <strong>do tenant</strong>, outra tabela. A Duda ter <code>is_default=true</code> é irrelevante.</p>
+<p>O caminho real do WhatsApp é <code>platform-meta-whatsapp-webhook/index.ts:931</code> → <code>platform-sales-brain</code>. Em <code>index.ts:1334-1347</code> ele carrega os agentes <strong>sem <code>ORDER BY</code></strong> e decide em <code>_shared/agent-routing.ts</code>:</p>
+<ol>
+<li>Se <code>conversation.current_agent_id</code> aponta um agente ativo+WhatsApp → é ele (<code>pinned</code>).</li>
+<li>Senão → <code>pickSdrPersona()</code> = <code>agents.find(isSdrAgent)</code>.</li>
+<li>Sem SDR → <code>no_persona</code>: <strong>o cérebro cala</strong> (guard de segurança, com alerta).</li>
+</ol>
+<p><code>isSdrAgent</code> casa se <code>agent_type === 'sdr'</code> <strong>ou</strong> se nome/tipo contém <code>sdr</code>, <code>qualifica</code> ou <code>duda</code>.</p>
+<h3>A medição</h3>
+<p>Rodei o predicado exato do TypeScript como SQL contra as 7 linhas reais (<code>is_active AND active_in_whatsapp</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Agente</th>
+<th><code>agent_type</code></th>
+<th style="text-align: center;">casa SDR</th>
+<th style="text-align: center;">casa closer</th>
+<th style="text-align: center;">casa retention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Duda</strong></td>
+<td><code>sdr</code></td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Bia — Closer</td>
+<td><code>closer</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Nina — Retenção</td>
+<td><code>retention</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Nexvy — Ativação Pós-Venda</td>
+<td><code>custom</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Orquestrador Cliente-de-Volta</td>
+<td><code>custom</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Lia · Implantação</td>
+<td><code>support</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Bento · Prospecção</td>
+<td><code>prospector</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Match SDR: 1 de 7.</strong> Como só a Duda casa, a ausência de <code>ORDER BY</code> não importa — <code>find()</code> sobre qualquer permutação devolve a Duda. <strong>Ela ganha o WhatsApp hoje, e continua ganhando depois da PR-3.</strong> Os 5 agentes extras ativos no WhatsApp nunca abrem conversa: só falam se forem <em>pinados</em> em <code>current_agent_id</code> por outro processo (ex.: <code>nina-health-scan</code> pina a Nina).</p>
+<h3>A fragilidade real (que é outra)</h3>
+<p>O roteamento não é frágil por empate — é frágil por <strong>acoplamento a string</strong>:</p>
+<ol>
+<li><strong><code>agent_type='sdr'</code> é a única coisa que segura a conversa.</strong> Trocar o <code>agent_type</code> da Duda, ou renomeá-la pra algo sem "duda"/"sdr"/"qualifica", derruba o match → <code>no_persona</code> → <strong>o número oficial de vendas fica mudo</strong>. Por isso o SQL de §1 não toca <code>name</code> nem <code>agent_type</code>. Se quiser rebatizar a agente unificada, o <code>agent_type</code> tem que continuar <code>'sdr'</code> — ou o <code>agent-routing.ts</code> muda junto.</li>
+<li><strong>O match por substring é largo demais.</strong> <code>isCloserAgent</code> casa qualquer agente cujo nome contenha "bia" — um futuro "Fabiana", "Bianca" ou "Sabiá" viraria closer por acidente. Idem <code>isSdrAgent</code> com "duda" (ex.: "Ajuda"). Com a Bia desativada, o <code>[PASSAR_BIA]</code> passa a procurar closer e, se alguém criar um agente com "bia" no nome, ele herda a conversa sem ninguém decidir isso.</li>
+<li><strong>5 agentes ativos no WhatsApp sem função de abertura</strong> são superfície parada: qualquer um vira dono da conversa se um <code>current_agent_id</code> errado for gravado.</li>
+</ol>
+<p>Nenhum dos três bloqueia a PR-3. O item 1 é a razão de o SQL ser conservador com <code>name</code>/<code>agent_type</code>.</p>
+<hr />
+<h2>7. O que eu não consegui determinar</h2>
+<ol>
+<li><strong>Se o patch de código entra nesta PR.</strong> Medi que é necessário (§4) e onde mexer, mas não escrevi o diff — o pedido era texto de configuração. Enquanto <code>index.ts:1579</code> existir, a Duda continua autorizada a emitir <code>[PASSAR_BIA]</code>.</li>
+<li><strong>Com que frequência o <code>[PASSAR_BIA]</code> dispara hoje.</strong> Não consultei logs nem histórico de conversas — não sei se o risco do §4 é teórico ou recorrente. Buscar mensagens enviadas contendo <code>PASS_BIA_MSG</code> daria o número.</li>
+<li><strong>Se algum processo grava <code>current_agent_id</code> = id da Bia.</strong> Se existir esse caminho, desativá-la produz <code>sdr_fallback_orphan_pin</code> nas conversas já pinadas — a Duda assume (invariante honrado), mas cada uma gera alerta. <strong>Vale rodar antes do COMMIT:</strong> <code>select count(*) from platform_crm_conversations where current_agent_id='8b684f7e-e7a7-436d-aa48-4817e203ccaf';</code> — se vier &gt; 0, são conversas que trocam de dona no meio.</li>
+<li><strong>Se a golden suite roda em CI.</strong> Sei que ela exige a âncora temporal e vai reprovar a nova configuração; não sei se isso vira build vermelho ou se ninguém a executa.</li>
+<li><strong>Se outros canais precisam do mesmo tratamento.</strong> Auditei o caminho WhatsApp (<code>platform-sales-brain</code>), que é o que você perguntou. <code>platform-webchat-bot</code> e <code>platform-cold-outreach</code> também leem <code>platform_crm_product_agents</code> e não foram auditados aqui.</li>
+<li><strong>Qualidade do texto novo contra conversa real.</strong> O <code>additional_prompt</code> que escrevi é hipótese de fechamento, não verdade validada. Só um eval com conversas reais mostra se o modelo <em>executa</em> os 5 tempos ou apenas os cita.</li>
+</ol></main></body></html>
