@@ -21,21 +21,26 @@
 //      um agente ativo, é ELE quem fala (a Bia continua o que a Duda passou);
 //      senão a Duda (SDR) abre e persistimos current_agent_id=duda.id.
 //   8. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
-//      + preço de LANÇAMENTO (de-para em LINKS DE PAGAMENTO, do banco).
+//      + preço COMPARADO DO PRESENTE (de-para em LINKS DE PAGAMENTO, do banco).
 //   9. Regras fixas: nunca desconto; SEM Piloto Fundadora e SEM garantia de
-//      devolução (risco reduzido por PROVA + arrependimento 7d); escassez só a
-//      real (preço de lançamento sobe); humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
-//      p/ pedido de humano/caso sensível — venda NUNCA é rejeitada (diretiva
-//      Marcelo 05/07: "pagou é cliente"; score roteia OFERTA, não aceite/rejeite).
-//      Só a Duda (SDR): score ≥70 + intenção → [PASSAR_BIA] (passagem interna
-//      pro closer, não humana). A Bia recebe o dossiê e conduz ao fechamento.
+//      devolução (risco reduzido por PROVA + arrependimento 7d); ZERO escassez —
+//      NÃO EXISTE DATA DE SUBIDA de preço (decisão Marcelo, 2026-08-04), então a
+//      âncora é o preço comparado de HOJE (fato verificável agora), nunca uma
+//      promessa sobre o futuro; humano/reclamação grave → [HANDOFF_HUMANO];
+//      [ESCALAR_HUMANO] SÓ p/ pedido de humano/caso sensível — venda NUNCA é
+//      rejeitada (diretiva Marcelo 05/07: "pagou é cliente"; score roteia OFERTA,
+//      não aceite/rejeite). A instrução de [PASSAR_BIA] saiu do prompt em
+//      2026-08-04 (a Bia foi desativada) — o mecanismo continua, mas só se arma
+//      com closer ATIVO; ver 11b.
 //  10. LLM: mesmo gateway da casa (AI_API_KEY + AI_GATEWAY_URL).
 //  11. GUARDRAILS DE FORMA (pós-processamento): sanitize de vocabulário, corte na
 //      1ª pergunta, divisão em até 3 bolhas curtas — cada bolha é entregue via
 //      Cloud API com pausa proporcional, persistida (wamid próprio) e broadcast.
-//  11b. [PASSAR_BIA] (só Duda): remove a tag, acha o closer (Bia) do produto,
-//      seta current_agent_id=bia.id; a ÚLTIMA bolha da Duda vira transição
-//      calorosa; NÃO gera resposta da Bia agora — a próxima msg da lead a ativa.
+//  11b. [PASSAR_BIA] (só Duda; a tag NÃO é mais instruída no prompt): resolve o
+//      closer ATIVO ANTES de tocar no texto. SÓ com closer a tag vira transição
+//      calorosa + current_agent_id=bia.id (a próxima msg da lead ativa a Bia);
+//      SEM closer a tag é apenas removida e a Duda segue — a lead nunca ouve
+//      "te deixo com a Bia" sem a Bia existir.
 //  12. Handoff/escalada → status='waiting_human' + needs_human=true; última bolha
 //      vira transição calorosa. Passagem Duda→Bia mantém bot_active. Senão idem.
 //  13. MEMÓRIA (pós-resposta): 2ª chamada LLM barata extrai fatos → atualiza o
@@ -133,16 +138,20 @@ const READ_CAP_MS = 4200;
 // Tags de escalada — o modelo emite no fim.
 const HANDOFF_TAG = '[HANDOFF_HUMANO]';   // lead pediu humano / reclamou grave
 const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível — JAMAIS por perfil (venda nunca é rejeitada)
-// Passagem interna Duda→Bia: SÓ a Duda (SDR) emite; score ≥70 + intenção. NÃO é
-// escalada humana — troca o agente da conversa (current_agent_id) e a Bia (closer)
-// assume na PRÓXIMA mensagem da lead. A conversa segue bot_active o tempo todo.
+// Passagem interna SDR→closer. NÃO é escalada humana — troca o agente da conversa
+// (current_agent_id) e o closer assume na PRÓXIMA mensagem da lead; a conversa
+// segue bot_active o tempo todo.
+// ⚠️ 2026-08-04: o prompt NÃO instrui mais esta tag (a Bia foi desativada). O
+// mecanismo fica de pé para o dia em que houver closer, mas é CONDICIONADO: sem
+// closer ativo a tag é só descartada — nada de transição é dito à lead (ver 11a).
 const PASS_BIA_TAG = '[PASSAR_BIA]';
 // [ENVIAR_RAIOX] — a Duda DISPARA A ISCA NO AUTOMÁTICO: o handler chama demo-start
 // (nome+whatsapp da própria conversa), recebe /implantacao/<token> e entrega o link
 // na mesma resposta. Sem humano de plantão (pedido explícito Marcelo 2026-07-19 —
 // o prompt já mandava "disparar a isca" sem existir braço para isso).
 const RAIOX_TAG = '[ENVIAR_RAIOX]';
-// Bolha de transição calorosa que a Duda deixa ao passar para a Bia.
+// Bolha de transição calorosa da passagem SDR→closer. SÓ pode sair quando existe
+// closer ATIVO: prometer uma especialista que não vai falar é pior que não passar.
 const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';
 // Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
 const WARM_HANDOFF_MSG = 'Vou te conectar com nosso time pra achar o melhor caminho pra você 💚';
@@ -470,9 +479,9 @@ async function deliver(
 /**
  * Monta o bloco de conhecimento do produto — MESMO builder do platform-sales-copilot
  * (ordem deliberada: knowledge_base primeiro, contém o vocabulário obrigatório).
- * A escassez agora é o PREÇO DE LANÇAMENTO (via de-para em LINKS DE PAGAMENTO),
- * não vagas de campanha. Non-fatal: qualquer falha aqui degrada, mas não derruba
- * a resposta.
+ * NÃO há escassez de espécie alguma: a âncora é o PREÇO COMPARADO DO PRESENTE
+ * (via de-para em LINKS DE PAGAMENTO) — nem vaga de campanha, nem promessa de
+ * subida. Non-fatal: qualquer falha aqui degrada, mas não derruba a resposta.
  */
 function buildKnowledgeContext(
   product: Record<string, any> | null,
@@ -541,14 +550,18 @@ function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: st
   let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
   for (const p of plans) {
     const url = appendSellerRef(p.checkout_url, personaName);
-    // De-para do preço de lançamento: quando há preço de TABELA (list_price_monthly)
-    // acima do vigente (price_monthly), renderiza "de R$X por R$Y — lançamento".
+    // PREÇO COMPARADO DO PRESENTE: quando há preço de TABELA (list_price_monthly)
+    // acima do vigente (price_monthly), renderiza "custa R$X, hoje sai por R$Y".
+    // Os dois números continuam vindo do banco em runtime; o que MORREU aqui foi a
+    // afirmação sobre o futuro ("sobe em breve"). NÃO EXISTE DATA DE SUBIDA
+    // (Marcelo, 2026-08-04) — e esta linha é a FONTE que a persona é instruída a
+    // citar como preço, então prometer aqui é prometer na boca da agente.
     const priceLabel = Number(p.list_price_monthly) > Number(p.price_monthly)
-      ? `de R$${p.list_price_monthly} por R$${p.price_monthly} — preço de lançamento, sobe em breve`
+      ? `custa R$${p.list_price_monthly}, hoje sai por R$${p.price_monthly}`
       : `R$${p.price_monthly}`;
     ctx += `- ${p.name} (${priceLabel}): ${url}\n`;
   }
-  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. Só passe para a Bia o cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO e precisa entender o valor — nunca o que já quer fechar.\n`;
+  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. O cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO é SEU também: aprofunde o valor e conduza ao fechamento você mesma — não existe passar adiante.\n`;
   return ctx;
 }
 
@@ -597,9 +610,12 @@ const PRICE_RULE_BLOCK =
   `  LINKS DE PAGAMENTO. Nada de arredondar, "por volta de", "a partir de".\n` +
   `- Se um plano NÃO está em LINKS DE PAGAMENTO, ele não tem preço público — não invente:\n` +
   `  diga que confirma o valor e siga, sem chutar.\n` +
-  `- Quando um plano aparecer como "de R$X por R$Y", X é o preço de TABELA (futuro) e Y é o\n` +
-  `  de LANÇAMENTO (vigente — o que a cliente paga hoje): cite Y como o preço e X só como\n` +
-  `  referência de que o valor vai subir. Nunca troque os dois.\n` +
+  `- Quando um plano aparecer como "custa R$X, hoje sai por R$Y", X é o preço de TABELA e Y é\n` +
+  `  o que a cliente paga HOJE: cite Y como o preço e X só como referência do quanto ela\n` +
+  `  economiza agora. Nunca troque os dois.\n` +
+  `- NUNCA diga, sugira ou insinue que o preço VAI SUBIR, nem prometa data, prazo, "em breve",\n` +
+  `  "por tempo limitado" ou qualquer versão disso: NÃO EXISTE DATA DE SUBIDA. O de-para é um\n` +
+  `  fato do PRESENTE (quanto custa × quanto sai hoje), não uma promessa sobre o futuro.\n` +
   `- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).\n` +
   `Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.\n`;
 
@@ -694,8 +710,14 @@ function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | nul
 /**
  * Censura de vocabulário: o produto é PAGO e NÃO tem garantia de devolução. Se o
  * modelo escorregar em "teste grátis / desconto / promoção" em contexto de oferta,
- * reancoramos no VALOR (a conta da recuperação) e no preço de lançamento — nunca
- * em garantia ou promo. Retorna { text, sanitized }.
+ * reancoramos no VALOR (a conta da recuperação) — nunca em garantia, promo ou
+ * pressa. Retorna { text, sanitized }.
+ *
+ * ⚠️ Esta tabela REESCREVE A SAÍDA DO MODELO, depois dele: o que entra aqui a lead
+ * lê como se a agente tivesse dito. Até 2026-08-04 a substituição de "desconto" e
+ * "promoção" INJETAVA "sobe em breve" — ou seja, o código plantava na boca da Duda
+ * uma promessa de subida que não existe, e nenhuma configuração de banco alcançava
+ * isso. A reancoragem agora é VALOR (a conta), nunca pressa.
  */
 function sanitizeReply(input: string): { text: string; sanitized: boolean } {
   let text = input;
@@ -704,9 +726,10 @@ function sanitizeReply(input: string): { text: string; sanitized: boolean } {
     // "teste grátis / trial grátis / período grátis" → reancoragem no VALOR (produto pago).
     [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'um produto pago — o valor se paga recuperando 2-3 clientes (o time confirma condições)'],
     [/\bgr[aá]tis\b/gi, 'um produto pago (o valor se paga recuperando 2-3 clientes)'],
-    // desconto / promoção → reancoragem no VALOR e no preço de lançamento, nunca em garantia/promo.
-    [/\b(desconto|descontos)\b/gi, 'a conta da recuperação (2-3 clientes de volta já pagam a mensalidade) e o preço de lançamento, que sobe em breve'],
-    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço de lançamento (vigente, sobe em breve)'],
+    // desconto / promoção → reancoragem no VALOR e no preço de HOJE. Zero menção a
+    // subir: a saída daqui é lida pela lead como fala da agente (ver cabeçalho).
+    [/\b(desconto|descontos)\b/gi, 'a conta da recuperação (2-3 clientes de volta já pagam a mensalidade)'],
+    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço que está valendo hoje'],
   ];
   for (const [re, rep] of pairs) {
     if (re.test(text)) {
@@ -1684,7 +1707,8 @@ Deno.serve(async (req) => {
       ? buildInactivityRepertoire(inactivityStage!, inactivityDeadline)
       : '';
 
-    // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
+    // 8) CONHECIMENTO do produto + planos/preços (a âncora é o preço comparado de
+    //    HOJE — não há escassez nem promessa de subida).
     let product: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
     if (conversation.product_id) {
@@ -1698,7 +1722,7 @@ Deno.serve(async (req) => {
           .maybeSingle(),
         // Planos + LINK DE CHECKOUT reais (a "maquininha" da Duda): quando o
         // cliente DECIDE, ela mesma manda o link — não precisa de closer.
-        // list_price_monthly = preço de tabela (de-para do lançamento em LINKS DE PAGAMENTO).
+        // list_price_monthly = preço de tabela (de-para do preço comparado em LINKS DE PAGAMENTO).
         supabase
           .from('public_plans')
           .select('name, slug, price_monthly, list_price_monthly, checkout_url, is_public')
@@ -1773,14 +1797,14 @@ ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdConte
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
 ═══════════════════════════════════════
-1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no preço de LANÇAMENTO (vigente, sobe em breve) — nunca em garantia nem desconto.
+1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no PREÇO COMPARADO DE HOJE (o plano custa R$X e hoje sai por R$Y — os dois números estão em LINKS DE PAGAMENTO) — nunca em garantia, nunca em desconto e NUNCA em pressa.
 2. NÃO existe "Piloto Fundadora" nem garantia de devolução por resultado. A redução de risco é honesta: PROVA (o raio-x, feito pela própria cliente na hora — ver bloco A DEMONSTRAÇÃO) + direito de arrependimento de 7 dias do checkout (lei). NUNCA prometa "devolvo se não recuperar", "risco é meu/nosso" ou "painel-juiz". O produto é PAGO — nunca o descreva como "teste gratuito" ou "trial".
-3. Escassez SÓ a real: o preço de LANÇAMENTO (vigente) sobe para o de tabela em breve — está em LINKS DE PAGAMENTO. NUNCA invente urgência (vagas, relógio).
+3. NÃO EXISTE ESCASSEZ NENHUMA. É PROIBIDO dizer, sugerir ou insinuar que o preço vai subir, que a condição acaba, que é "por tempo limitado", "aproveite antes", "última chance", vaga, lote ou relógio — NÃO EXISTE DATA DE SUBIDA e prometer isso é mentir para a cliente. O que você tem é o PREÇO COMPARADO DE HOJE (o plano custa R$X e hoje sai por R$Y, em LINKS DE PAGAMENTO): um fato do presente, verificável agora. Se a lead disser "vou pensar", reancore no VALOR (a conta da recuperação) e no preço de hoje — nunca na pressa.
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
-8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
+${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada — quem já decidiu não precisa de nada além do link.
+8. VOCÊ CONDUZ A CONVERSA ATÉ O FIM. Não existe "passar para outra pessoa" dentro do bot: lead cética/hesitante é SUA — aprofunde o VALOR (a conta da recuperação + a PROVA na carteira dela) e conduza ao fechamento você mesma. Só ${ESCALATE_TAG}/${HANDOFF_TAG} tiram a conversa de você, e só pelos motivos da regra 6.` : `7. VOCÊ É A CLOSER DE VALOR. Recebeu um cliente QUALIFICADO e CÉTICO que a SDR não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução e NUNCA com pressa (não existe data de subida de preço — ver regra 3). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 ${(isRealB2bFunnel && !onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
 ${(isRealB2bFunnel && !onboardingActive && !retentionActive && personaIsSdr) ? QUALIFICACAO_RULE_BLOCK : ''}
@@ -1932,24 +1956,31 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         const closer = ((closerAgents as Array<Record<string, any>>) || []).find(isCloserAgent) ?? null;
         biaAgentId = closer?.id ?? null;
       }
-      // Remove a tag do texto (não vaza pro cliente) e sela a transição calorosa.
+      // A TAG sempre sai do texto (não vaza pro cliente). A FALA de transição, NÃO:
+      // ela só é anexada quando existe closer ativo.
+      //
+      // ⚠️ ORDEM CORRIGIDA 2026-08-04: antes a bolha "te deixo com a Bia" era colada
+      // ANTES de conferir se a Bia existia — com o closer desativado, a lead se
+      // despedia de uma especialista que nunca ia falar e a Duda continuava
+      // respondendo. Pior que não passar. Conferir depois de falar não conserta
+      // nada: o texto já saiu.
       reply = reply.split(PASS_BIA_TAG).join('').replace(/\s+$/, '').trim();
-      reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;
-      // Só consideramos a passagem efetiva se achamos a Bia; senão a Duda segue
-      // (log explícito, nunca engole a intenção nem trava a conversa).
       if (biaAgentId) {
+        reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;
         passedToBia = true;
       } else {
-        // HANDOFF FALHO Duda→Bia: a Duda MANTÉM a conversa (invariante honrado —
-        // ninguém fica órfão), mas a lead ouviu "te deixo com a Bia" e a Bia não
-        // existe. Isso não pode mais acontecer em silêncio.
-        console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer (Bia) ativo no WhatsApp — Duda mantém a conversa.');
+        // SEM closer ativo: a Duda MANTÉM a conversa (invariante honrado — ninguém
+        // fica órfão) e a lead NÃO ouve transição nenhuma — o texto segue como se a
+        // tag nunca tivesse existido. Se o modelo só emitiu a tag, o `reply` fica
+        // vazio e o fallback de bolhas responde com a pergunta neutra de sempre.
+        console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer ativo no WhatsApp — tag descartada, Duda mantém a conversa (nenhuma transição foi dita à lead).');
         await sendTelegramAlertThrottled(
           `pass-bia-failed:${conversationId}`,
-          `⚠️ HANDOFF Duda→Bia FALHOU — Duda mantém a conversa\n` +
+          `⚠️ [PASSAR_BIA] emitido SEM closer ativo — Duda mantém a conversa\n` +
           `Conversa: ${conversationId}\n` +
-          `Nenhum closer (Bia) is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}.\n` +
-          `A lead JÁ recebeu a bolha de transição ("te deixo com a Bia") — quem responder será a Duda.`,
+          `Nenhum closer is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}.\n` +
+          `A lead NÃO recebeu bolha de transição (a fala só é dita com closer ativo).\n` +
+          `Se isto se repetir, o modelo está emitindo uma tag que o prompt não instrui mais.`,
         );
       }
     }
