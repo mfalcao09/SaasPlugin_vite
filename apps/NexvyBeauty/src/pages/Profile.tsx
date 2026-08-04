@@ -78,7 +78,24 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <AppTopBar title="Meu Perfil" subtitle="Gerencie suas informações pessoais" />
+      {/* ArrowLeft/useNavigate estavam importados desde o início e nunca usados —
+          o botão de voltar foi planejado e não ligado. /perfil é rota FORA dos
+          shells (App e Plataforma): sem isto, quem entra não tem saída além de
+          editar a URL. Fallback '/' cobre acesso direto (histórico vazio). */}
+      <AppTopBar
+        title="Meu Perfil"
+        subtitle="Gerencie suas informações pessoais"
+        leading={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Voltar"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       <main className="container max-w-2xl mx-auto py-8 px-4">
         {/* Avatar Section */}
