@@ -97,7 +97,7 @@ async function transcribeInboundAudio(
   supabase: ReturnType<typeof getServiceClient>,
   msg: Json,
   connectionId: string,
-): Promise<{ transcript: string; mediaId: string } | null> {
+): Promise<{ transcript: string | null; mediaId: string; mediaUrl: string | null } | null> {
   try {
     const mediaId = String((msg['audio'] as Json | undefined)?.['id'] ?? '');
     if (!mediaId) return null;
@@ -107,10 +107,11 @@ async function transcribeInboundAudio(
     // GEMINI_API_KEY transcreveu com 200 no gemini-2.5-flash. Trocar de
     // provedor consertou sem depender de chave nova. (gemini-2.0-flash está
     // APOSENTADO — 404; não "downgrade" o modelo.)
+    // Sem chave NÃO aborta: o ÁUDIO EM SI (player na UI) vale mais que a
+    // transcrição — o atendente humano precisa OUVIR mesmo quando a IA não lê.
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiKey) {
-      console.error('[platform-meta-whatsapp-webhook] audio: GEMINI_API_KEY ausente — sem transcrição');
-      return null;
+      console.error('[platform-meta-whatsapp-webhook] audio: GEMINI_API_KEY ausente — segue sem transcrição');
     }
 
     const { data: conn } = await supabase
@@ -131,14 +132,14 @@ async function transcribeInboundAudio(
       headers: { Authorization: `Bearer ${token}` },
     });
     const metaBody = await metaRes.json().catch(() => ({}));
-    const mediaUrl = String((metaBody as Json | null)?.['url'] ?? '');
-    if (!metaRes.ok || !mediaUrl) {
+    const graphMediaUrl = String((metaBody as Json | null)?.['url'] ?? '');
+    if (!metaRes.ok || !graphMediaUrl) {
       console.error('[platform-meta-whatsapp-webhook] audio: Graph não devolveu URL', metaRes.status);
       return null;
     }
 
     // 2. Download do binário — EXIGE o mesmo Bearer (a URL da Meta não é pública).
-    const binRes = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${token}` } });
+    const binRes = await fetch(graphMediaUrl, { headers: { Authorization: `Bearer ${token}` } });
     if (!binRes.ok) {
       console.error('[platform-meta-whatsapp-webhook] audio: download falhou', binRes.status);
       return null;
@@ -149,37 +150,63 @@ async function transcribeInboundAudio(
       return null;
     }
 
-    // 3. Gemini transcreve. WhatsApp manda voz como audio/ogg (opus) — aceito
-    //    inline. btoa em blocos: spread de array grande estoura a pilha.
-    let bin = '';
-    const CHUNK = 0x8000;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    // 3. GUARDA O ÁUDIO no Storage ANTES de transcrever — o player da UI já
+    //    existe (extractMedia + PlatformCrmMediaAttachment) e só nunca aparecia
+    //    porque nenhuma URL era gravada. A URL da Meta expira em minutos; a do
+    //    bucket não. Upload primeiro: se a transcrição falhar, o humano OUVE.
+    let mediaUrl: string | null = null;
+    try {
+      const path = `platform-crm/whatsapp-audio/${mediaId}.ogg`;
+      const { error: upErr } = await supabase.storage
+        .from('inbox-media')
+        .upload(path, bytes, { contentType: 'audio/ogg', upsert: true });
+      if (upErr) {
+        console.error('[platform-meta-whatsapp-webhook] audio: upload storage falhou', upErr.message);
+      } else {
+        const { data: pub } = supabase.storage.from('inbox-media').getPublicUrl(path);
+        mediaUrl = pub?.publicUrl ?? null;
+      }
+    } catch (e) {
+      console.error('[platform-meta-whatsapp-webhook] audio: upload exceção', String(e).slice(0, 160));
     }
-    const trRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inline_data: { mime_type: 'audio/ogg', data: btoa(bin) } },
-            { text: 'Transcreva este áudio em português brasileiro, fielmente e sem comentários. ' +
-                    'Responda SOMENTE com o texto falado. Se não houver fala, responda exatamente [inaudivel].' },
-          ]}],
-        }),
-      },
-    );
-    const trBody = await trRes.json().catch(() => ({}));
-    const parts = (trBody as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-      ?.candidates?.[0]?.content?.parts ?? [];
-    const transcript = parts.map((p) => p?.text ?? '').join('').trim();
-    if (!trRes.ok || !transcript || transcript === '[inaudivel]') {
-      console.error('[platform-meta-whatsapp-webhook] audio: gemini falhou',
-        trRes.status, JSON.stringify(trBody).slice(0, 200));
-      return null;
+
+    // 4. Gemini transcreve (best-effort). WhatsApp manda voz como audio/ogg
+    //    (opus) — aceito inline. btoa em blocos: spread grande estoura a pilha.
+    let transcript: string | null = null;
+    if (geminiKey) {
+      let bin = '';
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const trRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { inline_data: { mime_type: 'audio/ogg', data: btoa(bin) } },
+              { text: 'Transcreva este áudio em português brasileiro, fielmente e sem comentários. ' +
+                      'Responda SOMENTE com o texto falado. Se não houver fala, responda exatamente [inaudivel].' },
+            ]}],
+          }),
+        },
+      );
+      const trBody = await trRes.json().catch(() => ({}));
+      const parts = (trBody as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+        ?.candidates?.[0]?.content?.parts ?? [];
+      const t = parts.map((p) => p?.text ?? '').join('').trim();
+      if (!trRes.ok || !t || t === '[inaudivel]') {
+        console.error('[platform-meta-whatsapp-webhook] audio: gemini falhou',
+          trRes.status, JSON.stringify(trBody).slice(0, 200));
+      } else {
+        transcript = t;
+      }
     }
-    return { transcript, mediaId };
+
+    if (!transcript && !mediaUrl) return null;
+    return { transcript, mediaId, mediaUrl };
   } catch (e) {
     console.error('[platform-meta-whatsapp-webhook] audio: exceção', String(e).slice(0, 200));
     return null;
@@ -622,10 +649,13 @@ async function processInboundMessage(
   // Áudio vira TEXTO antes do insert: o cérebro lê `content` do histórico e a
   // UI mostra a mesma coluna — transcrever aqui conserta os dois consumidores
   // de uma vez. Se falhar, segue '[audio]' (fail-open; ver o helper).
-  let audioTr: { transcript: string; mediaId: string } | null = null;
+  let audioTr: { transcript: string | null; mediaId: string; mediaUrl: string | null } | null = null;
   if (contentType === 'audio') {
     audioTr = await transcribeInboundAudio(supabase, msg, connectionId);
-    if (audioTr) content = `🎙️ ${audioTr.transcript}`;
+    if (audioTr?.transcript) content = `🎙️ ${audioTr.transcript}`;
+    // Com player (metadata.media) o rótulo '[audio]' vira ruído — a bolha já
+    // mostra o áudio. Só mantém '[audio]' quando NADA foi recuperado.
+    else if (audioTr?.mediaUrl) content = '';
   }
 
   const { data: inserted, error } = await supabase
@@ -644,7 +674,15 @@ async function processInboundMessage(
         phone_number_id: metadata['phone_number_id'] ?? null,
         wa_timestamp: msg['timestamp'] ?? null,
         wa_type: msg['type'] ?? null,
-        ...(audioTr ? { media_id: audioTr.mediaId, transcription: audioTr.transcript } : {}),
+        ...(audioTr ? {
+          media_id: audioTr.mediaId,
+          ...(audioTr.transcript ? { transcription: audioTr.transcript } : {}),
+          // Formato CANÔNICO que extractMedia/PlatformCrmMediaAttachment leem —
+          // é isto que faz o player aparecer na bolha.
+          ...(audioTr.mediaUrl
+            ? { media: { kind: 'audio', url: audioTr.mediaUrl, mime: 'audio/ogg' } }
+            : {}),
+        } : {}),
         ...(ctwaReferral ? { referral: ctwaReferral.raw } : {}),
       },
     })
