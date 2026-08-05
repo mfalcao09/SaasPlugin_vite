@@ -46,6 +46,10 @@ type MediaInfo = {
   caption?: string;
   url?: string;
   needsDownload?: boolean;
+  /** base64 inline do evento (webhookBase64=true na Evolution) — caminho primário do áudio. */
+  base64?: string;
+  /** objeto cru da mídia (mediaKey etc.) — envelope do fallback getBase64FromMediaMessage. */
+  raw?: unknown;
 };
 
 type Normalized =
@@ -130,6 +134,12 @@ function extractMedia(message: any): MediaInfo | undefined {
       mime: audio.mimetype || audio.Mimetype || "audio/ogg",
       url,
       needsDownload: !pickBase64(audio) && !url,
+      // PR-BDR-11: o base64 inline (webhookBase64=true) e o objeto cru eram
+      // DESCARTADOS aqui — e são exatamente o que a transcrição precisa. A URL
+      // sozinha não serve: o CDN do WhatsApp entrega o blob CRIPTOGRAFADO
+      // (mediaKey por mensagem); quem descriptografa é a Evolution.
+      base64: pickBase64(audio),
+      raw: audio,
     };
   }
   const image = message.imageMessage;
@@ -618,6 +628,165 @@ async function dispatchSalesBrain(conversationId: string): Promise<void> {
   else await call;
 }
 
+/**
+ * PR-BDR-11 — áudio da lead vira TEXTO antes do insert (porte do canal Meta).
+ *
+ * Espelha platform-meta-whatsapp-webhook:transcribeInboundAudio, que é o caminho
+ * PROVADO da Duda: storage ANTES da transcrição (o humano OUVE mesmo quando a IA
+ * não lê) e Gemini 2.5-flash como transcritor (a OPENAI_API_KEY dos secrets está
+ * revogada — medido lá em 2026-08-03; não "voltar" para OpenAI).
+ *
+ * Só muda a AQUISIÇÃO dos bytes, que aqui vem da Evolution:
+ *   1º base64 inline no evento (webhookBase64=true — caminho primário);
+ *   2º /chat/getBase64FromMediaMessage (a Evolution descriptografa; a URL crua
+ *      do CDN do WhatsApp NÃO serve — entrega o blob criptografado por mediaKey).
+ *
+ * Best-effort de ponta a ponta: qualquer falha devolve null e a mensagem segue
+ * como '[áudio]' — o prompt da agente manda pedir por texto nesse caso. Perder a
+ * transcrição é degradação; derrubar a ingestão seria perda.
+ */
+async function transcribeEvolutionAudio(
+  supabase: any,
+  instance: any,
+  media: MediaInfo,
+  messageId: string,
+  remoteJid: string,
+): Promise<{ transcript: string | null; mediaUrl: string | null } | null> {
+  try {
+    // ── 1) Bytes: inline primeiro, download decriptado como fallback ─────────
+    let b64 = String(media.base64 ?? "").trim();
+    if (b64.startsWith("data:")) b64 = b64.slice(b64.indexOf(",") + 1);
+
+    if (!b64) {
+      const { data: cfg } = await supabase
+        .from("platform_settings")
+        .select("evolution_go_url, evolution_go_global_api_key")
+        .maybeSingle();
+      const evoUrl = String(cfg?.evolution_go_url ?? "").replace(/\/$/, "");
+      const keys = [instance.instance_token, cfg?.evolution_go_global_api_key]
+        .map((k: unknown) => String(k ?? "").trim())
+        .filter(Boolean);
+      const name = String(instance.name ?? "").trim();
+      if (evoUrl && keys.length > 0 && name) {
+        const key = { id: messageId, remoteJid, fromMe: false };
+        // Envelope completo primeiro (whatsmeow canônico); só a key como 2ª tentativa.
+        const bodies = media.raw
+          ? [
+            { message: { key, message: { audioMessage: media.raw } }, convertToMp4: false },
+            { message: { key }, convertToMp4: false },
+          ]
+          : [{ message: { key }, convertToMp4: false }];
+        outer:
+        for (const apikey of keys) {
+          for (const body of bodies) {
+            const res = await fetch(
+              `${evoUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(name)}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey },
+                body: JSON.stringify(body),
+              },
+            );
+            const parsed = await res.json().catch(() => null);
+            const got = typeof parsed?.base64 === "string"
+              ? parsed.base64
+              : typeof parsed?.media === "string"
+              ? parsed.media
+              : "";
+            if (res.ok && got) {
+              b64 = got.startsWith("data:") ? got.slice(got.indexOf(",") + 1) : got;
+              break outer;
+            }
+          }
+        }
+      }
+      if (!b64) {
+        console.error(
+          `[platform-evolution-webhook] audio: sem base64 inline E download falhou message_id=${messageId} — segue '[áudio]'`,
+        );
+        return null;
+      }
+    }
+
+    // Teto espelhado do canal Meta (25MB) — voz real fica em KB.
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    } catch (_e) {
+      console.error(`[platform-evolution-webhook] audio: base64 inválido message_id=${messageId}`);
+      return null;
+    }
+    if (bytes.length === 0 || bytes.length > 25 * 1024 * 1024) {
+      console.error(`[platform-evolution-webhook] audio: tamanho inválido ${bytes.length}`);
+      return null;
+    }
+
+    // ── 2) Storage ANTES da transcrição — player na UI mesmo se o Gemini falhar.
+    //     Bucket e formato de path idênticos ao canal Meta (mesmo player lê os dois).
+    const mimeClean = String(media.mime ?? "audio/ogg").split(";")[0].trim() || "audio/ogg";
+    let mediaUrl: string | null = null;
+    try {
+      const path = `platform-crm/whatsapp-audio/evo-${messageId}.ogg`;
+      const { error: upErr } = await supabase.storage
+        .from("inbox-media")
+        .upload(path, bytes, { contentType: mimeClean, upsert: true });
+      if (upErr) {
+        console.error("[platform-evolution-webhook] audio: upload storage falhou", upErr.message);
+      } else {
+        const { data: pub } = supabase.storage.from("inbox-media").getPublicUrl(path);
+        mediaUrl = pub?.publicUrl ?? null;
+      }
+    } catch (e) {
+      console.error("[platform-evolution-webhook] audio: upload exceção", String(e).slice(0, 160));
+    }
+
+    // ── 3) Gemini transcreve (mesmo modelo e MESMO prompt do canal Meta) ─────
+    let transcript: string | null = null;
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
+      console.error("[platform-evolution-webhook] audio: GEMINI_API_KEY ausente — segue sem transcrição");
+    } else {
+      const trRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeClean, data: b64 } },
+                {
+                  text: "Transcreva este áudio em português brasileiro, fielmente e sem comentários. " +
+                    "Responda SOMENTE com o texto falado. Se não houver fala, responda exatamente [inaudivel].",
+                },
+              ],
+            }],
+          }),
+        },
+      );
+      const trBody = await trRes.json().catch(() => ({}));
+      const parts = (trBody as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+        ?.candidates?.[0]?.content?.parts ?? [];
+      const t = parts.map((p) => p?.text ?? "").join("").trim();
+      if (!trRes.ok || !t || t === "[inaudivel]") {
+        console.error(
+          "[platform-evolution-webhook] audio: gemini falhou",
+          trRes.status,
+          JSON.stringify(trBody).slice(0, 200),
+        );
+      } else {
+        transcript = t;
+      }
+    }
+
+    if (!transcript && !mediaUrl) return null;
+    return { transcript, mediaUrl };
+  } catch (e) {
+    console.error("[platform-evolution-webhook] audio: exceção", String(e).slice(0, 200));
+    return null;
+  }
+}
+
 /** Ingestão de 1 mensagem Evolution → inbox de plataforma. Retorna a Response
  *  (sempre 200 — Evolution re-entregaria em não-200 e o key.id já dedupa). */
 async function handleMessage(
@@ -747,13 +916,36 @@ async function handleMessage(
   );
   if (!conversation) return ok({ stored: false });
 
+  // PR-BDR-11: áudio vira TEXTO antes do insert — igual ao canal Meta, os dois
+  // consumidores (cérebro lê `content`, UI lê a mesma coluna + player) são
+  // consertados de uma vez. DIVERGÊNCIA deliberada do Meta: quando a transcrição
+  // falha mas o player existe, o content continua "[áudio]" (lá vira "") — o
+  // prompt da agente chaveia em "[áudio]" para pedir por texto em vez de
+  // responder no escuro, e content vazio apagaria esse gatilho.
+  let inboundContent = content || "[mensagem]";
+  let inboundMediaMeta = mediaMeta;
+  let audioTranscript: string | null = null;
+  if (media?.type === "audio") {
+    const tr = await transcribeEvolutionAudio(supabase, instance, media, norm.messageId, norm.remoteJid);
+    if (tr?.transcript) {
+      audioTranscript = tr.transcript;
+      inboundContent = `🎙️ ${tr.transcript}`;
+    }
+    if (tr?.mediaUrl && inboundMediaMeta) {
+      // URL do bucket substitui a do CDN (que expira e é criptografada); com o
+      // binário salvo, needs_download deixa de ser verdade.
+      const { needs_download: _nd, ...rest } = inboundMediaMeta as Record<string, unknown>;
+      inboundMediaMeta = { ...rest, url: tr.mediaUrl } as typeof inboundMediaMeta;
+    }
+  }
+
   const { data: inserted, error } = await supabase
     .from("platform_crm_messages")
     .insert({
       conversation_id: conversation.id,
       direction: "inbound",
       sender_type: "visitor",
-      content: content || "[mensagem]",
+      content: inboundContent,
       content_type: contentType,
       metadata: {
         evolution_message_id: norm.messageId || null,
@@ -762,7 +954,8 @@ async function handleMessage(
         remote_jid: norm.remoteJid,
         ...(norm.lidJid ? { wa_lid: norm.lidJid.split("@")[0].split(":")[0] } : {}),
         push_name: norm.pushName || null,
-        ...(mediaMeta ? { media: mediaMeta } : {}),
+        ...(audioTranscript ? { transcription: audioTranscript } : {}),
+        ...(inboundMediaMeta ? { media: inboundMediaMeta } : {}),
       },
     })
     .select()
@@ -792,7 +985,10 @@ async function handleMessage(
     productId: (conversation.product_id as string | null) ?? productId,
     conversationId: String(conversation.id),
     telefone: fromDigits,
-    text: content || "[mensagem]",
+    // PR-BDR-11: com a transcrição, um "pare"/"me tira" FALADO em áudio também
+    // chega ao detector de opt-out — antes o áudio era um "[áudio]" opaco que
+    // nunca casava padrão nenhum.
+    text: inboundContent || "[mensagem]",
   });
 
   // PR-BDR-4: cérebro SÓ depois do on-inbound e SÓ se não houve opt-out. A ordem
