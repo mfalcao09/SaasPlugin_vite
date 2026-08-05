@@ -280,10 +280,28 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
 
   if (sendRes.ok) {
     const followupDelayH = 48; // D+2
+    // PR-BDR-9: registra a abertura no inbox ANTES de fechar a linha da fila, pra
+    // o conversation_id nascer preenchido. Só no envio REAL e só no canal WA:
+    // dry-run não inventa conversa, e o IG tem outra identidade de thread.
+    // `tokens.nome` cai em "tudo bem?" quando o lead não tem primeiro_nome — isso
+    // é saudação, não nome, e não pode virar visitor_name no inbox.
+    const nomeReal = tokens.nome && tokens.nome !== "tudo bem?" ? tokens.nome : null;
+    const inboxConversationId = (!dryRun && channel === "whatsapp")
+      ? await persistOpeningInInbox(sb, {
+        productId,
+        instanceId,
+        telefone: due.telefone,
+        text,
+        nome: nomeReal,
+        agentId: c.agent_id ?? null,
+        campaignId: c.id,
+        variant: due.variant ?? null,
+      })
+      : null;
     await sb.from("platform_crm_cold_outreach_queue").update({
       status: "sent", sent_at: now.toISOString(), last_outreach_at: now.toISOString(),
       next_followup_at: new Date(now.getTime() + followupDelayH * 3_600_000).toISOString(),
-      conversation_id: sendRes.conversationId ?? due.conversation_id ?? null,
+      conversation_id: sendRes.conversationId ?? inboxConversationId ?? due.conversation_id ?? null,
       updated_at: now.toISOString(),
     }).eq("id", due.id);
 
@@ -395,6 +413,126 @@ async function deliver(
     }
   } catch (e: any) {
     return { ok: false, error: String(e?.message ?? e) };
+  }
+}
+
+/**
+ * PR-BDR-9 — a abertura do cold passa a EXISTIR no inbox.
+ *
+ * MEDIDO no primeiro disparo real (2026-08-05): o envio não gravava conversa nem
+ * mensagem (0 e 0) e `queue.conversation_id` ficava null. Quando a lead respondia,
+ * o platform-sales-brain via um inbound SEM histórico — não sabia a que ela se
+ * referia ("É o que?" → "Oi Marcelo, tudo bem?") e se apresentava DE NOVO, 17
+ * minutos depois de já ter se apresentado. Do lado da lead isso lê como golpe.
+ *
+ * A IDENTIDADE aqui é a MESMA tripla que o platform-evolution-webhook usa para
+ * REENCONTRAR a conversa (visitor_id='wa_evo:<dígitos>' + channel + instância —
+ * webhook:403-411). Divergir dela abriria uma SEGUNDA conversa quando a lead
+ * respondesse — pior que o defeito que esta função fecha.
+ *
+ * Devolve o id da conversa, ou null em falha — e nesse caso GRITA: o envio já
+ * saiu, então engolir o erro aqui recria o buraco original em silêncio.
+ */
+async function persistOpeningInInbox(
+  sb: SupabaseClient,
+  o: {
+    productId: string;
+    instanceId: string | null;
+    telefone: string;
+    text: string;
+    nome: string | null;
+    agentId: string | null;
+    campaignId: string;
+    variant: unknown;
+  },
+): Promise<string | null> {
+  try {
+    const digits = String(o.telefone ?? "").replace(/\D/g, "");
+    if (!digits || !o.instanceId) {
+      console.error(
+        `[platform-cold-outreach] abertura NAO persistida: digits=${digits.length} instance=${o.instanceId ?? "null"} — a lead recebeu e o CRM nao registrou`,
+      );
+      return null;
+    }
+    const visitorId = `wa_evo:${digits}`;
+    const phonePlus = `+${digits}`;
+
+    const { data: found } = await sb
+      .from("platform_crm_conversations")
+      .select("id, status")
+      .eq("visitor_id", visitorId)
+      .eq("channel", "whatsapp_evolution")
+      .eq("evolution_instance_id", o.instanceId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let conversationId: string | null = found?.id ?? null;
+
+    if (conversationId) {
+      // Fechada volta a bot_active — mesma régua do webhook: a abertura reativa o fio.
+      if (found?.status === "closed") {
+        await sb.from("platform_crm_conversations")
+          .update({ status: "bot_active", needs_human: false, updated_at: new Date().toISOString() })
+          .eq("id", conversationId);
+      }
+    } else {
+      const { data: created, error } = await sb
+        .from("platform_crm_conversations")
+        .insert({
+          visitor_id: visitorId,
+          visitor_name: o.nome,
+          visitor_phone: phonePlus,
+          visitor_whatsapp: phonePlus,
+          channel: "whatsapp_evolution",
+          status: "bot_active",
+          needs_human: false,
+          evolution_instance_id: o.instanceId,
+          product_id: o.productId,
+        })
+        .select("id")
+        .single();
+      if (error) {
+        console.error(
+          `[platform-cold-outreach] criar conversa da abertura FALHOU visitor=${visitorId}: ${error.message}`,
+        );
+        return null;
+      }
+      conversationId = (created?.id as string) ?? null;
+    }
+    if (!conversationId) return null;
+
+    const { error: msgErr } = await sb.from("platform_crm_messages").insert({
+      conversation_id: conversationId,
+      direction: "outbound",
+      sender_type: "bot",
+      content: o.text,
+      content_type: "text",
+      message_type: "text",
+      metadata: {
+        channel: "whatsapp_evolution",
+        connection_id: o.instanceId,
+        agent_id: o.agentId,
+        delivery_status: "sent",
+        origem: "cold_outreach_abertura",
+        campaign_id: o.campaignId,
+        variant: o.variant ?? null,
+        step: 0,
+      },
+    });
+    if (msgErr) {
+      console.error(
+        `[platform-cold-outreach] gravar a bolha da abertura FALHOU conversation_id=${conversationId}: ${msgErr.message}`,
+      );
+      return conversationId;
+    }
+    return conversationId;
+  } catch (e) {
+    console.error(
+      "[platform-cold-outreach] persistOpeningInInbox exception (a lead recebeu, o CRM nao registrou):",
+      e,
+    );
+    return null;
   }
 }
 
