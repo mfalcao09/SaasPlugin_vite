@@ -60,10 +60,35 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // Auth interno: só service-role (chamado server-to-server pelo motor cold).
-  const auth = req.headers.get("Authorization") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (auth.replace("Bearer ", "") !== serviceKey) {
-    return json({ error: "unauthorized (internal only)" }, 401);
+  //
+  // MEDIDO em 2026-08-04, no primeiro tráfego real deste canal: `functions.invoke`
+  // de um client service-role manda a chave no header `apikey`, e o `Authorization`
+  // que ele monta NÃO casa com SERVICE_ROLE_KEY. Conferir só o Authorization
+  // rejeitava TODOS os chamadores (cold-outreach, sales-brain, post-sale,
+  // start-whatsapp-conversation) — nenhum envio jamais saiu por aqui, e as bolhas
+  // da BDR ficaram gravadas no banco com delivery_status='failed'.
+  //
+  // O platform-sales-brain (index.ts:183) já aceita as DUAS portas, e é
+  // exatamente por isso que ele é o único invoke que passava. Espelhado aqui.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
+  const apikeyHeader = (req.headers.get("apikey") ?? "").trim();
+  if (!serviceKey || (bearer !== serviceKey && apikeyHeader !== serviceKey)) {
+    // INSTRUMENTO: recusa MUDA foi o que fez esta função rejeitar todos os
+    // chamadores sem ninguém descobrir por quê. O corpo abaixo é lido pelo
+    // platform-sales-brain e gravado em platform_crm_messages.metadata — só
+    // TAMANHOS e resultados de comparação, NUNCA o valor de nenhuma chave.
+    return json({
+      error: "unauthorized (internal only)",
+      diag: {
+        service_key_len: serviceKey.length,
+        bearer_len: bearer.length,
+        apikey_len: apikeyHeader.length,
+        bearer_matches: bearer === serviceKey,
+        apikey_matches: apikeyHeader === serviceKey,
+        bearer_eq_apikey: bearer === apikeyHeader,
+      },
+    }, 401);
   }
 
   try {

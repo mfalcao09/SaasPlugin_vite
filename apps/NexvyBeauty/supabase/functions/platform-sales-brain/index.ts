@@ -495,11 +495,37 @@ async function deliverViaEvolution(
     // falha do servidor Evolution COM HTTP 200 no invoke, então checar só
     // `error` deixaria passar entrega não feita (mesma régua do cold outreach).
     if (error || (data as any)?.ok === false || (data as any)?.error) {
-      const reason = error?.message ?? String(JSON.stringify(data ?? null)).slice(0, 300);
+      // INSTRUMENTO (2026-08-04): `error.message` do supabase-js é SEMPRE o
+      // genérico "Edge Function returned a non-2xx status code". Foi ele que
+      // escondeu por completo o motivo do 401 do platform-evolution-send — as
+      // bolhas ficaram com delivery_status='failed' e um erro que não diz nada,
+      // e o diagnóstico só saiu lendo log de gateway. O corpo da resposta vive
+      // em `error.context` (Response); lê-lo AQUI faz o motivo do callee
+      // aterrissar em platform_crm_messages.metadata.delivery_error, legível
+      // por SQL sem depender de log de console.
+      let calleeBody = '';
+      let httpStatus: number | null = null;
+      try {
+        const ctx = (error as any)?.context;
+        if (ctx) {
+          httpStatus = typeof ctx.status === 'number' ? ctx.status : null;
+          if (typeof ctx.text === 'function') calleeBody = String(await ctx.text()).slice(0, 200);
+          else if (typeof ctx === 'object') calleeBody = JSON.stringify(ctx).slice(0, 200);
+        }
+      } catch (_ctxErr) {
+        // Corpo já consumido ou ilegível — segue com o reason genérico, mas
+        // NUNCA em silêncio: a ausência fica visível no próprio campo.
+        calleeBody = '<corpo do callee ilegivel>';
+      }
+      const reason = [
+        error?.message ?? String(JSON.stringify(data ?? null)).slice(0, 300),
+        httpStatus ? `http=${httpStatus}` : '',
+        calleeBody ? `callee=${calleeBody}` : '',
+      ].filter(Boolean).join(' | ');
       console.error(
         `[platform-sales-brain] entrega Evolution FALHOU conversation_id=${conversationId} instance_id=${instanceId} reason=${reason}`,
       );
-      return { wamid: null, error: String(reason).slice(0, 300), connectionId: instanceId, delivered: false };
+      return { wamid: null, error: String(reason).slice(0, 500), connectionId: instanceId, delivered: false };
     }
     const evolutionMessageId = typeof (data as any)?.body?.key?.id === 'string'
       ? (data as any).body.key.id

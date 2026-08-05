@@ -570,11 +570,18 @@ async function actionStatus(sb: SupabaseClient, campaignId: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // MEDIDO 2026-08-04 (mesmo defeito de platform-evolution-send): `functions.invoke`
+  // manda a chave de serviço no header `apikey`, não no Authorization. O
+  // platform-evolution-webhook notifica o inbound por invoke — e caía em 401, ou
+  // seja, "a lead respondeu" era descartado em silêncio. platform-sales-brain:183
+  // já aceita as duas portas; espelhado aqui.
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const auth = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
+  const auth = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
+  const apikeyHeader = (req.headers.get("apikey") ?? "").trim();
   const coldSecret = req.headers.get("x-cold-secret") ?? "";
   const secretEnv = Deno.env.get("COLD_OUTREACH_SECRET") ?? "";
-  const authorized = auth === serviceKey || (secretEnv !== "" && coldSecret === secretEnv);
+  const authorized = (!!serviceKey && (auth === serviceKey || apikeyHeader === serviceKey)) ||
+    (secretEnv !== "" && coldSecret === secretEnv);
   if (!authorized) return json({ error: "unauthorized (internal only)" }, 401);
 
   const envEnabled = (Deno.env.get("COLD_OUTREACH_ENABLED") ?? "false").toLowerCase() === "true";
