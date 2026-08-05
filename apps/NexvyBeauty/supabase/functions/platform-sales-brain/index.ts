@@ -206,6 +206,27 @@ function typingPauseMs(text: string): number {
   return Math.round(base * jitter);
 }
 
+// ─── Ritmo humano no canal Evolution (PR-BDR-13) — SÓ Camila. ────────────────
+// MEDIDO 2026-08-05: bolhas de 60-100 chars caindo a cada ~6s — 70ms/char com
+// teto de 8s satura em ~114 chars e vira assinatura de robô ("mensagens grandes
+// chegando em sequência", nas palavras do dono). Humano no celular digita
+// ~6-9 chars/s. 120ms/char ≈ 8,3 chars/s: bolha de 100 chars ≈ 12s, teto 22s.
+// A pausa longa é SEGURA porque o portão pós-pausa (PR-BDR-12) aborta o lote
+// se a lead falar durante o "digitando". A Duda no oficial NÃO muda — a
+// cadência dela é alçada da controladora.
+const EVO_TYPING_MS_PER_CHAR = Number(Deno.env.get('AI_BRAIN_EVO_TYPING_MS_PER_CHAR') ?? '120');
+const EVO_TYPING_FLOOR_MS = 3500;
+const EVO_TYPING_CAP_MS = 22000;
+
+function evoTypingPauseMs(text: string): number {
+  const base = Math.min(
+    Math.max(text.length * EVO_TYPING_MS_PER_CHAR, EVO_TYPING_FLOOR_MS),
+    EVO_TYPING_CAP_MS,
+  );
+  const jitter = 1 + (Math.random() * 2 - 1) * TYPING_JITTER;
+  return Math.round(base * jitter);
+}
+
 /**
  * Marca a última inbound como lida E liga o indicador "digitando…" no WhatsApp.
  * Sem isto, aumentar a pausa só produz SILÊNCIO suspeito — é o indicador que
@@ -2408,7 +2429,9 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       // saturava em 134 chars, entregando 300 chars em ~6s (≈610 wpm, ~200x humano).
       const pauseMs = i === 0
         ? Math.max(0, readDelayMs - (Date.now() - tDeliveryStart))
-        : typingPauseMs(bubbleText);
+        : (conversation.channel === 'whatsapp_evolution'
+          ? evoTypingPauseMs(bubbleText)   // PR-BDR-13: ritmo humano, só Camila
+          : typingPauseMs(bubbleText));
       if (pauseMs > 0) {
         await sendTypingSignal(supabase, conversation, inboundWamid, dest);
         await sleep(pauseMs);
