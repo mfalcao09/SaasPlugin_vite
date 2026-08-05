@@ -2269,6 +2269,71 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       }
     }
 
+    // ─── MECANISMOS OUTBOUND (PR-BDR-12) — SÓ canal Evolution (Camila). ──────
+    // A Duda no número oficial NÃO passa por aqui. Motivo medido: 3 conversas
+    // seguidas (2026-08-04/05) com link empurrado sem aceite e aglutinado com
+    // pergunta — instrução de prompt não segurou nenhuma das 3 vezes.
+    // Prompt ensina a falar; código impede de errar.
+    if (conversation.channel === 'whatsapp_evolution') {
+      const URL_RE = /https?:\/\/\S+/g;
+      const lastLeadNorm = String(triggerInbound?.content ?? '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      // Aceite EXPLÍCITO na última mensagem da lead. Qualquer "nao" na mensagem
+      // derruba o aceite (conservador de propósito: falso negativo atrasa o
+      // link um turno; falso positivo é o defeito que estamos matando).
+      const ACEITE_RE = /\b(quero|pode|manda|mande|envia|envie|mostra|topo|topa|bora|vamos|aceito|sim|beleza|fechado|fechou|ok|vou colocar|coloca)\b/;
+      const aceitou = ACEITE_RE.test(lastLeadNorm) && !/\bnao\b/.test(lastLeadNorm);
+
+      const antesGate = bubbles.length;
+      const saneadas: string[] = [];
+      for (const b of bubbles) {
+        const urls = b.match(URL_RE) ?? [];
+        if (urls.length === 0) { saneadas.push(b); continue; }
+        const semLink = b.replace(URL_RE, '')
+          .replace(/(aqui está|aqui esta|tá aqui|ta aqui|segue o link)\s*👉?\s*/gi, '')
+          .replace(/👉/g, '').replace(/\s{2,}/g, ' ').trim();
+        if (!aceitou) {
+          // LINK SEM ACEITE: a oferta sobrevive, o link morre. O modelo pode
+          // reoferecer; a URL só sai quando a ÚLTIMA mensagem dela contiver aceite.
+          console.error('[platform-sales-brain] LINK BLOQUEADO sem aceite explícito', {
+            conversation_id: conversation.id,
+            ultima_da_lead: String(triggerInbound?.content ?? '').slice(0, 80),
+          });
+          if (semLink.length >= 8) saneadas.push(semLink);
+          continue;
+        }
+        // COM aceite: link NUNCA aglutinado — texto (sem URL) vira bolha própria
+        // e a URL sai SOZINHA na bolha seguinte. Mais de 1 URL: só a 1ª sai.
+        if (semLink.length >= 8) saneadas.push(semLink);
+        const primeiraUrl = urls[0] ?? '';
+        if (primeiraUrl) saneadas.push(primeiraUrl);
+        if (urls.length > 1) {
+          console.error('[platform-sales-brain] múltiplas URLs no turno — extras descartadas', {
+            conversation_id: conversation.id, descartadas: urls.length - 1,
+          });
+        }
+      }
+      bubbles = saneadas;
+
+      // Palavra banida "mágica": cai a SENTENÇA inteira, nunca splice de palavra
+      // (splice quebra gramática — caso catalogado no sanitizador da Duda).
+      bubbles = bubbles.map((b: string) =>
+        /m[áa]gica/i.test(b)
+          ? b.split(/(?<=[.!?…])\s+/).filter((s: string) => !/m[áa]gica/i.test(s)).join(' ').trim()
+          : b
+      ).filter((b: string) => b.length > 0);
+
+      if (bubbles.length !== antesGate) {
+        console.log(`[platform-sales-brain] mecanismos outbound: ${antesGate} → ${bubbles.length} bolha(s)`);
+      }
+      if (bubbles.length === 0) {
+        console.error('[platform-sales-brain] mecanismos outbound derrubaram TODAS as bolhas — nada enviado', {
+          conversation_id: conversation.id,
+        });
+        return json({ skipped: 'outbound_gate_dropped_all' });
+      }
+    }
+
     // 12) Entrega bolha a bolha: persiste ANTES de entregar (a msg existe no CRM
     //     mesmo se a entrega externa falhar), depois casa o wamid, broadcast e
     //     pausa proporcional entre bolhas (só entre bolhas, não após a última).
@@ -2347,6 +2412,32 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       if (pauseMs > 0) {
         await sendTypingSignal(supabase, conversation, inboundWamid, dest);
         await sleep(pauseMs);
+      }
+
+      // RITMO — checagem PÓS-pausa (PR-BDR-12): a mensagem da lead pode chegar
+      // DURANTE o sleep de digitação. MEDIDO 2026-08-05: a piada das 20:34:46
+      // caiu no meio da pausa e a bolha 4 aterrissou por cima às 20:34:51 —
+      // o guarda pré-pausa não tinha como vê-la. Mesma consulta, segundo portão.
+      if (i > 0 && pauseMs > 0 && coveredInboundSeq != null) {
+        const { data: chegouNaPausa, error: pausaErr } = await supabase
+          .from('platform_crm_messages')
+          .select('seq')
+          .eq('conversation_id', conversationId)
+          .eq('is_deleted', false)
+          .eq('direction', 'inbound')
+          .eq('sender_type', 'visitor')
+          .gt('seq', coveredInboundSeq)
+          .limit(1);
+        if (pausaErr) {
+          console.warn(
+            `[platform-sales-brain] ritmo pós-pausa: checagem falhou em ${conversationId}: ${pausaErr.message} — lote segue`,
+          );
+        } else if (chegouNaPausa && chegouNaPausa.length > 0) {
+          console.log(
+            `[platform-sales-brain] ritmo: a lead falou DURANTE a pausa em ${conversationId} — abortando na bolha ${i + 1}/${total}; o hand-back responde`,
+          );
+          break;
+        }
       }
 
       const baseMeta = {
