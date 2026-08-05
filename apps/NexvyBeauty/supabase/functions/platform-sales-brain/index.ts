@@ -2295,9 +2295,48 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       READ_CAP_MS,
     );
     const tDeliveryStart = Date.now();
+    let entregues = 0; // bolhas REALMENTE enviadas — o lote pode ser abortado no meio
 
     for (let i = 0; i < total; i++) {
       const bubbleText = bubbles[i];
+
+      // ─── RITMO DO CLIENTE (PR-BDR-10) ────────────────────────────────────
+      // O lote de bolhas é escrito de uma vez e gotejado por até ~30s. Se a lead
+      // falar durante o gotejamento, as bolhas restantes já nasceram VELHAS:
+      // respondem a uma pergunta anterior e caem DEPOIS da nova, dando a impressão
+      // de que a agente não leu.
+      //
+      // MEDIDO em 2026-08-05: as 4 bolhas de 01:31:14→01:31:39 tinham o MESMO
+      // debounce_waited_ms (uma geração só) e a lead escreveu duas vezes dentro
+      // dessa janela. A bolha 3 caiu 1 segundo depois da pergunta dela — não era
+      // resposta, era coincidência de relógio.
+      //
+      // Aqui o lote é abortado e o HAND-BACK (que já existe) responde com o
+      // contexto novo. A bolha 1 SEMPRE sai: abortar antes dela deixaria a agente
+      // muda caso o hand-back falhasse, e silêncio é pior que atraso.
+      if (i > 0 && coveredInboundSeq != null) {
+        const { data: novasDaLead, error: ritmoErr } = await supabase
+          .from('platform_crm_messages')
+          .select('seq')
+          .eq('conversation_id', conversationId)
+          .eq('is_deleted', false)
+          .eq('direction', 'inbound')
+          .eq('sender_type', 'visitor')
+          .gt('seq', coveredInboundSeq)
+          .limit(1);
+        if (ritmoErr) {
+          // Não dá pra saber se ela falou → segue o lote, mas DENUNCIA: engolir
+          // isso devolveria em silêncio o comportamento que este guarda remove.
+          console.warn(
+            `[platform-sales-brain] ritmo: falha ao conferir inbound novo em ${conversationId}: ${ritmoErr.message} — lote segue`,
+          );
+        } else if (novasDaLead && novasDaLead.length > 0) {
+          console.log(
+            `[platform-sales-brain] ritmo: a lead falou durante o lote em ${conversationId} — abortando na bolha ${i + 1}/${total}; o hand-back responde com o contexto novo`,
+          );
+          break;
+        }
+      }
 
       // RITMO HUMANO: pausa ANTES de cada bolha, com "digitando…" visível.
       // Antes: a pausa vinha DEPOIS do envio e era `min(len*30, 4000)` — teto que
@@ -2384,10 +2423,16 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       }
 
       await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
+      entregues++;
 
       // (a pausa agora acontece ANTES de cada bolha, no topo do loop)
     }
-    console.log(`[platform-sales-brain] entrega: ${total} bolha(s) em ${Date.now() - tDeliveryStart}ms`);
+    // Log conta o que SAIU, não o que foi planejado: com o aborto por ritmo do
+    // cliente, afirmar `total` aqui seria relatório falso na própria telemetria.
+    console.log(
+      `[platform-sales-brain] entrega: ${entregues}/${total} bolha(s) em ${Date.now() - tDeliveryStart}ms` +
+        (entregues < total ? ' — lote abortado, a lead falou no meio' : ''),
+    );
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
