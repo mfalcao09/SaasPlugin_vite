@@ -383,6 +383,71 @@ async function evolutionInstanceProductId(
 }
 
 /**
+ * AMARRAÇÃO AGENTE↔NÚMERO (canal dedicado).
+ *
+ * A tela "Canais → Conexões dedicadas" do editor de agente já grava em
+ * `platform_crm_agent_connections` (e mantém `platform_crm_product_agents
+ * .evolution_instance_id` em sync como legado). Até aqui NENHUMA edge function
+ * lia esse vínculo — medido: 0 leituras no repo, 0 linhas na tabela. O efeito
+ * era que conversa nova SEMPRE abria com a SDR: uma lead prospectada pela BDR
+ * num número dedicado a ela era atendida pela Duda.
+ *
+ * Espelha a regra que já roda em produção do lado do salão — webchat-bot
+ * ("instance-bound agent"), que resolve o agente por `evolution_instance_id`.
+ *
+ * Devolve o id do agente dedicado à conexão por onde a conversa corre, ou null
+ * quando não há vínculo — nesse caso o roteamento anterior segue intacto.
+ */
+async function resolveConnectionBoundAgentId(
+  supabase: any,
+  conversation: Record<string, any> | null,
+): Promise<string | null> {
+  const evo = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  const meta = typeof conversation?.meta_connection_id === 'string'
+    ? conversation.meta_connection_id
+    : null;
+
+  const pairs: Array<{ type: string; id: string }> = [];
+  if (evo) pairs.push({ type: 'evolution', id: evo });
+  if (meta) pairs.push({ type: 'meta_whatsapp', id: meta });
+  if (pairs.length === 0) return null;
+
+  for (const p of pairs) {
+    const { data, error } = await supabase
+      .from('platform_crm_agent_connections')
+      .select('product_agent_id')
+      .eq('connection_type', p.type)
+      .eq('connection_id', p.id)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      // Falha de leitura NÃO vira silêncio: denuncia e cai no roteamento anterior.
+      console.error(
+        `[platform-sales-brain] leitura de agent_connections falhou type=${p.type} id=${p.id}:`,
+        error?.message ?? error,
+      );
+      continue;
+    }
+    if (data?.product_agent_id) return data.product_agent_id as string;
+  }
+
+  // Fallback legado: coluna única no agente (mesma que o AgentCard usa de fallback).
+  if (evo) {
+    const { data } = await supabase
+      .from('platform_crm_product_agents')
+      .select('id')
+      .eq('evolution_instance_id', evo)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    if (data?.id) return data.id as string;
+  }
+  return null;
+}
+
+/**
  * Entrega no canal Evolution (WhatsApp não-oficial via QR) pela edge
  * platform-evolution-send — a mesma que o cold outreach usa. O `connectionId`
  * devolvido aqui é o evolution_instance_id (é ele que diz por qual número saiu a
@@ -1595,6 +1660,36 @@ Deno.serve(async (req) => {
       persona = route.persona;
       routeReason = route.reason;
       orphanAgentId = route.orphanAgentId;
+
+      // AMARRAÇÃO POR CANAL — precedência: pin > número dedicado > SDR abre.
+      // Só entra quando a conversa AINDA NÃO tem dono (é o que 'sdr_open'
+      // significa: resolvePersonaForConversation só devolve esse motivo com
+      // current_agent_id nulo). Pin existente continua mandando — a linha
+      // Duda→Bia→Lia fica intacta — e, sem vínculo cadastrado, nada muda.
+      //
+      // DELIBERADAMENTE não grava current_agent_id: o vínculo é a fonte da
+      // verdade e cada mensagem o reconsulta. Assim, trocar o número dedicado
+      // na tela "Canais" passa a valer na hora, em vez de deixar conversas
+      // carimbadas com um dono velho que só uma migration desfaria.
+      if (routeReason === 'sdr_open') {
+        const boundAgentId = await resolveConnectionBoundAgentId(supabase, conversation);
+        const bound = boundAgentId ? agentList.find((a) => a.id === boundAgentId) : null;
+        if (bound) {
+          persona = bound;
+          routeReason = 'connection_bound';
+          console.log(
+            `[platform-sales-brain] agente por amarração de canal: ${bound.name ?? bound.id} ` +
+              `(${bound.id}) conversation_id=${conversationId}`,
+          );
+        } else if (boundAgentId) {
+          // Vínculo aponta agente que o cérebro não pode usar. Antes de cair na
+          // SDR, GRITA — senão o número dedicado "não funciona" sem explicação.
+          console.warn(
+            `[platform-sales-brain] amarração de canal aponta agente ${boundAgentId} que NÃO está ` +
+              `is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'} — a SDR abre`,
+          );
+        }
+      }
     }
 
     if (!persona) {
