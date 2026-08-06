@@ -71,6 +71,7 @@ import {
   type TurnEvents,
 } from '../_shared/conversation-state.ts';
 import { BLOCO_TAGS_CLASSIFICADORAS, extrairTags } from '../_shared/turn-tags.ts';
+import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
@@ -2519,6 +2520,33 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     //     mesmo se a entrega externa falhar), depois casa o wamid, broadcast e
     //     pausa proporcional entre bolhas (só entre bolhas, não após a última).
     const dest = conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '';
+    // ─── GATE DE BOLHA: proibirNome e proibirReapresentar viram CÓDIGO ────────
+    // Até aqui essas duas flags só existiam em console.log e como fato no prompt —
+    // e o eval mediu 3x que prompt não segura comportamento. Rodam para OS DOIS
+    // canais (a Camila e a Duda repetem nome e se reapresentam igual).
+    //
+    // O módulo só faz operação de BORDA (vocativo, fronteira = vírgula) ou derruba
+    // a bolha INTEIRA. Nunca costura no meio — que é o splice do 3e2aa3c.
+    {
+      const g = aplicarGateBolha(bubbles, {
+        proibirNome: pol.proibirNome,
+        proibirReapresentar: pol.proibirReapresentar,
+        primeiroNome: String(conversation.visitor_name ?? '').trim().split(/\s+/)[0] ?? '',
+      });
+      if (g.vocativosRemovidos > 0 || g.bolhasDerrubadas > 0 || g.violacaoTolerada) {
+        console.log('[platform-sales-brain] gate de bolha', {
+          conversation_id: conversation.id,
+          vocativos_removidos: g.vocativosRemovidos,
+          bolhas_derrubadas: g.bolhasDerrubadas,
+          // TOLERADA = o gate viu a violação e NÃO pôde agir sem calar a agente.
+          // Vai pro log com nome próprio: violação silenciosa é o que a gente
+          // vem matando o dia todo.
+          violacao_tolerada: g.violacaoTolerada,
+        });
+      }
+      bubbles = g.bubbles;
+    }
+
     const total = bubbles.length;
     let anyDelivered = false;
     let lastDeliveryError: string | null = null;
