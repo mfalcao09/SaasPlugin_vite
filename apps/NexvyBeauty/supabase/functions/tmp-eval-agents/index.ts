@@ -655,7 +655,7 @@ Deno.serve(async (req) => {
   const passedAssertions = results.reduce((s, r) => s + r.score.passed, 0);
   const assertionPassRate = totalAssertions ? passedAssertions / totalAssertions : 0;
 
-  return json({
+  const payload = {
     summary: {
       // E3 06/08: o placar declara QUAL cérebro foi medido. Sem isto, um run
       // contra canary e outro contra produção viram o mesmo número no relatório
@@ -706,5 +706,23 @@ Deno.serve(async (req) => {
         ...(b.error ? { error: b.error } : {}),
       })),
     })),
+  };
+
+  // PERSISTE ANTES DE RESPONDER (06/08). Medido: um golden de 4 turnos completou
+  // o trabalho — conversas criadas, turnos rodados, cleanup final executado — e
+  // o cliente recebeu 504 do gateway mesmo assim. O placar existia e morria no
+  // caminho. Turno real contra o cérebro é caro demais para depender de um corpo
+  // HTTP chegar. Falha ao gravar NÃO derruba a resposta, mas sai no log: o run
+  // valeu, e silenciar aqui só trocaria um buraco por outro.
+  const { error: persistErr } = await supabase.from('tmp_eval_runs').insert({
+    brain_slug: brainSlug,
+    golden_ids: selected.map((g) => g.id),
+    summary: payload.summary,
+    goldens: payload.goldens,
   });
+  if (persistErr) {
+    console.error('[tmp-eval-agents] FALHA ao persistir o placar:', persistErr.message);
+  }
+
+  return json(payload);
 });
