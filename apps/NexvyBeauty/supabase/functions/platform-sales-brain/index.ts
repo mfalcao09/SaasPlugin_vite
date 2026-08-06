@@ -62,6 +62,7 @@ import {
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 import { debounceWaitMs, inboundEpochMs } from '../_shared/inbound-clock.ts';
+import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
@@ -846,35 +847,17 @@ function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | nul
  * Mesmo padrão do detector que pune a proibição junto com a infração — só que aqui
  * o custo não é ruído num relatório: é o que a lead lê.
  */
-const NEGACAO_ANTES = /(n[ãa]o|sem|nunca|jamais|nenhum[ao]?|zero)\s+(\w+\s+){0,3}$/i;
-
-function sanitizeReply(input: string): { text: string; sanitized: boolean } {
-  let text = input;
-  let sanitized = false;
-  const pairs: Array<[RegExp, string]> = [
-    // "teste grátis / trial grátis / período grátis" → reancoragem no VALOR (produto pago).
-    [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'um produto pago — o valor se paga recuperando 2-3 clientes (o time confirma condições)'],
-    [/\bgr[aá]tis\b/gi, 'um produto pago (o valor se paga recuperando 2-3 clientes)'],
-    // desconto / promoção → reancoragem no VALOR e no preço de HOJE. Zero menção a
-    // subir: a saída daqui é lida pela lead como fala da agente (ver cabeçalho).
-    [/\b(desconto|descontos)\b/gi, 'a conta da recuperação (2-3 clientes de volta já pagam a mensalidade)'],
-    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço que está valendo hoje'],
-  ];
-  for (const [re, rep] of pairs) {
-    const fonte = text; // congela a origem: o replace lê o contexto ANTES da troca
-    text = text.replace(re, (...args: unknown[]) => {
-      const match = String(args[0]);
-      // String.replace(re, fn) chama fn(match, p1…pn, offset, string).
-      const offset = Number(args[args.length - 2]);
-      const antes = fonte.slice(Math.max(0, offset - 40), offset);
-      // A frase JÁ está negando o termo — trocar aqui inverte o sentido. Sai intacta.
-      if (NEGACAO_ANTES.test(antes)) return match;
-      sanitized = true;
-      return rep;
-    });
-  }
-  return { text, sanitized };
-}
+// A censura de vocabulário mudou de casa: _shared/reply-sanitizer.ts.
+//
+// O que morava aqui fazia substituição no MEIO da frase e tinha guarda de uma porta
+// só: olhava `fonte.slice(offset - 40, offset)`, isto é, apenas à ESQUERDA do termo.
+// O eval E1 (2026-08-06) capturou o resultado saindo pra lead: a agente escreveu
+// "Desconto não tem como, Fernanda — mas olha a conta..." (negação à DIREITA, que o
+// guard não via) e a lead recebeu "a conta da recuperação (2-3 clientes de volta já
+// pagam a mensalidade) não tem como, Fernanda — ...". Frase destruída, golden verde.
+//
+// O módulo novo decide por SENTENÇA: ou a frase do modelo sai inteira, ou cai inteira
+// e a reancoragem entra como sentença própria. Nunca um enxerto dos dois.
 
 /**
  * Normaliza markdown para a sintaxe REAL do WhatsApp. CONVERTE, nunca remove
