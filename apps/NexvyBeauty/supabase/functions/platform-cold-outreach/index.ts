@@ -180,18 +180,69 @@ async function actionTick(sb: SupabaseClient, onlyCampaign: string | null, envEn
   return json({ ok: true, now: now.toISOString(), campaigns: results });
 }
 
+/**
+ * BLOQUEANTE #3 (auditoria 2026-08-06): o teto diário EVAPORAVA no dia em que o
+ * burner era atribuído à campanha.
+ *
+ * Era `.or(instance_id.eq.X, instance_id.is.null)` + `.maybeSingle()`. Rodando em
+ * dry-run com instance_id NULL e depois recebendo o burner, existem DUAS linhas no
+ * mesmo (campaign, day). `maybeSingle` com 2 linhas devolve erro PGRST116 — e o
+ * código só desestruturava `{ data }`, DESCARTANDO o erro. `counters` virava null,
+ * `sentToday` virava 0 em TODO tick, e `canSendNow` nunca mais devolvia
+ * daily_cap_reached: cap de 20/dia virava ~540/dia (60/h × 9h de janela).
+ * Efeito permanente no health (que não tem coluna `day`): first_send_at lido como
+ * null, `killed` nunca lido, `consecutive_failures` nunca acumulando — o
+ * kill-switch por falha morria junto.
+ *
+ * Correção: buscar TODAS as linhas e agregar.
+ *  - counters: SOMA. Duas linhas são dois baldes do MESMO dia da MESMA campanha;
+ *    somar nunca subestima o que já saiu.
+ *  - health: a leitura mais CONSERVADORA — first_send_at mais ANTIGO (trocar de
+ *    instância não pode reiniciar o aquecimento), maior consecutive_failures, e
+ *    `killed` verdadeiro se QUALQUER linha estiver morta.
+ * E o erro deixa de ser descartado: sem leitura confiável, o tick ABORTA em vez de
+ * seguir com zero. Silêncio que vira permissão foi o defeito.
+ */
 async function loadHealthAndCounters(sb: SupabaseClient, campaignId: string, instanceId: string | null, day: string) {
-  const { data: health } = await sb
+  const filtro = `instance_id.eq.${instanceId ?? ZERO_UUID},instance_id.is.null`;
+
+  const { data: healthRows, error: healthErr } = await sb
     .from("platform_crm_cold_instance_health").select("*")
     .eq("campaign_id", campaignId)
-    .or(`instance_id.eq.${instanceId ?? ZERO_UUID},instance_id.is.null`)
-    .maybeSingle();
-  const { data: counters } = await sb
+    .or(filtro);
+  const { data: counterRows, error: countersErr } = await sb
     .from("platform_crm_cold_daily_counters").select("*")
     .eq("campaign_id", campaignId).eq("day", day)
-    .or(`instance_id.eq.${instanceId ?? ZERO_UUID},instance_id.is.null`)
-    .maybeSingle();
-  return { health, counters };
+    .or(filtro);
+
+  // Leitura falhada NÃO pode virar "zero enviado hoje" — era assim que o teto sumia.
+  if (healthErr || countersErr) {
+    console.error("[cold-outreach] LEITURA DE CONTADORES FALHOU — tick abortado", {
+      campaign_id: campaignId, day,
+      health_error: healthErr?.message, counters_error: countersErr?.message,
+    });
+    return { health: null, counters: null, leituraFalhou: true };
+  }
+
+  const hs = (healthRows ?? []) as any[];
+  const cs = (counterRows ?? []) as any[];
+
+  const health = hs.length === 0 ? null : {
+    first_send_at: hs.map((h) => h.first_send_at).filter(Boolean).sort()[0] ?? null,
+    consecutive_failures: Math.max(0, ...hs.map((h) => h.consecutive_failures ?? 0)),
+    killed: hs.some((h) => h.killed === true),
+    killed_reason: hs.find((h) => h.killed)?.killed_reason ?? null,
+  };
+
+  const soma = (k: string) => cs.reduce((a: number, r: any) => a + (r[k] ?? 0), 0);
+  const counters = cs.length === 0 ? null : {
+    sent_count: soma("sent_count"),
+    blocked_count: soma("blocked_count"),
+    reported_count: soma("reported_count"),
+    failed_count: soma("failed_count"),
+  };
+
+  return { health, counters, leituraFalhou: false };
 }
 
 async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: boolean) {
@@ -205,7 +256,11 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
   const jitterCfg = c.jitter_config ?? { minMs: 40000, maxMs: 180000 };
   const killCfg = c.killswitch_config ?? { maxBlockRate: 0.05, maxReportRate: 0.02, minSample: 20, maxConsecutiveFailures: 10 };
 
-  const { health, counters } = await loadHealthAndCounters(sb, c.id, instanceId, day);
+  const { health, counters, leituraFalhou } = await loadHealthAndCounters(sb, c.id, instanceId, day);
+  // Sem contador confiável não há teto. Calar é o erro barato; disparar é o caro.
+  if (leituraFalhou) {
+    return { campaign: c.id, action: "abort", reason: "counters_read_failed" };
+  }
   const firstSendAt = health?.first_send_at ? new Date(health.first_send_at) : null;
   const warmupDay = warmupDayFromFirstSend(firstSendAt, now);
   const sentToday = counters?.sent_count ?? 0;
@@ -224,17 +279,49 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     return { campaign: c.id, action: "killed", reason: kill.reason };
   }
 
-  // 1) FOLLOW-UPS vencidos (status='sent', next_followup_at <= now).
-  const followupResult = await processFollowups(sb, c, now, dryRun, channel, productId, instanceId, day);
+  // BLOQUEANTE #4 (auditoria 2026-08-06): os FOLLOW-UPS não passavam pelo portão.
+  // `processFollowups` rodava AQUI, ANTES de `canSendNow`, e não consultava janela
+  // comercial nem teto de warm-up: até 5 por tick × cron de 1 minuto = 300/hora,
+  // 24h/dia, 7 dias/semana — às 3h da manhã de domingo. E ainda consumiam a cota da
+  // abertura (bumpCounter sent:1) sem obedecer a ela: gastavam o teto sem respeitá-lo.
+  // É a forma EXATA do incidente do outro canal (4 mensagens em 23h a quem
+  // respondeu uma palavra).
+  //
+  // Agora o portão vem PRIMEIRO e vale para os dois caminhos. Follow-up é mensagem
+  // não solicitada igual à abertura — não há razão para ter freio diferente.
 
-  // 2) Portão anti-ban para a PRÓXIMA abertura.
+  // BLOQUEANTE #1 (auditoria 2026-08-06): o kill-switch por taxa NUNCA pode
+  // disparar. Ele compara blocked/sent > 5% e reported/sent > 2%, mas NADA em todo
+  // o repositório incrementa `blocked_count` ou `reported_count` — `bumpCounter` só
+  // é chamado com {sent} e {failed}. As taxas são sempre 0/N.
+  // E o único gatilho vivo (10 falhas de API seguidas) NÃO mede bloqueio: quando
+  // uma pessoa bloqueia o número no WhatsApp, o envio continua retornando SUCESSO.
+  // Ou seja: a proteção que dá nome à camada anti-ban é decorativa.
+  //
+  // Alimentar essas taxas exige instrumentar o webhook da Evolution (sinal de
+  // bloqueio/denúncia) — trabalho real, não one-liner, e fora do escopo deste fix.
+  // O que NÃO se pode é seguir dando falsa segurança: enquanto o numerador for
+  // sempre zero, o motor DECLARA a cada envio real que opera sem essa proteção.
+  // Alerta silencioso é como o incidente do outro canal passou despercebido.
+  if (!dryRun && (counters?.blocked_count ?? 0) === 0 && (counters?.reported_count ?? 0) === 0 && sentToday >= (killCfg.minSample ?? 20)) {
+    console.warn("[cold-outreach] ⚠️ ANTI-BAN POR TAXA INOPERANTE — blocked/reported nunca são alimentados", {
+      campaign_id: c.id, instance_id: instanceId, sent_today: sentToday,
+      detalhe: "kill-switch por bloqueio/denúncia não pode disparar; só resta consecutive_failures, que NÃO detecta bloqueio",
+    });
+  }
+
+  // 1) Portão anti-ban, ANTES de qualquer envio (abertura OU follow-up).
   const gate = canSendNow({
     now, window: windowCfg, warmup, warmupDay, sentToday,
     killStats, killCfg, campaignPaused: c.status === "paused",
   });
   if (!gate.canSend) {
-    return { campaign: c.id, action: "skip", reason: gate.reason, remaining: gate.remaining, followups: followupResult };
+    return { campaign: c.id, action: "skip", reason: gate.reason, remaining: gate.remaining, followups: null };
   }
+
+  // 2) FOLLOW-UPS vencidos (status='sent', next_followup_at <= now) — só depois
+  //    de o portão liberar.
+  const followupResult = await processFollowups(sb, c, now, dryRun, channel, productId, instanceId, day);
 
   // 3) Claim 1 lead 'queued' devido (scheduled_for null ou <= now), ordem da fila.
   const { data: due } = await sb
@@ -305,8 +392,18 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
       updated_at: now.toISOString(),
     }).eq("id", due.id);
 
-    await bumpCounter(sb, c.id, instanceId, day, { sent: 1 });
-    await upsertHealth(sb, c.id, instanceId, { first_send_at: firstSendAt ? undefined : now.toISOString(), consecutive_failures: 0 });
+    // BLOQUEANTE #2 (auditoria 2026-08-06): o DRY-RUN queimava o relógio do
+    // aquecimento. `deliver()` devolve ok:true em dry-run, e este caminho de
+    // sucesso gravava `first_send_at` e incrementava o contador IGUAL a um envio
+    // real. Como `warmupDayFromFirstSend` conta dias corridos desde first_send_at,
+    // uma campanha validada 9 dias em dry-run — que é EXATAMENTE o fluxo de
+    // validação que se recomendaria — chegaria ao primeiro dia real já no "dia 9"
+    // e liberaria 200 mensagens em vez de 20. O chip novo não faria aquecimento
+    // nenhum, e o relógio teria sido gasto em simulação.
+    if (!dryRun) {
+      await bumpCounter(sb, c.id, instanceId, day, { sent: 1 });
+      await upsertHealth(sb, c.id, instanceId, { first_send_at: firstSendAt ? undefined : now.toISOString(), consecutive_failures: 0 });
+    }
     await logJourney(sb, productId, due.lead_id ?? null, "message_sent", "contact", channel, "Cold: abertura enviada", {
       campaign_id: c.id, step: 0, tier: due.tier, handle: due.handle, dry_run: dryRun, variant: due.variant,
     });
@@ -372,7 +469,9 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
         next_followup_at: isLast ? null : new Date(now.getTime() + nextDelayH * 3_600_000).toISOString(),
         status: "sent", updated_at: now.toISOString(),
       }).eq("id", f.id);
-      await bumpCounter(sb, c.id, instanceId, day, { sent: 1 });
+      // BLOQUEANTE #2, mesmo defeito no caminho do follow-up: dry-run não pode
+      // consumir cota nem envelhecer o aquecimento.
+      if (!dryRun) await bumpCounter(sb, c.id, instanceId, day, { sent: 1 });
       await logJourney(sb, productId, f.lead_id ?? null, "cadence_step_sent", "contact", channel, `Cold: follow-up ${step}`, {
         campaign_id: c.id, step, tier: f.tier, handle: f.handle, dry_run: dryRun,
       });
