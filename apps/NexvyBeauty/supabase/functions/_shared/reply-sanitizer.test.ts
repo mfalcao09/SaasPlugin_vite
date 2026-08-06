@@ -38,6 +38,26 @@ Deno.test('DEFEITO E1 (regressão): a saída NUNCA pode conter o frankenstein qu
   );
 });
 
+Deno.test('DEFEITO E2: segunda variante do MESMO splice, capturada no run seguinte', () => {
+  // O E2 rodou contra o brain v90 (sem este módulo) e o splice reapareceu com nota
+  // máxima, agora noutra forma:
+  //   "a conta da recuperação (2-3 clientes de volta já pagam a mensalidade) a gente
+  //    não trabalha com isso, Fernanda — mas o preço de hoje já é o menor"
+  // Mesma causa: negação ("não") à DIREITA do termo, fora da janela do guard antigo.
+  // Duas capturas independentes da mesma classe valem mais que uma: o defeito é
+  // sistemático, não um azar de amostragem.
+  const entrada = 'Desconto a gente não trabalha com isso, Fernanda — mas o preço de hoje já é o menor';
+  const r = sanitizeReply(entrada);
+
+  assertEquals(r.sanitized, false, 'a agente está negando — sai intacta');
+  assertEquals(r.text, entrada, 'byte-a-byte, travessão incluído');
+  assertEquals(
+    r.text.includes('a conta da recuperação (2-3 clientes de volta já pagam a mensalidade) a gente não'),
+    false,
+    'o frankenstein do E2 não pode voltar',
+  );
+});
+
 Deno.test('negação à ESQUERDA continua protegida (o caso que o guard antigo pegava)', () => {
   const r = sanitizeReply('Não trabalho com desconto, mas te mostro a conta.');
   assertEquals(r.sanitized, false);
