@@ -2485,6 +2485,14 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         await sleep(pauseMs);
       }
 
+      // ⚠️ ERRATA do commit do PR-BDR-12 (apontada pela sessão Controladora
+      // GO-LIVE em 2026-08-06, verificada linha a linha): aquele commit afirma
+      // "mecanismos TODOS escopados a whatsapp_evolution" — FALSO para este.
+      // Os DOIS guardas de ritmo (pré-pausa acima e pós-pausa abaixo) são
+      // deliberadamente CHANNEL-AGNOSTIC: valem para a Duda no Cloud também,
+      // porque bolha velha caindo por cima de mensagem nova é defeito de
+      // ENTREGA, não política de canal. Só os mecanismos 1-3 (gate de link,
+      // de-aglutinação, palavra banida) têm gate — esses sim são política da Camila.
       // RITMO — checagem PÓS-pausa (PR-BDR-12): a mensagem da lead pode chegar
       // DURANTE o sleep de digitação. MEDIDO 2026-08-05: a piada das 20:34:46
       // caiu no meio da pausa e a bolha 4 aterrissou por cima às 20:34:51 —
