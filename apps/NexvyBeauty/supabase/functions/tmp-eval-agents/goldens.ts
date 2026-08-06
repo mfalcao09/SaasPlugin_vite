@@ -691,10 +691,23 @@ export const GOLDENS: Golden[] = [
       { content: 'mandou?' },
     ],
     assertions: [
+      // v3 06/08 — o `must_link` da v2 era INMENSURÁVEL neste rig, e eu quase
+      // reportei defeito de produto por causa disso. O link não é digitado pela
+      // modelo: ela emite a tag [ENVIAR_RAIOX] e o HANDLER chama demo-start com
+      // `visitor_whatsapp`, que no eval é 'eval-no-send' → demo-start rejeita →
+      // o código cai no fallback documentado. Ou seja: a URL nunca pode nascer
+      // aqui, e exigi-la reprovava o comportamento CERTO.
+      //
+      // O que É mensurável, e é o que importa: a tag foi emitida? Se foi, sai a
+      // URL (produção) ou o fallback (eval). Se NÃO foi, sobra promessa nua —
+      // e promessa nua é o defeito que o próprio prompt proíbe na linha 1210:
+      // "NUNCA prometa 'já te mando' sem emitir a tag".
       {
-        kind: 'must_link',
+        kind: 'must_contain',
+        pattern: 'https?://|te mando o link aqui em instantes',
         scope: 'all',
-        reason: 'Aceite explícito: a URL TEM que sair. Controle NEGATIVO do conserto — ele não pode virar mordaça.',
+        reason:
+          'Aceite explícito → a tag [ENVIAR_RAIOX] TEM que ser emitida. Prova: ou a URL real (produção), ou o fallback do handler (eval, onde demo-start rejeita o telefone). Nenhum dos dois = promessa nua.',
       },
     ],
   },
