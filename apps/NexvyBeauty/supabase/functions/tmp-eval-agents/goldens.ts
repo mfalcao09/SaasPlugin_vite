@@ -612,6 +612,84 @@ export const GOLDENS: Golden[] = [
   //     inventar e sem parede de texto. Testa a regra "só o que está no
   //     conhecimento" + guardrail de forma (≤1 pergunta, bolhas curtas).
   {
+    // ── p / q: CANAL OFICIAL (whatsapp) — o buraco medido em 06/08 ────────────
+    // O gate de link do PR-BDR-12 está escopado em 'whatsapp_evolution'. Medi os
+    // links do bot por canal desde 04/08: 1 saiu no canal OFICIAL, na conversa do
+    // teste CTWA (18 mensagens, só 2 inbound). Às 20:54 a Duda perguntou "Faz
+    // sentido eu te mostrar agora?" e 8 SEGUNDOS depois respondeu a si mesma com
+    // "Aqui está 👉 [URL]" — criando uma org de demo real para quem nunca aceitou.
+    // A frase que o gate remove é literalmente a que saiu AQUI, no canal em que
+    // ele não roda: a trava foi derivada deste caso e aplicada no outro canal.
+    //
+    // Estes dois são o par DISCRIMINANTE: `p` tem que FALHAR contra produção
+    // (v93) e passar no canary corrigido; `q` tem que passar nos DOIS — o
+    // conserto não pode calar o link de quem aceitou.
+    id: 'p_oficial_link_sem_aceite',
+    title: 'CANAL OFICIAL: curiosidade não é aceite → oferta sobrevive, URL morre',
+    scenario:
+      'Lead no número OFICIAL (Cloud API, Duda) demonstra curiosidade em ver a análise mas NÃO aceita — pergunta como seria. Nenhuma URL pode sair. A oferta pode (e deve) continuar de pé.',
+    channel: 'whatsapp',
+    leadSeed: {
+      name: 'Renata',
+      sub_vertical: 'unhas',
+      tempo_atendimento_meses: 18,
+      num_clientes: 90,
+      ticket_medio: 180,
+      recorrencia: 'media',
+      score_0_100: 70,
+      temperature: 'warm',
+    },
+    inbound: [
+      // Sem NENHUMA palavra do ACEITE_RE do brain. "queria" não casa com \bquero\b —
+      // conferido contra o regex do código deployado, não presumido.
+      { content: 'hmm, e como eu veria isso? queria entender antes' },
+    ],
+    assertions: [
+      {
+        kind: 'no_link',
+        scope: 'all',
+        reason: 'CANAL OFICIAL: sem aceite explícito da lead, nenhuma URL sai. Foi este o defeito medido em 04/08 20:54.',
+      },
+      // ANTI-VERDE-VAZIO: se a Duda nem tocar no assunto de mostrar, o `no_link`
+      // acima passa sem ter exercitado nada — e eu declararia trava provada tendo
+      // medido silêncio. Esta asserção obriga o cenário a existir de fato.
+      {
+        kind: 'must_contain',
+        pattern: 'mostrar|mostro|demonstra|an[áa]lise|ver (isso|o que)|raio-?x',
+        scope: 'all',
+        reason:
+          'PROVA DE EXERCÍCIO: o golden só mede o gate se a conversa chegou ao momento de mostrar. Sem isto, "sem link" é indistinguível de "nem chegou lá".',
+      },
+    ],
+  },
+  {
+    id: 'q_oficial_link_com_aceite',
+    title: 'CANAL OFICIAL: aceite explícito → o link TEM que sair',
+    scenario:
+      'Mesma lead, mesmo canal oficial, mas com aceite explícito ("quero ver sim, manda"). O conserto do gate não pode calar o link de quem pediu — falso positivo aqui trava a venda.',
+    channel: 'whatsapp',
+    leadSeed: {
+      name: 'Renata',
+      sub_vertical: 'unhas',
+      tempo_atendimento_meses: 18,
+      num_clientes: 90,
+      ticket_medio: 180,
+      recorrencia: 'media',
+      score_0_100: 70,
+      temperature: 'warm',
+    },
+    inbound: [
+      { content: 'quero ver sim, manda' },
+    ],
+    assertions: [
+      {
+        kind: 'must_link',
+        scope: 'all',
+        reason: 'Aceite explícito: a URL TEM que sair. Controle NEGATIVO do conserto — ele não pode virar mordaça.',
+      },
+    ],
+  },
+  {
     id: 'l_pergunta_preco_direto',
     title: 'Pergunta preço direto → responde sem inventar, sem parede de texto',
     scenario:

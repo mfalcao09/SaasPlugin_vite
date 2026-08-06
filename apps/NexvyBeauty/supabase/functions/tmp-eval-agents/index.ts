@@ -34,6 +34,24 @@ import { timingSafeEqual } from '../_shared/meta-graph.ts';
 import { platformCrmCorsHeaders as corsHeaders } from '../_shared/platform-crm-auth.ts';
 import { GLOBAL_ASSERTIONS, GOLDENS, GOLDENS_BY_ID, type Golden, type GoldenInbound } from './goldens.ts';
 import { scoreGolden, validatePatterns, type GoldenScore } from './assertions.ts';
+import { GOLDENS_EVOLUTION } from './goldens-evolution.ts';
+
+// ── SUÍTE EVOLUTION (06/08) — selecionável, FORA do run default ────────────
+// Os 8 goldens do canal whatsapp_evolution entram no lookup por id, mas NÃO no
+// run sem argumentos. O motivo é o baseline: o placar cheio do E1/E2 foi medido
+// com 15 goldens, e engordar o denominador em silêncio faria a próxima medição
+// parecer melhor ou pior sem nada ter mudado no cérebro.
+const GOLDENS_SELECIONAVEIS: Record<string, Golden> = {
+  ...GOLDENS_BY_ID,
+  ...Object.fromEntries(GOLDENS_EVOLUTION.map((g) => [g.id, g])),
+};
+
+// Colisão de id faria o spread SOBRESCREVER em silêncio: pedir 'x' rodaria o
+// golden da outra suíte e o relatório continuaria dizendo 'x'. Zero hoje; a
+// checagem existe para quando alguém acrescentar o nono.
+const GOLDEN_ID_COLISOES: string[] = GOLDENS_EVOLUTION
+  .map((g) => g.id)
+  .filter((id) => id in GOLDENS_BY_ID);
 
 const EVAL_PREFIX = 'wa:eval-';
 const NO_SEND_PHONE = 'eval-no-send'; // sem dígitos ⇒ o brain nunca entrega
@@ -474,15 +492,28 @@ Deno.serve(async (req) => {
   }
 
   // Seleção dos goldens a rodar.
+  // Colisão de id é instrumento quebrado, não pedido inválido: mesma família do
+  // gate de padrões, mesmo 422. Recusa TUDO em vez de rodar o golden errado.
+  if (GOLDEN_ID_COLISOES.length) {
+    return json({
+      error: 'INSTRUMENTO INVÁLIDO — id duplicado entre a suíte principal e a Evolution.',
+      hint: 'O spread sobrescreveria em silêncio: pedir o id rodaria o golden da outra suíte e o relatório mentiria o nome.',
+      colisoes: GOLDEN_ID_COLISOES,
+    }, 422);
+  }
+
+  const disponiveis = Object.keys(GOLDENS_SELECIONAVEIS);
   let selected: Golden[];
   if (typeof body?.golden_id === 'string') {
-    const g = GOLDENS_BY_ID[body.golden_id];
-    if (!g) return json({ error: `golden_id desconhecido: ${body.golden_id}`, available: GOLDENS.map((x) => x.id) }, 400);
+    const g = GOLDENS_SELECIONAVEIS[body.golden_id];
+    if (!g) return json({ error: `golden_id desconhecido: ${body.golden_id}`, available: disponiveis }, 400);
     selected = [g];
   } else if (Array.isArray(body?.only) && body.only.length) {
-    selected = body.only.map((id: string) => GOLDENS_BY_ID[id]).filter(Boolean);
-    if (!selected.length) return json({ error: 'nenhum golden válido em only', available: GOLDENS.map((x) => x.id) }, 400);
+    selected = body.only.map((id: string) => GOLDENS_SELECIONAVEIS[id]).filter(Boolean);
+    if (!selected.length) return json({ error: 'nenhum golden válido em only', available: disponiveis }, 400);
   } else {
+    // Default = SÓ a suíte principal. Para rodar a Evolution é preciso pedir
+    // pelos ids (golden_id / only) — explícito, para o baseline não mudar sozinho.
     selected = GOLDENS;
   }
 
