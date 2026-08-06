@@ -1947,6 +1947,34 @@ Deno.serve(async (req) => {
       ? `\n═══════════════════════════════════════\nVOCÊ ESTÁ ASSUMINDO UMA CONVERSA (HANDOFF DA DUDA)\n═══════════════════════════════════════\nA Duda te passou o dossiê desta lead — tudo que vocês precisam já está em "O QUE JÁ SABEMOS DA LEAD". NUNCA se apresente do zero nem recomece a descoberta. Valide UM detalhe do que ela já disse ("vi aqui que você trabalha com X há Y, certo?") e conduza direto para a demonstração/fechamento do plano recomendado. Você é a especialista que fecha: apresente a oferta com a conta da recuperação, trate a objeção mais provável e vá pro checkout como próximo passo concreto.\n`
       : '';
 
+    // PR-BDR-14: racionamento de NOME como DADO do turno — SÓ canal Evolution.
+    // Regra de contagem no prompt não segurou (3 violações medidas 05-06/08:
+    // "Oi Marcelo!" 2x seguidas, "Funciona assim, Marcelo", "Marcelo, você
+    // chegou…"). O que o flash não faz por disciplina, faz por fato: se o nome
+    // já saiu nas últimas 4 mensagens do bot, o turno recebe a proibição como
+    // FATO — injetada DEPOIS das instruções da persona (recência vence).
+    let nomeParaRacionar = '';
+    let nameRationContext = '';
+    if (conversation.channel === 'whatsapp_evolution' && visitorName) {
+      const primeiroNome = String(visitorName).trim().split(/\s+/)[0] ?? '';
+      if (primeiroNome.length >= 3) {
+        const nomeRe = new RegExp(
+          `\\b${primeiroNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+          'i',
+        );
+        const usouRecente = historyDesc
+          .filter((m: any) => m.sender_type === 'bot' && typeof m.content === 'string')
+          .slice(0, 4)
+          .some((m: any) => nomeRe.test(m.content));
+        if (usouRecente) {
+          nomeParaRacionar = primeiroNome;
+          nameRationContext =
+            `\nFATO DESTE TURNO: você já usou o nome "${primeiroNome}" nas últimas mensagens. ` +
+            `PROIBIDO usar o nome dela nesta resposta — nenhuma vez.`;
+        }
+      }
+    }
+
     // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
     //     No modo RETENÇÃO a Nina NÃO é "de vendas" — dizer isso contradiria as
     //     regras dela; o papel vira Sucesso/Suporte/Retenção.
@@ -1954,7 +1982,7 @@ Deno.serve(async (req) => {
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
-${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
+${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}${nameRationContext}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
 ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}${inactivityContext}
@@ -2343,6 +2371,26 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
           ? b.split(/(?<=[.!?…])\s+/).filter((s: string) => !/m[áa]gica/i.test(s)).join(' ').trim()
           : b
       ).filter((b: string) => b.length > 0);
+
+      // PR-BDR-14 cinto: o turno estava PROIBIDO de usar o nome (fato injetado)
+      // e o modelo usou mesmo assim → remove só as formas de cirurgia SEGURA:
+      // prefixo "[Oi ]Nome, " e vírgula-vocativo ", Nome". Nome no meio de
+      // frase fica (remover quebraria gramática — regra do splice).
+      if (nomeParaRacionar) {
+        const esc = nomeParaRacionar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const antesNome = bubbles.join('|');
+        bubbles = bubbles
+          .map((b: string) => b
+            .replace(new RegExp(`^(?:oi |olá |ola )?${esc}[,!]?\\s+`, 'i'), '')
+            .replace(new RegExp(`,\\s*${esc}\\s*([,!.?…])`, 'gi'), '$1')
+            .trim())
+          .filter((b: string) => b.length > 0);
+        if (bubbles.join('|') !== antesNome) {
+          console.log('[platform-sales-brain] nome racionado removido da saída (PR-BDR-14)', {
+            conversation_id: conversation.id,
+          });
+        }
+      }
 
       if (bubbles.length !== antesGate) {
         console.log(`[platform-sales-brain] mecanismos outbound: ${antesGate} → ${bubbles.length} bolha(s)`);
