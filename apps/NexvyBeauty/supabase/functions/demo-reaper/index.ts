@@ -9,6 +9,13 @@
 //   T-0:   orgs demo com demo_expires_at < now() → chama wipe-demo-org (que faz o
 //          wipe LGPD verificado). Idempotente.
 //   Prune: limpa demo_start_attempts com mais de 24h.
+//
+// organizations.is_test (2026-08-06): org de teste interno NÃO recebe o aviso —
+// não há ninguém do outro lado para avisar. Mas CONTINUA sendo limpa no T-0:
+// pular a org inteira viraria vazamento (orgs de teste eternas). Por isso o gate
+// entra SÓ no bloco T-24h, nunca no T-0. O contador warn_skipped_test existe
+// para que warned=0 não seja indistinguível entre "não havia ninguém" e "o gate
+// suprimiu todos".
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -44,12 +51,22 @@ Deno.serve(async (req) => {
     }
 
     // ---- T-24h: aviso (best-effort) ----
+    // is_test vem na MESMA query e a partição é em memória — de propósito: com o
+    // gate dentro do SELECT o suprimido seria invisível. Ressalva conhecida: o
+    // limit(50) é aplicado ANTES da partição, então 50 orgs de teste na mesma
+    // janela de 24h poderiam atrasar o aviso de uma real. Com o volume atual
+    // (unidades) isso é hipotético; se virar dezenas, separar em duas queries.
     const { data: expiring } = await admin.from("organizations")
-      .select("id, phone").eq("plan_status", "demo")
+      .select("id, phone, is_test").eq("plan_status", "demo")
       .gte("demo_expires_at", nowIso).lt("demo_expires_at", in24hIso)
       .is("demo_warned_at", null).limit(50);
+    // `!== true` e não `=== false`: se is_test vier null/ausente, AVISA. O
+    // fail-safe aponta para avisar — incomodar um teste é barato, calar um
+    // cliente de verdade é o dano que não se desfaz.
+    const toWarn = (expiring ?? []).filter((o: any) => o.is_test !== true);
+    const warnSkippedTest = (expiring ?? []).length - toWarn.length;
     let warned = 0;
-    for (const o of expiring ?? []) {
+    for (const o of toWarn) {
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/evolution-send`, {
           method: "POST",
@@ -67,8 +84,8 @@ Deno.serve(async (req) => {
     // ---- Prune rate-limit antigo ----
     await admin.from("demo_start_attempts").delete().lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
 
-    console.log(`[demo-reaper] wiped=${wiped} warned=${warned} errors=${wipeErrors.length}`);
-    return json({ ok: true, wiped, warned, wipe_errors: wipeErrors });
+    console.log(`[demo-reaper] wiped=${wiped} warned=${warned} warn_skipped_test=${warnSkippedTest} errors=${wipeErrors.length}`);
+    return json({ ok: true, wiped, warned, warn_skipped_test: warnSkippedTest, wipe_errors: wipeErrors });
   } catch (err: any) {
     console.error("[demo-reaper] error:", err?.message || String(err));
     return json({ error: err?.message || "internal_error" }, 500);
