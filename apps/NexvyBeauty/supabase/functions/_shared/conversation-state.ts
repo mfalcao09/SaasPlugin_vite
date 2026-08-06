@@ -209,7 +209,25 @@ export function politica(
 // Devolveu linha → gravamos. Devolveu nada → alguém passou na frente: RELER e
 // REDUZIR DE NOVO (nunca sobrescrever às cegas).
 
+// ⚠️ `->` E NÃO `->>` — a diferença entre a trava funcionar e congelar o estado.
+//
+// A 1ª versão usava `->>`, que devolve TEXT: o Postgres passava a comparar
+// '999' < '1002' caractere a caractere ('9' > '1' ⇒ FALSO). Medido no banco de
+// PRODUÇÃO em 2026-08-06:
+//     ('{"atualizado_seq":999}'::jsonb->>'atualizado_seq') < '1002'  →  false
+//     (mesmo valor)::bigint                                 < 1002   →  true
+// E não era defeito só da virada de milhar: '99' < '459' também é false, e
+// max(seq) em produção já era 459 — ou seja, o bug era ATUAL, não futuro.
+//
+// Efeito: o UPDATE nunca casava; o fallback relia e tentava com o MESMO predicado
+// quebrado; e o código logava "trava barrou, releu e reduziu de novo" — mensagem
+// que AFIRMA uma recuperação que não houve. Estado congelado em silêncio.
+//
+// A trava tinha a FORMA inteira da garantia (UPDATE condicional + RETURNING +
+// fallback) e não garantia nada. Achado da revisão adversarial pré-deploy.
+//
+// `->` devolve JSONB, e PostgREST compara número JSON numericamente.
 export function predicadoTravaOtimista(seq: number): string {
   // Formato PostgREST `.or()`: nulo (primeira escrita) OU marca d'água menor.
-  return `conversation_state->>atualizado_seq.is.null,conversation_state->>atualizado_seq.lt.${seq}`;
+  return `conversation_state->atualizado_seq.is.null,conversation_state->atualizado_seq.lt.${seq}`;
 }

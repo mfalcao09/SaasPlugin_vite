@@ -1408,7 +1408,8 @@ Deno.serve(async (req) => {
       // conversation_state (PR-B): a memória do que JÁ foi feito nesta conversa.
       // Sem ela, cada invocação re-deriva do histórico bruto "já me apresentei?",
       // "já ofereci a demo?" — e re-deriva ERRADO sob pressão.
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state')
+      // visitor_id: usado pelo GATE DO CANARY logo abaixo (prefixo 'wa:eval-').
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -1420,6 +1421,33 @@ Deno.serve(async (req) => {
     }
     if (conversation.status !== 'bot_active') {
       return json({ skipped: 'bot_not_active', status: conversation.status });
+    }
+
+    // ─── GATE DO CANARY: só conversa de eval, e a trava mora AQUI ─────────────
+    // Achado da revisão adversarial pré-deploy: NÃO existia nenhum guard de entrega
+    // dentro desta função. O que impedia o canary de mandar WhatsApp de verdade era
+    // um dado do CHAMADOR — o telefone sem dígitos que o harness grava. Ou seja: a
+    // barreira não estava onde o comentário do canary dizia que estava.
+    //
+    // Cenário concreto que isso fecha: alguém invoca o canary com um conversation_id
+    // REAL pra "reproduzir o bug com dado de verdade" — que é exatamente o que um
+    // canary parece servir. Sem este gate, ele toma o claim da conversa, resolve a
+    // conexão Meta real e ENTREGA no WhatsApp da lead, sem aviso e sem dry-run.
+    //
+    // A trava dentro da função sobrevive a mudança de harness; a do chamador não.
+    if (new URL(req.url).pathname.endsWith('-canary')) {
+      const vid = String(conversation.visitor_id ?? '');
+      if (!vid.startsWith('wa:eval-')) {
+        console.error('[platform-sales-brain] CANARY recusou conversa NÃO-eval', {
+          conversation_id: conversation.id,
+          visitor_id_prefixo: vid.slice(0, 12),
+        });
+        return json({
+          error: 'canary_refuses_real_conversation',
+          detail: "O canary só atende conversas de eval (visitor_id 'wa:eval-'). " +
+            'Para conversa real, invoque platform-sales-brain.',
+        }, 409);
+      }
     }
 
     // 1b) CLAIM DA CONVERSA — INCONDICIONAL, e é o ponto todo desta correção.
@@ -2110,9 +2138,25 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     const leadNormAceite = String(triggerInbound?.content ?? '')
       .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     const ACEITE_RE_TURNO = /\b(quero|pode|manda|mande|envia|envie|mostra|topo|topa|bora|vamos|aceito|sim|beleza|fechado|fechou|ok|vou colocar|coloca)\b/;
-    const leadAceitouAgora = ACEITE_RE_TURNO.test(leadNormAceite) && !/\bnao\b/.test(leadNormAceite);
+    // `!inactivityMode` é OBRIGATÓRIO aqui. Na retomada por inatividade não existe
+    // mensagem nova dela: `triggerInbound` é a última fala da lead, de horas ou dias
+    // atrás. Sem esta guarda, um "ok" velho conta como aceite DESTE turno e
+    // `proibirOfertaDemo` (que é `recusou && !leadAceitouAgora`) destrava — a agente
+    // reoferece a demo na retomada, que é o defeito nº2 medido sobrevivendo pelo
+    // único caminho que o PR-B não cobria. Achado da revisão adversarial.
+    const leadAceitouAgora = !inactivityMode &&
+      ACEITE_RE_TURNO.test(leadNormAceite) && !/\bnao\b/.test(leadNormAceite);
 
-    const seqAtual = maxInboundSeq(historyDesc) ?? 0;
+    // A marca d'água precisa AVANÇAR mesmo em turno sem inbound nova. Se ela fosse
+    // só `maxInboundSeq`, a retomada por inatividade (que por definição não tem
+    // inbound nova) reduziria com o MESMO seq já gravado, e a guarda de idempotência
+    // do reduzir() (`ev.seq <= s.atualizado_seq`) descartaria o TurnEvents inteiro:
+    // a régua de retomada NUNCA gravaria nada, e o log ainda diria "trava barrou,
+    // releu e reduziu" — afirmando recuperação inexistente. Mesmo problema em
+    // conversa aberta por outbound (cold outreach) antes da 1ª resposta dela.
+    const seqInbound = maxInboundSeq(historyDesc) ?? 0;
+    const seqGravado = estadoAtual?.atualizado_seq ?? 0;
+    const seqAtual = seqInbound > seqGravado ? seqInbound : seqGravado + 1;
     const pol = politica(estadoAtual, { leadAceitouAgora, seqAtual });
 
     // Os fatos vão no FIM do system: o modelo obedece melhor o que leu por último,

@@ -144,6 +144,31 @@ Deno.test("predicado da trava cobre primeira escrita E marca d'água menor", () 
   assert(pred.includes('lt.77'), "só grava por cima de marca d'água MENOR");
 });
 
+Deno.test('trava usa `->` (jsonb/numérico) e NUNCA `->>` (texto) — o bug que congelava o estado', () => {
+  // ESTE TESTE EXISTE PORQUE A VERSÃO ANTERIOR PASSAVA COM O BUG: o teste acima só
+  // confere que a string contém 'lt.77', e a forma quebrada com `->>` também contém.
+  //
+  // Achado da revisão adversarial pré-deploy, confirmado no banco de PRODUÇÃO:
+  //   ('{"atualizado_seq":99}'::jsonb->>'atualizado_seq') < '459'  →  FALSE  (texto)
+  //   ('{"atualizado_seq":99}'::jsonb ->'atualizado_seq') < '459'  →  TRUE   (jsonb)
+  // Com `->>` o Postgres compara caractere a caractere: '9' > '4', logo '99' > '459'.
+  // O UPDATE nunca casava, o fallback usava o MESMO predicado quebrado, e o log
+  // dizia "trava barrou, releu e reduziu de novo" — afirmando recuperação que não
+  // houve. max(seq) em produção já era 459: o defeito era ATUAL, não futuro.
+  const pred = predicadoTravaOtimista(1002);
+
+  assertEquals(pred.includes('->>'), false, 'com `->>` a comparação vira lexicográfica');
+  assert(pred.includes('conversation_state->atualizado_seq'), 'precisa ser `->` (jsonb)');
+
+  // Viradas de dígito, que são exatamente onde texto e número divergem. Se alguém
+  // trocar de volta pra `->>`, isto quebra ANTES de o estado congelar em produção.
+  for (const seq of [10, 100, 459, 1000, 1002]) {
+    const p = predicadoTravaOtimista(seq);
+    assert(p.includes('lt.' + seq), 'marca dágua ' + seq + ' precisa aparecer');
+    assertEquals(p.includes('->>'), false, 'seq ' + seq + ': nunca a forma textual');
+  }
+});
+
 Deno.test('lost update: o perdedor relê e reduz de novo, sem perder contagem', () => {
   // Simula o cenário real medido: 3 hand-backs concorrentes.
   const v1 = reduzir(estadoVazio(), { seq: 10, tagOfertaDemo: true }); // ofertas=1
