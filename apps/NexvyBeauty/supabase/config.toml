@@ -58,6 +58,15 @@ verify_jwt = false
 [functions.platform-sales-brain]
 verify_jwt = false
 
+# CANARY do cérebro — alvo do eval (E3), NUNCA de lead real. Mesmo verify_jwt do
+# original porque é o MESMO código (import, não cópia): a auth real é feita DENTRO
+# da função, e ligar o JWT aqui barraria o harness no gateway, antes de o guard
+# rodar — o mesmo 401 que travou o E1 por uma hora.
+# APAGAR junto com a pasta assim que o PR-B for promovido: canary esquecido vira
+# superfície esquecida.
+[functions.platform-sales-brain-canary]
+verify_jwt = false
+
 # Dispatcher da Conversions API (Meta) do funil Ads Inbound (G4). Chamada de
 # máquina (cron/manual). Sem JWT. Auth = service-role OU x-brain-secret na função.
 [functions.platform-capi-send]

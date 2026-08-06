@@ -1551,7 +1551,15 @@ Deno.serve(async (req) => {
         console.error('[platform-sales-brain] hand-back IMPOSSÍVEL (SUPABASE_URL/BRAIN_INTERNAL_SECRET ausentes) — mensagem nova da lead ficaria sem resposta.');
         return;
       }
-      const call = fetch(`${base}/functions/v1/platform-sales-brain`, {
+      // AUTO-REFERÊNCIA: o hand-back tem que voltar pra ESTA função, não pro nome
+      // hardcoded. Sem isto, o canary (platform-sales-brain-canary) faria hand-back
+      // pro brain de PRODUÇÃO e o 2º salto de todo teste mediria a função errada —
+      // um passe oco igual ao que a Controladora achou nos goldens da Bia.
+      // Descoberto pela URL que nos invocou, e não por env: secret no Supabase é do
+      // PROJETO, não por função — não existe "env do canary".
+      const selfFn = new URL(req.url).pathname.split('/').filter(Boolean).pop() ||
+        'platform-sales-brain';
+      const call = fetch(`${base}/functions/v1/${selfFn}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
         body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
