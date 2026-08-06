@@ -1585,8 +1585,24 @@ Deno.serve(async (req) => {
       // um passe oco igual ao que a Controladora achou nos goldens da Bia.
       // Descoberto pela URL que nos invocou, e não por env: secret no Supabase é do
       // PROJETO, não por função — não existe "env do canary".
-      const selfFn = new URL(req.url).pathname.split('/').filter(Boolean).pop() ||
-        'platform-sales-brain';
+      // Extrai o segmento LOGO APÓS /functions/v1/ — não o último do path.
+      // `pop()` cru tinha dois furos (achados na revisão adversarial):
+      //  (a) sub-path (/functions/v1/platform-sales-brain/x) devolvia 'x' ⇒ 404;
+      //  (b) pathname vazio caía no fallback 'platform-sales-brain', ou seja: o
+      //      canary faria hand-back pra PRODUÇÃO. Um default que falha pro lado
+      //      INSEGURO é pior do que não ter default.
+      // Agora, path não reconhecido ⇒ hand-back falha ALTO e aparece no log, em vez
+      // de vazar tráfego de teste pra função real.
+      const segs = new URL(req.url).pathname.split('/').filter(Boolean);
+      const iv1 = segs.indexOf('v1');
+      const selfFn = (iv1 >= 0 && segs[iv1 + 1]) ? segs[iv1 + 1] : '';
+      if (!selfFn) {
+        console.error(
+          '[platform-sales-brain] hand-back ABORTADO: não derivei o nome da função de',
+          new URL(req.url).pathname,
+        );
+        return;
+      }
       const call = fetch(`${base}/functions/v1/${selfFn}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
