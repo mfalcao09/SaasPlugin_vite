@@ -572,7 +572,17 @@ async function persistOpeningInInbox(
       // Fechada volta a bot_active — mesma régua do webhook: a abertura reativa o fio.
       if (found?.status === "closed") {
         await sb.from("platform_crm_conversations")
-          .update({ status: "bot_active", needs_human: false, updated_at: new Date().toISOString() })
+          // O pin vai TAMBÉM no caminho de reuso. Sem isto o fix seria meia guarda:
+          // conversa que já existe (criada antes deste commit, ou por outro fluxo)
+          // continuaria com current_agent_id NULL e cairia na Duda — e é justamente
+          // a conversa reutilizada que tem histórico, ou seja, onde a troca de
+          // persona no meio do caminho é mais visível pra lead.
+          .update({
+            status: "bot_active",
+            needs_human: false,
+            current_agent_id: o.agentId ?? null,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", conversationId);
       }
     } else {
@@ -588,6 +598,26 @@ async function persistOpeningInInbox(
           needs_human: false,
           evolution_instance_id: o.instanceId,
           product_id: o.productId,
+          // ⚠️ PIN DA PERSONA — sem isto, a prospecção ativa é atendida pela DUDA.
+          //
+          // Medido em produção 2026-08-06: a campanha DECLARA agent_id = "Camila ·
+          // Prospecção" (agent_type 'prospector', ativa), mas esse id só era gravado
+          // no metadata da MENSAGEM (autoria, :614) — nunca em current_agent_id. A
+          // conversa nascia com pin NULL.
+          //
+          // E o roteador (_shared/agent-routing.ts) NÃO conhece 'prospector': tem
+          // pickSdrPersona/Closer/Retention e mais nada. Sem pin, cai em 'sdr_open'
+          // → DUDA. Ou seja: a agente de ABORDAGEM FRIA era substituída pela de
+          // INBOUND, com o prompt errado, no canal errado — e nada acusava, porque
+          // tecnicamente "um agente respondeu".
+          //
+          // Foi assim que um golden de eval capturou a resposta
+          // "Sem problema, DUDA te espera" numa conversa whatsapp_evolution.
+          //
+          // Pin explícito é a correção certa: a campanha JÁ declara quem fala; o
+          // motor é que descartava a declaração. Ensinar 'prospector' ao roteador
+          // (alternativa B) mexeria no caminho da Duda, que não é meu território.
+          current_agent_id: o.agentId ?? null,
         })
         .select("id")
         .single();
