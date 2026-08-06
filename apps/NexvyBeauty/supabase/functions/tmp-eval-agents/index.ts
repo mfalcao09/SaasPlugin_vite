@@ -32,8 +32,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { timingSafeEqual } from '../_shared/meta-graph.ts';
 import { platformCrmCorsHeaders as corsHeaders } from '../_shared/platform-crm-auth.ts';
-import { GOLDENS, GOLDENS_BY_ID, type Golden, type GoldenInbound } from './goldens.ts';
-import { scoreGolden, type GoldenScore } from './assertions.ts';
+import { GLOBAL_ASSERTIONS, GOLDENS, GOLDENS_BY_ID, type Golden, type GoldenInbound } from './goldens.ts';
+import { scoreGolden, validatePatterns, type GoldenScore } from './assertions.ts';
 
 const EVAL_PREFIX = 'wa:eval-';
 const NO_SEND_PHONE = 'eval-no-send'; // sem dígitos ⇒ o brain nunca entrega
@@ -152,7 +152,11 @@ async function createEphemeral(
       visitor_name: seed?.name ?? null,
       visitor_phone: NO_SEND_PHONE,
       visitor_whatsapp: NO_SEND_PHONE,
-      channel: 'whatsapp',
+      // E2 06/08: canal vem do golden (default 'whatsapp' = Cloud API/Duda).
+      // Destrava os goldens do canal Evolution (Camila) sem duplicar harness:
+      // os mecanismos do brain escopados a channel='whatsapp_evolution' (gate
+      // de link etc.) só são exercitados se o golden declarar o canal.
+      channel: golden.channel ?? 'whatsapp',
       status: 'bot_active',
       needs_human: false,
       product_id: productId,
@@ -193,13 +197,22 @@ async function injectInbound(
 }
 
 /** Chama o brain (server-to-server, x-brain-secret) e devolve o corpo JSON. */
-async function callBrain(conversationId: string): Promise<Record<string, any>> {
+/** Slug default do cérebro. E3 06/08: o alvo passa a ser parametrizável para o
+ *  eval poder medir um CANARY (função nova, sem webhook apontando) antes de o
+ *  código chegar em produção. Sem isto, "rodar o eval antes de deployar" é
+ *  impossível — só existe uma instância do brain, a de produção. */
+const BRAIN_SLUG_DEFAULT = 'platform-sales-brain';
+/** Allowlist por FORMA: só o brain e seus canários. Impede que um body malicioso
+ *  transforme o eval em proxy para qualquer função do projeto. */
+const BRAIN_SLUG_RE = /^platform-sales-brain(-[a-z0-9][a-z0-9-]{0,30})?$/;
+
+async function callBrain(conversationId: string, brainSlug: string): Promise<Record<string, any>> {
   const base = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/+$/, '');
   const secret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), BRAIN_TIMEOUT_MS);
   try {
-    const res = await fetch(`${base}/functions/v1/platform-sales-brain`, {
+    const res = await fetch(`${base}/functions/v1/${brainSlug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
       body: JSON.stringify({ conversation_id: conversationId }),
@@ -232,6 +245,31 @@ async function readBotBubbles(
   }));
 }
 
+/**
+ * Lê o conversation_state CRU da conversa efêmera (spec da sessão BDR, 06/08).
+ * Serve para medir a TAXA DE EMISSÃO de tags tier 2 — o parser dela já está
+ * provado; o que ninguém mediu é com que frequência o modelo emite a tag.
+ *
+ * Devolve `{ state, error }` e NÃO um `state` solto, de propósito: a decisão
+ * que pende desta medição é "se a taxa der < 50%, remove demo_recusas do PR-B".
+ * Se uma falha de leitura minha virasse `null`, a taxa daria 0% e um campo que
+ * funciona seria desmontado por causa do meu bug. Falha de leitura é um
+ * TERCEIRO desfecho, explícito — nunca null disfarçado de "não emitiu".
+ */
+async function readConversationState(
+  supabase: Supa,
+  conversationId: string,
+): Promise<{ state: Record<string, any> | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('platform_crm_conversations')
+    .select('conversation_state')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (error) return { state: null, error: String(error.message ?? error).slice(0, 200) };
+  if (!data) return { state: null, error: 'conversa efêmera não encontrada na releitura' };
+  return { state: (data as Record<string, any>).conversation_state ?? null, error: null };
+}
+
 interface GoldenRunResult {
   id: string;
   title: string;
@@ -241,6 +279,10 @@ interface GoldenRunResult {
   last_turn_text: string;
   all_turns_text: string;
   bubble_count: number;
+  /** jsonb cru gravado pelo brain, ou null se ele não escreveu nada. */
+  conversation_state?: Record<string, any> | null;
+  /** Presente SÓ se a leitura falhou. null aqui ≠ null em conversation_state. */
+  conversation_state_read_error?: string;
   error?: string;
 }
 
@@ -258,7 +300,33 @@ async function runGolden(
   golden: Golden,
   productId: string,
   closerAgentId: string | null,
+  brainSlug: string,
 ): Promise<GoldenRunResult> {
+  // ─── PRÉ-CONDIÇÃO DO CENÁRIO (E2, 2026-08-06) ──────────────────────────────
+  // Um golden que declara `startWithCloser` EXISTE para testar o closer. Se o
+  // closer não for resolvido (hoje: a Bia está inativa e o resolver filtra por
+  // is_active=true), a conversa nascia sem `current_agent_id` e o cenário rodava
+  // contra a DUDA — passando 4/4 sem tocar no que promete verificar.
+  // MEDIDO no E1 (06/08, brain v90): `c_qualificado_cetico_passa_bia` e
+  // `j_bia_nao_reapresenta` ambos VERDES com closer_agent_found=false.
+  // Verde oco é pior que vermelho: entra no relatório como aprovado.
+  // Agora a pré-condição ausente é FALHA EXPLÍCITA, nunca silêncio.
+  if (golden.startWithCloser && !closerAgentId) {
+    return {
+      id: golden.id,
+      title: golden.title,
+      goldenPass: false,
+      score: { total: 0, passed: 0, failed: 0, passRate: 0, results: [], goldenPass: false },
+      brain_calls: [],
+      last_turn_text: '',
+      all_turns_text: '',
+      bubble_count: 0,
+      error:
+        'PRÉ-CONDIÇÃO AUSENTE: golden exige closer (startWithCloser) mas nenhum agente closer ativo foi resolvido no produto. ' +
+        'Cenário NÃO executado — não confundir com falha de comportamento do agente.',
+    };
+  }
+
   const eph = await createEphemeral(supabase, golden, productId, closerAgentId);
   const brainCalls: Array<Record<string, any>> = [];
   let bubblesBeforeLastCall = 0;
@@ -270,13 +338,13 @@ async function runGolden(
       for (const turn of golden.inbound) await injectInbound(supabase, eph.conversationId, turn);
       const before = await readBotBubbles(supabase, eph.conversationId);
       bubblesBeforeLastCall = before.length;
-      brainCalls.push(await callBrain(eph.conversationId));
+      brainCalls.push(await callBrain(eph.conversationId, brainSlug));
     } else {
       for (let i = 0; i < golden.inbound.length; i++) {
         await injectInbound(supabase, eph.conversationId, golden.inbound[i]);
         const before = await readBotBubbles(supabase, eph.conversationId);
         if (i === golden.inbound.length - 1) bubblesBeforeLastCall = before.length;
-        brainCalls.push(await callBrain(eph.conversationId));
+        brainCalls.push(await callBrain(eph.conversationId, brainSlug));
         // pequena folga entre turnos p/ o created_at ordenar corretamente
         await sleep(150);
       }
@@ -287,7 +355,18 @@ async function runGolden(
     const allTurnsText = allBubbles.map((b) => b.content).join('\n');
     const lastTurnText = lastTurnBubbles.map((b) => b.content).join('\n');
 
-    const score = scoreGolden(golden.assertions, lastTurnText, allTurnsText);
+    // E2b 06/08: as GLOBAIS vêm PRIMEIRO e valem para TODO golden — nenhum
+    // cenário pode esquecer nem optar por sair. O sanitizeReply roda em toda
+    // resposta; a trava contra o splice dele também tem que rodar.
+    const score = scoreGolden(
+      [...GLOBAL_ASSERTIONS, ...golden.assertions],
+      lastTurnText,
+      allTurnsText,
+    );
+
+    // ANTES do cleanup (que só roda no fim de TODO o run) — se lesse depois, a
+    // linha já não existiria e o state viria null para todo golden.
+    const cs = await readConversationState(supabase, eph.conversationId);
 
     return {
       id: golden.id,
@@ -298,6 +377,8 @@ async function runGolden(
       last_turn_text: lastTurnText,
       all_turns_text: allTurnsText,
       bubble_count: allBubbles.length,
+      conversation_state: cs.state,
+      ...(cs.error ? { conversation_state_read_error: cs.error } : {}),
     };
   } catch (e) {
     return {
@@ -379,6 +460,19 @@ Deno.serve(async (req) => {
     return json({ mode: 'cleanup', removed });
   }
 
+  // ALVO DO RUN (E3, 06/08). Sem isto, "rodar o eval antes de deployar" é
+  // impossível: só existe uma instância do brain, a de produção. Com o slug
+  // parametrizável, a sessão BDR sobe um CANARY (função nova, sem webhook
+  // apontando) e o eval mede o código ANTES de ele virar produção.
+  // Rejeita explícito em vez de cair no default: silêncio aqui faria o operador
+  // achar que mediu o canary quando mediu produção — verde oco de novo.
+  const brainSlug: string = typeof body?.brain_slug === 'string' ? body.brain_slug : BRAIN_SLUG_DEFAULT;
+  if (!BRAIN_SLUG_RE.test(brainSlug)) {
+    return json({
+      error: `brain_slug inválido: "${brainSlug}". Aceito: platform-sales-brain ou platform-sales-brain-<sufixo>.`,
+    }, 400);
+  }
+
   // Seleção dos goldens a rodar.
   let selected: Golden[];
   if (typeof body?.golden_id === 'string') {
@@ -392,6 +486,24 @@ Deno.serve(async (req) => {
     selected = GOLDENS;
   }
 
+  // GATE DE PRÉ-COMPILAÇÃO (06/08). Roda AQUI de propósito: depois da seleção,
+  // antes de resolver produto, limpar resíduo e gastar a primeira chamada ao
+  // cérebro. Um padrão inválido já estourava — mas só no scoreGolden, com os
+  // turnos reais queimados e devolvendo total:0/passed:0, que no placar tem a
+  // mesma cara de "o cérebro errou". 422 e não 400: a requisição está bem
+  // formada; é o INSTRUMENTO que está quebrado, e essa diferença é a que evita
+  // caçar comportamento quando o defeito é sintaxe.
+  const patternDefects = validatePatterns(selected, GLOBAL_ASSERTIONS);
+  if (patternDefects.length) {
+    return json({
+      error: 'INSTRUMENTO INVÁLIDO — nenhum golden foi executado.',
+      hint: 'Sintaxe PCRE não vale no motor JS: (?i) sai (o harness já compila com flag i), (?s) vira [\\s\\S], (?m) vira [^\\n].',
+      defects: patternDefects,
+      defect_count: patternDefects.length,
+      goldens_selecionados: selected.map((g) => g.id),
+    }, 422);
+  }
+
   const productId = await resolveProductId(supabase);
   if (!productId) {
     return json({ error: 'produto nexvybeauty não encontrado (platform_crm_products.slug=nexvybeauty).' }, 500);
@@ -403,7 +515,7 @@ Deno.serve(async (req) => {
 
   const results: GoldenRunResult[] = [];
   for (const golden of selected) {
-    results.push(await runGolden(supabase, golden, productId, closerAgentId));
+    results.push(await runGolden(supabase, golden, productId, closerAgentId, brainSlug));
   }
 
   // Cleanup final (a menos que keep=true, p/ inspeção manual das conversas).
@@ -418,6 +530,10 @@ Deno.serve(async (req) => {
 
   return json({
     summary: {
+      // E3 06/08: o placar declara QUAL cérebro foi medido. Sem isto, um run
+      // contra canary e outro contra produção viram o mesmo número no relatório
+      // — e "reproduzível" vira sensação. Mesma lei do carimbo de versão.
+      brain_alvo: brainSlug,
       goldens_total: results.length,
       goldens_passed: goldensPassed,
       goldens_pass_rate: results.length ? Number((goldensPassed / results.length).toFixed(4)) : 0,
