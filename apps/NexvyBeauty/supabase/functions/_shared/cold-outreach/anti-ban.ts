@@ -132,6 +132,16 @@ export interface KillSwitchConfig {
   minSample: number;
   /** falhas de ENVIO consecutivas que também tripam (número morto/derrubado) */
   maxConsecutiveFailures: number;
+  /**
+   * Fração máxima de NÃO-ENTREGA (sent sem ACK) tolerada. Default 0.4.
+   * Este é o único sinal REAL de queima de número que existe — ver killSwitch().
+   */
+  maxUndeliveredRate?: number;
+  /**
+   * Amostra própria para o ramo de não-entrega. Default 30, maior que minSample
+   * de propósito: ACK demora, e "ainda não entregou" não é "nunca vai entregar".
+   */
+  minSampleDelivery?: number;
 }
 
 export const DEFAULT_KILLSWITCH: KillSwitchConfig = {
@@ -146,6 +156,12 @@ export interface KillSwitchStats {
   blocked: number;
   reported: number;
   consecutiveFailures: number;
+  /**
+   * Entregas confirmadas por ACK (MESSAGES_UPDATE). OPCIONAL de propósito:
+   * `undefined` significa "não sei", e quem não sabe não acusa. Só `number`
+   * habilita o ramo de não-entrega — campo ausente nunca vira veredito.
+   */
+  delivered?: number;
 }
 
 export interface KillSwitchVerdict {
@@ -176,6 +192,48 @@ export function killSwitch(
     const reportRate = stats.reported / stats.sent;
     if (reportRate > cfg.maxReportRate) {
       return { tripped: true, reason: `report_rate=${reportRate.toFixed(3)} > ${cfg.maxReportRate}` };
+    }
+    // ⚠️ OS DOIS RAMOS ACIMA NÃO PODEM DISPARAR, e não é falta de trabalho: é
+    // AUSÊNCIA DE SINAL. O WhatsApp NÃO notifica bloqueio nem denúncia — quando
+    // alguém bloqueia, a mensagem só para de ser entregue (fica 'sent', nunca vira
+    // 'delivered'). Não existe evento de webhook para nenhum dos dois.
+    // Ficam aqui porque o limiar já está definido se um dia houver fonte — e o
+    // motor DECLARA no log que roda sem eles.
+
+  }
+
+  {
+    // ── TAXA DE NÃO-ENTREGA: o sinal que EXISTE ───────────────────────────────
+    // FORA do `if (sent >= minSample)` de propósito. Aninhado ali, este ramo
+    // ficava subordinado à amostra do OUTRO mecanismo: com minSample=20,
+    // configurar minSampleDelivery=10 não tinha efeito nenhum — o portão externo
+    // já havia barrado. Dois mecanismos independentes não podem compartilhar
+    // porta de entrada, senão o mais restritivo vence em silêncio.
+    // (Pego por teste; era acoplamento por proximidade, o mesmo defeito de forma
+    // que o processFollowups tinha ao rodar antes do portão.)
+    // Número saudável entrega quase tudo; número queimando para de entregar. É o
+    // proxy REAL de bloqueio — indireto, com atraso e ruído, mas MENSURÁVEL,
+    // porque MESSAGES_UPDATE chega (a instância já está subscrita nele).
+    //
+    // Amostra PRÓPRIA (default 30 > minSample 20) porque ACK demora: tratar
+    // "ainda não entregou" como "nunca vai" pausaria a campanha por impaciência.
+    //
+    // `undefined` ≠ 0 de propósito: quem não sabe informar `delivered` não recebe
+    // veredito. Campo ausente jamais vira acusação — mesma regra do
+    // conversation_state (campo em dúvida OMITE, nunca assume default).
+    if (typeof stats.delivered === 'number') {
+      const amostra = cfg.minSampleDelivery ?? 30;
+      if (stats.sent >= amostra) {
+        const naoEntrega = (stats.sent - stats.delivered) / stats.sent;
+        const teto = cfg.maxUndeliveredRate ?? 0.4;
+        if (naoEntrega > teto) {
+          return {
+            tripped: true,
+            reason: `undelivered_rate=${naoEntrega.toFixed(3)} > ${teto} ` +
+              `(sent=${stats.sent} delivered=${stats.delivered}) — número provavelmente queimando`,
+          };
+        }
+      }
     }
   }
   return { tripped: false, reason: null };

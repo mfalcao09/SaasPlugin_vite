@@ -121,3 +121,70 @@ Deno.test("canSendNow: portão composto — libera só na janela, com cota, sem 
   assertEquals(killed.canSend, false);
   if (!killed.reason?.startsWith("kill_switch:")) throw new Error("esperava kill_switch");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAXA DE NÃO-ENTREGA — o único sinal REAL de queima de número
+//
+// Contexto (auditoria 2026-08-06): os ramos de blockRate/reportRate NÃO PODEM
+// disparar, e não por falta de trabalho — o WhatsApp não notifica bloqueio nem
+// denúncia. Quando alguém bloqueia, a mensagem só para de ser entregue.
+// A não-entrega é o proxy que existe: MESSAGES_UPDATE chega de verdade.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BASE = { blocked: 0, reported: 0, consecutiveFailures: 0 };
+
+Deno.test("não-entrega: CONTROLE NEGATIVO — delivered undefined NÃO acusa", () => {
+  // Quem não sabe informar `delivered` não recebe veredito. Campo ausente jamais
+  // vira acusação — mesma regra do conversation_state (campo em dúvida OMITE).
+  // Se este cair, o motor passa a pausar campanha por falta de dado.
+  const v = killSwitch({ ...BASE, sent: 100 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, false);
+  assertEquals(v.reason, null);
+});
+
+Deno.test("não-entrega: CONTROLE NEGATIVO — delivered 0 com amostra PEQUENA não acusa", () => {
+  // ACK demora. Tratar "ainda não entregou" como "nunca vai" pausaria a campanha
+  // por impaciência, logo no começo, quando ninguém teve tempo de receber.
+  const v = killSwitch({ ...BASE, sent: 29, delivered: 0 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, false, "abaixo de minSampleDelivery (30) não opina");
+});
+
+Deno.test("não-entrega: número SAUDÁVEL não é pausado", () => {
+  // 95% de entrega — comportamento normal. Se isto tripar, o gate mata campanha boa.
+  const v = killSwitch({ ...BASE, sent: 100, delivered: 95 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, false);
+});
+
+Deno.test("não-entrega: número QUEIMANDO é pausado", () => {
+  // 50 enviadas, 20 entregues ⇒ 60% de não-entrega. É a assinatura de bloqueio em
+  // massa: o envio continua retornando sucesso e a mensagem não chega.
+  const v = killSwitch({ ...BASE, sent: 50, delivered: 20 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, true);
+  assertEquals(v.reason?.includes("undelivered_rate"), true);
+  assertEquals(v.reason?.includes("queimando"), true);
+});
+
+Deno.test("não-entrega: exatamente NO limiar não tripa (só ACIMA)", () => {
+  // 40% exato com teto 0.4 ⇒ não tripa. Fronteira explícita: `>` e não `>=`.
+  const v = killSwitch({ ...BASE, sent: 100, delivered: 60 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, false, "40% == teto: tolera");
+  const v2 = killSwitch({ ...BASE, sent: 100, delivered: 59 }, DEFAULT_KILLSWITCH);
+  assertEquals(v2.tripped, true, "41% > teto: pausa");
+});
+
+Deno.test("não-entrega: limiar e amostra são CONFIGURÁVEIS", () => {
+  const rigoroso = { ...DEFAULT_KILLSWITCH, maxUndeliveredRate: 0.1, minSampleDelivery: 10 };
+  const v = killSwitch({ ...BASE, sent: 10, delivered: 8 }, rigoroso);
+  assertEquals(v.tripped, true, "20% > 10% na config rigorosa");
+});
+
+Deno.test("não-entrega: falha de ENVIO consecutiva continua tendo precedência", () => {
+  // O ramo antigo não pode ser encoberto pelo novo: número morto pausa na hora,
+  // sem esperar amostra de entrega.
+  const v = killSwitch(
+    { sent: 5, blocked: 0, reported: 0, consecutiveFailures: 10, delivered: 5 },
+    DEFAULT_KILLSWITCH,
+  );
+  assertEquals(v.tripped, true);
+  assertEquals(v.reason?.includes("consecutive_send_failures"), true);
+});
