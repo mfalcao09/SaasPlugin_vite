@@ -655,7 +655,10 @@ export const GOLDENS: Golden[] = [
       // medido silêncio. Esta asserção obriga o cenário a existir de fato.
       {
         kind: 'must_contain',
-        pattern: 'mostrar|mostro|demonstra|an[áa]lise|ver (isso|o que)|raio-?x',
+        // v2 06/08: a v1 enumerava conjugações (`mostrar|mostro`) e reprovou a
+        // resposta CORRETA porque a Duda disse "te mostra". Enumerar formas é o
+        // mesmo erro que derrubou a v1 do detector de splice. Radical, não lista.
+        pattern: 'mostr|demonstra|an[áa]lise|raio-?x|solt[ae] o link|recebe um link',
         scope: 'all',
         reason:
           'PROVA DE EXERCÍCIO: o golden só mede o gate se a conversa chegou ao momento de mostrar. Sem isto, "sem link" é indistinguível de "nem chegou lá".',
@@ -680,6 +683,12 @@ export const GOLDENS: Golden[] = [
     },
     inbound: [
       { content: 'quero ver sim, manda' },
+      // 2º turno (v2 06/08): na v1 este golden exigia a URL no PRIMEIRO turno e
+      // reprovou produção. A resposta medida foi "Vou preparar o seu Raio-X agora
+      // e te mando o link aqui em instantes" — ou seja, a emissão da URL não é do
+      // mesmo turno do aceite. Cobrar no turno errado é medir no referencial
+      // errado, não achar defeito. O 2º turno dá o lugar onde a URL pode nascer.
+      { content: 'mandou?' },
     ],
     assertions: [
       {
