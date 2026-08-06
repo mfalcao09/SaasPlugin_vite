@@ -47,6 +47,38 @@ Deno.test('saudação + vocativo no início: "Oi Andreia, ..." → "..."', () =>
   assertEquals(r.bubbles[0], 'Tudo certo por aí?');
 });
 
+Deno.test('PARIDADE com o cinto do PR-BDR-14: vocativo ENTRE VÍRGULAS (fronteira dupla)', () => {
+  // Este caso vinha do cinto inline que a consolidação removeu do brain. Sem ele,
+  // "unificar" teria REMOVIDO cobertura que já existia em produção — regressão
+  // disfarçada de limpeza, e nenhum teste unitário pegaria, porque os dois módulos
+  // passavam isolados. É a razão de este teste existir.
+  const r = aplicarGateBolha(['Olha, Andreia, isso resolve o teu problema.'], TRAVA_NOME);
+  assertEquals(r.bubbles[0], 'Olha, isso resolve o teu problema.');
+  assertEquals(r.vocativosRemovidos, 1);
+});
+
+Deno.test('PARIDADE: as 4 formas que o cinto cobria continuam cobertas', () => {
+  const casos: [string, string][] = [
+    ['Andreia, quer ver?', 'Quer ver?'], // início
+    ['Oi Andreia, tudo bem?', 'Tudo bem?'], // saudação + início
+    ['Show, Andreia!', 'Show!'], // fim
+    ['Beleza, Andreia, vamos lá.', 'Beleza, vamos lá.'], // entre vírgulas
+  ];
+  for (const [entrada, esperado] of casos) {
+    assertEquals(aplicarGateBolha([entrada], TRAVA_NOME).bubbles[0], esperado, entrada);
+  }
+});
+
+Deno.test('regex /g não vaza estado entre chamadas (lastIndex)', () => {
+  // `entreVirgulas` usa flag /g, que guarda lastIndex no objeto entre chamadas.
+  // Sem resetar, a segunda chamada falharia SILENCIOSAMENTE — bug clássico.
+  const entrada = ['Olha, Andreia, isso resolve.'];
+  const a = aplicarGateBolha(entrada, TRAVA_NOME);
+  const b = aplicarGateBolha(entrada, TRAVA_NOME);
+  assertEquals(a.bubbles[0], b.bubbles[0], 'duas chamadas idênticas ⇒ resultado idêntico');
+  assertEquals(b.vocativosRemovidos, 1);
+});
+
 Deno.test('borda: se remover o vocativo esvaziaria a bolha, devolve a ORIGINAL', () => {
   // "Andreia!" sozinha não é vocativo — é a fala inteira. Perder conteúdo é pior
   // que repetir o nome.

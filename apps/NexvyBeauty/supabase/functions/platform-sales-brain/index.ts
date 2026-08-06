@@ -2489,21 +2489,11 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       // e o modelo usou mesmo assim → remove só as formas de cirurgia SEGURA:
       // prefixo "[Oi ]Nome, " e vírgula-vocativo ", Nome". Nome no meio de
       // frase fica (remover quebraria gramática — regra do splice).
-      if (nomeParaRacionar) {
-        const esc = nomeParaRacionar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const antesNome = bubbles.join('|');
-        bubbles = bubbles
-          .map((b: string) => b
-            .replace(new RegExp(`^(?:oi |olá |ola )?${esc}[,!]?\\s+`, 'i'), '')
-            .replace(new RegExp(`,\\s*${esc}\\s*([,!.?…])`, 'gi'), '$1')
-            .trim())
-          .filter((b: string) => b.length > 0);
-        if (bubbles.join('|') !== antesNome) {
-          console.log('[platform-sales-brain] nome racionado removido da saída (PR-BDR-14)', {
-            conversation_id: conversation.id,
-          });
-        }
-      }
+      // A APLICAÇÃO do racionamento de nome SAIU daqui (era o cinto do PR-BDR-14).
+      // Agora é uma só, no gate de bolha (_shared/bubble-gate.ts), logo abaixo —
+      // testado, e valendo para os DOIS canais em vez de só este.
+      // `nomeParaRacionar` continua sendo CALCULADO acima: ele é a fonte que
+      // funciona sem estado, e o gate compõe as duas (ver comentário lá).
 
       if (bubbles.length !== antesGate) {
         console.log(`[platform-sales-brain] mecanismos outbound: ${antesGate} → ${bubbles.length} bolha(s)`);
@@ -2528,10 +2518,22 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // O módulo só faz operação de BORDA (vocativo, fronteira = vírgula) ou derruba
     // a bolha INTEIRA. Nunca costura no meio — que é o splice do 3e2aa3c.
     {
+      // DUAS FONTES, UMA APLICAÇÃO. Consolidação do cinto do PR-BDR-14 com a
+      // política do PR-B — e a composição é obrigatória, não elegância:
+      //
+      //   pol.proibirNome    vem do ESTADO (nome_ultimo_uso_seq). Só existe DEPOIS
+      //                      que o PR-B roda uma vez. Hoje: 0 conversas com estado.
+      //   nomeParaRacionar   vem de LOOKBACK nas últimas 4 mensagens do bot.
+      //                      Funciona SEMPRE, inclusive em conversa sem estado.
+      //
+      // Apagar o cinto e ficar só com o estado teria removido a proteção em 100%
+      // das conversas atuais — e nenhum teste unitário pegaria, porque os dois
+      // módulos passam isolados. O OR mantém as duas coberturas.
       const g = aplicarGateBolha(bubbles, {
-        proibirNome: pol.proibirNome,
+        proibirNome: pol.proibirNome || !!nomeParaRacionar,
         proibirReapresentar: pol.proibirReapresentar,
-        primeiroNome: String(conversation.visitor_name ?? '').trim().split(/\s+/)[0] ?? '',
+        primeiroNome: nomeParaRacionar ||
+          (String(conversation.visitor_name ?? '').trim().split(/\s+/)[0] ?? ''),
       });
       if (g.vocativosRemovidos > 0 || g.bolhasDerrubadas > 0 || g.violacaoTolerada) {
         console.log('[platform-sales-brain] gate de bolha', {

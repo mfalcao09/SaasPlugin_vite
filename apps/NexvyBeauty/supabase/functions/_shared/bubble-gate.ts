@@ -31,14 +31,24 @@
  * devolve lista vazia quando havia conteúdo: silêncio é pior que redundância.
  */
 
-/** Nome próprio → padrão de vocativo na BORDA (início ou fim), com a vírgula. */
-function vocativoRe(nome: string): { inicio: RegExp; fim: RegExp } {
+/**
+ * Nome próprio → padrões de vocativo com FRONTEIRA sintática.
+ *
+ * Os três casos têm fronteira, e é isso que os torna seguros. Nome no MEIO sem
+ * vírgula NÃO tem fronteira, e por isso é intocável (teste `NOME NO MEIO`).
+ *   inicio         "Andreia, ..."          fronteira à direita
+ *   fim            "..., Andreia!"         fronteira à esquerda
+ *   entreVirgulas  "Olha, Andreia, isso"   fronteira dos DOIS lados
+ *
+ * `entreVirgulas` veio do cinto do PR-BDR-14 na consolidação. Sem ele, unificar
+ * teria REMOVIDO cobertura que existia — regressão disfarçada de limpeza.
+ */
+function vocativoRe(nome: string): { inicio: RegExp; fim: RegExp; entreVirgulas: RegExp } {
   const n = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return {
-    // "Andreia, ..." / "Oi Andreia, ..." no COMEÇO
     inicio: new RegExp(`^\\s*(oi|olá|ola|e aí|e ai|opa)?[\\s,]*${n}\\s*[,!:–—-]\\s*`, 'i'),
-    // "..., Andreia" / "... Andreia!" no FIM
     fim: new RegExp(`[\\s,]+${n}\\s*([!?.…]*)\\s*$`, 'i'),
+    entreVirgulas: new RegExp(`,\\s*${n}\\s*([,!.?…])`, 'gi'),
   };
 }
 
@@ -110,9 +120,17 @@ export function aplicarGateBolha(
   // ── 2) NOME: remove só o VOCATIVO, que é BORDA (fronteira = vírgula) ──────
   let saida = restantes;
   if (opts.proibirNome && nomeUtil) {
-    const { inicio, fim } = vocativoRe(nome);
+    const { inicio, fim, entreVirgulas } = vocativoRe(nome);
     saida = restantes.map((b) => {
       let t = b;
+      // Entre vírgulas primeiro: é o caso do MEIO com fronteira dupla, e resolvê-lo
+      // antes evita que a remoção de borda mude o texto e desalinhe este padrão.
+      entreVirgulas.lastIndex = 0; // regex com /g guarda estado entre chamadas
+      if (entreVirgulas.test(t)) {
+        entreVirgulas.lastIndex = 0;
+        t = t.replace(entreVirgulas, '$1');
+        vocativosRemovidos++;
+      }
       if (inicio.test(t)) {
         t = t.replace(inicio, '');
         // Maiúscula na nova primeira letra: "Andreia, quer ver?" → "Quer ver?"
