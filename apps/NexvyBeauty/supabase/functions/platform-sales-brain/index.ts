@@ -61,6 +61,7 @@ import {
   resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
+import { debounceWaitMs, inboundEpochMs } from '../_shared/inbound-clock.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
@@ -1495,17 +1496,10 @@ Deno.serve(async (req) => {
     };
     const lastInboundOf = (msgs: Array<Record<string, any>>) =>
       msgs.find((m) => m.direction === 'inbound' && m.sender_type === 'visitor') ?? null;
-    // wa_timestamp da Meta = string Unix epoch em SEGUNDOS (persistido pelo webhook).
-    // Fallback: created_at. Retorna epoch em ms ou null.
-    const inboundEpochMs = (m: Record<string, any> | null): number | null => {
-      if (!m) return null;
-      const meta = (m.metadata && typeof m.metadata === 'object') ? m.metadata as Record<string, any> : {};
-      const ts = meta.wa_timestamp;
-      const secs = typeof ts === 'number' ? ts : (typeof ts === 'string' ? Number(ts) : NaN);
-      if (Number.isFinite(secs) && secs > 0) return secs * 1000;
-      const created = m.created_at ? new Date(m.created_at).getTime() : NaN;
-      return Number.isFinite(created) ? created : null;
-    };
+    // O relógio da inbound mudou de casa: _shared/inbound-clock.ts (PR-D).
+    // A closure que morava aqui ancorava SÓ em metadata.wa_timestamp, e era essa a
+    // doença — o comentário logo abaixo (marca d'água) já explicava por que aquele
+    // relógio é o errado, mas a lição não tinha atravessado estas 20 linhas.
 
     let historyDesc = await loadMessages();
     const triggerInbound = lastInboundOf(historyDesc);
@@ -1629,10 +1623,13 @@ Deno.serve(async (req) => {
     //    (Modo inatividade pula: não há rajada — não há mensagem nova.)
     let debounceWaitedMs = 0;
     if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
+      // PR-D: `inboundEpochMs` ancora no MAIS RECENTE entre wa_timestamp (mundo) e
+      // created_at (visibilidade). Áudio transcrito nasce ~12s depois do próprio
+      // wa_timestamp — ancorar só no mundo zerava a janela e a resposta saía na
+      // hora, sem coalescer a rajada. Ver _shared/inbound-clock.ts.
+      // Gatilho de fato maduro (ou sem relógio confiável) ⇒ espera 0, mas recarrega.
       const triggerMs = inboundEpochMs(triggerInbound);
-      const ageMs = triggerMs != null ? Date.now() - triggerMs : Number.POSITIVE_INFINITY;
-      // Gatilho maduro (ou sem timestamp confiável) ⇒ espera 0, mas recarrega.
-      debounceWaitedMs = Math.max(0, Math.min(DEBOUNCE_MS, DEBOUNCE_MS - ageMs));
+      debounceWaitedMs = debounceWaitMs(triggerMs, Date.now(), DEBOUNCE_MS);
       if (debounceWaitedMs > 0) await sleep(debounceWaitedMs);
       historyDesc = await loadMessages();
       // A rajada engordou: o que entrou durante a espera ESTÁ nesta resposta, então
