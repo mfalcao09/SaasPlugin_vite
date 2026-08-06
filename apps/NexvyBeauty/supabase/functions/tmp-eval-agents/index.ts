@@ -558,6 +558,14 @@ Deno.serve(async (req) => {
         .map((x) => ({ kind: x.kind, scope: x.scope, reason: x.reason, detail: x.detail })),
       last_turn: r.last_turn_text,
       bubbles: r.bubble_count,
+      // A resposta HTTP é uma PROJEÇÃO, não o GoldenRunResult cru. Campo novo
+      // no runGolden que não entre aqui não existe para quem consome o eval —
+      // foi o que aconteceu na primeira versão desta mudança: o state era lido
+      // e descartado no mapa, e a medição de taxa daria vazio sem erro algum.
+      conversation_state: r.conversation_state ?? null,
+      ...(r.conversation_state_read_error
+        ? { conversation_state_read_error: r.conversation_state_read_error }
+        : {}),
       brain: r.brain_calls.map((b) => ({
         http_status: b.http_status,
         skipped: b.skipped,
