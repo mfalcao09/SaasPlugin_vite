@@ -2291,6 +2291,10 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     //      (público, honeypot+rate-limit) com nome+whatsapp da conversa e entrega
     //      na mesma resposta. Falhou → fallback caloroso + alerta Telegram (a lead
     //      NUNCA fica com promessa sem link e sem ninguém saber).
+    // Conversa criada pelo harness de eval (prefixo 'wa:eval-'). Usado para NÃO
+    // disparar alerta de ops em cenário de teste — ver o bloco do RAIO-X abaixo.
+    const ehConversaDeEval = String(conversation.visitor_id ?? '').startsWith('wa:eval-');
+
     let sentRaiox = false;
     if (reply.includes(RAIOX_TAG)) {
       reply = reply.split(RAIOX_TAG).join('').replace(/\s+$/, '').trim();
@@ -2313,7 +2317,12 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
           reply = `${reply ? reply + '\n\n' : ''}Aqui está 👉 ${appUrl}${demo.url}\n\nAbre no computador — o QR você lê com o celular 😉`;
         } else {
           console.warn('[platform-sales-brain] [ENVIAR_RAIOX] demo-start falhou:', demoRes.status, JSON.stringify(demo).slice(0, 200));
-          await sendTelegramAlertThrottled(
+          // Conversa de EVAL não gera alerta de ops. O rig injeta telefone sem
+          // dígitos ('eval-no-send'), o demo-start responde 400 whatsapp_invalido e
+          // este alerta dispara: 2 saíram hoje que eram TESTE, não incidente.
+          // Alerta que grita em teste treina quem recebe a ignorá-lo — e aí o
+          // alerta real chega numa caixa que já aprendeu a não olhar.
+          if (!ehConversaDeEval) await sendTelegramAlertThrottled(
             `raiox-failed:${conversationId}`,
             `⚠️ RAIO-X automático FALHOU (demo-start HTTP ${demoRes.status})\nConversa: ${conversationId}\nA Duda prometeu o raio-x e o link não saiu — intervir.`,
           );
@@ -2321,7 +2330,8 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         }
       } catch (raioxErr) {
         console.error('[platform-sales-brain] [ENVIAR_RAIOX] erro:', (raioxErr as Error)?.message);
-        await sendTelegramAlertThrottled(
+        // Mesma guarda do ramo acima: eval não gera alerta de ops.
+        if (!ehConversaDeEval) await sendTelegramAlertThrottled(
           `raiox-failed:${conversationId}`,
           `⚠️ RAIO-X automático FALHOU (exceção: ${(raioxErr as Error)?.message ?? 'desconhecida'})\nConversa: ${conversationId} — intervir.`,
         );
