@@ -1419,10 +1419,6 @@ Deno.serve(async (req) => {
     if (!BRAIN_CHANNELS.includes(String(conversation.channel))) {
       return json({ skipped: 'not_whatsapp', channel: conversation.channel });
     }
-    if (conversation.status !== 'bot_active') {
-      return json({ skipped: 'bot_not_active', status: conversation.status });
-    }
-
     // ─── GATE DO CANARY: só conversa de eval, e a trava mora AQUI ─────────────
     // Achado da revisão adversarial pré-deploy: NÃO existia nenhum guard de entrega
     // dentro desta função. O que impedia o canary de mandar WhatsApp de verdade era
@@ -1448,6 +1444,22 @@ Deno.serve(async (req) => {
             'Para conversa real, invoque platform-sales-brain.',
         }, 409);
       }
+    }
+
+    // O check de status vem DEPOIS do gate do canary — a ordem importa, e a inversão
+    // foi achado da Controladora GO-LIVE ao testar o gate em runtime.
+    //
+    // Com o check ANTES, o gate ficava intestável pelo caminho óbvio: conversa real
+    // em `human_active` retornava 'bot_not_active' e NUNCA 409, e a leitura natural
+    // do resultado seria "o gate não existe" — falso negativo de desenho de teste.
+    // Pior: só era possível alcançar o gate usando conversa `bot_active`, isto é,
+    // uma lead REAL e ATIVA — o teste exigia apontar o canary justamente para o que
+    // ele existe pra proteger.
+    //
+    // Com o gate primeiro, ele é a primeira decisão do canary sobre a conversa,
+    // aparece sempre no log, e não depende do estado dela pra existir.
+    if (conversation.status !== 'bot_active') {
+      return json({ skipped: 'bot_not_active', status: conversation.status });
     }
 
     // 1b) CLAIM DA CONVERSA — INCONDICIONAL, e é o ponto todo desta correção.
