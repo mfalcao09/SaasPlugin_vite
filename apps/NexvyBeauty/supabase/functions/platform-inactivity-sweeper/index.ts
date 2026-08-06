@@ -52,6 +52,58 @@ const SWEEP_LIMIT = 25;
 // isso a janela Meta já fechou — free-form não entrega; a régua morre junto).
 const CADENCE_LOOKBACK_MS = 24 * 3_600_000;
 
+// ── PORTÃO DE ENVIO (06/08, Controladora GO-LIVE) ───────────────────────────
+// Medido: este sweeper tinha freio por CONVERSA (4 ocorrências) e NENHUM freio
+// por HORA nem por DIA. Quatro toques em 35 min é razoável para uma lead; com
+// anúncio no ar e 40 conversas simultâneas são 160 mensagens sem teto agregado,
+// em qualquer horário, cada uma uma chamada de LLM paga. O freio existia na
+// dimensão errada: limitava o indivíduo, não a frota.
+//
+// É a MESMA forma do defeito que a sessão BDR achou no cold outreach (follow-up
+// rodando ANTES do canSendNow). Dois motores, dois canais, o mesmo buraco: o
+// follow-up foi desenhado como cortesia por conversa, nunca como volume de envio.
+//
+// As duas travas entram ANTES do CLAIM de propósito. Se barrassem depois, a
+// ocorrência seria consumida sem mensagem sair — a lead perderia o toque E o
+// contador andaria. Barrar antes significa: fica para a próxima varredura.
+const WINDOW_TZ = 'America/Sao_Paulo';
+const WINDOW_START_HOUR = Number(Deno.env.get('CADENCE_WINDOW_START_HOUR') ?? '9');
+const WINDOW_END_HOUR = Number(Deno.env.get('CADENCE_WINDOW_END_HOUR') ?? '20');
+/** Dias permitidos, 0=domingo … 6=sábado. Default seg-sáb (sem domingo). */
+const WINDOW_DAYS = (Deno.env.get('CADENCE_WINDOW_DAYS') ?? '1,2,3,4,5,6')
+  .split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n));
+/** Teto de intervenções da régua no dia, somando TODAS as conversas. */
+const DAILY_CAP = Number(Deno.env.get('CADENCE_DAILY_CAP') ?? '60');
+
+/**
+ * Está dentro da janela de horário, no fuso do NEGÓCIO?
+ *
+ * Usa Intl com timeZone explícito e NÃO `new Date().getHours()`: a edge roda em
+ * UTC, então getHours() leria 3h da manhã como se fosse horário comercial. Ler
+ * hora no fuso errado é defeito que já custou caro nesta frente.
+ */
+export function dentroDaJanela(nowMs: number): { ok: boolean; hora: number; dia: number } {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: WINDOW_TZ, hour: 'numeric', hour12: false, weekday: 'short',
+  }).formatToParts(new Date(nowMs));
+  const hora = Number(partes.find((p) => p.type === 'hour')?.value ?? '-1');
+  const nomeDia = partes.find((p) => p.type === 'weekday')?.value ?? '';
+  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(nomeDia);
+  const ok = WINDOW_DAYS.includes(dia) && hora >= WINDOW_START_HOUR && hora < WINDOW_END_HOUR;
+  return { ok, hora, dia };
+}
+
+/** Início do dia CORRENTE no fuso do negócio, em ISO — âncora do teto diário.
+ *  Contar por dia UTC viraria a página às 21h de Brasília e daria meio teto
+ *  extra toda noite. */
+function inicioDoDiaLocalIso(nowMs: number): string {
+  const d = new Intl.DateTimeFormat('en-CA', {
+    timeZone: WINDOW_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(nowMs)); // YYYY-MM-DD no fuso certo
+  // -03:00 é o offset de Brasília (sem horário de verão desde 2019).
+  return new Date(`${d}T00:00:00-03:00`).toISOString();
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -137,10 +189,33 @@ Deno.serve(async (req) => {
     window_notices: 0,
     window_expired: 0,
     skipped: 0,
+    // PORTÃO: contados à parte de `skipped`. Barrado por horário e barrado por
+    // teto são desfechos DIFERENTES de "não havia nada a fazer" — somar tudo em
+    // skipped esconderia justamente a informação de que o portão está segurando.
+    blocked_by_window: 0,
+    blocked_by_cap: 0,
+    window_open: false,
+    hora_local: -1,
+    sent_today_before: 0,
+    daily_cap: DAILY_CAP,
     errors: [] as string[],
   };
 
   try {
+    // Estado do portão, calculado UMA vez por varredura.
+    const janela = dentroDaJanela(nowMs);
+    out.window_open = janela.ok;
+    out.hora_local = janela.hora;
+
+    // Quantas intervenções da régua já saíram HOJE, somando todas as conversas.
+    // Conta pelo claim (cadence_last_intervention_at), que é o que marca "toque
+    // consumido" — contar mensagens enviadas misturaria com resposta normal.
+    const { count: jaHoje } = await supabase
+      .from('platform_crm_conversations')
+      .select('id', { count: 'exact', head: true })
+      .gte('cadence_last_intervention_at', inicioDoDiaLocalIso(nowMs));
+    let enviadosHoje = jaHoje ?? 0;
+    out.sent_today_before = enviadosHoje;
     // ── PARTE 1 — régua de ocorrências (conversas vivas do funil) ────────────
     const { data: convs, error: convErr } = await supabase
       .from('platform_crm_conversations')
@@ -233,6 +308,14 @@ Deno.serve(async (req) => {
 
         const occ = decision.occurrence;
         const isFarewell = occ >= CADENCE_MAX_OCCURRENCE;
+
+        // ── PORTÃO, ANTES DO CLAIM ────────────────────────────────────────
+        // Barrar DEPOIS do claim consumiria a ocorrência sem mensagem sair: a
+        // lead perderia o toque e o contador andaria — o pior dos dois mundos.
+        // Barrado aqui = fica para a próxima varredura, intacto.
+        if (!janela.ok) { out.blocked_by_window++; continue; }
+        if (enviadosHoje >= DAILY_CAP) { out.blocked_by_cap++; continue; }
+
         // CLAIM idempotente (CAS): só um dos jobs defasados ganha a ocorrência.
         const { data: claimed, error: claimErr } = await supabase
           .from('platform_crm_conversations')
@@ -252,6 +335,11 @@ Deno.serve(async (req) => {
           .select('id');
         if (claimErr) throw claimErr;
         if (!claimed || claimed.length === 0) { out.skipped++; continue; } // job irmão claimou
+        // Ocorrência consumida: conta para o teto do dia AQUI, no claim, e não
+        // depois da resposta do brain. Se o brain falhar, o toque foi gasto do
+        // mesmo jeito (o claim é irreversível) — não contar seria deixar o teto
+        // ser furado por cada falha.
+        enviadosHoje++;
 
         const silenceMin = lastBotOutboundAtMs != null ? Math.round((nowMs - lastBotOutboundAtMs) / 60000) : null;
         const brain = await invokeBrain({
@@ -293,6 +381,14 @@ Deno.serve(async (req) => {
         const lastInboundAtMs = await lastMessageAt(supabase, conv.id, 'inbound');
         const w = decideWindowNotice(nowMs, lastInboundAtMs, toMs(conv.cadence_window_notified_at));
         if (w.action === 'none') continue;
+
+        // TETO vale aqui também: é envio, e teto que tem exceção não é teto.
+        // JANELA DE HORÁRIO **não** vale — de propósito. Este aviso é único e
+        // EXPIRA às 24h da última inbound: se a janela Meta fechar às 3h da
+        // manhã, barrar por horário não adia o aviso, ELIMINA. Um "sigo à
+        // disposição" fora de hora incomoda; perder o último contato possível
+        // custa a lead. Escolha declarada, não esquecimento.
+        if (w.action === 'notify' && enviadosHoje >= DAILY_CAP) { out.blocked_by_cap++; continue; }
 
         // CLAIM idempotente: marca notified_at ANTES de invocar o brain — o
         // aviso é ÚNICO por conversa, nunca repete (estado 'janela_avisada').
