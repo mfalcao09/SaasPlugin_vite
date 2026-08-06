@@ -67,7 +67,16 @@ const LIA_GREETING_BUBBLES = [
 const LIA_GREETING_BUBBLES_WITH_LINK = [
   'Oi{nome}! Que alegria te ver no NexvyBeauty 💚 Sou a Lia, vou te acompanhar na montagem do seu espaço.',
   'Esse é o link da montagem: {url} — é o mesmo que te mandei no e-mail, pode abrir por onde preferir.',
-  'Funciona assim: são 10 passos rapidinhos (seu espaço, horários, serviços, profissionais, sua EquipIA…) e tudo que você preenche salva sozinho — pode parar e voltar depois de onde parou, até em outro aparelho. Sua senha você cria no último passo.',
+  // Sem CONTAGEM de passos e sem JARGÃO. Dois defeitos que saíam pra cliente aqui:
+  // (a) "10 passos" — número que ninguém verificou contra o wizard e que o Marcelo
+  //     riscou da lista de afirmações permitidas. Promessa quantificada é dívida:
+  //     se o wizard mudar, a frase passa a mentir sozinha, sem ninguém tocar nela.
+  // (b) "EquipIA" — vocabulário INTERNO, proibido com lead fria (mesma lista de
+  //     "IA Native", "raio-X", "carteira", "funil"). A cliente não sabe o que é.
+  // (a) foi pego pelo golden NO_STEP_COUNT da Controladora GO-LIVE; (b) passou
+  // batido pra nós duas e só apareceu ao ler a LINHA INTEIRA em vez do trecho
+  // reprovado — o detector aponta onde falhou, não tudo que está errado ali.
+  'Funciona assim: são alguns passos rapidinhos (seu espaço, horários, serviços, sua equipe…) e tudo que você preenche salva sozinho — pode parar e voltar depois de onde parou, até em outro aparelho. Sua senha você cria no último passo.',
   'Duas dicas: o link abre em um navegador por vez (se aparecer "em uso", é só tocar em "Usar neste navegador"). E o último passo tem um QR code pra conectar o WhatsApp do espaço — abre o link no computador ou em outro celular, porque o QR precisa ser escaneado com o SEU 😉 Qualquer dúvida, me chama aqui!',
 ];
 
