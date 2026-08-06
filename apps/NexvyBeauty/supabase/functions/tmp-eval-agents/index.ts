@@ -115,6 +115,57 @@ async function resolveCloserAgentId(supabase: Supa, productId: string): Promise<
   return closer?.id ?? null;
 }
 
+/**
+ * id do agente do produto por agent_type (06/08). Existe porque o roteador do
+ * cérebro (_shared/agent-routing.ts) só conhece 'sdr', 'closer' e 'retention':
+ * sem pin ele devolve 'sdr_open' e QUEM FALA É SEMPRE A DUDA. A sessão BDR
+ * escreveu 8 goldens para a CAMILA (agent_type 'prospector') e todos mediram a
+ * Duda — placar cheio, sujeito errado. O `channel` que eu já tinha implementado
+ * muda o CANAL, não muda QUEM FALA; faltava esta metade.
+ *
+ * Os filtros são DE PROPÓSITO idênticos aos do brain (product_id + is_active +
+ * active_in_whatsapp): se eu resolvesse um agente que o roteador não enxerga, o
+ * pin viraria órfão, o brain cairia na Duda por 'sdr_fallback_orphan_pin', e eu
+ * teria pinado uma pessoa e medido outra — o defeito que este código existe
+ * para matar, reintroduzido pelo próprio conserto.
+ */
+async function resolveAgentIdByType(
+  supabase: Supa,
+  productId: string,
+  agentType: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('platform_crm_product_agents')
+    .select('id, name, agent_type')
+    .eq('product_id', productId)
+    .eq('is_active', true)
+    .eq('active_in_whatsapp', true);
+  const alvo = agentType.trim().toLowerCase();
+  const achado = ((data as Array<Record<string, any>>) || [])
+    .find((a) => String(a.agent_type ?? '').toLowerCase() === alvo);
+  return achado?.id ?? null;
+}
+
+/** id → nome de todos os agentes do produto, p/ o relatório dizer QUEM falou. */
+async function loadAgentNames(supabase: Supa, productId: string): Promise<Record<string, string>> {
+  const { data } = await supabase
+    .from('platform_crm_product_agents')
+    .select('id, name, agent_type')
+    .eq('product_id', productId);
+  const mapa: Record<string, string> = {};
+  for (const a of ((data as Array<Record<string, any>>) || [])) {
+    mapa[String(a.id)] = `${a.name ?? '?'} (${a.agent_type ?? '?'})`;
+  }
+  return mapa;
+}
+
+/** O que o golden PEDIU. 'sdr (default)' quando não pediu nada — explícito de
+ *  propósito: campo vazio no relatório seria lido como "não se aplica", quando
+ *  na verdade significa "o roteador escolheu por mim, e escolheu a Duda". */
+function goldenAgentType(goldenId: string): string {
+  return GOLDENS_SELECIONAVEIS[goldenId]?.agentType ?? 'sdr (default do roteador)';
+}
+
 interface EphemeralConv {
   conversationId: string;
   leadId: string;
@@ -127,6 +178,8 @@ async function createEphemeral(
   golden: Golden,
   productId: string,
   closerAgentId: string | null,
+  /** id já resolvido do agente pedido por golden.agentType (null se não pediu). */
+  pinnedAgentId: string | null,
 ): Promise<EphemeralConv> {
   const rand = crypto.randomUUID().slice(0, 8);
   const visitorId = `${EVAL_PREFIX}${golden.id}-${rand}`;
@@ -179,8 +232,15 @@ async function createEphemeral(
       needs_human: false,
       product_id: productId,
       lead_id: lead.id,
-      // Se o golden simula uma conversa já passada pra Bia, fixa o closer.
-      ...(golden.startWithCloser && closerAgentId ? { current_agent_id: closerAgentId } : {}),
+      // QUEM FALA. Ordem deliberada: o pin explícito por agentType vence o do
+      // closer — golden que nomeia a persona está sendo específico, e específico
+      // manda. Sem nenhum dos dois, o roteador do brain cai em 'sdr_open' e
+      // responde a Duda; foi assim que 8 goldens da Camila mediram a Duda.
+      ...(pinnedAgentId
+        ? { current_agent_id: pinnedAgentId }
+        : golden.startWithCloser && closerAgentId
+        ? { current_agent_id: closerAgentId }
+        : {}),
     })
     .select('id')
     .single();
@@ -277,15 +337,20 @@ async function readBotBubbles(
 async function readConversationState(
   supabase: Supa,
   conversationId: string,
-): Promise<{ state: Record<string, any> | null; error: string | null }> {
+): Promise<{ state: Record<string, any> | null; agentId: string | null; error: string | null }> {
+  // current_agent_id vem na MESMA query e é lido DE VOLTA, não assumido do que
+  // eu pinei: o brain pode trocar a persona (pin órfão → 'sdr_fallback_orphan_pin').
+  // Reportar a intenção em vez do efeito foi exatamente o que deixou 8 goldens
+  // medirem a Duda sem ninguém ver.
   const { data, error } = await supabase
     .from('platform_crm_conversations')
-    .select('conversation_state')
+    .select('conversation_state, current_agent_id')
     .eq('id', conversationId)
     .maybeSingle();
-  if (error) return { state: null, error: String(error.message ?? error).slice(0, 200) };
-  if (!data) return { state: null, error: 'conversa efêmera não encontrada na releitura' };
-  return { state: (data as Record<string, any>).conversation_state ?? null, error: null };
+  if (error) return { state: null, agentId: null, error: String(error.message ?? error).slice(0, 200) };
+  if (!data) return { state: null, agentId: null, error: 'conversa efêmera não encontrada na releitura' };
+  const row = data as Record<string, any>;
+  return { state: row.conversation_state ?? null, agentId: row.current_agent_id ?? null, error: null };
 }
 
 interface GoldenRunResult {
@@ -301,6 +366,8 @@ interface GoldenRunResult {
   conversation_state?: Record<string, any> | null;
   /** Presente SÓ se a leitura falhou. null aqui ≠ null em conversation_state. */
   conversation_state_read_error?: string;
+  /** QUEM DE FATO FALOU, lido de volta do banco depois do run — não o que pedi. */
+  agent_final_id?: string | null;
   error?: string;
 }
 
@@ -345,7 +412,34 @@ async function runGolden(
     };
   }
 
-  const eph = await createEphemeral(supabase, golden, productId, closerAgentId);
+  // ─── QUEM FALA (06/08) — mesma lei, defeito irmão ──────────────────────────
+  // Golden que declara agentType EXISTE para medir aquela persona. Se o tipo não
+  // resolver, a conversa nasceria sem pin, o roteador cairia em 'sdr_open' e o
+  // cenário rodaria contra a DUDA — produzindo placar sobre o sujeito errado.
+  // Foi exatamente o que aconteceu com os 8 goldens da Camila antes deste campo
+  // existir: 17/19 num golden que ninguém percebeu estar medindo outra agente.
+  let pinnedAgentId: string | null = null;
+  if (golden.agentType) {
+    pinnedAgentId = await resolveAgentIdByType(supabase, productId, golden.agentType);
+    if (!pinnedAgentId) {
+      return {
+        id: golden.id,
+        title: golden.title,
+        goldenPass: false,
+        score: { total: 0, passed: 0, failed: 0, passRate: 0, results: [], goldenPass: false },
+        brain_calls: [],
+        last_turn_text: '',
+        all_turns_text: '',
+        bubble_count: 0,
+        error:
+          `PRÉ-CONDIÇÃO AUSENTE: golden exige agent_type='${golden.agentType}', e nenhum agente desse tipo está ` +
+          'ativo no WhatsApp do produto (is_active + active_in_whatsapp). Cenário NÃO executado — sem isto ' +
+          'o roteador responderia com a Duda e o placar seria sobre a agente errada.',
+      };
+    }
+  }
+
+  const eph = await createEphemeral(supabase, golden, productId, closerAgentId, pinnedAgentId);
   const brainCalls: Array<Record<string, any>> = [];
   let bubblesBeforeLastCall = 0;
 
@@ -397,6 +491,7 @@ async function runGolden(
       bubble_count: allBubbles.length,
       conversation_state: cs.state,
       ...(cs.error ? { conversation_state_read_error: cs.error } : {}),
+      agent_final_id: cs.agentId,
     };
   } catch (e) {
     return {
@@ -540,6 +635,7 @@ Deno.serve(async (req) => {
     return json({ error: 'produto nexvybeauty não encontrado (platform_crm_products.slug=nexvybeauty).' }, 500);
   }
   const closerAgentId = await resolveCloserAgentId(supabase, productId);
+  const AGENTES = await loadAgentNames(supabase, productId);
 
   // Limpeza defensiva de qualquer resíduo de rodada anterior antes de começar.
   await cleanupEphemeral(supabase);
@@ -597,6 +693,10 @@ Deno.serve(async (req) => {
       ...(r.conversation_state_read_error
         ? { conversation_state_read_error: r.conversation_state_read_error }
         : {}),
+      // Quem falou, por NOME. Sem isto o relatório diz "17/19" e não diz sobre
+      // quem — que é como um placar da Duda passou por placar da Camila.
+      agent_final: r.agent_final_id ? (AGENTES[r.agent_final_id] ?? r.agent_final_id) : null,
+      agent_pedido: goldenAgentType(r.id),
       brain: r.brain_calls.map((b) => ({
         http_status: b.http_status,
         skipped: b.skipped,

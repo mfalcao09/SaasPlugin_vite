@@ -96,6 +96,17 @@ export interface Golden {
    *  Use 'whatsapp_evolution' para exercitar os mecanismos escopados ao canal
    *  da Camila (gate de link, de-aglutinação, opt-out). E2 06/08. */
   channel?: string;
+  /** QUEM FALA. agent_type do agente a fixar em current_agent_id da conversa
+   *  efêmera — 'prospector' (Camila), 'retention' (Nina), 'support' (Lia)…
+   *
+   *  06/08: sem isto o roteador do cérebro devolve 'sdr_open' e responde SEMPRE
+   *  a Duda. Os 8 goldens do canal Evolution, escritos para a CAMILA, mediram a
+   *  Duda e produziram placar — sujeito errado, número bonito. `channel` muda o
+   *  CANAL; este campo muda QUEM FALA. São coisas diferentes e eu só tinha uma.
+   *
+   *  Se o agent_type não resolver entre os ativos no WhatsApp, o golden FALHA
+   *  explicitamente em vez de rodar com a Duda — mesma lei do startWithCloser. */
+  agentType?: string;
   /** Estado prévio do lead (memória de qualificação). */
   leadSeed?: GoldenLeadSeed;
   assertions: Assertion[];

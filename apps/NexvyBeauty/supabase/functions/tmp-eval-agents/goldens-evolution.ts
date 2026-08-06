@@ -22,6 +22,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Lead pergunta preço e pede explicação — agente responde SEM mandar checkout',
     scenario: 'DEFEITO 5 (link sem aceite): a lead só perguntou quanto custa e pediu pra entender como funciona; nenhuma dessas falas é aceite. A agente mandou o link de checkout mesmo assim. Perguntar preço não é comprar.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'oi bom dia' },
       { content: 'vi sua mensagem aqui' },
@@ -52,6 +55,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'CONTROLE NEGATIVO: lead diz \'pode mandar o link\' — link é obrigatório, e sozinho na bolha',
     scenario: 'Controle negativo do detector do DEFEITO 5: aqui a lead ACEITOU explicitamente e pediu o link, então NÃO mandar o link é a falha (o detector de \'link sem aceite\' não pode disparar). Ao mesmo tempo pega o DEFEITO 6 (bolha aglutinada): a URL tem que ir sozinha na própria bolha, nunca colada em pergunta ou texto.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'gostei' },
       { content: 'quero sim' },
@@ -77,6 +83,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Retomada depois de 25 min + "vc é robo?" — não pode se reapresentar',
     scenario: 'REAPRESENTAÇÃO (defeito 2, medido 2026-08-05): a agente solta "sou a Camila, da NexvyBeauty" com a conversa já em andamento. O gatilho aqui é duplo — a lead some por ~25 min e volta pedindo desculpa (puxa reabertura tipo primeiro contato) e ainda pergunta se é robô (puxa "sou a Camila, atendente da NexvyBeauty" como resposta defensiva). Por isso o nome próprio dela fica banido na resposta: com a conversa em curso, qualquer autocitação é reapresentação. Trava também a proibição de admitir ser IA, exigindo a frase fixa literal.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'ah entendi' },
       { content: 'entao ela responde os cliente sozinha? sem eu ficar em cima' },
@@ -107,6 +116,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Lead se apresenta e manda duas perguntas em rajada — nome só uma vez',
     scenario: 'NOME REPETIDO (defeito 3, medido 2026-08-06): a agente usa o primeiro nome da lead duas vezes em bolhas consecutivas. O gatilho é a lead entregar o nome dela e emendar duas perguntas em rajada ("o que vc vende" + "serve pra agendamento"), o que naturalmente puxa duas bolhas de resposta — e cada bolha tenta abrir com "Andreia, ...". O padrão regex pega as duas ocorrências em qualquer distância dentro da resposta inteira.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'oi' },
       { content: 'aqui quem fala e a Andreia do studio bella' },
@@ -136,6 +148,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Lead com medo de conectar o WhatsApp do salão — agente recua da demonstração',
     scenario: 'Defeito 8 — INSISTIU CONTRA PREOCUPAÇÃO: a lead diz ter receio de conectar o WhatsApp dela (número do salão inteiro) e a agente empurra a demonstração/agendamento assim mesmo, em vez de acolher o receio, devolver o controle e recuar.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'oi quem e vc?' },
       { content: 'ata... vc falou de me mostrar funcionando né' },
@@ -164,6 +179,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Controle negativo — \'agora não dá não\' é adiamento, não recusa: agente segue e marca o sábado',
     scenario: 'Falso positivo do detector do defeito 1 (REOFERTA APÓS RECUSA): a lead usa \'não dá não / não consigo\' para ADIAR e ela mesma pede o fim de semana. O detector de recusa não pode disparar — a agente deve seguir normalmente e fechar o sábado de manhã, sem pedir desculpa por incomodar, sem \'se mudar de ideia\' e sem encerrar a conversa.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'ah entendi, legal isso' },
       { content: 'mas agora nao da nao, to com cliente na cadeira' },
@@ -193,6 +211,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Lista de 3 pontos abortada pela rajada da lead no meio da entrega',
     scenario: 'DEFEITO 4 — LISTA ABANDONADA. A lead pede 3 coisas, a Camila anuncia/começa a entregar em bolhas e a rajada dela (turnos 3-5, frescos) aborta o lote antes da última bolha sair. A resposta seguinte trata a rajada e NUNCA volta pra fechar o item que ficou aberto. O golden mede a resposta ao último turno: ela tem que responder o preço na lata E retomar o ponto que faltou, sem abrir lista nova.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'oi vi aqui sua msg, to no meio de um atendimento' },
       { content: 'me fala 3 coisas q isso resolve pra mim, sem enrolaçao' },
@@ -220,6 +241,9 @@ export const GOLDENS_EVOLUTION: Golden[] = [
     title: 'Mesma objeção martelada 3x — reconhecer pela terceira vez É o defeito',
     scenario: 'DEFEITO 7 — OBJEÇÃO RE-RECONHECIDA. A lead repete a MESMA objeção ("já tentei, ninguém usou, paguei à toa") em três turnos. O reconhecimento já foi gasto nos dois primeiros; na resposta ao terceiro turno a Camila reconhece de novo ("imagino", "entendo", "faz sentido") e o turno anda zero. O golden mede a resposta ao último turno: tem que pular o tempo 1 e ir pro reenquadre mecânico + prova operacional + micro-passo.',
     channel: 'whatsapp_evolution',
+    // QUEM FALA (06/08, Controladora): sem este pin o roteador do brain cai em
+    // 'sdr_open' e responde a DUDA. Este golden foi escrito para a CAMILA.
+    agentType: 'prospector',
     inbound: [
       { content: 'ja tentei um sistema desses ano passado viu' },
       { content: 'ninguem aqui usou nao, as meninas continuaram tudo no caderno' },
