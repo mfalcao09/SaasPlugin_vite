@@ -63,6 +63,14 @@ import {
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 import { debounceWaitMs, inboundEpochMs } from '../_shared/inbound-clock.ts';
 import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
+import {
+  type ConversationState,
+  politica,
+  predicadoTravaOtimista,
+  reduzir,
+  type TurnEvents,
+} from '../_shared/conversation-state.ts';
+import { BLOCO_TAGS_CLASSIFICADORAS, extrairTags } from '../_shared/turn-tags.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
@@ -1397,7 +1405,10 @@ Deno.serve(async (req) => {
       // número responder (a conexão que RECEBEU a mensagem da lead).
       // evolution_instance_id é o equivalente do canal Evolution (qual número
       // burner recebeu) — sem ele não há por onde responder naquele canal.
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id')
+      // conversation_state (PR-B): a memória do que JÁ foi feito nesta conversa.
+      // Sem ela, cada invocação re-deriva do histórico bruto "já me apresentei?",
+      // "já ofereci a demo?" — e re-deriva ERRADO sob pressão.
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -2079,6 +2090,43 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       });
     }
 
+    // ─── PR-B: ESTADO → POLÍTICA → PROMPT ────────────────────────────────────
+    // Aqui o cérebro deixa de re-derivar do histórico bruto o que já fez nesta
+    // conversa. O estado é FATO acumulado (tier 1 e 2); a política traduz fato em
+    // autorização; os fatos entram DEPOIS da persona porque recência vence.
+    const estadoAtual = (conversation.conversation_state ?? null) as ConversationState | null;
+
+    // Aceite EXPLÍCITO na última mensagem da lead. Calculado AQUI (antes do prompt)
+    // e reusado pelo gate de link lá embaixo — a mesma pergunta não pode ter duas
+    // respostas no mesmo turno. Conservador: qualquer "nao" derruba o aceite.
+    const leadNormAceite = String(triggerInbound?.content ?? '')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const ACEITE_RE_TURNO = /\b(quero|pode|manda|mande|envia|envie|mostra|topo|topa|bora|vamos|aceito|sim|beleza|fechado|fechou|ok|vou colocar|coloca)\b/;
+    const leadAceitouAgora = ACEITE_RE_TURNO.test(leadNormAceite) && !/\bnao\b/.test(leadNormAceite);
+
+    const seqAtual = maxInboundSeq(historyDesc) ?? 0;
+    const pol = politica(estadoAtual, { leadAceitouAgora, seqAtual });
+
+    // Os fatos vão no FIM do system: o modelo obedece melhor o que leu por último,
+    // e estes são fatos DESTE turno — não fazem parte da persona.
+    // O bloco de tags pede OBSERVAÇÃO (rotular o que a lead disse), nunca contenção
+    // — a contenção é aplicada por CÓDIGO, com este mesmo estado, no turno seguinte.
+    const systemPromptComEstado = [
+      systemPrompt,
+      pol.fatos.length ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}` : '',
+      `\n\n${BLOCO_TAGS_CLASSIFICADORAS}`,
+    ].join('');
+
+    if (pol.fatos.length) {
+      console.log('[platform-sales-brain] estado→política', {
+        conversation_id: conversation.id,
+        fatos: pol.fatos.length,
+        proibir_oferta_demo: pol.proibirOfertaDemo,
+        proibir_nome: pol.proibirNome,
+        proibir_reapresentar: pol.proibirReapresentar,
+      });
+    }
+
     const response = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -2087,7 +2135,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
         stream: false,
       }),
     });
@@ -2213,6 +2261,12 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // GUARDRAILS DE FORMA (pós-processamento, na ordem certa):
     // (a) censura de vocabulário; (b) markdown → sintaxe WhatsApp; (c) 1 pergunta
     // só (preservando link/preço); (d) divisão em bolhas (sem truncar).
+    // PR-B: as tags classificadoras saem ANTES de tudo. Se sobrarem, a lead lê
+    // "[LEAD_RECUSOU_DEMO]" na bolha — modo de falha óbvio de tag no corpo.
+    // O que elas alimentam é o ESTADO (tier 2), nunca a resposta deste turno.
+    const tags = extrairTags(reply);
+    reply = tags.texto;
+
     const san = sanitizeReply(reply);
     reply = san.text;
     const sanitized = san.sanitized;
@@ -2305,13 +2359,11 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // Prompt ensina a falar; código impede de errar.
     if (conversation.channel === 'whatsapp_evolution') {
       const URL_RE = /https?:\/\/\S+/g;
-      const lastLeadNorm = String(triggerInbound?.content ?? '')
-        .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-      // Aceite EXPLÍCITO na última mensagem da lead. Qualquer "nao" na mensagem
-      // derruba o aceite (conservador de propósito: falso negativo atrasa o
-      // link um turno; falso positivo é o defeito que estamos matando).
-      const ACEITE_RE = /\b(quero|pode|manda|mande|envia|envie|mostra|topo|topa|bora|vamos|aceito|sim|beleza|fechado|fechou|ok|vou colocar|coloca)\b/;
-      const aceitou = ACEITE_RE.test(lastLeadNorm) && !/\bnao\b/.test(lastLeadNorm);
+      // PR-B: o aceite é calculado UMA vez por turno, lá em cima, antes do prompt
+      // (`leadAceitouAgora`) — e a política de link nasce dele. Recalcular aqui
+      // permitiria que o prompt fosse montado com uma resposta e o gate aplicasse
+      // outra, no mesmo turno. Uma pergunta, uma resposta.
+      const aceitou = !pol.proibirLink;
 
       const antesGate = bubbles.length;
       const saneadas: string[] = [];
@@ -2718,6 +2770,63 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       } catch (e) {
         console.warn('[platform-sales-brain] persistência de qualificação falhou (non-fatal):', String(e).slice(0, 200));
       }
+    }
+
+    // ─── PR-B: ESCRITA DO ESTADO ─────────────────────────────────────────────
+    // Só chega aqui quem ENTREGOU. Todo evento abaixo é ato do código (tier 1) ou
+    // tag explícita do modelo (tier 2). Nada é inferido de prosa — a lei dos tiers
+    // é o que impede este estado de mentir.
+    //
+    // Non-fatal de propósito: a resposta da lead já saiu. Falhar aqui e devolver
+    // 500 trocaria uma conversa que deu certo por um erro — o estado se recompõe no
+    // turno seguinte, a mensagem entregue não volta.
+    try {
+      const primeiroNome = String(conversation.visitor_name ?? '').trim().split(/\s+/)[0] ?? '';
+      const ev: TurnEvents = {
+        seq: seqAtual,
+        enviouOutbound: anyDelivered,                                  // tier 1
+        enviouLink: sentRaiox || bubbles.some((b) => /https?:\/\//.test(b)), // tier 1
+        usouNome: primeiroNome.length >= 3 &&                          // tier 1
+          bubbles.some((b) => b.toLowerCase().includes(primeiroNome.toLowerCase())),
+        tagOfertaDemo: sentRaiox,                                      // tier 1 (link gerado)
+        leadRecusou: tags.recusouDemo,                                 // tier 2 (tag)
+        tagsObjecao: tags.objecoes,                                    // tier 2 (tag)
+      };
+
+      let novo = reduzir(estadoAtual, ev);
+      const { data: gravou } = await supabase
+        .from('platform_crm_conversations')
+        .update({ conversation_state: novo })
+        .eq('id', conversation.id)
+        // Trava OTIMISTA: hand-backs concorrentes fazem read-modify-write no MESMO
+        // JSONB. Checar na leitura seria GUARDA, não LOCK — os dois leriam v1, os
+        // dois gravariam, e demo_ofertas ficaria 1 quando foram 3. Mesmo padrão já
+        // provado no brain_claim: UPDATE condicional + RETURNING serializa.
+        .or(predicadoTravaOtimista(novo.atualizado_seq ?? 0))
+        .select('conversation_state')
+        .maybeSingle();
+
+      if (!gravou) {
+        // Alguém passou na frente. RELER e REDUZIR de novo — sobrescrever às cegas
+        // é exatamente o lost update que a trava existe pra impedir.
+        const { data: fresco } = await supabase
+          .from('platform_crm_conversations')
+          .select('conversation_state')
+          .eq('id', conversation.id)
+          .maybeSingle();
+        novo = reduzir((fresco?.conversation_state ?? null) as ConversationState | null, ev);
+        await supabase
+          .from('platform_crm_conversations')
+          .update({ conversation_state: novo })
+          .eq('id', conversation.id)
+          .or(predicadoTravaOtimista(novo.atualizado_seq ?? 0));
+        console.warn('[platform-sales-brain] estado: trava barrou, releu e reduziu de novo', {
+          conversation_id: conversation.id,
+          seq: seqAtual,
+        });
+      }
+    } catch (e) {
+      console.warn('[platform-sales-brain] persistência do conversation_state falhou (non-fatal):', String(e).slice(0, 200));
     }
 
     return json({
