@@ -44,7 +44,10 @@ export function useDemoEvolution({ token, sessionToken }: Args): DemoEvolutionAp
 
     return {
       accept: (input: DemoAcceptInput) => invoke<{ ok: boolean }>('accept', { ...input }),
-      connect: () => invoke<DemoConnectResult>('connect'),
+      // want_pairing só é enviado quando pedido: a edge trata ausência como
+      // false e devolve exatamente a resposta antiga.
+      connect: (opts?: { wantPairing?: boolean }) =>
+        invoke<DemoConnectResult>('connect', { want_pairing: opts?.wantPairing === true }),
       status: () => invoke<DemoStatusResult>('status'),
       report: () => invoke<DemoReport>('report'),
       sendReport: (input: { text: string; report_url: string }) =>

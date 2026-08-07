@@ -58,6 +58,23 @@ export interface DemoConnectResult {
   instance_id?: string;
   /** QR em base64 (data:image… ou base64 puro) — NUNCA um pairing-code cru. */
   qr_code: string | null;
+
+  // ── Pareamento por código (06/08) ────────────────────────────────────────
+  // OPCIONAIS: só vêm quando o front pede `wantPairing`. A edge em cache
+  // responde o shape antigo, então quem consome DEVE tratar `undefined`.
+  //
+  // Existe porque o link do raio-x chega no WhatsApp — que mora no CELULAR — e
+  // o QR exige apontar a câmera do celular para OUTRA tela. No aparelho que
+  // recebeu o link, é impossível. O código é digitado dentro do próprio
+  // WhatsApp e funciona com um aparelho só.
+  /** 8 caracteres que a lead digita no WhatsApp dela. É credencial de sessão:
+   *  renderizar como TEXTO, nunca mandar para gerador de QR de terceiro. */
+  pairing_code?: string | null;
+  /** telefone usado no pedido — a tela mostra para a lead conferir. */
+  pairing_phone?: string | null;
+  /** radiografia (chaves + tipos, SEM conteúdo) da resposta da Evolution.
+   *  Diagnóstico: a forma varia entre versões. Nunca exibir para a lead. */
+  evo_shape?: unknown;
 }
 
 export interface DemoStatusResult {
@@ -76,7 +93,9 @@ export interface DemoAcceptInput {
 /** Fachada que o DemoWizard consome. Real (`useDemoEvolution`) ou mock (preview). */
 export interface DemoEvolutionApi {
   accept(input: DemoAcceptInput): Promise<{ ok: boolean }>;
-  connect(): Promise<DemoConnectResult>;
+  /** `wantPairing` pede TAMBÉM o código de pareamento. Sem ele, a chamada é
+   *  idêntica à de antes — o caminho do QR não muda. */
+  connect(opts?: { wantPairing?: boolean }): Promise<DemoConnectResult>;
   status(): Promise<DemoStatusResult>;
   report(): Promise<DemoReport>;
   sendReport(input: { text: string; report_url: string }): Promise<{ ok: boolean }>;
