@@ -41,10 +41,27 @@ const CORS = {
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
-/** As duas tabelas e de que lado cada uma está. Acrescentar aqui é o ponto de extensão. */
-const FONTES: Array<{ tabela: string; origem: InstanciaVigiada['origem'] }> = [
-  { tabela: 'evolution_instances', origem: 'tenant' },
-  { tabela: 'platform_crm_evolution_instances', origem: 'plataforma' },
+/**
+ * As duas tabelas e de que lado cada uma está. Acrescentar aqui é o ponto de
+ * extensão.
+ *
+ * `colunas` difere por fonte porque o SCHEMA difere (medido 2026-08-07):
+ * `evolution_instances` tem `organization_id`; `platform_crm_evolution_instances`
+ * NÃO tem (tem `product_id`). Pedir coluna inexistente faz o PostgREST devolver
+ * erro — e a fonte inteira sumiria do tick, que é exatamente o silêncio que este
+ * canário existe para combater.
+ */
+const FONTES: Array<{ tabela: string; origem: InstanciaVigiada['origem']; colunas: string }> = [
+  {
+    tabela: 'evolution_instances',
+    origem: 'tenant',
+    colunas: 'id, name, status, last_connected_at, metadata, organization_id',
+  },
+  {
+    tabela: 'platform_crm_evolution_instances',
+    origem: 'plataforma',
+    colunas: 'id, name, status, last_connected_at, metadata',
+  },
 ]
 
 Deno.serve(async (req) => {
@@ -67,13 +84,28 @@ Deno.serve(async (req) => {
 
   const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
 
+  // ── ORGS EM DEMONSTRAÇÃO ───────────────────────────────────────────────────
+  // `qr_pending` numa demo é o estado NORMAL de quem abriu o wizard e não pareou.
+  // Sem este filtro, cada lead que desiste na etapa 2 vira "WhatsApp DESCONECTADO"
+  // — e no dia do anúncio isso é ruído em massa, que treina a ignorar o canal.
+  //
+  // FALHA ABERTA de propósito: se a leitura falhar, o conjunto fica vazio e todas
+  // voltam a ser vigiadas. Um alerta a mais é barato; um salão pago caído em
+  // silêncio, não.
+  const { data: orgsDemo, error: errDemo } = await db
+    .from('organizations').select('id').eq('plan_status', 'demo')
+  if (errDemo) {
+    console.warn('[coverage-canary] falha ao listar orgs demo — vigiando TODAS:', errDemo.message)
+  }
+  const idsDemo = new Set<string>((orgsDemo ?? []).map((o) => o.id as string))
+
   const instancias: InstanciaVigiada[] = []
   const falhas: string[] = []
 
   for (const f of FONTES) {
     const { data, error } = await db
       .from(f.tabela)
-      .select('id, name, status, last_connected_at, metadata')
+      .select(f.colunas)
     if (error) {
       // Uma fonte ilegível NÃO pode virar "não há instâncias aqui" — esse é
       // exatamente o silêncio que o canário existe para combater. Registra a
@@ -84,7 +116,11 @@ Deno.serve(async (req) => {
       })
       continue
     }
-    for (const r of data ?? []) {
+    // Cast explícito: o supabase-js só infere tipos quando `select()` recebe uma
+    // string LITERAL. Com `f.colunas` (dinâmica, porque o schema difere por
+    // fonte) ele devolve `{ error: true }` e o typecheck quebra em todo acesso.
+    const linhas = (data ?? []) as unknown as Record<string, unknown>[]
+    for (const r of linhas) {
       instancias.push({
         id: r.id as string,
         name: (r.name as string) ?? '(sem nome)',
@@ -92,11 +128,14 @@ Deno.serve(async (req) => {
         last_connected_at: (r.last_connected_at as string) ?? null,
         origem: f.origem,
         metadata: (r.metadata ?? {}) as Record<string, unknown>,
+        // Só a tabela tenant tem esta coluna; do lado plataforma vem undefined,
+        // e undefined significa "não pertence a org", não "caso omisso".
+        organizationId: r.organization_id as string | null | undefined,
       })
     }
   }
 
-  const { aAlertar, todos } = avaliarCobertura(instancias, Date.now())
+  const { aAlertar, todos } = avaliarCobertura(instancias, Date.now(), { orgsDemo: idsDemo })
 
   for (const v of aAlertar) {
     await sendTelegramAlert(textoDoAlerta(v))

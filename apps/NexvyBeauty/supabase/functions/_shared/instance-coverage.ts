@@ -46,6 +46,16 @@ export interface InstanciaVigiada {
   /** De qual tabela veio — entra no alerta, porque o vão É a origem. */
   origem: "tenant" | "plataforma";
   metadata: Record<string, unknown> | null;
+  /**
+   * Org dona da instância. OPCIONAL porque só existe de UM lado: medido em
+   * 2026-08-07, `evolution_instances` tem `organization_id` e
+   * `platform_crm_evolution_instances` NÃO tem (tem `product_id`).
+   *
+   * Instância de plataforma não pertence a cliente nenhum — logo nunca é demo, e
+   * o filtro abaixo não se aplica a ela. Ausência aqui significa "não é de org",
+   * não "caso omisso".
+   */
+  organizationId?: string | null;
 }
 
 export interface CoberturaConfig {
@@ -53,6 +63,26 @@ export interface CoberturaConfig {
   minutosParaAcusar?: number;
   /** Não repete o mesmo aviso antes disto. Default 6h (igual ao health-alert). */
   horasParaRealertar?: number;
+  /**
+   * Ids de orgs em DEMONSTRAÇÃO (`plan_status='demo'`). Instância dessas orgs não
+   * gera alerta.
+   *
+   * ── POR QUE ISTO EXISTE (apontado pela Controladora, 2026-08-07) ──────────
+   * `qr_pending` numa org demo é o estado NORMAL de quem abriu o wizard e ainda
+   * não pareou — ou desistiu na etapa 2. Sem este filtro, CADA lead que não
+   * conclui vira um "🔴 WhatsApp DESCONECTADO", e no dia em que o anúncio rodar
+   * isso vira ruído em massa. O custo não é o incômodo: é treinar a ignorar o
+   * canal justamente quando um salão PAGANTE cair de verdade.
+   *
+   * O `health_alert_at` compartilhado NÃO protege disso: ele evita que duas
+   * funções alertem sobre o MESMO incidente, mas se o alerta não deveria
+   * existir, dedup só garante que ele saia uma vez em vez de duas.
+   *
+   * ⚠️ FALHA ABERTA: se a leitura das orgs falhar, passar conjunto VAZIO — todas
+   * voltam a ser vigiadas. Um alerta a mais é barato; um salão pago caído em
+   * silêncio, não.
+   */
+  orgsDemo?: ReadonlySet<string>;
 }
 
 export interface VereditoInstancia {
@@ -60,6 +90,7 @@ export interface VereditoInstancia {
   alertar: boolean;
   /** Motivo estável — serve para log e para teste. */
   motivo:
+    | "org_em_demonstracao"
     | "no_ar"
     | "silenciada"
     | "queda_recente_aguardando"
@@ -78,11 +109,17 @@ function estaNoAr(status: string): boolean {
  * Ordem deliberada — do mais forte para o mais fraco, para que o motivo relatado
  * seja o mais fundamental e não o primeiro que casou:
  *
- *   1. no ar          — nada a fazer
- *   2. silenciada     — decisão humana explícita vence tudo
- *   3. queda recente  — evita alarme por reconexão normal
- *   4. já alertado    — throttle compartilhado com o health-alert
- *   5. ACUSA
+ *   1. org demo       — EXCLUSÃO DE ESCOPO: nem entra no radar
+ *   2. no ar          — nada a fazer
+ *   3. silenciada     — decisão humana explícita vence o resto
+ *   4. queda recente  — evita alarme por reconexão normal
+ *   5. já alertado    — throttle compartilhado com o health-alert
+ *   6. ACUSA
+ *
+ * O filtro de demo vem PRIMEIRO, antes até de checar se está no ar, porque não é
+ * um julgamento sobre o estado da instância — é dizer que ela não é vigiada. Um
+ * `qr_pending` de demo não é incidente pendente; é um lead que não terminou o
+ * wizard.
  *
  * `last_connected_at` ausente NÃO impede o alerta: instância que nunca conectou e
  * está fora do ar é exatamente o caso que se quer ver. Tratar ausência como
@@ -99,6 +136,14 @@ export function avaliarInstancia(
     alertar,
     motivo,
   });
+
+  // Org em demonstração: fora do radar. Só se aplica a quem TEM org — instância
+  // de plataforma (`organizationId` ausente) nunca é demo e segue vigiada.
+  // Filtro por `plan_status`, NÃO por prefixo do nome: `demo-` é convenção do
+  // wizard e nada impede um tenant de se chamar assim. O plano é o fato.
+  if (inst.organizationId && cfg.orgsDemo?.has(inst.organizationId)) {
+    return veredito(false, "org_em_demonstracao");
+  }
 
   if (estaNoAr(inst.status)) return veredito(false, "no_ar");
 
