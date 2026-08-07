@@ -5,16 +5,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { SEG_META, SEG_KEYS, fmtNum } from '@/components/superadmin/crm/prospeccao/_shared';
+import { ProspeccaoCampanhasControle } from '@/components/superadmin/crm/prospeccao/ProspeccaoCampanhasControle';
 import type { LeadSegment } from '@/components/superadmin/crm/data/usePlatformProspeccao';
 
 /**
- * CAMPANHAS DE DISPARO (UI) — compõe uma campanha para o público APROVADO da Base
- * consolidada (só quem passou no Portão). Escolhe segmento + canal, compõe a mensagem,
- * pré-visualiza e vê o tamanho do público — tudo real, lido do banco.
+ * CAMPANHAS DE DISPARO (UI) — duas seções, propósitos distintos:
  *
- * HONESTO SOBRE O MOTOR: o disparo em massa está gated OFF (COLD_OUTREACH_ENABLED=false +
- * dry-run no motor platform-cold-outreach). Por isso o botão "Disparar" fica DESABILITADO e
- * não invoca nada — nada é enviado. Habilitar é decisão do Marcelo.
+ * 1. CONTROLE (ProspeccaoCampanhasControle) — as campanhas REAIS de
+ *    `platform_crm_cold_campaigns`: estado, agendamento, armar e desarmar.
+ *    É a parte que governa o que sai de verdade.
+ *
+ * 2. COMPOSIÇÃO (abaixo) — rascunho de público e mensagem. Continua sendo uma
+ *    bancada de trabalho: nada aqui é persistido nem enviado.
+ *
+ * HISTÓRICO — a tela nasceu só com a seção 2, e isso era o problema: chamava-se
+ * "Campanhas" sem enxergar campanha alguma. As reais eram ligadas por UPDATE em
+ * SQL, e foi assim que `TESTE Gate G` ficou `active` com `dry_run=false` e
+ * janela 0h-24h, pronta para disparar ao primeiro lead que entrasse na fila.
  */
 
 type Channel = 'wpp_numero' | 'wpp_link' | 'ig_dm';
@@ -76,16 +83,14 @@ export function ProspeccaoCampanhas() {
         </div>
       ) : (
         <>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3">
-            <Lock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-foreground">Disparo em massa DESLIGADO por segurança.</p>
-              <p className="text-muted-foreground">
-                O motor está gated OFF (<code>COLD_OUTREACH_ENABLED=false</code> + dry-run). Você pode montar e
-                pré-visualizar a campanha aqui, mas o envio real depende da liberação do Marcelo. Nada é enviado
-                enquanto este aviso estiver aqui.
-              </p>
-            </div>
+          <ProspeccaoCampanhasControle productId={productId} />
+
+          <div className="rounded-lg border border-border pt-2">
+            <h2 className="text-lg font-semibold text-foreground px-4 pt-3">Rascunho de público e mensagem</h2>
+            <p className="text-sm text-muted-foreground px-4 pb-3">
+              Bancada de trabalho para dimensionar público e testar texto. Nada aqui é salvo nem enviado —
+              o que dispara são as campanhas acima.
+            </p>
           </div>
 
           <div className="rounded-lg border border-border bg-card p-4 space-y-4">
@@ -139,11 +144,16 @@ export function ProspeccaoCampanhas() {
               <div className="text-xs text-muted-foreground mb-1">Prévia</div>
               <div className="text-foreground whitespace-pre-wrap">{preview}</div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button disabled className="gap-2">
-                <Lock className="h-4 w-4" /> Disparar {fmtNum(audienceN)} (desligado)
-              </Button>
-              <span className="text-xs text-muted-foreground">Habilitação: decisão do Marcelo.</span>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Lock className="h-4 w-4 shrink-0" />
+              {/* Não existe mais botão "Disparar" aqui, e a ausência é o ponto: disparo
+                  agora é um ATO REGISTRADO (armar uma campanha), não um clique numa
+                  bancada de rascunho. Um botão desabilitado sugeria que um dia ele
+                  ligaria — sugestão errada sobre onde mora o controle. */}
+              <span>
+                Público de <b>{fmtNum(audienceN)}</b> leads neste recorte. Para disparar, arme uma campanha
+                na seção acima — é lá que fica o registro de quem autorizou.
+              </span>
             </div>
           </div>
         </>
