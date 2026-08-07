@@ -47,6 +47,76 @@ Deno.test("ANTI-NO-OP — o canário vê o que o health-alert NÃO vê", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ORG EM DEMONSTRAÇÃO — o furo apontado pela Controladora (2026-08-07)
+//
+// `qr_pending` numa demo é o estado NORMAL de quem abriu o wizard e não pareou.
+// Sem filtro, cada lead que desiste na etapa 2 vira um "WhatsApp DESCONECTADO"
+// — o ruído que ela removeu do health-alert voltaria por esta porta.
+// ═══════════════════════════════════════════════════════════════════════════
+const DEMO = new Set(["org-demo-1"]);
+
+Deno.test("org em DEMONSTRAÇÃO não alerta, mesmo caída há horas", () => {
+  const v = avaliarInstancia(
+    inst({ origem: "tenant", organizationId: "org-demo-1" }),
+    AGORA,
+    { orgsDemo: DEMO },
+  );
+  assertEquals(v.alertar, false);
+  assertEquals(v.motivo, "org_em_demonstracao");
+});
+
+Deno.test("CONTROLE — org PAGANTE caída ALERTA, mesmo com demos na lista", () => {
+  // Sem este par, "não alertou" seria indistinguível de "o filtro comeu tudo".
+  const v = avaliarInstancia(
+    inst({ origem: "tenant", organizationId: "org-pagante-9" }),
+    AGORA,
+    { orgsDemo: DEMO },
+  );
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "caida_sem_vigilancia");
+});
+
+Deno.test("filtro é por plan_status, NÃO por nome: instância 'demo-...' de org paga ALERTA", () => {
+  // `demo-` no nome é convenção do wizard; nada impede um tenant de se chamar
+  // assim. Filtrar por nome silenciaria um cliente pagante.
+  const v = avaliarInstancia(
+    inst({ name: "demo-salao-da-ana", origem: "tenant", organizationId: "org-pagante-9" }),
+    AGORA,
+    { orgsDemo: DEMO },
+  );
+  assertEquals(v.alertar, true);
+});
+
+Deno.test("instância de PLATAFORMA não tem org — filtro não se aplica, segue vigiada", () => {
+  // `platform_crm_evolution_instances` não tem `organization_id` (medido). A
+  // ausência significa "não é de cliente", não "caso omisso" — e a Camila, que
+  // motivou o canário, vive exatamente aí.
+  const v = avaliarInstancia(
+    inst({ name: "prospeccao-ativa-camila", origem: "plataforma" }),
+    AGORA,
+    { orgsDemo: DEMO },
+  );
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "caida_sem_vigilancia");
+});
+
+Deno.test("FALHA ABERTA — sem lista de demos, TODAS voltam a ser vigiadas", () => {
+  // Se a leitura das orgs falhar, o motor passa conjunto vazio. Um alerta a mais
+  // é barato; um salão pago caído em silêncio, não.
+  const v = avaliarInstancia(
+    inst({ origem: "tenant", organizationId: "org-demo-1" }),
+    AGORA,
+    { orgsDemo: new Set() },
+  );
+  assertEquals(v.alertar, true);
+});
+
+Deno.test("cfg sem orgsDemo não quebra (compatível com chamada antiga)", () => {
+  const v = avaliarInstancia(inst({ organizationId: "org-demo-1" }), AGORA);
+  assertEquals(v.alertar, true);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONTROLES NEGATIVOS — o que NÃO pode virar alerta
 // ═══════════════════════════════════════════════════════════════════════════
 Deno.test("no ar não alerta", () => {
