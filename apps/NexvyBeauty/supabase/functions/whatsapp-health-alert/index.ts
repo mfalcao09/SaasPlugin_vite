@@ -54,14 +54,41 @@ Deno.serve(async (req) => {
     .select('id, name, status, last_connected_at, organization_id, metadata')
   if (error) return json({ error: 'falha_leitura', detalhe: error.message }, 500)
 
+  // ── DEMO NÃO É INCIDENTE (2026-08-07) ───────────────────────────────────────
+  // `qr_pending` numa org demo é o estado NORMAL de quem abriu o wizard e ainda não
+  // pareou — ou desistiu na etapa 2. Sem este filtro, CADA lead que não conclui vira
+  // um alerta de "WhatsApp DESCONECTADO", e no dia em que o anúncio rodar isso é
+  // ruído em massa. O custo não é o incômodo: é treinar a ignorar o canal justamente
+  // quando um salão PAGANTE cair de verdade.
+  //
+  // Filtro por plan_status, não por prefixo do nome: `demo-` no nome é convenção do
+  // wizard e nada impede um tenant de se chamar assim. O plano é o fato.
+  //
+  // Falha ABERTA de propósito: se a leitura das orgs falhar, o conjunto fica vazio e
+  // todas as instâncias voltam a ser vigiadas. Um alerta a mais é barato; um salão
+  // pago caído em silêncio, não.
+  const { data: orgsDemo, error: errDemo } = await db
+    .from('organizations').select('id').eq('plan_status', 'demo')
+  if (errDemo) console.warn('[health-alert] falha ao listar orgs demo — vigiando todas:', errDemo.message)
+  const idsDemo = new Set<string>((orgsDemo ?? []).map((o) => o.id as string))
+
   const agora = Date.now()
-  let alertadas = 0, rearmadas = 0, silenciadas = 0
+  let alertadas = 0, rearmadas = 0, silenciadas = 0, demoIgnoradas = 0
   const detalhe: string[] = []
 
   for (const inst of instancias ?? []) {
+    // Org em demonstração: fora do radar (nem alerta, nem rearme).
+    if (inst.organization_id && idsDemo.has(inst.organization_id)) { demoIgnoradas++; continue }
+
     const meta = (inst.metadata ?? {}) as Record<string, unknown>
     const marcaAnterior = typeof meta.health_alert_at === 'string' ? meta.health_alert_at : null
     const caida = inst.status !== 'connected'
+
+    // [MUTE 2026-08-06] Instância APOSENTADA/silenciada de propósito (ex.: teste
+    // morto `meuteste1-sal-o1`, 16 dias alertando 4×/dia sem ninguém agir — ruído
+    // treina a ignorar o canal). metadata.health_mute=true → pula alerta E rearme.
+    // Reativar = tirar a flag no banco. Instância NOVA nasce sem flag = vigiada.
+    if ((meta as Record<string, unknown>).health_mute === true) { silenciadas++; continue }
 
     // Voltou ao ar: apaga a marca para que a PRÓXIMA queda volte a alertar.
     if (!caida) {
@@ -103,6 +130,6 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     instancias: instancias?.length ?? 0,
-    alertadas, rearmadas, silenciadas, detalhe,
+    alertadas, rearmadas, silenciadas, demoIgnoradas, detalhe,
   })
 })
