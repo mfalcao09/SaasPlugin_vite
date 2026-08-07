@@ -21,7 +21,11 @@ type Empresa = ImplantacaoPayload['empresa'];
 // Sub-verticais de beleza + ticket médio default (R$) se a dona pular o campo.
 export const SEGMENTOS: Array<{ value: string; label: string; ticket: number }> = [
   { value: 'salao', label: 'Salão de beleza / Cabelo', ticket: 120 },
-  { value: 'barbearia', label: 'Barbearia', ticket: 50 },
+  // Barbearia REMOVIDA em 06/08 (decisão do Marcelo). O ICP do NexvyBeauty é
+  // profissional de beleza feminina; barbearia tem PRODUTO PRÓPRIO (BarbeiroPro,
+  // apps/BarbeiroPro). Oferecer a opção aqui capturava o lead na esteira errada:
+  // ele fazia a demo do NexvyBeauty existindo um produto feito para ele.
+  // Não era erro de rótulo — era vazamento entre produtos.
   { value: 'nail', label: 'Nail / Manicure', ticket: 60 },
   { value: 'estetica', label: 'Estética / Skincare', ticket: 150 },
   { value: 'sobrancelha', label: 'Sobrancelha / Cílios', ticket: 80 },
