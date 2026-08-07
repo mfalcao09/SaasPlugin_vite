@@ -22,6 +22,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR } from "../_shared/phone.ts";
 import { sendTelegramAlertThrottled } from "../_shared/platform-alerts.ts";
+import { EVOLUTION_WEBHOOK_EVENTS, invalidEvents } from "../_shared/evolution-webhook-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,43 @@ function extractQr(body: any): string | null {
     body?.data?.base64, body?.data?.qrcode, body?.data?.qr, body?.instance?.qrcode];
   for (const c of cands) { const q = normalizeQr(c); if (q) return q; }
   return null;
+}
+// ── PAREAMENTO POR CÓDIGO (06/08) ───────────────────────────────────────────
+// O código de pareamento é a alternativa ao QR: a lead digita 8 caracteres
+// DENTRO do próprio WhatsApp, num aparelho só. Existe porque o link chega no
+// WhatsApp (celular) e a tela do QR exige uma câmera apontada para OUTRA tela —
+// impossível no aparelho que recebeu o link.
+//
+// Extrator defensivo de propósito: a forma da resposta varia entre versões da
+// Evolution e eu não vou adivinhar qual chave ela usa. A guarda é o FORMATO —
+// 8 caracteres alfanuméricos, com ou sem hífen. Sem ela, `body.code` (que às
+// vezes carrega o QR inteiro) passaria por código de pareamento.
+function extractPairing(body: any): string | null {
+  if (!body) return null;
+  const cands = [
+    body.pairingCode, body.pairing_code, body.pairingcode, body.code,
+    body?.data?.pairingCode, body?.data?.pairing_code, body?.data?.code,
+    body?.instance?.pairingCode, body?.instance?.pairing_code,
+  ];
+  for (const c of cands) {
+    if (typeof c !== "string") continue;
+    const v = c.trim().toUpperCase();
+    if (/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(v)) return v;
+  }
+  return null;
+}
+// Radiografia da resposta SEM vazar conteúdo: só as chaves e o tipo/tamanho de
+// cada valor. É a sonda — a primeira chamada real revela o formato que a
+// Evolution usa nesta versão, e nenhum segredo (QR base64, código) entra em
+// log nem na resposta. Medir sem expor.
+function shapeOf(v: any, depth = 0): any {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return `string(${v.length})`;
+  if (typeof v !== "object") return typeof v;
+  if (depth >= 2) return "object(...)";
+  const out: Record<string, any> = {};
+  for (const k of Object.keys(v).slice(0, 20)) out[k] = shapeOf(v[k], depth + 1);
+  return out;
 }
 // geo por CDN (sem outbound: a borda já resolveu; IP nunca sai — B1-compliant)
 function cdnGeo(req: Request) {
@@ -189,37 +227,92 @@ Deno.serve(async (req) => {
         const instanceToken =
           (typeof createRes.body?.hash === "string" ? createRes.body.hash : null) ??
           createRes.body?.hash?.apikey ?? created?.token ?? created?.apikey ?? generatedToken;
+        const metaInicial = { instance_uuid: uuid, instance_name: finalName, created_via: "demo_wizard", remote: createRes.body };
         const { data: insRow, error: insErr } = await admin.from("evolution_instances").insert({
           organization_id: org.id, name: finalName, instance_id: uuid, instance_token: instanceToken,
           status: "disconnected", is_default: true, created_by_super_admin: false,
-          metadata: { instance_uuid: uuid, instance_name: finalName, created_via: "demo_wizard", remote: createRes.body },
+          metadata: metaInicial,
         }).select("id, name, instance_id, instance_token, status").single();
         if (insErr || !insRow) { console.error("[demo-evolution connect] insert ", insErr?.message); return json({ error: "instance_persist_failed" }, 500); }
         inst = insRow;
-        // webhook → evolution-webhook (mesmo endpoint dos tenants; encaminha *_SET → history-sync)
-        const wh = await evoFetch(config, `/webhook/set/${encodeURIComponent(finalName)}`, {
-          method: "POST",
-          body: JSON.stringify({ webhook: { enabled: true, url: `${SUPABASE_URL}/functions/v1/evolution-webhook`,
-            // ⚠️ 2026-07-20: faltavam MESSAGING_HISTORY_SET, CONTACTS_UPSERT e
-            // CHATS_UPSERT — sem eles a Evolution nunca entregava o histórico
-            // incremental e a carteira chegava com 1 contato.
-            events: ["MESSAGES_SET","MESSAGES_UPSERT","MESSAGES_UPDATE","MESSAGES_DELETE","CHATS_SET","CHATS_UPSERT","CONTACTS_SET","CONTACTS_UPSERT","CONTACTS_UPDATE","MESSAGING_HISTORY_SET","CONNECTION_UPDATE","QRCODE_UPDATED","SEND_MESSAGE"] } }),
-        }, instanceToken);
-        await admin.from("evolution_instances").update({ webhook_subscribed: wh.ok }).eq("id", inst.id);
+
+        // ── webhook → evolution-webhook (mesmo endpoint dos tenants) ──────────
+        // A lista vem de _shared/evolution-webhook-events.ts. Antes era literal aqui
+        // e, em 20/07, ganhou MESSAGING_HISTORY_SET — nome do BAILEYS, ausente do enum
+        // da Evolution. Ela valida a lista INTEIRA: um nome inválido = 400 e ZERO
+        // eventos registrados. Rodou 18 dias assim.
+        //
+        // O que deixou isso invisível não foi o nome errado — foi guardar só
+        // `webhook_subscribed: wh.ok`, descartando o status e a mensagem que diziam
+        // qual evento era. Agora a causa é gravada, logada e alertada.
+        const eventos = EVOLUTION_WEBHOOK_EVENTS;
+        const invalidos = invalidEvents(eventos);
+        let whOk = false;
+        // Guarda local: se a lista estiver suja, nem chamamos — o erro já diz o nome,
+        // em vez de virar um 400 opaco lá no servidor.
+        let whErro: string | null = invalidos.length ? `eventos fora do enum: ${invalidos.join(", ")}` : null;
+        if (!invalidos.length) {
+          const wh = await evoFetch(config, `/webhook/set/${encodeURIComponent(finalName)}`, {
+            method: "POST",
+            body: JSON.stringify({ webhook: { enabled: true, url: `${SUPABASE_URL}/functions/v1/evolution-webhook`, events: eventos } }),
+          }, instanceToken);
+          whOk = wh.ok;
+          if (!wh.ok) {
+            const corpo = typeof wh.body === "string" ? wh.body : JSON.stringify(wh.body ?? {});
+            whErro = `status ${wh.status}: ${(wh.message ?? corpo ?? "").slice(0, 300)}`;
+          }
+        }
+        console.log(`[demo-evolution connect] webhook name=${finalName} ok=${whOk}${whErro ? ` erro=${whErro}` : ""}`);
+        await admin.from("evolution_instances").update({
+          webhook_subscribed: whOk,
+          metadata: { ...metaInicial, webhook_error: whErro, webhook_last_attempt_at: new Date().toISOString() },
+        }).eq("id", inst.id);
+        // Canário: sem isto, a próxima quebra volta a esperar alguém abrir o banco.
+        // Não é fatal — a ingestão ainda tem o `backfill` (pull) como caminho.
+        if (!whOk) {
+          await sendTelegramAlertThrottled(
+            `webhook-set-falhou:${org.id}`,
+            `⚠️ WEBHOOK DA DEMO NÃO REGISTROU\nOrg: ${org.id}\nInstância: ${finalName}\n${whErro}\n\nO raio-x ainda roda pelo backfill (pull), mas sem eventos ao vivo.`,
+          ).catch(() => {});
+        }
       }
 
       // pega o QR (GET /instance/connect/{name}) com polling curto
       const nm = encodeURIComponent(inst.name);
+
+      // want_pairing: pede TAMBÉM o código de pareamento, passando o telefone.
+      // O caminho SEM a flag fica byte-a-byte o de antes — de propósito. Se a
+      // Evolution mudar de comportamento ao receber `number`, o desktop (que
+      // funciona hoje com QR) não é afetado. Conserto que arrisca o caminho bom
+      // para salvar o ruim troca um problema por dois.
+      const wantPairing = body?.want_pairing === true;
+      const pairPhone = wantPairing ? normalizePhoneBR(org.phone || "") : null;
+      const qs = pairPhone ? `?number=${encodeURIComponent(pairPhone)}` : "";
+
       let qr: string | null = null;
-      const res = await evoFetch(config, `/instance/connect/${nm}`, { method: "GET" }, inst.instance_token);
+      let pairing: string | null = null;
+      let ultima: any = null;
+      const res = await evoFetch(config, `/instance/connect/${nm}${qs}`, { method: "GET" }, inst.instance_token);
+      ultima = res.body;
       qr = extractQr(res.body);
-      for (let i = 0; !qr && i < 4; i++) {
+      if (wantPairing) pairing = extractPairing(res.body);
+      for (let i = 0; !qr && !pairing && i < 4; i++) {
         await new Promise((r) => setTimeout(r, 1500));
-        const p = await evoFetch(config, `/instance/connect/${nm}`, { method: "GET" }, inst.instance_token);
-        qr = extractQr(p.body);
+        const p = await evoFetch(config, `/instance/connect/${nm}${qs}`, { method: "GET" }, inst.instance_token);
+        ultima = p.body;
+        qr = qr ?? extractQr(p.body);
+        if (wantPairing) pairing = pairing ?? extractPairing(p.body);
       }
       if (qr) await admin.from("evolution_instances").update({ status: "qr_pending", qr_code: qr, qr_code_updated_at: new Date().toISOString() }).eq("id", inst.id);
-      return json({ ok: true, instance_id: inst.id, qr_code: qr });
+      if (wantPairing) {
+        console.log(`[demo-evolution connect] pairing org=${org.id} tem_codigo=${!!pairing} tem_qr=${!!qr} forma=${JSON.stringify(shapeOf(ultima))}`);
+      }
+      return json({
+        ok: true, instance_id: inst.id, qr_code: qr,
+        // Campos extras SÓ quando pedidos: quem não usa a flag recebe a
+        // resposta idêntica à de antes.
+        ...(wantPairing ? { pairing_code: pairing, pairing_phone: pairPhone, evo_shape: shapeOf(ultima) } : {}),
+      });
     }
 
     // ------------------------------------------------------------------ status

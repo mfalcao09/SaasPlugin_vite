@@ -51,6 +51,16 @@ export async function sendTelegramAlert(text: string): Promise<{ ok: boolean; sk
 // conversa martelando o mesmo isolate), NÃO é um mutex distribuído. É de
 // propósito: dedup forte exigiria tabela/estado, e o custo de um alerta a mais
 // é MUITO menor que o de um alerta a menos.
+//
+// ⚠️ 2026-08-07: este bloco existia em produção E em outros branches (ex.:
+// `feat/bdr-autonomo`), mas NÃO em `feat/ads-duda-inbound` — que estava 36 linhas
+// atrás. `demo-evolution` importa `sendTelegramAlertThrottled` e teria quebrado num
+// deploy feito de lá. Só apareceu porque o typecheck rodou com controle.
+//
+// A LIÇÃO NÃO É "o repo estava desatualizado" — é que `_shared/` é global e o
+// deploy empacota a versão DO BRANCH EM QUE VOCÊ ESTÁ. Duas sessões em worktrees
+// diferentes deployam a mesma função com `_shared/` diferentes e nada acusa.
+// Antes de deployar: `deno check` no entrypoint. Um import quebrado aparece ali.
 // ───────────────────────────────────────────────────────────────────────────
 const DEFAULT_ALERT_THROTTLE_MS = 15 * 60 * 1000; // 15 min por chave
 const lastAlertAt = new Map<string, number>();
