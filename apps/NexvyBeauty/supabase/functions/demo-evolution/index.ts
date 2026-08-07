@@ -76,6 +76,43 @@ function extractQr(body: any): string | null {
   for (const c of cands) { const q = normalizeQr(c); if (q) return q; }
   return null;
 }
+// ── PAREAMENTO POR CÓDIGO (06/08) ───────────────────────────────────────────
+// O código de pareamento é a alternativa ao QR: a lead digita 8 caracteres
+// DENTRO do próprio WhatsApp, num aparelho só. Existe porque o link chega no
+// WhatsApp (celular) e a tela do QR exige uma câmera apontada para OUTRA tela —
+// impossível no aparelho que recebeu o link.
+//
+// Extrator defensivo de propósito: a forma da resposta varia entre versões da
+// Evolution e eu não vou adivinhar qual chave ela usa. A guarda é o FORMATO —
+// 8 caracteres alfanuméricos, com ou sem hífen. Sem ela, `body.code` (que às
+// vezes carrega o QR inteiro) passaria por código de pareamento.
+function extractPairing(body: any): string | null {
+  if (!body) return null;
+  const cands = [
+    body.pairingCode, body.pairing_code, body.pairingcode, body.code,
+    body?.data?.pairingCode, body?.data?.pairing_code, body?.data?.code,
+    body?.instance?.pairingCode, body?.instance?.pairing_code,
+  ];
+  for (const c of cands) {
+    if (typeof c !== "string") continue;
+    const v = c.trim().toUpperCase();
+    if (/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(v)) return v;
+  }
+  return null;
+}
+// Radiografia da resposta SEM vazar conteúdo: só as chaves e o tipo/tamanho de
+// cada valor. É a sonda — a primeira chamada real revela o formato que a
+// Evolution usa nesta versão, e nenhum segredo (QR base64, código) entra em
+// log nem na resposta. Medir sem expor.
+function shapeOf(v: any, depth = 0): any {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") return `string(${v.length})`;
+  if (typeof v !== "object") return typeof v;
+  if (depth >= 2) return "object(...)";
+  const out: Record<string, any> = {};
+  for (const k of Object.keys(v).slice(0, 20)) out[k] = shapeOf(v[k], depth + 1);
+  return out;
+}
 // geo por CDN (sem outbound: a borda já resolveu; IP nunca sai — B1-compliant)
 function cdnGeo(req: Request) {
   const h = (n: string) => (req.headers.get(n) || "").trim() || null;
@@ -210,16 +247,40 @@ Deno.serve(async (req) => {
 
       // pega o QR (GET /instance/connect/{name}) com polling curto
       const nm = encodeURIComponent(inst.name);
+
+      // want_pairing: pede TAMBÉM o código de pareamento, passando o telefone.
+      // O caminho SEM a flag fica byte-a-byte o de antes — de propósito. Se a
+      // Evolution mudar de comportamento ao receber `number`, o desktop (que
+      // funciona hoje com QR) não é afetado. Conserto que arrisca o caminho bom
+      // para salvar o ruim troca um problema por dois.
+      const wantPairing = body?.want_pairing === true;
+      const pairPhone = wantPairing ? normalizePhoneBR(org.phone || "") : null;
+      const qs = pairPhone ? `?number=${encodeURIComponent(pairPhone)}` : "";
+
       let qr: string | null = null;
-      const res = await evoFetch(config, `/instance/connect/${nm}`, { method: "GET" }, inst.instance_token);
+      let pairing: string | null = null;
+      let ultima: any = null;
+      const res = await evoFetch(config, `/instance/connect/${nm}${qs}`, { method: "GET" }, inst.instance_token);
+      ultima = res.body;
       qr = extractQr(res.body);
-      for (let i = 0; !qr && i < 4; i++) {
+      if (wantPairing) pairing = extractPairing(res.body);
+      for (let i = 0; !qr && !pairing && i < 4; i++) {
         await new Promise((r) => setTimeout(r, 1500));
-        const p = await evoFetch(config, `/instance/connect/${nm}`, { method: "GET" }, inst.instance_token);
-        qr = extractQr(p.body);
+        const p = await evoFetch(config, `/instance/connect/${nm}${qs}`, { method: "GET" }, inst.instance_token);
+        ultima = p.body;
+        qr = qr ?? extractQr(p.body);
+        if (wantPairing) pairing = pairing ?? extractPairing(p.body);
       }
       if (qr) await admin.from("evolution_instances").update({ status: "qr_pending", qr_code: qr, qr_code_updated_at: new Date().toISOString() }).eq("id", inst.id);
-      return json({ ok: true, instance_id: inst.id, qr_code: qr });
+      if (wantPairing) {
+        console.log(`[demo-evolution connect] pairing org=${org.id} tem_codigo=${!!pairing} tem_qr=${!!qr} forma=${JSON.stringify(shapeOf(ultima))}`);
+      }
+      return json({
+        ok: true, instance_id: inst.id, qr_code: qr,
+        // Campos extras SÓ quando pedidos: quem não usa a flag recebe a
+        // resposta idêntica à de antes.
+        ...(wantPairing ? { pairing_code: pairing, pairing_phone: pairPhone, evo_shape: shapeOf(ultima) } : {}),
+      });
     }
 
     // ------------------------------------------------------------------ status
