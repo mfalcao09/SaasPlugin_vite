@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CalendarClock, Loader2, Power, PowerOff, Radio, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Loader2, Power, PowerOff, Radio, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,12 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { ProspeccaoCampanhaNova } from '@/components/superadmin/crm/prospeccao/ProspeccaoCampanhaNova';
 import {
   avaliarLifecycle, lifecycleDaLinha,
 } from '../../../../../supabase/functions/_shared/cold-outreach/campaign-lifecycle.ts';
@@ -236,6 +242,20 @@ function CardCampanha({ c, aoArmar }: { c: CampanhaRow; aoArmar: (c: CampanhaRow
     onError: (e: Error) => toast.error(`Não foi possível desarmar: ${e.message}`),
   });
 
+  const excluir = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('platform_crm_cold_campaigns' as never)
+        .delete().eq('id', c.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cold-campanhas'] });
+      toast.success('Campanha excluída.');
+    },
+    onError: (e: Error) => toast.error(`Não foi possível excluir: ${e.message}`),
+  });
+
   const w = c.window_config ?? {};
   const dias = (w.days ?? []).map((d) => DIAS[d]).join(', ');
   const jit = c.jitter_config ?? {};
@@ -315,6 +335,51 @@ function CardCampanha({ c, aoArmar }: { c: CampanhaRow; aoArmar: (c: CampanhaRow
             Interrompida pelo anti-ban — reativar exige revisão fora desta tela.
           </span>
         )}
+
+        <div className="ml-auto">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              {/* Excluir é bloqueado enquanto houver carimbo: desarmar primeiro é um
+                  passo a mais de propósito, para que apagar nunca seja o gesto que
+                  interrompe um disparo em curso. */}
+              <Button
+                variant="ghost" size="sm" disabled={!!c.activated_at}
+                className="gap-2 text-muted-foreground hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" /> Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir “{c.name}”?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-sm">
+                    <p>Isto não tem volta. Junto com a campanha vão embora, em cascata:</p>
+                    <ul className="list-disc pl-5 space-y-0.5">
+                      <li>os itens da <b>fila de disparo</b> dela;</li>
+                      <li>os <b>contadores diários</b> (quanto já saiu por dia);</li>
+                      <li>o <b>histórico de aquecimento do número</b> — o warm-up
+                        recomeça do dia 1 na próxima campanha que usar esta instância.</li>
+                    </ul>
+                    <p>
+                      As <b>mensagens já enviadas permanecem</b> no histórico das conversas —
+                      elas não são apagadas, só deixam de apontar para uma campanha existente.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => excluir.mutate()}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Excluir definitivamente
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </div>
   );
@@ -332,16 +397,32 @@ export function ProspeccaoCampanhasControle({ productId }: { productId: string |
     );
   }
 
+  // O botão de criar aparece TAMBÉM no estado vazio — é exatamente aí que ele
+  // mais falta. Uma tela que diz "nenhuma campanha" e não oferece criar obriga o
+  // operador a sair para o SQL, que foi como as campanhas nasceram mal
+  // configuradas até aqui.
+  const cabecalho = (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-lg font-semibold text-foreground">Campanhas</h2>
+      <ProspeccaoCampanhaNova productId={productId} />
+    </div>
+  );
+
   if (!campanhas?.length) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-        Nenhuma campanha cadastrada para este produto.
+      <div className="space-y-3">
+        {cabecalho}
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+          Nenhuma campanha cadastrada para este produto. Crie uma — ela nasce como rascunho e
+          não dispara nada até você armá-la.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      {cabecalho}
       {campanhas.map((c) => <CardCampanha key={c.id} c={c} aoArmar={setAlvo} />)}
       <DialogArmar campanha={alvo} aberto={!!alvo} aoFechar={() => setAlvo(null)} />
     </div>
