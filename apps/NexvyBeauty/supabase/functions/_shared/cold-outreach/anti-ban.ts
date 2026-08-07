@@ -11,6 +11,8 @@
 // quanto esperar? deve pausar?). O envio real vive no motor (platform-cold-outreach),
 // gated por dry-run + flag.
 
+import type { LifecycleVerdict } from "./campaign-lifecycle.ts";
+
 // ── Warm-up ramp ────────────────────────────────────────────────────────────
 // "começa ~20/dia, dobra a cada 2-3 dias" (COLD-OUTREACH-SCRIPT §4 / blueprint §5.3).
 export interface WarmupConfig {
@@ -248,7 +250,22 @@ export interface SendGateInput {
   sentToday: number;
   killStats: KillSwitchStats;
   killCfg: KillSwitchConfig;
-  campaignPaused: boolean;
+  /**
+   * Veredito do CICLO DE VIDA (campaign-lifecycle.ts) — estado + autorização +
+   * vigência.
+   *
+   * Substituiu `campaignPaused: boolean`, que era CÓDIGO MORTO: o motor passava
+   * `status === "paused"` depois de uma query que já filtrava
+   * `in (active, warming)`, então a comparação nunca podia ser verdadeira. A
+   * máquina de seis estados do banco chegava aqui achatada num bit sempre falso.
+   *
+   * Agora o portão consulta a máquina inteira, e um `active` sem carimbo de
+   * autorização é recusado AQUI também — não só no `tickCampaign`. É redundância
+   * deliberada, com fonte de verdade ÚNICA (a mesma função pura): dois pontos de
+   * consulta, um mecanismo. O que não pode existir é o inverso — dois mecanismos
+   * independentes decidindo a mesma coisa.
+   */
+  lifecycle: LifecycleVerdict;
 }
 
 export interface SendGateVerdict {
@@ -258,12 +275,19 @@ export interface SendGateVerdict {
 }
 
 /**
- * Portão único do tick: só libera envio se a campanha não está pausada, o
- * kill-switch não tripou, estamos na janela e ainda há cota de warm-up hoje.
+ * Portão único do tick: só libera envio se a campanha está ARMADA (estado +
+ * autorização + vigência), o kill-switch não tripou, estamos na janela e ainda há
+ * cota de warm-up hoje.
+ *
+ * O ciclo de vida vem PRIMEIRO de propósito: não faz sentido relatar
+ * "outside_window" para uma campanha que nem foi autorizada — o motivo devolvido
+ * deve ser sempre o mais fundamental.
  */
 export function canSendNow(i: SendGateInput): SendGateVerdict {
   const remaining = remainingToday(i.warmup, i.warmupDay, i.sentToday);
-  if (i.campaignPaused) return { canSend: false, reason: "campaign_paused", remaining };
+  if (!i.lifecycle.armada) {
+    return { canSend: false, reason: `lifecycle:${i.lifecycle.motivo}`, remaining };
+  }
   const kill = killSwitch(i.killStats, i.killCfg);
   if (kill.tripped) return { canSend: false, reason: `kill_switch:${kill.reason}`, remaining };
   if (!withinWindow(i.now, i.window)) return { canSend: false, reason: "outside_window", remaining };

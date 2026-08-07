@@ -21,6 +21,11 @@ import {
   warmupDayFromFirstSend,
 } from "../_shared/cold-outreach/anti-ban.ts";
 import {
+  avaliarLifecycle,
+  lifecycleDaLinha,
+  limparAutorizacaoAoMatar,
+} from "../_shared/cold-outreach/campaign-lifecycle.ts";
+import {
   type DispatchTier,
   type GateLead,
   passesInstagramGate,
@@ -170,7 +175,20 @@ async function actionEnqueue(sb: SupabaseClient, campaignId: string, limit: numb
 // ═══════════════════════════════════════════════════════════════════════════
 async function actionTick(sb: SupabaseClient, onlyCampaign: string | null, envEnabled: boolean) {
   const now = new Date();
-  const q = sb.from("platform_crm_cold_campaigns").select("*").in("status", ["active", "warming"]);
+  // Traz TODOS os estados não-terminais — inclusive `draft` e `paused`.
+  //
+  // Antes filtrava `in (active, warming)`, e era esse filtro que esvaziava o
+  // portão: `canSendNow` recebia `campaignPaused: status === "paused"`, que nunca
+  // podia ser verdadeiro porque `paused` já havia sido removido aqui. Um portão
+  // cujo insumo o filtro anterior tornou impossível é decoração.
+  //
+  // Agora quem decide é `avaliarLifecycle`, e o tick RELATA por que cada campanha
+  // não disparou (`lifecycle:nao_autorizada`, `lifecycle:aguardando_agendamento`).
+  // O custo é uma avaliação pura por campanha; o retorno antecipado em
+  // `tickCampaign` evita as duas leituras de contadores das que não estão armadas.
+  // `killed` e `completed` ficam de fora: terminais não precisam de tick.
+  const q = sb.from("platform_crm_cold_campaigns").select("*")
+    .in("status", ["draft", "warming", "active", "paused"]);
   const { data: campaigns } = onlyCampaign ? await q.eq("id", onlyCampaign) : await q;
   const results: any[] = [];
 
@@ -262,6 +280,31 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
   const jitterCfg = c.jitter_config ?? { minMs: 40000, maxMs: 180000 };
   const killCfg = c.killswitch_config ?? { maxBlockRate: 0.05, maxReportRate: 0.02, minSample: 20, maxConsecutiveFailures: 10 };
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PORTÃO 0 — CICLO DE VIDA: a campanha está ARMADA?
+  //
+  // Vem antes de TUDO, inclusive da leitura de contadores, por dois motivos:
+  //  1. correção — nenhum efeito colateral deve ocorrer para campanha desarmada;
+  //  2. custo — evita duas queries por campanha que não vai disparar mesmo.
+  //
+  // "Armada" é estado disparável + carimbo de autorização + vigência corrente.
+  // Um `status='active'` gravado por UPDATE, sem carimbo, morre aqui — que é
+  // exatamente o caso da campanha `TESTE Gate G` (2026-08-07): configuração de
+  // teste armada como produção, disparando ao primeiro lead que entrasse na fila.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const lifecycle = avaliarLifecycle(lifecycleDaLinha(c), now);
+  if (!lifecycle.armada) {
+    // Vigência vencida é o único caso em que o motor PERSISTE a transição: a
+    // campanha acabou sozinha, e deixá-la `active` faria o tick reavaliá-la para
+    // sempre — e o operador leria "ativa" para algo encerrado.
+    if (lifecycle.transicao === "completed") {
+      await sb.from("platform_crm_cold_campaigns")
+        .update({ status: "completed", updated_at: now.toISOString() })
+        .eq("id", c.id);
+    }
+    return { campaign: c.id, action: "skip", reason: `lifecycle:${lifecycle.motivo}`, transicao: lifecycle.transicao };
+  }
+
   const { health, counters, leituraFalhou } = await loadHealthAndCounters(sb, c.id, instanceId, day);
   // Sem contador confiável não há teto. Calar é o erro barato; disparar é o caro.
   if (leituraFalhou) {
@@ -288,7 +331,13 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
   // Kill-switch: se já tripou, marca a campanha killed e para.
   const kill = killSwitch(killStats, killCfg);
   if (kill.tripped || health?.killed) {
-    await sb.from("platform_crm_cold_campaigns").update({ status: "killed", paused_reason: kill.reason, updated_at: now.toISOString() }).eq("id", c.id);
+    // Matar LIMPA o carimbo de autorização. Sem isso, `killed` seria reversível
+    // por um UPDATE de uma palavra (`status='active'`) e o kill-switch viraria um
+    // aviso, não um freio. Agora reativar exige um humano carimbar de novo — que
+    // é o ponto onde ele lê o motivo da morte.
+    await sb.from("platform_crm_cold_campaigns")
+      .update(limparAutorizacaoAoMatar(kill.reason ?? "kill_switch", now))
+      .eq("id", c.id);
     await upsertHealth(sb, c.id, instanceId, { killed: true, killed_reason: kill.reason, killed_at: now.toISOString() });
     return { campaign: c.id, action: "killed", reason: kill.reason };
   }
@@ -327,7 +376,7 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
   // 1) Portão anti-ban, ANTES de qualquer envio (abertura OU follow-up).
   const gate = canSendNow({
     now, window: windowCfg, warmup, warmupDay, sentToday,
-    killStats, killCfg, campaignPaused: c.status === "paused",
+    killStats, killCfg, lifecycle,
   });
   if (!gate.canSend) {
     return { campaign: c.id, action: "skip", reason: gate.reason, remaining: gate.remaining, followups: null };
@@ -870,7 +919,27 @@ async function actionStatus(sb: SupabaseClient, campaignId: string) {
   for (const r of queue ?? []) byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
   const { data: counters } = await sb.from("platform_crm_cold_daily_counters").select("*").eq("campaign_id", campaignId).order("day", { ascending: false }).limit(7);
   const { data: health } = await sb.from("platform_crm_cold_instance_health").select("*").eq("campaign_id", campaignId);
-  return json({ ok: true, campaign: { id: campaign.id, name: campaign.name, status: campaign.status, dry_run: campaign.dry_run, channel: campaign.channel }, byStatus, counters, health });
+
+  // O veredito do ciclo de vida é o que a UI precisa mostrar: `status` sozinho
+  // MENTE — uma campanha `active` sem carimbo não dispara, e um console que
+  // exibisse só "ativa" repetiria na tela o mesmo engano que o motor cometia.
+  const lifecycle = avaliarLifecycle(lifecycleDaLinha(campaign), new Date());
+
+  return json({
+    ok: true,
+    campaign: {
+      id: campaign.id, name: campaign.name, status: campaign.status,
+      dry_run: campaign.dry_run, channel: campaign.channel,
+      activated_at: campaign.activated_at ?? null,
+      scheduled_start_at: campaign.scheduled_start_at ?? null,
+      scheduled_end_at: campaign.scheduled_end_at ?? null,
+      /** `true` = está disparando agora (ou disparará no próximo tick). */
+      armada: lifecycle.armada,
+      /** Motivo estável quando `armada=false`. Serve de rótulo na UI. */
+      motivo: lifecycle.motivo,
+    },
+    byStatus, counters, health,
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

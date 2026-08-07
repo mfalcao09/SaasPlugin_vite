@@ -99,7 +99,10 @@ Deno.test("kill-switch: tripa por report-rate acima do limiar", () => {
   assertEquals(v.tripped, true); // 3% > 2%
 });
 
-Deno.test("canSendNow: portão composto — libera só na janela, com cota, sem kill, não pausado", () => {
+/** Campanha ARMADA — o veredito que o ciclo de vida devolve no caminho feliz. */
+const ARMADA = { armada: true, motivo: null, transicao: null } as const;
+
+Deno.test("canSendNow: portão composto — libera só armada, na janela, com cota, sem kill", () => {
   const base = {
     now: new Date("2026-07-13T13:00:00Z"), // seg 10h SP
     window: DEFAULT_WINDOW,
@@ -108,10 +111,9 @@ Deno.test("canSendNow: portão composto — libera só na janela, com cota, sem 
     sentToday: 0,
     killStats: { sent: 0, blocked: 0, reported: 0, consecutiveFailures: 0 },
     killCfg: DEFAULT_KILLSWITCH,
-    campaignPaused: false,
+    lifecycle: ARMADA,
   };
   assertEquals(canSendNow(base).canSend, true);
-  assertEquals(canSendNow({ ...base, campaignPaused: true }).reason, "campaign_paused");
   assertEquals(canSendNow({ ...base, sentToday: 20 }).reason, "daily_cap_reached");
   assertEquals(canSendNow({ ...base, now: new Date("2026-07-13T21:00:00Z") }).reason, "outside_window");
   const killed = canSendNow({
@@ -120,6 +122,42 @@ Deno.test("canSendNow: portão composto — libera só na janela, com cota, sem 
   });
   assertEquals(killed.canSend, false);
   if (!killed.reason?.startsWith("kill_switch:")) throw new Error("esperava kill_switch");
+});
+
+Deno.test("canSendNow: campanha DESARMADA é recusada, mesmo com tudo o mais perfeito", () => {
+  // Antes, este caso passava batido: o portão recebia `campaignPaused`, calculado
+  // como `status === "paused"` DEPOIS de uma query que já filtrava
+  // `in (active, warming)` — nunca podia ser true. Este teste é o que impede a
+  // reintrodução daquele bit morto.
+  const v = canSendNow({
+    now: new Date("2026-07-13T13:00:00Z"), // seg 10h SP: janela ABERTA
+    window: DEFAULT_WINDOW,
+    warmup: DEFAULT_WARMUP,
+    warmupDay: 1,
+    sentToday: 0, // cota inteira disponível
+    killStats: { sent: 0, blocked: 0, reported: 0, consecutiveFailures: 0 },
+    killCfg: DEFAULT_KILLSWITCH,
+    lifecycle: { armada: false, motivo: "nao_autorizada", transicao: null },
+  });
+  assertEquals(v.canSend, false);
+  assertEquals(v.reason, "lifecycle:nao_autorizada");
+});
+
+Deno.test("canSendNow: o ciclo de vida vem ANTES da janela — motivo mais fundamental vence", () => {
+  // Campanha não autorizada E fora da janela: o motivo relatado tem de ser a
+  // falta de autorização. Dizer "outside_window" faria o operador esperar as 9h
+  // por algo que nunca dispararia.
+  const v = canSendNow({
+    now: new Date("2026-07-13T21:00:00Z"), // 18h SP: FORA da janela
+    window: DEFAULT_WINDOW,
+    warmup: DEFAULT_WARMUP,
+    warmupDay: 1,
+    sentToday: 0,
+    killStats: { sent: 0, blocked: 0, reported: 0, consecutiveFailures: 0 },
+    killCfg: DEFAULT_KILLSWITCH,
+    lifecycle: { armada: false, motivo: "nao_autorizada", transicao: null },
+  });
+  assertEquals(v.reason, "lifecycle:nao_autorizada");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
