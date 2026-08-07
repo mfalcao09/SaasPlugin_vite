@@ -992,14 +992,21 @@ export function splitIntoBubbles(input: string): string[] {
   // exatamente a bolha seca que este bloco existe para matar.
   const MIN_BUBBLE_CHARS = 25;
   const FUSAO_TETO = MAX_BUBBLE_CHARS + 40;
+  // LINK FICA SOZINHO (06/08, medido no teste ponta a ponta).
+  // A v1 desta fusão grudou "Boa! Já te mando aqui 👇" (24 chars) na bolha do
+  // link e produziu "Boa! Já te mando aqui 👇 Aqui está 👉 <url>". Não quebrou
+  // nada — mas o handler do [ENVIAR_RAIOX] monta a URL em bloco próprio de
+  // propósito, e a minha regra não sabia que bolha com link é especial.
+  // O momento do link é o mais caro do funil; ele merece a bolha inteira.
+  const TEM_URL = /https?:\/\//i;
+  const podeFundir = (a: string, b: string) =>
+    a.length < MIN_BUBBLE_CHARS &&
+    a.length + 1 + b.length <= FUSAO_TETO &&
+    !TEM_URL.test(a) && !TEM_URL.test(b);
   const fundidas: string[] = [];
   for (const b of out) {
     const anterior = fundidas[fundidas.length - 1];
-    if (
-      anterior !== undefined &&
-      anterior.length < MIN_BUBBLE_CHARS &&
-      anterior.length + 1 + b.length <= FUSAO_TETO
-    ) {
+    if (anterior !== undefined && podeFundir(anterior, b)) {
       fundidas[fundidas.length - 1] = `${anterior} ${b}`;
       continue;
     }
@@ -1009,7 +1016,7 @@ export function splitIntoBubbles(input: string): string[] {
   if (fundidas.length >= 2) {
     const ultima = fundidas[fundidas.length - 1];
     const penultima = fundidas[fundidas.length - 2];
-    if (ultima.length < MIN_BUBBLE_CHARS && penultima.length + 1 + ultima.length <= FUSAO_TETO) {
+    if (podeFundir(ultima, penultima)) {
       fundidas[fundidas.length - 2] = `${penultima} ${ultima}`;
       fundidas.pop();
     }
