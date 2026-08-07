@@ -237,6 +237,12 @@ async function loadHealthAndCounters(sb: SupabaseClient, campaignId: string, ins
   const soma = (k: string) => cs.reduce((a: number, r: any) => a + (r[k] ?? 0), 0);
   const counters = cs.length === 0 ? null : {
     sent_count: soma("sent_count"),
+    // delivered_count entrou aqui tarde: quando redesenhei esta função (bloqueante
+    // #3) ele não era usado por ninguém e ficou de fora. O typecheck pegou ao
+    // ligar a regra de não-entrega — e o modo de falha seria SILENCIOSO: campo
+    // ausente ⇒ `delivered` undefined ⇒ a regra se cala pra sempre, com aparência
+    // de mecanismo pronto.
+    delivered_count: soma("delivered_count"),
     blocked_count: soma("blocked_count"),
     reported_count: soma("reported_count"),
     failed_count: soma("failed_count"),
@@ -269,6 +275,14 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     blocked: counters?.blocked_count ?? 0,
     reported: counters?.reported_count ?? 0,
     consecutiveFailures: health?.consecutive_failures ?? 0,
+    // ELO FINAL da cadeia do wamid. Sem esta linha, tudo o mais é decorativo: o
+    // webhook grava delivered_count e a regra nunca o vê.
+    //
+    // `?? undefined` e NÃO `?? 0`, deliberadamente: sem linha de contador, a
+    // regra recebe undefined e SE CALA (anti-ban.ts só opina com `number`).
+    // Com `?? 0` ela leria "zero entregas" = 100% de não-entrega e PAUSARIA
+    // CAMPANHA SAUDÁVEL no primeiro tick. Fonte errada é pior que fonte ausente.
+    delivered: counters?.delivered_count ?? undefined,
   };
 
   // Kill-switch: se já tripou, marca a campanha killed e para.

@@ -1107,6 +1107,63 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── ACK DE ENTREGA → delivered_count (elos 3-4 da cadeia do wamid) ───────
+    // ANTES do normalizePayload de propósito: MESSAGES_UPDATE cairia em 'unknown'
+    // e seria descartado silenciosamente.
+    //
+    // POR QUE EXISTE: o kill-switch anti-ban por taxa de bloqueio/denúncia NÃO
+    // PODE disparar — o WhatsApp não notifica nenhum dos dois. O único sinal real
+    // de queima de número é a NÃO-ENTREGA: número saudável entrega quase tudo,
+    // número queimando para de entregar. Sem este bloco, delivered_count fica em
+    // zero e a regra de anti-ban.ts dorme (ela se cala quando `delivered` é
+    // undefined — por desenho, pra não acusar quem não sabe).
+    if (rawEvent === "messages.update" || rawEvent === "MESSAGES_UPDATE") {
+      try {
+        const d = payload.data || payload;
+        const arr = Array.isArray(d?.messages) ? d.messages : [d];
+        for (const m of arr) {
+          const wamid: string | null = m?.key?.id ?? m?.keyId ?? null;
+          // Só ACK de ENTREGA conta. 'sent' já foi contado no envio, e 'read' vem
+          // DEPOIS de entregue — contar os dois somaria em dobro.
+          const st = String(m?.status ?? m?.update?.status ?? "").toUpperCase();
+          const entregue = st.includes("DELIVERY") || st === "DELIVERED" || st === "2";
+          if (!wamid || !entregue) continue;
+
+          const { data: msg } = await supabase
+            .from("platform_crm_messages")
+            .select("metadata, created_at")
+            .eq("metadata->>wamid", wamid)
+            .maybeSingle();
+          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+          const campaignId = meta.campaign_id as string | undefined;
+          if (!campaignId) continue; // não é mensagem de campanha — nada a contar
+
+          // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
+          // seguinte, e a taxa sent/delivered só significa alguma coisa se as
+          // duas pernas caírem no MESMO balde. Contar no dia do ACK inflaria a
+          // não-entrega de ontem e a entrega de hoje — e não-entrega inflada
+          // PAUSA CAMPANHA SAUDÁVEL, o modo de falha caro deste mecanismo.
+          const day = String(msg?.created_at ?? "").slice(0, 10);
+          if (!day) continue;
+
+          await supabase.rpc("pcrm_cold_bump_counter", {
+            p_campaign: campaignId,
+            p_instance: (meta.connection_id as string | null) ?? null,
+            p_day: day,
+            p_sent: 0, p_delivered: 1, p_blocked: 0, p_reported: 0, p_failed: 0,
+          });
+          console.log("[platform-evolution-webhook] delivered+1", { campaignId, day, wamid });
+        }
+      } catch (e) {
+        // NUNCA derrubar o webhook por causa de métrica: perder um ACK degrada a
+        // medição; falhar aqui derrubaria a ingestão de mensagens REAIS.
+        console.warn("[platform-evolution-webhook] ACK de entrega falhou (non-fatal):", String(e).slice(0, 200));
+      }
+      return new Response(JSON.stringify({ ok: true, handled: "delivery_ack" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const norm = normalizePayload(payload);
     if (!norm) {
       // Return 200 so Evolution Go does not retry indefinitely
