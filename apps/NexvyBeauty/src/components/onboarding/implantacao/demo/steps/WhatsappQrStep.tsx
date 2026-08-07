@@ -25,6 +25,36 @@ const PASSOS_QR = [
   'Toque em Configurações → Aparelhos conectados',
   'Toque em Conectar aparelho e aponte a câmera para o código',
 ];
+// Via CÓDIGO: um aparelho só. A lead digita dentro do próprio WhatsApp.
+const PASSOS_CODIGO = [
+  'Abra o WhatsApp neste mesmo celular',
+  'Toque em Configurações → Aparelhos conectados',
+  'Toque em Conectar aparelho → Conectar com número de telefone',
+  'Digite o código que aparece abaixo',
+];
+
+// ── QUAL VIA (06/08) ────────────────────────────────────────────────────────
+// A pergunta REAL não é "é mobile?" — é "o WhatsApp está NESTE aparelho?".
+// O navegador não sabe responder isso, então a detecção escolhe o PADRÃO e
+// NUNCA tranca o caminho: as duas vias ficam a um toque de distância.
+//
+// Tablet vai para CÓDIGO junto com o celular. Existe WhatsApp para iPad, e o
+// custo de errar é assimétrico: errar para código custa digitação; errar para
+// QR entrega uma tela sem saída — que foi exatamente o defeito medido.
+export type Via = 'qr' | 'codigo';
+export function viaPadrao(): Via {
+  if (typeof navigator === 'undefined') return 'qr';
+  const ua = navigator.userAgent || '';
+  const uaMovel = /Android|iPhone|iPad|iPod|Mobile|Tablet|Silk|Kindle/i.test(ua);
+  // iPadOS >= 13 MENTE o UA como "Macintosh". Sem este ramo, todo iPad cairia
+  // no QR — e é justamente onde o WhatsApp pode estar no mesmo aparelho.
+  const iPadDisfarcado = /Macintosh/.test(ua) && (navigator.maxTouchPoints ?? 0) > 1;
+  // "Solicitar site para computador" no celular também falseia o UA; ponteiro
+  // grosso (dedo) é o sinal que sobrevive a isso.
+  const dedoNaoMouse = typeof matchMedia === 'function'
+    && matchMedia('(pointer: coarse)').matches;
+  return (uaMovel || iPadDisfarcado || dedoNaoMouse) ? 'codigo' : 'qr';
+}
 
 type Phase = 'lgpd' | 'connecting' | 'qr' | 'connected';
 
@@ -43,6 +73,9 @@ export const WhatsappQrStep: FC<{
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
+  // Via escolhida: nasce da detecção, muda com um toque da lead.
+  const [via, setVia] = useState<Via>(viaPadrao);
+  const [pairing, setPairing] = useState<string | null>(null);
   const firedRef = useRef(false);
   // Sempre aponta para o onConnected mais recente. Necessário porque o avanço
   // vive num efeito que NÃO pode ter a callback nas deps: `goNext` (DemoWizard:66)
@@ -62,14 +95,36 @@ export const WhatsappQrStep: FC<{
       });
       // 2) cria a instância lazy + puxa o QR base64.
       setPhase('connecting');
-      const res = await api.connect();
+      const res = await api.connect({ wantPairing: via === 'codigo' });
       setQr(res.qr_code);
+      setPairing(res.pairing_code ?? null);
       setPhase('qr');
     } catch (e) {
       toast.error('Não foi possível iniciar a conexão', {
         description: e instanceof Error ? e.message : 'Tente novamente em instantes.',
       });
       setPhase('lgpd');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Troca de via SEM refazer o consentimento: só repede a conexão no outro
+  // formato. Existe para que a detecção seja um palpite reversível, e não uma
+  // sentença — se ela errar, a lead corrige sozinha.
+  const trocarVia = async () => {
+    if (busy) return;
+    const nova: Via = via === 'codigo' ? 'qr' : 'codigo';
+    setVia(nova);
+    setBusy(true);
+    try {
+      const res = await api.connect({ wantPairing: nova === 'codigo' });
+      setQr(res.qr_code);
+      setPairing(res.pairing_code ?? null);
+    } catch (e) {
+      toast.error('Não consegui trocar o modo de conexão', {
+        description: e instanceof Error ? e.message : 'Tente novamente em instantes.',
+      });
     } finally {
       setBusy(false);
     }
@@ -205,7 +260,7 @@ export const WhatsappQrStep: FC<{
           {/* Passo-a-passo (os 3 pontos do GuidedOnboarding) */}
           {phase !== 'connected' && (
             <div className="space-y-2">
-              {PASSOS_QR.map((passo, i) => (
+              {(via === 'codigo' ? PASSOS_CODIGO : PASSOS_QR).map((passo, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
                   <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shrink-0">
                     {i + 1}
@@ -227,10 +282,27 @@ export const WhatsappQrStep: FC<{
                   </p>
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </>
-              ) : phase === 'connecting' || !qr ? (
+              ) : via === 'codigo' && pairing ? (
+                /* ── CÓDIGO DE PAREAMENTO — um aparelho só ──────────────────
+                   TEXTO, nunca imagem: o código é credencial de sessão e não
+                   pode ir para gerador de QR de terceiro (defesa E4.3/R9 que
+                   já existia — aqui ela ganha a saída que faltava). */
+                <>
+                  <p className="text-sm text-muted-foreground">Seu código de conexão</p>
+                  <div className="font-mono text-4xl tracking-[0.3em] font-bold select-all px-4 py-3 rounded-lg bg-muted">
+                    {pairing}
+                  </div>
+                  <p className="text-sm text-center text-muted-foreground max-w-sm">
+                    Digite no WhatsApp deste mesmo celular, seguindo os passos acima.
+                  </p>
+                  <Badge variant="secondary">Aguardando confirmação…</Badge>
+                </>
+              ) : phase === 'connecting' || (!qr && !pairing) ? (
                 <>
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Gerando seu QR Code…</p>
+                  <p className="text-sm text-muted-foreground">
+                    {via === 'codigo' ? 'Gerando seu código…' : 'Gerando seu QR Code…'}
+                  </p>
                 </>
               ) : img ? (
                 <>
@@ -245,15 +317,42 @@ export const WhatsappQrStep: FC<{
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground text-center">
-                    Não foi possível gerar o QR Code agora.
+                    {via === 'codigo'
+                      ? 'Não foi possível gerar o código agora.'
+                      : 'Não foi possível gerar o QR Code agora.'}
                   </p>
-                  <Button variant="outline" size="sm" onClick={handleConectar} disabled={busy}>
-                    Tentar novamente
-                  </Button>
+                  {/* Saída dupla: repetir OU trocar de via. Sem a segunda, uma
+                      via quebrada era beco sem saída — a lead não tinha como
+                      tentar o outro caminho. */}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleConectar} disabled={busy}>
+                      Tentar novamente
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={trocarVia} disabled={busy}>
+                      {via === 'codigo' ? 'Tentar pelo QR Code' : 'Tentar por código'}
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
           </Card>
+
+          {/* ── A ALTERNATIVA SEMPRE VISÍVEL ─────────────────────────────────
+              A detecção acerta o padrão na maioria dos casos e erra em alguns
+              (iPadOS mente o UA, "solicitar site para computador", navegador
+              dentro de app). Deixar a outra via a um toque transforma a
+              detecção num PALPITE REVERSÍVEL em vez de uma sentença — que é a
+              diferença entre a lead se corrigir sozinha e a lead desistir. */}
+          {phase !== 'connected' && (
+            <div className="text-center">
+              <Button variant="link" size="sm" onClick={trocarVia} disabled={busy}
+                className="text-muted-foreground">
+                {via === 'codigo'
+                  ? 'Está num computador? Prefiro ler o QR Code'
+                  : 'Está no celular? Conectar por código, sem QR'}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
