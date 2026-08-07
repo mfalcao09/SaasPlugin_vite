@@ -383,6 +383,9 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
         agentId: c.agent_id ?? null,
         campaignId: c.id,
         variant: due.variant ?? null,
+        // Fecha a cadeia: envio → wamid → metadata da mensagem → ACK do webhook
+        // acha esta linha e sabe de qual campanha incrementar delivered_count.
+        wamid: sendRes.wamid ?? null,
       })
       : null;
     await sb.from("platform_crm_cold_outreach_queue").update({
@@ -488,7 +491,7 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
 async function deliver(
   sb: SupabaseClient,
   a: { channel: Channel; dryRun: boolean; productId: string; instanceId: string | null; to: string | null; handle: string | null; text: string },
-): Promise<{ ok: boolean; error?: string; manual?: boolean; conversationId?: string | null }> {
+): Promise<{ ok: boolean; error?: string; manual?: boolean; conversationId?: string | null; wamid?: string | null }> {
   if (a.dryRun) {
     console.log(`[cold-outreach][DRY] ${a.channel} -> ${a.handle ?? a.to}: ${a.text.slice(0, 80)}...`);
     return { ok: true, conversationId: null };
@@ -500,7 +503,22 @@ async function deliver(
         body: { product_id: a.productId, instance_id: a.instanceId, type: "text", to: a.to, payload: { text: a.text } },
       });
       if (error || (data && (data as any).ok === false)) return { ok: false, error: error?.message ?? JSON.stringify(data) };
-      return { ok: true };
+      // WAMID — a chave que faltava pra medir ENTREGA.
+      //
+      // O `data` já vinha completo do platform-evolution-send (que devolve a
+      // resposta bruta da Evolution) e este `return { ok: true }` DESCARTAVA tudo.
+      // Sem o wamid gravado não há como casar o ACK de MESSAGES_UPDATE com a
+      // campanha — e sem isso delivered_count fica em zero pra sempre, deixando o
+      // kill-switch por não-entrega inerte (ver anti-ban.ts).
+      //
+      // Shape da Evolution: { body: { key: { id: "<wamid>" } } }. Tolerante a
+      // variação entre versões; se não achar, devolve null e o chamador grava
+      // null. Campo AUSENTE é melhor que id ERRADO: id errado casaria o ACK com a
+      // mensagem de outra campanha e corromperia o contador — e contador corrompido
+      // pausa campanha saudável, que é o modo de falha caro deste mecanismo.
+      const d = data as any;
+      const wamid: string | null = d?.body?.key?.id ?? d?.key?.id ?? null;
+      return { ok: true, wamid };
     } else {
       // Instagram DM: a Graph API (platform-ig-send) precisa do PSID do
       // destinatário — que NÃO existe pra @handle raspado a frio (só se obtém
@@ -542,6 +560,8 @@ async function persistOpeningInInbox(
     nome: string | null;
     agentId: string | null;
     campaignId: string;
+    /** wamid da mensagem enviada — chave pro ACK de entrega casar (pode ser null). */
+    wamid?: string | null;
     variant: unknown;
   },
 ): Promise<string | null> {
@@ -647,6 +667,12 @@ async function persistOpeningInInbox(
         campaign_id: o.campaignId,
         variant: o.variant ?? null,
         step: 0,
+        // Elo da cadeia de ENTREGA: o webhook recebe MESSAGES_UPDATE com key.id e
+        // precisa achar ESTA linha pra saber de qual campanha incrementar o
+        // delivered_count. `campaign_id` acima já está aqui; faltava a chave.
+        // null é aceitável (shape variou / dry-run) — o ACK simplesmente não casa
+        // e o contador não sobe. Melhor não contar que contar na campanha errada.
+        wamid: o.wamid ?? null,
       },
     });
     if (msgErr) {
