@@ -22,14 +22,28 @@ ligada errada e gravar sempre `0`, a taxa de não-entrega lê **100% de falha** 
 O teste `CONTROLE NEGATIVO — delivered undefined NÃO acusa` cobre o caso ausente;
 **nada cobre o caso zero-falso.** Escrever esse teste é parte do trabalho.
 
-### Os 4 elos, na ordem
+### Os 4 elos → viraram 2. **ELOS 1-2 FEITOS** (commit `63b6dba`)
 
-| # | Onde | O que fazer | Verificado nesta sessão |
-|---|---|---|---|
-| 1 | `_shared/evolution-core.ts` | o envio precisa **devolver** o `wamid` | grep `wamid` → **vazio**, nem menciona |
-| 2 | `platform-cold-outreach/index.ts` (~`:610`) | **gravar** o wamid no `metadata` da mensagem, junto de `campaign_id` que já está lá | grep `wamid` → **vazio**, não grava |
-| 3 | `platform-evolution-webhook/index.ts` (~`:215`, ao lado de `messages.upsert`) | tratar `messages.update` / `MESSAGES_UPDATE` | evento **já subscrito** em `evolution-core.ts:133`; o webhook só não trata |
-| 4 | idem | casar `key.id` → mensagem → `metadata.campaign_id` → `bumpCounter(..., { delivered: 1 })` | `bumpCounter` existe (`platform-cold-outreach/index.ts:~641`) e já aceita `delivered` |
+> ⚠️ **CORREÇÃO A ESTE HANDOFF, escrita depois de executá-lo.** O elo 1 como eu
+> descrevi **não existia**. Eu supus que `evolution-core.ts` precisava devolver o
+> wamid; ao **ler o caminho antes de mudá-lo**, o wamid **já chegava** ao motor —
+> `platform-evolution-send` devolve a resposta bruta da Evolution (`:172`) e o
+> `deliver` fazia `return { ok: true }`, **descartando**. Elos 1 e 2 colapsaram.
+>
+> **Lição para quem retomar: este documento é ponto de partida para VERIFICAR, não
+> verdade para executar.** Foi escrito com o contexto no limite e carrega
+> suposições. Leia o caminho antes de mudá-lo.
+
+| # | Onde | Estado |
+|---|---|---|
+| ~~1~~+2 | `platform-cold-outreach/index.ts` | ✅ **FEITO** — captura `:520`, tipo `:494`, propaga `:388`, tipo payload `:564`, grava `metadata.wamid` `:675` |
+| **3** | `platform-evolution-webhook/index.ts` (~`:215`, ao lado de `messages.upsert`) | ⏳ tratar `messages.update` / `MESSAGES_UPDATE`. Evento **já subscrito** em `evolution-core.ts:133`; o webhook só não trata |
+| **4** | idem | ⏳ casar `key.id` → `platform_crm_messages` por `metadata.wamid` → ler `metadata.campaign_id` → `bumpCounter(..., { delivered: 1 })`. `bumpCounter` existe (`platform-cold-outreach/index.ts:~700`) e já aceita `delivered` |
+
+**Atenção no elo 4:** `bumpCounter` vive no `platform-cold-outreach`, e quem vai
+chamá-lo é o **webhook** — outra edge function. Ou se extrai para `_shared/`, ou o
+webhook faz o `upsert` direto na tabela. Decidir isso é parte do trabalho; extrair
+para `_shared/` obriga a redeployar quem importa.
 
 ### Critério de aceite (declarado ANTES de implementar)
 
