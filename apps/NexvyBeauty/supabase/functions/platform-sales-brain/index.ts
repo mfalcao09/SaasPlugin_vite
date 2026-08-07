@@ -115,6 +115,19 @@ const BRAIN_CLAIM_TTL_MS = Number(Deno.env.get('AI_BRAIN_CLAIM_TTL_MS') ?? '1200
 // Teto de saltos: cada salto responde mensagem real da lead; acima disso é
 // sintoma de loop, não de conversa.
 const HANDBACK_MAX_DEPTH = 3;
+/**
+ * Teto de espera da mãe pelo hand-back (06/08).
+ *
+ * O número é calculado, não escolhido por gosto. Chamadas reais do cérebro
+ * medidas hoje em produção: 32,0s · 33,2s · 58,6s. O teto precisa ser MAIOR que
+ * o pior caso observado — se abortasse uma filha que está trabalhando, o abort
+ * fecharia a conexão e reproduziria exatamente o 502 que este conserto mata.
+ *
+ * E precisa caber na parede de 150s do runtime: a mãe gasta até ~58s no próprio
+ * trabalho, então 58 + 75 = 133s, com folga. Subir muito acima disso derrubaria
+ * as duas por wall clock em vez de só perder a filha.
+ */
+const HANDBACK_TIMEOUT_MS = 75_000;
 // Guardrails de forma (reclamação real: textão + várias perguntas juntas).
 // INVARIANTE deste pipeline: nenhuma função pode REDUZIR o número de caracteres
 // entregues — só reagrupar. Perder o preço/link no meio da palavra custa a venda;
@@ -1589,19 +1602,45 @@ Deno.serve(async (req) => {
         console.error('[platform-sales-brain] hand-back IMPOSSÍVEL (SUPABASE_URL/BRAIN_INTERNAL_SECRET ausentes) — mensagem nova da lead ficaria sem resposta.');
         return;
       }
-      const call = fetch(`${base}/functions/v1/platform-sales-brain`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
-        body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
-      }).then(async (r) => {
-        if (!r.ok) console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
-      }).catch((e) => console.error('[platform-sales-brain] hand-back fetch error:', e));
-      // Mesmo padrão do webhook: em produção o waitUntil segura a promise depois
-      // da resposta; sem ele (dev), esperar é melhor que perder a chamada.
-      // deno-lint-ignore no-explicit-any
-      const rt = (globalThis as any).EdgeRuntime;
-      if (rt?.waitUntil) rt.waitUntil(call);
-      else await call;
+      // ── SEMPRE AGUARDA. NUNCA waitUntil. (06/08) ─────────────────────────
+      // MEDIDO no teste ponta a ponta: o hand-back deu 502 nas DUAS vezes que
+      // disparou. Os logs mostram a filha começando no INSTANTE exato em que a
+      // mãe terminava (…840,8 → …840,8) e morrendo ~6,5s depois — enquanto uma
+      // chamada normal do cérebro leva 32-58s. Ou seja, ela não rodou: foi
+      // interrompida.
+      //
+      // O que isso sustenta: `waitUntil` entregava a promise e a função retornava
+      // na hora; ao responder, o isolate da mãe é desligado e a conexão da filha
+      // é cortada em voo. A mãe fazia `await handback()`, mas o handback só
+      // aguardava o AGENDAMENTO, não a chamada — a forma de esperar sem esperar.
+      //
+      // Aguardar de verdade custa latência à mãe e ELIMINA a dependência de o
+      // isolate sobreviver à própria resposta. O timeout existe para esse custo
+      // ser limitado: sem ele, uma filha lenta seguraria a mãe até a parede de
+      // 150s do runtime e derrubaria as duas.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), HANDBACK_TIMEOUT_MS);
+      try {
+        const r = await fetch(`${base}/functions/v1/platform-sales-brain`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
+          body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok) {
+          console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
+        }
+      } catch (e) {
+        // Abort entra aqui também: distinguir importa, porque timeout e crash
+        // pedem investigações diferentes.
+        const abortado = (e as Error)?.name === 'AbortError';
+        console.error(
+          `[platform-sales-brain] hand-back ${abortado ? 'ABORTADO por timeout' : 'falhou'}:`,
+          String(e).slice(0, 200),
+        );
+      } finally {
+        clearTimeout(timer);
+      }
     };
 
     // MODO INATIVIDADE — corrida sweep→brain: se a cliente respondeu entre a
