@@ -21,21 +21,26 @@
 //      um agente ativo, é ELE quem fala (a Bia continua o que a Duda passou);
 //      senão a Duda (SDR) abre e persistimos current_agent_id=duda.id.
 //   8. CONHECIMENTO: bloco do produto (mesmo builder do platform-sales-copilot)
-//      + preço de LANÇAMENTO (de-para em LINKS DE PAGAMENTO, do banco).
+//      + preço COMPARADO DO PRESENTE (de-para em LINKS DE PAGAMENTO, do banco).
 //   9. Regras fixas: nunca desconto; SEM Piloto Fundadora e SEM garantia de
-//      devolução (risco reduzido por PROVA + arrependimento 7d); escassez só a
-//      real (preço de lançamento sobe); humano/reclamação grave → [HANDOFF_HUMANO]; [ESCALAR_HUMANO] SÓ
-//      p/ pedido de humano/caso sensível — venda NUNCA é rejeitada (diretiva
-//      Marcelo 05/07: "pagou é cliente"; score roteia OFERTA, não aceite/rejeite).
-//      Só a Duda (SDR): score ≥70 + intenção → [PASSAR_BIA] (passagem interna
-//      pro closer, não humana). A Bia recebe o dossiê e conduz ao fechamento.
+//      devolução (risco reduzido por PROVA + arrependimento 7d); ZERO escassez —
+//      NÃO EXISTE DATA DE SUBIDA de preço (decisão Marcelo, 2026-08-04), então a
+//      âncora é o preço comparado de HOJE (fato verificável agora), nunca uma
+//      promessa sobre o futuro; humano/reclamação grave → [HANDOFF_HUMANO];
+//      [ESCALAR_HUMANO] SÓ p/ pedido de humano/caso sensível — venda NUNCA é
+//      rejeitada (diretiva Marcelo 05/07: "pagou é cliente"; score roteia OFERTA,
+//      não aceite/rejeite). A instrução de [PASSAR_BIA] saiu do prompt em
+//      2026-08-04 (a Bia foi desativada) — o mecanismo continua, mas só se arma
+//      com closer ATIVO; ver 11b.
 //  10. LLM: mesmo gateway da casa (AI_API_KEY + AI_GATEWAY_URL).
 //  11. GUARDRAILS DE FORMA (pós-processamento): sanitize de vocabulário, corte na
 //      1ª pergunta, divisão em até 3 bolhas curtas — cada bolha é entregue via
 //      Cloud API com pausa proporcional, persistida (wamid próprio) e broadcast.
-//  11b. [PASSAR_BIA] (só Duda): remove a tag, acha o closer (Bia) do produto,
-//      seta current_agent_id=bia.id; a ÚLTIMA bolha da Duda vira transição
-//      calorosa; NÃO gera resposta da Bia agora — a próxima msg da lead a ativa.
+//  11b. [PASSAR_BIA] (só Duda; a tag NÃO é mais instruída no prompt): resolve o
+//      closer ATIVO ANTES de tocar no texto. SÓ com closer a tag vira transição
+//      calorosa + current_agent_id=bia.id (a próxima msg da lead ativa a Bia);
+//      SEM closer a tag é apenas removida e a Duda segue — a lead nunca ouve
+//      "te deixo com a Bia" sem a Bia existir.
 //  12. Handoff/escalada → status='waiting_human' + needs_human=true; última bolha
 //      vira transição calorosa. Passagem Duda→Bia mantém bot_active. Senão idem.
 //  13. MEMÓRIA (pós-resposta): 2ª chamada LLM barata extrai fatos → atualiza o
@@ -56,7 +61,10 @@ import {
   resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
+import { debounceWaitMs, inboundEpochMs } from '../_shared/inbound-clock.ts';
+import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
+import { normalizePhoneBR } from '../_shared/phone.ts';
 import {
   type ConversationConnectionHints,
   connectionErrorCode,
@@ -69,6 +77,11 @@ import {
 } from '../_shared/inactivity-cadence.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
+// Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API (número
+// oficial); 'whatsapp_evolution' = Evolution (número não-oficial via QR, criado
+// pelo platform-evolution-webhook). Não é lista de "canais existentes": webchat e
+// Instagram têm outro motor e continuam de fora.
+const BRAIN_CHANNELS: string[] = ['whatsapp', 'whatsapp_evolution'];
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
 const DEDUP_WINDOW_MS = 5000;
 // Debounce: agrega mensagens curtas da lead que chegam em rajada numa só resposta.
@@ -78,6 +91,30 @@ const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '12000');
 // Re-entrega velha do Meta: inbound com timestamp mais velho que isto = ignorar
 // (bug real: Meta re-entregou msg de 13 min atrás e a Duda se reapresentou).
 const STALE_REDELIVERY_MS = 10 * 60 * 1000;
+// ─── CLAIM DA CONVERSA (serialização entre invocações) ──────────────────────
+// O webhook dispara UMA invocação por mensagem recebida. Duas mensagens da lead
+// em rajada (texto + áudio, 1,7s de intervalo) viravam DUAS invocações rodando
+// lado a lado e ENTRELAÇANDO as bolhas: duas saudações, duas explicações, a
+// mesma pergunta final duas vezes — diferindo por uma vírgula (bug real
+// 2026-08-04). O debounce não resolvia porque ele não COALESCE, ele ALINHA: as
+// duas dormem e acordam a ~2s uma da outra e recarregam o histórico no mesmo
+// instante, quando nenhuma escreveu ainda.
+// Agora toda invocação tenta TOMAR a conversa (UPDATE condicional com RETURNING,
+// atômico no Postgres). Quem não toma SAI na hora — nunca espera a vez: fila só
+// reordenaria o entrelaçamento e ainda o disfarçaria de robustez.
+// TTL: invocação que morre (OOM/timeout do isolate, antes do release) não pode
+// travar a conversa para sempre. 120s cobre o pior caso real com folga —
+// debounce 12s + pausa de leitura + LLM + até 4 bolhas com pausa de digitação de
+// até 8s cada + a 2ª chamada de LLM da memória.
+const BRAIN_CLAIM_TTL_MS = Number(Deno.env.get('AI_BRAIN_CLAIM_TTL_MS') ?? '120000');
+// HAND-BACK: mensagem que entra no banco DEPOIS do reload do vencedor não cabe
+// na resposta dele, e a invocação dela já morreu no claim. Sem hand-back
+// trocaríamos resposta dobrada por lead GHOSTADA — que é pior. O caso não é
+// hipotético: o áudio vira linha ~12s depois do próprio wa_timestamp (passa por
+// transcrição), ou seja, DEPOIS da janela de debounce da mensagem irmã.
+// Teto de saltos: cada salto responde mensagem real da lead; acima disso é
+// sintoma de loop, não de conversa.
+const HANDBACK_MAX_DEPTH = 3;
 // Guardrails de forma (reclamação real: textão + várias perguntas juntas).
 // INVARIANTE deste pipeline: nenhuma função pode REDUZIR o número de caracteres
 // entregues — só reagrupar. Perder o preço/link no meio da palavra custa a venda;
@@ -104,16 +141,20 @@ const READ_CAP_MS = 4200;
 // Tags de escalada — o modelo emite no fim.
 const HANDOFF_TAG = '[HANDOFF_HUMANO]';   // lead pediu humano / reclamou grave
 const ESCALATE_TAG = '[ESCALAR_HUMANO]';  // SÓ pediu-humano/caso sensível — JAMAIS por perfil (venda nunca é rejeitada)
-// Passagem interna Duda→Bia: SÓ a Duda (SDR) emite; score ≥70 + intenção. NÃO é
-// escalada humana — troca o agente da conversa (current_agent_id) e a Bia (closer)
-// assume na PRÓXIMA mensagem da lead. A conversa segue bot_active o tempo todo.
+// Passagem interna SDR→closer. NÃO é escalada humana — troca o agente da conversa
+// (current_agent_id) e o closer assume na PRÓXIMA mensagem da lead; a conversa
+// segue bot_active o tempo todo.
+// ⚠️ 2026-08-04: o prompt NÃO instrui mais esta tag (a Bia foi desativada). O
+// mecanismo fica de pé para o dia em que houver closer, mas é CONDICIONADO: sem
+// closer ativo a tag é só descartada — nada de transição é dito à lead (ver 11a).
 const PASS_BIA_TAG = '[PASSAR_BIA]';
 // [ENVIAR_RAIOX] — a Duda DISPARA A ISCA NO AUTOMÁTICO: o handler chama demo-start
 // (nome+whatsapp da própria conversa), recebe /implantacao/<token> e entrega o link
 // na mesma resposta. Sem humano de plantão (pedido explícito Marcelo 2026-07-19 —
 // o prompt já mandava "disparar a isca" sem existir braço para isso).
 const RAIOX_TAG = '[ENVIAR_RAIOX]';
-// Bolha de transição calorosa que a Duda deixa ao passar para a Bia.
+// Bolha de transição calorosa da passagem SDR→closer. SÓ pode sair quando existe
+// closer ATIVO: prometer uma especialista que não vai falar é pior que não passar.
 const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';
 // Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
 const WARM_HANDOFF_MSG = 'Vou te conectar com nosso time pra achar o melhor caminho pra você 💚';
@@ -168,6 +209,27 @@ function typingPauseMs(text: string): number {
   return Math.round(base * jitter);
 }
 
+// ─── Ritmo humano no canal Evolution (PR-BDR-13) — SÓ Camila. ────────────────
+// MEDIDO 2026-08-05: bolhas de 60-100 chars caindo a cada ~6s — 70ms/char com
+// teto de 8s satura em ~114 chars e vira assinatura de robô ("mensagens grandes
+// chegando em sequência", nas palavras do dono). Humano no celular digita
+// ~6-9 chars/s. 120ms/char ≈ 8,3 chars/s: bolha de 100 chars ≈ 12s, teto 22s.
+// A pausa longa é SEGURA porque o portão pós-pausa (PR-BDR-12) aborta o lote
+// se a lead falar durante o "digitando". A Duda no oficial NÃO muda — a
+// cadência dela é alçada da controladora.
+const EVO_TYPING_MS_PER_CHAR = Number(Deno.env.get('AI_BRAIN_EVO_TYPING_MS_PER_CHAR') ?? '120');
+const EVO_TYPING_FLOOR_MS = 3500;
+const EVO_TYPING_CAP_MS = 22000;
+
+function evoTypingPauseMs(text: string): number {
+  const base = Math.min(
+    Math.max(text.length * EVO_TYPING_MS_PER_CHAR, EVO_TYPING_FLOOR_MS),
+    EVO_TYPING_CAP_MS,
+  );
+  const jitter = 1 + (Math.random() * 2 - 1) * TYPING_JITTER;
+  return Math.round(base * jitter);
+}
+
 /**
  * Marca a última inbound como lida E liga o indicador "digitando…" no WhatsApp.
  * Sem isto, aumentar a pausa só produz SILÊNCIO suspeito — é o indicador que
@@ -200,6 +262,63 @@ async function sendTypingIndicator(
   } catch (e) {
     console.warn('[platform-sales-brain] typing indicator falhou (ignorado):', String(e).slice(0, 200));
   }
+}
+
+/**
+ * "Digitando…" no canal Evolution. NÃO existe equivalente ao par
+ * read+typing_indicator do Graph (que se pendura num wamid): a Evolution expõe
+ * presença de chat (`/chat/sendPresence`, type 'presence' no platform-evolution-send),
+ * que é justamente o sinal que transforma a pausa em "ela está escrevendo".
+ * NON-FATAL pelo mesmo contrato do irmão Graph: qualquer falha aqui é logada e
+ * ignorada — a pausa e a entrega seguem.
+ */
+async function sendEvolutionPresence(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+): Promise<void> {
+  const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
+  const instanceId = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  const to = String(toPhone ?? '').replace(/\D/g, '');
+  if (!instanceId || !to) {
+    console.warn(
+      `[platform-sales-brain] presença Evolution pulada conversation_id=${conversationId} instance_id=${instanceId ?? 'null'} to_digits=${to.length}`,
+    );
+    return;
+  }
+  try {
+    const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
+    if (!productId) return; // já logado como error lá dentro
+    const { error } = await supabase.functions.invoke('platform-evolution-send', {
+      body: { product_id: productId, instance_id: instanceId, type: 'presence', to, payload: { state: 'composing' } },
+    });
+    if (error) {
+      console.warn(
+        `[platform-sales-brain] presença Evolution falhou (ignorado) conversation_id=${conversationId} reason=${error.message}`,
+      );
+    }
+  } catch (e) {
+    console.warn(
+      `[platform-sales-brain] presença Evolution exception (ignorado) conversation_id=${conversationId}:`,
+      String(e).slice(0, 200),
+    );
+  }
+}
+
+/** Roteia o "digitando…" pelo canal da conversa. Meta = código de hoje, intacto. */
+async function sendTypingSignal(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  inboundWamid: string | null,
+  toPhone: string,
+): Promise<void> {
+  if (conversation?.channel === 'whatsapp_evolution') {
+    await sendEvolutionPresence(supabase, conversation, toPhone);
+    return;
+  }
+  await sendTypingIndicator(supabase, conversation as ConversationConnectionHints | null, inboundWamid);
 }
 
 async function deliverViaWhatsAppCloud(
@@ -242,11 +361,242 @@ async function deliverViaWhatsAppCloud(
 }
 
 /**
+ * Resultado de entrega, agnóstico de canal. `delivered` existe porque no canal
+ * Evolution "entregue" e "tem id de mensagem" não são a mesma coisa (o shape da
+ * resposta varia por versão do servidor); no canal Meta os dois coincidem, e é
+ * assim que a não-regressão se mantém: `delivered = wamid !== null`.
+ */
+interface DeliveryResult {
+  wamid: string | null;
+  error: string | null;
+  connectionId: string | null;
+  delivered: boolean;
+  evolutionMessageId?: string | null;
+}
+
+/**
+ * Resolve o product_id DA INSTÂNCIA Evolution. Não serve o product_id da
+ * CONVERSA: o webhook herda o produto da instância só no INSERT e nunca
+ * sobrescreve atribuição manual — os dois podem divergir, e o
+ * platform-evolution-send casa `id + product_id` (`.eq().eq()`), então
+ * product_id errado devolve 404 "No platform Evolution instance found".
+ */
+async function evolutionInstanceProductId(
+  supabase: any,
+  instanceId: string,
+  conversationId: string | null,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('platform_crm_evolution_instances')
+    .select('id, product_id')
+    .eq('id', instanceId)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      `[platform-sales-brain] instância Evolution não lida conversation_id=${conversationId} instance_id=${instanceId} reason=${error.message}`,
+    );
+    return null;
+  }
+  const productId = typeof data?.product_id === 'string' && data.product_id ? data.product_id : null;
+  if (!productId) {
+    console.error(
+      `[platform-sales-brain] instância Evolution sem product_id conversation_id=${conversationId} instance_id=${instanceId} — envio impossível`,
+    );
+  }
+  return productId;
+}
+
+/**
+ * AMARRAÇÃO AGENTE↔NÚMERO (canal dedicado).
+ *
+ * A tela "Canais → Conexões dedicadas" do editor de agente já grava em
+ * `platform_crm_agent_connections` (e mantém `platform_crm_product_agents
+ * .evolution_instance_id` em sync como legado). Até aqui NENHUMA edge function
+ * lia esse vínculo — medido: 0 leituras no repo, 0 linhas na tabela. O efeito
+ * era que conversa nova SEMPRE abria com a SDR: uma lead prospectada pela BDR
+ * num número dedicado a ela era atendida pela Duda.
+ *
+ * Espelha a regra que já roda em produção do lado do salão — webchat-bot
+ * ("instance-bound agent"), que resolve o agente por `evolution_instance_id`.
+ *
+ * Devolve o id do agente dedicado à conexão por onde a conversa corre, ou null
+ * quando não há vínculo — nesse caso o roteamento anterior segue intacto.
+ */
+async function resolveConnectionBoundAgentId(
+  supabase: any,
+  conversation: Record<string, any> | null,
+): Promise<string | null> {
+  const evo = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  const meta = typeof conversation?.meta_connection_id === 'string'
+    ? conversation.meta_connection_id
+    : null;
+
+  const pairs: Array<{ type: string; id: string }> = [];
+  if (evo) pairs.push({ type: 'evolution', id: evo });
+  if (meta) pairs.push({ type: 'meta_whatsapp', id: meta });
+  if (pairs.length === 0) return null;
+
+  for (const p of pairs) {
+    const { data, error } = await supabase
+      .from('platform_crm_agent_connections')
+      .select('product_agent_id')
+      .eq('connection_type', p.type)
+      .eq('connection_id', p.id)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      // Falha de leitura NÃO vira silêncio: denuncia e cai no roteamento anterior.
+      console.error(
+        `[platform-sales-brain] leitura de agent_connections falhou type=${p.type} id=${p.id}:`,
+        error?.message ?? error,
+      );
+      continue;
+    }
+    if (data?.product_agent_id) return data.product_agent_id as string;
+  }
+
+  // Fallback legado: coluna única no agente (mesma que o AgentCard usa de fallback).
+  if (evo) {
+    const { data } = await supabase
+      .from('platform_crm_product_agents')
+      .select('id')
+      .eq('evolution_instance_id', evo)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    if (data?.id) return data.id as string;
+  }
+  return null;
+}
+
+/**
+ * Entrega no canal Evolution (WhatsApp não-oficial via QR) pela edge
+ * platform-evolution-send — a mesma que o cold outreach usa. O `connectionId`
+ * devolvido aqui é o evolution_instance_id (é ele que diz por qual número saiu a
+ * bolha); e `evolutionMessageId` é o key.id da Evolution, que o
+ * platform-evolution-webhook usa como chave de idempotência — persistir isso
+ * impede que o eco fromMe do nosso próprio envio vire uma segunda linha outbound.
+ */
+async function deliverViaEvolution(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+  content: string,
+): Promise<DeliveryResult> {
+  const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
+  const instanceId = typeof conversation?.evolution_instance_id === 'string'
+    ? conversation.evolution_instance_id
+    : null;
+  if (!instanceId) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution SEM evolution_instance_id conversation_id=${conversationId} — não há por qual número responder`,
+    );
+    return { wamid: null, error: 'no_evolution_instance', connectionId: null, delivered: false };
+  }
+  const to = String(toPhone ?? '').replace(/\D/g, '');
+  if (!to) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution sem telefone de destino conversation_id=${conversationId} instance_id=${instanceId}`,
+    );
+    return { wamid: null, error: 'no_destination_phone', connectionId: instanceId, delivered: false };
+  }
+  try {
+    const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
+    if (!productId) {
+      return {
+        wamid: null,
+        error: 'evolution_instance_product_unresolved',
+        connectionId: instanceId,
+        delivered: false,
+      };
+    }
+    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+      body: { product_id: productId, instance_id: instanceId, type: 'text', to, payload: { text: content } },
+    });
+    // A edge devolve o envelope do evoFetch ({ok,status,body}) — `ok:false` é
+    // falha do servidor Evolution COM HTTP 200 no invoke, então checar só
+    // `error` deixaria passar entrega não feita (mesma régua do cold outreach).
+    if (error || (data as any)?.ok === false || (data as any)?.error) {
+      // INSTRUMENTO (2026-08-04): `error.message` do supabase-js é SEMPRE o
+      // genérico "Edge Function returned a non-2xx status code". Foi ele que
+      // escondeu por completo o motivo do 401 do platform-evolution-send — as
+      // bolhas ficaram com delivery_status='failed' e um erro que não diz nada,
+      // e o diagnóstico só saiu lendo log de gateway. O corpo da resposta vive
+      // em `error.context` (Response); lê-lo AQUI faz o motivo do callee
+      // aterrissar em platform_crm_messages.metadata.delivery_error, legível
+      // por SQL sem depender de log de console.
+      let calleeBody = '';
+      let httpStatus: number | null = null;
+      try {
+        const ctx = (error as any)?.context;
+        if (ctx) {
+          httpStatus = typeof ctx.status === 'number' ? ctx.status : null;
+          if (typeof ctx.text === 'function') calleeBody = String(await ctx.text()).slice(0, 200);
+          else if (typeof ctx === 'object') calleeBody = JSON.stringify(ctx).slice(0, 200);
+        }
+      } catch (_ctxErr) {
+        // Corpo já consumido ou ilegível — segue com o reason genérico, mas
+        // NUNCA em silêncio: a ausência fica visível no próprio campo.
+        calleeBody = '<corpo do callee ilegivel>';
+      }
+      const reason = [
+        error?.message ?? String(JSON.stringify(data ?? null)).slice(0, 300),
+        httpStatus ? `http=${httpStatus}` : '',
+        calleeBody ? `callee=${calleeBody}` : '',
+      ].filter(Boolean).join(' | ');
+      console.error(
+        `[platform-sales-brain] entrega Evolution FALHOU conversation_id=${conversationId} instance_id=${instanceId} reason=${reason}`,
+      );
+      return { wamid: null, error: String(reason).slice(0, 500), connectionId: instanceId, delivered: false };
+    }
+    const evolutionMessageId = typeof (data as any)?.body?.key?.id === 'string'
+      ? (data as any).body.key.id
+      : null;
+    // Entregue = a Evolution aceitou. O id pode faltar (shape varia por versão) e
+    // isso NÃO é falha — marcar como falha aqui geraria alarme falso e um
+    // delivery_status errado numa bolha que a lead recebeu.
+    return { wamid: evolutionMessageId, error: null, connectionId: instanceId, delivered: true, evolutionMessageId };
+  } catch (e) {
+    console.error(
+      `[platform-sales-brain] entrega Evolution EXCEPTION conversation_id=${conversationId} instance_id=${instanceId}:`,
+      e,
+    );
+    return { wamid: null, error: String(e).slice(0, 300), connectionId: instanceId, delivered: false };
+  }
+}
+
+/**
+ * Roteador de entrega por canal. O ramo 'whatsapp' delega ao
+ * deliverViaWhatsAppCloud INTACTO (mesma sequência de chamadas Graph, mesmo
+ * wamid, mesmo tratamento de erro); `delivered` é derivado de `wamid !== null`,
+ * que é exatamente o critério que o call-site usava antes.
+ */
+async function deliver(
+  supabase: any,
+  conversation: Record<string, any> | null,
+  toPhone: string,
+  content: string,
+): Promise<DeliveryResult> {
+  if (conversation?.channel === 'whatsapp_evolution') {
+    return await deliverViaEvolution(supabase, conversation, toPhone, content);
+  }
+  const r = await deliverViaWhatsAppCloud(
+    supabase,
+    conversation as ConversationConnectionHints | null,
+    toPhone,
+    content,
+  );
+  return { ...r, delivered: r.wamid !== null };
+}
+
+/**
  * Monta o bloco de conhecimento do produto — MESMO builder do platform-sales-copilot
  * (ordem deliberada: knowledge_base primeiro, contém o vocabulário obrigatório).
- * A escassez agora é o PREÇO DE LANÇAMENTO (via de-para em LINKS DE PAGAMENTO),
- * não vagas de campanha. Non-fatal: qualquer falha aqui degrada, mas não derruba
- * a resposta.
+ * NÃO há escassez de espécie alguma: a âncora é o PREÇO COMPARADO DO PRESENTE
+ * (via de-para em LINKS DE PAGAMENTO) — nem vaga de campanha, nem promessa de
+ * subida. Non-fatal: qualquer falha aqui degrada, mas não derruba a resposta.
  */
 function buildKnowledgeContext(
   product: Record<string, any> | null,
@@ -315,14 +665,18 @@ function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: st
   let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
   for (const p of plans) {
     const url = appendSellerRef(p.checkout_url, personaName);
-    // De-para do preço de lançamento: quando há preço de TABELA (list_price_monthly)
-    // acima do vigente (price_monthly), renderiza "de R$X por R$Y — lançamento".
+    // PREÇO COMPARADO DO PRESENTE: quando há preço de TABELA (list_price_monthly)
+    // acima do vigente (price_monthly), renderiza "custa R$X, hoje sai por R$Y".
+    // Os dois números continuam vindo do banco em runtime; o que MORREU aqui foi a
+    // afirmação sobre o futuro ("sobe em breve"). NÃO EXISTE DATA DE SUBIDA
+    // (Marcelo, 2026-08-04) — e esta linha é a FONTE que a persona é instruída a
+    // citar como preço, então prometer aqui é prometer na boca da agente.
     const priceLabel = Number(p.list_price_monthly) > Number(p.price_monthly)
-      ? `de R$${p.list_price_monthly} por R$${p.price_monthly} — preço de lançamento, sobe em breve`
+      ? `custa R$${p.list_price_monthly}, hoje sai por R$${p.price_monthly}`
       : `R$${p.price_monthly}`;
     ctx += `- ${p.name} (${priceLabel}): ${url}\n`;
   }
-  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. Só passe para a Bia o cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO e precisa entender o valor — nunca o que já quer fechar.\n`;
+  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. O cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO é SEU também: aprofunde o valor e conduza ao fechamento você mesma — não existe passar adiante.\n`;
   return ctx;
 }
 
@@ -371,9 +725,12 @@ const PRICE_RULE_BLOCK =
   `  LINKS DE PAGAMENTO. Nada de arredondar, "por volta de", "a partir de".\n` +
   `- Se um plano NÃO está em LINKS DE PAGAMENTO, ele não tem preço público — não invente:\n` +
   `  diga que confirma o valor e siga, sem chutar.\n` +
-  `- Quando um plano aparecer como "de R$X por R$Y", X é o preço de TABELA (futuro) e Y é o\n` +
-  `  de LANÇAMENTO (vigente — o que a cliente paga hoje): cite Y como o preço e X só como\n` +
-  `  referência de que o valor vai subir. Nunca troque os dois.\n` +
+  `- Quando um plano aparecer como "custa R$X, hoje sai por R$Y", X é o preço de TABELA e Y é\n` +
+  `  o que a cliente paga HOJE: cite Y como o preço e X só como referência do quanto ela\n` +
+  `  economiza agora. Nunca troque os dois.\n` +
+  `- NUNCA diga, sugira ou insinue que o preço VAI SUBIR, nem prometa data, prazo, "em breve",\n` +
+  `  "por tempo limitado" ou qualquer versão disso: NÃO EXISTE DATA DE SUBIDA. O de-para é um\n` +
+  `  fato do PRESENTE (quanto custa × quanto sai hoje), não uma promessa sobre o futuro.\n` +
   `- Recomende UM plano pelo dossiê e mande o link DESSE plano (o link já está na seção).\n` +
   `Preço e link são dados do banco, não da sua memória. Divergir da seção = erro grave.\n`;
 
@@ -468,28 +825,40 @@ function scoreToTemperature(score: number | null): 'hot' | 'warm' | 'cold' | nul
 /**
  * Censura de vocabulário: o produto é PAGO e NÃO tem garantia de devolução. Se o
  * modelo escorregar em "teste grátis / desconto / promoção" em contexto de oferta,
- * reancoramos no VALOR (a conta da recuperação) e no preço de lançamento — nunca
- * em garantia ou promo. Retorna { text, sanitized }.
+ * reancoramos no VALOR (a conta da recuperação) — nunca em garantia, promo ou
+ * pressa. Retorna { text, sanitized }.
+ *
+ * ⚠️ Esta tabela REESCREVE A SAÍDA DO MODELO, depois dele: o que entra aqui a lead
+ * lê como se a agente tivesse dito. Até 2026-08-04 a substituição de "desconto" e
+ * "promoção" INJETAVA "sobe em breve" — ou seja, o código plantava na boca da Duda
+ * uma promessa de subida que não existe, e nenhuma configuração de banco alcançava
+ * isso. A reancoragem agora é VALOR (a conta), nunca pressa.
  */
-function sanitizeReply(input: string): { text: string; sanitized: boolean } {
-  let text = input;
-  let sanitized = false;
-  const pairs: Array<[RegExp, string]> = [
-    // "teste grátis / trial grátis / período grátis" → reancoragem no VALOR (produto pago).
-    [/\b(teste|trial|per[ií]odo)\s+gr[aá]tis\b/gi, 'um produto pago — o valor se paga recuperando 2-3 clientes (o time confirma condições)'],
-    [/\bgr[aá]tis\b/gi, 'um produto pago (o valor se paga recuperando 2-3 clientes)'],
-    // desconto / promoção → reancoragem no VALOR e no preço de lançamento, nunca em garantia/promo.
-    [/\b(desconto|descontos)\b/gi, 'a conta da recuperação (2-3 clientes de volta já pagam a mensalidade) e o preço de lançamento, que sobe em breve'],
-    [/\bpromo(?:ç|c)(?:ã|a)o\b/gi, 'o preço de lançamento (vigente, sobe em breve)'],
-  ];
-  for (const [re, rep] of pairs) {
-    if (re.test(text)) {
-      sanitized = true;
-      text = text.replace(re, rep);
-    }
-  }
-  return { text, sanitized };
-}
+/**
+ * ⚠️ GUARD DE NEGAÇÃO (2026-08-04) — sem ele o sanitizador INVERTIA a frase.
+ *
+ * O prompt MANDA a agente dizer "NUNCA ofereça desconto. Se pedirem, reancore no
+ * VALOR". Ela então escreve a palavra proibida em enquadramento NEGATIVO, obedecendo
+ * corretamente — e a substituição cega destruía justamente a frase certa:
+ *
+ *   "não damos desconto"   →  "não damos a conta da recuperação (…)"
+ *   "não fazemos promoção" →  "não fazemos o preço que está valendo hoje"
+ *
+ * A agente saía negando o próprio argumento de venda. Medido em 100% das negações.
+ * Mesmo padrão do detector que pune a proibição junto com a infração — só que aqui
+ * o custo não é ruído num relatório: é o que a lead lê.
+ */
+// A censura de vocabulário mudou de casa: _shared/reply-sanitizer.ts.
+//
+// O que morava aqui fazia substituição no MEIO da frase e tinha guarda de uma porta
+// só: olhava `fonte.slice(offset - 40, offset)`, isto é, apenas à ESQUERDA do termo.
+// O eval E1 (2026-08-06) capturou o resultado saindo pra lead: a agente escreveu
+// "Desconto não tem como, Fernanda — mas olha a conta..." (negação à DIREITA, que o
+// guard não via) e a lead recebeu "a conta da recuperação (2-3 clientes de volta já
+// pagam a mensalidade) não tem como, Fernanda — ...". Frase destruída, golden verde.
+//
+// O módulo novo decide por SENTENÇA: ou a frase do modelo sai inteira, ou cai inteira
+// e a reancoragem entra como sentença própria. Nunca um enxerto dos dois.
 
 /**
  * Normaliza markdown para a sintaxe REAL do WhatsApp. CONVERTE, nunca remove
@@ -561,7 +930,11 @@ function keepFirstQuestion(input: string): string {
  * cada uma respeitando o teto de caracteres (quebra longas por sentença). Tom
  * WhatsApp: cada bolha é uma ideia.
  */
-function splitIntoBubbles(input: string): string[] {
+// `export` acrescentado 06/08: sem isto o teste teria que reimplementar a função,
+// e teste que mede uma CÓPIA da verdade não mede a verdade — foi assim que um
+// stub desatualizado quase validou goldens quebrados hoje. Exportar não muda
+// comportamento: o módulo já é entrypoint e ninguém o importa além do canary.
+export function splitIntoBubbles(input: string): string[] {
   const paras = input
     .split(/\n\s*\n|\n/)
     .map((p) => p.trim())
@@ -586,6 +959,50 @@ function splitIntoBubbles(input: string): string[] {
     }
     if (buf.trim()) out.push(buf.trim());
   }
+
+  // ── FRAGMENTO SECO (06/08) ─────────────────────────────────────────────────
+  // MEDIDO em produção 04/08 e reclamado pelo Marcelo: a Duda abriu com "Oi!"
+  // sozinho numa bolha — 3 caracteres no peito, antes de qualquer conteúdo.
+  // Causa: o split acima quebra em QUALQUER \n, então "Oi!\nAqui é a Duda…"
+  // vira duas bolhas.
+  //
+  // NÃO mexo no split. Ele é a régua de ritmo de TODAS as respostas, e trocá-lo
+  // por \n\n mudaria o desenho de toda bolha para consertar um caso — risco
+  // desproporcional ao defeito. Mexo no RESULTADO, que é onde o defeito aparece.
+  //
+  // Absorve para a FRENTE (o fragmento gruda no que vem depois) porque a ordem
+  // da fala precisa ser preservada: "Oi!" + "Aqui é a Duda…" lê natural; o
+  // contrário, não. Fragmento no FIM, que não tem sucessor, gruda no anterior.
+  //
+  // O teto de fusão é folgado de propósito: MAX_BUBBLE_CHARS é escolha de estilo
+  // (o WhatsApp aceita 4096), e recusar a fusão por 2 caracteres devolveria
+  // exatamente a bolha seca que este bloco existe para matar.
+  const MIN_BUBBLE_CHARS = 25;
+  const FUSAO_TETO = MAX_BUBBLE_CHARS + 40;
+  const fundidas: string[] = [];
+  for (const b of out) {
+    const anterior = fundidas[fundidas.length - 1];
+    if (
+      anterior !== undefined &&
+      anterior.length < MIN_BUBBLE_CHARS &&
+      anterior.length + 1 + b.length <= FUSAO_TETO
+    ) {
+      fundidas[fundidas.length - 1] = `${anterior} ${b}`;
+      continue;
+    }
+    fundidas.push(b);
+  }
+  // Sobra curta no FIM: não há sucessor, então volta para a anterior.
+  if (fundidas.length >= 2) {
+    const ultima = fundidas[fundidas.length - 1];
+    const penultima = fundidas[fundidas.length - 2];
+    if (ultima.length < MIN_BUBBLE_CHARS && penultima.length + 1 + ultima.length <= FUSAO_TETO) {
+      fundidas[fundidas.length - 2] = `${penultima} ${ultima}`;
+      fundidas.pop();
+    }
+  }
+  out.length = 0;
+  out.push(...fundidas);
   // Teto de BOLHAS (não de caracteres): o excedente é REAGRUPADO na última bolha,
   // INTEIRO. Nunca cortado.
   //
@@ -990,10 +1407,21 @@ Deno.serve(async (req) => {
 
   if (!isAuthorized(req)) return json({ error: 'Unauthorized' }, 401);
 
+  // Estado do claim mora FORA do try DE PROPÓSITO: o `finally` lá embaixo precisa
+  // soltar a conversa em TODA saída — os ~18 `return json({skipped:…})` do meio do
+  // caminho, o erro 5xx e a exceção inclusive. Claim que vaza trava a lead até o
+  // TTL expirar, então o release não pode depender de lembrar de cada return.
+  let releaseClaim: (() => Promise<void>) | null = null;
+  // Só é preenchido quando esta invocação REALMENTE respondeu: hand-back sem
+  // resposta entregue viraria loop de invocação sem fala.
+  let handback: (() => Promise<void>) | null = null;
+
   try {
     const body = await req.json().catch(() => ({}));
     const conversationId: string | null = body?.conversation_id ?? null;
     if (!conversationId) return json({ error: 'conversation_id is required' }, 400);
+    // Profundidade do hand-back (payload interno; ausente = chamada externa = 0).
+    const handbackDepth = Number(body?.handback_depth) || 0;
 
     // ── MODO INATIVIDADE (régua — payload interno do platform-inactivity-sweeper).
     // { conversation_id, occurrence: N, repertoire_stage: 1-4|'janela_24h',
@@ -1011,30 +1439,87 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // 1) Conversa — só age em WhatsApp com bot ativo.
+    // 1) Conversa — só age nos canais de WhatsApp atendidos, com bot ativo.
     const { data: conversation, error: convError } = await supabase
       .from('platform_crm_conversations')
       // meta_connection_id é OBRIGATÓRIO no select: é ele que diz por qual
       // número responder (a conexão que RECEBEU a mensagem da lead).
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id')
+      // evolution_instance_id é o equivalente do canal Evolution (qual número
+      // burner recebeu) — sem ele não há por onde responder naquele canal.
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id')
       .eq('id', conversationId)
       .maybeSingle();
 
     if (convError || !conversation) {
       return json({ error: 'Conversation not found' }, 404);
     }
-    if (conversation.channel !== 'whatsapp') {
+    if (!BRAIN_CHANNELS.includes(String(conversation.channel))) {
       return json({ skipped: 'not_whatsapp', channel: conversation.channel });
     }
     if (conversation.status !== 'bot_active') {
       return json({ skipped: 'bot_not_active', status: conversation.status });
     }
 
+    // 1b) CLAIM DA CONVERSA — INCONDICIONAL, e é o ponto todo desta correção.
+    //     Não existe `if` de idade, de canal, de latência ou de modo antes daqui:
+    //     TODA invocação que chegou até aqui tenta tomar a conversa. O defeito
+    //     anterior nasceu exatamente disso — o guard 'superseded' morava DENTRO
+    //     de `if (ageMs < DEBOUNCE_MS)`, então qualquer invocação com gatilho já
+    //     maduro (áudio transcrito, cold start, retry, download de mídia, fila)
+    //     pulava o sleep, o reload E o guard inteiro, e ia direto responder por
+    //     cima de quem já estava falando. Claim que nasce dentro de um `if`
+    //     herda o mesmo furo — e fica MAIS difícil de enxergar, porque com fila
+    //     o sistema parece robusto.
+    //     UPDATE condicional com RETURNING é atômico: as duas invocações
+    //     serializam na trava da linha e o Postgres reavalia o WHERE na versão
+    //     nova (READ COMMITTED), então só UMA leva a linha de volta.
+    //     Advisory lock de sessão não serve aqui: supabase-js fala por pool HTTP,
+    //     não há sessão persistente onde o lock sobreviva à requisição.
+    const claimToken = crypto.randomUUID();
+    const claimExpiredBefore = new Date(Date.now() - BRAIN_CLAIM_TTL_MS).toISOString();
+    const { data: claimedRows, error: claimError } = await supabase
+      .from('platform_crm_conversations')
+      .update({ brain_claim_at: new Date().toISOString(), brain_claim_token: claimToken })
+      .eq('id', conversationId)
+      // Livre OU abandonado: claim mais velho que o TTL é de invocação morta.
+      .or(`brain_claim_at.is.null,brain_claim_at.lt.${claimExpiredBefore}`)
+      .select('id');
+    if (claimError) {
+      // Sem dono definido, calar é o erro barato; falar por cima é o caro.
+      // 503 (não 200) porque o sweeper só alerta em resposta não-ok — falha de
+      // infra no claim TEM que aparecer.
+      console.error('[platform-sales-brain] claim falhou:', claimError.message);
+      return json({ error: 'claim failed', detail: claimError.message }, 503);
+    }
+    if (!claimedRows || claimedRows.length === 0) {
+      // Outra invocação é a dona AGORA. Perdedor SAI — não espera a vez. A
+      // mensagem que disparou esta invocação é coberta pelo reload pós-debounce
+      // da dona; e se tiver entrado tarde demais pra isso, pelo hand-back dela.
+      return json({ skipped: 'brain_busy', conversation_id: conversationId });
+    }
+    releaseClaim = async () => {
+      // Solta SÓ o que ainda é nosso: se o TTL estourou no meio do caminho e
+      // outra invocação assumiu, limpar aqui derrubaria o claim DELA e traria de
+      // volta o entrelaçamento que este bloco existe pra matar.
+      const { error } = await supabase
+        .from('platform_crm_conversations')
+        .update({ brain_claim_at: null, brain_claim_token: null })
+        .eq('id', conversationId)
+        .eq('brain_claim_token', claimToken);
+      if (error) {
+        console.warn('[platform-sales-brain] release do claim falhou (TTL cobre):', error.message);
+      }
+    };
+
     // Helper: carrega as msgs vivas (desc), com metadata (pro wa_timestamp).
     const loadMessages = async (): Promise<Array<Record<string, any>>> => {
       const { data } = await supabase
         .from('platform_crm_messages')
-        .select('content, sender_type, direction, is_deleted, created_at, metadata')
+        // `seq` (identity, atribuído no INSERT) entra no select só pra marca
+        // d'água da rajada. A ORDENAÇÃO do histórico segue por created_at de
+        // propósito: mudar o critério de ordem das 30 msgs é outro assunto e
+        // outro risco — aqui a régua é não mexer no que já fatura.
+        .select('seq, content, sender_type, direction, is_deleted, created_at, metadata')
         .eq('conversation_id', conversationId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -1043,20 +1528,81 @@ Deno.serve(async (req) => {
     };
     const lastInboundOf = (msgs: Array<Record<string, any>>) =>
       msgs.find((m) => m.direction === 'inbound' && m.sender_type === 'visitor') ?? null;
-    // wa_timestamp da Meta = string Unix epoch em SEGUNDOS (persistido pelo webhook).
-    // Fallback: created_at. Retorna epoch em ms ou null.
-    const inboundEpochMs = (m: Record<string, any> | null): number | null => {
-      if (!m) return null;
-      const meta = (m.metadata && typeof m.metadata === 'object') ? m.metadata as Record<string, any> : {};
-      const ts = meta.wa_timestamp;
-      const secs = typeof ts === 'number' ? ts : (typeof ts === 'string' ? Number(ts) : NaN);
-      if (Number.isFinite(secs) && secs > 0) return secs * 1000;
-      const created = m.created_at ? new Date(m.created_at).getTime() : NaN;
-      return Number.isFinite(created) ? created : null;
-    };
+    // O relógio da inbound mudou de casa: _shared/inbound-clock.ts (PR-D).
+    // A closure que morava aqui ancorava SÓ em metadata.wa_timestamp, e era essa a
+    // doença — o comentário logo abaixo (marca d'água) já explicava por que aquele
+    // relógio é o errado, mas a lição não tinha atravessado estas 20 linhas.
 
     let historyDesc = await loadMessages();
     const triggerInbound = lastInboundOf(historyDesc);
+
+    // Marca d'água da rajada JÁ COBERTA por esta execução — base do hand-back.
+    // Usa `seq` (identity, atribuído pelo banco no INSERT) e NUNCA created_at ou
+    // metadata.wa_timestamp: esses dois dizem quando a mensagem existiu NO MUNDO,
+    // não quando a linha ficou VISÍVEL no banco. O áudio prova a diferença — o
+    // wa_timestamp dele é ANTERIOR ao da mensagem de texto irmã, mas a linha só
+    // nasce ~12s depois, quando a transcrição termina. Ordenar visibilidade por
+    // relógio do WhatsApp está errado por construção.
+    const maxInboundSeq = (msgs: Array<Record<string, any>>): number | null =>
+      msgs.reduce<number | null>((acc, m) => {
+        if (m.direction !== 'inbound' || m.sender_type !== 'visitor') return acc;
+        const s = typeof m.seq === 'number' && Number.isFinite(m.seq) ? m.seq : null;
+        return s != null && (acc == null || s > acc) ? s : acc;
+      }, null);
+    let coveredInboundSeq = maxInboundSeq(historyDesc);
+
+    // HAND-BACK — armado AQUI, logo depois do claim, e não lá no fim de propósito:
+    // ele precisa valer para TODA saída que segure a conversa, inclusive as que
+    // desistem no meio (stale_redelivery, erro do provedor de IA, sem persona).
+    // Enquanto seguramos o claim, qualquer mensagem nova da lead bateu nele e saiu
+    // com 'brain_busy'; se ela entrou no banco depois do nosso snapshot, não coube
+    // nesta resposta E não sobrou ninguém pra respondê-la. Sem isto, consertar a
+    // CORRIDA compraria lead GHOSTADA — troca ruim: resposta dobrada incomoda,
+    // silêncio perde venda. Roda no `finally`, DEPOIS do release — senão a
+    // invocação filha bateria no nosso próprio claim.
+    handback = async () => {
+      if (coveredInboundSeq == null) return;
+      if (handbackDepth >= HANDBACK_MAX_DEPTH) {
+        console.warn(
+          `[platform-sales-brain] hand-back no teto (${handbackDepth}) em ${conversationId} — parando: cada salto responde mensagem real, acima disso é loop.`,
+        );
+        return;
+      }
+      const { data: pendentes, error: pendErr } = await supabase
+        .from('platform_crm_messages')
+        .select('seq')
+        .eq('conversation_id', conversationId)
+        .eq('is_deleted', false)
+        .eq('direction', 'inbound')
+        .eq('sender_type', 'visitor')
+        .gt('seq', coveredInboundSeq)
+        .limit(1);
+      if (pendErr) {
+        console.warn('[platform-sales-brain] hand-back não pôde conferir pendências:', pendErr.message);
+        return;
+      }
+      if (!pendentes || pendentes.length === 0) return;
+
+      const base = Deno.env.get('SUPABASE_URL') ?? '';
+      const secret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+      if (!base || !secret) {
+        console.error('[platform-sales-brain] hand-back IMPOSSÍVEL (SUPABASE_URL/BRAIN_INTERNAL_SECRET ausentes) — mensagem nova da lead ficaria sem resposta.');
+        return;
+      }
+      const call = fetch(`${base}/functions/v1/platform-sales-brain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
+        body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
+      }).then(async (r) => {
+        if (!r.ok) console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
+      }).catch((e) => console.error('[platform-sales-brain] hand-back fetch error:', e));
+      // Mesmo padrão do webhook: em produção o waitUntil segura a promise depois
+      // da resposta; sem ele (dev), esperar é melhor que perder a chamada.
+      // deno-lint-ignore no-explicit-any
+      const rt = (globalThis as any).EdgeRuntime;
+      if (rt?.waitUntil) rt.waitUntil(call);
+      else await call;
+    };
 
     // MODO INATIVIDADE — corrida sweep→brain: se a cliente respondeu entre a
     // decisão do sweeper e esta execução, a retomada é OBSOLETA (o fluxo normal
@@ -1092,32 +1638,36 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3) DEBOUNCE / AGREGAÇÃO: a lead digita aos poucos. Se a inbound-gatilho é
-    //    mais nova que DEBOUNCE_MS, esperamos o resto da rajada e RECARREGAMOS.
-    //    Se surgiu uma inbound MAIS NOVA, esta invocação é obsoleta — a da msg
-    //    mais nova responde por todas ⇒ EXIT silencioso ('superseded').
-    //    (Modo inatividade pula o debounce: não há rajada — não há msg nova.)
+    // 3) DEBOUNCE / AGREGAÇÃO (o defeito da RAJADA): a lead manda um pensamento
+    //    só, em pedaços. Aqui NÃO se decide mais QUEM responde — isso foi
+    //    decidido no claim, e somos os donos. Aqui se decide só QUANTO ESPERAR
+    //    antes de ler o histórico, pra que UMA resposta cubra a rajada inteira.
+    //
+    //    Duas mudanças deliberadas em relação à versão que produziu o bug:
+    //    (a) o RELOAD virou incondicional. Antes ele morava dentro de
+    //        `if (ageMs < DEBOUNCE_MS)`, então gatilho maduro nunca reconferia o
+    //        histórico e respondia com uma foto velha do banco.
+    //    (b) o guard 'superseded' foi REMOVIDO. Ele existia pra desempatar
+    //        invocações concorrentes; com claim, quem perdeu JÁ SAIU — se a dona
+    //        também saísse ao ver mensagem mais nova, ninguém responderia e a
+    //        lead levaria silêncio. Mensagem que chega agora ENGROSSA esta
+    //        resposta, não cancela ela.
+    //    (Modo inatividade pula: não há rajada — não há mensagem nova.)
     let debounceWaitedMs = 0;
     if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
+      // PR-D: `inboundEpochMs` ancora no MAIS RECENTE entre wa_timestamp (mundo) e
+      // created_at (visibilidade). Áudio transcrito nasce ~12s depois do próprio
+      // wa_timestamp — ancorar só no mundo zerava a janela e a resposta saía na
+      // hora, sem coalescer a rajada. Ver _shared/inbound-clock.ts.
+      // Gatilho de fato maduro (ou sem relógio confiável) ⇒ espera 0, mas recarrega.
       const triggerMs = inboundEpochMs(triggerInbound);
-      const ageMs = triggerMs != null ? Date.now() - triggerMs : Number.POSITIVE_INFINITY;
-      if (ageMs < DEBOUNCE_MS) {
-        debounceWaitedMs = DEBOUNCE_MS - ageMs;
-        await sleep(debounceWaitedMs);
-        historyDesc = await loadMessages();
-        const freshInbound = lastInboundOf(historyDesc);
-        const freshMs = inboundEpochMs(freshInbound);
-        // Se a última inbound agora é outra/mais nova, quem responde é ela.
-        if (
-          freshInbound &&
-          triggerMs != null &&
-          freshMs != null &&
-          (freshMs > triggerMs ||
-            (freshInbound.content !== triggerInbound.content && freshMs >= triggerMs))
-        ) {
-          return json({ skipped: 'superseded' });
-        }
-      }
+      debounceWaitedMs = debounceWaitMs(triggerMs, Date.now(), DEBOUNCE_MS);
+      if (debounceWaitedMs > 0) await sleep(debounceWaitedMs);
+      historyDesc = await loadMessages();
+      // A rajada engordou: o que entrou durante a espera ESTÁ nesta resposta, então
+      // sobe a marca d'água — senão o hand-back rechamaria o cérebro para responder
+      // de novo o que acabamos de cobrir.
+      coveredInboundSeq = maxInboundSeq(historyDesc);
     }
 
     // 4) Idempotência leve: última msg = outbound do bot com <5s ⇒ não responde.
@@ -1186,6 +1736,36 @@ Deno.serve(async (req) => {
       persona = route.persona;
       routeReason = route.reason;
       orphanAgentId = route.orphanAgentId;
+
+      // AMARRAÇÃO POR CANAL — precedência: pin > número dedicado > SDR abre.
+      // Só entra quando a conversa AINDA NÃO tem dono (é o que 'sdr_open'
+      // significa: resolvePersonaForConversation só devolve esse motivo com
+      // current_agent_id nulo). Pin existente continua mandando — a linha
+      // Duda→Bia→Lia fica intacta — e, sem vínculo cadastrado, nada muda.
+      //
+      // DELIBERADAMENTE não grava current_agent_id: o vínculo é a fonte da
+      // verdade e cada mensagem o reconsulta. Assim, trocar o número dedicado
+      // na tela "Canais" passa a valer na hora, em vez de deixar conversas
+      // carimbadas com um dono velho que só uma migration desfaria.
+      if (routeReason === 'sdr_open') {
+        const boundAgentId = await resolveConnectionBoundAgentId(supabase, conversation);
+        const bound = boundAgentId ? agentList.find((a) => a.id === boundAgentId) : null;
+        if (bound) {
+          persona = bound;
+          routeReason = 'connection_bound';
+          console.log(
+            `[platform-sales-brain] agente por amarração de canal: ${bound.name ?? bound.id} ` +
+              `(${bound.id}) conversation_id=${conversationId}`,
+          );
+        } else if (boundAgentId) {
+          // Vínculo aponta agente que o cérebro não pode usar. Antes de cair na
+          // SDR, GRITA — senão o número dedicado "não funciona" sem explicação.
+          console.warn(
+            `[platform-sales-brain] amarração de canal aponta agente ${boundAgentId} que NÃO está ` +
+              `is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'} — a SDR abre`,
+          );
+        }
+      }
     }
 
     if (!persona) {
@@ -1321,7 +1901,8 @@ Deno.serve(async (req) => {
       ? buildInactivityRepertoire(inactivityStage!, inactivityDeadline)
       : '';
 
-    // 8) CONHECIMENTO do produto + planos/preços (a escassez é o preço de lançamento).
+    // 8) CONHECIMENTO do produto + planos/preços (a âncora é o preço comparado de
+    //    HOJE — não há escassez nem promessa de subida).
     let product: Record<string, any> | null = null;
     let plans: Array<Record<string, any>> = [];
     if (conversation.product_id) {
@@ -1335,7 +1916,7 @@ Deno.serve(async (req) => {
           .maybeSingle(),
         // Planos + LINK DE CHECKOUT reais (a "maquininha" da Duda): quando o
         // cliente DECIDE, ela mesma manda o link — não precisa de closer.
-        // list_price_monthly = preço de tabela (de-para do lançamento em LINKS DE PAGAMENTO).
+        // list_price_monthly = preço de tabela (de-para do preço comparado em LINKS DE PAGAMENTO).
         supabase
           .from('public_plans')
           .select('name, slug, price_monthly, list_price_monthly, checkout_url, is_public')
@@ -1395,6 +1976,34 @@ Deno.serve(async (req) => {
       ? `\n═══════════════════════════════════════\nVOCÊ ESTÁ ASSUMINDO UMA CONVERSA (HANDOFF DA DUDA)\n═══════════════════════════════════════\nA Duda te passou o dossiê desta lead — tudo que vocês precisam já está em "O QUE JÁ SABEMOS DA LEAD". NUNCA se apresente do zero nem recomece a descoberta. Valide UM detalhe do que ela já disse ("vi aqui que você trabalha com X há Y, certo?") e conduza direto para a demonstração/fechamento do plano recomendado. Você é a especialista que fecha: apresente a oferta com a conta da recuperação, trate a objeção mais provável e vá pro checkout como próximo passo concreto.\n`
       : '';
 
+    // PR-BDR-14: racionamento de NOME como DADO do turno — SÓ canal Evolution.
+    // Regra de contagem no prompt não segurou (3 violações medidas 05-06/08:
+    // "Oi Marcelo!" 2x seguidas, "Funciona assim, Marcelo", "Marcelo, você
+    // chegou…"). O que o flash não faz por disciplina, faz por fato: se o nome
+    // já saiu nas últimas 4 mensagens do bot, o turno recebe a proibição como
+    // FATO — injetada DEPOIS das instruções da persona (recência vence).
+    let nomeParaRacionar = '';
+    let nameRationContext = '';
+    if (conversation.channel === 'whatsapp_evolution' && visitorName) {
+      const primeiroNome = String(visitorName).trim().split(/\s+/)[0] ?? '';
+      if (primeiroNome.length >= 3) {
+        const nomeRe = new RegExp(
+          `\\b${primeiroNome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+          'i',
+        );
+        const usouRecente = historyDesc
+          .filter((m: any) => m.sender_type === 'bot' && typeof m.content === 'string')
+          .slice(0, 4)
+          .some((m: any) => nomeRe.test(m.content));
+        if (usouRecente) {
+          nomeParaRacionar = primeiroNome;
+          nameRationContext =
+            `\nFATO DESTE TURNO: você já usou o nome "${primeiroNome}" nas últimas mensagens. ` +
+            `PROIBIDO usar o nome dela nesta resposta — nenhuma vez.`;
+        }
+      }
+    }
+
     // 9) System prompt: persona + memória + conhecimento + REGRAS FIXAS + FORMA.
     //     No modo RETENÇÃO a Nina NÃO é "de vendas" — dizer isso contradiria as
     //     regras dela; o papel vira Sucesso/Suporte/Retenção.
@@ -1402,7 +2011,7 @@ Deno.serve(async (req) => {
 ${persona.primary_objective ? `\nSEU OBJETIVO PRINCIPAL: ${persona.primary_objective}` : ''}
 ${persona.tone_style ? `\nTOM E ESTILO: ${persona.tone_style}` : ''}
 ${visitorName ? `\nCLIENTE: ${visitorName}` : ''}
-${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}
+${buildNowContext()}${closerContinuityContext}${persona.additional_prompt ? `\nINSTRUÇÕES ADICIONAIS DA PERSONA:\n${persona.additional_prompt}` : ''}${nameRationContext}
 ${qualification ? `\nESQUEMA DE QUALIFICAÇÃO (colete estes dados naturalmente na conversa): ${qualification}` : ''}
 ${prohibited ? `\nFRASES PROIBIDAS (nunca use):\n${prohibited}` : ''}
 ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdContext}${inactivityContext}
@@ -1410,14 +2019,14 @@ ${leadMemoryContext}${knowledgeContext}${onboardingPhaseContext}${inboundAdConte
 ═══════════════════════════════════════
 REGRAS INVIOLÁVEIS DO CÉREBRO
 ═══════════════════════════════════════
-1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no preço de LANÇAMENTO (vigente, sobe em breve) — nunca em garantia nem desconto.
+1. NUNCA ofereça desconto. Se pedirem, reancore no VALOR (a conta da recuperação: 2-3 clientes de volta já pagam a mensalidade) e no PREÇO COMPARADO DE HOJE (o plano custa R$X e hoje sai por R$Y — os dois números estão em LINKS DE PAGAMENTO) — nunca em garantia, nunca em desconto e NUNCA em pressa.
 2. NÃO existe "Piloto Fundadora" nem garantia de devolução por resultado. A redução de risco é honesta: PROVA (o raio-x, feito pela própria cliente na hora — ver bloco A DEMONSTRAÇÃO) + direito de arrependimento de 7 dias do checkout (lei). NUNCA prometa "devolvo se não recuperar", "risco é meu/nosso" ou "painel-juiz". O produto é PAGO — nunca o descreva como "teste gratuito" ou "trial".
-3. Escassez SÓ a real: o preço de LANÇAMENTO (vigente) sobe para o de tabela em breve — está em LINKS DE PAGAMENTO. NUNCA invente urgência (vagas, relógio).
+3. NÃO EXISTE ESCASSEZ NENHUMA. É PROIBIDO dizer, sugerir ou insinuar que o preço vai subir, que a condição acaba, que é "por tempo limitado", "aproveite antes", "última chance", vaga, lote ou relógio — NÃO EXISTE DATA DE SUBIDA e prometer isso é mentir para a cliente. O que você tem é o PREÇO COMPARADO DE HOJE (o plano custa R$X e hoje sai por R$Y, em LINKS DE PAGAMENTO): um fato do presente, verificável agora. Se a lead disser "vou pensar", reancore no VALOR (a conta da recuperação) e no preço de hoje — nunca na pressa.
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada, NÃO passe pra Bia — decidido não precisa de closer.
-8. PASSAGEM PARA A BIA (só cliente QUALIFICADO e AINDA EM DÚVIDA): use a tag exata ${PASS_BIA_TAG} (sozinha, na última linha) SOMENTE quando o score é ALTO (≥70) MAS a lead está HESITANTE/CÉTICA — tem objeções, quer "pensar", desconfia do resultado, pede pra "entender melhor", ou é claramente exigente e precisa ser convencida do VALOR. A Bia é a especialista que vende valor pra esse cliente difícil. NUNCA use ${PASS_BIA_TAG} para quem já decidiu (esse você fecha com o link) nem para carteira pequena (esse é Essencial, você fecha). NUNCA junte ${PASS_BIA_TAG} com ${ESCALATE_TAG}/${HANDOFF_TAG}.` : `7. VOCÊ É A BIA (closer de VALOR). Recebeu um cliente QUALIFICADO e CÉTICO que a Duda não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução — e use a urgência honesta do preço de lançamento (sobe em breve). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
+${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada — quem já decidiu não precisa de nada além do link.
+8. VOCÊ CONDUZ A CONVERSA ATÉ O FIM. Não existe "passar para outra pessoa" dentro do bot: lead cética/hesitante é SUA — aprofunde o VALOR (a conta da recuperação + a PROVA na carteira dela) e conduza ao fechamento você mesma. Só ${ESCALATE_TAG}/${HANDOFF_TAG} tiram a conversa de você, e só pelos motivos da regra 6.` : `7. VOCÊ É A CLOSER DE VALOR. Recebeu um cliente QUALIFICADO e CÉTICO que a SDR não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução e NUNCA com pressa (não existe data de subida de preço — ver regra 3). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 ${(isRealB2bFunnel && !onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
 ${(isRealB2bFunnel && !onboardingActive && !retentionActive && personaIsSdr) ? QUALIFICACAO_RULE_BLOCK : ''}
@@ -1569,24 +2178,31 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         const closer = ((closerAgents as Array<Record<string, any>>) || []).find(isCloserAgent) ?? null;
         biaAgentId = closer?.id ?? null;
       }
-      // Remove a tag do texto (não vaza pro cliente) e sela a transição calorosa.
+      // A TAG sempre sai do texto (não vaza pro cliente). A FALA de transição, NÃO:
+      // ela só é anexada quando existe closer ativo.
+      //
+      // ⚠️ ORDEM CORRIGIDA 2026-08-04: antes a bolha "te deixo com a Bia" era colada
+      // ANTES de conferir se a Bia existia — com o closer desativado, a lead se
+      // despedia de uma especialista que nunca ia falar e a Duda continuava
+      // respondendo. Pior que não passar. Conferir depois de falar não conserta
+      // nada: o texto já saiu.
       reply = reply.split(PASS_BIA_TAG).join('').replace(/\s+$/, '').trim();
-      reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;
-      // Só consideramos a passagem efetiva se achamos a Bia; senão a Duda segue
-      // (log explícito, nunca engole a intenção nem trava a conversa).
       if (biaAgentId) {
+        reply = reply ? `${reply}\n\n${PASS_BIA_MSG}` : PASS_BIA_MSG;
         passedToBia = true;
       } else {
-        // HANDOFF FALHO Duda→Bia: a Duda MANTÉM a conversa (invariante honrado —
-        // ninguém fica órfão), mas a lead ouviu "te deixo com a Bia" e a Bia não
-        // existe. Isso não pode mais acontecer em silêncio.
-        console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer (Bia) ativo no WhatsApp — Duda mantém a conversa.');
+        // SEM closer ativo: a Duda MANTÉM a conversa (invariante honrado — ninguém
+        // fica órfão) e a lead NÃO ouve transição nenhuma — o texto segue como se a
+        // tag nunca tivesse existido. Se o modelo só emitiu a tag, o `reply` fica
+        // vazio e o fallback de bolhas responde com a pergunta neutra de sempre.
+        console.warn('[platform-sales-brain] [PASSAR_BIA] emitido mas nenhum closer ativo no WhatsApp — tag descartada, Duda mantém a conversa (nenhuma transição foi dita à lead).');
         await sendTelegramAlertThrottled(
           `pass-bia-failed:${conversationId}`,
-          `⚠️ HANDOFF Duda→Bia FALHOU — Duda mantém a conversa\n` +
+          `⚠️ [PASSAR_BIA] emitido SEM closer ativo — Duda mantém a conversa\n` +
           `Conversa: ${conversationId}\n` +
-          `Nenhum closer (Bia) is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}.\n` +
-          `A lead JÁ recebeu a bolha de transição ("te deixo com a Bia") — quem responder será a Duda.`,
+          `Nenhum closer is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'}.\n` +
+          `A lead NÃO recebeu bolha de transição (a fala só é dita com closer ativo).\n` +
+          `Se isto se repetir, o modelo está emitindo uma tag que o prompt não instrui mais.`,
         );
       }
     }
@@ -1598,14 +2214,30 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     let sentRaiox = false;
     if (reply.includes(RAIOX_TAG)) {
       reply = reply.split(RAIOX_TAG).join('').replace(/\s+$/, '').trim();
-      try {
+      // [G-ALERTAS 2026-08-06] Guardas ANTES de tocar o demo-start real:
+      // (a) conversa de EVAL/canário (telefone-sentinela 'eval-no-send') NUNCA
+      //     chama o endpoint real — criaria org demo de verdade a cada rodada —
+      //     nem alerta o operador (era o alerta fantasma das 3h no Telegram);
+      //     simula sucesso pro cenário validar o formato da resposta.
+      // (b) lead real ainda SEM WhatsApp válido: demo-start devolveria 400
+      //     whatsapp_invalido. Não é incidente — é etapa de SDR: a Duda pede o
+      //     contato e o raio-x sai no turno seguinte.
+      const rawDestRaiox = String(conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '').trim();
+      const foneRaiox = normalizePhoneBR(rawDestRaiox);
+      if (rawDestRaiox === 'eval-no-send') {
+        sentRaiox = true;
+        const appUrl = Deno.env.get('APP_URL') || 'https://app.nexvybeauty.com.br';
+        reply = `${reply ? reply + '\n\n' : ''}Aqui está 👉 ${appUrl}/implantacao/eval-demo-token\n\nAbre no computador — o QR você lê com o celular 😉`;
+      } else if (!foneRaiox) {
+        reply = `${reply ? reply + '\n\n' : ''}Pra eu montar o seu Raio-X e te mandar o link certinho aqui, me passa o seu WhatsApp com DDD? 😉`;
+      } else try {
         const appUrl = Deno.env.get('APP_URL') || 'https://app.nexvybeauty.com.br';
         const demoRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/demo-start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             nome: (conversation.visitor_name ?? '').trim() || 'Meu espaço',
-            whatsapp: conversation.visitor_whatsapp ?? conversation.visitor_phone ?? '',
+            whatsapp: foneRaiox,
           }),
         });
         const demo = await demoRes.json().catch(() => ({} as Record<string, unknown>));
@@ -1731,6 +2363,91 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       }
     }
 
+    // ─── MECANISMOS OUTBOUND (PR-BDR-12) — SÓ canal Evolution (Camila). ──────
+    // A Duda no número oficial NÃO passa por aqui. Motivo medido: 3 conversas
+    // seguidas (2026-08-04/05) com link empurrado sem aceite e aglutinado com
+    // pergunta — instrução de prompt não segurou nenhuma das 3 vezes.
+    // Prompt ensina a falar; código impede de errar.
+    if (conversation.channel === 'whatsapp_evolution') {
+      const URL_RE = /https?:\/\/\S+/g;
+      const lastLeadNorm = String(triggerInbound?.content ?? '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      // Aceite EXPLÍCITO na última mensagem da lead. Qualquer "nao" na mensagem
+      // derruba o aceite (conservador de propósito: falso negativo atrasa o
+      // link um turno; falso positivo é o defeito que estamos matando).
+      const ACEITE_RE = /\b(quero|pode|manda|mande|envia|envie|mostra|topo|topa|bora|vamos|aceito|sim|beleza|fechado|fechou|ok|vou colocar|coloca)\b/;
+      const aceitou = ACEITE_RE.test(lastLeadNorm) && !/\bnao\b/.test(lastLeadNorm);
+
+      const antesGate = bubbles.length;
+      const saneadas: string[] = [];
+      for (const b of bubbles) {
+        const urls = b.match(URL_RE) ?? [];
+        if (urls.length === 0) { saneadas.push(b); continue; }
+        const semLink = b.replace(URL_RE, '')
+          .replace(/(aqui está|aqui esta|tá aqui|ta aqui|segue o link)\s*👉?\s*/gi, '')
+          .replace(/👉/g, '').replace(/\s{2,}/g, ' ').trim();
+        if (!aceitou) {
+          // LINK SEM ACEITE: a oferta sobrevive, o link morre. O modelo pode
+          // reoferecer; a URL só sai quando a ÚLTIMA mensagem dela contiver aceite.
+          console.error('[platform-sales-brain] LINK BLOQUEADO sem aceite explícito', {
+            conversation_id: conversation.id,
+            ultima_da_lead: String(triggerInbound?.content ?? '').slice(0, 80),
+          });
+          if (semLink.length >= 8) saneadas.push(semLink);
+          continue;
+        }
+        // COM aceite: link NUNCA aglutinado — texto (sem URL) vira bolha própria
+        // e a URL sai SOZINHA na bolha seguinte. Mais de 1 URL: só a 1ª sai.
+        if (semLink.length >= 8) saneadas.push(semLink);
+        const primeiraUrl = urls[0] ?? '';
+        if (primeiraUrl) saneadas.push(primeiraUrl);
+        if (urls.length > 1) {
+          console.error('[platform-sales-brain] múltiplas URLs no turno — extras descartadas', {
+            conversation_id: conversation.id, descartadas: urls.length - 1,
+          });
+        }
+      }
+      bubbles = saneadas;
+
+      // Palavra banida "mágica": cai a SENTENÇA inteira, nunca splice de palavra
+      // (splice quebra gramática — caso catalogado no sanitizador da Duda).
+      bubbles = bubbles.map((b: string) =>
+        /m[áa]gica/i.test(b)
+          ? b.split(/(?<=[.!?…])\s+/).filter((s: string) => !/m[áa]gica/i.test(s)).join(' ').trim()
+          : b
+      ).filter((b: string) => b.length > 0);
+
+      // PR-BDR-14 cinto: o turno estava PROIBIDO de usar o nome (fato injetado)
+      // e o modelo usou mesmo assim → remove só as formas de cirurgia SEGURA:
+      // prefixo "[Oi ]Nome, " e vírgula-vocativo ", Nome". Nome no meio de
+      // frase fica (remover quebraria gramática — regra do splice).
+      if (nomeParaRacionar) {
+        const esc = nomeParaRacionar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const antesNome = bubbles.join('|');
+        bubbles = bubbles
+          .map((b: string) => b
+            .replace(new RegExp(`^(?:oi |olá |ola )?${esc}[,!]?\\s+`, 'i'), '')
+            .replace(new RegExp(`,\\s*${esc}\\s*([,!.?…])`, 'gi'), '$1')
+            .trim())
+          .filter((b: string) => b.length > 0);
+        if (bubbles.join('|') !== antesNome) {
+          console.log('[platform-sales-brain] nome racionado removido da saída (PR-BDR-14)', {
+            conversation_id: conversation.id,
+          });
+        }
+      }
+
+      if (bubbles.length !== antesGate) {
+        console.log(`[platform-sales-brain] mecanismos outbound: ${antesGate} → ${bubbles.length} bolha(s)`);
+      }
+      if (bubbles.length === 0) {
+        console.error('[platform-sales-brain] mecanismos outbound derrubaram TODAS as bolhas — nada enviado', {
+          conversation_id: conversation.id,
+        });
+        return json({ skipped: 'outbound_gate_dropped_all' });
+      }
+    }
+
     // 12) Entrega bolha a bolha: persiste ANTES de entregar (a msg existe no CRM
     //     mesmo se a entrega externa falhar), depois casa o wamid, broadcast e
     //     pausa proporcional entre bolhas (só entre bolhas, não após a última).
@@ -1757,23 +2474,98 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       READ_CAP_MS,
     );
     const tDeliveryStart = Date.now();
+    let entregues = 0; // bolhas REALMENTE enviadas — o lote pode ser abortado no meio
 
     for (let i = 0; i < total; i++) {
       const bubbleText = bubbles[i];
+
+      // ─── RITMO DO CLIENTE (PR-BDR-10) ────────────────────────────────────
+      // O lote de bolhas é escrito de uma vez e gotejado por até ~30s. Se a lead
+      // falar durante o gotejamento, as bolhas restantes já nasceram VELHAS:
+      // respondem a uma pergunta anterior e caem DEPOIS da nova, dando a impressão
+      // de que a agente não leu.
+      //
+      // MEDIDO em 2026-08-05: as 4 bolhas de 01:31:14→01:31:39 tinham o MESMO
+      // debounce_waited_ms (uma geração só) e a lead escreveu duas vezes dentro
+      // dessa janela. A bolha 3 caiu 1 segundo depois da pergunta dela — não era
+      // resposta, era coincidência de relógio.
+      //
+      // Aqui o lote é abortado e o HAND-BACK (que já existe) responde com o
+      // contexto novo. A bolha 1 SEMPRE sai: abortar antes dela deixaria a agente
+      // muda caso o hand-back falhasse, e silêncio é pior que atraso.
+      if (i > 0 && coveredInboundSeq != null) {
+        const { data: novasDaLead, error: ritmoErr } = await supabase
+          .from('platform_crm_messages')
+          .select('seq')
+          .eq('conversation_id', conversationId)
+          .eq('is_deleted', false)
+          .eq('direction', 'inbound')
+          .eq('sender_type', 'visitor')
+          .gt('seq', coveredInboundSeq)
+          .limit(1);
+        if (ritmoErr) {
+          // Não dá pra saber se ela falou → segue o lote, mas DENUNCIA: engolir
+          // isso devolveria em silêncio o comportamento que este guarda remove.
+          console.warn(
+            `[platform-sales-brain] ritmo: falha ao conferir inbound novo em ${conversationId}: ${ritmoErr.message} — lote segue`,
+          );
+        } else if (novasDaLead && novasDaLead.length > 0) {
+          console.log(
+            `[platform-sales-brain] ritmo: a lead falou durante o lote em ${conversationId} — abortando na bolha ${i + 1}/${total}; o hand-back responde com o contexto novo`,
+          );
+          break;
+        }
+      }
 
       // RITMO HUMANO: pausa ANTES de cada bolha, com "digitando…" visível.
       // Antes: a pausa vinha DEPOIS do envio e era `min(len*30, 4000)` — teto que
       // saturava em 134 chars, entregando 300 chars em ~6s (≈610 wpm, ~200x humano).
       const pauseMs = i === 0
         ? Math.max(0, readDelayMs - (Date.now() - tDeliveryStart))
-        : typingPauseMs(bubbleText);
+        : (conversation.channel === 'whatsapp_evolution'
+          ? evoTypingPauseMs(bubbleText)   // PR-BDR-13: ritmo humano, só Camila
+          : typingPauseMs(bubbleText));
       if (pauseMs > 0) {
-        await sendTypingIndicator(supabase, conversation, inboundWamid);
+        await sendTypingSignal(supabase, conversation, inboundWamid, dest);
         await sleep(pauseMs);
       }
 
+      // ⚠️ ERRATA do commit do PR-BDR-12 (apontada pela sessão Controladora
+      // GO-LIVE em 2026-08-06, verificada linha a linha): aquele commit afirma
+      // "mecanismos TODOS escopados a whatsapp_evolution" — FALSO para este.
+      // Os DOIS guardas de ritmo (pré-pausa acima e pós-pausa abaixo) são
+      // deliberadamente CHANNEL-AGNOSTIC: valem para a Duda no Cloud também,
+      // porque bolha velha caindo por cima de mensagem nova é defeito de
+      // ENTREGA, não política de canal. Só os mecanismos 1-3 (gate de link,
+      // de-aglutinação, palavra banida) têm gate — esses sim são política da Camila.
+      // RITMO — checagem PÓS-pausa (PR-BDR-12): a mensagem da lead pode chegar
+      // DURANTE o sleep de digitação. MEDIDO 2026-08-05: a piada das 20:34:46
+      // caiu no meio da pausa e a bolha 4 aterrissou por cima às 20:34:51 —
+      // o guarda pré-pausa não tinha como vê-la. Mesma consulta, segundo portão.
+      if (i > 0 && pauseMs > 0 && coveredInboundSeq != null) {
+        const { data: chegouNaPausa, error: pausaErr } = await supabase
+          .from('platform_crm_messages')
+          .select('seq')
+          .eq('conversation_id', conversationId)
+          .eq('is_deleted', false)
+          .eq('direction', 'inbound')
+          .eq('sender_type', 'visitor')
+          .gt('seq', coveredInboundSeq)
+          .limit(1);
+        if (pausaErr) {
+          console.warn(
+            `[platform-sales-brain] ritmo pós-pausa: checagem falhou em ${conversationId}: ${pausaErr.message} — lote segue`,
+          );
+        } else if (chegouNaPausa && chegouNaPausa.length > 0) {
+          console.log(
+            `[platform-sales-brain] ritmo: a lead falou DURANTE a pausa em ${conversationId} — abortando na bolha ${i + 1}/${total}; o hand-back responde`,
+          );
+          break;
+        }
+      }
+
       const baseMeta = {
-        channel: 'whatsapp_cloud',
+        channel: conversation.channel === 'whatsapp_evolution' ? 'whatsapp_evolution' : 'whatsapp_cloud',
         agent_id: persona.id,
         score: currentScore,
         rota: currentRota,
@@ -1806,16 +2598,24 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         continue;
       }
 
-      const { wamid, error: deliveryError, connectionId } = await deliverViaWhatsAppCloud(
+      const { wamid, error: deliveryError, connectionId, delivered, evolutionMessageId } = await deliver(
         supabase,
         conversation,
         dest,
         bubbleText,
       );
-      if (wamid) anyDelivered = true; else lastDeliveryError = deliveryError;
+      if (delivered) anyDelivered = true; else lastDeliveryError = deliveryError;
 
-      const deliveryMeta = wamid
-        ? { ...baseMeta, wamid, delivery_status: 'sent', ...(connectionId ? { connection_id: connectionId } : {}) }
+      const deliveryMeta = delivered
+        ? {
+            ...baseMeta,
+            wamid,
+            delivery_status: 'sent',
+            ...(connectionId ? { connection_id: connectionId } : {}),
+            // Chave de idempotência do platform-evolution-webhook: sem ela o eco
+            // fromMe do nosso próprio envio viraria uma segunda linha outbound.
+            ...(evolutionMessageId ? { evolution_message_id: evolutionMessageId } : {}),
+          }
         : {
             ...baseMeta,
             delivery_status: 'failed',
@@ -1830,13 +2630,24 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         .select('*')
         .single();
       const finalMessage = updated ?? message;
-      if (!wamid) console.error('[platform-sales-brain] bolha NÃO entregue:', deliveryError);
+      if (!delivered) {
+        console.error(
+          `[platform-sales-brain] bolha NÃO entregue conversation_id=${conversationId} channel=${conversation.channel}:`,
+          deliveryError,
+        );
+      }
 
       await broadcastPlatformNewMessage(supabase, conversationId, finalMessage);
+      entregues++;
 
       // (a pausa agora acontece ANTES de cada bolha, no topo do loop)
     }
-    console.log(`[platform-sales-brain] entrega: ${total} bolha(s) em ${Date.now() - tDeliveryStart}ms`);
+    // Log conta o que SAIU, não o que foi planejado: com o aborto por ritmo do
+    // cliente, afirmar `total` aqui seria relatório falso na própria telemetria.
+    console.log(
+      `[platform-sales-brain] entrega: ${entregues}/${total} bolha(s) em ${Date.now() - tDeliveryStart}ms` +
+        (entregues < total ? ' — lote abortado, a lead falou no meio' : ''),
+    );
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
@@ -1995,5 +2806,26 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       { error: error instanceof Error ? error.message : 'Erro desconhecido' },
       500,
     );
+  } finally {
+    // Soltar o claim é obrigação de TODA saída — sucesso, skip do meio do
+    // caminho ou exceção. O TTL é rede de segurança pra morte do isolate, NÃO a
+    // via normal: contar com ele deixaria a lead esperando 2 min por engano de
+    // código. Erro aqui é logado, nunca propagado — não vale trocar a resposta
+    // já pronta por um 500.
+    if (releaseClaim) {
+      try {
+        await releaseClaim();
+      } catch (e) {
+        console.warn('[platform-sales-brain] release do claim explodiu (TTL cobre):', String(e).slice(0, 200));
+      }
+    }
+    // Só depois de soltar: a invocação filha precisa conseguir tomar a conversa.
+    if (handback) {
+      try {
+        await handback();
+      } catch (e) {
+        console.warn('[platform-sales-brain] hand-back falhou:', String(e).slice(0, 200));
+      }
+    }
   }
 });
