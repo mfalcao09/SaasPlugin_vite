@@ -12,6 +12,7 @@ import {
 } from "./evolution-webhook-events.ts";
 import { authenticateEvolutionWebhookCallback } from "./evolution-webhook-auth.ts";
 import { createPlatformEvolutionWebhookHandler } from "./platform-evolution-webhook-handler.ts";
+import { createPlatformEvolutionWebhookReceiver } from "../platform-evolution-webhook/index.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -280,4 +281,67 @@ Deno.test("receptor retorna 2xx e executa fluxo autorizado com token correto", a
   equal(harness.counts().lookups, 1, "deve resolver instância");
   equal(harness.counts().writes, 1, "gate válido libera fluxo autorizado");
   equal(harness.rejected.length, 0, "não deve logar falha");
+});
+
+Deno.test("receptor processa exatamente a instância autenticada", async () => {
+  const authenticated = {
+    id: "authenticated-instance-id",
+    instance_token: "instance-token",
+    name: "instance-name",
+    product_id: "authenticated-product",
+  };
+  const competing = {
+    id: "competing-instance-id",
+    instance_token: "other-token",
+    name: "instance-name",
+    product_id: "competing-product",
+  };
+  let updatedInstanceId = "";
+
+  const fakeSupabase = {
+    from: (_table: string) => {
+      let operation = "select";
+      const query: Record<string, unknown> = {
+        select: (_fields: string) => query,
+        update: (_values: unknown) => {
+          operation = "update";
+          return query;
+        },
+        eq: (_column: string, value: string) => {
+          if (operation === "update") {
+            updatedInstanceId = value;
+            return Promise.resolve({ error: null });
+          }
+          return query;
+        },
+        limit: (_count: number) =>
+          Promise.resolve({
+            data: [authenticated],
+          }),
+        or: (_filter: string) => Promise.resolve({ data: [competing] }),
+      };
+      return query;
+    },
+  };
+
+  const receiver = createPlatformEvolutionWebhookReceiver(
+    () => fakeSupabase,
+  );
+  const response = await receiver(
+    webhookRequest(
+      {
+        event: "CONNECTION_UPDATE",
+        instance: "instance-name",
+        data: { state: "open" },
+      },
+      { apikey: "instance-token" },
+    ),
+  );
+
+  equal(response.status, 200, "status do processamento autorizado");
+  equal(
+    updatedInstanceId,
+    authenticated.id,
+    "efeitos devem usar a mesma linha autenticada pelo gate",
+  );
 });
