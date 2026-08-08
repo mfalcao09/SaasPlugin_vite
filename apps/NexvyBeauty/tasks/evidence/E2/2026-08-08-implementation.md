@@ -94,3 +94,46 @@ As verificações Deno, SQL e de concorrência foram repetidas após o rebase.
 - Nenhum Telegram real foi enviado.
 - Nenhum push ou pull request foi criado durante esta execução.
 - Nenhuma credencial ou valor de segredo foi registrado nesta evidência.
+
+## Correções após review independente
+
+O review independente retornou quatro achados Important. Todos foram reproduzidos
+antes da correção.
+
+RED:
+
+- `deno test --frozen
+  apps/NexvyBeauty/supabase/functions/_shared/instance-coverage.test.ts`:
+  exit `1`; os helpers de claim integral e chave de consolidação ainda não
+  existiam.
+- Após a primeira implementação dos helpers, o caso de consolidação acusou o
+  fixture incorreto (a campanha não apontava para o burner); o fixture foi
+  corrigido antes de validar o comportamento.
+- Harness PostgreSQL 18.4: exit `3` com
+  `RED: throttle de cobertura ainda não pertence a
+  platform_crm_cold_campaigns`.
+
+GREEN:
+
+- O grupo de campanhas é ordenado por `campaign.id` e adquirido por inteiro.
+  Se qualquer claim falha ou retorna `false`, todos os claims já obtidos são
+  liberados e não ocorre envio nem finalização da instância.
+- Todo veredito com instância existente consolida por `instancia.id`, inclusive
+  `instancia_de_outro_produto`.
+- `activated_at` posterior ao instante avaliado é não autorizado; o timestamp
+  exatamente igual ao instante avaliado é autorizado.
+- `coverage_alert_at` passou a pertencer a
+  `platform_crm_cold_campaigns`. As RPCs de campanha operam somente por
+  `campaign_id` e não criam nem atualizam linhas de
+  `platform_crm_cold_instance_health`.
+- `deno test --frozen`: 35 passed, 0 failed, exit `0`.
+- `deno check --no-lock`: exit `0`.
+- Harness PostgreSQL 18.4: migration completa aplicada duas vezes, exit `0`;
+  claim/release/finalize, stale claim, ACLs, rearm, cron único e ausência de
+  criação/duplicação de health rows verificados.
+- Prova concorrente de campanha:
+  `SESSION_1_CAMPAIGN_CLAIM=true`,
+  `SESSION_2_CAMPAIGN_CLAIM=false`, `HEALTH_ROWS=1` (a única linha era o
+  fixture preexistente), exit `0`.
+
+Estas correções também não foram aplicadas nem implantadas em produção.

@@ -2,10 +2,12 @@
 //   deno test --no-check supabase/functions/_shared/instance-coverage.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  adquirirClaimsDoGrupo,
   avaliarCampanhaAtivada,
   avaliarCobertura,
   avaliarInstancia,
   type CampanhaAtivada,
+  chaveConsolidacaoCampanha,
   type InstanciaVigiada,
   textoDoAlerta,
   textoDoAlertaCampanha,
@@ -321,6 +323,25 @@ Deno.test("campanha sem autorização, pausada ou de Instagram fica fora do aler
   );
 });
 
+Deno.test("activated_at futuro não autoriza; fronteira exata já autoriza", () => {
+  assertEquals(
+    avaliarCampanhaAtivada(
+      campanha({ activatedAt: new Date(AGORA + 1).toISOString() }),
+      [],
+      AGORA,
+    ).motivo,
+    "campanha_nao_autorizada",
+  );
+  assertEquals(
+    avaliarCampanhaAtivada(
+      campanha({ activatedAt: new Date(AGORA).toISOString() }),
+      [],
+      AGORA,
+    ).motivo,
+    "instancia_dedicada_ausente",
+  );
+});
+
 Deno.test("campanha antes do início ou depois do fim não gera alerta", () => {
   assertEquals(
     avaliarCampanhaAtivada(
@@ -433,4 +454,62 @@ Deno.test("campanhas no mesmo burner são consolidadas em um alerta", () => {
   assertEquals(texto.includes("Campanhas afetadas (2)"), true);
   assertEquals(texto.includes("Campanha A"), true);
   assertEquals(texto.includes("Campanha B"), true);
+});
+
+Deno.test("campanhas de produto incorreto consolidam pela instância existente", () => {
+  const burner = inst({ id: "burner-compartilhado", productId: "product-x" });
+  const vereditos = ["camp-b", "camp-a"].map((id) =>
+    avaliarCampanhaAtivada(
+      campanha({
+        id,
+        instanceId: "burner-compartilhado",
+        productId: `product-${id}`,
+      }),
+      [burner],
+      AGORA,
+    )
+  );
+
+  assertEquals(
+    vereditos.map(chaveConsolidacaoCampanha),
+    ["instancia:burner-compartilhado", "instancia:burner-compartilhado"],
+  );
+});
+
+Deno.test("claim parcial libera todos os obtidos e impede envio/finalização", async () => {
+  const grupo = ["camp-c", "camp-b", "camp-a"].map((id) =>
+    avaliarCampanhaAtivada(campanha({ id }), [inst()], AGORA)
+  );
+  const eventos: string[] = [];
+  let envios = 0;
+  let finalizacoes = 0;
+
+  const adquiridos = await adquirirClaimsDoGrupo(
+    grupo,
+    (v) => v.campanha.id,
+    (v) => {
+      eventos.push(`claim:${v.campanha.id}`);
+      return Promise.resolve(v.campanha.id !== "camp-c");
+    },
+    (v) => {
+      eventos.push(`release:${v.campanha.id}`);
+      return Promise.resolve();
+    },
+  );
+
+  if (adquiridos !== null) {
+    envios++;
+    finalizacoes += adquiridos.length;
+  }
+
+  assertEquals(adquiridos, null);
+  assertEquals(eventos, [
+    "claim:camp-a",
+    "claim:camp-b",
+    "claim:camp-c",
+    "release:camp-b",
+    "release:camp-a",
+  ]);
+  assertEquals(envios, 0);
+  assertEquals(finalizacoes, 0);
 });

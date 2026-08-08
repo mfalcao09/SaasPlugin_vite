@@ -6,11 +6,11 @@
 -- Idempotência: remove TODOS os jobs homônimos por jobid antes de criar um
 -- único job. O loop também saneia eventual duplicata legada sem depender da
 -- sobrecarga de cron.unschedule(text).
-alter table public.platform_crm_cold_instance_health
+alter table public.platform_crm_cold_campaigns
   add column if not exists coverage_alert_at timestamptz;
 
-comment on column public.platform_crm_cold_instance_health.coverage_alert_at is
-  'Throttle persistente do canário para o elo campanha autorizada → burner, inclusive quando instance_id é nulo ou aponta para registro ausente.';
+comment on column public.platform_crm_cold_campaigns.coverage_alert_at is
+  'Throttle persistente do canário de cobertura; um estado por campanha, independente do burner atualmente fixado.';
 
 create or replace function public.pcrm_try_timestamptz(p_value text)
 returns timestamptz
@@ -142,9 +142,26 @@ begin
 end;
 $$;
 
+drop function if exists public.pcrm_claim_campaign_coverage_alert(
+  uuid,
+  uuid,
+  timestamptz,
+  timestamptz
+);
+drop function if exists public.pcrm_release_campaign_coverage_alert(
+  uuid,
+  uuid,
+  timestamptz
+);
+drop function if exists public.pcrm_finalize_campaign_coverage_alert(
+  uuid,
+  uuid,
+  timestamptz,
+  timestamptz
+);
+
 create or replace function public.pcrm_claim_campaign_coverage_alert(
   p_campaign_id uuid,
-  p_instance_id uuid,
   p_claimed_at timestamptz,
   p_stale_before timestamptz
 ) returns boolean
@@ -155,23 +172,13 @@ as $$
 declare
   v_rows integer;
 begin
-  insert into public.platform_crm_cold_instance_health (
-    campaign_id,
-    instance_id,
-    coverage_alert_at
-  ) values (
-    p_campaign_id,
-    p_instance_id,
-    p_claimed_at
-  )
-  on conflict (
-    campaign_id,
-    (coalesce(instance_id, '00000000-0000-0000-0000-000000000000'::uuid))
-  )
-  do update
-     set coverage_alert_at = excluded.coverage_alert_at
-   where platform_crm_cold_instance_health.coverage_alert_at is null
-      or platform_crm_cold_instance_health.coverage_alert_at < p_stale_before;
+  update public.platform_crm_cold_campaigns
+     set coverage_alert_at = p_claimed_at
+   where id = p_campaign_id
+     and (
+       coverage_alert_at is null
+       or coverage_alert_at < p_stale_before
+     );
 
   get diagnostics v_rows = row_count;
   return v_rows = 1;
@@ -180,23 +187,20 @@ $$;
 
 create or replace function public.pcrm_release_campaign_coverage_alert(
   p_campaign_id uuid,
-  p_instance_id uuid,
   p_claimed_at timestamptz
 ) returns void
 language sql
 security invoker
 set search_path = ''
 as $$
-  update public.platform_crm_cold_instance_health
+  update public.platform_crm_cold_campaigns
      set coverage_alert_at = null
-   where campaign_id = p_campaign_id
-     and instance_id is not distinct from p_instance_id
+   where id = p_campaign_id
      and coverage_alert_at = p_claimed_at;
 $$;
 
 create or replace function public.pcrm_finalize_campaign_coverage_alert(
   p_campaign_id uuid,
-  p_instance_id uuid,
   p_claimed_at timestamptz,
   p_alerted_at timestamptz
 ) returns boolean
@@ -207,10 +211,9 @@ as $$
 declare
   v_rows integer;
 begin
-  update public.platform_crm_cold_instance_health
+  update public.platform_crm_cold_campaigns
      set coverage_alert_at = p_alerted_at
-   where campaign_id = p_campaign_id
-     and instance_id is not distinct from p_instance_id
+   where id = p_campaign_id
      and coverage_alert_at = p_claimed_at;
   get diagnostics v_rows = row_count;
   return v_rows = 1;
@@ -227,11 +230,11 @@ revoke all on function public.pcrm_finalize_instance_health_alert(uuid, timestam
   from public, anon, authenticated;
 revoke all on function public.pcrm_rearm_connected_health_alerts()
   from public, anon, authenticated;
-revoke all on function public.pcrm_claim_campaign_coverage_alert(uuid, uuid, timestamptz, timestamptz)
+revoke all on function public.pcrm_claim_campaign_coverage_alert(uuid, timestamptz, timestamptz)
   from public, anon, authenticated;
-revoke all on function public.pcrm_release_campaign_coverage_alert(uuid, uuid, timestamptz)
+revoke all on function public.pcrm_release_campaign_coverage_alert(uuid, timestamptz)
   from public, anon, authenticated;
-revoke all on function public.pcrm_finalize_campaign_coverage_alert(uuid, uuid, timestamptz, timestamptz)
+revoke all on function public.pcrm_finalize_campaign_coverage_alert(uuid, timestamptz, timestamptz)
   from public, anon, authenticated;
 
 grant execute on function public.pcrm_try_timestamptz(text)
@@ -244,11 +247,11 @@ grant execute on function public.pcrm_finalize_instance_health_alert(uuid, times
   to service_role;
 grant execute on function public.pcrm_rearm_connected_health_alerts()
   to service_role;
-grant execute on function public.pcrm_claim_campaign_coverage_alert(uuid, uuid, timestamptz, timestamptz)
+grant execute on function public.pcrm_claim_campaign_coverage_alert(uuid, timestamptz, timestamptz)
   to service_role;
-grant execute on function public.pcrm_release_campaign_coverage_alert(uuid, uuid, timestamptz)
+grant execute on function public.pcrm_release_campaign_coverage_alert(uuid, timestamptz)
   to service_role;
-grant execute on function public.pcrm_finalize_campaign_coverage_alert(uuid, uuid, timestamptz, timestamptz)
+grant execute on function public.pcrm_finalize_campaign_coverage_alert(uuid, timestamptz, timestamptz)
   to service_role;
 
 do $$

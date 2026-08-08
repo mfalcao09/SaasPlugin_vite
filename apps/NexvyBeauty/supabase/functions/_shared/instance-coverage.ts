@@ -136,6 +136,50 @@ export interface VereditoCampanhaAtivada {
     | "instancia_dedicada_desconectada";
 }
 
+/**
+ * Agrupa todo alerta que já resolveu um burner pela identidade desse burner.
+ * Só cai para campanha quando não existe instância a consolidar.
+ */
+export function chaveConsolidacaoCampanha(
+  veredito: VereditoCampanhaAtivada,
+): string {
+  return veredito.instancia
+    ? `instancia:${veredito.instancia.id}`
+    : `campanha:${veredito.campanha.id}`;
+}
+
+/**
+ * Adquire um grupo inteiro em ordem determinística.
+ *
+ * Um grupo parcial nunca pode seguir para envio: ao primeiro claim perdido,
+ * libera todos os claims já obtidos e devolve `null`.
+ */
+export async function adquirirClaimsDoGrupo<T>(
+  grupo: T[],
+  chave: (item: T) => string,
+  claim: (item: T) => Promise<boolean>,
+  release: (item: T) => Promise<void>,
+): Promise<T[] | null> {
+  const ordenado = [...grupo].sort((a, b) => {
+    const chaveA = chave(a);
+    const chaveB = chave(b);
+    return chaveA < chaveB ? -1 : chaveA > chaveB ? 1 : 0;
+  });
+  const adquiridos: T[] = [];
+
+  for (const item of ordenado) {
+    if (!await claim(item)) {
+      for (const obtido of [...adquiridos].reverse()) {
+        await release(obtido);
+      }
+      return null;
+    }
+    adquiridos.push(item);
+  }
+
+  return adquiridos;
+}
+
 /** `connected` é o único estado que significa "no ar". Qualquer outro é queda. */
 function estaNoAr(status: string): boolean {
   return status === "connected";
@@ -261,8 +305,10 @@ export function avaliarCampanhaAtivada(
 
   const statusAtivo = campanha.status === "active" ||
     campanha.status === "warming";
-  const autorizada = campanha.activatedAt !== null &&
-    !Number.isNaN(Date.parse(campanha.activatedAt));
+  const activatedAtMs = campanha.activatedAt
+    ? Date.parse(campanha.activatedAt)
+    : NaN;
+  const autorizada = !Number.isNaN(activatedAtMs) && activatedAtMs <= agoraMs;
   if (!statusAtivo || !autorizada) {
     return veredito(false, "campanha_nao_autorizada");
   }

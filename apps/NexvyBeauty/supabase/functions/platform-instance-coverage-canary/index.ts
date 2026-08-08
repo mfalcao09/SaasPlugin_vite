@@ -18,14 +18,16 @@
 // A mesma marca (`metadata.health_alert_at`) preserva o contrato operacional.
 //
 // A decisão de alertar é do módulo PURO `_shared/instance-coverage.ts`
-// (32 testes). Aqui só há I/O.
+// (35 testes). Aqui só há I/O.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { sendTelegramAlert } from "../_shared/platform-alerts.ts";
 import {
+  adquirirClaimsDoGrupo,
   avaliarCampanhaAtivada,
   avaliarCobertura,
   type CampanhaAtivada,
+  chaveConsolidacaoCampanha,
   type InstanciaVigiada,
   textoDoAlerta,
   textoDoAlertaCampanhas,
@@ -46,16 +48,6 @@ const json = (b: unknown, s = 200) =>
     status: s,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
-
-interface CampaignHealthRow {
-  id: string;
-  campaign_id: string;
-  instance_id: string | null;
-  coverage_alert_at: string | null;
-}
-
-const campaignHealthKey = (campaignId: string, instanceId: string | null) =>
-  `${campaignId}:${instanceId ?? "__sem_instancia__"}`;
 
 /**
  * A tabela que estava sem vigia. O lado tenant fica deliberadamente fora para
@@ -154,62 +146,44 @@ Deno.serve(async (req) => {
   // O schema real declara esse elo em platform_crm_cold_campaigns e o motor envia
   // pelo platform_crm_evolution_instances. Só avaliamos o elo se essa fonte foi
   // legível; do contrário, "não encontrei" seria um falso "instância ausente".
-  // O throttle vive em cold_instance_health, inclusive quando não existe burner.
+  // O throttle vive na própria campanha: um estado por campanha, independente de
+  // troca de pin, sem interferir nas linhas de saúde usadas pelo motor de envio.
   const vereditosCampanha: VereditoCampanhaAtivada[] = [];
-  const campaignHealthByKey = new Map<string, CampaignHealthRow>();
   if (!falhas.some((f) => f.startsWith("platform_crm_evolution_instances:"))) {
-    const { data: healthData, error: errHealth } = await db
-      .from("platform_crm_cold_instance_health")
-      .select("id, campaign_id, instance_id, coverage_alert_at");
-    if (errHealth) {
-      falhas.push(`platform_crm_cold_instance_health: ${errHealth.message}`);
-    } else {
-      const healthRows = (healthData ?? []) as CampaignHealthRow[];
-      for (const row of healthRows) {
-        campaignHealthByKey.set(
-          campaignHealthKey(row.campaign_id, row.instance_id),
-          row,
-        );
-      }
-      const { data: campanhas, error: errCampanhas } = await db
-        .from("platform_crm_cold_campaigns")
-        .select(
-          "id, name, channel, status, activated_at, scheduled_start_at, scheduled_end_at, product_id, instance_id",
-        )
-        .eq("channel", "whatsapp")
-        .in("status", ["active", "warming"])
-        .not("activated_at", "is", null);
+    const { data: campanhas, error: errCampanhas } = await db
+      .from("platform_crm_cold_campaigns")
+      .select(
+        "id, name, channel, status, activated_at, scheduled_start_at, scheduled_end_at, product_id, instance_id, coverage_alert_at",
+      )
+      .eq("channel", "whatsapp")
+      .in("status", ["active", "warming"])
+      .not("activated_at", "is", null);
 
-      if (errCampanhas) {
-        falhas.push(`platform_crm_cold_campaigns: ${errCampanhas.message}`);
-        console.error(
-          "[coverage-canary] CAMPANHAS ILEGÍVEIS — cobertura INCOMPLETA neste tick",
-          {
-            erro: errCampanhas.message,
-          },
+    if (errCampanhas) {
+      falhas.push(`platform_crm_cold_campaigns: ${errCampanhas.message}`);
+      console.error(
+        "[coverage-canary] CAMPANHAS ILEGÍVEIS — cobertura INCOMPLETA neste tick",
+        {
+          erro: errCampanhas.message,
+        },
+      );
+    } else {
+      for (const r of (campanhas ?? []) as Record<string, unknown>[]) {
+        const campanha: CampanhaAtivada = {
+          id: r.id as string,
+          name: (r.name as string) ?? "(sem nome)",
+          channel: (r.channel as string) ?? "",
+          status: (r.status as string) ?? "",
+          activatedAt: (r.activated_at as string) ?? null,
+          scheduledStartAt: (r.scheduled_start_at as string) ?? null,
+          scheduledEndAt: (r.scheduled_end_at as string) ?? null,
+          productId: r.product_id as string,
+          instanceId: (r.instance_id as string) ?? null,
+          coverageAlertAt: (r.coverage_alert_at as string) ?? null,
+        };
+        vereditosCampanha.push(
+          avaliarCampanhaAtivada(campanha, instancias, agoraMs),
         );
-      } else {
-        for (const r of (campanhas ?? []) as Record<string, unknown>[]) {
-          const instanceId = (r.instance_id as string) ?? null;
-          const health = campaignHealthByKey.get(
-            campaignHealthKey(r.id as string, instanceId),
-          );
-          const campanha: CampanhaAtivada = {
-            id: r.id as string,
-            name: (r.name as string) ?? "(sem nome)",
-            channel: (r.channel as string) ?? "",
-            status: (r.status as string) ?? "",
-            activatedAt: (r.activated_at as string) ?? null,
-            scheduledStartAt: (r.scheduled_start_at as string) ?? null,
-            scheduledEndAt: (r.scheduled_end_at as string) ?? null,
-            productId: r.product_id as string,
-            instanceId,
-            coverageAlertAt: health?.coverage_alert_at ?? null,
-          };
-          vereditosCampanha.push(
-            avaliarCampanhaAtivada(campanha, instancias, agoraMs),
-          );
-        }
       }
     }
   }
@@ -226,9 +200,7 @@ Deno.serve(async (req) => {
 
   const gruposCampanha = new Map<string, VereditoCampanhaAtivada[]>();
   for (const v of campanhasAAlertar) {
-    const chave = v.motivo === "instancia_dedicada_desconectada" && v.instancia
-      ? `instancia:${v.instancia.id}`
-      : `campanha:${v.campanha.id}`;
+    const chave = chaveConsolidacaoCampanha(v);
     const grupo = gruposCampanha.get(chave) ?? [];
     grupo.push(v);
     gruposCampanha.set(chave, grupo);
@@ -240,7 +212,6 @@ Deno.serve(async (req) => {
         "pcrm_release_campaign_coverage_alert",
         {
           p_campaign_id: v.campanha.id,
-          p_instance_id: v.campanha.instanceId,
           p_claimed_at: claimedAt,
         },
       );
@@ -251,33 +222,38 @@ Deno.serve(async (req) => {
   };
 
   // O alerta de campanha é mais específico e substitui o genérico no mesmo tick.
-  // O claim atômico acontece ANTES do envio. Em falha de Telegram, soltamos apenas
-  // o claim que ainda tem o nosso timestamp; nenhuma chave concorrente é perdida.
+  // O grupo é adquirido por inteiro, em ordem determinística, ANTES de tocar no
+  // claim da instância. Claim parcial é integralmente liberado e nunca envia.
   for (const grupo of gruposCampanha.values()) {
-    const claimedCampaigns: VereditoCampanhaAtivada[] = [];
-    for (const v of grupo) {
-      const { data: campaignClaimed, error: campaignClaimError } = await db.rpc(
-        "pcrm_claim_campaign_coverage_alert",
-        {
-          p_campaign_id: v.campanha.id,
-          p_instance_id: v.campanha.instanceId,
-          p_claimed_at: claimedAt,
-          p_stale_before: staleBefore,
-        },
-      );
-      if (campaignClaimError) {
-        falhas.push(
-          `claim campanha ${v.campanha.id}: ${campaignClaimError.message}`,
+    const claimedCampaigns = await adquirirClaimsDoGrupo(
+      grupo,
+      (v) => v.campanha.id,
+      async (v) => {
+        const { data, error } = await db.rpc(
+          "pcrm_claim_campaign_coverage_alert",
+          {
+            p_campaign_id: v.campanha.id,
+            p_claimed_at: claimedAt,
+            p_stale_before: staleBefore,
+          },
         );
-      } else if (campaignClaimed === true) {
-        claimedCampaigns.push(v);
-      }
-    }
-    if (claimedCampaigns.length === 0) continue;
+        if (error) {
+          falhas.push(`claim campanha ${v.campanha.id}: ${error.message}`);
+          return false;
+        }
+        return data === true;
+      },
+      async (v) => {
+        await releaseCampaigns([v]);
+      },
+    );
+    if (claimedCampaigns === null) continue;
 
     const v = claimedCampaigns[0];
-    const claimDaInstancia = v.motivo === "instancia_dedicada_desconectada" &&
-      v.instancia;
+    const campanhaComQueda = claimedCampaigns.find((item) =>
+      item.motivo === "instancia_dedicada_desconectada"
+    );
+    const claimDaInstancia = campanhaComQueda?.instancia ?? null;
     if (claimDaInstancia) {
       const { data: instanceClaimed, error: instanceClaimError } = await db.rpc(
         "pcrm_claim_instance_health_alert",
@@ -330,7 +306,6 @@ Deno.serve(async (req) => {
         "pcrm_finalize_campaign_coverage_alert",
         {
           p_campaign_id: item.campanha.id,
-          p_instance_id: item.campanha.instanceId,
           p_claimed_at: claimedAt,
           p_alerted_at: alertedAt,
         },
