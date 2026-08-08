@@ -11,6 +11,7 @@ import {
   TENANT_EVOLUTION_WEBHOOK_EVENTS,
 } from "./evolution-webhook-events.ts";
 import { authenticateEvolutionWebhookCallback } from "./evolution-webhook-auth.ts";
+import { createPlatformEvolutionWebhookHandler } from "./platform-evolution-webhook-handler.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -178,4 +179,105 @@ Deno.test("callback com token correto é aceito", () => {
     new Headers({ apikey: "instance-token" }),
   );
   equal(result.ok, true, "callback com token correto");
+});
+
+Deno.test("callback aceita header correto mesmo com body incorreto", () => {
+  const result = authenticateEvolutionWebhookCallback(
+    "instance-token",
+    { apikey: "wrong-body-token" },
+    new Headers({ apikey: "instance-token" }),
+  );
+  equal(result.ok, true, "header correto não pode ser eclipsado pelo body");
+});
+
+function webhookRequest(
+  payload: Record<string, unknown>,
+  headers: HeadersInit = {},
+): Request {
+  return new Request("https://example.invalid/platform-evolution-webhook", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function receiverHarness() {
+  let lookups = 0;
+  let writes = 0;
+  const rejected: string[] = [];
+  const handler = createPlatformEvolutionWebhookHandler({
+    createContext: () => null,
+    extractInstanceRef: (payload) => String(payload.instance ?? ""),
+    findInstance: async (_context) => {
+      lookups++;
+      return { id: "instance-id", instance_token: "instance-token" };
+    },
+    handleAuthorized: async (_context) => {
+      writes++;
+      return new Response(JSON.stringify({ ok: true }), { status: 202 });
+    },
+    logAuthFailure: (reason) => rejected.push(reason),
+  });
+  return {
+    handler,
+    counts: () => ({ lookups, writes }),
+    rejected,
+  };
+}
+
+Deno.test("receptor retorna 401 sem token e não executa escrita", async () => {
+  const harness = await receiverHarness();
+  const response = await harness.handler(
+    webhookRequest({
+      instance: "attacker-instance",
+      event: "attacker-event",
+    }),
+  );
+  equal(response.status, 401, "status sem token");
+  equal(
+    harness.counts().lookups,
+    0,
+    "sem token não precisa consultar instância",
+  );
+  equal(harness.counts().writes, 0, "sem token não pode executar escrita");
+  equal(JSON.stringify(harness.rejected), '["no_token"]', "log seguro");
+});
+
+Deno.test("receptor retorna 401 para token incorreto e não executa escrita", async () => {
+  const harness = await receiverHarness();
+  const response = await harness.handler(
+    webhookRequest(
+      {
+        instance: "attacker-instance",
+        event: "attacker-event",
+      },
+      { apikey: "global-must-not-fallback" },
+    ),
+  );
+  equal(response.status, 401, "status com token incorreto");
+  equal(harness.counts().lookups, 1, "token apresentado consulta instância");
+  equal(
+    harness.counts().writes,
+    0,
+    "token incorreto não pode executar escrita",
+  );
+  equal(JSON.stringify(harness.rejected), '["token_mismatch"]', "log seguro");
+});
+
+Deno.test("receptor retorna 2xx e executa fluxo autorizado com token correto", async () => {
+  const harness = await receiverHarness();
+  const response = await harness.handler(
+    webhookRequest(
+      {
+        instance: "instance-name",
+        event: "MESSAGES_UPSERT",
+        apikey: "wrong-body-token",
+      },
+      { apikey: "instance-token" },
+    ),
+  );
+  equal(response.status, 202, "status com token correto");
+  equal(harness.counts().lookups, 1, "deve resolver instância");
+  equal(harness.counts().writes, 1, "gate válido libera fluxo autorizado");
+  equal(harness.rejected.length, 0, "não deve logar falha");
 });

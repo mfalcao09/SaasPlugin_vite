@@ -27,10 +27,7 @@
 //   * Receipts/reactions/bot-flows continuam FORA (fase seguinte do inbox).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import {
-  authenticateEvolutionWebhookCallback,
-  extractEvolutionWebhookToken,
-} from "../_shared/evolution-webhook-auth.ts";
+import { createPlatformEvolutionWebhookHandler } from "../_shared/platform-evolution-webhook-handler.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
@@ -1033,15 +1030,11 @@ async function handleMessage(
 // inválido): platform_crm_evolution_instances tem 0 instâncias hoje, logo não há
 // ingestão legítima a quebrar. Quando instâncias forem criadas, precisam ter
 // instance_token setado (mesma dependência do webhook do tenant).
-/** Resolve a instância (injection-safe) e EXIGE token válido. */
-async function authenticateInstance(
+/** Resolve a instância para o gate, sem interpolar input em filtros compostos. */
+async function findWebhookInstance(
   supabase: any,
   instanceRef: string,
-  payload: any,
-  headers: Headers,
-): Promise<{ ok: true; instance: any } | { ok: false; reason: string }> {
-  const token = extractEvolutionWebhookToken(payload, headers);
-  if (!token) return { ok: false, reason: "no_token" };
+): Promise<any | null> {
   const SEL = "id, instance_token";
   let inst: any = null;
   for (const q of [
@@ -1053,45 +1046,17 @@ async function authenticateInstance(
     const { data } = await q;
     if (data && data.length) { inst = data[0]; break; }
   }
-  if (!inst) return { ok: false, reason: "unknown_instance" };
-  const callbackAuth = authenticateEvolutionWebhookCallback(
-    inst.instance_token,
-    payload,
-    headers,
-  );
-  if (!callbackAuth.ok) return callbackAuth;
-  return { ok: true, instance: inst };
+  return inst;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    const payload = await req.json().catch(() => ({}));
+async function handleAuthorizedWebhook(
+  supabase: any,
+  _req: Request,
+  payload: any,
+): Promise<Response> {
     const rawEvent = payload.event || payload.type || payload.Event;
     const rawInstance = extractInstance(payload);
     console.log("[platform-evolution-webhook] raw event:", rawEvent, "instance:", rawInstance || "<MISSING>");
-
-    // ---- B3: gate de prova de posse (ENFORCING). ANTES de qualquer efeito.
-    //      Resposta 401 idêntica p/ no_token/unknown/mismatch (sem oráculo de
-    //      enumeração). 0 instâncias hoje → não bloqueia ingestão legítima.
-    const gate = await authenticateInstance(
-      supabase, String(rawInstance || "").trim(), payload, req.headers,
-    );
-    if (!gate.ok) {
-      console.warn(`[platform-evolution-webhook] 401 auth reason=${gate.reason} instance=${rawInstance || "<none>"} event=${rawEvent}`);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // ─── ACK DE ENTREGA → delivered_count (elos 3-4 da cadeia do wamid) ───────
     // ANTES do normalizePayload de propósito: MESSAGES_UPDATE cairia em 'unknown'
@@ -1230,12 +1195,25 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
-    console.error("platform-evolution-webhook error:", err);
-    // 200 to avoid Evolution retry storms.
-    return new Response(JSON.stringify({ ok: false, error: err.message }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+}
+
+const platformEvolutionWebhookHandler = createPlatformEvolutionWebhookHandler({
+  createContext: () =>
+    createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    ),
+  extractInstanceRef: (payload) => extractInstance(payload),
+  findInstance: findWebhookInstance,
+  handleAuthorized: (supabase, req, payload) =>
+    handleAuthorizedWebhook(supabase, req, payload),
+  // Nunca ecoar instance/event/body em falhas pré-gate: são controlados pelo
+  // solicitante e o endpoint é público.
+  logAuthFailure: (reason) =>
+    console.warn(`[platform-evolution-webhook] 401 auth reason=${reason}`),
+  logHandlerFailure: () =>
+    console.error("[platform-evolution-webhook] request failed"),
+  corsHeaders,
 });
+
+Deno.serve(platformEvolutionWebhookHandler);

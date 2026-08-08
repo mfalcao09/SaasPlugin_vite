@@ -14,30 +14,25 @@ function timingSafeEqual(a: string, b: string): boolean {
   return difference === 0;
 }
 
-/** Token reenviado pela Evolution: corpo (apikey, v2) OU header (fallback). */
-export function extractEvolutionWebhookToken(
+/** Credenciais reenviadas pela Evolution no corpo e/ou nos headers. */
+export function extractEvolutionWebhookCredentials(
   payload: unknown,
   headers: Headers,
-): string {
+): string[] {
   const body = payload as
     | { apikey?: unknown; data?: { apikey?: unknown } }
     | null;
-  const bodyToken = (typeof body?.apikey === "string" && body.apikey.trim()) ||
-    (typeof body?.data?.apikey === "string" && body.data.apikey.trim()) ||
-    "";
-  if (bodyToken) return bodyToken;
-
-  const headerToken = (
-    headers.get("apikey") ||
-    headers.get("x-webhook-token") ||
-    ""
-  ).trim();
-  if (headerToken) return headerToken;
-
   const bearer = (headers.get("authorization") || "").match(
     /^Bearer\s+(.+)$/i,
   );
-  return bearer ? bearer[1].trim() : "";
+  const candidates = [
+    typeof body?.apikey === "string" ? body.apikey.trim() : "",
+    typeof body?.data?.apikey === "string" ? body.data.apikey.trim() : "",
+    (headers.get("apikey") || "").trim(),
+    (headers.get("x-webhook-token") || "").trim(),
+    bearer ? bearer[1].trim() : "",
+  ].filter(Boolean);
+  return [...new Set(candidates)];
 }
 
 export function authenticateEvolutionWebhookCallback(
@@ -45,11 +40,15 @@ export function authenticateEvolutionWebhookCallback(
   payload: unknown,
   headers: Headers,
 ): EvolutionWebhookAuthResult {
-  const receivedToken = extractEvolutionWebhookToken(payload, headers);
-  if (!receivedToken) return { ok: false, reason: "no_token" };
+  const receivedTokens = extractEvolutionWebhookCredentials(payload, headers);
+  if (receivedTokens.length === 0) return { ok: false, reason: "no_token" };
 
   const knownToken = String(expectedToken ?? "").trim();
-  if (!knownToken || !timingSafeEqual(receivedToken, knownToken)) {
+  let matched = false;
+  for (const receivedToken of receivedTokens) {
+    matched = timingSafeEqual(receivedToken, knownToken) || matched;
+  }
+  if (!knownToken || !matched) {
     return { ok: false, reason: "token_mismatch" };
   }
   return { ok: true };
