@@ -27,6 +27,10 @@
 //   * Receipts/reactions/bot-flows continuam FORA (fase seguinte do inbox).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  authenticateEvolutionWebhookCallback,
+  extractEvolutionWebhookToken,
+} from "../_shared/evolution-webhook-auth.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
@@ -1022,35 +1026,13 @@ async function handleMessage(
 // verify_jwt=false: qualquer um POSTa aqui. A ÚNICA prova de que o evento veio
 // da NOSSA instância é o token que a Evolution API v2 ecoa no corpo de todo
 // evento (campo `apikey` == platform_crm_evolution_instances.instance_token).
-// Mesma régua da evolution-history-sync: timingSafeEq (R11) + lookup .eq()
+// Mesma régua da evolution-history-sync: comparação constante + lookup .eq()
 // injection-safe (nunca instanceRef interpolado no .or()).
 //
 // Neste gêmeo da PLATAFORMA o gate roda ENFORCING (retorna 401 em token
 // inválido): platform_crm_evolution_instances tem 0 instâncias hoje, logo não há
 // ingestão legítima a quebrar. Quando instâncias forem criadas, precisam ter
 // instance_token setado (mesma dependência do webhook do tenant).
-function timingSafeEq(a: string, b: string): boolean {
-  const ab = new TextEncoder().encode(a);
-  const bb = new TextEncoder().encode(b);
-  if (ab.length !== bb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
-  return diff === 0;
-}
-
-/** Token reenviado pela Evolution: corpo (apikey, v2) OU header (fallback). */
-function extractWebhookToken(payload: any, headers: Headers): string {
-  const body =
-    (typeof payload?.apikey === "string" && payload.apikey.trim()) ||
-    (typeof payload?.data?.apikey === "string" && payload.data.apikey.trim()) ||
-    "";
-  if (body) return body;
-  const h = (headers.get("apikey") || headers.get("x-webhook-token") || "").trim();
-  if (h) return h;
-  const m = (headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : "";
-}
-
 /** Resolve a instância (injection-safe) e EXIGE token válido. */
 async function authenticateInstance(
   supabase: any,
@@ -1058,7 +1040,7 @@ async function authenticateInstance(
   payload: any,
   headers: Headers,
 ): Promise<{ ok: true; instance: any } | { ok: false; reason: string }> {
-  const token = extractWebhookToken(payload, headers);
+  const token = extractEvolutionWebhookToken(payload, headers);
   if (!token) return { ok: false, reason: "no_token" };
   const SEL = "id, instance_token";
   let inst: any = null;
@@ -1072,8 +1054,12 @@ async function authenticateInstance(
     if (data && data.length) { inst = data[0]; break; }
   }
   if (!inst) return { ok: false, reason: "unknown_instance" };
-  const known = String(inst.instance_token || "").trim();
-  if (!known || !timingSafeEq(token, known)) return { ok: false, reason: "token_mismatch" };
+  const callbackAuth = authenticateEvolutionWebhookCallback(
+    inst.instance_token,
+    payload,
+    headers,
+  );
+  if (!callbackAuth.ok) return callbackAuth;
   return { ok: true, instance: inst };
 }
 

@@ -10,6 +10,7 @@ import {
   PLATFORM_EVOLUTION_WEBHOOK_EVENTS,
   TENANT_EVOLUTION_WEBHOOK_EVENTS,
 } from "./evolution-webhook-events.ts";
+import { authenticateEvolutionWebhookCallback } from "./evolution-webhook-auth.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -90,6 +91,11 @@ for (const [name, configureWebhook, expectedEvents] of provisioners) {
       "URL do webhook",
     );
     equal(
+      payload.webhook.headers?.apikey,
+      "instance-token",
+      "JSON do webhook deve autenticar callbacks com o token da instância",
+    );
+    equal(
       JSON.stringify(payload.webhook.events),
       JSON.stringify(expectedEvents),
       "eventos do provisionador",
@@ -144,3 +150,32 @@ for (const [name, configureWebhook, expectedEvents] of provisioners) {
     );
   });
 }
+
+Deno.test("callback sem token é rejeitado", () => {
+  const result = authenticateEvolutionWebhookCallback(
+    "instance-token",
+    {},
+    new Headers(),
+  );
+  equal(result.ok, false, "callback sem token");
+  if (!result.ok) equal(result.reason, "no_token", "motivo");
+});
+
+Deno.test("callback com token incorreto é rejeitado", () => {
+  const result = authenticateEvolutionWebhookCallback(
+    "instance-token",
+    {},
+    new Headers({ apikey: "wrong-token" }),
+  );
+  equal(result.ok, false, "callback com token incorreto");
+  if (!result.ok) equal(result.reason, "token_mismatch", "motivo");
+});
+
+Deno.test("callback com token correto é aceito", () => {
+  const result = authenticateEvolutionWebhookCallback(
+    "instance-token",
+    {},
+    new Headers({ apikey: "instance-token" }),
+  );
+  equal(result.ok, true, "callback com token correto");
+});

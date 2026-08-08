@@ -26,12 +26,6 @@ export type EvolutionWebhookProvisioner = (
   transport?: typeof fetch,
 ) => Promise<EvolutionWebhookResult>;
 
-function maskKey(value: string): string {
-  return value.length <= 8
-    ? "***"
-    : `${value.slice(0, 5)}***${value.slice(-3)}`;
-}
-
 async function configureWebhook(
   config: EvolutionWebhookConfig,
   instanceName: string,
@@ -53,12 +47,6 @@ async function configureWebhook(
     };
   }
 
-  console.log(
-    `[configureWebhook] name=${instanceName} apikey=${
-      maskKey(instanceToken)
-    } (instance token)`,
-  );
-
   let response: Response;
   try {
     response = await transport(
@@ -73,6 +61,9 @@ async function configureWebhook(
           webhook: {
             enabled: true,
             url: webhookUrl,
+            headers: {
+              apikey: instanceToken,
+            },
             events,
           },
         }),
