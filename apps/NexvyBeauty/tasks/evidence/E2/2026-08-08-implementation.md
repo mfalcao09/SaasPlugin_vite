@@ -1,7 +1,7 @@
 # E2 — canário de cobertura das instâncias da plataforma
 
-Data: 2026-08-08  
-Stage: E2  
+Data: 2026-08-08
+Stage: E2
 Resultado: implementação e verificação concluídas; sem deploy.
 
 ## Base e commits
