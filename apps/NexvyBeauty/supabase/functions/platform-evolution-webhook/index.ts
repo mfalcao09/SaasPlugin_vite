@@ -27,6 +27,9 @@
 //   * Receipts/reactions/bot-flows continuam FORA (fase seguinte do inbox).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  createPlatformEvolutionWebhookHandler,
+} from "../_shared/platform-evolution-webhook-handler.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
@@ -1022,234 +1025,232 @@ async function handleMessage(
 // verify_jwt=false: qualquer um POSTa aqui. A ÚNICA prova de que o evento veio
 // da NOSSA instância é o token que a Evolution API v2 ecoa no corpo de todo
 // evento (campo `apikey` == platform_crm_evolution_instances.instance_token).
-// Mesma régua da evolution-history-sync: timingSafeEq (R11) + lookup .eq()
+// Mesma régua da evolution-history-sync: comparação constante + lookup .eq()
 // injection-safe (nunca instanceRef interpolado no .or()).
 //
 // Neste gêmeo da PLATAFORMA o gate roda ENFORCING (retorna 401 em token
 // inválido): platform_crm_evolution_instances tem 0 instâncias hoje, logo não há
 // ingestão legítima a quebrar. Quando instâncias forem criadas, precisam ter
 // instance_token setado (mesma dependência do webhook do tenant).
-function timingSafeEq(a: string, b: string): boolean {
-  const ab = new TextEncoder().encode(a);
-  const bb = new TextEncoder().encode(b);
-  if (ab.length !== bb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
-  return diff === 0;
-}
-
-/** Token reenviado pela Evolution: corpo (apikey, v2) OU header (fallback). */
-function extractWebhookToken(payload: any, headers: Headers): string {
-  const body =
-    (typeof payload?.apikey === "string" && payload.apikey.trim()) ||
-    (typeof payload?.data?.apikey === "string" && payload.data.apikey.trim()) ||
-    "";
-  if (body) return body;
-  const h = (headers.get("apikey") || headers.get("x-webhook-token") || "").trim();
-  if (h) return h;
-  const m = (headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : "";
-}
-
-/** Resolve a instância (injection-safe) e EXIGE token válido. */
-async function authenticateInstance(
+/** Resolve a instância para o gate, sem interpolar input em filtros compostos. */
+async function findWebhookInstance(
   supabase: any,
   instanceRef: string,
-  payload: any,
-  headers: Headers,
-): Promise<{ ok: true; instance: any } | { ok: false; reason: string }> {
-  const token = extractWebhookToken(payload, headers);
-  if (!token) return { ok: false, reason: "no_token" };
-  const SEL = "id, instance_token";
+): Promise<any | null> {
+  const selection = "*";
   let inst: any = null;
-  for (const q of [
-    supabase.from("platform_crm_evolution_instances").select(SEL).eq("instance_id", instanceRef).limit(1),
-    supabase.from("platform_crm_evolution_instances").select(SEL).eq("name", instanceRef).limit(1),
-    supabase.from("platform_crm_evolution_instances").select(SEL).eq("metadata->>instance_name", instanceRef).limit(1),
-    supabase.from("platform_crm_evolution_instances").select(SEL).eq("metadata->>instance_uuid", instanceRef).limit(1),
-  ]) {
+  for (
+    const q of [
+      supabase.from("platform_crm_evolution_instances").select(selection).eq(
+        "instance_id",
+        instanceRef,
+      ).limit(1),
+      supabase.from("platform_crm_evolution_instances").select(selection).eq(
+        "name",
+        instanceRef,
+      ).limit(1),
+      supabase.from("platform_crm_evolution_instances").select(selection).eq(
+        "metadata->>instance_name",
+        instanceRef,
+      ).limit(1),
+      supabase.from("platform_crm_evolution_instances").select(selection).eq(
+        "metadata->>instance_uuid",
+        instanceRef,
+      ).limit(1),
+    ]
+  ) {
     const { data } = await q;
-    if (data && data.length) { inst = data[0]; break; }
+    if (data && data.length) {
+      inst = data[0];
+      break;
+    }
   }
-  if (!inst) return { ok: false, reason: "unknown_instance" };
-  const known = String(inst.instance_token || "").trim();
-  if (!known || !timingSafeEq(token, known)) return { ok: false, reason: "token_mismatch" };
-  return { ok: true, instance: inst };
+  return inst;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+async function handleAuthorizedWebhook(
+  supabase: any,
+  _req: Request,
+  payload: any,
+  instance: any,
+): Promise<Response> {
+  const rawEvent = payload.event || payload.type || payload.Event;
+  const rawInstance = extractInstance(payload);
+  console.log(
+    "[platform-evolution-webhook] raw event:",
+    rawEvent,
+    "instance:",
+    rawInstance || "<MISSING>",
+  );
+
+  // ─── ACK DE ENTREGA → delivered_count (elos 3-4 da cadeia do wamid) ───────
+  // ANTES do normalizePayload de propósito: MESSAGES_UPDATE cairia em 'unknown'
+  // e seria descartado silenciosamente.
+  //
+  // POR QUE EXISTE: o kill-switch anti-ban por taxa de bloqueio/denúncia NÃO
+  // PODE disparar — o WhatsApp não notifica nenhum dos dois. O único sinal real
+  // de queima de número é a NÃO-ENTREGA: número saudável entrega quase tudo,
+  // número queimando para de entregar. Sem este bloco, delivered_count fica em
+  // zero e a regra de anti-ban.ts dorme (ela se cala quando `delivered` é
+  // undefined — por desenho, pra não acusar quem não sabe).
+  if (rawEvent === "messages.update" || rawEvent === "MESSAGES_UPDATE") {
+    try {
+      const d = payload.data || payload;
+      const arr = Array.isArray(d?.messages) ? d.messages : [d];
+      for (const m of arr) {
+        const wamid: string | null = m?.key?.id ?? m?.keyId ?? null;
+        // Só ACK de ENTREGA conta. 'sent' já foi contado no envio, e 'read' vem
+        // DEPOIS de entregue — contar os dois somaria em dobro.
+        const st = String(m?.status ?? m?.update?.status ?? "").toUpperCase();
+        const entregue = st.includes("DELIVERY") || st === "DELIVERED" ||
+          st === "2";
+        if (!wamid || !entregue) continue;
+
+        const { data: msg } = await supabase
+          .from("platform_crm_messages")
+          .select("metadata, created_at")
+          .eq("metadata->>wamid", wamid)
+          .eq("metadata->>connection_id", instance.id)
+          .maybeSingle();
+        const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+        if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
+        const campaignId = meta.campaign_id as string | undefined;
+        if (!campaignId) continue; // não é mensagem de campanha — nada a contar
+
+        // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
+        // seguinte, e a taxa sent/delivered só significa alguma coisa se as
+        // duas pernas caírem no MESMO balde. Contar no dia do ACK inflaria a
+        // não-entrega de ontem e a entrega de hoje — e não-entrega inflada
+        // PAUSA CAMPANHA SAUDÁVEL, o modo de falha caro deste mecanismo.
+        const day = String(msg?.created_at ?? "").slice(0, 10);
+        if (!day) continue;
+
+        await supabase.rpc("pcrm_cold_bump_counter", {
+          p_campaign: campaignId,
+          p_instance: instance.id,
+          p_day: day,
+          p_sent: 0,
+          p_delivered: 1,
+          p_blocked: 0,
+          p_reported: 0,
+          p_failed: 0,
+        });
+        console.log("[platform-evolution-webhook] delivered+1", {
+          campaignId,
+          day,
+          wamid,
+        });
+      }
+    } catch (e) {
+      // NUNCA derrubar o webhook por causa de métrica: perder um ACK degrada a
+      // medição; falhar aqui derrubaria a ingestão de mensagens REAIS.
+      console.warn(
+        "[platform-evolution-webhook] ACK de entrega falhou (non-fatal):",
+        String(e).slice(0, 200),
+      );
+    }
+    return new Response(
+      JSON.stringify({ ok: true, handled: "delivery_ack" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  const norm = normalizePayload(payload);
+  if (!norm) {
+    // Return 200 so Evolution Go does not retry indefinitely
+    return new Response(
+      JSON.stringify({ ok: true, ignored: "missing_instance" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
+  }
 
-    const payload = await req.json().catch(() => ({}));
-    const rawEvent = payload.event || payload.type || payload.Event;
-    const rawInstance = extractInstance(payload);
-    console.log("[platform-evolution-webhook] raw event:", rawEvent, "instance:", rawInstance || "<MISSING>");
-
-    // ---- B3: gate de prova de posse (ENFORCING). ANTES de qualquer efeito.
-    //      Resposta 401 idêntica p/ no_token/unknown/mismatch (sem oráculo de
-    //      enumeração). 0 instâncias hoje → não bloqueia ingestão legítima.
-    const gate = await authenticateInstance(
-      supabase, String(rawInstance || "").trim(), payload, req.headers,
+  // Ciclo-de-vida da conexão apenas; demais eventos são ignorados aqui.
+  if (norm.kind === "unknown") {
+    return new Response(
+      JSON.stringify({ ok: true, ignored_event: norm.event }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
-    if (!gate.ok) {
-      console.warn(`[platform-evolution-webhook] 401 auth reason=${gate.reason} instance=${rawInstance || "<none>"} event=${rawEvent}`);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  }
 
-    // ─── ACK DE ENTREGA → delivered_count (elos 3-4 da cadeia do wamid) ───────
-    // ANTES do normalizePayload de propósito: MESSAGES_UPDATE cairia em 'unknown'
-    // e seria descartado silenciosamente.
-    //
-    // POR QUE EXISTE: o kill-switch anti-ban por taxa de bloqueio/denúncia NÃO
-    // PODE disparar — o WhatsApp não notifica nenhum dos dois. O único sinal real
-    // de queima de número é a NÃO-ENTREGA: número saudável entrega quase tudo,
-    // número queimando para de entregar. Sem este bloco, delivered_count fica em
-    // zero e a regra de anti-ban.ts dorme (ela se cala quando `delivered` é
-    // undefined — por desenho, pra não acusar quem não sabe).
-    if (rawEvent === "messages.update" || rawEvent === "MESSAGES_UPDATE") {
-      try {
-        const d = payload.data || payload;
-        const arr = Array.isArray(d?.messages) ? d.messages : [d];
-        for (const m of arr) {
-          const wamid: string | null = m?.key?.id ?? m?.keyId ?? null;
-          // Só ACK de ENTREGA conta. 'sent' já foi contado no envio, e 'read' vem
-          // DEPOIS de entregue — contar os dois somaria em dobro.
-          const st = String(m?.status ?? m?.update?.status ?? "").toUpperCase();
-          const entregue = st.includes("DELIVERY") || st === "DELIVERED" || st === "2";
-          if (!wamid || !entregue) continue;
+  // ---- MESSAGE (ingestão A1.3) ----
+  if (norm.kind === "message") {
+    return await handleMessage(supabase, instance, norm);
+  }
 
-          const { data: msg } = await supabase
-            .from("platform_crm_messages")
-            .select("metadata, created_at")
-            .eq("metadata->>wamid", wamid)
-            .maybeSingle();
-          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
-          const campaignId = meta.campaign_id as string | undefined;
-          if (!campaignId) continue; // não é mensagem de campanha — nada a contar
-
-          // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
-          // seguinte, e a taxa sent/delivered só significa alguma coisa se as
-          // duas pernas caírem no MESMO balde. Contar no dia do ACK inflaria a
-          // não-entrega de ontem e a entrega de hoje — e não-entrega inflada
-          // PAUSA CAMPANHA SAUDÁVEL, o modo de falha caro deste mecanismo.
-          const day = String(msg?.created_at ?? "").slice(0, 10);
-          if (!day) continue;
-
-          await supabase.rpc("pcrm_cold_bump_counter", {
-            p_campaign: campaignId,
-            p_instance: (meta.connection_id as string | null) ?? null,
-            p_day: day,
-            p_sent: 0, p_delivered: 1, p_blocked: 0, p_reported: 0, p_failed: 0,
-          });
-          console.log("[platform-evolution-webhook] delivered+1", { campaignId, day, wamid });
-        }
-      } catch (e) {
-        // NUNCA derrubar o webhook por causa de métrica: perder um ACK degrada a
-        // medição; falhar aqui derrubaria a ingestão de mensagens REAIS.
-        console.warn("[platform-evolution-webhook] ACK de entrega falhou (non-fatal):", String(e).slice(0, 200));
+  // ---- CONNECTION ----
+  if (norm.kind === "connection") {
+    const mapped = norm.state === "open"
+      ? "connected"
+      : norm.state === "connecting"
+      ? "qr_pending"
+      : "disconnected";
+    const updates: any = { status: mapped };
+    if (mapped === "connected") {
+      updates.last_connected_at = new Date().toISOString();
+      updates.qr_code = null;
+      if (norm.phone) {
+        updates.phone_number = String(norm.phone).split("@")[0].split(":")[0]
+          .replace(/\D/g, "");
       }
-      return new Response(JSON.stringify({ ok: true, handled: "delivery_ack" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
-
-    const norm = normalizePayload(payload);
-    if (!norm) {
-      // Return 200 so Evolution Go does not retry indefinitely
-      return new Response(JSON.stringify({ ok: true, ignored: "missing_instance" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Ciclo-de-vida da conexão apenas; demais eventos são ignorados aqui.
-    if (norm.kind === "unknown") {
-      return new Response(JSON.stringify({ ok: true, ignored_event: norm.event }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Lookup instance by either instance_id (UUID) OR name OR metadata.instance_name.
-    const { data: instances } = await supabase
-      .from("platform_crm_evolution_instances")
-      .select("*")
-      .or(`instance_id.eq.${norm.instance},name.eq.${norm.instance}`);
-    let instance = instances?.[0];
-
-    if (!instance) {
-      const { data: byMeta } = await supabase
-        .from("platform_crm_evolution_instances")
-        .select("*")
-        .or(`metadata->>instance_name.eq.${norm.instance},metadata->>instance_uuid.eq.${norm.instance}`);
-      instance = byMeta?.[0];
-    }
-
-    if (!instance) {
-      console.warn("[platform-evolution-webhook] unknown instance:", norm.instance);
-      return new Response(JSON.stringify({ ok: true, ignored: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ---- MESSAGE (ingestão A1.3) ----
-    if (norm.kind === "message") {
-      return await handleMessage(supabase, instance, norm);
-    }
-
-    // ---- CONNECTION ----
-    if (norm.kind === "connection") {
-      const mapped =
-        norm.state === "open" ? "connected" : norm.state === "connecting" ? "qr_pending" : "disconnected";
-      const updates: any = { status: mapped };
-      if (mapped === "connected") {
-        updates.last_connected_at = new Date().toISOString();
-        updates.qr_code = null;
-        if (norm.phone) {
-          updates.phone_number = String(norm.phone).split("@")[0].split(":")[0].replace(/\D/g, "");
-        }
-      }
-      await supabase.from("platform_crm_evolution_instances").update(updates).eq("id", instance.id);
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ---- QR CODE ----
-    if (norm.kind === "qrcode") {
-      if (norm.qr) {
-        await supabase
-          .from("platform_crm_evolution_instances")
-          .update({
-            qr_code: norm.qr,
-            qr_code_updated_at: new Date().toISOString(),
-            status: "qr_pending",
-          })
-          .eq("id", instance.id);
-      }
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    await supabase.from("platform_crm_evolution_instances").update(updates)
+      .eq("id", instance.id);
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
-    console.error("platform-evolution-webhook error:", err);
-    // 200 to avoid Evolution retry storms.
-    return new Response(JSON.stringify({ ok: false, error: err.message }), {
-      status: 200,
+  }
+
+  // ---- QR CODE ----
+  if (norm.kind === "qrcode") {
+    if (norm.qr) {
+      await supabase
+        .from("platform_crm_evolution_instances")
+        .update({
+          qr_code: norm.qr,
+          qr_code_updated_at: new Date().toISOString(),
+          status: "qr_pending",
+        })
+        .eq("id", instance.id);
+    }
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+export function createPlatformEvolutionWebhookReceiver(
+  createContext: () => any = () =>
+    createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    ),
+): (request: Request) => Promise<Response> {
+  return createPlatformEvolutionWebhookHandler({
+    createContext,
+    extractInstanceRef: (payload) => extractInstance(payload),
+    findInstance: findWebhookInstance,
+    handleAuthorized: (supabase, req, payload, instance) =>
+      handleAuthorizedWebhook(supabase, req, payload, instance),
+    // Nunca ecoar instance/event/body em falhas pré-gate: são controlados pelo
+    // solicitante e o endpoint é público.
+    logAuthFailure: (reason) =>
+      console.warn(`[platform-evolution-webhook] 401 auth reason=${reason}`),
+    logHandlerFailure: () =>
+      console.error("[platform-evolution-webhook] request failed"),
+    corsHeaders,
+  });
+}
+
+if (import.meta.main) {
+  Deno.serve(createPlatformEvolutionWebhookReceiver());
+}
