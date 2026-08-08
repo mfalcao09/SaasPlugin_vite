@@ -6,13 +6,8 @@
 
 - Deploy de produção: VPS `/opt/stacks/saasplugin-vite` puxa `origin/main` e builda `apps/NexvyBeauty`.
 - Todo desenvolvimento novo de NexvyBeauty acontece **somente** nesse path.
-- Standalones Lovable/Vendus/NEXT e scaffolds locais são **referência histórica** (read-only / arquivados).
-
-## Arquivar ≠ deletar
-
-Repositórios-fonte devem ser **arquivados** no GitHub (read-only); nada é deletado nesta rodada.
-Na consolidação 2026-08-08 o archive remoto falhou por escopo do PAT (`Administration: Write` ausente) — mirrors locais + tags cobrem a salvaguarda até o archive na UI/token.
-Elegibilidade a delete futuro exige: arquivado ≥90 dias + mirror `git fsck` verde + zero referências no canônico.
+- Standalones Lovable/Vendus/NEXT e scaffolds locais são **referência histórica** — não são fonte ativa do Beauty.
+- Archive no GitHub de outros repos é **opcional e fora do caminho crítico** da unificação do NexvyBeauty.
 
 ## Arquitetura
 
