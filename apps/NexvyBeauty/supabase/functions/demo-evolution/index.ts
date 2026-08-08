@@ -22,7 +22,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR } from "../_shared/phone.ts";
 import { sendTelegramAlertThrottled } from "../_shared/platform-alerts.ts";
-import { EVOLUTION_WEBHOOK_EVENTS, invalidEvents } from "../_shared/evolution-webhook-events.ts";
+import { configureDemoEvolutionWebhook } from "../_shared/evolution-webhook-provisioners.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,34 +245,36 @@ Deno.serve(async (req) => {
         // O que deixou isso invisível não foi o nome errado — foi guardar só
         // `webhook_subscribed: wh.ok`, descartando o status e a mensagem que diziam
         // qual evento era. Agora a causa é gravada, logada e alertada.
-        const eventos = EVOLUTION_WEBHOOK_EVENTS;
-        const invalidos = invalidEvents(eventos);
-        let whOk = false;
-        // Guarda local: se a lista estiver suja, nem chamamos — o erro já diz o nome,
-        // em vez de virar um 400 opaco lá no servidor.
-        let whErro: string | null = invalidos.length ? `eventos fora do enum: ${invalidos.join(", ")}` : null;
-        if (!invalidos.length) {
-          const wh = await evoFetch(config, `/webhook/set/${encodeURIComponent(finalName)}`, {
-            method: "POST",
-            body: JSON.stringify({ webhook: { enabled: true, url: `${SUPABASE_URL}/functions/v1/evolution-webhook`, events: eventos } }),
-          }, instanceToken);
-          whOk = wh.ok;
-          if (!wh.ok) {
-            const corpo = typeof wh.body === "string" ? wh.body : JSON.stringify(wh.body ?? {});
-            whErro = `status ${wh.status}: ${(wh.message ?? corpo ?? "").slice(0, 300)}`;
-          }
-        }
+        const wh = await configureDemoEvolutionWebhook(
+          config,
+          finalName,
+          instanceToken,
+          `${SUPABASE_URL}/functions/v1/evolution-webhook`,
+        );
+        const whOk = wh.ok;
+        const whErro = wh.ok
+          ? null
+          : `status ${wh.status ?? 0}: ${(wh.error ?? "erro desconhecido").slice(0, 300)}`;
         console.log(`[demo-evolution connect] webhook name=${finalName} ok=${whOk}${whErro ? ` erro=${whErro}` : ""}`);
-        await admin.from("evolution_instances").update({
+        const { error: whPersistErr } = await admin.from("evolution_instances").update({
           webhook_subscribed: whOk,
           metadata: { ...metaInicial, webhook_error: whErro, webhook_last_attempt_at: new Date().toISOString() },
         }).eq("id", inst.id);
+        if (whPersistErr) {
+          console.error(`[demo-evolution connect] webhook result persist failed instance=${finalName}: ${whPersistErr.message}`);
+        }
         // Canário: sem isto, a próxima quebra volta a esperar alguém abrir o banco.
         // Não é fatal — a ingestão ainda tem o `backfill` (pull) como caminho.
         if (!whOk) {
           await sendTelegramAlertThrottled(
             `webhook-set-falhou:${org.id}`,
             `⚠️ WEBHOOK DA DEMO NÃO REGISTROU\nOrg: ${org.id}\nInstância: ${finalName}\n${whErro}\n\nO raio-x ainda roda pelo backfill (pull), mas sem eventos ao vivo.`,
+          ).catch(() => {});
+        }
+        if (whPersistErr) {
+          await sendTelegramAlertThrottled(
+            `webhook-result-persist-falhou:${org.id}`,
+            `⚠️ RESULTADO DO WEBHOOK DA DEMO NÃO FOI PERSISTIDO\nOrg: ${org.id}\nInstância: ${finalName}\n${whPersistErr.message}`,
           ).catch(() => {});
         }
       }

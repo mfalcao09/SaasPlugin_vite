@@ -24,6 +24,7 @@ import {
   platformCrmCorsHeaders as corsHeaders,
   authenticatePlatformAgent,
 } from "../_shared/platform-crm-auth.ts";
+import { configurePlatformEvolutionProxyWebhook as configureWebhook } from "../_shared/evolution-webhook-provisioners.ts";
 
 interface EvolutionConfig {
   url: string;
@@ -132,73 +133,6 @@ function extractQr(obj: any): string | null {
     if (found) return found;
   }
   return null;
-}
-
-// Events that the platform-evolution-webhook function handles (v2.3.7 names).
-const WEBHOOK_EVENTS = [
-  "MESSAGES_UPSERT",
-  "MESSAGES_UPDATE",
-  "MESSAGES_DELETE",
-  "CONNECTION_UPDATE",
-  "QRCODE_UPDATED",
-  "SEND_MESSAGE",
-];
-
-// Evolution API v2.3.7: webhook is configured per-instance via
-//   POST /webhook/set/{instanceName}  body { webhook: { enabled, url, events } }
-// Instances are addressed by instanceName (the `name` column), NOT the uuid.
-async function configureWebhook(
-  config: EvolutionConfig,
-  instanceName: string,
-  instanceToken: string | null | undefined,
-  webhookUrl: string,
-): Promise<{ ok: boolean; error?: string; status?: number; response?: any }> {
-  if (!instanceName) {
-    return { ok: false, error: "Nome da instância ausente." };
-  }
-  if (!instanceToken) {
-    return {
-      ok: false,
-      error:
-        "Token da instância ausente. Clique em 'Sincronizar do servidor' para reimportar o token desta instância.",
-    };
-  }
-
-  console.log(
-    `[configureWebhook] name=${instanceName} apikey=${maskKey(instanceToken)} (instance token)`,
-  );
-
-  const res = await evoFetch(
-    config,
-    `/webhook/set/${encodeURIComponent(instanceName)}`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        webhook: {
-          enabled: true,
-          url: webhookUrl,
-          events: WEBHOOK_EVENTS,
-        },
-      }),
-    },
-    instanceToken,
-  );
-
-  console.log(
-    `[configureWebhook] name=${instanceName} status=${res.status} ok=${res.ok}`,
-    typeof res.body === "string" ? res.body.slice(0, 200) : res.body,
-  );
-
-  if (res.ok) {
-    return { ok: true, status: res.status, response: res.body };
-  }
-
-  return {
-    ok: false,
-    status: res.status,
-    error: res.message || `Falha ao configurar webhook (status ${res.status}).`,
-    response: res.body,
-  };
 }
 
 /** Número (ownerJid) da instância, lido direto da Evolution — best-effort.
