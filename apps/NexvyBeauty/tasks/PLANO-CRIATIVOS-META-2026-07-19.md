@@ -434,3 +434,64 @@ O D1 também estourava ~74px de altura e a linha de fonte voltou a cair sobre a 
 ### Armadilha de upload (de novo)
 
 Os 6 PNGs de feed foram movidos para **`_feed-nao-usar/`**, fora de `png/`. A pasta `png/` agora contém **exatamente 3 arquivos**, todos story. Mesma classe de armadilha que o ciclo 1 registrou — a diferença é que desta vez o arquivo indevido saiu da pasta em vez de ganhar um aviso no texto.
+
+## 19 · Integração aos Destaques do Instagram (2026-08-01)
+
+**Falha de processo, registrada primeiro:** existia um sistema de Destaques pronto em `~/Downloads/nexvybeauty-destaques-2026-07-31/` e eu produzi as 3 peças sem consultá-lo. Pior: a pasta **apareceu** na busca que rodei antes de criar o D3 e eu a tratei como "sem colisão de nome" em vez de perguntar o que era. Busca que serve só para provar ausência de conflito desperdiça a metade mais valiosa do resultado — **o que já existe**.
+
+### O que havia lá
+
+4 Destaques com narrativa encadeada: **Comece por aqui** (6 telas, explicador) → **Para o seu negócio** (5, público e problema) → **Planos e preços** (5) → **Assine agora** (4), mais 4 capas. Contrato idêntico ao dos criativos: mesmo `render.sh`, página via `?p=N`, capa via `?c=N`.
+
+### Dois defeitos herdados, corrigidos
+
+| Defeito | Estado |
+|---|---|
+| `h3-planos` declarava 5 telas, **3 renderizadas** | 5/5 |
+| `h4-assine` declarava 4 telas, **0 renderizadas** | 4/4 |
+| `h4-p4`: **marca duplicada** — `.mark` global não escopada aparecia junto da `.markc` centrada; sobre o fundo vinho o símbolo sumia e sobrava o wordmark solto à esquerda | `html[data-p="4"] .mark{display:none}`; verificado por medição (faixa esquerda 0,0001 · central 0,15) |
+
+Os **6 stories nunca renderizados** eram justamente onde o defeito morava. Código que nunca virou pixel não foi verificado — a etapa que faltou não foi escrever, foi **rodar e olhar**.
+
+### Por que as 3 artes não foram simplesmente inseridas
+
+Gramáticas opostas, e essa é a decisão de fundo:
+
+| | Peça de anúncio (lote benchmark) | Tela de Destaque |
+|---|---|---|
+| Função | conta a história **sozinha** | uma ideia; a **sequência** argumenta |
+| Densidade | alta (tabela de 5 faixas, 4 chips) | baixa |
+| Composição | centralizada verticalmente | **ancorada no topo**, metade inferior livre |
+
+A metade inferior vazia dos Destaques não é desperdício: é onde fica o polegar e onde o toque avança. Colar uma peça densa e centralizada no meio de 20 telas leves quebraria o ritmo de leitura, não só o alinhamento.
+
+**Decisão do Marcelo:** Destaque 5 **"Compare"**, com os 3 argumentos **redesenhados** na gramática dos Destaques — não colados. As 3 peças de anúncio seguem válidas e servem ao Meta; não é ou/ou.
+
+### O que foi criado
+
+`src/h5-compare.html` (CSS herdado 1:1 de `h3-planos.html`) + capa 5 em `covers.html`:
+
+| Tela | Argumento |
+|---|---|
+| p1 | Abertura — estabelece a regra: todo preço saiu de página pública, com data |
+| p2 | Até 2 profissionais o preço está na tela; a partir de 3, "sob consulta" |
+| p3 | Todo mundo anuncia IA; ninguém anuncia o preço |
+| p4 | A conta: R$ 76 + R$ 199 = R$ 275/mês, em duas empresas |
+| p5 | Vocabulário: a IA genérica atende pet shop e imobiliária |
+| p6 | Fecho em vinho + link (mesmo padrão do `h4-p4`) |
+
+Capa: fundo `#e8ccd2`, entre o `#f4e4e7` da capa 3 e o vinho da capa 4 — preserva a progressão claro→escuro quando "Compare" entra antes de "Assine".
+
+### Dois defeitos meus, pegos na revisão
+
+**1 · Marcador positivo sob frase negativa (p5).** O texto dizia *"Não entende:"* e a lista abaixo usava **✓ vinho**. Lia-se exatamente ao contrário — como se a IA genérica entendesse retoque e cabine. Trocado para `.off` (cinza, `—`), a convenção já usada nas p2 e p3 para ausência. **Contradição entre copy e sinal visual não aparece em grep nenhum.**
+
+**2 · Ícone da capa com peso visual menor** que os das outras quatro. Detectado por montagem lado a lado, não por impressão: amplitude das barras de 42 → 52 unidades.
+
+### Um ponto que é decisão sua
+
+A p4 exibe **R$ 275/mês** como *soma* de R$ 76 + R$ 199 — o custo do arranjo com dois fornecedores. Acontece que esse valor é **numericamente idêntico ao Essencial**. O contexto desambigua ("em duas empresas, dois logins, duas cobranças" + "aqui é uma assinatura só"), e o número **não envelhece** com a virada de preço porque não é nosso. Mas convive de perto com a sua regra de manter preço nosso fora da peça. Fica registrado para você decidir se mantém.
+
+### Estado final da pasta de Destaques
+
+**5 Destaques · 26 telas · 5 capas**, todos `1080×1920`, todos renderizados e revisados.

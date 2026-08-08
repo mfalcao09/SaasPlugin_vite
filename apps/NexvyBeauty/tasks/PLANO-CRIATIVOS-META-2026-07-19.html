@@ -416,8 +416,56 @@
 <h3>Armadilha de upload (de novo)</h3>
 <blockquote>Os 6 PNGs de feed foram movidos para <code>_feed-nao-usar/</code>, fora de <code>png/</code>. A pasta <code>png/</code> agora contém <b>exatamente 3 arquivos</b>, todos story. Mesma classe de armadilha que o ciclo 1 registrou — a diferença é que desta vez o arquivo indevido <b>saiu da pasta</b> em vez de ganhar um aviso no texto.</blockquote>
 
+<h2>19 · Integração aos Destaques do Instagram <span class="tag warn">2026-08-01</span></h2>
+<blockquote><b>Falha de processo, registrada primeiro:</b> existia um sistema de Destaques pronto em <code>~/Downloads/nexvybeauty-destaques-2026-07-31/</code> e eu produzi as 3 peças sem consultá-lo. Pior: a pasta <b>apareceu</b> na busca que rodei antes de criar o D3 e eu a tratei como "sem colisão de nome" em vez de perguntar o que era. <b>Busca que serve só para provar ausência de conflito desperdiça a metade mais valiosa do resultado — o que já existe.</b></blockquote>
+
+<h3>O que havia lá</h3>
+<p>4 Destaques com narrativa encadeada: <b>Comece por aqui</b> (6 telas, explicador) → <b>Para o seu negócio</b> (5, público e problema) → <b>Planos e preços</b> (5) → <b>Assine agora</b> (4), mais 4 capas. Contrato idêntico ao dos criativos: mesmo <code>render.sh</code>, página via <code>?p=N</code>, capa via <code>?c=N</code>.</p>
+
+<h3>Dois defeitos herdados, corrigidos</h3>
+<div class="tablewrap"><table>
+<tr><th>Defeito</th><th>Estado</th></tr>
+<tr><td><code>h3-planos</code> declarava 5 telas, <b>3 renderizadas</b></td><td><span class="tag ok">5/5</span></td></tr>
+<tr><td><code>h4-assine</code> declarava 4 telas, <b>0 renderizadas</b></td><td><span class="tag ok">4/4</span></td></tr>
+<tr><td><code>h4-p4</code>: <b>marca duplicada</b> — a <code>.mark</code> global não era escopada e aparecia junto da <code>.markc</code> centrada; sobre o fundo vinho o símbolo sumia e sobrava o wordmark solto à esquerda</td><td><span class="tag ok">CORRIGIDO</span> <code>html[data-p="4"] .mark{display:none}</code>; verificado por medição (faixa esquerda 0,0001 · central 0,15)</td></tr>
+</table></div>
+<blockquote>Os <b>6 stories nunca renderizados</b> eram justamente onde o defeito morava. Código que nunca virou pixel não foi verificado — a etapa que faltou não foi escrever, foi <b>rodar e olhar</b>.</blockquote>
+
+<h3>Por que as 3 artes não foram simplesmente inseridas</h3>
+<div class="tablewrap"><table>
+<tr><th></th><th>Peça de anúncio (lote benchmark)</th><th>Tela de Destaque</th></tr>
+<tr><td>Função</td><td>conta a história <b>sozinha</b></td><td>uma ideia; a <b>sequência</b> argumenta</td></tr>
+<tr><td>Densidade</td><td>alta (tabela de 5 faixas, 4 chips)</td><td>baixa</td></tr>
+<tr><td>Composição</td><td>centralizada verticalmente</td><td><b>ancorada no topo</b>, metade inferior livre</td></tr>
+</table></div>
+<p>A metade inferior vazia dos Destaques não é desperdício: é onde fica o polegar e onde o toque avança. Colar uma peça densa e centralizada no meio de 20 telas leves quebraria o <b>ritmo de leitura</b>, não só o alinhamento.</p>
+<p><b>Decisão do Marcelo:</b> Destaque 5 <b>"Compare"</b>, com os 3 argumentos <b>redesenhados</b> na gramática dos Destaques — não colados. As 3 peças de anúncio seguem válidas e servem ao Meta; não é ou/ou.</p>
+
+<h3>O que foi criado</h3>
+<p><code>src/h5-compare.html</code> (CSS herdado 1:1 de <code>h3-planos.html</code>) + capa 5 em <code>covers.html</code>:</p>
+<div class="tablewrap"><table>
+<tr><th>Tela</th><th>Argumento</th></tr>
+<tr><td><code>p1</code></td><td>Abertura — estabelece a regra: todo preço saiu de página pública, com data</td></tr>
+<tr><td><code>p2</code></td><td>Até 2 profissionais o preço está na tela; a partir de 3, "sob consulta"</td></tr>
+<tr><td><code>p3</code></td><td>Todo mundo anuncia IA; ninguém anuncia o preço</td></tr>
+<tr><td><code>p4</code></td><td>A conta: R$ 76 + R$ 199 = R$ 275/mês, em duas empresas</td></tr>
+<tr><td><code>p5</code></td><td>Vocabulário: a IA genérica atende pet shop e imobiliária</td></tr>
+<tr><td><code>p6</code></td><td>Fecho em vinho + link (mesmo padrão do <code>h4-p4</code>)</td></tr>
+</table></div>
+<p>Capa: fundo <code>#e8ccd2</code>, entre o <code>#f4e4e7</code> da capa 3 e o vinho da capa 4 — preserva a progressão claro→escuro quando "Compare" entra antes de "Assine".</p>
+
+<h3>Dois defeitos meus, pegos na revisão</h3>
+<p><b>1 · Marcador positivo sob frase negativa (p5).</b> O texto dizia <i>"Não entende:"</i> e a lista abaixo usava <b>✓ vinho</b>. Lia-se exatamente ao contrário — como se a IA genérica entendesse retoque e cabine. Trocado para <code>.off</code> (cinza, <code>—</code>), a convenção já usada nas p2 e p3 para ausência. <b>Contradição entre copy e sinal visual não aparece em grep nenhum.</b></p>
+<p><b>2 · Ícone da capa com peso visual menor</b> que os das outras quatro. Detectado por montagem lado a lado, não por impressão: amplitude das barras de 42 → 52 unidades.</p>
+
+<h3>Um ponto que é decisão do Marcelo</h3>
+<blockquote>A <code>p4</code> exibe <b>R$ 275/mês</b> como <i>soma</i> de R$ 76 + R$ 199 — o custo do arranjo com dois fornecedores. Acontece que esse valor é <b>numericamente idêntico ao Essencial</b>. O contexto desambigua ("em duas empresas, dois logins, duas cobranças" + "aqui é uma assinatura só"), e o número <b>não envelhece</b> com a virada de preço porque não é nosso. Mas convive de perto com a regra de manter preço nosso fora da peça. Fica registrado para decisão.</blockquote>
+
+<h3>Estado final da pasta de Destaques</h3>
+<p><b>5 Destaques · 26 telas · 5 capas</b>, todos <code>1080×1920</code>, todos renderizados e revisados.</p>
+
 <hr>
-<div class="foot">NexvyBeauty · Plano Criativo Meta Ads · 2026-07-19 · Review ciclo 2: 2026-08-01 · Correção de formato (story): 2026-08-01<br>Par markdown: <code>PLANO-CRIATIVOS-META-2026-07-19.md</code></div>
+<div class="foot">NexvyBeauty · Plano Criativo Meta Ads · 2026-07-19 · Review ciclo 2: 2026-08-01 · Correção de formato (story) e integração aos Destaques: 2026-08-01<br>Par markdown: <code>PLANO-CRIATIVOS-META-2026-07-19.md</code></div>
 
 </div>
 </body>
