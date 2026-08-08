@@ -159,6 +159,11 @@ drop function if exists public.pcrm_finalize_campaign_coverage_alert(
   timestamptz,
   timestamptz
 );
+drop function if exists public.pcrm_finalize_campaign_coverage_alert(
+  uuid,
+  timestamptz,
+  timestamptz
+);
 
 create or replace function public.pcrm_claim_campaign_coverage_alert(
   p_campaign_id uuid,
@@ -199,24 +204,61 @@ as $$
      and coverage_alert_at = p_claimed_at;
 $$;
 
-create or replace function public.pcrm_finalize_campaign_coverage_alert(
-  p_campaign_id uuid,
+-- Finaliza o grupo inteiro em UMA transação. Qualquer contagem divergente lança
+-- erro e desfaz campanhas e instância, preservando apenas os claims provisórios.
+create or replace function public.pcrm_finalize_campaign_coverage_group(
+  p_campaign_ids uuid[],
+  p_instance_id uuid,
   p_claimed_at timestamptz,
   p_alerted_at timestamptz
-) returns boolean
+) returns void
 language plpgsql
 security invoker
 set search_path = ''
 as $$
 declare
-  v_rows integer;
+  v_campaign_rows integer;
+  v_expected_campaigns integer;
+  v_instance_rows integer;
 begin
+  v_expected_campaigns := cardinality(p_campaign_ids);
+  if coalesce(v_expected_campaigns, 0) = 0
+     or array_position(p_campaign_ids, null) is not null then
+    raise exception 'campaign_ids inválido para finalize de grupo';
+  end if;
+
   update public.platform_crm_cold_campaigns
      set coverage_alert_at = p_alerted_at
-   where id = p_campaign_id
+   where id = any(p_campaign_ids)
      and coverage_alert_at = p_claimed_at;
-  get diagnostics v_rows = row_count;
-  return v_rows = 1;
+  get diagnostics v_campaign_rows = row_count;
+
+  if v_campaign_rows <> v_expected_campaigns then
+    raise exception
+      'finalize de grupo atualizou % campanhas; esperado %',
+      v_campaign_rows,
+      v_expected_campaigns;
+  end if;
+
+  if p_instance_id is not null then
+    update public.platform_crm_evolution_instances
+       set metadata = jsonb_set(
+         coalesce(metadata, '{}'::jsonb),
+         '{health_alert_at}',
+         to_jsonb(p_alerted_at),
+         true
+       )
+     where id = p_instance_id
+       and public.pcrm_try_timestamptz(metadata->>'health_alert_at') =
+         p_claimed_at;
+    get diagnostics v_instance_rows = row_count;
+
+    if v_instance_rows <> 1 then
+      raise exception
+        'finalize de grupo atualizou % instâncias; esperado 1',
+        v_instance_rows;
+    end if;
+  end if;
 end;
 $$;
 
@@ -234,7 +276,7 @@ revoke all on function public.pcrm_claim_campaign_coverage_alert(uuid, timestamp
   from public, anon, authenticated;
 revoke all on function public.pcrm_release_campaign_coverage_alert(uuid, timestamptz)
   from public, anon, authenticated;
-revoke all on function public.pcrm_finalize_campaign_coverage_alert(uuid, timestamptz, timestamptz)
+revoke all on function public.pcrm_finalize_campaign_coverage_group(uuid[], uuid, timestamptz, timestamptz)
   from public, anon, authenticated;
 
 grant execute on function public.pcrm_try_timestamptz(text)
@@ -251,7 +293,7 @@ grant execute on function public.pcrm_claim_campaign_coverage_alert(uuid, timest
   to service_role;
 grant execute on function public.pcrm_release_campaign_coverage_alert(uuid, timestamptz)
   to service_role;
-grant execute on function public.pcrm_finalize_campaign_coverage_alert(uuid, timestamptz, timestamptz)
+grant execute on function public.pcrm_finalize_campaign_coverage_group(uuid[], uuid, timestamptz, timestamptz)
   to service_role;
 
 do $$

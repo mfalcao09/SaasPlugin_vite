@@ -301,39 +301,21 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    for (const item of claimedCampaigns) {
-      const { data: finalized, error } = await db.rpc(
-        "pcrm_finalize_campaign_coverage_alert",
-        {
-          p_campaign_id: item.campanha.id,
-          p_claimed_at: claimedAt,
-          p_alerted_at: alertedAt,
-        },
+    const { error: finalizeError } = await db.rpc(
+      "pcrm_finalize_campaign_coverage_group",
+      {
+        p_campaign_ids: claimedCampaigns.map((item) => item.campanha.id),
+        p_instance_id: claimDaInstancia?.id ?? null,
+        p_claimed_at: claimedAt,
+        p_alerted_at: alertedAt,
+      },
+    );
+    if (finalizeError) {
+      falhas.push(
+        `finalize grupo ${
+          claimedCampaigns.map((item) => item.campanha.id)
+        }: ${finalizeError.message}`,
       );
-      if (error || finalized !== true) {
-        falhas.push(
-          `finalize campanha ${item.campanha.id}: ${
-            error?.message ?? "claim não encontrado"
-          }`,
-        );
-      }
-    }
-    if (claimDaInstancia) {
-      const { data: finalized, error } = await db.rpc(
-        "pcrm_finalize_instance_health_alert",
-        {
-          p_instance_id: claimDaInstancia.id,
-          p_claimed_at: claimedAt,
-          p_alerted_at: alertedAt,
-        },
-      );
-      if (error || finalized !== true) {
-        falhas.push(
-          `finalize instância ${claimDaInstancia.id}: ${
-            error?.message ?? "claim não encontrado"
-          }`,
-        );
-      }
     }
 
     campanhasAlertadas.push(...claimedCampaigns);
