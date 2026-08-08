@@ -10,7 +10,8 @@
 
 ## Arquivar ≠ deletar
 
-Repositórios-fonte foram **arquivados** no GitHub (read-only). Nada é deletado nesta rodada.
+Repositórios-fonte devem ser **arquivados** no GitHub (read-only); nada é deletado nesta rodada.
+Na consolidação 2026-08-08 o archive remoto falhou por escopo do PAT (`Administration: Write` ausente) — mirrors locais + tags cobrem a salvaguarda até o archive na UI/token.
 Elegibilidade a delete futuro exige: arquivado ≥90 dias + mirror `git fsck` verde + zero referências no canônico.
 
 ## Arquitetura
