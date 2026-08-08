@@ -1,6 +1,6 @@
 # Task 2 report
 
-Status: implementação e validação pré-rebase concluídas.
+Status: implementação, rebase e validação pós-rebase concluídos.
 
 ## Baseline preservada
 
@@ -64,3 +64,34 @@ Status: implementação e validação pré-rebase concluídas.
 - SPEC PASS.
 - QUALITY APPROVED.
 - Nenhum achado bloqueante; nenhuma preocupação aberta nesta etapa.
+
+## Rebase e verificação final
+
+- Commit pré-rebase da Task 2: `06a0dfc`.
+- `git fetch origin main`: `origin/main` confirmado em `9496ecc`.
+- `git rebase origin/main`: três commits reaplicados sem conflitos.
+- SHAs E2 reescritos pelo rebase:
+  - `6e080d3928ebc6b52f5641a7e1d48eacbd55a7cf`;
+  - `fcbab057ba8c9375e2327fb153f2d7da51229086`;
+  - `56ca8f496b15d83a50db29262e54112d1cca4670`.
+- Pós-rebase, o harness PostgreSQL 18.4 voltou a passar integralmente com duas
+  aplicações da migration, exit `0`.
+- A prova concorrente foi repetida: `SESSION_1_CLAIM=true`,
+  `SESSION_2_CLAIM=false`, exit `0`.
+- `deno test --frozen`: 32 passed, 0 failed, exit `0`.
+- `deno check --no-lock`: exit `0`.
+- `deno fmt --check`: `Checked 3 files`, exit `0`.
+- `git diff --check`: exit `0`.
+
+## Self-review pós-rebase
+
+- O review acumulado encontrou `.temp/cli-latest` ainda carregado por um commit
+  E2 antigo. O arquivo foi restaurado exatamente para o conteúdo de `9496ecc`;
+  após o commit de encerramento ele não faz parte do diff final.
+- Busca por marcadores de conflito encontrou somente a implementação legítima do
+  detector em `infra/cascade-core.sh`, não um conflito pendente.
+- Busca de segurança na migration por `p_origin`, `public.evolution_instances`,
+  `SECURITY DEFINER` e `set search_path = public`: nenhum match.
+- SPEC PASS.
+- QUALITY APPROVED.
+- Nenhuma preocupação aberta.
