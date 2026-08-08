@@ -1110,8 +1110,10 @@ async function handleAuthorizedWebhook(
           .from("platform_crm_messages")
           .select("metadata, created_at")
           .eq("metadata->>wamid", wamid)
+          .eq("metadata->>connection_id", instance.id)
           .maybeSingle();
         const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+        if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
         const campaignId = meta.campaign_id as string | undefined;
         if (!campaignId) continue; // não é mensagem de campanha — nada a contar
 
@@ -1125,7 +1127,7 @@ async function handleAuthorizedWebhook(
 
         await supabase.rpc("pcrm_cold_bump_counter", {
           p_campaign: campaignId,
-          p_instance: (meta.connection_id as string | null) ?? null,
+          p_instance: instance.id,
           p_day: day,
           p_sent: 0,
           p_delivered: 1,

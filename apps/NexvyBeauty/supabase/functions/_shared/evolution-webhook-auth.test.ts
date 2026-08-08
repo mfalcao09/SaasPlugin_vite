@@ -345,3 +345,100 @@ Deno.test("receptor processa exatamente a instância autenticada", async () => {
     "efeitos devem usar a mesma linha autenticada pelo gate",
   );
 });
+
+function ackReceiverHarness(messageConnectionId: string) {
+  const authenticated = {
+    id: "authenticated-instance-id",
+    instance_token: "instance-token",
+    name: "instance-name",
+  };
+  let ackInstanceFilter = "";
+  const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+
+  const fakeSupabase = {
+    from: (table: string) => {
+      const query: Record<string, unknown> = {
+        select: (_fields: string) => query,
+        eq: (column: string, value: string) => {
+          if (column === "metadata->>connection_id") {
+            ackInstanceFilter = value;
+          }
+          return query;
+        },
+        limit: (_count: number) =>
+          Promise.resolve({
+            data: table === "platform_crm_evolution_instances"
+              ? [authenticated]
+              : [],
+          }),
+        maybeSingle: () =>
+          Promise.resolve({
+            data: table === "platform_crm_messages"
+              ? {
+                metadata: {
+                  campaign_id: "campaign-id",
+                  connection_id: messageConnectionId,
+                },
+                created_at: "2026-08-08T12:00:00.000Z",
+              }
+              : null,
+          }),
+      };
+      return query;
+    },
+    rpc: (name: string, args: Record<string, unknown>) => {
+      rpcCalls.push({ name, args });
+      return Promise.resolve({ error: null });
+    },
+  };
+
+  return {
+    authenticated,
+    receiver: createPlatformEvolutionWebhookReceiver(() => fakeSupabase),
+    ackInstanceFilter: () => ackInstanceFilter,
+    rpcCalls,
+  };
+}
+
+function deliveryAckRequest(): Request {
+  return webhookRequest(
+    {
+      event: "MESSAGES_UPDATE",
+      instance: "instance-name",
+      data: {
+        messages: [{
+          key: { id: "wamid-1" },
+          status: "DELIVERY_ACK",
+        }],
+      },
+    },
+    { apikey: "instance-token" },
+  );
+}
+
+Deno.test("ACK de outra instância não atualiza contador", async () => {
+  const harness = ackReceiverHarness("competing-instance-id");
+  const response = await harness.receiver(deliveryAckRequest());
+
+  equal(response.status, 200, "ACK cruzado continua sendo reconhecido");
+  equal(harness.rpcCalls.length, 0, "ACK de B não pode alterar contador de A");
+  equal(
+    harness.ackInstanceFilter(),
+    harness.authenticated.id,
+    "consulta do ACK deve filtrar pela instância autenticada",
+  );
+});
+
+Deno.test("ACK da instância autenticada atualiza contador", async () => {
+  const harness = ackReceiverHarness("authenticated-instance-id");
+  const response = await harness.receiver(deliveryAckRequest());
+
+  equal(response.status, 200, "ACK legítimo");
+  equal(harness.rpcCalls.length, 1, "ACK de A deve atualizar contador");
+  equal(
+    harness.rpcCalls[0].args.p_instance,
+    harness.authenticated.id,
+    "contador deve usar a instância autenticada",
+  );
+  equal(harness.rpcCalls[0].args.p_delivered, 1, "incremento de entrega");
+});
