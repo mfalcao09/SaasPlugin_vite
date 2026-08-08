@@ -16,4 +16,21 @@ dist/
 # Artefatos de teste do Playwright MCP
 .playwright-mcp/
 apps/NexvyOficinas/supabase/.temp/
+apps/**/supabase/.temp/
 *.tsbuildinfo
+
+# Worktrees / runtime do Claude Code (NÃO versionar — evita git add -A engolir cópias)
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/routines/.state/
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
+.claude/agent-registry.json
+.claude/agent-memory-local
+.claude/first-run
+.claude/assistant-daemon-state.json
+**/.claude/worktrees/
+**/.claude/checkpoints/
+**/.claude/mailbox/
+**/.claude/routines/.state/
