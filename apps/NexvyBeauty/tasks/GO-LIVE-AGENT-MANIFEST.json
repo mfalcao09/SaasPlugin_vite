@@ -1,0 +1,775 @@
+{
+  "version": 1,
+  "planId": "nexvybeauty-golive-sdr-bdr-2026-08-08",
+  "goal": "Colocar Duda (SDR inbound) e Camila (BDR outbound) em operacao ponta a ponta, com aquisicao Meta, sinal CAPI e onboarding pos-compra provados.",
+  "sourceOfTruth": "apps/NexvyBeauty/tasks/PLANO-EXECUCAO-GO-LIVE-AGENTES-2026-08-08.md",
+  "base": {
+    "branch": "origin/main",
+    "planningSha": "b069f7c",
+    "policy": "Cada etapa cria branch nova de origin/main atualizado; branches longevas nunca sao mergeadas diretamente."
+  },
+  "defaults": {
+    "maxIterations": 2,
+    "evidenceMaxAgeMinutes": 60,
+    "evidencePathPattern": "apps/NexvyBeauty/tasks/evidence/{stageId}/{runId}.md",
+    "requireFreshBaseBeforeVerify": true,
+    "requireDistinctExecutorVerifierReviewer": true,
+    "productionChangesRequireHumanApproval": true,
+    "secretsMustBeRedacted": true
+  },
+  "roles": {
+    "controller-agent": "Abre a etapa, confere dependencias, atribui papeis, atualiza o placar e bloqueia transicoes invalidas.",
+    "implementation-agent": "Implementa somente o escopo declarado e entrega uma PR draft com rollback e comandos de prova.",
+    "operations-agent": "Executa configuracoes externas e operacionais autorizadas, sem expor segredos.",
+    "verification-agent": "Roda provas frescas no SHA entregue e nao altera o branch verificado.",
+    "review-agent": "Revisa diff, riscos, seguranca, regressao e emite veredito SAFE, RISKY ou REJECT.",
+    "controller-approver": "Aprova tecnicamente depois de verify SAFE e review SAFE.",
+    "Marcelo": "Aprova gasto, producao, numero real, dados enviados a terceiros, outbound e pagamento real."
+  },
+  "lifecycle": {
+    "states": [
+      "backlog",
+      "ready",
+      "claimed",
+      "implementing",
+      "delivered",
+      "verifying",
+      "reviewing",
+      "awaiting_approval",
+      "approved",
+      "done",
+      "blocked",
+      "escalated"
+    ],
+    "transitions": [
+      {
+        "from": "backlog",
+        "to": "ready",
+        "actor": "controller-agent",
+        "guard": "Todas as dependencias estao done."
+      },
+      {
+        "from": "ready",
+        "to": "claimed",
+        "actor": "controller-agent",
+        "guard": "Executor, branch, escopo, recursos e comandos de evidencia declarados."
+      },
+      {
+        "from": "ready",
+        "to": "blocked",
+        "actor": "controller-agent",
+        "guard": "Dependencia externa ou human gate impede claim seguro."
+      },
+      {
+        "from": "claimed",
+        "to": "implementing",
+        "actor": "stage.roles.executor",
+        "guard": "Branch criada de origin/main atualizado e working tree limpo."
+      },
+      {
+        "from": "implementing",
+        "to": "delivered",
+        "actor": "stage.roles.executor",
+        "guard": "PR draft aberta, entregaveis presentes, self-checks verdes e rollback documentado."
+      },
+      {
+        "from": "delivered",
+        "to": "verifying",
+        "actor": "stage.roles.verifier",
+        "guard": "Verifier diferente do executor; SHA da PR fixado; base sem drift."
+      },
+      {
+        "from": "verifying",
+        "to": "reviewing",
+        "actor": "stage.roles.verifier",
+        "guard": "Todos os criterios binarios passaram com evidencia fresca."
+      },
+      {
+        "from": "reviewing",
+        "to": "awaiting_approval",
+        "actor": "stage.roles.reviewer",
+        "guard": "Reviewer diferente do executor e verifier; veredito SAFE."
+      },
+      {
+        "from": "awaiting_approval",
+        "to": "approved",
+        "actor": "stage.roles.approver",
+        "guard": "Aprovacao tecnica e todos os human gates aplicaveis registrados."
+      },
+      {
+        "from": "awaiting_approval",
+        "to": "blocked",
+        "actor": "controller-agent",
+        "guard": "Aprovador precisa de insumo externo antes de decidir."
+      },
+      {
+        "from": "approved",
+        "to": "done",
+        "actor": "controller-agent",
+        "guard": "Merge em main, prova pos-merge e registro de evidencia anexado."
+      },
+      {
+        "from": "verifying",
+        "to": "implementing",
+        "actor": "controller-agent",
+        "guard": "Prova falhou e iteration < maxIterations."
+      },
+      {
+        "from": "verifying",
+        "to": "escalated",
+        "actor": "controller-agent",
+        "guard": "Prova falhou e iteration >= maxIterations."
+      },
+      {
+        "from": "reviewing",
+        "to": "implementing",
+        "actor": "controller-agent",
+        "guard": "Review RISKY e iteration < maxIterations."
+      },
+      {
+        "from": "reviewing",
+        "to": "escalated",
+        "actor": "controller-agent",
+        "guard": "Review RISKY e iteration >= maxIterations."
+      },
+      {
+        "from": "reviewing",
+        "to": "escalated",
+        "actor": "stage.roles.reviewer",
+        "guard": "Review REJECT por violacao estrutural; escala sem nova iteracao."
+      },
+      {
+        "from": "blocked",
+        "to": "ready",
+        "actor": "controller-agent",
+        "guard": "Insumo externo chegou e dependencias continuam done."
+      },
+      {
+        "from": "blocked",
+        "to": "escalated",
+        "actor": "controller-agent",
+        "guard": "Bloqueio nao possui caminho seguro ou excedeu a janela acordada."
+      },
+      {
+        "from": "implementing",
+        "to": "escalated",
+        "actor": "controller-agent",
+        "guard": "Duas iteracoes falharam ou ha dependencia externa sem caminho seguro."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "id": "E0",
+      "title": "Publicar o contrato de orquestracao",
+      "priority": "P0",
+      "initialState": "delivered",
+      "dependsOn": [],
+      "parallelGroup": "control",
+      "pr": {
+        "strategy": "independent",
+        "base": "origin/main",
+        "title": "docs(beauty): orquestrar go-live dos agentes SDR e BDR"
+      },
+      "roles": {
+        "executor": "implementation-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "controller-approver"
+      },
+      "resources": [
+        "repo:apps/NexvyBeauty/tasks"
+      ],
+      "deliverables": [
+        "Plano mestre executavel com etapas, dependencias, gates e ordem de PRs.",
+        "Manifesto JSON validavel por maquina.",
+        "Validador sem dependencias externas e comando npm dedicado.",
+        "Template de handoff iniciar-entregar-conferir-aprovar."
+      ],
+      "acceptance": [
+        {
+          "id": "manifest-valid",
+          "binary": true,
+          "assertion": "npm run validate:golive-plan termina com exit 0.",
+          "evidence": "Log integral do comando na PR."
+        },
+        {
+          "id": "review-safe",
+          "binary": true,
+          "assertion": "Review independente nao encontra dependencia quebrada, gate ausente ou criterio subjetivo.",
+          "evidence": "Comentario do reviewer com veredito SAFE."
+        }
+      ],
+      "rollback": {
+        "trigger": "Contrato invalido ou incompleto antes de qualquer etapa filha.",
+        "action": "Reverter a PR de documentacao; nenhuma flag ou runtime e alterado."
+      },
+      "humanGate": null
+    },
+    {
+      "id": "E1",
+      "title": "Provar e travar autenticacao dos webhooks Evolution",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E0"
+      ],
+      "parallelGroup": "foundation",
+      "pr": {
+        "strategy": "independent",
+        "base": "origin/main",
+        "title": "test(evolution): travar autenticacao dos quatro provisionadores"
+      },
+      "roles": {
+        "executor": "implementation-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "controller-approver"
+      },
+      "resources": [
+        "edge:evolution-proxy",
+        "edge:platform-evolution-proxy",
+        "edge:onboarding-evolution",
+        "edge:demo-evolution",
+        "shared:evolution-core"
+      ],
+      "deliverables": [
+        "Teste de contrato cobrindo os quatro caminhos de POST /webhook/set.",
+        "Prova de que o header apikey usa o instanceToken e nunca null.",
+        "Correcao minima somente se o teste reproduzir falha.",
+        "Erro persistido e alerta quando webhook/set nao retornar 2xx."
+      ],
+      "acceptance": [
+        {
+          "id": "four-paths",
+          "binary": true,
+          "assertion": "Os quatro provisionadores sao exercitados pelo teste.",
+          "evidence": "Saida do teste identifica 4/4 caminhos."
+        },
+        {
+          "id": "instance-token-header",
+          "binary": true,
+          "assertion": "Toda chamada webhook/set observada contem apikey igual ao instanceToken mascarado na evidencia.",
+          "evidence": "Assertions do mock HTTP; nenhum segredo em claro."
+        },
+        {
+          "id": "negative-case",
+          "binary": true,
+          "assertion": "Token ausente impede a chamada e produz erro observavel.",
+          "evidence": "Teste negativo verde."
+        }
+      ],
+      "rollback": {
+        "trigger": "Provisionamento ou webhook existente regride.",
+        "action": "Reverter a PR e redeployar as versoes anteriores das edges afetadas."
+      },
+      "humanGate": null
+    },
+    {
+      "id": "E2",
+      "title": "Trazer o canario BDR e o agendamento para main",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E0"
+      ],
+      "parallelGroup": "foundation",
+      "pr": {
+        "strategy": "independent",
+        "base": "origin/main",
+        "title": "feat(bdr): versionar canario de cobertura e agendamento"
+      },
+      "roles": {
+        "executor": "implementation-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "controller-approver"
+      },
+      "resources": [
+        "edge:platform-instance-coverage-canary",
+        "scheduler:cold-outreach",
+        "repo:supabase-config"
+      ],
+      "deliverables": [
+        "Reimplementacao ou cherry-pick cirurgico apenas do canario sobre main.",
+        "Agendamento versionado ou migration pg_cron idempotente.",
+        "Alerta quando campanha autorizada nao possui instancia conectada.",
+        "Prova explicita de que a correcao da PR #148 permanece intacta."
+      ],
+      "acceptance": [
+        {
+          "id": "main-only",
+          "binary": true,
+          "assertion": "A PR contem somente o canario/agendamento necessario e parte de origin/main atualizado.",
+          "evidence": "git merge-base e diff completo anexados."
+        },
+        {
+          "id": "pr148-intact",
+          "binary": true,
+          "assertion": "EVOLUTION_WEBHOOK_EVENTS continua sem MESSAGING_HISTORY_SET e os testes da PR #148 passam.",
+          "evidence": "Comando de teste e busca com exit 0."
+        },
+        {
+          "id": "scheduled-run",
+          "binary": true,
+          "assertion": "O canario executa uma vez por agendamento, nao por invocacao manual.",
+          "evidence": "Log com timestamp e identificador da execucao agendada."
+        }
+      ],
+      "rollback": {
+        "trigger": "Canario gera falso positivo, sobrecarga ou regressao da PR #148.",
+        "action": "Desabilitar o agendamento e reverter a PR; manter a PR #148."
+      },
+      "humanGate": null
+    },
+    {
+      "id": "E3",
+      "title": "Restaurar o canal da Camila e provar round-trip",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E1"
+      ],
+      "parallelGroup": "outbound",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "ops(bdr): restaurar conexao Evolution da Camila"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "external:evolution:prospec-ativa-camila2",
+        "external:whatsapp:number-camila"
+      ],
+      "deliverables": [
+        "Diagnostico de statusReason 401 sem apagar a instancia antes de preservar evidencias.",
+        "Repareamento controlado do numero real, se necessario.",
+        "Webhook configurado com eventos validos e autenticacao provada.",
+        "Round-trip de mensagem em ambos os sentidos com IDs correlacionados."
+      ],
+      "acceptance": [
+        {
+          "id": "connected",
+          "binary": true,
+          "assertion": "A instancia prospec-ativa-camila2 permanece open/connected por pelo menos 30 minutos.",
+          "evidence": "Duas leituras de status separadas por 30 minutos."
+        },
+        {
+          "id": "round-trip",
+          "binary": true,
+          "assertion": "Uma mensagem sai e uma resposta entra sem intervencao no pipeline.",
+          "evidence": "IDs, timestamps e logs dos dois sentidos, com PII reduzida."
+        },
+        {
+          "id": "webhook-live",
+          "binary": true,
+          "assertion": "O webhook recebe evento real e responde 2xx.",
+          "evidence": "Log da edge correlacionado ao ID da mensagem."
+        }
+      ],
+      "rollback": {
+        "trigger": "Repareamento falha, desconecta numero ativo ou perde historico.",
+        "action": "Parar tentativas, preservar sessao e logs, restaurar configuracao anterior e escalar."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Reparear ou substituir o numero real.",
+        "action": "Registrar APROVO na PR/issue com a janela de manutencao."
+      }
+    },
+    {
+      "id": "E4",
+      "title": "Ativar piloto BDR controlado da Camila",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E2",
+        "E3"
+      ],
+      "parallelGroup": "outbound",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "ops(bdr): executar piloto controlado da Camila"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "external:whatsapp:reputation",
+        "db:cold-outreach-campaigns",
+        "edge:cold-outreach-run"
+      ],
+      "deliverables": [
+        "Campanha piloto com no maximo 10 leads aprovados individualmente.",
+        "Opt-out, janela, jitter, limite diario e kill switch provados em dry-run.",
+        "Canario de cobertura verde antes do primeiro envio.",
+        "Relatorio de entrega, resposta, opt-out, erro e bloqueio."
+      ],
+      "acceptance": [
+        {
+          "id": "dry-run-safe",
+          "binary": true,
+          "assertion": "Dry-run prova limite, janela, jitter, opt-out e kill switch sem enviar mensagem.",
+          "evidence": "Log do dry-run e configuracao efetiva."
+        },
+        {
+          "id": "approved-leads-only",
+          "binary": true,
+          "assertion": "Todos os destinatarios enviados possuem approved_at anterior ao envio.",
+          "evidence": "Consulta SQL redigida correlacionando aprovacao e envio."
+        },
+        {
+          "id": "pilot-observed",
+          "binary": true,
+          "assertion": "O piloto encerra sem envio fora da janela, duplicidade ou opt-out violado.",
+          "evidence": "Relatorio dos ate 10 leads e logs de circuit-breaker."
+        }
+      ],
+      "rollback": {
+        "trigger": "Qualquer envio nao aprovado, duplicado, fora da janela ou apos opt-out.",
+        "action": "Acionar kill switch imediatamente, pausar campanha e preservar a trilha para incidente."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Primeiro envio real da campanha.",
+        "action": "Aprovar lista, copy, janela e limite do piloto."
+      }
+    },
+    {
+      "id": "E5",
+      "title": "Desbloquear operacao Meta Ads com teto de gasto",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E0"
+      ],
+      "parallelGroup": "inbound",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "ops(ads): preparar spend cap e campanha CTWA em draft"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "external:meta:ad-account",
+        "external:meta:page",
+        "external:meta:waba"
+      ],
+      "deliverables": [
+        "Spend limit resolvido sem remover o teto de seguranca.",
+        "Pagina, numero WABA, pixel/dataset e conta de anuncio confirmados.",
+        "Campanha CTWA canario em draft/paused, com verba e duracao limitadas.",
+        "ADS_MUTATIONS_ENABLED permanece false durante o go-live."
+      ],
+      "acceptance": [
+        {
+          "id": "spend-cap",
+          "binary": true,
+          "assertion": "A conta nao possui bloqueio de spend limit e o teto de gasto esta documentado; nenhum delivery real e exigido em E5.",
+          "evidence": "Screenshot datado do Ads Manager com valor do teto e status da conta."
+        },
+        {
+          "id": "destination",
+          "binary": true,
+          "assertion": "O anuncio abre o numero oficial esperado da Pagina/WABA.",
+          "evidence": "Preview do anuncio e IDs redigidos conferidos."
+        },
+        {
+          "id": "mutations-off",
+          "binary": true,
+          "assertion": "ADS_MUTATIONS_ENABLED permanece false.",
+          "evidence": "Leitura da configuracao sem revelar segredo."
+        }
+      ],
+      "rollback": {
+        "trigger": "Gasto excede teto, destino incorreto ou campanha rejeitada.",
+        "action": "Pausar campanha/adset, manter teto e registrar causa antes de nova tentativa."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Alterar spend limit, definir teto ou criar a campanha canario em draft.",
+        "action": "Aprovar teto, budget diario, duracao, criativo e destino; publicacao ocorre somente em E6."
+      }
+    },
+    {
+      "id": "E6",
+      "title": "Provar Duda inbound com clique CTWA real",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E5"
+      ],
+      "parallelGroup": "inbound",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "test(inbound): provar lead CTWA real na Duda"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "external:meta:ctwa-campaign",
+        "edge:platform-meta-whatsapp-webhook",
+        "edge:platform-sales-brain",
+        "db:ads_attribution"
+      ],
+      "deliverables": [
+        "Clique real no anuncio canario abrindo conversa no numero oficial.",
+        "Duda responde no modo inbound com contexto do anuncio.",
+        "Atribuicao persiste ctwa_clid, campanha, adset e criativo.",
+        "Lead e conversa aparecem no CRM sem duplicidade."
+      ],
+      "acceptance": [
+        {
+          "id": "real-ctwa",
+          "binary": true,
+          "assertion": "ads_attribution recebe linha de clique real com ctwa_clid nao nulo.",
+          "evidence": "Consulta SQL redigida e screenshot do clique/anuncio."
+        },
+        {
+          "id": "duda-response",
+          "binary": true,
+          "assertion": "Duda envia resposta no thread correto e o CRM registra a conversa.",
+          "evidence": "Message IDs correlacionados entre Meta webhook e CRM."
+        },
+        {
+          "id": "no-regression-organic",
+          "binary": true,
+          "assertion": "Uma conversa organica continua sem modo CTWA e sem atribuicao falsa.",
+          "evidence": "Teste de regressao ou canario organico controlado."
+        }
+      ],
+      "rollback": {
+        "trigger": "Destino errado, resposta da persona errada, duplicidade ou atribuicao falsa.",
+        "action": "Pausar anuncio canario; manter inbound organico; corrigir antes de republicar."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Publicar o anuncio canario para clique real.",
+        "action": "Aprovar a publicacao e o primeiro gasto usando os parametros ja definidos em E5."
+      }
+    },
+    {
+      "id": "E7",
+      "title": "Ligar CAPI e provar envio de conversao",
+      "priority": "P1",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E6"
+      ],
+      "parallelGroup": "inbound",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "ops(capi): ativar dispatcher e provar evento sent"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "edge:platform-capi-send",
+        "scheduler:capi",
+        "db:ads_capi_events",
+        "external:meta:graph"
+      ],
+      "deliverables": [
+        "Secrets CAPI configurados por operador humano, sem materializar valores.",
+        "CAPI_ENABLED ativado somente apos dry-run e canario CTWA.",
+        "Cron/dispatcher idempotente e observavel.",
+        "Evento real transita pending para sent com HTTP 200."
+      ],
+      "acceptance": [
+        {
+          "id": "dry-run-first",
+          "binary": true,
+          "assertion": "Dry-run produz payload valido sem envio antes do flip.",
+          "evidence": "Payload redigido e log de dry-run."
+        },
+        {
+          "id": "sent-200",
+          "binary": true,
+          "assertion": "Um evento real muda de pending para sent e a Graph responde HTTP 200.",
+          "evidence": "Consulta ads_capi_events e resposta redigida da Graph."
+        },
+        {
+          "id": "idempotent",
+          "binary": true,
+          "assertion": "Reexecucao nao duplica o event_id.",
+          "evidence": "Duas execucoes e contagem por event_id igual a 1."
+        }
+      ],
+      "rollback": {
+        "trigger": "Erro persistente, duplicidade, payload incorreto ou rejeicao da Meta.",
+        "action": "CAPI_ENABLED=false, pausar scheduler e manter eventos pending para reprocessamento seguro."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Ativar CAPI_ENABLED e enviar dados a Meta.",
+        "action": "Aprovar dataset/WABA, base legal e flip da flag."
+      }
+    },
+    {
+      "id": "E8",
+      "title": "Provar pagamento Cakto, provisionamento e handoff para Lia",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E1"
+      ],
+      "parallelGroup": "post-sale",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "test(onboarding): provar Cakto ate Lia ponta a ponta"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "external:cakto:checkout-test",
+        "edge:cakto-webhook",
+        "edge:cakto-plan-provisioning",
+        "edge:platform-sales-brain",
+        "db:organizations",
+        "db:platform_crm_conversations"
+      ],
+      "deliverables": [
+        "Dry-run do bridge com ONBOARDING_HANDOFF_ENABLED=false.",
+        "Pagamento real controlado e deduplicado.",
+        "Organizacao provisionada e conversa existente entregue a Lia.",
+        "Lia envia greeting no mesmo thread sem duplicar welcome."
+      ],
+      "acceptance": [
+        {
+          "id": "payment-dedup",
+          "binary": true,
+          "assertion": "O pedido real gera uma unica ordem e uma unica organizacao.",
+          "evidence": "Consultas redigidas por order_id e organization_id."
+        },
+        {
+          "id": "handoff-same-thread",
+          "binary": true,
+          "assertion": "A conversa muda de Duda para Lia sem criar thread paralelo.",
+          "evidence": "Conversation ID unico e eventos de jornada correlacionados."
+        },
+        {
+          "id": "lia-greeting",
+          "binary": true,
+          "assertion": "Lia envia o greeting e o welcome legado nao duplica a mensagem.",
+          "evidence": "Timeline de mensagens e logs de provisionamento."
+        }
+      ],
+      "rollback": {
+        "trigger": "Provisionamento parcial, duplicidade, persona errada ou mensagem duplicada.",
+        "action": "ONBOARDING_HANDOFF_ENABLED=false, reprocessar somente pela funcao idempotente e escalar limpeza manual."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Ativar ONBOARDING_HANDOFF_ENABLED e executar pagamento real.",
+        "action": "Aprovar produto/valor de teste, conta pagadora e janela acompanhada."
+      }
+    },
+    {
+      "id": "E9",
+      "title": "Executar E2E integrado, soak e aprovar go-live",
+      "priority": "P0",
+      "initialState": "backlog",
+      "dependsOn": [
+        "E4",
+        "E7",
+        "E8"
+      ],
+      "parallelGroup": "release",
+      "pr": {
+        "strategy": "operations",
+        "base": "origin/main",
+        "title": "test(golive): aceitar SDR, BDR, ads e onboarding"
+      },
+      "roles": {
+        "executor": "operations-agent",
+        "verifier": "verification-agent",
+        "reviewer": "review-agent",
+        "approver": "Marcelo"
+      },
+      "resources": [
+        "release:nexvybeauty",
+        "monitoring:whatsapp",
+        "monitoring:ads",
+        "monitoring:capi",
+        "monitoring:onboarding"
+      ],
+      "deliverables": [
+        "Matriz final de todos os criterios E1-E8 com links de evidencia.",
+        "E2E integrado de aquisicao, conversa, venda, onboarding e outbound.",
+        "Soak de 24 horas sem alerta P0 e com kill switches testados.",
+        "Decisao GO/NO-GO registrada e runbook operacional entregue."
+      ],
+      "acceptance": [
+        {
+          "id": "all-upstream-done",
+          "binary": true,
+          "assertion": "E4, E7 e E8 estao done, seus SHAs continuam em main e os smokes finais foram recoletados nos ultimos 60 minutos.",
+          "evidence": "Links das PRs, SHAs mergeados e novos logs de smoke com timestamp."
+        },
+        {
+          "id": "integrated-e2e",
+          "binary": true,
+          "assertion": "Depois do inicio do roteiro, nenhum codigo, configuracao ou dado e corrigido manualmente; somente acoes humanas previamente declaradas sao permitidas.",
+          "evidence": "Timeline unica com IDs, timestamps e lista das acoes humanas planejadas."
+        },
+        {
+          "id": "soak-24h",
+          "binary": true,
+          "assertion": "24 horas decorrem sem alerta P0, envio indevido, duplicidade ou gasto acima do teto.",
+          "evidence": "Relatorio de monitoramento do inicio e fim da janela."
+        },
+        {
+          "id": "rollback-drill",
+          "binary": true,
+          "assertion": "Kill switches de BDR, CAPI, Ads e onboarding sao localizados e testados sem dano.",
+          "evidence": "Checklist de drill com responsavel e tempo de resposta."
+        }
+      ],
+      "rollback": {
+        "trigger": "Qualquer criterio final falha durante o soak.",
+        "action": "Declarar NO-GO, acionar o kill switch da frente afetada e voltar a etapa dona; nao repetir o E2E inteiro sem causa raiz."
+      },
+      "humanGate": {
+        "approver": "Marcelo",
+        "requiredBefore": "Declarar go-live e ampliar trafego/volume.",
+        "action": "Revisar evidencias, riscos abertos, limites e assinar GO ou NO-GO."
+      }
+    }
+  ],
+  "globalStopCriteria": [
+    "Todas as etapas E0-E9 estao done.",
+    "Nenhuma evidencia esta ligada a SHA anterior ao merge final.",
+    "Nenhum human gate aplicavel esta pendente.",
+    "O soak de 24 horas passou.",
+    "Os kill switches foram provados e possuem responsavel."
+  ]
+}

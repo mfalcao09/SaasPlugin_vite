@@ -10,7 +10,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -b",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "validate:golive-plan": "node scripts/validate-golive-agent-manifest.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
