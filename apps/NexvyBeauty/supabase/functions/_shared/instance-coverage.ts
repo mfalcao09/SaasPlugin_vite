@@ -43,9 +43,12 @@ export interface InstanciaVigiada {
   name: string;
   status: string;
   last_connected_at: string | null;
+  createdAt: string | null;
   /** De qual tabela veio — entra no alerta, porque o vão É a origem. */
   origem: "tenant" | "plataforma";
   metadata: Record<string, unknown> | null;
+  /** Produto dono da instância de plataforma; ausente no lado tenant. */
+  productId?: string | null;
   /**
    * Org dona da instância. OPCIONAL porque só existe de UM lado: medido em
    * 2026-08-07, `evolution_instances` tem `organization_id` e
@@ -98,9 +101,56 @@ export interface VereditoInstancia {
     | "caida_sem_vigilancia";
 }
 
+/** Recorte real de `platform_crm_cold_campaigns` usado pelo canário. */
+export interface CampanhaAtivada {
+  id: string;
+  name: string;
+  channel: string;
+  status: string;
+  activatedAt: string | null;
+  scheduledStartAt: string | null;
+  scheduledEndAt: string | null;
+  productId: string;
+  /** Pin do burner Evolution dedicado (`platform_crm_evolution_instances.id`). */
+  instanceId: string | null;
+  /** Throttle persistente do alerta do elo campanha → burner. */
+  coverageAlertAt: string | null;
+}
+
+export interface VereditoCampanhaAtivada {
+  campanha: CampanhaAtivada;
+  instancia: InstanciaVigiada | null;
+  alertar: boolean;
+  motivo:
+    | "canal_nao_whatsapp"
+    | "campanha_nao_autorizada"
+    | "campanha_fora_da_janela"
+    | "campanha_ja_alertada_recentemente"
+    | "sem_instancia_dedicada"
+    | "instancia_dedicada_ausente"
+    | "instancia_de_outro_produto"
+    | "instancia_dedicada_conectada"
+    | "instancia_dedicada_silenciada"
+    | "instancia_em_queda_recente"
+    | "instancia_ja_alertada_recentemente"
+    | "instancia_dedicada_desconectada";
+}
+
 /** `connected` é o único estado que significa "no ar". Qualquer outro é queda. */
 function estaNoAr(status: string): boolean {
   return status === "connected";
+}
+
+function campanhaAlertadaRecentemente(
+  campanha: CampanhaAtivada,
+  agoraMs: number,
+  cfg: CoberturaConfig,
+): boolean {
+  const marca = campanha.coverageAlertAt
+    ? Date.parse(campanha.coverageAlertAt)
+    : NaN;
+  const horas = cfg.horasParaRealertar ?? 6;
+  return !Number.isNaN(marca) && agoraMs - marca < horas * 3_600_000;
 }
 
 /**
@@ -131,7 +181,10 @@ export function avaliarInstancia(
   cfg: CoberturaConfig = {},
 ): VereditoInstancia {
   const meta = inst.metadata ?? {};
-  const veredito = (alertar: boolean, motivo: VereditoInstancia["motivo"]): VereditoInstancia => ({
+  const veredito = (
+    alertar: boolean,
+    motivo: VereditoInstancia["motivo"],
+  ): VereditoInstancia => ({
     instancia: inst,
     alertar,
     motivo,
@@ -152,7 +205,8 @@ export function avaliarInstancia(
   if (meta.health_mute === true) return veredito(false, "silenciada");
 
   const minutos = cfg.minutosParaAcusar ?? 30;
-  const desdeMs = inst.last_connected_at ? Date.parse(inst.last_connected_at) : NaN;
+  const referencia = inst.last_connected_at ?? inst.createdAt;
+  const desdeMs = referencia ? Date.parse(referencia) : NaN;
   if (!Number.isNaN(desdeMs) && agoraMs - desdeMs < minutos * 60_000) {
     return veredito(false, "queda_recente_aguardando");
   }
@@ -160,7 +214,9 @@ export function avaliarInstancia(
   // Throttle COMPARTILHADO: se o health-alert já avisou, a marca está aqui e o
   // canário se cala. É o que impede dois avisos para a mesma queda sem que uma
   // função precise conhecer a outra.
-  const marca = typeof meta.health_alert_at === "string" ? Date.parse(meta.health_alert_at) : NaN;
+  const marca = typeof meta.health_alert_at === "string"
+    ? Date.parse(meta.health_alert_at)
+    : NaN;
   const horas = cfg.horasParaRealertar ?? 6;
   if (!Number.isNaN(marca) && agoraMs - marca < horas * 3_600_000) {
     return veredito(false, "ja_alertado_recentemente");
@@ -180,6 +236,97 @@ export function avaliarCobertura(
 }
 
 /**
+ * Confere o elo operacional campanha autorizada → burner Evolution dedicado.
+ *
+ * Só uma instância de PLATAFORMA pode satisfazer o pin. Isso é importante tanto
+ * pelo schema (`instance_id` aponta para o burner platform-side) quanto para não
+ * confundir uma instância tenant — inclusive de org demo — que por acaso tenha o
+ * mesmo UUID em dados sem FK.
+ */
+export function avaliarCampanhaAtivada(
+  campanha: CampanhaAtivada,
+  instancias: InstanciaVigiada[],
+  agoraMs: number,
+  cfg: CoberturaConfig = {},
+): VereditoCampanhaAtivada {
+  const veredito = (
+    alertar: boolean,
+    motivo: VereditoCampanhaAtivada["motivo"],
+    instancia: InstanciaVigiada | null = null,
+  ): VereditoCampanhaAtivada => ({ campanha, instancia, alertar, motivo });
+
+  if (campanha.channel !== "whatsapp") {
+    return veredito(false, "canal_nao_whatsapp");
+  }
+
+  const statusAtivo = campanha.status === "active" ||
+    campanha.status === "warming";
+  const autorizada = campanha.activatedAt !== null &&
+    !Number.isNaN(Date.parse(campanha.activatedAt));
+  if (!statusAtivo || !autorizada) {
+    return veredito(false, "campanha_nao_autorizada");
+  }
+  const inicio = campanha.scheduledStartAt
+    ? Date.parse(campanha.scheduledStartAt)
+    : NaN;
+  const fim = campanha.scheduledEndAt
+    ? Date.parse(campanha.scheduledEndAt)
+    : NaN;
+  if (
+    (!Number.isNaN(inicio) && agoraMs < inicio) ||
+    (!Number.isNaN(fim) && agoraMs >= fim)
+  ) {
+    return veredito(false, "campanha_fora_da_janela");
+  }
+
+  if (!campanha.instanceId) {
+    if (campanhaAlertadaRecentemente(campanha, agoraMs, cfg)) {
+      return veredito(false, "campanha_ja_alertada_recentemente");
+    }
+    return veredito(true, "sem_instancia_dedicada");
+  }
+
+  const instancia =
+    instancias.find((i) =>
+      i.origem === "plataforma" && i.id === campanha.instanceId
+    ) ?? null;
+  if (!instancia) {
+    if (campanhaAlertadaRecentemente(campanha, agoraMs, cfg)) {
+      return veredito(false, "campanha_ja_alertada_recentemente");
+    }
+    return veredito(true, "instancia_dedicada_ausente");
+  }
+  if (instancia.productId !== campanha.productId) {
+    return veredito(true, "instancia_de_outro_produto", instancia);
+  }
+
+  const saude = avaliarInstancia(instancia, agoraMs, cfg);
+  switch (saude.motivo) {
+    case "no_ar":
+      return veredito(false, "instancia_dedicada_conectada", instancia);
+    case "silenciada":
+      return veredito(false, "instancia_dedicada_silenciada", instancia);
+    case "queda_recente_aguardando":
+      return veredito(false, "instancia_em_queda_recente", instancia);
+    case "ja_alertado_recentemente":
+      return veredito(false, "instancia_ja_alertada_recentemente", instancia);
+    case "caida_sem_vigilancia":
+      if (campanhaAlertadaRecentemente(campanha, agoraMs, cfg)) {
+        return veredito(
+          false,
+          "campanha_ja_alertada_recentemente",
+          instancia,
+        );
+      }
+      return veredito(true, "instancia_dedicada_desconectada", instancia);
+    case "org_em_demonstracao":
+      // Inalcançável para origem plataforma; mantém o comportamento fail-open se
+      // o modelo de dados mudar sem atualizar este contrato.
+      return veredito(true, "instancia_dedicada_desconectada", instancia);
+  }
+}
+
+/**
  * Texto do alerta. Nomeia a ORIGEM de propósito: saber que a instância caída vem
  * do lado `plataforma` é o que revela o vão de cobertura para quem lê — sem isso,
  * o alerta parece só mais um "WhatsApp caiu" e a causa estrutural fica invisível.
@@ -187,7 +334,11 @@ export function avaliarCobertura(
 export function textoDoAlerta(v: VereditoInstancia): string {
   const i = v.instancia;
   const desde = i.last_connected_at
-    ? `desde ${new Date(i.last_connected_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+    ? `desde ${
+      new Date(i.last_connected_at).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+      })
+    }`
     : "sem registro de última conexão";
   const lado = i.origem === "plataforma"
     ? "PLATAFORMA (platform_crm_evolution_instances)"
@@ -200,5 +351,55 @@ export function textoDoAlerta(v: VereditoInstancia): string {
     `Fora do ar ${desde}\n\n` +
     `Enquanto isso: mensagem não entra e automação não sai.\n` +
     `Reconectar em Conexões → ler o QR.`
+  );
+}
+
+/** Alerta específico do elo campanha → instância, para tornar o impacto visível. */
+export function textoDoAlertaCampanha(v: VereditoCampanhaAtivada): string {
+  const c = v.campanha;
+  if (v.motivo === "sem_instancia_dedicada") {
+    return (
+      `🔴 CAMPANHA ATIVADA sem instância dedicada\n` +
+      `Campanha: ${c.name}\n` +
+      `Ação: fixe um burner Evolution antes do próximo disparo.`
+    );
+  }
+  if (v.motivo === "instancia_dedicada_ausente") {
+    return (
+      `🔴 CAMPANHA ATIVADA aponta para instância ausente\n` +
+      `Campanha: ${c.name}\n` +
+      `Instance ID: ${c.instanceId}\n` +
+      `Ação: corrija o pin ou recrie a instância dedicada.`
+    );
+  }
+  if (v.motivo === "instancia_de_outro_produto") {
+    return (
+      `🔴 CAMPANHA ATIVADA aponta para burner de outro produto\n` +
+      `Campanha: ${c.name}\n` +
+      `Instância: ${v.instancia?.name ?? c.instanceId}\n` +
+      `Ação: fixe uma instância pertencente ao mesmo produto da campanha.`
+    );
+  }
+
+  const i = v.instancia;
+  return (
+    `🔴 CAMPANHA ATIVADA com instância dedicada desconectada\n` +
+    `Campanha: ${c.name}\n` +
+    `Instância: ${i?.name ?? c.instanceId ?? "(ausente)"}\n` +
+    `Status: ${i?.status ?? "ausente"}\n` +
+    `Enquanto isso: a campanha está autorizada, mas não consegue enviar.`
+  );
+}
+
+/** Consolida campanhas que dependem do mesmo burner em um único Telegram. */
+export function textoDoAlertaCampanhas(
+  vereditos: VereditoCampanhaAtivada[],
+): string {
+  if (vereditos.length === 0) return "";
+  if (vereditos.length === 1) return textoDoAlertaCampanha(vereditos[0]);
+  const nomes = vereditos.map((v) => `• ${v.campanha.name}`).join("\n");
+  return (
+    `${textoDoAlertaCampanha(vereditos[0])}\n\n` +
+    `Campanhas afetadas (${vereditos.length}):\n${nomes}`
   );
 }

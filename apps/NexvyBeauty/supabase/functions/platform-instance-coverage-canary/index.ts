@@ -1,49 +1,65 @@
 // ─── platform-instance-coverage-canary ──────────────────────────────────────
 //
-// VIGIA AS DUAS TABELAS DE INSTÂNCIA. Existe porque, em 2026-08-07, a instância
+// VIGIA AS INSTÂNCIAS DA PLATAFORMA. Existe porque, em 2026-08-07, a instância
 // `prospeccao-ativa-camila` caiu às 20:18 do dia 06 e ninguém foi avisado — o
 // Marcelo descobriu porque perguntou.
 //
 // Não foi um alerta que falhou: foi um alerta que nunca olhou. O
 // `whatsapp-health-alert` lê `evolution_instances` (tenant); a instância da
 // prospecção vive em `platform_crm_evolution_instances` (plataforma). Duas
-// tabelas, um vigia.
+// tabelas, e só o lado tenant tinha vigia.
 //
 // Medido no mesmo dia: SETE edge functions leem a tabela da plataforma para
 // trabalhar; ZERO a vigiam.
 //
 // ── RELAÇÃO COM O whatsapp-health-alert ────────────────────────────────────
-// Este canário NÃO substitui nem duplica aquele. Os dois compartilham a mesma
-// marca no dado (`metadata.health_alert_at`) e o mesmo silenciador
-// (`metadata.health_mute`), então nunca alertam sobre a MESMA queda: quem chegar
-// primeiro carimba, o outro se cala. O contrato vive no DADO, não num acoplamento
-// entre funções — nenhuma das duas precisa saber que a outra existe.
+// Este canário NÃO substitui nem concorre com aquele: `whatsapp-health-alert`
+// continua sozinho no lado tenant; este endpoint cobre somente o lado plataforma.
+// A mesma marca (`metadata.health_alert_at`) preserva o contrato operacional.
 //
 // A decisão de alertar é do módulo PURO `_shared/instance-coverage.ts`
-// (14 testes). Aqui só há I/O.
+// (32 testes). Aqui só há I/O.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { sendTelegramAlert } from '../_shared/platform-alerts.ts'
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendTelegramAlert } from "../_shared/platform-alerts.ts";
 import {
+  avaliarCampanhaAtivada,
   avaliarCobertura,
+  type CampanhaAtivada,
   type InstanciaVigiada,
   textoDoAlerta,
-} from '../_shared/instance-coverage.ts'
+  textoDoAlertaCampanhas,
+  type VereditoCampanhaAtivada,
+} from "../_shared/instance-coverage.ts";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 const json = (b: unknown, s = 200) =>
-  new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+
+interface CampaignHealthRow {
+  id: string;
+  campaign_id: string;
+  instance_id: string | null;
+  coverage_alert_at: string | null;
+}
+
+const campaignHealthKey = (campaignId: string, instanceId: string | null) =>
+  `${campaignId}:${instanceId ?? "__sem_instancia__"}`;
 
 /**
- * As duas tabelas e de que lado cada uma está. Acrescentar aqui é o ponto de
- * extensão.
+ * A tabela que estava sem vigia. O lado tenant fica deliberadamente fora para
+ * não concorrer com `whatsapp-health-alert`.
  *
  * `colunas` difere por fonte porque o SCHEMA difere (medido 2026-08-07):
  * `evolution_instances` tem `organization_id`; `platform_crm_evolution_instances`
@@ -51,115 +67,381 @@ const json = (b: unknown, s = 200) =>
  * erro — e a fonte inteira sumiria do tick, que é exatamente o silêncio que este
  * canário existe para combater.
  */
-const FONTES: Array<{ tabela: string; origem: InstanciaVigiada['origem']; colunas: string }> = [
+const FONTES: Array<
+  { tabela: string; origem: InstanciaVigiada["origem"]; colunas: string }
+> = [
   {
-    tabela: 'evolution_instances',
-    origem: 'tenant',
-    colunas: 'id, name, status, last_connected_at, metadata, organization_id',
+    tabela: "platform_crm_evolution_instances",
+    origem: "plataforma",
+    colunas:
+      "id, name, status, last_connected_at, created_at, metadata, product_id",
   },
-  {
-    tabela: 'platform_crm_evolution_instances',
-    origem: 'plataforma',
-    colunas: 'id, name, status, last_connected_at, metadata',
-  },
-]
+];
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
-  // Mesmo gate do health-alert: valida a CLAIM `role`, não a string da chave —
-  // o projeto tem chave legada e nova ao mesmo tempo, e comparar string acopla
-  // a função ao formato dela.
-  const auth = req.headers.get('authorization') ?? ''
-  const tk = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-  let papel = ''
-  if (tk === SERVICE_ROLE) papel = 'service_role'
-  else {
-    try {
-      const p = (tk.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/')
-      papel = JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4)))?.role ?? ''
-    } catch { papel = '' }
+  if (!SUPABASE_URL || !SERVICE_ROLE) {
+    console.error("[coverage-canary] SUPABASE_URL/SERVICE_ROLE ausente");
+    return json({ error: "configuracao_invalida" }, 500);
   }
-  if (papel !== 'service_role') return json({ error: 'nao_autorizado' }, 401)
 
-  const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
-
-  // ── ORGS EM DEMONSTRAÇÃO ───────────────────────────────────────────────────
-  // `qr_pending` numa demo é o estado NORMAL de quem abriu o wizard e não pareou.
-  // Sem este filtro, cada lead que desiste na etapa 2 vira "WhatsApp DESCONECTADO"
-  // — e no dia do anúncio isso é ruído em massa, que treina a ignorar o canal.
-  //
-  // FALHA ABERTA de propósito: se a leitura falhar, o conjunto fica vazio e todas
-  // voltam a ser vigiadas. Um alerta a mais é barato; um salão pago caído em
-  // silêncio, não.
-  const { data: orgsDemo, error: errDemo } = await db
-    .from('organizations').select('id').eq('plan_status', 'demo')
-  if (errDemo) {
-    console.warn('[coverage-canary] falha ao listar orgs demo — vigiando TODAS:', errDemo.message)
+  // O gateway fica com verify_jwt=false porque a service_role pode ser uma chave
+  // opaca `sb_secret_`. Por isso a autenticação REAL precisa acontecer aqui e
+  // comparar o bearer inteiro; apenas decodificar `role` sem verificar assinatura
+  // permitiria que qualquer pessoa forjasse um JWT com role=service_role.
+  const auth = req.headers.get("authorization") ?? "";
+  if (auth !== `Bearer ${SERVICE_ROLE}`) {
+    return json({ error: "nao_autorizado" }, 401);
   }
-  const idsDemo = new Set<string>((orgsDemo ?? []).map((o) => o.id as string))
 
-  const instancias: InstanciaVigiada[] = []
-  const falhas: string[] = []
+  const db = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    auth: { persistSession: false },
+  });
+
+  const instancias: InstanciaVigiada[] = [];
+  const falhas: string[] = [];
+  const { error: errRearm } = await db.rpc(
+    "pcrm_rearm_connected_health_alerts",
+  );
+  if (errRearm) {
+    falhas.push(`pcrm_rearm_connected_health_alerts: ${errRearm.message}`);
+  }
 
   for (const f of FONTES) {
     const { data, error } = await db
       .from(f.tabela)
-      .select(f.colunas)
+      .select(f.colunas);
     if (error) {
       // Uma fonte ilegível NÃO pode virar "não há instâncias aqui" — esse é
       // exatamente o silêncio que o canário existe para combater. Registra a
       // falha, segue com as outras, e o relatório denuncia a lacuna.
-      falhas.push(`${f.tabela}: ${error.message}`)
-      console.error('[coverage-canary] FONTE ILEGÍVEL — cobertura INCOMPLETA neste tick', {
-        tabela: f.tabela, erro: error.message,
-      })
-      continue
+      falhas.push(`${f.tabela}: ${error.message}`);
+      console.error(
+        "[coverage-canary] FONTE ILEGÍVEL — cobertura INCOMPLETA neste tick",
+        {
+          tabela: f.tabela,
+          erro: error.message,
+        },
+      );
+      continue;
     }
     // Cast explícito: o supabase-js só infere tipos quando `select()` recebe uma
     // string LITERAL. Com `f.colunas` (dinâmica, porque o schema difere por
     // fonte) ele devolve `{ error: true }` e o typecheck quebra em todo acesso.
-    const linhas = (data ?? []) as unknown as Record<string, unknown>[]
+    const linhas = (data ?? []) as unknown as Record<string, unknown>[];
     for (const r of linhas) {
       instancias.push({
         id: r.id as string,
-        name: (r.name as string) ?? '(sem nome)',
-        status: (r.status as string) ?? '',
+        name: (r.name as string) ?? "(sem nome)",
+        status: (r.status as string) ?? "",
         last_connected_at: (r.last_connected_at as string) ?? null,
+        createdAt: (r.created_at as string) ?? null,
         origem: f.origem,
         metadata: (r.metadata ?? {}) as Record<string, unknown>,
+        productId: r.product_id as string | null | undefined,
         // Só a tabela tenant tem esta coluna; do lado plataforma vem undefined,
         // e undefined significa "não pertence a org", não "caso omisso".
         organizationId: r.organization_id as string | null | undefined,
-      })
+      });
     }
   }
 
-  const { aAlertar, todos } = avaliarCobertura(instancias, Date.now(), { orgsDemo: idsDemo })
+  const agoraMs = Date.now();
+  const { aAlertar, todos } = avaliarCobertura(instancias, agoraMs);
 
-  for (const v of aAlertar) {
-    await sendTelegramAlert(textoDoAlerta(v))
-    // Carimba a MESMA marca que o health-alert usa, na tabela de origem.
-    const tabela = v.instancia.origem === 'tenant'
-      ? 'evolution_instances'
-      : 'platform_crm_evolution_instances'
-    await db.from(tabela)
-      .update({ metadata: { ...(v.instancia.metadata ?? {}), health_alert_at: new Date().toISOString() } })
-      .eq('id', v.instancia.id)
+  // Uma campanha WhatsApp autorizada depende de UM burner pinado por instance_id.
+  // O schema real declara esse elo em platform_crm_cold_campaigns e o motor envia
+  // pelo platform_crm_evolution_instances. Só avaliamos o elo se essa fonte foi
+  // legível; do contrário, "não encontrei" seria um falso "instância ausente".
+  // O throttle vive em cold_instance_health, inclusive quando não existe burner.
+  const vereditosCampanha: VereditoCampanhaAtivada[] = [];
+  const campaignHealthByKey = new Map<string, CampaignHealthRow>();
+  if (!falhas.some((f) => f.startsWith("platform_crm_evolution_instances:"))) {
+    const { data: healthData, error: errHealth } = await db
+      .from("platform_crm_cold_instance_health")
+      .select("id, campaign_id, instance_id, coverage_alert_at");
+    if (errHealth) {
+      falhas.push(`platform_crm_cold_instance_health: ${errHealth.message}`);
+    } else {
+      const healthRows = (healthData ?? []) as CampaignHealthRow[];
+      for (const row of healthRows) {
+        campaignHealthByKey.set(
+          campaignHealthKey(row.campaign_id, row.instance_id),
+          row,
+        );
+      }
+      const { data: campanhas, error: errCampanhas } = await db
+        .from("platform_crm_cold_campaigns")
+        .select(
+          "id, name, channel, status, activated_at, scheduled_start_at, scheduled_end_at, product_id, instance_id",
+        )
+        .eq("channel", "whatsapp")
+        .in("status", ["active", "warming"])
+        .not("activated_at", "is", null);
+
+      if (errCampanhas) {
+        falhas.push(`platform_crm_cold_campaigns: ${errCampanhas.message}`);
+        console.error(
+          "[coverage-canary] CAMPANHAS ILEGÍVEIS — cobertura INCOMPLETA neste tick",
+          {
+            erro: errCampanhas.message,
+          },
+        );
+      } else {
+        for (const r of (campanhas ?? []) as Record<string, unknown>[]) {
+          const instanceId = (r.instance_id as string) ?? null;
+          const health = campaignHealthByKey.get(
+            campaignHealthKey(r.id as string, instanceId),
+          );
+          const campanha: CampanhaAtivada = {
+            id: r.id as string,
+            name: (r.name as string) ?? "(sem nome)",
+            channel: (r.channel as string) ?? "",
+            status: (r.status as string) ?? "",
+            activatedAt: (r.activated_at as string) ?? null,
+            scheduledStartAt: (r.scheduled_start_at as string) ?? null,
+            scheduledEndAt: (r.scheduled_end_at as string) ?? null,
+            productId: r.product_id as string,
+            instanceId,
+            coverageAlertAt: health?.coverage_alert_at ?? null,
+          };
+          vereditosCampanha.push(
+            avaliarCampanhaAtivada(campanha, instancias, agoraMs),
+          );
+        }
+      }
+    }
+  }
+
+  const campanhasAAlertar = vereditosCampanha.filter((v) => v.alertar);
+  const campanhasAlertadas: typeof campanhasAAlertar = [];
+  const idsCobertosPorAlertaDeCampanha = new Set<string>();
+  const alertedAt = new Date(agoraMs).toISOString();
+  // Claim provisório "envelhece" em 10 min. Depois do Telegram, finalize troca
+  // pelo timestamp real (6h). Se release/finalize falhar, não há silêncio de 6h.
+  const claimedAt = new Date(agoraMs - 5 * 3_600_000 - 50 * 60_000)
+    .toISOString();
+  const staleBefore = new Date(agoraMs - 6 * 3_600_000).toISOString();
+
+  const gruposCampanha = new Map<string, VereditoCampanhaAtivada[]>();
+  for (const v of campanhasAAlertar) {
+    const chave = v.motivo === "instancia_dedicada_desconectada" && v.instancia
+      ? `instancia:${v.instancia.id}`
+      : `campanha:${v.campanha.id}`;
+    const grupo = gruposCampanha.get(chave) ?? [];
+    grupo.push(v);
+    gruposCampanha.set(chave, grupo);
+  }
+
+  const releaseCampaigns = async (grupo: VereditoCampanhaAtivada[]) => {
+    for (const v of grupo) {
+      const { error } = await db.rpc(
+        "pcrm_release_campaign_coverage_alert",
+        {
+          p_campaign_id: v.campanha.id,
+          p_instance_id: v.campanha.instanceId,
+          p_claimed_at: claimedAt,
+        },
+      );
+      if (error) {
+        falhas.push(`release campanha ${v.campanha.id}: ${error.message}`);
+      }
+    }
+  };
+
+  // O alerta de campanha é mais específico e substitui o genérico no mesmo tick.
+  // O claim atômico acontece ANTES do envio. Em falha de Telegram, soltamos apenas
+  // o claim que ainda tem o nosso timestamp; nenhuma chave concorrente é perdida.
+  for (const grupo of gruposCampanha.values()) {
+    const claimedCampaigns: VereditoCampanhaAtivada[] = [];
+    for (const v of grupo) {
+      const { data: campaignClaimed, error: campaignClaimError } = await db.rpc(
+        "pcrm_claim_campaign_coverage_alert",
+        {
+          p_campaign_id: v.campanha.id,
+          p_instance_id: v.campanha.instanceId,
+          p_claimed_at: claimedAt,
+          p_stale_before: staleBefore,
+        },
+      );
+      if (campaignClaimError) {
+        falhas.push(
+          `claim campanha ${v.campanha.id}: ${campaignClaimError.message}`,
+        );
+      } else if (campaignClaimed === true) {
+        claimedCampaigns.push(v);
+      }
+    }
+    if (claimedCampaigns.length === 0) continue;
+
+    const v = claimedCampaigns[0];
+    const claimDaInstancia = v.motivo === "instancia_dedicada_desconectada" &&
+      v.instancia;
+    if (claimDaInstancia) {
+      const { data: instanceClaimed, error: instanceClaimError } = await db.rpc(
+        "pcrm_claim_instance_health_alert",
+        {
+          p_instance_id: claimDaInstancia.id,
+          p_claimed_at: claimedAt,
+          p_stale_before: staleBefore,
+        },
+      );
+      if (instanceClaimError || instanceClaimed !== true) {
+        await releaseCampaigns(claimedCampaigns);
+        if (instanceClaimError) {
+          falhas.push(
+            `claim instância ${claimDaInstancia.id}: ${instanceClaimError.message}`,
+          );
+        }
+        continue;
+      }
+    }
+
+    const envio = await sendTelegramAlert(
+      textoDoAlertaCampanhas(claimedCampaigns),
+    );
+    if (!envio.ok) {
+      await releaseCampaigns(claimedCampaigns);
+      if (claimDaInstancia) {
+        const { error } = await db.rpc(
+          "pcrm_release_instance_health_alert",
+          {
+            p_instance_id: claimDaInstancia.id,
+            p_claimed_at: claimedAt,
+          },
+        );
+        if (error) {
+          falhas.push(
+            `release instância ${claimDaInstancia.id}: ${error.message}`,
+          );
+        }
+      }
+      falhas.push(
+        `telegram: campanhas ${
+          claimedCampaigns.map((item) => item.campanha.id).join(",")
+        } não alertadas`,
+      );
+      continue;
+    }
+
+    for (const item of claimedCampaigns) {
+      const { data: finalized, error } = await db.rpc(
+        "pcrm_finalize_campaign_coverage_alert",
+        {
+          p_campaign_id: item.campanha.id,
+          p_instance_id: item.campanha.instanceId,
+          p_claimed_at: claimedAt,
+          p_alerted_at: alertedAt,
+        },
+      );
+      if (error || finalized !== true) {
+        falhas.push(
+          `finalize campanha ${item.campanha.id}: ${
+            error?.message ?? "claim não encontrado"
+          }`,
+        );
+      }
+    }
+    if (claimDaInstancia) {
+      const { data: finalized, error } = await db.rpc(
+        "pcrm_finalize_instance_health_alert",
+        {
+          p_instance_id: claimDaInstancia.id,
+          p_claimed_at: claimedAt,
+          p_alerted_at: alertedAt,
+        },
+      );
+      if (error || finalized !== true) {
+        falhas.push(
+          `finalize instância ${claimDaInstancia.id}: ${
+            error?.message ?? "claim não encontrado"
+          }`,
+        );
+      }
+    }
+
+    campanhasAlertadas.push(...claimedCampaigns);
+    if (v.instancia) idsCobertosPorAlertaDeCampanha.add(v.instancia.id);
+  }
+
+  const instanciasAAlertar = aAlertar.filter(
+    (v) => !idsCobertosPorAlertaDeCampanha.has(v.instancia.id),
+  );
+  const instanciasAlertadas: typeof instanciasAAlertar = [];
+  for (const v of instanciasAAlertar) {
+    const { data: claimed, error: claimError } = await db.rpc(
+      "pcrm_claim_instance_health_alert",
+      {
+        p_instance_id: v.instancia.id,
+        p_claimed_at: claimedAt,
+        p_stale_before: staleBefore,
+      },
+    );
+    if (claimError) {
+      falhas.push(`claim instância ${v.instancia.id}: ${claimError.message}`);
+      continue;
+    }
+    if (claimed !== true) continue;
+
+    const envio = await sendTelegramAlert(textoDoAlerta(v));
+    if (!envio.ok) {
+      const { error } = await db.rpc(
+        "pcrm_release_instance_health_alert",
+        {
+          p_instance_id: v.instancia.id,
+          p_claimed_at: claimedAt,
+        },
+      );
+      if (error) {
+        falhas.push(`release instância ${v.instancia.id}: ${error.message}`);
+      }
+      falhas.push(`telegram: instância ${v.instancia.id} não alertada`);
+      continue;
+    }
+
+    const { data: finalized, error } = await db.rpc(
+      "pcrm_finalize_instance_health_alert",
+      {
+        p_instance_id: v.instancia.id,
+        p_claimed_at: claimedAt,
+        p_alerted_at: alertedAt,
+      },
+    );
+    if (error || finalized !== true) {
+      falhas.push(
+        `finalize instância ${v.instancia.id}: ${
+          error?.message ?? "claim não encontrado"
+        }`,
+      );
+    }
+    instanciasAlertadas.push(v);
   }
 
   return json({
-    ok: true,
+    ok: falhas.length === 0,
     // `fontes_ilegiveis` não-vazio significa que este tick NÃO cobriu tudo.
     // Sem esse campo, um relatório de zero alertas seria indistinguível de
     // "não consegui olhar".
     fontes_ilegiveis: falhas,
     instancias: instancias.length,
-    alertadas: aAlertar.length,
-    detalhe: aAlertar.map((v) => ({ nome: v.instancia.name, lado: v.instancia.origem })),
+    alertadas: instanciasAlertadas.length + campanhasAlertadas.length,
+    detalhe: [
+      ...instanciasAlertadas.map((v) => ({
+        tipo: "instancia",
+        nome: v.instancia.name,
+        lado: v.instancia.origem,
+      })),
+      ...campanhasAlertadas.map((v) => ({
+        tipo: "campanha",
+        nome: v.campanha.name,
+        motivo: v.motivo,
+      })),
+    ],
+    campanhas_avaliadas: vereditosCampanha.length,
     por_motivo: todos.reduce<Record<string, number>>((acc, v) => {
-      acc[v.motivo] = (acc[v.motivo] ?? 0) + 1
-      return acc
+      acc[v.motivo] = (acc[v.motivo] ?? 0) + 1;
+      return acc;
     }, {}),
-  })
-})
+  }, falhas.length === 0 ? 200 : 503);
+});

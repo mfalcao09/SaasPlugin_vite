@@ -2,10 +2,14 @@
 //   deno test --no-check supabase/functions/_shared/instance-coverage.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  avaliarCampanhaAtivada,
   avaliarCobertura,
   avaliarInstancia,
+  type CampanhaAtivada,
   type InstanciaVigiada,
   textoDoAlerta,
+  textoDoAlertaCampanha,
+  textoDoAlertaCampanhas,
 } from "./instance-coverage.ts";
 
 const AGORA = Date.parse("2026-08-07T09:00:00Z");
@@ -17,8 +21,26 @@ function inst(over: Partial<InstanciaVigiada> = {}): InstanciaVigiada {
     name: "instancia-exemplo",
     status: "qr_pending",
     last_connected_at: "2026-08-06T23:00:00Z", // 10h atrás
+    createdAt: "2026-08-06T22:00:00Z",
     origem: "plataforma",
     metadata: {},
+    productId: "product-1",
+    ...over,
+  };
+}
+
+function campanha(over: Partial<CampanhaAtivada> = {}): CampanhaAtivada {
+  return {
+    id: "camp-1",
+    name: "Campanha autorizada",
+    channel: "whatsapp",
+    status: "active",
+    activatedAt: "2026-08-07T08:00:00Z",
+    scheduledStartAt: null,
+    scheduledEndAt: null,
+    productId: "product-1",
+    instanceId: "id-1",
+    coverageAlertAt: null,
     ...over,
   };
 }
@@ -40,7 +62,10 @@ Deno.test("ANTI-NO-OP — o canário vê o que o health-alert NÃO vê", () => {
   // lado plataforma simplesmente não existem. Se o canário concordasse com ele
   // em todos os casos, seria decoração cara.
   const soTenant = (i: InstanciaVigiada) => i.origem === "tenant"; // o "modelo" do health-alert
-  const camila = inst({ name: "prospeccao-ativa-camila", origem: "plataforma" });
+  const camila = inst({
+    name: "prospeccao-ativa-camila",
+    origem: "plataforma",
+  });
 
   assertEquals(soTenant(camila), false); // health-alert: nem enxerga
   assertEquals(avaliarInstancia(camila, AGORA).alertar, true); // canário: acusa
@@ -80,7 +105,11 @@ Deno.test("filtro é por plan_status, NÃO por nome: instância 'demo-...' de or
   // `demo-` no nome é convenção do wizard; nada impede um tenant de se chamar
   // assim. Filtrar por nome silenciaria um cliente pagante.
   const v = avaliarInstancia(
-    inst({ name: "demo-salao-da-ana", origem: "tenant", organizationId: "org-pagante-9" }),
+    inst({
+      name: "demo-salao-da-ana",
+      origem: "tenant",
+      organizationId: "org-pagante-9",
+    }),
     AGORA,
     { orgsDemo: DEMO },
   );
@@ -120,7 +149,10 @@ Deno.test("cfg sem orgsDemo não quebra (compatível com chamada antiga)", () =>
 // CONTROLES NEGATIVOS — o que NÃO pode virar alerta
 // ═══════════════════════════════════════════════════════════════════════════
 Deno.test("no ar não alerta", () => {
-  assertEquals(avaliarInstancia(inst({ status: "connected" }), AGORA).motivo, "no_ar");
+  assertEquals(
+    avaliarInstancia(inst({ status: "connected" }), AGORA).motivo,
+    "no_ar",
+  );
 });
 
 Deno.test("silenciada não alerta, mesmo caída há muito tempo", () => {
@@ -140,12 +172,17 @@ Deno.test("queda RECENTE não alerta — reconexão normal não é incidente", (
 });
 
 Deno.test("FRONTEIRA — exatamente no limiar de 30min já acusa", () => {
-  const noLimiar = inst({ last_connected_at: new Date(AGORA - 30 * 60_000).toISOString() });
+  const noLimiar = inst({
+    last_connected_at: new Date(AGORA - 30 * 60_000).toISOString(),
+  });
   assertEquals(avaliarInstancia(noLimiar, AGORA).alertar, true);
   const umSegundoAntes = inst({
     last_connected_at: new Date(AGORA - 30 * 60_000 + 1000).toISOString(),
   });
-  assertEquals(avaliarInstancia(umSegundoAntes, AGORA).motivo, "queda_recente_aguardando");
+  assertEquals(
+    avaliarInstancia(umSegundoAntes, AGORA).motivo,
+    "queda_recente_aguardando",
+  );
 });
 
 Deno.test("THROTTLE COMPARTILHADO — se o health-alert já avisou, o canário se cala", () => {
@@ -154,7 +191,10 @@ Deno.test("THROTTLE COMPARTILHADO — se o health-alert já avisou, o canário s
   const jaAvisado = inst({
     metadata: { health_alert_at: new Date(AGORA - 2 * H).toISOString() },
   });
-  assertEquals(avaliarInstancia(jaAvisado, AGORA).motivo, "ja_alertado_recentemente");
+  assertEquals(
+    avaliarInstancia(jaAvisado, AGORA).motivo,
+    "ja_alertado_recentemente",
+  );
 });
 
 Deno.test("marca VELHA (>6h) volta a alertar — queda longa não pode virar silêncio eterno", () => {
@@ -166,9 +206,24 @@ Deno.test("marca VELHA (>6h) volta a alertar — queda longa não pode virar sil
 
 Deno.test("sem last_connected_at e caída: ACUSA — nunca conectou é o caso que se quer ver", () => {
   // Tratar ausência como "queda recente" daria carta branca a quem nunca funcionou.
-  const v = avaliarInstancia(inst({ last_connected_at: null }), AGORA);
+  const v = avaliarInstancia(
+    inst({ last_connected_at: null, createdAt: "2026-08-06T23:00:00Z" }),
+    AGORA,
+  );
   assertEquals(v.alertar, true);
   assertEquals(v.motivo, "caida_sem_vigilancia");
+});
+
+Deno.test("instância recém-criada sem conexão recebe 30min de graça", () => {
+  const v = avaliarInstancia(
+    inst({
+      last_connected_at: null,
+      createdAt: new Date(AGORA - 10 * 60_000).toISOString(),
+    }),
+    AGORA,
+  );
+  assertEquals(v.alertar, false);
+  assertEquals(v.motivo, "queda_recente_aguardando");
 });
 
 Deno.test("metadata null não quebra e não impede o alerta", () => {
@@ -178,7 +233,10 @@ Deno.test("metadata null não quebra e não impede o alerta", () => {
 Deno.test("data inválida em last_connected_at não vira 'recente'", () => {
   // Date.parse('lixo') é NaN; se NaN passasse pelo teste de recência, uma data
   // corrompida silenciaria o alerta — falha para o lado errado.
-  assertEquals(avaliarInstancia(inst({ last_connected_at: "lixo" }), AGORA).alertar, true);
+  assertEquals(
+    avaliarInstancia(inst({ last_connected_at: "lixo" }), AGORA).alertar,
+    true,
+  );
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -197,16 +255,182 @@ Deno.test("avaliarCobertura separa quem merece alerta, preservando o resto", () 
 });
 
 Deno.test("o texto NOMEIA o lado — é o que revela o vão a quem lê", () => {
-  const t = textoDoAlerta(avaliarInstancia(inst({ name: "prospeccao-ativa-camila" }), AGORA));
+  const t = textoDoAlerta(
+    avaliarInstancia(inst({ name: "prospeccao-ativa-camila" }), AGORA),
+  );
   if (!t.includes("platform_crm_evolution_instances")) {
-    throw new Error("o alerta precisa dizer de QUAL tabela veio, senão a causa some");
+    throw new Error(
+      "o alerta precisa dizer de QUAL tabela veio, senão a causa some",
+    );
   }
-  if (!t.includes("prospeccao-ativa-camila")) throw new Error("faltou o nome da instância");
+  if (!t.includes("prospeccao-ativa-camila")) {
+    throw new Error("faltou o nome da instância");
+  }
 });
 
 Deno.test("limiares são CONFIGURÁVEIS", () => {
-  const caida2h = inst({ last_connected_at: new Date(AGORA - 2 * H).toISOString() });
+  const caida2h = inst({
+    last_connected_at: new Date(AGORA - 2 * H).toISOString(),
+  });
   // Com exigência de 3h de queda, 2h ainda não acusa.
-  assertEquals(avaliarInstancia(caida2h, AGORA, { minutosParaAcusar: 180 }).alertar, false);
-  assertEquals(avaliarInstancia(caida2h, AGORA, { minutosParaAcusar: 60 }).alertar, true);
+  assertEquals(
+    avaliarInstancia(caida2h, AGORA, { minutosParaAcusar: 180 }).alertar,
+    false,
+  );
+  assertEquals(
+    avaliarInstancia(caida2h, AGORA, { minutosParaAcusar: 60 }).alertar,
+    true,
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMPANHA AUTORIZADA → INSTÂNCIA DEDICADA
+// ═══════════════════════════════════════════════════════════════════════════
+Deno.test("campanha autorizada alerta quando não tem instância dedicada", () => {
+  const v = avaliarCampanhaAtivada(campanha({ instanceId: null }), [], AGORA);
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "sem_instancia_dedicada");
+});
+
+Deno.test("campanha autorizada alerta quando a instância dedicada não existe", () => {
+  const v = avaliarCampanhaAtivada(campanha(), [], AGORA);
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "instancia_dedicada_ausente");
+});
+
+Deno.test("campanha autorizada alerta quando a instância dedicada está desconectada", () => {
+  const v = avaliarCampanhaAtivada(campanha(), [inst()], AGORA);
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "instancia_dedicada_desconectada");
+  assertEquals(v.instancia?.id, "id-1");
+});
+
+Deno.test("campanha sem autorização, pausada ou de Instagram fica fora do alerta", () => {
+  assertEquals(
+    avaliarCampanhaAtivada(campanha({ activatedAt: null }), [], AGORA).motivo,
+    "campanha_nao_autorizada",
+  );
+  assertEquals(
+    avaliarCampanhaAtivada(campanha({ status: "paused" }), [], AGORA).motivo,
+    "campanha_nao_autorizada",
+  );
+  assertEquals(
+    avaliarCampanhaAtivada(campanha({ channel: "instagram" }), [], AGORA)
+      .motivo,
+    "canal_nao_whatsapp",
+  );
+});
+
+Deno.test("campanha antes do início ou depois do fim não gera alerta", () => {
+  assertEquals(
+    avaliarCampanhaAtivada(
+      campanha({ scheduledStartAt: new Date(AGORA + H).toISOString() }),
+      [],
+      AGORA,
+    ).motivo,
+    "campanha_fora_da_janela",
+  );
+  assertEquals(
+    avaliarCampanhaAtivada(
+      campanha({ scheduledEndAt: new Date(AGORA - H).toISOString() }),
+      [],
+      AGORA,
+    ).motivo,
+    "campanha_fora_da_janela",
+  );
+});
+
+Deno.test("instância tenant de org demo nunca satisfaz o pin da campanha de plataforma", () => {
+  const tenantDemo = inst({
+    origem: "tenant",
+    organizationId: "org-demo-1",
+    status: "connected",
+  });
+  const v = avaliarCampanhaAtivada(campanha(), [tenantDemo], AGORA, {
+    orgsDemo: DEMO,
+  });
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "instancia_dedicada_ausente");
+});
+
+Deno.test("burner de outro produto não satisfaz a campanha", () => {
+  const v = avaliarCampanhaAtivada(
+    campanha({ productId: "product-1" }),
+    [inst({ status: "connected", productId: "product-2" })],
+    AGORA,
+  );
+  assertEquals(v.alertar, true);
+  assertEquals(v.motivo, "instancia_de_outro_produto");
+});
+
+Deno.test("campanha com instância conectada ou já alertada não duplica aviso", () => {
+  assertEquals(
+    avaliarCampanhaAtivada(campanha(), [inst({ status: "connected" })], AGORA)
+      .motivo,
+    "instancia_dedicada_conectada",
+  );
+  const jaAlertada = inst({
+    metadata: { health_alert_at: new Date(AGORA - 2 * H).toISOString() },
+  });
+  assertEquals(
+    avaliarCampanhaAtivada(campanha(), [jaAlertada], AGORA).motivo,
+    "instancia_ja_alertada_recentemente",
+  );
+});
+
+Deno.test("throttle da campanha cobre pin ausente, instância ausente e desconectada", () => {
+  const coverageAlertAt = new Date(AGORA - 2 * H).toISOString();
+  for (
+    const [camp, instancias] of [
+      [campanha({ instanceId: null, coverageAlertAt }), []],
+      [campanha({ coverageAlertAt }), []],
+      [campanha({ coverageAlertAt }), [inst()]],
+    ] as const
+  ) {
+    const v = avaliarCampanhaAtivada(camp, [...instancias], AGORA);
+    assertEquals(v.alertar, false);
+    assertEquals(v.motivo, "campanha_ja_alertada_recentemente");
+  }
+});
+
+Deno.test("texto do alerta de campanha identifica campanha, pin ausente e instância", () => {
+  const semPin = textoDoAlertaCampanha(
+    avaliarCampanhaAtivada(campanha({ instanceId: null }), [], AGORA),
+  );
+  if (
+    !semPin.includes("Campanha autorizada") ||
+    !semPin.includes("sem instância dedicada")
+  ) {
+    throw new Error("alerta sem pin precisa identificar campanha e causa");
+  }
+
+  const desconectada = textoDoAlertaCampanha(
+    avaliarCampanhaAtivada(
+      campanha(),
+      [inst({ name: "burner-camila" })],
+      AGORA,
+    ),
+  );
+  if (
+    !desconectada.includes("burner-camila") ||
+    !desconectada.includes("desconectada")
+  ) {
+    throw new Error(
+      "alerta precisa identificar a instância dedicada desconectada",
+    );
+  }
+});
+
+Deno.test("campanhas no mesmo burner são consolidadas em um alerta", () => {
+  const vereditos = ["Campanha A", "Campanha B"].map((name, index) =>
+    avaliarCampanhaAtivada(
+      campanha({ id: `camp-${index}`, name }),
+      [inst()],
+      AGORA,
+    )
+  );
+  const texto = textoDoAlertaCampanhas(vereditos);
+  assertEquals(texto.includes("Campanhas afetadas (2)"), true);
+  assertEquals(texto.includes("Campanha A"), true);
+  assertEquals(texto.includes("Campanha B"), true);
 });

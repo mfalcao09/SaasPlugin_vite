@@ -171,6 +171,13 @@ verify_jwt = false
 [functions.platform-cold-outreach]
 verify_jwt = false
 
+# Canário interno de cobertura das instâncias Evolution. Chamado por pg_cron com
+# Bearer service_role vindo do Vault. A chave service_role pode usar o formato
+# opaco `sb_secret_` (não-JWT), então o gateway não deve tentar decodificá-la;
+# a função faz o gate interno comparando o Bearer com SUPABASE_SERVICE_ROLE_KEY.
+[functions.platform-instance-coverage-canary]
+verify_jwt = false
+
 # ── Webhooks PÚBLICOS de terceiros (provider -> plataforma) ──────────────────
 # Provedores de pagamento/anúncio NUNCA mandam JWT Supabase; a auth real é feita
 # DENTRO de cada função (secret/HMAC/token). Sem estes blocos, um redeploy religa
