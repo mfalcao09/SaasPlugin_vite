@@ -29,13 +29,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { fetchChannelUsage, channelLimitMessage, type ChannelUsage } from "../_shared/channel-limit.ts";
 import {
-  configureWebhook,
   evoFetch,
   extractQr,
   getPlatformConfig,
   maskKey,
   orgSlugify,
 } from "../_shared/evolution-core.ts";
+import { configureOnboardingEvolutionWebhook as configureWebhook } from "../_shared/evolution-webhook-provisioners.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

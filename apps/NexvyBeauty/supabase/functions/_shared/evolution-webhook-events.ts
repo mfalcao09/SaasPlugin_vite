@@ -87,6 +87,29 @@ export const EVOLUTION_WEBHOOK_EVENTS: EvolutionEvent[] = [
   "SEND_MESSAGE",
 ];
 
+/** Contrato histórico do CRM tenant e do onboarding pago. */
+export const TENANT_EVOLUTION_WEBHOOK_EVENTS: EvolutionEvent[] = [
+  "MESSAGES_SET",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "MESSAGES_DELETE",
+  "CHATS_SET",
+  "CONTACTS_SET",
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "SEND_MESSAGE",
+];
+
+/** Contrato enxuto do CRM de plataforma. */
+export const PLATFORM_EVOLUTION_WEBHOOK_EVENTS: EvolutionEvent[] = [
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "MESSAGES_DELETE",
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "SEND_MESSAGE",
+];
+
 /**
  * Guarda de execução: devolve os nomes que a Evolution vai rejeitar.
  *
