@@ -48,6 +48,23 @@ if [ ! -f "$TPL" ]; then
   exit 1
 fi
 
+# ── 0a. gate: working tree limpa (este script builda do DISCO, nao de um SHA) ─
+# Escape: ALLOW_DIRTY_DEPLOY=1 (emergencia apenas; documente o motivo no log).
+if [ "${ALLOW_DIRTY_DEPLOY:-0}" != "1" ] && [ -d "$REPO/.git" ]; then
+  if ! git -C "$REPO" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "AVISO: $REPO nao parece um worktree git; seguindo sem gate de sujeira." >&2
+  else
+    DIRTY="$(git -C "$REPO" status --porcelain 2>/dev/null || true)"
+    if [ -n "$DIRTY" ]; then
+      echo "GATE FALHOU: working tree sujo em $REPO — deploy abortado." >&2
+      echo "  Este script empacota o que estiver no disco. Rode: git status" >&2
+      echo "  Escape consciente: ALLOW_DIRTY_DEPLOY=1 $0 $*" >&2
+      echo "$DIRTY" | head -40 >&2
+      exit 1
+    fi
+  fi
+fi
+
 DOMAIN_URL="https://$DOMAIN/"
 
 # ── 0. snapshot anti-phantom: hash do bundle SERVIDO hoje (antes do deploy) ───

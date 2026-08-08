@@ -44,7 +44,7 @@ O script só retorna `0` quando **prova** que o bundle novo está servindo (gate
 | CRM do grupo | `gestao.nexvy.tech` → **mesmo container**, mas roteado por arquivo Traefik **separado**: `/opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml` |
 | Alvo do gate (3º arg) | `app.nexvybeauty.com.br` |
 
-**Ponto crítico de entendimento:** o `deploy-vps.sh` **builda do WORKING TREE** de `/opt/stacks/saasplugin-vite` — **não** de um checkout limpo, **não** faz `git pull` sozinho. Ele empacota o que estiver no disco. Por isso o `git pull --ff-only` **antes** de rodar o script é o que garante que o build reflete o commit certo. Se o working tree estiver sujo/divergente, você builda a sujeira.
+**Ponto crítico de entendimento:** o `deploy-vps.sh` **builda do WORKING TREE** de `/opt/stacks/saasplugin-vite` — **não** de um checkout limpo, **não** faz `git pull` sozinho. Ele empacota o que estiver no disco. Por isso o `git pull --ff-only` **antes** de rodar o script é o que garante que o build reflete o commit certo. Se o working tree estiver sujo/divergente, o script **aborta** (gate 0a) salvo `ALLOW_DIRTY_DEPLOY=1`.
 
 **Segundo ponto crítico:** os hosts do NexvyBeauty são **hardcodados no template** (`app.` + apex/www). O argumento `DOMAIN` do script **não** cria rota nenhuma — ele só monta a URL que o gate vai testar (`https://$DOMAIN/`).
 
