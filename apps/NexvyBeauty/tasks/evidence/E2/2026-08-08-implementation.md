@@ -137,3 +137,39 @@ GREEN:
   fixture preexistente), exit `0`.
 
 Estas correções também não foram aplicadas nem implantadas em produção.
+
+## Segundo re-review — finalize atômico
+
+Rastreabilidade dos corretivos:
+
+- primeiro conjunto de achados do review:
+  `db131b8f1b0dd05470a21db8b246a5fdc7d0e5be`;
+- finalize transacional do segundo re-review:
+  `e9f2cd1f24c020a8b9877c79b81945d476f09764`.
+
+RED:
+
+- O harness executou a finalização separada de campanha e instância com mismatch
+  no CAS da instância.
+- Resultado: PostgreSQL 18.4 exit `3` com
+  `RED: finalize separado deixou throttle real parcial após mismatch`.
+
+GREEN:
+
+- `pcrm_finalize_campaign_coverage_group` finaliza em uma única transação o array
+  completo de campanhas e a instância opcional.
+- A RPC usa `SECURITY INVOKER`, `search_path = ''` e relações qualificadas.
+- Contagem divergente de campanhas ou instância lança erro. O harness prova que
+  o erro ocorrido depois do update das campanhas reverte tudo e conserva somente
+  os claims provisórios; também prova sucesso integral com duas campanhas e uma
+  instância.
+- A RPC órfã de finalize individual de campanha foi removida. A Edge chama
+  somente o finalize de grupo após Telegram; o alerta genérico de instância
+  mantém seu finalize individual.
+- Migration completa aplicada duas vezes em PostgreSQL 18.4: exit `0`.
+- Concorrência de claim:
+  `SESSION_1_CAMPAIGN_CLAIM=true`,
+  `SESSION_2_CAMPAIGN_CLAIM=false`, `HEALTH_ROWS=1` preexistente, exit `0`.
+- Deno: 35 passed, 0 failed; check, fmt e diff-check: exit `0`.
+
+O corretivo não foi aplicado nem implantado em produção e não houve push.
