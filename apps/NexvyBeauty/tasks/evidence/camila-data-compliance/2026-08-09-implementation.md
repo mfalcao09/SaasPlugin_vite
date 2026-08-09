@@ -24,9 +24,10 @@ Ordem sugerida, só após aprovação textual Marcelo (copy/legal + produção):
 2. Aplicar `20260716e` (colunas) se ainda não estiver no banco live.
 3. Aplicar `20260716f` (view por-lead) **junto** com front de aprovar-por-lead.
 4. Aplicar `20260809_seed_bdr_camila_transparent_identity.sql` (UPDATE-by-id da Camila).
-5. **Não** reaplicar `20260715_seed_bdr_prospector.sql` (armadilha de segundo prospector).
-6. Conferir: único prospector ativo = Camila; zero leads sem `approved_at` na base de envio; opt-out PARE respeitado em dry-run.
-7. Só então seguir E3/E4 (canal + piloto) com gates humanos separados.
+5. **NUNCA** aplicar `20260804_seed_bdr_camila_prospector.sql` depois ou no lugar de `20260809` — a cláusula de identidade mentirosa permanece nesse arquivo; ele está supersedido e NÃO APLICADA.
+6. **Não** reaplicar `20260715_seed_bdr_prospector.sql` (armadilha de segundo prospector).
+7. Conferir: único prospector ativo = Camila; zero leads sem `approved_at` na base de envio; opt-out PARE respeitado em dry-run.
+8. Só então seguir E3/E4 (canal + piloto) com gates humanos separados.
 
 ## Gate Marcelo (explícito)
 
