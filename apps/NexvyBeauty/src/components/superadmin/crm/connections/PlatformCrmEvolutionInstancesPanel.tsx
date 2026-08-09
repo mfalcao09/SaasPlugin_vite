@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const PLATFORM_EVOLUTION_INSTANCES_KEY = ['platform-crm-evolution-instances'] as const;
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     connected: { label: 'Conectado', variant: 'default' },
@@ -38,10 +41,18 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionInstance; onClose: () => void }) {
+  const qc = useQueryClient();
   const connectMut = useConnectPlatformCrmEvolutionInstance();
   const [qr, setQr] = useState<string | null>(instance.qr_code);
   const [status, setStatus] = useState(instance.status);
   const [elapsed, setElapsed] = useState(0);
+
+  const closeAndRefreshList = () => {
+    // Dialog lê o DB direto; a lista vem do React Query. Sem invalidate, a linha
+    // fica em "Aguardando QR" depois que este modal fecha sozinho.
+    void qc.invalidateQueries({ queryKey: PLATFORM_EVOLUTION_INSTANCES_KEY });
+    onClose();
+  };
 
   const triggerConnect = () => {
     setQr(null);
@@ -51,7 +62,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
         if (data?.already_connected) {
           setStatus('connected');
           toast.success('Já conectado!');
-          setTimeout(onClose, 1200);
+          setTimeout(closeAndRefreshList, 1200);
           return;
         }
         if (data?.qr_code) setQr(data.qr_code);
@@ -79,7 +90,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
           setStatus(data.status);
           if (data.status === 'connected') {
             toast.success('WhatsApp conectado com sucesso!');
-            setTimeout(onClose, 1500);
+            setTimeout(closeAndRefreshList, 1500);
           }
         }
       }
@@ -99,7 +110,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
   const showLoading = !qr && status !== 'connected' && !showError;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && closeAndRefreshList()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Conectar {instance.name}</DialogTitle>

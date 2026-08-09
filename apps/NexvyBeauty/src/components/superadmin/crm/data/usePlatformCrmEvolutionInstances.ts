@@ -32,6 +32,14 @@ export function usePlatformCrmEvolutionInstances() {
       if (error) throw error;
       return (data ?? []) as PlatformCrmEvolutionInstance[];
     },
+    // Espelho do tenant (`useEvolutionInstances`): pareamento chega via webhook→DB.
+    // Sem refetch a lista congela em qr_pending depois que o dialog de QR fecha.
+    refetchInterval: (query) => {
+      const rows = (query.state.data ?? []) as PlatformCrmEvolutionInstance[];
+      if (!rows.length) return 30_000;
+      return rows.some((r) => r.status !== 'connected') ? 3_000 : 30_000;
+    },
+    refetchOnWindowFocus: true,
   });
 }
 
