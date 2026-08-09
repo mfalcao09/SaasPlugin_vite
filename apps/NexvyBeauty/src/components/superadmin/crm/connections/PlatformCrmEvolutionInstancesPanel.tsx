@@ -47,10 +47,25 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
   const [status, setStatus] = useState(instance.status);
   const [elapsed, setElapsed] = useState(0);
 
-  const closeAndRefreshList = () => {
-    // Dialog lê o DB direto; a lista vem do React Query. Sem invalidate, a linha
-    // fica em "Aguardando QR" depois que este modal fecha sozinho.
+  const refreshListFromServer = () => {
+    // Dialog confirma connected no DB; a lista depende do React Query.
+    // Invalidate sozinho ainda deixou a linha em qr_pending na prática.
+    // Patch otimista + refetch ativo atualiza sem reload da SPA.
+    void qc.setQueryData<PlatformCrmEvolutionInstance[]>(
+      PLATFORM_EVOLUTION_INSTANCES_KEY,
+      (current) =>
+        (current ?? []).map((row) =>
+          row.id === instance.id
+            ? { ...row, status: "connected", qr_code: null }
+            : row
+        ),
+    );
     void qc.invalidateQueries({ queryKey: PLATFORM_EVOLUTION_INSTANCES_KEY });
+    void qc.refetchQueries({ queryKey: PLATFORM_EVOLUTION_INSTANCES_KEY, type: "active" });
+  };
+
+  const closeAndRefreshList = () => {
+    refreshListFromServer();
     onClose();
   };
 
@@ -61,6 +76,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
       onSuccess: (data: any) => {
         if (data?.already_connected) {
           setStatus('connected');
+          refreshListFromServer();
           toast.success('Já conectado!');
           setTimeout(closeAndRefreshList, 1200);
           return;
@@ -89,6 +105,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
         if (data.status !== status) {
           setStatus(data.status);
           if (data.status === 'connected') {
+            refreshListFromServer();
             toast.success('WhatsApp conectado com sucesso!');
             setTimeout(closeAndRefreshList, 1500);
           }
