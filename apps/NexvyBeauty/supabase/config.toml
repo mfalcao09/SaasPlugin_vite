@@ -171,6 +171,11 @@ verify_jwt = false
 [functions.platform-cold-outreach]
 verify_jwt = false
 
+# Torre Hermes ↔ gestao. Auth real na função: JWT super_admin OU x-hermes-bridge-secret.
+# Gate HERMES_BRIDGE_ENABLED (default false). Não envia WhatsApp.
+[functions.platform-hermes-bridge]
+verify_jwt = false
+
 # Canário interno de cobertura das instâncias Evolution. Chamado por pg_cron com
 # Bearer service_role vindo do Vault. A chave service_role pode usar o formato
 # opaco `sb_secret_` (não-JWT), então o gateway não deve tentar decodificá-la;

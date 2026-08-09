@@ -64,6 +64,7 @@ import { ProspeccaoCampanhas } from '@/components/superadmin/crm/prospeccao/Pros
 import { ProspeccaoDashboard } from '@/components/superadmin/crm/prospeccao/ProspeccaoDashboard';
 import { ProspeccaoEnriquecimento } from '@/components/superadmin/crm/prospeccao/ProspeccaoEnriquecimento';
 import { ProspeccaoVideoImport } from '@/components/superadmin/crm/prospeccao/ProspeccaoVideoImport';
+import { ProspeccaoTorreHermes } from '@/components/superadmin/crm/prospeccao/ProspeccaoTorreHermes';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
@@ -415,6 +416,12 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         label: 'Campanhas de disparo',
         icon: I.Send,
         render: () => <ProspeccaoCampanhas />,
+      },
+      {
+        id: 'v-prospeccao-torre-hermes',
+        label: 'Torre Hermes',
+        icon: I.Bot,
+        render: () => <ProspeccaoTorreHermes />,
       },
       {
         id: 'v-prospeccao-dashboard',
