@@ -1,5 +1,6 @@
 -- ============================================================================
 -- 20260804_seed_bdr_camila_prospector.sql — a BDR vira CAMILA (fecha sozinha)
+-- NOTE: identity clause superseded by 20260809_seed_bdr_camila_transparent_identity.sql.
 --
 -- NÃO APLICADA. Arquivo em disco aguardando aprovação humana (Marcelo).
 --
