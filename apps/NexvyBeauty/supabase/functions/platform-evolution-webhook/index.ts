@@ -35,6 +35,7 @@ import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts"
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
   allowsDeviceOutboundCreateConversation,
+  lidDigitsFromWaLid,
   phoneDigitsFromJid,
   resolveBaileysMessageJids,
 } from "../_shared/evolution-baileys-jid.ts";
@@ -524,6 +525,30 @@ async function ensureConversation(
   return conversation;
 }
 
+/** Persiste LID em conversation.metadata.wa_lid (campo existente) para
+ *  envios posteriores preferirem `@lid`. Espelha evolution-webhook (tenant). */
+async function persistConversationWaLid(
+  supabase: any,
+  conversationId: string,
+  lidJid: string | null | undefined,
+): Promise<void> {
+  const lidId = lidDigitsFromWaLid(lidJid);
+  if (!lidId || !conversationId) return;
+  const { data: convRow } = await supabase
+    .from("platform_crm_conversations")
+    .select("metadata")
+    .eq("id", conversationId)
+    .maybeSingle();
+  const meta = (convRow?.metadata && typeof convRow.metadata === "object")
+    ? { ...(convRow.metadata as Record<string, unknown>) }
+    : {};
+  if (meta.wa_lid === lidId) return;
+  await supabase
+    .from("platform_crm_conversations")
+    .update({ metadata: { ...meta, wa_lid: lidId } })
+    .eq("id", conversationId);
+}
+
 /** Veredito do on-inbound do cold outreach.
  *  `optOut`  → a lead pediu PARE/SAIR: o cérebro NÃO pode responder.
  *  `ok:false` → não deu pra saber (invoke falhou/rejeitou). Ver a decisão
@@ -904,6 +929,7 @@ async function handleMessage(
           source: "external_device",
           from_device: true,
           remote_jid: norm.remoteJid,
+          ...(norm.lidJid ? { wa_lid: lidDigitsFromWaLid(norm.lidJid) || undefined } : {}),
           ...(mediaMeta ? { media: mediaMeta } : {}),
         },
       })
@@ -920,6 +946,7 @@ async function handleMessage(
       .from("platform_crm_conversations")
       .update({ last_message_at: new Date().toISOString() })
       .eq("id", conv.id);
+    await persistConversationWaLid(supabase, String(conv.id), norm.lidJid);
     await broadcastPlatformNewMessage(supabase, String(conv.id), inserted);
     return ok({ stored: "external_outbound" });
   }
@@ -966,7 +993,7 @@ async function handleMessage(
         evolution_instance_id: instance.id,
         channel: "whatsapp_evolution",
         remote_jid: norm.remoteJid,
-        ...(norm.lidJid ? { wa_lid: norm.lidJid.split("@")[0].split(":")[0] } : {}),
+        ...(norm.lidJid ? { wa_lid: lidDigitsFromWaLid(norm.lidJid) || undefined } : {}),
         push_name: norm.pushName || null,
         ...(audioTranscript ? { transcription: audioTranscript } : {}),
         ...(inboundMediaMeta ? { media: inboundMediaMeta } : {}),
@@ -989,6 +1016,8 @@ async function handleMessage(
       ...(norm.pushName && !conversation.visitor_name ? { visitor_name: norm.pushName } : {}),
     })
     .eq("id", conversation.id);
+
+  await persistConversationWaLid(supabase, String(conversation.id), norm.lidJid);
 
   await broadcastPlatformNewMessage(supabase, String(conversation.id), inserted);
 

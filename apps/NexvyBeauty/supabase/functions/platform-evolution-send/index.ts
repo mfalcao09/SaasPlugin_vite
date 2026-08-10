@@ -12,8 +12,13 @@
 //
 // Auth (verify_jwt=false no gateway): SÓ interno — Bearer == SERVICE_ROLE_KEY.
 // Nenhum front chama isto direto.
+//
+// Destino: preferir `@lid` quando conhecido (wa_lid / to com @lid); senão PN
+// dígitos. Cold first-touch sem LID continua PN. Se envio por LID falha e há
+// PN, retry uma vez com dígitos.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { resolveEvolutionSendNumber } from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +29,9 @@ interface SendBody {
   product_id?: string;
   instance_id?: string; // id da row em platform_crm_evolution_instances (o burner)
   type: "text" | "media" | "audio" | "presence";
-  to: string; // dígitos do telefone
+  to: string; // dígitos PN, JID, ou já `…@lid`
+  /** LID conhecido (ex.: conversation.metadata.wa_lid). Preferido sobre PN. */
+  wa_lid?: string | null;
   payload: Record<string, any>;
 }
 
@@ -54,6 +61,55 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function buildSendBody(
+  type: SendBody["type"],
+  number: string,
+  payload: Record<string, any>,
+): Record<string, any> {
+  switch (type) {
+    case "text":
+      return { number, text: payload.text };
+    case "presence": {
+      const state = String(payload.state || payload.presence || "composing");
+      return { number, presence: state };
+    }
+    case "media": {
+      const rawMedia = payload.url ?? payload.media;
+      return {
+        number,
+        mediatype: payload.mediatype || "image",
+        media: rawMedia,
+        caption: payload.caption,
+        fileName: payload.fileName,
+      };
+    }
+    case "audio":
+      return {
+        number,
+        mediatype: "audio",
+        media: payload.audio || payload.url || payload.media,
+        mimetype: payload.mimetype || "audio/ogg",
+        fileName: payload.fileName || "audio.ogg",
+      };
+    default:
+      return { number };
+  }
+}
+
+function evoPath(type: SendBody["type"], inst: string): string {
+  switch (type) {
+    case "text":
+      return `/message/sendText/${inst}`;
+    case "presence":
+      return `/chat/sendPresence/${inst}`;
+    case "media":
+    case "audio":
+      return `/message/sendMedia/${inst}`;
+    default:
+      return "";
+  }
 }
 
 Deno.serve(async (req) => {
@@ -95,6 +151,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
     const body = (await req.json()) as SendBody;
     const { product_id, instance_id, type, to, payload } = body;
+    const waLid = body.wa_lid ?? null;
 
     if (!type || !to || !payload) return json({ error: "Missing type/to/payload" }, 400);
     if (!product_id) return json({ error: "product_id required" }, 400);
@@ -132,44 +189,33 @@ Deno.serve(async (req) => {
     if (instanceName === "") return json({ error: "Instância sem name; sincronize do servidor" }, 400);
 
     const inst = encodeURIComponent(instanceName);
-    const phone = to.replace(/\D/g, "");
+    const addr = resolveEvolutionSendNumber({ to, waLid });
+    if (!addr.number) return json({ error: "Missing destination number" }, 400);
 
-    let res;
-    switch (type) {
-      case "text":
-        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, { number: phone, text: payload.text });
-        break;
-      case "presence": {
-        // "digitando" humaniza a cadência (composing|recording|paused|available)
-        const state = String(payload.state || payload.presence || "composing");
-        res = await evoFetch(url, apikey, `/chat/sendPresence/${inst}`, { number: phone, presence: state });
-        break;
-      }
-      case "media": {
-        const rawMedia = payload.url ?? payload.media;
-        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, {
-          number: phone,
-          mediatype: payload.mediatype || "image",
-          media: rawMedia,
-          caption: payload.caption,
-          fileName: payload.fileName,
-        });
-        break;
-      }
-      case "audio":
-        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, {
-          number: phone,
-          mediatype: "audio",
-          media: payload.audio || payload.url || payload.media,
-          mimetype: payload.mimetype || "audio/ogg",
-          fileName: payload.fileName || "audio.ogg",
-        });
-        break;
-      default:
-        return json({ error: `Unknown type: ${type}` }, 400);
+    const path = evoPath(type, inst);
+    if (!path) return json({ error: `Unknown type: ${type}` }, 400);
+
+    let res = await evoFetch(url, apikey, path, buildSendBody(type, addr.number, payload));
+    let usedLid = addr.usedLid;
+    let fellBackToPn = false;
+
+    // LID falhou e temos PN → uma retry barata (Camila: PN às vezes ACK 463).
+    if (!res.ok && addr.usedLid && addr.phoneDigits && addr.phoneDigits !== addr.number) {
+      console.warn(
+        `[platform-evolution-send] LID send failed status=${res.status}; retry PN digits=${addr.phoneDigits}`,
+      );
+      res = await evoFetch(url, apikey, path, buildSendBody(type, addr.phoneDigits, payload));
+      usedLid = false;
+      fellBackToPn = true;
     }
 
-    return json(res, res.ok ? 200 : res.status >= 400 ? res.status : 502);
+    const envelope = {
+      ...res,
+      send_address: usedLid ? addr.number : (fellBackToPn ? addr.phoneDigits : addr.number),
+      used_lid: usedLid,
+      fell_back_to_pn: fellBackToPn,
+    };
+    return json(envelope, res.ok ? 200 : res.status >= 400 ? res.status : 502);
   } catch (err: any) {
     console.error("[platform-evolution-send] exception:", err?.message ?? err);
     return json({ error: String(err?.message ?? err) }, 500);
