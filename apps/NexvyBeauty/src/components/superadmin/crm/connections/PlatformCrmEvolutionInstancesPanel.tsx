@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +26,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const PLATFORM_EVOLUTION_INSTANCES_KEY = ['platform-crm-evolution-instances'] as const;
-
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     connected: { label: 'Conectado', variant: 'default' },
@@ -41,33 +38,10 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionInstance; onClose: () => void }) {
-  const qc = useQueryClient();
   const connectMut = useConnectPlatformCrmEvolutionInstance();
   const [qr, setQr] = useState<string | null>(instance.qr_code);
   const [status, setStatus] = useState(instance.status);
   const [elapsed, setElapsed] = useState(0);
-
-  const refreshListFromServer = () => {
-    // Dialog confirma connected no DB; a lista depende do React Query.
-    // Invalidate sozinho ainda deixou a linha em qr_pending na prática.
-    // Patch otimista + refetch ativo atualiza sem reload da SPA.
-    void qc.setQueryData<PlatformCrmEvolutionInstance[]>(
-      PLATFORM_EVOLUTION_INSTANCES_KEY,
-      (current) =>
-        (current ?? []).map((row) =>
-          row.id === instance.id
-            ? { ...row, status: "connected", qr_code: null }
-            : row
-        ),
-    );
-    void qc.invalidateQueries({ queryKey: PLATFORM_EVOLUTION_INSTANCES_KEY });
-    void qc.refetchQueries({ queryKey: PLATFORM_EVOLUTION_INSTANCES_KEY, type: "active" });
-  };
-
-  const closeAndRefreshList = () => {
-    refreshListFromServer();
-    onClose();
-  };
 
   const triggerConnect = () => {
     setQr(null);
@@ -76,9 +50,8 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
       onSuccess: (data: any) => {
         if (data?.already_connected) {
           setStatus('connected');
-          refreshListFromServer();
           toast.success('Já conectado!');
-          setTimeout(closeAndRefreshList, 1200);
+          setTimeout(onClose, 1200);
           return;
         }
         if (data?.qr_code) setQr(data.qr_code);
@@ -105,9 +78,8 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
         if (data.status !== status) {
           setStatus(data.status);
           if (data.status === 'connected') {
-            refreshListFromServer();
             toast.success('WhatsApp conectado com sucesso!');
-            setTimeout(closeAndRefreshList, 1500);
+            setTimeout(onClose, 1500);
           }
         }
       }
@@ -127,7 +99,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
   const showLoading = !qr && status !== 'connected' && !showError;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && closeAndRefreshList()}>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Conectar {instance.name}</DialogTitle>
@@ -179,17 +151,46 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
   );
 }
 
-function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateInstanceDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (instance: PlatformCrmEvolutionInstance, opts: { scanNow: boolean }) => void;
+}) {
   const [name, setName] = useState('');
+  const [pendingMode, setPendingMode] = useState<'create' | 'scan' | null>(null);
   const createMut = useCreatePlatformCrmEvolutionInstance();
 
   const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
   const valid = /^[a-z0-9-]{3,40}$/.test(sanitized);
 
+  const create = async (scanNow: boolean) => {
+    if (!valid || createMut.isPending) return;
+    setPendingMode(scanNow ? 'scan' : 'create');
+    try {
+      const data = await createMut.mutateAsync({ name: sanitized });
+      const instance = (data?.instance ?? data) as PlatformCrmEvolutionInstance | undefined;
+      if (!instance?.id) {
+        toast.error('Conexão criada, mas não foi possível abrir o QR. Use Conectar na lista.');
+        setName('');
+        onClose();
+        return;
+      }
+      setName('');
+      onCreated(instance, { scanNow });
+    } catch {
+      // toast já tratado pelo hook
+    } finally {
+      setPendingMode(null);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    createMut.mutate({ name: sanitized }, { onSuccess: () => { setName(''); onClose(); } });
+    void create(true);
   };
 
   return (
@@ -223,13 +224,23 @@ function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={createMut.isPending}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!valid || createMut.isPending}>
-              {createMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!valid || createMut.isPending}
+              onClick={() => void create(false)}
+            >
+              {pendingMode === 'create' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar conexão
+            </Button>
+            <Button type="submit" disabled={!valid || createMut.isPending}>
+              {pendingMode === 'scan' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <QrCode className="h-4 w-4 mr-2" />
+              Criar e escanear agora
             </Button>
           </DialogFooter>
         </form>
@@ -354,11 +365,7 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
                         <StatusBadge status={inst.status} />
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {inst.phone_number
-                          ? `+${inst.phone_number}`
-                          : isLinked(inst.status)
-                            ? 'Conectado — número ainda não identificado'
-                            : 'Não conectado ainda'}
+                        {inst.phone_number ? `+${inst.phone_number}` : 'Não conectado ainda'}
                       </p>
                     </div>
                   </div>
@@ -518,7 +525,14 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
 
       {renaming && <RenameDialog instance={renaming} onClose={() => setRenaming(null)} />}
 
-      <CreateInstanceDialog open={creating} onClose={closeCreate} />
+      <CreateInstanceDialog
+        open={creating}
+        onClose={closeCreate}
+        onCreated={(instance, { scanNow }) => {
+          closeCreate();
+          if (scanNow) setConnecting(instance);
+        }}
+      />
     </div>
   );
 }
