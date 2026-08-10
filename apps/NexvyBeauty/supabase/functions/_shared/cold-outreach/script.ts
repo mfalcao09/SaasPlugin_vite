@@ -1,27 +1,30 @@
 // _shared/cold-outreach/script.ts
 //
-// SCRIPT WIRED — a copy VENCEDORA do COLD-OUTREACH-SCRIPT §2, pronta pra render.
-// Espinha prova-social (identidade) + mecânica perda (cálculo próprio) + norte
-// demo (reversão de risco), com os 3 buracos removidos. Versões WhatsApp e IG DM,
-// 2 follow-ups (D+2, D+4/5 breakup), respostas de objeção, e SUPORTE A/B (§5.1).
+// SCRIPT WIRED — follow-ups/objeções/CTA + abertura Instagram. Abertura WhatsApp
+// NÃO vive mais em constante hardcoded: vem do `additional_prompt` do agente
+// (Camila · Estágio 1 — APRESENTAR), via `renderOpeningFromDb`.
 //
 //   deno test --no-check supabase/functions/_shared/cold-outreach/script.test.ts
 //
-// Determinístico de propósito: o esqueleto é FIXO (o LLM só preenche tokens do
-// lado do motor, se quiser personalizar [servico]/[detalheIg]) — assim garantimos
-// "zero link na 1ª msg", 1 emoji, curto. `containsLink()` prova isso nos testes.
+// Determinístico de propósito: o esqueleto de follow-up é FIXO; a 1ª bolha WA é
+// o template FIXO aprovado no DB. `containsLink()` prova zero-link nos testes.
+
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export interface ScriptTokens {
-  nome: string; // [Nome] — primeiro nome do lead
-  seuNome: string; // [SeuNome] — quem assina (config da campanha)
-  salao: string; // [salão] — nome do salão/@handle
+  nome: string; // [Nome] / {Nome} — primeiro nome do lead
+  seuNome: string; // [SeuNome] — quem assina (config da campanha; legacy)
+  salao: string; // [salão] / {@handle} — nome do salão/@handle
   detalheIg?: string; // [detalhe real do IG] — post/trabalho real (IG e opcional no WA)
   servico?: string; // [serviço carro-chefe] — ex. "escova", "unha", "sobrancelha"
 }
 
 export type Channel = "whatsapp" | "instagram";
 
-/** Substitui tokens no template. Fallbacks seguros pra não deixar "[serviço]" cru. */
+/** Agente Camila · Prospecção (produção). Fallback se campaign.agent_id vier null. */
+export const CAMILA_PROSPECTOR_AGENT_ID = "68aeece9-26f2-4f7b-a595-a6ea5e8acfa7";
+
+/** Substitui tokens no template legado `[Nome]` / `[salão]`. */
 function fill(tpl: string, t: ScriptTokens): string {
   const servico = t.servico?.trim() || "serviço";
   const detalhe = t.detalheIg?.trim() || "seu trabalho";
@@ -31,6 +34,123 @@ function fill(tpl: string, t: ScriptTokens): string {
     .replaceAll("[salão]", t.salao.trim())
     .replaceAll("[detalhe]", detalhe)
     .replaceAll("[serviço]", servico);
+}
+
+function handleWithAt(salao: string): string {
+  const s = salao.trim();
+  if (!s || s === "seu salão") return s;
+  return s.startsWith("@") ? s : `@${s}`;
+}
+
+function handleBare(salao: string): string {
+  const s = salao.trim();
+  if (!s || s === "seu salão") return s;
+  return s.startsWith("@") ? s.slice(1) : s;
+}
+
+/**
+ * Preenche templates do prompt do agente: `{Nome}`, `{@handle}`, `{handle}`
+ * e legado `[Nome]` / `[salão]` (salão → handle sem forçar `@` duas vezes).
+ */
+export function fillAgentTemplate(tpl: string, t: ScriptTokens): string {
+  const withAt = handleWithAt(t.salao);
+  const bare = handleBare(t.salao);
+  // {@handle} antes de {handle} — senão `{handle}` parcial quebraria o token.
+  let out = tpl
+    .replaceAll("{Nome}", t.nome.trim())
+    .replaceAll("{@handle}", withAt)
+    .replaceAll("{handle}", bare)
+    .replaceAll("[Nome]", t.nome.trim())
+    .replaceAll("[SeuNome]", t.seuNome.trim())
+    .replaceAll("[salão]", withAt || t.salao.trim());
+  const servico = t.servico?.trim() || "serviço";
+  const detalhe = t.detalheIg?.trim() || "seu trabalho";
+  out = out.replaceAll("[detalhe]", detalhe).replaceAll("[serviço]", servico);
+  return out;
+}
+
+/**
+ * Extrai bolhas citadas do Estágio 1 / APRESENTAR:
+ * `1ª "..." → 2ª "..." → 3ª "..." → 4ª "..."`.
+ * Fail closed se <1 bolha.
+ */
+export function extractApresentarBubbles(additionalPrompt: string): string[] {
+  const prompt = additionalPrompt ?? "";
+  const stageIdx = prompt.search(/\*\*Estágio\s*1\b|Estágio\s*1\s*[—\-]|APRESENTAR/i);
+  const stageEnd = stageIdx >= 0
+    ? prompt.slice(stageIdx).search(/\*\*Estágio\s*2\b|Estágio\s*2\s*[—\-]|TIRAR/i)
+    : -1;
+  const hay = stageIdx >= 0
+    ? (stageEnd > 0 ? prompt.slice(stageIdx, stageIdx + stageEnd) : prompt.slice(stageIdx))
+    : prompt;
+
+  const bubbles: string[] = [];
+  const re = /(\d+)ª\s*"([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(hay)) !== null) {
+    const text = m[2].trim();
+    if (text) bubbles.push(text);
+  }
+  if (bubbles.length < 1) {
+    throw new Error(
+      'extractApresentarBubbles: nenhuma bolha 1ª "..." no Estágio 1 / APRESENTAR',
+    );
+  }
+  return bubbles;
+}
+
+/** Carrega `additional_prompt` do agente. Fail closed se vazio/erro. */
+export async function fetchAgentAdditionalPrompt(
+  sb: SupabaseClient,
+  agentId: string,
+): Promise<string> {
+  if (!agentId?.trim()) {
+    throw new Error("fetchAgentAdditionalPrompt: agentId obrigatório");
+  }
+  const { data, error } = await sb
+    .from("platform_crm_product_agents")
+    .select("additional_prompt")
+    .eq("id", agentId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`fetchAgentAdditionalPrompt: ${error.message}`);
+  }
+  const prompt = (data?.additional_prompt ?? "").trim();
+  if (!prompt) {
+    throw new Error(
+      `fetchAgentAdditionalPrompt: additional_prompt vazio para agent ${agentId}`,
+    );
+  }
+  return prompt;
+}
+
+export interface RenderOpeningFromDbOpts {
+  agentId: string;
+  variant?: Variant;
+}
+
+/**
+ * Abertura async. WhatsApp: bolha 1 do Estágio 1 no DB — NUNCA cai no template
+ * hardcoded antigo (`da Nexvy 🌿`). Instagram: mantém IG_OPENING por enquanto.
+ */
+export async function renderOpeningFromDb(
+  sb: SupabaseClient,
+  channel: Channel,
+  tokens: ScriptTokens,
+  opts: RenderOpeningFromDbOpts,
+): Promise<string> {
+  if (channel === "instagram") {
+    return fill(IG_OPENING, tokens);
+  }
+  const agentId = opts.agentId?.trim();
+  if (!agentId) {
+    throw new Error(
+      "renderOpeningFromDb(whatsapp): agentId obrigatório — sem fallback hardcoded",
+    );
+  }
+  const prompt = await fetchAgentAdditionalPrompt(sb, agentId);
+  const bubbles = extractApresentarBubbles(prompt);
+  return fillAgentTemplate(bubbles[0], tokens);
 }
 
 // ── Detector de link (guard anti-link na 1ª msg) ─────────────────────────────
@@ -78,19 +198,7 @@ export function assignVariant(leadId: string): Variant {
   };
 }
 
-// ── WhatsApp ──────────────────────────────────────────────────────────────────
-const WA_OPENING_A = `Oi [Nome]! Aqui é a [SeuNome], da Nexvy 🌿 ajudo salão a recuperar cliente que sumiu, sem gastar com anúncio.
-
-Vi o [salão] e fiquei com uma pergunta: das suas clientes dos últimos meses, quantas você acha que sumiram e não voltaram?
-
-Quase ninguém sabe o número — e é bem aí que costuma vazar dinheiro. Posso te mostrar como descobrir isso no [salão]? Leva 2 min e é de graça.`;
-
-const WA_OPENING_B = `Oi [Nome]! Aqui é a [SeuNome], da Nexvy 🌿 ajudo salão a recuperar cliente que sumiu, sem gastar com anúncio.
-
-Nos salões que já olhei, 3 a 4 de cada 10 clientes somem no prazo que deveriam voltar — e a dona quase nunca percebe. Fiquei curiosa como tá isso no [salão].
-
-Posso te mostrar como descobrir esse número aí? Leva 2 min e é de graça.`;
-
+// ── WhatsApp (follow-ups / objeções / CTA — abertura = DB via renderOpeningFromDb) ─
 const WA_FOLLOWUP_2_SUMIU = `Oi [Nome], só voltando aqui 🙂 pra você ter uma ideia: nos salões que já olhei, 3 a 4 de cada 10 clientes somem no prazo que deveriam voltar. Multiplica isso pelo que cada uma gasta num [serviço]… é dinheiro que já era seu, parado.
 
 Eu monto esse raio-x com os números do [salão] — sem custo e sem acesso nenhum ao seu WhatsApp. Quer que eu puxe?`;
@@ -129,10 +237,15 @@ const IG_CTA = `Me responde só "quero" aqui que a gente combina o melhor jeito 
 // ── API pública de render ────────────────────────────────────────────────────
 export type ObjectionKind = "preco" | "golpe";
 
-/** Abertura (1º toque). WhatsApp respeita A/B de abertura; IG é fixo (personaliza post). */
-export function renderOpening(channel: Channel, tokens: ScriptTokens, variant: Variant = DEFAULT_VARIANT): string {
+/**
+ * Abertura síncrona. Instagram ok; WhatsApp SEMPRE lança — use
+ * `renderOpeningFromDb` no caminho de envio (fail closed, sem copy stale).
+ */
+export function renderOpening(channel: Channel, tokens: ScriptTokens, _variant: Variant = DEFAULT_VARIANT): string {
   if (channel === "instagram") return fill(IG_OPENING, tokens);
-  return fill(variant.opening === "A_pergunta" ? WA_OPENING_A : WA_OPENING_B, tokens);
+  throw new Error(
+    "renderOpening(whatsapp) removido: use await renderOpeningFromDb(sb, 'whatsapp', tokens, { agentId }) — abertura WA vem do additional_prompt do agente (Camila), nunca do template hardcoded.",
+  );
 }
 
 /** Follow-up por passo (1 = D+2, 2 = D+4/5 breakup no WA; IG tem só o D+2). */
@@ -163,6 +276,9 @@ export function renderCta(channel: Channel, tokens: ScriptTokens, variant: Varia
  * Sequência completa de 1º-toque para enfileirar. `firstTouch` é a abertura;
  * os follow-ups entram na fila com os offsets D+2 / D+4-5. Zero link em TODAS
  * (validado por `containsLink` nos testes).
+ *
+ * WhatsApp: `firstTouch` NÃO pode ser gerado sync — use `renderOpeningFromDb`
+ * no motor. Esta função lança se channel=whatsapp (evita copy stale).
  */
 export interface RenderedSequence {
   firstTouch: string;
@@ -179,6 +295,10 @@ export function renderSequence(
   ];
   if (channel === "whatsapp") {
     followups.push({ step: 2, text: renderFollowup(channel, 2, tokens, variant), delayHours: 108 }); // D+4/5 breakup
+    // Fail closed: não devolver firstTouch stale.
+    throw new Error(
+      "renderSequence(whatsapp) sem firstTouch sync: use await renderOpeningFromDb para a abertura + renderFollowup para a fila.",
+    );
   }
   return { firstTouch: renderOpening(channel, tokens, variant), followups };
 }
