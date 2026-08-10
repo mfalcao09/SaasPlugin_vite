@@ -5,15 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useQueryClient } from '@tanstack/react-query';
-// UI de canais — porte do Intentus (picker de tipo + wizard de 3 etapas).
-// O `MetaEmbeddedSignupButton` que existia aqui (botão único, uma chamada,
-// dependente do `postMessage`) foi substituído pelo wizard: ver o cabeçalho de
-// `MetaChannelWizard.tsx` para por que três etapas são mais robustas que uma.
-import { ChannelTypeChoiceDialog } from './channels/ChannelTypeChoiceDialog';
-import { MetaChannelWizard } from './channels/MetaChannelWizard';
-import { SELF_SERVICE_ENABLED } from './channels/selfService';
-import { useMetaConnections, META_CONNECTIONS_KEY } from '@/hooks/useMetaConnections';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -21,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2, MessageCircle } from 'lucide-react';
+import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2 } from 'lucide-react';
 import {
   useEvolutionInstances,
   useSetDefaultEvolutionInstance,
@@ -34,7 +25,7 @@ import {
   type EvolutionInstance,
 } from '@/hooks/useEvolutionInstances';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrgChannelUsage } from '@/hooks/useOrganizationPlan';
+import { useOrganizationEffectivePlan } from '@/hooks/useOrganizationPlan';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PresenceTestButton } from './PresenceTestButton';
@@ -165,17 +156,46 @@ function ConnectDialog({ instance, onClose }: { instance: EvolutionInstance; onC
   );
 }
 
-function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateInstanceDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (instance: EvolutionInstance, opts: { scanNow: boolean }) => void;
+}) {
   const [name, setName] = useState('');
+  const [pendingMode, setPendingMode] = useState<'create' | 'scan' | null>(null);
   const createMut = useCreateEvolutionInstanceSelf();
 
   const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
   const valid = /^[a-z0-9-]{3,40}$/.test(sanitized);
 
+  const create = async (scanNow: boolean) => {
+    if (!valid || createMut.isPending) return;
+    setPendingMode(scanNow ? 'scan' : 'create');
+    try {
+      const data = await createMut.mutateAsync({ name: sanitized });
+      const instance = (data?.instance ?? data) as EvolutionInstance | undefined;
+      if (!instance?.id) {
+        toast.error('Conexão criada, mas não foi possível abrir o QR. Use Conectar na lista.');
+        setName('');
+        onClose();
+        return;
+      }
+      setName('');
+      onCreated(instance, { scanNow });
+    } catch {
+      // toast já tratado pelo hook
+    } finally {
+      setPendingMode(null);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    createMut.mutate({ name: sanitized }, { onSuccess: () => { setName(''); onClose(); } });
+    void create(true);
   };
 
   return (
@@ -209,13 +229,23 @@ function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={createMut.isPending}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!valid || createMut.isPending}>
-              {createMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!valid || createMut.isPending}
+              onClick={() => void create(false)}
+            >
+              {pendingMode === 'create' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar conexão
+            </Button>
+            <Button type="submit" disabled={!valid || createMut.isPending}>
+              {pendingMode === 'scan' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <QrCode className="h-4 w-4 mr-2" />
+              Criar e escanear agora
             </Button>
           </DialogFooter>
         </form>
@@ -273,23 +303,11 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
   );
 }
 
-/** Aba "QR Code (Evolution)" — o painel que já existia, com o conteúdo intacto.
- *  Virou sub-componente quando a aba "WhatsApp Oficial (Meta)" entrou ao lado.
- *  O export público `EvolutionInstancesPanel` continua abaixo com a MESMA
- *  assinatura: App.tsx:62, Admin.tsx:34 e WhatsAppConfig.tsx:3 o importam por
- *  nome — dois deles via lazy `.then(m => m.EvolutionInstancesPanel)`, que
- *  quebraria em runtime, não no build, se o nome mudasse. */
-function ChannelsPage() {
+export function EvolutionInstancesPanel() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const queryClient = useQueryClient();
-  // Lista ÚNICA: os dois tipos de canal na mesma tela, como no HelenaCRM e no
-  // Intentus. Antes viviam em abas separadas, e a separação criava trabalho de
-  // reconciliação para o usuário — o contador somava os dois, cada aba mostrava
-  // um, e a tela precisava de uma frase explicando a diferença.
-  const { data: metaConnections, isLoading: loadingMeta } = useMetaConnections();
   const { data: instances, isLoading } = useEvolutionInstances();
-  const { data: usage } = useOrgChannelUsage(profile?.organization_id);
+  const { data: effectivePlan } = useOrganizationEffectivePlan(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
   const disconnectMut = useDisconnectEvolutionInstance();
   const logoutMut = useLogoutEvolutionInstance();
@@ -300,51 +318,15 @@ function ChannelsPage() {
   const [renaming, setRenaming] = useState<EvolutionInstance | null>(null);
   const [deleting, setDeleting] = useState<EvolutionInstance | null>(null);
   const [creating, setCreating] = useState(false);
-  // Picker de tipo de canal (porte do Intentus). O botão principal deixou de
-  // abrir o QR direto: agora pergunta QUAL canal, e o QR virou uma das opções.
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [metaWizardOpen, setMetaWizardOpen] = useState(false);
 
   const displayName = (inst: EvolutionInstance) =>
     (inst.metadata as any)?.display_name || inst.name;
 
   const isLinked = (s: string) => s === 'connected' || s === 'paired';
 
-  // USO E LIMITE VÊM DO MESMO RESOLVEDOR QUE OS GATES DO SERVIDOR
-  // (`get_org_channel_usage`), não de `instances.length`.
-  //
-  // Com slot compartilhado (decisão Marcelo 2026-08-01, verbatim: "Consome o
-  // mesmo slot"), uma conexão via WhatsApp Oficial ocupa vaga e NÃO aparece
-  // nesta lista — ela vive na aba ao lado. Derivar `used` do tamanho da lista
-  // faria a tela dizer "1 / 4" para uma org que já usa 2 canais, e o botão
-  // "Nova conexão" convidaria para uma criação que o servidor vai recusar.
-  // Tela e gate lendo a mesma função é o que impede essa divergência.
-  const used = usage?.used;
-  const byType = usage?.by_type;
-
-  // O `?? 1` que estava aqui AFIRMAVA um limite que não tinha sido carregado.
-  // Duas formas de errar, as duas na cara do cliente:
-  //
-  //   * enquanto a query do plano está em voo — e ela resolve independente da
-  //     query de instâncias — um cliente Ultra com 4 conexões via badge
-  //     vermelho "4 / 1 usadas", o aviso "Você atingiu o limite de 1
-  //     conexão(ões) do seu plano" e o botão "Nova conexão" substituído por
-  //     "Fazer upgrade". Fato comercial fabricado a partir de "ainda não sei",
-  //     que se conserta sozinho um instante depois e que ninguém reproduz.
-  //
-  //   * a RPC devolve NULL tanto para "org sem limite" quanto para RECUSA DE
-  //     LEITURA (o gate `auth.role()=... is not true` no topo da função). NULL
-  //     não é `error`, então o hook não lança: a recusa chegava aqui como se
-  //     fosse dado, e o `?? 1` a traduzia para política de negócio.
-  //
-  // Gatear em "eu tenho o número?" cobre os dois casos. Gatear em `isLoading`
-  // cobriria só o primeiro — por isso a checagem é de valor, não de estado da
-  // requisição. Enquanto é desconhecido nada é afirmado: o badge mostra "—" e
-  // o caminho de criar conexão continua aberto, que é o fail-open correto aqui
-  // (o gate de verdade é server-side, em evolution-proxy e onboarding-evolution).
-  const rawLimit = usage?.limit;
-  const usageKnown = typeof used === 'number' && typeof rawLimit === 'number';
-  const limitReached = usageKnown && used >= rawLimit;
+  const used = instances?.length ?? 0;
+  const limit = effectivePlan?.limits?.max_connections ?? 1;
+  const limitReached = used >= limit;
 
   const handleUpgrade = () => navigate('/plano');
 
@@ -352,20 +334,14 @@ function ChannelsPage() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="text-lg font-semibold">Canais de atendimento</h3>
+          <h3 className="text-lg font-semibold">Suas Instâncias de WhatsApp</h3>
           <p className="text-sm text-muted-foreground">
-            Conecte o WhatsApp do seu salão — pela API oficial da Meta ou por QR Code.
+            Conecte seus números de WhatsApp escaneando o QR Code com o aparelho.
           </p>
-          {/* A linha "inclui N via WhatsApp Oficial, na aba ao lado" morreu com
-              as abas, e é bom que tenha morrido: ela existia só para explicar
-              por que o contador dizia 2 sobre uma lista de 1 item — explicação
-              necessária apenas porque a tela escondia metade dos canais. Com
-              lista única, o número e a lista contam a mesma coisa e não há o
-              que reconciliar. */}
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={limitReached ? 'destructive' : 'secondary'} className="text-sm">
-            {usageKnown ? `${used} / ${rawLimit}` : '—'} canais
+            {used} / {limit} usadas
           </Badge>
           {limitReached ? (
             <Button onClick={handleUpgrade} className="gap-2">
@@ -373,9 +349,9 @@ function ChannelsPage() {
               Fazer upgrade
             </Button>
           ) : (
-            <Button onClick={() => setPickerOpen(true)} className="gap-2">
+            <Button onClick={() => setCreating(true)} className="gap-2">
               <Plus className="h-4 w-4" />
-              Adicionar canal
+              Nova conexão
             </Button>
           )}
         </div>
@@ -385,81 +361,28 @@ function ChannelsPage() {
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm flex gap-2">
           <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
           <p className="text-foreground">
-            Seu plano inclui <strong>{rawLimit}</strong> conexão(ões) de WhatsApp
-            {!!byType && (byType.evolution > 0 || byType.meta > 0) && (
-              <> e você já usa{byType.evolution > 0 && <> {byType.evolution} via QR Code</>}
-                {byType.evolution > 0 && byType.meta > 0 && <> e</>}
-                {byType.meta > 0 && <> {byType.meta} via WhatsApp Oficial</>}</>
-            )}. Para conectar outro número, desconecte uma das conexões atuais ou faça upgrade do plano.
+            Você atingiu o limite de <strong>{limit}</strong> conexão(ões) do seu plano. Faça upgrade para criar mais conexões de WhatsApp.
           </p>
         </div>
       )}
 
-      {!SELF_SERVICE_ENABLED && (
-        // ⚠️ ÚNICA VOZ sobre "self-service indisponível" — ver o invariante no
-        // docblock abaixo e a definição em `channels/selfService.ts`.
-        <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-          A conexão pela API oficial da Meta ainda não está habilitada nesta
-          instalação. Fale com o suporte — o QR Code continua disponível.
-        </div>
-      )}
-
-      {isLoading || loadingMeta ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : !instances?.length && !metaConnections?.length ? (
-        // ESTADO VAZIO ÚNICO: só aparece quando NENHUM dos dois tipos existe.
-        // Enquanto havia abas, cada uma tinha o seu — e a do WhatsApp Oficial
-        // dizia "nenhum número conectado" mesmo com um número conectado na
-        // outra, porque nem sequer consultava o banco.
+      ) : !instances?.length ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Nenhum canal conectado ainda.</p>
+            <p className="text-muted-foreground">Nenhuma conexão criada ainda.</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Clique em <strong>Adicionar canal</strong> para conectar o WhatsApp do seu salão.
+              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp.
             </p>
           </CardContent>
         </Card>
 
       ) : (
         <div className="grid gap-3">
-          {/* Canais da API oficial primeiro: é a conexão mais estável, e a que
-              não depende de um celular ligado. */}
-          {metaConnections?.map((conn) => (
-            <Card key={conn.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                      <MessageCircle className="h-5 w-5 text-emerald-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium truncate">{conn.display_name}</p>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          API Oficial
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {conn.phone_number ?? '—'}
-                      </p>
-                      {conn.business_account_name && (
-                        <p className="text-xs text-muted-foreground">
-                          {conn.business_account_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant={conn.status === 'active' ? 'secondary' : 'destructive'}>
-                    {conn.status === 'active' ? 'Conectado' : conn.status}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
           {instances.map((inst) => (
             <Card key={inst.id}>
               <CardContent className="pt-6">
@@ -479,11 +402,7 @@ function ChannelsPage() {
                         <StatusBadge status={inst.status} />
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {inst.phone_number
-                          ? `+${inst.phone_number}`
-                          : isLinked(inst.status)
-                            ? 'Conectado — número ainda não identificado'
-                            : 'Não conectado ainda'}
+                        {inst.phone_number ? `+${inst.phone_number}` : 'Não conectado ainda'}
                       </p>
                     </div>
                   </div>
@@ -644,64 +563,14 @@ function ChannelsPage() {
 
       {renaming && <RenameDialog instance={renaming} onClose={() => setRenaming(null)} />}
 
-      <CreateInstanceDialog open={creating} onClose={() => setCreating(false)} />
-
-      {/* Picker → rota para o fluxo do canal escolhido. Os modos desabilitados
-          ("Em breve") nem chegam aqui: o card não dispara `onSelect`. */}
-      <ChannelTypeChoiceDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        onSelect={(mode) => {
-          if (mode === 'qrcode') setCreating(true);
-          if (mode === 'meta_oficial') setMetaWizardOpen(true);
-        }}
-      />
-
-      <MetaChannelWizard
-        open={metaWizardOpen}
-        onOpenChange={setMetaWizardOpen}
-        onConnected={() => {
-          queryClient.invalidateQueries({ queryKey: META_CONNECTIONS_KEY });
-          // O slot é COMPARTILHADO entre QR e Oficial: conectar um número
-          // oficial muda o badge "x / y canais" desta aba também.
-          queryClient.invalidateQueries({ queryKey: ['org-channel-usage'] });
+      <CreateInstanceDialog
+        open={creating}
+        onClose={() => setCreating(false)}
+        onCreated={(instance, { scanNow }) => {
+          setCreating(false);
+          if (scanNow) setConnecting(instance);
         }}
       />
     </div>
   );
-}
-
-/** Export público — assinatura preservada de propósito.
- *
- *  UMA PÁGINA, SEM ABAS (2026-08-02, pedido do Marcelo com o HelenaCRM como
- *  referência). Antes havia `<Tabs>` com "QR Code" e "WhatsApp Oficial", e a
- *  separação cobrava do usuário um trabalho de reconciliação: o contador somava
- *  os dois tipos, cada aba mostrava um, e a tela precisava de uma frase
- *  explicando por que "2 / 4 canais" aparecia sobre uma lista de 1 item.
- *
- *  Dois caminhos de conexão coexistem por desenho, não por dívida:
- *   • self-service — o wizard `MetaChannelWizard`, em que o salão conecta o
- *     próprio número sem ver credencial nenhuma;
- *   • manual — operação cadastra a conexão pelas edge functions org-scoped
- *     (`meta-whatsapp-connect`), para números nossos alocados a um tenant.
- *
- *  ACOPLAMENTO QUE EXISTIU E FOI MORTO — fica registrado porque a solução é o
- *  que impede a recaída, não a ausência do problema.
- *  Durante algumas horas esta tela afirmou duas coisas ao mesmo tempo: um botão
- *  de auto-conexão e, um card abaixo, "para conectar, fale com o suporte". Cada
- *  metade estava certa isolada; o merge as tornou simultâneas. Nenhum autor
- *  podia ver, porque nenhum autor tinha as duas.
- *  A saída NÃO foi regra de sequência ("mesmo commit", "card nunca antes") —
- *  regra de sequência é coisa que alguém erra.
- *
- *  ⚠️ INVARIANTE A PRESERVAR: UM ESTADO, UM DONO — e o dono é uma DEFINIÇÃO,
- *  não um componente. A condição "self-service habilitado" mora em
- *  `channels/selfService.ts` (`SELF_SERVICE_ENABLED`); esta tela e o wizard
- *  IMPORTAM de lá. Se você sentir vontade de escrever
- *  `import.meta.env.VITE_META_*` neste arquivo, pare — é a causa raiz voltando
- *  com outra roupa, e ela já voltou uma vez. Dois LEITORES de uma definição não
- *  podem divergir; duas DEFINIÇÕES divergem em silêncio, cada uma internamente
- *  correta. */
-export function EvolutionInstancesPanel() {
-  return <ChannelsPage />;
 }
