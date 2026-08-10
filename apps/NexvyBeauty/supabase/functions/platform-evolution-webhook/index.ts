@@ -33,6 +33,11 @@ import {
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
+import {
+  allowsDeviceOutboundCreateConversation,
+  phoneDigitsFromJid,
+  resolveBaileysMessageJids,
+} from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -219,20 +224,23 @@ function normalizePayload(payload: any): Normalized | null {
     const messages = Array.isArray(data.messages) ? data.messages : [data];
     const msg = messages[0];
     if (!msg) return null;
-    const key = msg.key || {};
 
     // Reação (👍/❤️) não é mensagem nova — fica p/ a fase de reactions do inbox.
     if (msg.message?.reactionMessage) {
       return { kind: "unknown", instance, event: `${event}:reaction` };
     }
 
+    // Espelha o path Go: @lid → telefone via remoteJidAlt / Pn.
+    const jids = resolveBaileysMessageJids(msg);
+
     return {
       kind: "message",
       instance,
-      fromMe: key.fromMe === true,
-      remoteJid: key.remoteJid || "",
+      fromMe: jids.fromMe,
+      remoteJid: jids.remoteJid,
+      ...(jids.lidJid ? { lidJid: jids.lidJid } : {}),
       pushName: msg.pushName || "",
-      messageId: key.id || "",
+      messageId: jids.messageId || "",
       content: extractTextContent(msg.message) || msg.body || "",
       media: extractMedia(msg.message),
     };
@@ -805,12 +813,8 @@ async function handleMessage(
   // Grupos ficam fora do inbox de vendas (igual V5).
   if (norm.remoteJid.endsWith("@g.us")) return ok({ skipped: "group" });
 
-  // JID @lid sem telefone real resolvido → sem identidade utilizável (V5:
-  // não criar conversa fantasma a partir de LID).
-  const remoteIsLid = norm.remoteJid.includes("@lid");
-  const fromDigits = remoteIsLid
-    ? ""
-    : norm.remoteJid.split("@")[0].split(":")[0].replace(/\D/g, "");
+  // JID @lid sem telefone real resolvido (Alt) → sem identidade utilizável.
+  const fromDigits = phoneDigitsFromJid(norm.remoteJid);
   if (!fromDigits) return ok({ skipped: "no_phone" });
 
   // Idempotência por key.id (padrão wamid/ig_mid): re-entregas não duplicam.
@@ -856,11 +860,18 @@ async function handleMessage(
       .eq("evolution_instance_id", instance.id)
       .order("created_at", { ascending: false })
       .limit(1);
-    const conv = rows?.[0] ?? null;
-    // Sem conversa → papo iniciado fora do CRM; o inbox de VENDAS nasce de
-    // inbound (lead fala primeiro). Não criamos conversa fantasma (o V5 criava
-    // com status 'human' — decisão de escopo registrada no retorno A1.3).
-    if (!conv) return ok({ skipped: "device_outbound_no_conversation" });
+    let conv = rows?.[0] ?? null;
+    // BDR Camila: 1º toque no aparelho pode NASCER conversa (gate por nome/flag).
+    // Demais instâncias mantêm o skip A1.3 (inbox nasce no inbound).
+    if (!conv) {
+      if (!allowsDeviceOutboundCreateConversation(instance)) {
+        return ok({ skipped: "device_outbound_no_conversation" });
+      }
+      conv = await ensureConversation(
+        supabase, instance, fromDigits, null, productId,
+      );
+      if (!conv) return ok({ stored: false, skipped: "device_outbound_create_failed" });
+    }
 
     // Dedupe extra do V5: mesmo conteúdo outbound nos últimos 60s na mesma
     // conversa (eco do envio feito pelo próprio CRM via Evolution).
