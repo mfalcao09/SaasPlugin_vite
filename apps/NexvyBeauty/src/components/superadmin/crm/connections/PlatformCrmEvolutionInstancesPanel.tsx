@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -11,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Smartphone, Star, Loader2, QrCode, CheckCircle2, Pause, LogOut, Pencil, Trash2 } from 'lucide-react';
+import { Smartphone, Star, Loader2, QrCode, CheckCircle2, Pause, LogOut, Pencil, Trash2, Bot } from 'lucide-react';
 import {
   usePlatformCrmEvolutionInstances,
   useSetDefaultPlatformCrmEvolutionInstance,
@@ -23,6 +24,9 @@ import {
   useRenamePlatformCrmEvolutionInstance,
   type PlatformCrmEvolutionInstance,
 } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmProductAgents } from '@/components/superadmin/crm/data/usePlatformCrmProductAgents';
+import { PlatformCrmCaptureProductField } from '@/components/superadmin/crm/capture/PlatformCrmCaptureProductField';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -160,26 +164,65 @@ function CreateInstanceDialog({
   onClose: () => void;
   onCreated: (instance: PlatformCrmEvolutionInstance, opts: { scanNow: boolean }) => void;
 }) {
+  const { products, effectiveProductId } = useActivePlatformProduct();
+  const [productId, setProductId] = useState('');
   const [name, setName] = useState('');
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [pendingMode, setPendingMode] = useState<'create' | 'scan' | null>(null);
   const createMut = useCreatePlatformCrmEvolutionInstance();
+  const { data: agents, isLoading: agentsLoading } = usePlatformCrmProductAgents(
+    productId || undefined,
+  );
+
+  // Prefill produto ativo ao abrir (parity FormsManager ~160–166).
+  useEffect(() => {
+    if (!open) return;
+    setProductId(effectiveProductId ?? (products.length === 1 ? products[0].id : '') ?? '');
+    setName('');
+    setSelectedAgentIds([]);
+    setPendingMode(null);
+  }, [open, effectiveProductId, products]);
+
+  // Troca de produto limpa agentes (lista é filtrada por product_id).
+  useEffect(() => {
+    setSelectedAgentIds([]);
+  }, [productId]);
 
   const sanitized = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
-  const valid = /^[a-z0-9-]{3,40}$/.test(sanitized);
+  const nameValid = /^[a-z0-9-]{3,40}$/.test(sanitized);
+  const productReady = products.length === 0 || !!productId;
+  const canSubmit = nameValid && productReady && !createMut.isPending;
+
+  const resetAndClose = () => {
+    setName('');
+    setSelectedAgentIds([]);
+    setPendingMode(null);
+    onClose();
+  };
+
+  const toggleAgent = (agentId: string) => {
+    setSelectedAgentIds((prev) =>
+      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId],
+    );
+  };
 
   const create = async (scanNow: boolean) => {
-    if (!valid || createMut.isPending) return;
+    if (!canSubmit) return;
     setPendingMode(scanNow ? 'scan' : 'create');
     try {
-      const data = await createMut.mutateAsync({ name: sanitized });
+      const data = await createMut.mutateAsync({
+        name: sanitized,
+        product_id: productId || null,
+        agent_ids: selectedAgentIds,
+      });
       const instance = (data?.instance ?? data) as PlatformCrmEvolutionInstance | undefined;
       if (!instance?.id) {
         toast.error('Conexão criada, mas não foi possível abrir o QR. Use Conectar na lista.');
-        setName('');
-        onClose();
+        resetAndClose();
         return;
       }
       setName('');
+      setSelectedAgentIds([]);
       onCreated(instance, { scanNow });
     } catch {
       // toast já tratado pelo hook
@@ -194,8 +237,8 @@ function CreateInstanceDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { setName(''); onClose(); } }}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Nova conexão de WhatsApp</DialogTitle>
@@ -204,40 +247,92 @@ function CreateInstanceDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-4">
-            <Label htmlFor="instance-name">Nome da conexão</Label>
-            <Input
-              id="instance-name"
-              autoFocus
-              placeholder="ex: vendas-01"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+          <div className="space-y-4 py-4">
+            <PlatformCrmCaptureProductField
+              products={products}
+              value={productId}
+              onChange={setProductId}
               disabled={createMut.isPending}
             />
-            <p className="text-xs text-muted-foreground">
-              Apenas letras minúsculas, números e hífens. Mínimo 3 caracteres.
-            </p>
-            {name && !valid && (
-              <p className="text-xs text-destructive">
-                Nome inválido. Use apenas letras minúsculas, números e hífens (3 a 40 caracteres).
+
+            <div className="space-y-2">
+              <Label htmlFor="instance-name">Nome da conexão</Label>
+              <Input
+                id="instance-name"
+                autoFocus
+                placeholder="ex: vendas-01"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={createMut.isPending}
+              />
+              <p className="text-xs text-muted-foreground">
+                Apenas letras minúsculas, números e hífens. Mínimo 3 caracteres.
               </p>
-            )}
+              {name && !nameValid && (
+                <p className="text-xs text-destructive">
+                  Nome inválido. Use apenas letras minúsculas, números e hífens (3 a 40 caracteres).
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Agentes (opcional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Os selecionados passam a ter esta conexão nas dedicadas. Deixe vazio para criar agora e vincular depois.
+                Agentes sem dedicadas continuam podendo atender em qualquer conexão.
+              </p>
+              {!productId && products.length > 0 ? (
+                <p className="text-xs text-muted-foreground">Selecione um produto para listar os agentes.</p>
+              ) : agentsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando agentes…
+                </div>
+              ) : !(agents?.length) ? (
+                <div className="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
+                  Nenhum agente neste produto. Você pode criar a conexão agora e vincular agentes depois.
+                </div>
+              ) : (
+                <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
+                  {agents.map((agent) => {
+                    const checked = selectedAgentIds.includes(agent.id);
+                    return (
+                      <label
+                        key={agent.id}
+                        className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/40 text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleAgent(agent.id)}
+                          disabled={createMut.isPending}
+                        />
+                        <Bot className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">{agent.name}</span>
+                        {!agent.is_active && (
+                          <Badge variant="outline" className="ml-auto text-[10px]">Inativo</Badge>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="w-full flex-col gap-2 sm:flex-col sm:space-x-0 [&>button]:w-full">
-            <Button type="button" variant="outline" onClick={onClose} disabled={createMut.isPending}>
+            <Button type="button" variant="outline" onClick={resetAndClose} disabled={createMut.isPending}>
               Cancelar
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={!valid || createMut.isPending}
+              disabled={!canSubmit}
               onClick={() => void create(false)}
             >
               {pendingMode === 'create' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar conexão
             </Button>
-            <Button type="submit" disabled={!valid || createMut.isPending}>
+            <Button type="submit" disabled={!canSubmit}>
               {pendingMode === 'scan' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               <QrCode className="h-4 w-4 mr-2" />
               Criar e escanear agora
