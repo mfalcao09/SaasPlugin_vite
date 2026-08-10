@@ -34,7 +34,7 @@ import {
   dispatchTier,
   TIER_ORDER,
 } from "../_shared/cold-outreach/segment-gate.ts";
-import { assignVariant, type Channel, renderOpening, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
+import { assignVariant, type Channel, CAMILA_PROSPECTOR_AGENT_ID, renderOpeningFromDb, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
 import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
 
@@ -422,9 +422,31 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     return { campaign: c.id, action: "skipped_unapproved", lead: due.id, remaining: gate.remaining, followups: followupResult };
   }
 
-  // Render da abertura (script WIRED).
+  // Render da abertura: WhatsApp SEMPRE do additional_prompt do agente (Camila).
+  // Fail closed — nunca cai no template hardcoded stale ("da Nexvy 🌿").
   const tokens = await buildTokens(sb, c, due);
-  const text = renderOpening(channel, tokens, due.variant ?? undefined);
+  const agentId = (c.agent_id as string | null | undefined) ?? CAMILA_PROSPECTOR_AGENT_ID;
+  let text: string;
+  try {
+    text = await renderOpeningFromDb(sb, channel, tokens, {
+      agentId,
+      variant: due.variant ?? undefined,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await sb.from("platform_crm_cold_outreach_queue").update({
+      status: "failed",
+      last_error: `opening_from_db: ${msg}`.slice(0, 400),
+      updated_at: now.toISOString(),
+    }).eq("id", due.id);
+    return {
+      campaign: c.id,
+      action: "opening_render_failed",
+      lead: due.id,
+      error: msg,
+      followups: followupResult,
+    };
+  }
 
   const sendRes = await deliver(sb, { channel, dryRun, productId, instanceId, to: due.telefone, handle: due.handle, text });
 
