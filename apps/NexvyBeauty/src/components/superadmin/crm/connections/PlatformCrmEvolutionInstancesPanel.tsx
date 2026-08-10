@@ -224,7 +224,7 @@ function CreateInstanceDialog({
             )}
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <DialogFooter className="w-full flex-col gap-2 sm:flex-col sm:space-x-0 [&>button]:w-full">
             <Button type="button" variant="outline" onClick={onClose} disabled={createMut.isPending}>
               Cancelar
             </Button>
