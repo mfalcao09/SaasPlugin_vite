@@ -256,14 +256,69 @@ Deno.serve(async (req) => {
 
     // ---- CREATE INSTANCE (self-service da plataforma; operador = ILIMITADO) ----
     // Porte de create_instance_self SEM gate de plano e SEM prefixo de org.
+    // Aceita product_id (carimba na linha) + agent_ids opcional (junction dedicadas).
     if (action === "create_instance_self" || action === "create_instance") {
       const rawName = String(body.name || "").trim().toLowerCase();
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const productIdRaw = body.product_id == null || body.product_id === ""
+        ? null
+        : String(body.product_id).trim();
+      if (productIdRaw && !uuidRe.test(productIdRaw)) {
+        return new Response(JSON.stringify({ error: "product_id inválido." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const productId = productIdRaw;
+      const agentIdsRaw = Array.isArray(body.agent_ids) ? body.agent_ids : [];
+      const agentIds = [...new Set(
+        agentIdsRaw
+          .map((x: unknown) => String(x || "").trim())
+          .filter((id: string) => uuidRe.test(id)),
+      )] as string[];
 
       // Sanitiza: somente letras minúsculas, números e hífens; 3-40 chars
       if (!/^[a-z0-9-]{3,40}$/.test(rawName)) {
         return new Response(JSON.stringify({
           error: "Nome inválido. Use apenas letras minúsculas, números e hífens (3 a 40 caracteres).",
         }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (productId) {
+        const { data: productRow } = await supabase
+          .from("platform_crm_products")
+          .select("id")
+          .eq("id", productId)
+          .maybeSingle();
+        if (!productRow) {
+          return new Response(JSON.stringify({ error: "Produto não encontrado." }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      if (agentIds.length > 0) {
+        if (!productId) {
+          return new Response(JSON.stringify({
+            error: "Para vincular agentes, informe product_id.",
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const { data: agentRows, error: agentErr } = await supabase
+          .from("platform_crm_product_agents")
+          .select("id")
+          .eq("product_id", productId)
+          .in("id", agentIds);
+        if (agentErr) {
+          return new Response(JSON.stringify({ error: agentErr.message }), {
+            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const allowed = new Set((agentRows ?? []).map((r: { id: string }) => r.id));
+        const missing = agentIds.filter((id) => !allowed.has(id));
+        if (missing.length > 0) {
+          return new Response(JSON.stringify({
+            error: "Um ou mais agentes não pertencem ao produto selecionado.",
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
 
       const finalName = rawName.slice(0, 50);
@@ -333,6 +388,7 @@ Deno.serve(async (req) => {
           instance_token: instanceToken,
           status: "disconnected",
           is_default: (currentCount ?? 0) === 0,
+          product_id: productId,
           metadata: {
             instance_uuid: uuid,
             instance_name: finalName,
@@ -348,6 +404,40 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: false, error: insErr.message }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Vincula agentes selecionados (opcional). Zero agents = OK, sem junction.
+      // Mantém legado evolution_instance_id = 1ª Evolution dedicada (como AgentEditor).
+      if (agentIds.length > 0 && inserted?.id) {
+        const junctionRows = agentIds.map((agentId) => ({
+          product_agent_id: agentId,
+          connection_type: "evolution",
+          connection_id: inserted.id,
+        }));
+        const { error: junctionErr } = await supabase
+          .from("platform_crm_agent_connections")
+          .insert(junctionRows);
+        if (junctionErr) {
+          console.error("[create_instance_self] agent_connections insert error", junctionErr);
+        } else {
+          for (const agentId of agentIds) {
+            const { data: evoLinks } = await supabase
+              .from("platform_crm_agent_connections")
+              .select("connection_id")
+              .eq("product_agent_id", agentId)
+              .eq("connection_type", "evolution")
+              .order("created_at", { ascending: true })
+              .limit(1);
+            const firstEvo = evoLinks?.[0]?.connection_id ?? inserted.id;
+            const { error: legacyErr } = await supabase
+              .from("platform_crm_product_agents")
+              .update({ evolution_instance_id: firstEvo })
+              .eq("id", agentId);
+            if (legacyErr) {
+              console.error("[create_instance_self] legacy evolution_instance_id sync error", legacyErr);
+            }
+          }
+        }
       }
 
       // Configura webhook (best-effort) — v2.3.7 endereça por instanceName
@@ -435,6 +525,23 @@ Deno.serve(async (req) => {
           { method: "DELETE" },
           instTokenDel || undefined,
         ).catch(() => null);
+      }
+
+      // Limpa vínculos dedicados órfãos + legado evolution_instance_id apontando para este id.
+      const { error: junctionDelErr } = await supabase
+        .from("platform_crm_agent_connections")
+        .delete()
+        .eq("connection_type", "evolution")
+        .eq("connection_id", id);
+      if (junctionDelErr) {
+        console.error("[delete_instance] agent_connections cleanup error", junctionDelErr);
+      }
+      const { error: legacyNullErr } = await supabase
+        .from("platform_crm_product_agents")
+        .update({ evolution_instance_id: null })
+        .eq("evolution_instance_id", id);
+      if (legacyNullErr) {
+        console.error("[delete_instance] legacy evolution_instance_id nullify error", legacyNullErr);
       }
 
       const { error } = await supabase.from("platform_crm_evolution_instances").delete().eq("id", id);

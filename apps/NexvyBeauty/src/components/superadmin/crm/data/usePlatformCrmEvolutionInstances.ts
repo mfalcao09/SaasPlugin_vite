@@ -51,7 +51,13 @@ function useInvalidate() {
 export function useCreatePlatformCrmEvolutionInstance() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (vars: { name: string }) => proxy({ action: 'create_instance_self', name: vars.name }),
+    mutationFn: (vars: { name: string; product_id?: string | null; agent_ids?: string[] }) =>
+      proxy({
+        action: 'create_instance_self',
+        name: vars.name,
+        product_id: vars.product_id ?? null,
+        agent_ids: vars.agent_ids ?? [],
+      }),
     onSuccess: () => {
       invalidate();
       toast.success('Conexão criada! Escaneie o QR Code para ativar.');
