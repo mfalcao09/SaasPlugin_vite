@@ -299,8 +299,21 @@ async function sendEvolutionPresence(
   try {
     const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
     if (!productId) return; // já logado como error lá dentro
+    const meta = (conversation?.metadata && typeof conversation.metadata === 'object')
+      ? conversation.metadata as Record<string, unknown>
+      : {};
+    const waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
+      ? meta.wa_lid.trim()
+      : null;
     const { error } = await supabase.functions.invoke('platform-evolution-send', {
-      body: { product_id: productId, instance_id: instanceId, type: 'presence', to, payload: { state: 'composing' } },
+      body: {
+        product_id: productId,
+        instance_id: instanceId,
+        type: 'presence',
+        to,
+        ...(waLid ? { wa_lid: waLid } : {}),
+        payload: { state: 'composing' },
+      },
     });
     if (error) {
       console.warn(
@@ -510,6 +523,13 @@ async function deliverViaEvolution(
     );
     return { wamid: null, error: 'no_destination_phone', connectionId: instanceId, delivered: false };
   }
+  // LID persistido pelo webhook em metadata.wa_lid — send preferirá @lid.
+  const meta = (conversation?.metadata && typeof conversation.metadata === 'object')
+    ? conversation.metadata as Record<string, unknown>
+    : {};
+  const waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
+    ? meta.wa_lid.trim()
+    : null;
   try {
     const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
     if (!productId) {
@@ -521,7 +541,14 @@ async function deliverViaEvolution(
       };
     }
     const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
-      body: { product_id: productId, instance_id: instanceId, type: 'text', to, payload: { text: content } },
+      body: {
+        product_id: productId,
+        instance_id: instanceId,
+        type: 'text',
+        to,
+        ...(waLid ? { wa_lid: waLid } : {}),
+        payload: { text: content },
+      },
     });
     // A edge devolve o envelope do evoFetch ({ok,status,body}) — `ok:false` é
     // falha do servidor Evolution COM HTTP 200 no invoke, então checar só
@@ -1410,7 +1437,7 @@ Deno.serve(async (req) => {
       // Sem ela, cada invocação re-deriva do histórico bruto "já me apresentei?",
       // "já ofereci a demo?" — e re-deriva ERRADO sob pressão.
       // visitor_id: usado pelo GATE DO CANARY logo abaixo (prefixo 'wa:eval-').
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state')
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state, metadata')
       .eq('id', conversationId)
       .maybeSingle();
 

@@ -2,8 +2,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   allowsDeviceOutboundCreateConversation,
+  formatLidSendNumber,
+  lidDigitsFromWaLid,
   phoneDigitsFromJid,
   resolveBaileysMessageJids,
+  resolveEvolutionSendNumber,
 } from "./evolution-baileys-jid.ts";
 
 Deno.test("fromMe + @lid + remoteJidAlt → telefone resolvido (shape Camila)", () => {
@@ -50,4 +53,34 @@ Deno.test("gate Camila: nome ou flag metadata", () => {
     }),
     true,
   );
+});
+
+Deno.test("lidDigits / formatLidSendNumber", () => {
+  assertEquals(lidDigitsFromWaLid("62213373075703@lid"), "62213373075703");
+  assertEquals(lidDigitsFromWaLid("62213373075703"), "62213373075703");
+  assertEquals(formatLidSendNumber("62213373075703"), "62213373075703@lid");
+  assertEquals(lidDigitsFromWaLid("5511"), "");
+});
+
+Deno.test("send prefer @lid when wa_lid known + keep PN fallback digits", () => {
+  const r = resolveEvolutionSendNumber({
+    to: "+5511945760964",
+    waLid: "62213373075703@lid",
+  });
+  assertEquals(r.usedLid, true);
+  assertEquals(r.number, "62213373075703@lid");
+  assertEquals(r.phoneDigits, "5511945760964");
+});
+
+Deno.test("cold first-touch: só PN → digits, sem @lid", () => {
+  const r = resolveEvolutionSendNumber({ to: "5511988776655", waLid: null });
+  assertEquals(r.usedLid, false);
+  assertEquals(r.number, "5511988776655");
+  assertEquals(r.phoneDigits, "5511988776655");
+});
+
+Deno.test("to já é @lid → number preserva sufixo", () => {
+  const r = resolveEvolutionSendNumber({ to: "62213373075703@lid" });
+  assertEquals(r.usedLid, true);
+  assertEquals(r.number, "62213373075703@lid");
 });

@@ -58,6 +58,61 @@ export function phoneDigitsFromJid(remoteJid: string): string {
   return remoteJid.split("@")[0].split(":")[0].replace(/\D/g, "");
 }
 
+/** Dígitos do LID a partir de `622…@lid` ou só dígitos. Vazio se inválido. */
+export function lidDigitsFromWaLid(waLid: string | null | undefined): string {
+  if (!waLid) return "";
+  const raw = String(waLid).trim();
+  if (!raw) return "";
+  const local = raw.includes("@") ? raw.split("@")[0] : raw;
+  const digits = local.split(":")[0].replace(/\D/g, "");
+  // LID WhatsApp é longo; rejeita PN curto acidental (< 10) e vazio.
+  return digits.length >= 10 ? digits : "";
+}
+
+/** Formato aceito pelo Evolution sendText quando o destino é LID. */
+export function formatLidSendNumber(waLid: string | null | undefined): string {
+  const digits = lidDigitsFromWaLid(waLid);
+  return digits ? `${digits}@lid` : "";
+}
+
+export type EvolutionSendAddress = {
+  /** Valor de `number` no body Evolution. */
+  number: string;
+  usedLid: boolean;
+  /** Dígitos PN para fallback (vazio se só LID conhecido). */
+  phoneDigits: string;
+};
+
+/**
+ * Destino de envio Evolution: preferir `@lid` quando conhecido; senão PN.
+ * Cold first-touch (só telefone, sem wa_lid) → digits PN — não quebra prospecção.
+ *
+ * `to` pode ser dígitos, `+E.164`, JID `@s.whatsapp.net` ou já `…@lid`.
+ * `waLid` (metadata.wa_lid ou `…@lid`) tem precedência sobre PN em `to`.
+ */
+export function resolveEvolutionSendNumber(opts: {
+  to?: string | null;
+  waLid?: string | null;
+}): EvolutionSendAddress {
+  const toRaw = String(opts.to ?? "").trim();
+  const lidFromTo = toRaw.includes("@lid") ? formatLidSendNumber(toRaw) : "";
+  const lidFromMeta = formatLidSendNumber(opts.waLid);
+  const lidNumber = lidFromMeta || lidFromTo;
+
+  let phoneDigits = "";
+  if (toRaw && !toRaw.includes("@lid")) {
+    phoneDigits = phoneDigitsFromJid(
+      toRaw.includes("@") ? toRaw : `${toRaw.replace(/\D/g, "")}@s.whatsapp.net`,
+    );
+    if (!phoneDigits) phoneDigits = toRaw.replace(/\D/g, "");
+  }
+
+  if (lidNumber) {
+    return { number: lidNumber, usedLid: true, phoneDigits };
+  }
+  return { number: phoneDigits, usedLid: false, phoneDigits };
+}
+
 /**
  * BDR Camila: fromMe no aparelho pode NASCER conversa no CRM.
  * Gate: nome da instância contém "camila" OU metadata.create_conversation_on_device_outbound.
