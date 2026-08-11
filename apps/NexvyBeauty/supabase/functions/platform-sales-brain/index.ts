@@ -292,6 +292,7 @@ async function sendEvolutionPresence(
   supabase: any,
   conversation: Record<string, any> | null,
   toPhone: string,
+  delayMs: number,
 ): Promise<void> {
   const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
   const instanceId = typeof conversation?.evolution_instance_id === 'string'
@@ -304,6 +305,9 @@ async function sendEvolutionPresence(
     );
     return;
   }
+  // Evolution exige `delay` (ms que o composing fica ativo). Sem ele → 400 e
+  // silêncio no aparelho; a pausa local continua, mas sem "digitando…".
+  const delay = Math.max(1000, Math.min(60_000, Math.round(delayMs || 5000)));
   try {
     const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
     if (!productId) return; // já logado como error lá dentro
@@ -313,19 +317,23 @@ async function sendEvolutionPresence(
     const waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
       ? meta.wa_lid.trim()
       : null;
-    const { error } = await supabase.functions.invoke('platform-evolution-send', {
+    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
       body: {
         product_id: productId,
         instance_id: instanceId,
         type: 'presence',
         to,
         ...(waLid ? { wa_lid: waLid } : {}),
-        payload: { state: 'composing' },
+        payload: { state: 'composing', delay },
       },
     });
-    if (error) {
+    // Mesma régua do text send: invoke pode devolver HTTP 200 com {ok:false}
+    // (Evolution 400) — checar só `error` engolia a falha do digitando.
+    if (error || (data as any)?.ok === false || (data as any)?.error) {
       console.warn(
-        `[platform-sales-brain] presença Evolution falhou (ignorado) conversation_id=${conversationId} reason=${error.message}`,
+        `[platform-sales-brain] presença Evolution falhou (ignorado) conversation_id=${conversationId} reason=${
+          error?.message ?? String(JSON.stringify(data ?? null)).slice(0, 300)
+        }`,
       );
     }
   } catch (e) {
@@ -342,9 +350,10 @@ async function sendTypingSignal(
   conversation: Record<string, any> | null,
   inboundWamid: string | null,
   toPhone: string,
+  pauseMs = 0,
 ): Promise<void> {
   if (conversation?.channel === 'whatsapp_evolution') {
-    await sendEvolutionPresence(supabase, conversation, toPhone);
+    await sendEvolutionPresence(supabase, conversation, toPhone, pauseMs);
     return;
   }
   await sendTypingIndicator(supabase, conversation as ConversationConnectionHints | null, inboundWamid);
@@ -1658,12 +1667,15 @@ Deno.serve(async (req) => {
       }).then(async (r) => {
         if (!r.ok) console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
       }).catch((e) => console.error('[platform-sales-brain] hand-back fetch error:', e));
-      // Mesmo padrão do webhook: em produção o waitUntil segura a promise depois
-      // da resposta; sem ele (dev), esperar é melhor que perder a chamada.
+      // SEMPRE await. waitUntil-only (padrão antigo do webhook) perdia o hand-back
+      // quando o isolate encerrava ao devolver a 1ª resposta — medido 2026-08-11
+      // E2E Marcelo: inbound durante/após LLM ("E seu software" / "Faz o que?")
+      // ficou sem 2º turno (conversation_state.atualizado_seq ficou no snapshot
+      // pré-pergunta). Silêncio > latência extra neste request.
       // deno-lint-ignore no-explicit-any
       const rt = (globalThis as any).EdgeRuntime;
       if (rt?.waitUntil) rt.waitUntil(call);
-      else await call;
+      await call;
     };
 
     // MODO INATIVIDADE — corrida sweep→brain: se a cliente respondeu entre a
@@ -2636,10 +2648,11 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       // dessa janela. A bolha 3 caiu 1 segundo depois da pergunta dela — não era
       // resposta, era coincidência de relógio.
       //
-      // Aqui o lote é abortado e o HAND-BACK (que já existe) responde com o
-      // contexto novo. A bolha 1 SEMPRE sai: abortar antes dela deixaria a agente
-      // muda caso o hand-back falhasse, e silêncio é pior que atraso.
-      if (i > 0 && coveredInboundSeq != null) {
+      // MEDIDO em 2026-08-11: a lead perguntou o produto DURANTE o LLM; a bolha 1
+      // (eco Instagram) saiu mesmo assim. Agora a bolha 1 TAMBÉM aborta se chegou
+      // inbound nova — o hand-back (agora awaited) responde com o contexto certo.
+      // Resposta errada > atraso; silêncio só se hand-back falhar (logado).
+      if (coveredInboundSeq != null) {
         const { data: novasDaLead, error: ritmoErr } = await supabase
           .from('platform_crm_messages')
           .select('seq')
@@ -2672,7 +2685,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
           ? evoTypingPauseMs(bubbleText)   // PR-BDR-13: ritmo humano, só Camila
           : typingPauseMs(bubbleText));
       if (pauseMs > 0) {
-        await sendTypingSignal(supabase, conversation, inboundWamid, dest);
+        await sendTypingSignal(supabase, conversation, inboundWamid, dest, pauseMs);
         await sleep(pauseMs);
       }
 
@@ -2688,7 +2701,8 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       // DURANTE o sleep de digitação. MEDIDO 2026-08-05: a piada das 20:34:46
       // caiu no meio da pausa e a bolha 4 aterrissou por cima às 20:34:51 —
       // o guarda pré-pausa não tinha como vê-la. Mesma consulta, segundo portão.
-      if (i > 0 && pauseMs > 0 && coveredInboundSeq != null) {
+      // (Inclui bolha 1 — mesmo motivo do guarda pré-pausa pós-2026-08-11.)
+      if (pauseMs > 0 && coveredInboundSeq != null) {
         const { data: chegouNaPausa, error: pausaErr } = await supabase
           .from('platform_crm_messages')
           .select('seq')

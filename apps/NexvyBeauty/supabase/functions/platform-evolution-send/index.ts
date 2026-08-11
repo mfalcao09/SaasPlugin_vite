@@ -77,8 +77,16 @@ function buildSendBody(
     case "text":
       return { number, text: payload.text };
     case "presence": {
+      // Evolution (nexvy.tech) EXIGE `delay` — sem ele → 400
+      // `instance requires property "delay"` e o "digitando…" nunca aparece.
+      // MEDIDO 2026-08-11 E2E Marcelo: brain mandava delay no payload, mas
+      // buildSendBody DROPAVA o campo → Validate 400 às 14:47:04 (antes do texto).
       const state = String(payload.state || payload.presence || "composing");
-      return { number, presence: state };
+      const delayRaw = Number(payload.delay);
+      const delay = Number.isFinite(delayRaw)
+        ? Math.max(0, Math.min(60_000, Math.round(delayRaw)))
+        : (state === "paused" || state === "available" || state === "unavailable" ? 0 : 5000);
+      return { number, presence: state, delay };
     }
     case "media": {
       const rawMedia = payload.url ?? payload.media;

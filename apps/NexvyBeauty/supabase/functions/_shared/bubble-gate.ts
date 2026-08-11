@@ -58,7 +58,8 @@ const REAPRESENTACAO = new RegExp(
     '\\b(sou|me chamo|aqui (é|e) a?)\\s+\\w+', // "sou a Camila", "me chamo X"
     '\\bfalo\\s+(da|do|de)\\b', // "falo da NexvyBeauty"
     '\\b(sou|trabalho)\\s+(da|do|de)\\s+\\w+', // "sou da NexvyBeauty"
-    '\\bpeguei seu contato\\b', // origem do contato
+    '\\b(peguei|achei) seu contato\\b', // origem do contato (LLM varia o verbo)
+    '\\bvim te apresentar\\b', // eco de abertura Instagram — medido 2026-08-11 E2E
     '\\bvi (seu|o) (perfil|instagram|insta)\\b',
   ].join('|'),
   'i',
@@ -136,9 +137,16 @@ export function aplicarGateBolha(
     } else if (
       filtradas.length === 0 &&
       bubbles.length > 0 &&
-      bubbles.every((b) => SAUDACAO_REINICIO.test((b || '').trim()))
+      (
+        bubbles.every((b) => SAUDACAO_REINICIO.test((b || '').trim())) ||
+        // Eco de origem Instagram sem responder o turno — medido 2026-08-11
+        // ("Achei seu contato… vim te apresentar"). Stub > reabrir pitch.
+        bubbles.every((b) =>
+          /\b(peguei|achei) seu contato\b|\bvim te apresentar\b/i.test((b || '').trim())
+        )
+      )
     ) {
-      // Só re-saudação vazia: tolerar RECRIA o defeito ("Marcelo, tudo bem?").
+      // Só re-saudação vazia / eco de origem: tolerar RECRIA o defeito.
       // Stub > silêncio e > reabrir conversa. Reapresentação clássica ("sou a X")
       // sozinha ainda tolera — NUNCA calar (teste dedicado).
       bolhasDerrubadas = bubbles.length;
