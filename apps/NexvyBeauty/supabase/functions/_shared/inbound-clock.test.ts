@@ -15,7 +15,7 @@
  *       que asserta exatamente isso, pra ninguém "consertar" um não-bug de novo.
  */
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { debounceWaitMs, inboundEpochMs } from './inbound-clock.ts';
+import { debounceWaitMs, inboundEpochMs, slidingDebounceExtraMs } from './inbound-clock.ts';
 
 const DEBOUNCE_MS = 12_000; // mesmo default do platform-sales-brain:87
 const AGORA = Date.parse('2026-08-06T05:00:00.000Z');
@@ -165,4 +165,50 @@ Deno.test('borda: relógio da Meta adiantado (wa no futuro) faz esperar mais, nu
   // Math.min trava na janela cheia. Conservador de propósito.
   const m = inbound({ waAgoSec: -30, createdAgoMs: 0 });
   assertEquals(debounceWaitMs(inboundEpochMs(m), AGORA, DEBOUNCE_MS), DEBOUNCE_MS);
+});
+
+Deno.test('sliding: inbound nova ainda fresca ESTENDE a espera', () => {
+  const extra = slidingDebounceExtraMs({
+    newestRefMs: AGORA - 1_000,
+    agoraMs: AGORA,
+    janelaMs: DEBOUNCE_MS,
+    elapsedTotalMs: DEBOUNCE_MS,
+    maxTotalMs: DEBOUNCE_MS * 3,
+    extensoesFeitas: 0,
+    maxExtensoes: 3,
+  });
+  assertEquals(extra, 11_000);
+});
+
+Deno.test('sliding: inbound ja madura NAO estende', () => {
+  const extra = slidingDebounceExtraMs({
+    newestRefMs: AGORA - DEBOUNCE_MS,
+    agoraMs: AGORA,
+    janelaMs: DEBOUNCE_MS,
+    elapsedTotalMs: DEBOUNCE_MS,
+    maxTotalMs: DEBOUNCE_MS * 3,
+    extensoesFeitas: 0,
+    maxExtensoes: 3,
+  });
+  assertEquals(extra, 0);
+});
+
+Deno.test('sliding: tetos cortam', () => {
+  assertEquals(slidingDebounceExtraMs({
+    newestRefMs: AGORA, agoraMs: AGORA, janelaMs: DEBOUNCE_MS,
+    elapsedTotalMs: 0, maxTotalMs: DEBOUNCE_MS * 3, extensoesFeitas: 3, maxExtensoes: 3,
+  }), 0);
+  assertEquals(slidingDebounceExtraMs({
+    newestRefMs: AGORA, agoraMs: AGORA, janelaMs: DEBOUNCE_MS,
+    elapsedTotalMs: DEBOUNCE_MS * 3, maxTotalMs: DEBOUNCE_MS * 3, extensoesFeitas: 0, maxExtensoes: 3,
+  }), 0);
+});
+
+Deno.test('sliding: resto nao ultrapassa teto', () => {
+  const extra = slidingDebounceExtraMs({
+    newestRefMs: AGORA - 1_000, agoraMs: AGORA, janelaMs: DEBOUNCE_MS,
+    elapsedTotalMs: DEBOUNCE_MS * 3 - 2_000, maxTotalMs: DEBOUNCE_MS * 3,
+    extensoesFeitas: 1, maxExtensoes: 3,
+  });
+  assertEquals(extra, 2_000);
 });
