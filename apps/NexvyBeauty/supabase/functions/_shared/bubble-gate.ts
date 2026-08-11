@@ -64,6 +64,29 @@ const REAPRESENTACAO = new RegExp(
   'i',
 );
 
+/**
+ * Saudação-vazia / re-abertura: bolha que só cumprimenta, sem responder o turno.
+ * Medido 2026-08-11: com pitch device já no histórico, o modelo mandou
+ * "Marcelo, tudo bem?" — REAPRESENTACAO não casava, gate tolerava, CONTINUE
+ * no prompt foi ignorado.
+ */
+const SAUDACAO_REINICIO = new RegExp(
+  [
+    '^(oi|olá|ola|e aí|e ai|opa)\\s*[!?.…]*$',
+    '^(oi|olá|ola|e aí|e ai|opa)?[\\s,]*[\\p{L}]+[\\s,]+(tudo bem|tudo certo|como vai|beleza)\\b.*$',
+    '^(tudo bem|tudo certo|como vai|beleza)\\b.*$',
+  ].join('|'),
+  'iu',
+);
+
+const eReinicio = (b: string): boolean => {
+  const t = (b || '').trim();
+  return REAPRESENTACAO.test(t) || SAUDACAO_REINICIO.test(t);
+};
+
+/** Stub quando a única saída do modelo era re-saudação após já termos falado. */
+const CONTINUAR_STUB = 'Pode perguntar — o que você quer entender primeiro?';
+
 export interface GateBolhaOpts {
   /** Da política: o nome já foi usado há poucas mensagens. */
   proibirNome: boolean;
@@ -103,19 +126,29 @@ export function aplicarGateBolha(
   let vocativosRemovidos = 0;
   let bolhasDerrubadas = 0;
 
-  // ── 1) REAPRESENTAÇÃO: a bolha cai INTEIRA ────────────────────────────────
+  // ── 1) REAPRESENTAÇÃO / RE-SAUDAÇÃO: a bolha cai INTEIRA ──────────────────
   let restantes = bubbles;
   if (opts.proibirReapresentar) {
-    const filtradas = bubbles.filter((b) => !REAPRESENTACAO.test(b));
-    // NUNCA calar a agente: se TODAS violam, a redundância é melhor que o silêncio.
+    const filtradas = bubbles.filter((b) => !eReinicio(b));
     if (filtradas.length > 0 && filtradas.length < bubbles.length) {
       bolhasDerrubadas = bubbles.length - filtradas.length;
       restantes = filtradas;
+    } else if (
+      filtradas.length === 0 &&
+      bubbles.length > 0 &&
+      bubbles.every((b) => SAUDACAO_REINICIO.test((b || '').trim()))
+    ) {
+      // Só re-saudação vazia: tolerar RECRIA o defeito ("Marcelo, tudo bem?").
+      // Stub > silêncio e > reabrir conversa. Reapresentação clássica ("sou a X")
+      // sozinha ainda tolera — NUNCA calar (teste dedicado).
+      bolhasDerrubadas = bubbles.length;
+      restantes = [CONTINUAR_STUB];
     }
+    // else: todas são reapresentação clássica → mantém (NUNCA calar)
   }
   const toleradaReapresentacao = opts.proibirReapresentar &&
     bolhasDerrubadas === 0 &&
-    bubbles.some((b) => REAPRESENTACAO.test(b));
+    bubbles.some((b) => eReinicio(b));
 
   // ── 2) NOME: remove só o VOCATIVO, que é BORDA (fronteira = vírgula) ──────
   let saida = restantes;

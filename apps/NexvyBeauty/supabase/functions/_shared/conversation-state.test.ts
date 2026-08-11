@@ -126,6 +126,14 @@ Deno.test('reapresentação: proibida assim que existe outbound', () => {
   assert(p.fatos.some((f) => f.includes('já se apresentou')));
 });
 
+Deno.test('reapresentação: jaFalouOutbound trava SEM conversation_state (device/agent)', () => {
+  // Abertura cold no aparelho: histórico tem outbound agent, estado ainda null.
+  const p = politica(null, { jaFalouOutbound: true });
+  assert(p.proibirReapresentar);
+  assert(p.fatos.some((f) => f.includes('já se apresentou')));
+  assertFalse(politica(null).proibirReapresentar);
+});
+
 // ─── ESTÁGIO DERIVADO ────────────────────────────────────────────────────────
 
 Deno.test('estágio é DERIVADO — nunca armazenado, nunca diverge', () => {

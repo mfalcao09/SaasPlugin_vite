@@ -131,6 +131,13 @@ export interface PoliticaOpts {
   seqAtual?: number;
   /** Janela de racionamento do nome, em mensagens. */
   janelaNome?: number;
+  /**
+   * Já existe outbound nosso no histórico (bot OU agent/device), mesmo sem
+   * `conversation_state.apresentou`. Abertura cold no aparelho grava
+   * sender_type=agent e NÃO passa por `reduzir({enviouOutbound})` — sem este
+   * flag, PR #166 só injetava CONTINUE no prompt e a Camila re-saudava.
+   */
+  jaFalouOutbound?: boolean;
 }
 
 /**
@@ -171,8 +178,9 @@ export function politica(
     );
   }
 
-  // REAPRESENTAÇÃO — o estado prova que já falou; não recomeça.
-  const proibirReapresentar = st.apresentou === true;
+  // REAPRESENTAÇÃO — estado OU histórico já prova que falamos; não recomeça.
+  // `jaFalouOutbound` cobre abertura device/agent sem conversation_state.
+  const proibirReapresentar = st.apresentou === true || opts.jaFalouOutbound === true;
   if (proibirReapresentar) {
     fatos.push(
       'FATO DESTE TURNO: você já se apresentou nesta conversa. ' +

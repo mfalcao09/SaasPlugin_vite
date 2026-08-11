@@ -2217,7 +2217,15 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     const seqInbound = maxInboundSeq(historyDesc) ?? 0;
     const seqGravado = estadoAtual?.atualizado_seq ?? 0;
     const seqAtual = seqInbound > seqGravado ? seqInbound : seqGravado + 1;
-    const pol = politica(estadoAtual, { leadAceitouAgora, seqAtual });
+    // PR #166 fez botAlreadySpoke ver agent/device, mas só virava frase no prompt.
+    // O gate duro (proibirReapresentar) lia conversation_state.apresentou — que
+    // abertura fromMe NUNCA grava. Sem jaFalouOutbound, Camila re-saudava
+    // ("Marcelo, tudo bem?") com pitch já no histórico (7b24e943, 2026-08-11).
+    const pol = politica(estadoAtual, {
+      leadAceitouAgora,
+      seqAtual,
+      jaFalouOutbound: botAlreadySpoke,
+    });
 
     // Os fatos vão no FIM do system: o modelo obedece melhor o que leu por último,
     // e estes são fatos DESTE turno — não fazem parte da persona.
