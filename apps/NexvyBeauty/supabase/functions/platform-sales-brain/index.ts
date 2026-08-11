@@ -167,6 +167,14 @@ const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tu
 // Mensagem calorosa de transição ao escalar (nunca "você não se encaixa").
 const WARM_HANDOFF_MSG = 'Vou te conectar com nosso time pra achar o melhor caminho pra você 💚';
 
+// Continuity: Camila device opening arrives as sender_type=agent (fromMe), not bot.
+// Count both as "we already spoke" so the brain continues instead of re-greeting.
+// CRM dedup (recent_bot_message) stays bot-only — device outbound must NOT block brain.
+function isOurOutbound(m: { direction?: string; sender_type?: string }): boolean {
+  return m.direction === 'outbound'
+    && (m.sender_type === 'bot' || m.sender_type === 'agent');
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -1667,9 +1675,7 @@ Deno.serve(async (req) => {
       if (newest && newest.direction === 'inbound' && newest.sender_type === 'visitor') {
         return json({ skipped: 'client_replied' });
       }
-      const botSpoke = historyDesc.some(
-        (m: any) => m.direction === 'outbound' && m.sender_type === 'bot',
-      );
+      const botSpoke = historyDesc.some((m: any) => isOurOutbound(m));
       if (!botSpoke) return json({ skipped: 'no_bot_message_to_follow_up' });
     }
 
@@ -1746,10 +1752,8 @@ Deno.serve(async (req) => {
     if (messages.length === 0) {
       return json({ skipped: 'no_messages' });
     }
-    // Já existe fala do bot? Então CONTINUA — proíbe reapresentação.
-    const botAlreadySpoke = historyDesc.some(
-      (m: any) => m.direction === 'outbound' && m.sender_type === 'bot',
-    );
+    // Já existe fala nossa (bot OU agent/device)? Então CONTINUA — proíbe reapresentação.
+    const botAlreadySpoke = historyDesc.some((m: any) => isOurOutbound(m));
 
     // 6) MEMÓRIA: estado do lead (BANT + o que já sabemos em metadata).
     let lead: Record<string, any> | null = null;
@@ -2046,7 +2050,7 @@ Deno.serve(async (req) => {
           'i',
         );
         const usouRecente = historyDesc
-          .filter((m: any) => m.sender_type === 'bot' && typeof m.content === 'string')
+          .filter((m: any) => isOurOutbound(m) && typeof m.content === 'string')
           .slice(0, 4)
           .some((m: any) => nomeRe.test(m.content));
         if (usouRecente) {
@@ -2428,7 +2432,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
 
     const jaDito = new Set<string>(
       history
-        .filter((m: any) => m.sender_type === 'bot' && typeof m.content === 'string')
+        .filter((m: any) => isOurOutbound(m) && typeof m.content === 'string')
         .map((m: any) => repeatKey(m.content))
         .filter((k: string) => k.length >= 12), // curtas ("ok", "certo") PODEM repetir
     );
