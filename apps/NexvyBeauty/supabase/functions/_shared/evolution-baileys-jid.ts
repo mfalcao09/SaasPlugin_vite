@@ -127,3 +127,59 @@ export function allowsDeviceOutboundCreateConversation(instance: {
   if (meta.create_conversation_on_device_outbound === true) return true;
   return String(instance.name || "").toLowerCase().includes("camila");
 }
+
+function isPnJid(jid: string): boolean {
+  return typeof jid === "string" && jid.includes("@s.whatsapp.net");
+}
+
+/**
+ * Webhook Baileys às vezes entrega remoteJid + remoteJidAlt ambos PN com
+ * addressingMode=lid — o LID real só está no store findMessages.
+ * True → caller deve consultar Evolution antes de persistir/enviar.
+ */
+export function lidLookupNeeded(msg: Record<string, unknown> | null | undefined): boolean {
+  if (!msg || typeof msg !== "object") return false;
+  const key = (msg.key && typeof msg.key === "object")
+    ? msg.key as Record<string, unknown>
+    : {};
+  const addressingMode = String(
+    msg.addressingMode ?? key.addressingMode ?? "",
+  ).toLowerCase();
+  if (addressingMode === "lid") return true;
+
+  const remote = typeof key.remoteJid === "string" ? key.remoteJid : "";
+  const alt =
+    (typeof key.remoteJidAlt === "string" && key.remoteJidAlt) ||
+    (typeof msg.remoteJidAlt === "string" && msg.remoteJidAlt) ||
+    "";
+  return Boolean(remote && alt && isPnJid(remote) && isPnJid(alt));
+}
+
+/**
+ * Extrai o primeiro `@lid` útil de records do Evolution `chat/findMessages`.
+ * Store tipicamente: remoteJid=`…@lid`, remoteJidAlt=`…@s.whatsapp.net`.
+ */
+export function pickLidJidFromEvolutionMessageRecords(records: unknown): string {
+  const list = Array.isArray(records) ? records : [];
+  for (const rec of list) {
+    if (!rec || typeof rec !== "object") continue;
+    const resolved = resolveBaileysMessageJids(rec as Record<string, unknown>);
+    if (resolved.lidJid) return resolved.lidJid;
+  }
+  return "";
+}
+
+/**
+ * Camila (e instâncias com flag): envio API DEVE ir por `@lid`.
+ * PN → ACK 463 no aparelho; sem fallback PN.
+ */
+export function requiresLidSend(instance: {
+  name?: string | null;
+  metadata?: unknown;
+}): boolean {
+  const meta = (instance.metadata && typeof instance.metadata === "object")
+    ? instance.metadata as Record<string, unknown>
+    : {};
+  if (meta.require_lid_send === true) return true;
+  return String(instance.name || "").toLowerCase().includes("camila");
+}

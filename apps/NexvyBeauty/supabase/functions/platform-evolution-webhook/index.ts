@@ -36,7 +36,9 @@ import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
   allowsDeviceOutboundCreateConversation,
   lidDigitsFromWaLid,
+  lidLookupNeeded,
   phoneDigitsFromJid,
+  pickLidJidFromEvolutionMessageRecords,
   resolveBaileysMessageJids,
 } from "../_shared/evolution-baileys-jid.ts";
 
@@ -70,6 +72,8 @@ type Normalized =
       fromMe: boolean;
       remoteJid: string;
       lidJid?: string;
+      /** Webhook perdeu LID (addressingMode=lid / ambos PN) → lookup findMessages. */
+      needsLidLookup?: boolean;
       pushName: string;
       messageId: string;
       content: string;
@@ -234,12 +238,14 @@ function normalizePayload(payload: any): Normalized | null {
     // Espelha o path Go: @lid → telefone via remoteJidAlt / Pn.
     const jids = resolveBaileysMessageJids(msg);
 
+    const needsLookup = !jids.lidJid && lidLookupNeeded(msg as Record<string, unknown>);
     return {
       kind: "message",
       instance,
       fromMe: jids.fromMe,
       remoteJid: jids.remoteJid,
       ...(jids.lidJid ? { lidJid: jids.lidJid } : {}),
+      ...(needsLookup ? { needsLidLookup: true } : {}),
       pushName: msg.pushName || "",
       messageId: jids.messageId || "",
       content: extractTextContent(msg.message) || msg.body || "",
@@ -823,6 +829,73 @@ async function transcribeEvolutionAudio(
   }
 }
 
+
+/** Recupera `@lid` perdido no webhook via Evolution findMessages.
+ *  1º por key.id; 2º por remoteJidAlt=phone@s.whatsapp.net. */
+async function lookupLidJidFromEvolution(
+  supabase: any,
+  instance: any,
+  opts: { messageId?: string; phoneDigits?: string },
+): Promise<string> {
+  try {
+    const { data: cfg } = await supabase
+      .from("platform_settings")
+      .select("evolution_go_url, evolution_go_global_api_key")
+      .maybeSingle();
+    const evoUrl = String(cfg?.evolution_go_url ?? "").replace(/\/$/, "");
+    const keys = [instance.instance_token, cfg?.evolution_go_global_api_key]
+      .map((k: unknown) => String(k ?? "").trim())
+      .filter(Boolean);
+    const name = String(instance.name ?? "").trim();
+    if (!evoUrl || keys.length === 0 || !name) return "";
+
+    const queries: Record<string, unknown>[] = [];
+    if (opts.messageId) {
+      queries.push({ where: { key: { id: opts.messageId } }, page: 1, offset: 10 });
+    }
+    if (opts.phoneDigits) {
+      queries.push({
+        where: { key: { remoteJidAlt: `${opts.phoneDigits}@s.whatsapp.net` } },
+        page: 1,
+        offset: 20,
+      });
+    }
+    if (!queries.length) return "";
+
+    for (const apikey of keys) {
+      for (const body of queries) {
+        const res = await fetch(
+          `${evoUrl}/chat/findMessages/${encodeURIComponent(name)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey },
+            body: JSON.stringify(body),
+          },
+        );
+        const parsed = await res.json().catch(() => null);
+        const records = parsed?.messages?.records ?? parsed?.records ?? [];
+        const lid = pickLidJidFromEvolutionMessageRecords(records);
+        if (lid) {
+          console.log(
+            `[platform-evolution-webhook] LID lookup ok message_id=${opts.messageId || ""} lid=${lid}`,
+          );
+          return lid;
+        }
+      }
+    }
+    console.warn(
+      `[platform-evolution-webhook] LID lookup miss message_id=${opts.messageId || ""} phone=${opts.phoneDigits || ""}`,
+    );
+    return "";
+  } catch (e) {
+    console.warn(
+      "[platform-evolution-webhook] LID lookup exception:",
+      String(e).slice(0, 200),
+    );
+    return "";
+  }
+}
+
 /** Ingestão de 1 mensagem Evolution → inbox de plataforma. Retorna a Response
  *  (sempre 200 — Evolution re-entregaria em não-200 e o key.id já dedupa). */
 async function handleMessage(
@@ -841,6 +914,16 @@ async function handleMessage(
   // JID @lid sem telefone real resolvido (Alt) → sem identidade utilizável.
   const fromDigits = phoneDigitsFromJid(norm.remoteJid);
   if (!fromDigits) return ok({ skipped: "no_phone" });
+
+  // Webhook Baileys pode entregar ambos JIDs como PN (addressingMode=lid).
+  // O store findMessages ainda tem remoteJid=@lid — recupera e persiste wa_lid.
+  if (!norm.lidJid && norm.needsLidLookup) {
+    const lookedUp = await lookupLidJidFromEvolution(supabase, instance, {
+      messageId: norm.messageId || undefined,
+      phoneDigits: fromDigits,
+    });
+    if (lookedUp) norm.lidJid = lookedUp;
+  }
 
   // Idempotência por key.id (padrão wamid/ig_mid): re-entregas não duplicam.
   if (norm.messageId) {

@@ -4,7 +4,10 @@ import {
   allowsDeviceOutboundCreateConversation,
   formatLidSendNumber,
   lidDigitsFromWaLid,
+  lidLookupNeeded,
   phoneDigitsFromJid,
+  pickLidJidFromEvolutionMessageRecords,
+  requiresLidSend,
   resolveBaileysMessageJids,
   resolveEvolutionSendNumber,
 } from "./evolution-baileys-jid.ts";
@@ -83,4 +86,57 @@ Deno.test("to já é @lid → number preserva sufixo", () => {
   const r = resolveEvolutionSendNumber({ to: "62213373075703@lid" });
   assertEquals(r.usedLid, true);
   assertEquals(r.number, "62213373075703@lid");
+});
+
+Deno.test("lidLookupNeeded: addressingMode=lid", () => {
+  assertEquals(lidLookupNeeded({
+    addressingMode: "lid",
+    key: {
+      fromMe: false,
+      id: "3A0CF0F054CEED5D043F",
+      remoteJid: "5511945760964@s.whatsapp.net",
+      remoteJidAlt: "5511945760964@s.whatsapp.net",
+    },
+  }), true);
+});
+
+Deno.test("lidLookupNeeded: both JIDs PN without addressingMode", () => {
+  assertEquals(lidLookupNeeded({
+    key: {
+      remoteJid: "5511945760964@s.whatsapp.net",
+      remoteJidAlt: "5511945760964@s.whatsapp.net",
+    },
+  }), true);
+});
+
+Deno.test("lidLookupNeeded: store shape já tem @lid → false", () => {
+  assertEquals(lidLookupNeeded({
+    key: {
+      remoteJid: "62213373075703@lid",
+      remoteJidAlt: "5511945760964@s.whatsapp.net",
+    },
+  }), false);
+});
+
+Deno.test("pickLidJidFromEvolutionMessageRecords: remoteJid @lid", () => {
+  const lid = pickLidJidFromEvolutionMessageRecords([
+    {
+      key: {
+        fromMe: false,
+        id: "3A0CF0F054CEED5D043F",
+        remoteJid: "62213373075703@lid",
+        remoteJidAlt: "5511945760964@s.whatsapp.net",
+      },
+    },
+  ]);
+  assertEquals(lid, "62213373075703@lid");
+});
+
+Deno.test("requiresLidSend: camila name ou flag", () => {
+  assertEquals(requiresLidSend({ name: "camila-prospec-ativa-v5" }), true);
+  assertEquals(requiresLidSend({ name: "fic-rematricula" }), false);
+  assertEquals(
+    requiresLidSend({ name: "outro", metadata: { require_lid_send: true } }),
+    true,
+  );
 });

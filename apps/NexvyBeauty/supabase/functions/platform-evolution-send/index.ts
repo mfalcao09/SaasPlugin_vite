@@ -14,11 +14,16 @@
 // Nenhum front chama isto direto.
 //
 // Destino: preferir `@lid` quando conhecido (wa_lid / to com @lid); senão PN
-// dígitos. Cold first-touch sem LID continua PN. Se envio por LID falha e há
-// PN, retry uma vez com dígitos.
+// dígitos. Cold first-touch sem LID continua PN (não-Camila).
+// Camila (nome ou metadata.require_lid_send): SOMENTE `@lid` — sem fallback PN
+// (PN → ACK 463). Resolve via body.wa_lid ou findMessages por remoteJidAlt.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { resolveEvolutionSendNumber } from "../_shared/evolution-baileys-jid.ts";
+import {
+  pickLidJidFromEvolutionMessageRecords,
+  requiresLidSend,
+  resolveEvolutionSendNumber,
+} from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +117,40 @@ function evoPath(type: SendBody["type"], inst: string): string {
   }
 }
 
+
+/** Camila: recupera `@lid` via findMessages quando o caller só tem PN. */
+async function lookupLidJidByPhoneAlt(
+  url: string,
+  apikey: string,
+  instanceName: string,
+  phoneDigits: string,
+): Promise<string> {
+  if (!url || !apikey || !instanceName || !phoneDigits) return "";
+  try {
+    const res = await fetch(
+      `${url}/chat/findMessages/${encodeURIComponent(instanceName)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey },
+        body: JSON.stringify({
+          where: { key: { remoteJidAlt: `${phoneDigits}@s.whatsapp.net` } },
+          page: 1,
+          offset: 20,
+        }),
+      },
+    );
+    const parsed = await res.json().catch(() => null);
+    const records = parsed?.messages?.records ?? parsed?.records ?? [];
+    return pickLidJidFromEvolutionMessageRecords(records);
+  } catch (e) {
+    console.warn(
+      "[platform-evolution-send] LID lookup exception:",
+      String(e).slice(0, 200),
+    );
+    return "";
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -189,7 +228,30 @@ Deno.serve(async (req) => {
     if (instanceName === "") return json({ error: "Instância sem name; sincronize do servidor" }, 400);
 
     const inst = encodeURIComponent(instanceName);
-    const addr = resolveEvolutionSendNumber({ to, waLid });
+    const mustLid = requiresLidSend(instance);
+    let effectiveWaLid = waLid;
+    let addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
+
+    // Camila: se não veio wa_lid, tenta store Evolution por Alt PN.
+    if (mustLid && !addr.usedLid && addr.phoneDigits) {
+      const lookedUp = await lookupLidJidByPhoneAlt(url, apikey, instanceName, addr.phoneDigits);
+      if (lookedUp) {
+        effectiveWaLid = lookedUp;
+        addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
+        console.log(
+          `[platform-evolution-send] LID lookup ok phone=${addr.phoneDigits} lid=${lookedUp}`,
+        );
+      }
+    }
+
+    if (mustLid && !addr.usedLid) {
+      return json({
+        error: "lid_required",
+        reason: "Camila sends must use @lid (PN causes ACK 463)",
+        phone_digits: addr.phoneDigits || null,
+      }, 409);
+    }
+
     if (!addr.number) return json({ error: "Missing destination number" }, 400);
 
     const path = evoPath(type, inst);
@@ -199,8 +261,14 @@ Deno.serve(async (req) => {
     let usedLid = addr.usedLid;
     let fellBackToPn = false;
 
-    // LID falhou e temos PN → uma retry barata (Camila: PN às vezes ACK 463).
-    if (!res.ok && addr.usedLid && addr.phoneDigits && addr.phoneDigits !== addr.number) {
+    // Não-Camila: LID falhou e temos PN → uma retry. Camila: NUNCA fallback PN.
+    if (
+      !mustLid &&
+      !res.ok &&
+      addr.usedLid &&
+      addr.phoneDigits &&
+      addr.phoneDigits !== addr.number
+    ) {
       console.warn(
         `[platform-evolution-send] LID send failed status=${res.status}; retry PN digits=${addr.phoneDigits}`,
       );
