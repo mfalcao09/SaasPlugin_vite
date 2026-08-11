@@ -93,3 +93,27 @@ export function debounceWaitMs(
   const idadeMs = agoraMs - referenciaMs;
   return Math.max(0, Math.min(janelaMs, janelaMs - idadeMs));
 }
+
+/**
+ * Debounce DESLIZANTE pra rajada.
+ * Medido 2026-08-11: sleep unico nao estendia; rajada virava orfa.
+ */
+export function slidingDebounceExtraMs(opts: {
+  newestRefMs: number | null;
+  agoraMs: number;
+  janelaMs: number;
+  elapsedTotalMs: number;
+  maxTotalMs: number;
+  extensoesFeitas: number;
+  maxExtensoes: number;
+}): number {
+  const {
+    newestRefMs, agoraMs, janelaMs, elapsedTotalMs, maxTotalMs, extensoesFeitas, maxExtensoes,
+  } = opts;
+  if (janelaMs <= 0) return 0;
+  if (extensoesFeitas >= maxExtensoes) return 0;
+  if (elapsedTotalMs >= maxTotalMs) return 0;
+  const resto = debounceWaitMs(newestRefMs, agoraMs, janelaMs);
+  if (resto <= 0) return 0;
+  return Math.min(resto, Math.max(0, maxTotalMs - elapsedTotalMs));
+}

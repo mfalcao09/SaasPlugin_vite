@@ -61,7 +61,7 @@ import {
   resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
-import { debounceWaitMs, inboundEpochMs } from '../_shared/inbound-clock.ts';
+import { debounceWaitMs, inboundEpochMs, slidingDebounceExtraMs } from '../_shared/inbound-clock.ts';
 import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
 import {
   type ConversationState,
@@ -96,6 +96,8 @@ const DEDUP_WINDOW_MS = 5000;
 // 12s (era 25s): a Nina usa 10s e o ritmo dela foi aprovado; 12s dá margem pra lead
 // B2B, que digita frases mais longas. 25s deixava a lead no vácuo tempo demais.
 const DEBOUNCE_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MS') ?? '12000');
+const DEBOUNCE_MAX_EXTEND = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MAX_EXTEND') ?? '3');
+const DEBOUNCE_MAX_TOTAL_MS = Number(Deno.env.get('AI_BRAIN_DEBOUNCE_MAX_TOTAL_MS') ?? String(DEBOUNCE_MS * 3));
 // Re-entrega velha do Meta: inbound com timestamp mais velho que isto = ignorar
 // (bug real: Meta re-entregou msg de 13 min atrás e a Duda se reapresentou).
 const STALE_REDELIVERY_MS = 10 * 60 * 1000;
@@ -1419,6 +1421,10 @@ Deno.serve(async (req) => {
   // Só é preenchido quando esta invocação REALMENTE respondeu: hand-back sem
   // resposta entregue viraria loop de invocação sem fala.
   let handback: (() => Promise<void>) | null = null;
+  let forceOrphanWake = false;
+  let orphanWakeConversationId: string | null = null;
+  let orphanWakeHandbackDepth = 0;
+  let orphanWakeReqUrl = '';
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -1426,6 +1432,10 @@ Deno.serve(async (req) => {
     if (!conversationId) return json({ error: 'conversation_id is required' }, 400);
     // Profundidade do hand-back (payload interno; ausente = chamada externa = 0).
     const handbackDepth = Number(body?.handback_depth) || 0;
+    const ensureReply = body?.ensure_reply === true;
+    orphanWakeConversationId = conversationId;
+    orphanWakeHandbackDepth = handbackDepth;
+    orphanWakeReqUrl = req.url;
 
     // ── MODO INATIVIDADE (régua — payload interno do platform-inactivity-sweeper).
     // { conversation_id, occurrence: N, repertoire_stage: 1-4|'janela_24h',
@@ -1539,9 +1549,32 @@ Deno.serve(async (req) => {
       return json({ error: 'claim failed', detail: claimError.message }, 503);
     }
     if (!claimedRows || claimedRows.length === 0) {
-      // Outra invocação é a dona AGORA. Perdedor SAI — não espera a vez. A
-      // mensagem que disparou esta invocação é coberta pelo reload pós-debounce
-      // da dona; e se tiver entrado tarde demais pra isso, pelo hand-back dela.
+      // Perdedor sai; agenda ensure_reply wake (anti-orfao de rajada). Nao reencadeia.
+      if (!ensureReply && body?.repertoire_stage == null) {
+        const base = Deno.env.get('SUPABASE_URL') ?? '';
+        const secret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+        if (base && secret) {
+          const segs = new URL(req.url).pathname.split('/').filter(Boolean);
+          const iv1 = segs.indexOf('v1');
+          const selfFn = (iv1 >= 0 && segs[iv1 + 1]) ? segs[iv1 + 1] : 'platform-sales-brain';
+          const wake = (async () => {
+            await sleep(DEBOUNCE_MS + 1500);
+            try {
+              const r = await fetch(`${base}/functions/v1/${selfFn}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
+                body: JSON.stringify({ conversation_id: conversationId, ensure_reply: true }),
+              });
+              if (!r.ok) console.error('[platform-sales-brain] ensure_reply wake', r.status, (await r.text()).slice(0, 200));
+            } catch (e) {
+              console.error('[platform-sales-brain] ensure_reply wake error:', e);
+            }
+          })();
+          const rt = (globalThis as any).EdgeRuntime;
+          if (rt?.waitUntil) rt.waitUntil(wake); else void wake;
+          console.warn('[platform-sales-brain] brain_busy — ensure_reply wake agendado', { conversation_id: conversationId });
+        }
+      }
       return json({ skipped: 'brain_busy', conversation_id: conversationId });
     }
     releaseClaim = async () => {
@@ -1727,18 +1760,31 @@ Deno.serve(async (req) => {
     //    (Modo inatividade pula: não há rajada — não há mensagem nova.)
     let debounceWaitedMs = 0;
     if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
-      // PR-D: `inboundEpochMs` ancora no MAIS RECENTE entre wa_timestamp (mundo) e
-      // created_at (visibilidade). Áudio transcrito nasce ~12s depois do próprio
-      // wa_timestamp — ancorar só no mundo zerava a janela e a resposta saía na
-      // hora, sem coalescer a rajada. Ver _shared/inbound-clock.ts.
-      // Gatilho de fato maduro (ou sem relógio confiável) ⇒ espera 0, mas recarrega.
-      const triggerMs = inboundEpochMs(triggerInbound);
-      debounceWaitedMs = debounceWaitMs(triggerMs, Date.now(), DEBOUNCE_MS);
-      if (debounceWaitedMs > 0) await sleep(debounceWaitedMs);
+      const tDebounce0 = Date.now();
+      let extensoes = 0;
+      let refMs = inboundEpochMs(triggerInbound);
+      let wait = debounceWaitMs(refMs, Date.now(), DEBOUNCE_MS);
+      while (wait > 0) {
+        await sleep(wait);
+        debounceWaitedMs += wait;
+        historyDesc = await loadMessages();
+        const newest = lastInboundOf(historyDesc);
+        refMs = inboundEpochMs(newest);
+        wait = slidingDebounceExtraMs({
+          newestRefMs: refMs,
+          agoraMs: Date.now(),
+          janelaMs: DEBOUNCE_MS,
+          elapsedTotalMs: Date.now() - tDebounce0,
+          maxTotalMs: DEBOUNCE_MAX_TOTAL_MS,
+          extensoesFeitas: extensoes,
+          maxExtensoes: DEBOUNCE_MAX_EXTEND,
+        });
+        if (wait > 0) {
+          extensoes += 1;
+          console.log('[platform-sales-brain] debounce deslizante: extensao', { conversation_id: conversationId, extensoes, wait_ms: wait });
+        }
+      }
       historyDesc = await loadMessages();
-      // A rajada engordou: o que entrou durante a espera ESTÁ nesta resposta, então
-      // sobe a marca d'água — senão o hand-back rechamaria o cérebro para responder
-      // de novo o que acabamos de cobrir.
       coveredInboundSeq = maxInboundSeq(historyDesc);
     }
 
@@ -2953,7 +2999,31 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // Non-fatal de propósito: a resposta da lead já saiu. Falhar aqui e devolver
     // 500 trocaria uma conversa que deu certo por um erro — o estado se recompõe no
     // turno seguinte, a mensagem entregue não volta.
-    try {
+    if (!anyDelivered && !inactivityMode && handbackDepth < HANDBACK_MAX_DEPTH) {
+      const { data: lastBotRows } = await supabase
+        .from('platform_crm_messages')
+        .select('created_at')
+        .eq('conversation_id', conversationId)
+        .eq('is_deleted', false)
+        .eq('sender_type', 'bot')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const lastBotAt = lastBotRows?.[0]?.created_at ?? '1970-01-01T00:00:00.000Z';
+      const { data: orphanRows } = await supabase
+        .from('platform_crm_messages')
+        .select('seq')
+        .eq('conversation_id', conversationId)
+        .eq('is_deleted', false)
+        .eq('direction', 'inbound')
+        .eq('sender_type', 'visitor')
+        .gt('created_at', lastBotAt)
+        .limit(1);
+      if (orphanRows && orphanRows.length > 0) {
+        forceOrphanWake = true;
+        console.error('[platform-sales-brain] ORPHAN_WAKE: entregues=0 com inbound pos-bot', { conversation_id: conversationId });
+      }
+    }
+    if (anyDelivered) try {
       const primeiroNome = String(conversation.visitor_name ?? '').trim().split(/\s+/)[0] ?? '';
       const ev: TurnEvents = {
         seq: seqAtual,
@@ -3042,6 +3112,29 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         await handback();
       } catch (e) {
         console.warn('[platform-sales-brain] hand-back falhou:', String(e).slice(0, 200));
+      }
+    }
+    if (forceOrphanWake && orphanWakeConversationId) {
+      try {
+        const base = Deno.env.get('SUPABASE_URL') ?? '';
+        const secret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
+        const segs = new URL(orphanWakeReqUrl || 'http://local/functions/v1/platform-sales-brain').pathname.split('/').filter(Boolean);
+        const iv1 = segs.indexOf('v1');
+        const selfFn = (iv1 >= 0 && segs[iv1 + 1]) ? segs[iv1 + 1] : 'platform-sales-brain';
+        if (base && secret) {
+          const r = await fetch(`${base}/functions/v1/${selfFn}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
+            body: JSON.stringify({
+              conversation_id: orphanWakeConversationId,
+              handback_depth: orphanWakeHandbackDepth + 1,
+              ensure_reply: true,
+            }),
+          });
+          if (!r.ok) console.error('[platform-sales-brain] orphan wake', r.status, (await r.text()).slice(0, 200));
+        }
+      } catch (e) {
+        console.warn('[platform-sales-brain] orphan wake falhou:', String(e).slice(0, 200));
       }
     }
   }
