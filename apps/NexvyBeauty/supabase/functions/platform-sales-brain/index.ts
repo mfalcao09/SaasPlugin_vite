@@ -72,6 +72,7 @@ import {
 } from '../_shared/conversation-state.ts';
 import { BLOCO_TAGS_CLASSIFICADORAS, extrairTags } from '../_shared/turn-tags.ts';
 import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
+import { splitIntoBubbles } from '../_shared/bubble-split.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
   type ConversationConnectionHints,
@@ -129,8 +130,7 @@ const HANDBACK_MAX_DEPTH = 3;
 // INVARIANTE deste pipeline: nenhuma função pode REDUZIR o número de caracteres
 // entregues — só reagrupar. Perder o preço/link no meio da palavra custa a venda;
 // uma bolha comprida custa só estilo. Bug > estilo.
-const MAX_BUBBLES = 4;      // era 3 — 3 forçava o merge que decepava a última bolha
-const MAX_BUBBLE_CHARS = 160; // era 300 — 300 era "textão" e saturava a pausa
+// MAX_BUBBLES / MAX_BUBBLE_CHARS: ver ../_shared/bubble-split.ts (testável).
 // ─── Ritmo de digitação humana ──────────────────────────────────────────────
 // Humano em celular: 25-40 wpm ≈ 2,1-3,3 chars/s ≈ 300-470 ms/char.
 // 70 ms/char ≈ 171 wpm — de propósito 4-6x mais rápido que humano (ninguém espera
@@ -979,54 +979,15 @@ function keepFirstQuestion(input: string): string {
   return masked.slice(0, firstQ + 1).split(SENT).join('?').trim();
 }
 
-/**
- * Divide a resposta em até MAX_BUBBLES bolhas por parágrafo / quebra dupla,
- * cada uma respeitando o teto de caracteres (quebra longas por sentença). Tom
- * WhatsApp: cada bolha é uma ideia.
- */
-function splitIntoBubbles(input: string): string[] {
-  const paras = input
-    .split(/\n\s*\n|\n/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-
-  const out: string[] = [];
-  for (const para of paras) {
-    if (para.length <= MAX_BUBBLE_CHARS) {
-      out.push(para);
-      continue;
-    }
-    // Parágrafo longo: quebra por sentença acumulando até o teto.
-    const sentences = para.match(/[^.!?]+[.!?]*\s*/g) ?? [para];
-    let buf = '';
-    for (const s of sentences) {
-      if ((buf + s).length > MAX_BUBBLE_CHARS && buf) {
-        out.push(buf.trim());
-        buf = s;
-      } else {
-        buf += s;
-      }
-    }
-    if (buf.trim()) out.push(buf.trim());
-  }
-  // Teto de BOLHAS (não de caracteres): o excedente é REAGRUPADO na última bolha,
-  // INTEIRO. Nunca cortado.
-  //
-  // ⚠️ BUG CORRIGIDO 2026-07-20: aqui havia `.slice(0, MAX_BUBBLE_CHARS)`, que
-  // cortava cego por índice e DESCARTAVA o resto para sempre — foi o que produziu
-  // "…O preço de la" (decepado no meio de "lançamento", matando a âncora de preço).
-  // O WhatsApp aceita 4096 chars por mensagem, então nada precisa ser perdido.
-  if (out.length > MAX_BUBBLES) {
-    const head = out.slice(0, MAX_BUBBLES - 1);
-    const tail = out.slice(MAX_BUBBLES - 1).join(' ').trim();
-    if (tail.length > MAX_BUBBLE_CHARS) {
-      // Sinal de que o PROMPT está produzindo textão — não é para ser normal.
-      console.warn(`[platform-sales-brain] bolha final longa (${tail.length} chars) — revisar regras de forma do prompt`);
-    }
-    return [...head, tail].filter(Boolean);
-  }
-  return out.filter(Boolean);
+/** Divide a resposta em bolhas WhatsApp — ver ../_shared/bubble-split.ts. */
+function splitReplyIntoBubbles(input: string): string[] {
+  return splitIntoBubbles(input, {
+    warnLongTail: (chars) => {
+      console.warn(`[platform-sales-brain] bolha final longa (${chars} chars) — revisar regras de forma do prompt`);
+    },
+  });
 }
+
 
 // ─── Extração de fatos (2ª chamada LLM, barata) ─────────────────────────────
 
@@ -2467,7 +2428,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
     // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
     if (!needsHandoff && !passedToBia && !sentRaiox) reply = keepFirstQuestion(reply);
-    let bubbles = splitIntoBubbles(reply);
+    let bubbles = splitReplyIntoBubbles(reply);
     if (bubbles.length === 0) {
       bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
     }
