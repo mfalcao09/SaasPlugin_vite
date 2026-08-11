@@ -110,6 +110,17 @@ Deno.test('reapresentação por ORIGEM do contato também cai', () => {
   assertEquals(r.bubbles.length, 1);
 });
 
+Deno.test('E2E 2026-08-11: eco "Achei seu contato… vim te apresentar" vira stub', () => {
+  const r = aplicarGateBolha(
+    ['Isso! Achei seu contato por lá e vim te apresentar a NexvyBeauty.'],
+    TRAVA_APRE,
+  );
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 1);
+  assertEquals(r.bubbles[0].includes('Achei seu contato'), false);
+  assertEquals(r.bubbles[0].includes('entender'), true);
+});
+
 Deno.test('DEFEITO device-open: "Marcelo, tudo bem?" cai e não tolera sozinha', () => {
   // Conv 7b24e943 — pitch agent já no histórico; modelo reabriu com saudação.
   const r = aplicarGateBolha(['Marcelo, tudo bem?'], TRAVA_APRE);
