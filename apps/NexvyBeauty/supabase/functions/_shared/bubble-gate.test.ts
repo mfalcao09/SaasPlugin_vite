@@ -121,6 +121,43 @@ Deno.test('E2E 2026-08-11: eco "Achei seu contato… vim te apresentar" vira stu
   assertEquals(r.bubbles[0].includes('entender'), true);
 });
 
+Deno.test('E2E 2026-08-11: eco "Te achei lá no Instagram" sozinho vira stub', () => {
+  const r = aplicarGateBolha(
+    ['Isso mesmo! Te achei lá no Instagram. 😉'],
+    TRAVA_APRE,
+  );
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 1);
+  assertEquals(/\bte achei\b/i.test(r.bubbles[0]), false);
+  assertEquals(r.bubbles[0].includes('entender'), true);
+});
+
+Deno.test('E2E 2026-08-11: lote real — derruba eco Instagram e mantém pitch+pergunta', () => {
+  const r = aplicarGateBolha(
+    [
+      'Isso mesmo! Te achei lá no Instagram. 😉',
+      'É um software que responde suas clientes no WhatsApp automaticamente.',
+      'Quer que eu te mostre como fica no celular?',
+    ],
+    TRAVA_APRE,
+  );
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 2);
+  assertEquals(/\bte achei\b|\binstagram\b/i.test(r.bubbles[0]), false);
+  assertStringIncludes(r.bubbles[0], 'software');
+  assertStringIncludes(r.bubbles[1], 'celular');
+});
+
+Deno.test('variante: "Achei você lá no insta" também cai', () => {
+  const r = aplicarGateBolha(
+    ['Achei você lá no insta e quis falar.', 'Sobre o software: responde no WhatsApp.'],
+    TRAVA_APRE,
+  );
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 1);
+  assertStringIncludes(r.bubbles[0], 'software');
+});
+
 Deno.test('DEFEITO device-open: "Marcelo, tudo bem?" cai e não tolera sozinha', () => {
   // Conv 7b24e943 — pitch agent já no histórico; modelo reabriu com saudação.
   const r = aplicarGateBolha(['Marcelo, tudo bem?'], TRAVA_APRE);

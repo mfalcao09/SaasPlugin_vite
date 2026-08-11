@@ -61,6 +61,9 @@ const REAPRESENTACAO = new RegExp(
     '\\b(peguei|achei) seu contato\\b', // origem do contato (LLM varia o verbo)
     '\\bvim te apresentar\\b', // eco de abertura Instagram — medido 2026-08-11 E2E
     '\\bvi (seu|o) (perfil|instagram|insta)\\b',
+    // "Te achei lá no Instagram" — eco medido 2026-08-11 (não casa "achei seu contato")
+    '\\bte achei\\b.{0,40}\\b(instagram|insta)\\b',
+    '\\bachei\\b.{0,40}\\bl[aá] no (instagram|insta)\\b',
   ].join('|'),
   'i',
 );
@@ -142,7 +145,8 @@ export function aplicarGateBolha(
         // Eco de origem Instagram sem responder o turno — medido 2026-08-11
         // ("Achei seu contato… vim te apresentar"). Stub > reabrir pitch.
         bubbles.every((b) =>
-          /\b(peguei|achei) seu contato\b|\bvim te apresentar\b/i.test((b || '').trim())
+          /\b(peguei|achei) seu contato\b|\bvim te apresentar\b|\bte achei\b.{0,40}\b(instagram|insta)\b|\bachei\b.{0,40}\bl[aá] no (instagram|insta)\b/i
+            .test((b || '').trim())
         )
       )
     ) {
