@@ -110,6 +110,25 @@ Deno.test('reapresentação por ORIGEM do contato também cai', () => {
   assertEquals(r.bubbles.length, 1);
 });
 
+Deno.test('DEFEITO device-open: "Marcelo, tudo bem?" cai e não tolera sozinha', () => {
+  // Conv 7b24e943 — pitch agent já no histórico; modelo reabriu com saudação.
+  const r = aplicarGateBolha(['Marcelo, tudo bem?'], TRAVA_APRE);
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 1);
+  assertEquals(/\btudo bem\b/i.test(r.bubbles[0]), false);
+  assertEquals(r.bubbles[0].includes('entender'), true);
+});
+
+Deno.test('re-saudação cai e o conteúdo útil sobrevive', () => {
+  const r = aplicarGateBolha(
+    ['Marcelo, tudo bem?', 'Funciona assim: a IA responde no WhatsApp.'],
+    TRAVA_APRE,
+  );
+  assertEquals(r.bolhasDerrubadas, 1);
+  assertEquals(r.bubbles.length, 1);
+  assertStringIncludes(r.bubbles[0], 'Funciona assim');
+});
+
 Deno.test('NUNCA calar: se TODAS as bolhas reapresentam, tolera em vez de silenciar', () => {
   // Silêncio é pior que redundância — a lead ficaria sem resposta nenhuma.
   const r = aplicarGateBolha(['Sou a Camila.', 'Sou da NexvyBeauty.'], TRAVA_APRE);
