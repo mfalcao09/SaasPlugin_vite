@@ -158,13 +158,89 @@ export function lidLookupNeeded(msg: Record<string, unknown> | null | undefined)
 /**
  * Extrai o primeiro `@lid` útil de records do Evolution `chat/findMessages`.
  * Store tipicamente: remoteJid=`…@lid`, remoteJidAlt=`…@s.whatsapp.net`.
+ *
+ * ⚠️ `phoneDigits` NÃO é opcional na prática: a Evolution 2.3.7 `findMessages`
+ * **IGNORA** o filtro `where.key.remoteJidAlt` (só honra id/fromMe/remoteJid/
+ * participants) — o servidor devolve as N mensagens mais recentes do instance
+ * INTEIRO. Sem casar a cauda do PN aqui, retornaríamos o LID do contato mais
+ * recente (OUTRA pessoa) e a Camila enviaria pro alvo errado. Espelha a defesa
+ * de {@link pickLidFromWhatsappNumbersRecords}. Sem `phoneDigits` → 1º útil
+ * (compat legada, mas o caller SEMPRE deve passá-lo).
  */
-export function pickLidJidFromEvolutionMessageRecords(records: unknown): string {
+export function pickLidJidFromEvolutionMessageRecords(
+  records: unknown,
+  phoneDigits?: string | null,
+): string {
   const list = Array.isArray(records) ? records : [];
+  const wantTail = String(phoneDigits ?? "").replace(/\D/g, "");
   for (const rec of list) {
     if (!rec || typeof rec !== "object") continue;
     const resolved = resolveBaileysMessageJids(rec as Record<string, unknown>);
-    if (resolved.lidJid) return resolved.lidJid;
+    if (!resolved.lidJid) continue;
+    if (wantTail) {
+      // resolved.remoteJid é o PN (Alt) do contato em records @lid inbound.
+      const pnDigits = phoneDigitsFromJid(resolved.remoteJid);
+      if (!samePhoneTail(pnDigits, wantTail)) continue;
+    }
+    return resolved.lidJid;
+  }
+  return "";
+}
+
+/** Compara dois JIDs/telefones pela cauda (8 dígitos) — tolera variantes BR do 9º. */
+function samePhoneTail(a: string, b: string): boolean {
+  const da = String(a).replace(/\D/g, "");
+  const db = String(b).replace(/\D/g, "");
+  if (!da || !db) return false;
+  const n = Math.min(8, da.length, db.length);
+  return n >= 8 && da.slice(-n) === db.slice(-n);
+}
+
+/**
+ * Resolve o `@lid` de um número FRIO a partir de records do Evolution
+ * `POST /chat/whatsappNumbers` — o caminho PN→LID pré-reply.
+ *
+ * A Evolution 2.3.7 stock devolve `[{jid, exists, number}]` SEM `lid` para número
+ * não-cacheado (o campo do DTO existe mas vem `undefined`). Um patch mínimo no
+ * `whatsappNumber()` (USync `.withLIDProtocol()` / `lidMapping.getLIDsForPNs`)
+ * passa a preenchê-lo. Esta função lê esse `lid` quando presente e o normaliza
+ * para `…@lid`; rejeita o marcador literal `'lid'` e PN curto acidental
+ * (via {@link lidDigitsFromWaLid}). Server stock → "" (caller mantém 409).
+ *
+ * `phoneDigits` (opcional) casa o record certo pela cauda; sem ele, primeiro útil.
+ */
+export function pickLidFromWhatsappNumbersRecords(
+  records: unknown,
+  phoneDigits?: string | null,
+): string {
+  const arr = Array.isArray(records)
+    ? records
+    : Array.isArray((records as Record<string, unknown>)?.data)
+    ? (records as { data: unknown[] }).data
+    : Array.isArray((records as Record<string, unknown>)?.results)
+    ? (records as { results: unknown[] }).results
+    : [];
+  const wantTail = String(phoneDigits ?? "").replace(/\D/g, "");
+
+  for (const rec of arr) {
+    if (!rec || typeof rec !== "object") continue;
+    const r = rec as Record<string, unknown>;
+    // Só considera número existente no WhatsApp.
+    const exists = r.exists ?? r.isRegistered ?? r.registered;
+    if (exists === false) continue;
+
+    if (wantTail) {
+      const number = typeof r.number === "string" ? r.number : "";
+      const jid = typeof r.jid === "string" ? r.jid : "";
+      if (!samePhoneTail(number, wantTail) && !samePhoneTail(jid, wantTail)) continue;
+    }
+
+    // `lid` pode ser `…@lid`, dígitos crus, ou o marcador inútil 'lid'.
+    const lidRaw = (typeof r.lid === "string" && r.lid) ||
+      (typeof r.jid === "string" && r.jid.includes("@lid") ? r.jid : "") ||
+      "";
+    const formatted = formatLidSendNumber(lidRaw);
+    if (formatted) return formatted;
   }
   return "";
 }
