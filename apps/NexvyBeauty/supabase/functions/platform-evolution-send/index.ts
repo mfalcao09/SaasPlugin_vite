@@ -20,6 +20,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
+  pickLidFromWhatsappNumbersRecords,
   pickLidJidFromEvolutionMessageRecords,
   requiresLidSend,
   resolveEvolutionSendNumber,
@@ -149,10 +150,49 @@ async function lookupLidJidByPhoneAlt(
     );
     const parsed = await res.json().catch(() => null);
     const records = parsed?.messages?.records ?? parsed?.records ?? [];
-    return pickLidJidFromEvolutionMessageRecords(records);
+    // phoneDigits OBRIGATÓRIO: findMessages 2.3.7 ignora o filtro remoteJidAlt e
+    // devolve o instance inteiro — sem casar a cauda, pegaríamos o LID de outro lead.
+    return pickLidJidFromEvolutionMessageRecords(records, phoneDigits);
   } catch (e) {
     console.warn(
       "[platform-evolution-send] LID lookup exception:",
+      String(e).slice(0, 200),
+    );
+    return "";
+  }
+}
+
+/**
+ * Resolve `@lid` de número FRIO (pré-reply) via `POST /chat/whatsappNumbers`.
+ *
+ * findMessages só acha LID de quem JÁ apareceu no store (pós-interação). Este é o
+ * caminho PN→LID sem conversa: a Evolution PATCHADA (USync `.withLIDProtocol()` no
+ * `whatsappNumber()`) devolve `lid` por número. Na Evolution STOCK 2.3.7 o campo
+ * vem ausente → retorna "" e o caller mantém o 409 `lid_required` (nada quebra).
+ * Ver COMPLEMENTO no doc problema-pn-463 + Evolution issue #2629.
+ */
+async function lookupLidViaWhatsappNumbers(
+  url: string,
+  apikey: string,
+  instanceName: string,
+  phoneDigits: string,
+): Promise<string> {
+  if (!url || !apikey || !instanceName || !phoneDigits) return "";
+  try {
+    const res = await fetch(
+      `${url}/chat/whatsappNumbers/${encodeURIComponent(instanceName)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey },
+        body: JSON.stringify({ numbers: [phoneDigits] }),
+      },
+    );
+    if (!res.ok) return "";
+    const parsed = await res.json().catch(() => null);
+    return pickLidFromWhatsappNumbersRecords(parsed, phoneDigits);
+  } catch (e) {
+    console.warn(
+      "[platform-evolution-send] whatsappNumbers LID lookup exception:",
       String(e).slice(0, 200),
     );
     return "";
@@ -237,17 +277,36 @@ Deno.serve(async (req) => {
 
     const inst = encodeURIComponent(instanceName);
     const mustLid = requiresLidSend(instance);
+    // Máscara p/ log (Seção 11.3: nunca telefone completo em log). Só os 4 últimos.
+    const maskPhone = (d: string | null | undefined) => `***${String(d ?? "").slice(-4)}`;
+    // `presence` (digitando…) é não-fatal: o caller descarta seu 409. Não paga os
+    // 2 round-trips de LID lookup — só o texto/mídia precisa resolver o @lid.
+    const doLidLookup = type !== "presence";
     let effectiveWaLid = waLid;
     let addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
 
-    // Camila: se não veio wa_lid, tenta store Evolution por Alt PN.
-    if (mustLid && !addr.usedLid && addr.phoneDigits) {
+    // Camila: se não veio wa_lid, tenta store Evolution por Alt PN (pós-interação).
+    if (doLidLookup && mustLid && !addr.usedLid && addr.phoneDigits) {
       const lookedUp = await lookupLidJidByPhoneAlt(url, apikey, instanceName, addr.phoneDigits);
       if (lookedUp) {
         effectiveWaLid = lookedUp;
         addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
         console.log(
-          `[platform-evolution-send] LID lookup ok phone=${addr.phoneDigits} lid=${lookedUp}`,
+          `[platform-evolution-send] LID lookup (findMessages) ok phone=${maskPhone(addr.phoneDigits)} lid=${lookedUp}`,
+        );
+      }
+    }
+
+    // FIRST-TOUCH FRIO: findMessages não acha LID de quem nunca falou. Segundo
+    // caminho — whatsappNumbers (USync PN→LID). Só resolve com Evolution PATCHADA;
+    // stock devolve "" e o 409 abaixo permanece. Ver COMPLEMENTO problema-pn-463.
+    if (doLidLookup && mustLid && !addr.usedLid && addr.phoneDigits) {
+      const coldLid = await lookupLidViaWhatsappNumbers(url, apikey, instanceName, addr.phoneDigits);
+      if (coldLid) {
+        effectiveWaLid = coldLid;
+        addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
+        console.log(
+          `[platform-evolution-send] LID lookup (whatsappNumbers/cold) ok phone=${maskPhone(addr.phoneDigits)} lid=${coldLid}`,
         );
       }
     }
@@ -269,16 +328,19 @@ Deno.serve(async (req) => {
     let usedLid = addr.usedLid;
     let fellBackToPn = false;
 
-    // Não-Camila: LID falhou e temos PN → uma retry. Camila: NUNCA fallback PN.
+    // Não-Camila: LID REJEITADO (4xx = jid inválido, nada entregue) e temos PN →
+    // uma retry por PN. Camila: NUNCA fallback PN. 5xx/gateway (502/504) é entrega
+    // AMBÍGUA (pode já ter saído) — reenviar duplicaria a bolha; não faz retry.
     if (
       !mustLid &&
       !res.ok &&
+      res.status >= 400 && res.status < 500 &&
       addr.usedLid &&
       addr.phoneDigits &&
       addr.phoneDigits !== addr.number
     ) {
       console.warn(
-        `[platform-evolution-send] LID send failed status=${res.status}; retry PN digits=${addr.phoneDigits}`,
+        `[platform-evolution-send] LID send rejected status=${res.status}; retry PN digits=${maskPhone(addr.phoneDigits)}`,
       );
       res = await evoFetch(url, apikey, path, buildSendBody(type, addr.phoneDigits, payload));
       usedLid = false;
