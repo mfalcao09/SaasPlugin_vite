@@ -12,8 +12,19 @@
 //
 // Auth (verify_jwt=false no gateway): SÓ interno — Bearer == SERVICE_ROLE_KEY.
 // Nenhum front chama isto direto.
+//
+// Destino: preferir `@lid` quando conhecido (wa_lid / to com @lid); senão PN
+// dígitos. Cold first-touch sem LID continua PN (não-Camila).
+// Camila (nome ou metadata.require_lid_send): SOMENTE `@lid` — sem fallback PN
+// (PN → ACK 463). Resolve via body.wa_lid ou findMessages por remoteJidAlt.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  pickLidFromWhatsappNumbersRecords,
+  pickLidJidFromEvolutionMessageRecords,
+  requiresLidSend,
+  resolveEvolutionSendNumber,
+} from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +35,9 @@ interface SendBody {
   product_id?: string;
   instance_id?: string; // id da row em platform_crm_evolution_instances (o burner)
   type: "text" | "media" | "audio" | "presence";
-  to: string; // dígitos do telefone
+  to: string; // dígitos PN, JID, ou já `…@lid`
+  /** LID conhecido (ex.: conversation.metadata.wa_lid). Preferido sobre PN. */
+  wa_lid?: string | null;
   payload: Record<string, any>;
 }
 
@@ -54,6 +67,136 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function buildSendBody(
+  type: SendBody["type"],
+  number: string,
+  payload: Record<string, any>,
+): Record<string, any> {
+  switch (type) {
+    case "text":
+      return { number, text: payload.text };
+    case "presence": {
+      // Evolution (nexvy.tech) EXIGE `delay` — sem ele → 400
+      // `instance requires property "delay"` e o "digitando…" nunca aparece.
+      // MEDIDO 2026-08-11 E2E Marcelo: brain mandava delay no payload, mas
+      // buildSendBody DROPAVA o campo → Validate 400 às 14:47:04 (antes do texto).
+      const state = String(payload.state || payload.presence || "composing");
+      const delayRaw = Number(payload.delay);
+      const delay = Number.isFinite(delayRaw)
+        ? Math.max(0, Math.min(60_000, Math.round(delayRaw)))
+        : (state === "paused" || state === "available" || state === "unavailable" ? 0 : 5000);
+      return { number, presence: state, delay };
+    }
+    case "media": {
+      const rawMedia = payload.url ?? payload.media;
+      return {
+        number,
+        mediatype: payload.mediatype || "image",
+        media: rawMedia,
+        caption: payload.caption,
+        fileName: payload.fileName,
+      };
+    }
+    case "audio":
+      return {
+        number,
+        mediatype: "audio",
+        media: payload.audio || payload.url || payload.media,
+        mimetype: payload.mimetype || "audio/ogg",
+        fileName: payload.fileName || "audio.ogg",
+      };
+    default:
+      return { number };
+  }
+}
+
+function evoPath(type: SendBody["type"], inst: string): string {
+  switch (type) {
+    case "text":
+      return `/message/sendText/${inst}`;
+    case "presence":
+      return `/chat/sendPresence/${inst}`;
+    case "media":
+    case "audio":
+      return `/message/sendMedia/${inst}`;
+    default:
+      return "";
+  }
+}
+
+
+/** Camila: recupera `@lid` via findMessages quando o caller só tem PN. */
+async function lookupLidJidByPhoneAlt(
+  url: string,
+  apikey: string,
+  instanceName: string,
+  phoneDigits: string,
+): Promise<string> {
+  if (!url || !apikey || !instanceName || !phoneDigits) return "";
+  try {
+    const res = await fetch(
+      `${url}/chat/findMessages/${encodeURIComponent(instanceName)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey },
+        body: JSON.stringify({
+          where: { key: { remoteJidAlt: `${phoneDigits}@s.whatsapp.net` } },
+          page: 1,
+          offset: 20,
+        }),
+      },
+    );
+    const parsed = await res.json().catch(() => null);
+    const records = parsed?.messages?.records ?? parsed?.records ?? [];
+    // phoneDigits OBRIGATÓRIO: findMessages 2.3.7 ignora o filtro remoteJidAlt e
+    // devolve o instance inteiro — sem casar a cauda, pegaríamos o LID de outro lead.
+    return pickLidJidFromEvolutionMessageRecords(records, phoneDigits);
+  } catch (e) {
+    console.warn(
+      "[platform-evolution-send] LID lookup exception:",
+      String(e).slice(0, 200),
+    );
+    return "";
+  }
+}
+
+/**
+ * Resolve `@lid` de número FRIO (pré-reply) via `POST /chat/whatsappNumbers`.
+ *
+ * findMessages só acha LID de quem JÁ apareceu no store (pós-interação). Este é o
+ * caminho PN→LID sem conversa: a Evolution PATCHADA (USync `.withLIDProtocol()` no
+ * `whatsappNumber()`) devolve `lid` por número. Na Evolution STOCK 2.3.7 o campo
+ * vem ausente → retorna "" e o caller mantém o 409 `lid_required` (nada quebra).
+ * Ver COMPLEMENTO no doc problema-pn-463 + Evolution issue #2629.
+ */
+async function lookupLidViaWhatsappNumbers(
+  url: string,
+  apikey: string,
+  instanceName: string,
+  phoneDigits: string,
+): Promise<string> {
+  if (!url || !apikey || !instanceName || !phoneDigits) return "";
+  try {
+    const res = await fetch(
+      `${url}/chat/whatsappNumbers/${encodeURIComponent(instanceName)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey },
+        body: JSON.stringify({ numbers: [phoneDigits] }),
+      },
+    );
+    if (!res.ok) return "";
+    const parsed = await res.json().catch(() => null);
+    return pickLidFromWhatsappNumbersRecords(parsed, phoneDigits);
+  } catch (e) {
+    console.warn(
+      "[platform-evolution-send] whatsappNumbers LID lookup exception:",
+      String(e).slice(0, 200),
+    );
+    return "";
+  }
 }
 
 Deno.serve(async (req) => {
@@ -95,6 +238,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
     const body = (await req.json()) as SendBody;
     const { product_id, instance_id, type, to, payload } = body;
+    const waLid = body.wa_lid ?? null;
 
     if (!type || !to || !payload) return json({ error: "Missing type/to/payload" }, 400);
     if (!product_id) return json({ error: "product_id required" }, 400);
@@ -132,44 +276,84 @@ Deno.serve(async (req) => {
     if (instanceName === "") return json({ error: "Instância sem name; sincronize do servidor" }, 400);
 
     const inst = encodeURIComponent(instanceName);
-    const phone = to.replace(/\D/g, "");
+    const mustLid = requiresLidSend(instance);
+    // Máscara p/ log (Seção 11.3: nunca telefone completo em log). Só os 4 últimos.
+    const maskPhone = (d: string | null | undefined) => `***${String(d ?? "").slice(-4)}`;
+    // `presence` (digitando…) é não-fatal: o caller descarta seu 409. Não paga os
+    // 2 round-trips de LID lookup — só o texto/mídia precisa resolver o @lid.
+    const doLidLookup = type !== "presence";
+    let effectiveWaLid = waLid;
+    let addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
 
-    let res;
-    switch (type) {
-      case "text":
-        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, { number: phone, text: payload.text });
-        break;
-      case "presence": {
-        // "digitando" humaniza a cadência (composing|recording|paused|available)
-        const state = String(payload.state || payload.presence || "composing");
-        res = await evoFetch(url, apikey, `/chat/sendPresence/${inst}`, { number: phone, presence: state });
-        break;
+    // Camila: se não veio wa_lid, tenta store Evolution por Alt PN (pós-interação).
+    if (doLidLookup && mustLid && !addr.usedLid && addr.phoneDigits) {
+      const lookedUp = await lookupLidJidByPhoneAlt(url, apikey, instanceName, addr.phoneDigits);
+      if (lookedUp) {
+        effectiveWaLid = lookedUp;
+        addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
+        console.log(
+          `[platform-evolution-send] LID lookup (findMessages) ok phone=${maskPhone(addr.phoneDigits)} lid=${lookedUp}`,
+        );
       }
-      case "media": {
-        const rawMedia = payload.url ?? payload.media;
-        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, {
-          number: phone,
-          mediatype: payload.mediatype || "image",
-          media: rawMedia,
-          caption: payload.caption,
-          fileName: payload.fileName,
-        });
-        break;
-      }
-      case "audio":
-        res = await evoFetch(url, apikey, `/message/sendMedia/${inst}`, {
-          number: phone,
-          mediatype: "audio",
-          media: payload.audio || payload.url || payload.media,
-          mimetype: payload.mimetype || "audio/ogg",
-          fileName: payload.fileName || "audio.ogg",
-        });
-        break;
-      default:
-        return json({ error: `Unknown type: ${type}` }, 400);
     }
 
-    return json(res, res.ok ? 200 : res.status >= 400 ? res.status : 502);
+    // FIRST-TOUCH FRIO: findMessages não acha LID de quem nunca falou. Segundo
+    // caminho — whatsappNumbers (USync PN→LID). Só resolve com Evolution PATCHADA;
+    // stock devolve "" e o 409 abaixo permanece. Ver COMPLEMENTO problema-pn-463.
+    if (doLidLookup && mustLid && !addr.usedLid && addr.phoneDigits) {
+      const coldLid = await lookupLidViaWhatsappNumbers(url, apikey, instanceName, addr.phoneDigits);
+      if (coldLid) {
+        effectiveWaLid = coldLid;
+        addr = resolveEvolutionSendNumber({ to, waLid: effectiveWaLid });
+        console.log(
+          `[platform-evolution-send] LID lookup (whatsappNumbers/cold) ok phone=${maskPhone(addr.phoneDigits)} lid=${coldLid}`,
+        );
+      }
+    }
+
+    if (mustLid && !addr.usedLid) {
+      return json({
+        error: "lid_required",
+        reason: "Camila sends must use @lid (PN causes ACK 463)",
+        phone_digits: addr.phoneDigits || null,
+      }, 409);
+    }
+
+    if (!addr.number) return json({ error: "Missing destination number" }, 400);
+
+    const path = evoPath(type, inst);
+    if (!path) return json({ error: `Unknown type: ${type}` }, 400);
+
+    let res = await evoFetch(url, apikey, path, buildSendBody(type, addr.number, payload));
+    let usedLid = addr.usedLid;
+    let fellBackToPn = false;
+
+    // Não-Camila: LID REJEITADO (4xx = jid inválido, nada entregue) e temos PN →
+    // uma retry por PN. Camila: NUNCA fallback PN. 5xx/gateway (502/504) é entrega
+    // AMBÍGUA (pode já ter saído) — reenviar duplicaria a bolha; não faz retry.
+    if (
+      !mustLid &&
+      !res.ok &&
+      res.status >= 400 && res.status < 500 &&
+      addr.usedLid &&
+      addr.phoneDigits &&
+      addr.phoneDigits !== addr.number
+    ) {
+      console.warn(
+        `[platform-evolution-send] LID send rejected status=${res.status}; retry PN digits=${maskPhone(addr.phoneDigits)}`,
+      );
+      res = await evoFetch(url, apikey, path, buildSendBody(type, addr.phoneDigits, payload));
+      usedLid = false;
+      fellBackToPn = true;
+    }
+
+    const envelope = {
+      ...res,
+      send_address: usedLid ? addr.number : (fellBackToPn ? addr.phoneDigits : addr.number),
+      used_lid: usedLid,
+      fell_back_to_pn: fellBackToPn,
+    };
+    return json(envelope, res.ok ? 200 : res.status >= 400 ? res.status : 502);
   } catch (err: any) {
     console.error("[platform-evolution-send] exception:", err?.message ?? err);
     return json({ error: String(err?.message ?? err) }, 500);
