@@ -4,6 +4,8 @@ import { startTyping } from "../_shared/presence.ts";
 import {
   authenticateEvolutionWebhookCallback,
   extractEvolutionWebhookCredentials,
+  isTenantWebhookAuthEnforceEnabled,
+  tenantWebhookUnauthorizedResponse,
 } from "../_shared/evolution-webhook-auth.ts";
 import {
   lidDigitsFromWaLid,
@@ -943,7 +945,11 @@ Deno.serve(async (req) => {
     console.log(`[evolution-webhook] B3-SHADOW ${gate.ok ? "would_pass" : "would_block:" + gate.reason}`
       + ` instance=${rawInstance || "<none>"} event=${rawEvent}`
       + ` tokenPresent=${extractEvolutionWebhookCredentials(payload, req.headers).length > 0}`);
-    // SEM return — segue o processamento normal
+    // Enforce off by default. Rollback: TENANT_WEBHOOK_AUTH_ENFORCE=false.
+    // Do not flip to true without B3-SHADOW would_pass on real tenant traffic.
+    if (!gate.ok && isTenantWebhookAuthEnforceEnabled()) {
+      return tenantWebhookUnauthorizedResponse(gate.reason, corsHeaders);
+    }
 
     // ---- F6: HISTÓRICO (syncFullHistory) → carteira de clientes ----
     // Chunks de histórico (MESSAGES_SET/CHATS_SET/CONTACTS_SET) são volumosos

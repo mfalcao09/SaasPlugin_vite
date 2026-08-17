@@ -53,3 +53,24 @@ export function authenticateEvolutionWebhookCallback(
   }
   return { ok: true };
 }
+
+/** Flip: `supabase secrets set TENANT_WEBHOOK_AUTH_ENFORCE=true`. Default off. */
+export function isTenantWebhookAuthEnforceEnabled(
+  raw: string | undefined | null = Deno.env.get("TENANT_WEBHOOK_AUTH_ENFORCE"),
+): boolean {
+  return String(raw ?? "").trim().toLowerCase() === "true";
+}
+
+export function tenantWebhookUnauthorizedResponse(
+  reason: string,
+  corsHeaders?: HeadersInit,
+): Response {
+  console.warn(`[evolution-webhook] 401 auth reason=${reason}`);
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}

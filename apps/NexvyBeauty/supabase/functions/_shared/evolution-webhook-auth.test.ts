@@ -10,7 +10,11 @@ import {
   PLATFORM_EVOLUTION_WEBHOOK_EVENTS,
   TENANT_EVOLUTION_WEBHOOK_EVENTS,
 } from "./evolution-webhook-events.ts";
-import { authenticateEvolutionWebhookCallback } from "./evolution-webhook-auth.ts";
+import {
+  authenticateEvolutionWebhookCallback,
+  isTenantWebhookAuthEnforceEnabled,
+  tenantWebhookUnauthorizedResponse,
+} from "./evolution-webhook-auth.ts";
 import { createPlatformEvolutionWebhookHandler } from "./platform-evolution-webhook-handler.ts";
 import { createPlatformEvolutionWebhookReceiver } from "../platform-evolution-webhook/index.ts";
 
@@ -180,6 +184,29 @@ Deno.test("callback com token correto é aceito", () => {
     new Headers({ apikey: "instance-token" }),
   );
   equal(result.ok, true, "callback com token correto");
+});
+
+Deno.test("TENANT_WEBHOOK_AUTH_ENFORCE default is off", () => {
+  equal(isTenantWebhookAuthEnforceEnabled(undefined), false, "undefined");
+  equal(isTenantWebhookAuthEnforceEnabled(null), false, "null");
+  equal(isTenantWebhookAuthEnforceEnabled(""), false, "empty");
+  equal(isTenantWebhookAuthEnforceEnabled("false"), false, "false");
+  equal(isTenantWebhookAuthEnforceEnabled("true"), true, "true");
+  equal(isTenantWebhookAuthEnforceEnabled(" TRUE "), true, "trimmed true");
+});
+
+Deno.test("tenant unauthorized response matches platform 401 contract", async () => {
+  const response = tenantWebhookUnauthorizedResponse("no_token", {
+    "Access-Control-Allow-Origin": "*",
+  });
+  equal(response.status, 401, "status");
+  const body = await response.json();
+  equal(body.error, "Unauthorized", "body");
+  equal(
+    response.headers.get("Content-Type"),
+    "application/json",
+    "content-type",
+  );
 });
 
 Deno.test("callback aceita header correto mesmo com body incorreto", () => {
