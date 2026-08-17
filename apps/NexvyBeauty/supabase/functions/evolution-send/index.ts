@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { authenticateTenant, resolveOrgId } from "../_shared/tenant-auth.ts";
+import { resolveEvolutionSendNumber } from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,8 @@ interface SendBody {
     | "delete"
     | "markRead"
     | "presence";
-  to: string; // phone digits only
+  to: string; // dígitos PN, JID, ou já `…@lid`
+  wa_lid?: string | null;
   payload: Record<string, any>;
 }
 
@@ -68,6 +70,7 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as SendBody;
     let { organization_id, instance_id, type, to, payload } = body;
+    const waLid = body.wa_lid ?? payload?.wa_lid ?? null;
 
     if (!type || !to || !payload) {
       return new Response(JSON.stringify({ error: "Missing type/to/payload" }), {
@@ -159,16 +162,42 @@ Deno.serve(async (req) => {
     }
     const inst = encodeURIComponent(instanceName);
 
-    const phone = to.replace(/\D/g, "");
+    const addr = resolveEvolutionSendNumber({ to, waLid });
+    if (!addr.number) {
+      return new Response(JSON.stringify({ error: "Missing destination number" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const number = addr.number;
+
+    const buildTextBody = (dest: string) => {
+      const textBody: Record<string, any> = { number: dest, text: payload.text };
+      const q = payload.quoted;
+      if (q && typeof q === "object" && q.key && typeof q.key.id === "string" && q.key.id) {
+        textBody.quoted = q;
+      }
+      return textBody;
+    };
+
+    const buildPresenceBody = (dest: string) => {
+      const state = String(payload.state || payload.presence || "composing");
+      const delayRaw = Number(payload.delay);
+      const delay = Number.isFinite(delayRaw)
+        ? Math.max(0, Math.min(60_000, Math.round(delayRaw)))
+        : 1000;
+      return { number: dest, presence: state, delay };
+    };
 
     let res;
+    let sendPath = "";
+    let sendBody: Record<string, any> | null = null;
     switch (type) {
       case "text":
         // Evolution API v2.3.7: POST /message/sendText/{instanceName} { number, text }
-        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, {
-          number: phone,
-          text: payload.text,
-        });
+        sendPath = `/message/sendText/${inst}`;
+        sendBody = buildTextBody(number);
+        res = await evoFetch(url, apikey, sendPath, sendBody);
         break;
       case "media": {
         // Evolution API v2.3.7: POST /message/sendMedia/{instanceName}
@@ -177,7 +206,7 @@ Deno.serve(async (req) => {
         const mediaType = payload.mediatype || payload.type || "image";
         const isDataUrl = typeof rawMedia === "string" && rawMedia.startsWith("data:");
         const mediaPayload: Record<string, any> = {
-          number: phone,
+          number,
           mediatype: mediaType,
           media: rawMedia,
           caption: payload.caption,
@@ -193,7 +222,7 @@ Deno.serve(async (req) => {
         const audioUrl = payload.audio || payload.url || payload.media;
         const isDataUrl = typeof audioUrl === "string" && audioUrl.startsWith("data:");
         const audioPayload: Record<string, any> = {
-          number: phone,
+          number,
           mediatype: "audio",
           media: audioUrl,
           mimetype: payload.mimetype || "audio/ogg",
@@ -205,13 +234,13 @@ Deno.serve(async (req) => {
       }
       case "sticker":
         res = await evoFetch(url, apikey, `/message/sendSticker/${inst}`, {
-          number: phone,
+          number,
           sticker: payload.sticker,
         });
         break;
       case "location":
         res = await evoFetch(url, apikey, `/message/sendLocation/${inst}`, {
-          number: phone,
+          number,
           latitude: payload.latitude,
           longitude: payload.longitude,
           name: payload.name,
@@ -220,21 +249,21 @@ Deno.serve(async (req) => {
         break;
       case "contact":
         res = await evoFetch(url, apikey, `/message/sendContact/${inst}`, {
-          number: phone,
+          number,
           contact: payload.contacts || payload.contact,
         });
         break;
       case "link":
         // v2.3.7 has no dedicated link endpoint — a link is just text with a URL.
         res = await evoFetch(url, apikey, `/message/sendText/${inst}`, {
-          number: phone,
+          number,
           text: payload.text ? `${payload.text}\n${payload.link}` : payload.link,
           linkPreview: true,
         });
         break;
       case "poll":
         res = await evoFetch(url, apikey, `/message/sendPoll/${inst}`, {
-          number: phone,
+          number,
           name: payload.name,
           selectableCount: payload.selectableCount || 1,
           values: payload.values,
@@ -248,7 +277,7 @@ Deno.serve(async (req) => {
         break;
       case "edit":
         res = await evoFetch(url, apikey, `/chat/updateMessage/${inst}`, {
-          number: phone,
+          number,
           key: payload.key,
           text: payload.text,
         });
@@ -267,13 +296,10 @@ Deno.serve(async (req) => {
         });
         break;
       case "presence": {
-        // v2.3.7: POST /chat/sendPresence/{instanceName} { number, presence, delay? }
-        // Baileys presence states: composing | recording | paused | available | unavailable
-        const state = String(payload.state || payload.presence || "composing");
-        res = await evoFetch(url, apikey, `/chat/sendPresence/${inst}`, {
-          number: phone,
-          presence: state,
-        });
+        // v2.3.7: POST /chat/sendPresence/{instanceName} { number, presence, delay }
+        sendPath = `/chat/sendPresence/${inst}`;
+        sendBody = buildPresenceBody(number);
+        res = await evoFetch(url, apikey, sendPath, sendBody);
         break;
       }
       default:
@@ -281,6 +307,21 @@ Deno.serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+    }
+
+    if (
+      !res.ok &&
+      res.status >= 400 && res.status < 500 &&
+      addr.usedLid &&
+      addr.phoneDigits &&
+      addr.phoneDigits !== addr.number
+    ) {
+      console.warn(`[evolution-send] LID send rejected status=${res.status}; retry PN`);
+      if (type === "text") {
+        res = await evoFetch(url, apikey, `/message/sendText/${inst}`, buildTextBody(addr.phoneDigits));
+      } else if (type === "presence") {
+        res = await evoFetch(url, apikey, `/chat/sendPresence/${inst}`, buildPresenceBody(addr.phoneDigits));
+      }
     }
 
     // Return real HTTP status when Evolution responds with error

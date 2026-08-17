@@ -1,5 +1,5 @@
 // Pacotes — catálogo de pacotes de sessões + venda presencial + baixa de sessão.
-// Catálogo lê/escreve a VIEW transparente `pacotes` (products tipo=pacote).
+// Catálogo lê a VIEW `pacotes`; writes vão em `products` tipo=pacote.
 // Vendidos lê/escreve `pacote_clientes`. Pagamento é no salão (sem Cakto).
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -58,16 +58,23 @@ export default function Pacotes() {
   const salvarPacote = useMutation({
     mutationFn: async () => {
       const payload = {
-        organization_id: orgId!, nome: form.nome.trim(), descricao: form.descricao.trim() || null,
-        servicos_incluidos: form.servicos.split(',').map((s) => s.trim()).filter(Boolean),
-        total_sessoes: Number(form.total_sessoes) || 1, valor: form.valor ? Number(form.valor) : 0,
-        validade_dias: Number(form.validade_dias) || 90, ativo: form.ativo,
+        organization_id: orgId!,
+        name: form.nome.trim(),
+        description: form.descricao.trim() || null,
+        tipo: 'pacote' as const,
+        status: (form.ativo ? 'published' : 'draft') as 'published' | 'draft',
+        settings: {
+          valor: form.valor ? Number(form.valor) : 0,
+          total_sessoes: Number(form.total_sessoes) || 1,
+          validade_dias: Number(form.validade_dias) || 90,
+          servicos_incluidos: form.servicos.split(',').map((s) => s.trim()).filter(Boolean),
+        },
       }
       if (editId) {
-        const { error } = await supabase.from('pacotes').update(payload).eq('id', editId)
+        const { error } = await supabase.from('products').update(payload).eq('id', editId).eq('organization_id', orgId!).eq('tipo', 'pacote')
         if (error) throw error
       } else {
-        const { error } = await supabase.from('pacotes').insert(payload)
+        const { error } = await supabase.from('products').insert(payload)
         if (error) throw error
       }
     },
@@ -75,7 +82,7 @@ export default function Pacotes() {
     onError: (e: any) => toast.error('Erro ao salvar: ' + e.message),
   })
   const excluirPacote = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from('pacotes').delete().eq('id', id); if (error) throw error },
+    mutationFn: async (id: string) => { const { error } = await supabase.from('products').delete().eq('id', id).eq('organization_id', orgId!).eq('tipo', 'pacote'); if (error) throw error },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['pacotes-catalogo', orgId] }); toast.success('Pacote excluído.') },
     onError: (e: any) => toast.error('Erro: ' + e.message),
   })

@@ -1,6 +1,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR, phoneVariantsBR } from "../_shared/phone.ts";
 import { startTyping } from "../_shared/presence.ts";
+import {
+  authenticateEvolutionWebhookCallback,
+  extractEvolutionWebhookCredentials,
+} from "../_shared/evolution-webhook-auth.ts";
+import {
+  lidDigitsFromWaLid,
+  resolveBaileysMessageJids,
+} from "../_shared/evolution-baileys-jid.ts";
+import { quotedFromInbound, remoteJidForQuote } from "../_shared/evolution-quoted.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -294,15 +303,16 @@ function normalizePayload(payload: any): Normalized | null {
     const messages = Array.isArray(data.messages) ? data.messages : [data];
     const msg = messages[0];
     if (!msg) return null;
-    const key = msg.key || {};
+    const jids = resolveBaileysMessageJids(msg);
     const media = extractMedia(msg.message);
     return {
       kind: "message",
       instance,
-      fromMe: key.fromMe === true,
-      remoteJid: key.remoteJid || "",
+      fromMe: jids.fromMe,
+      remoteJid: jids.remoteJid,
+      lidJid: jids.lidJid,
       pushName: msg.pushName || "",
-      messageId: key.id || "",
+      messageId: jids.messageId,
       content:
         msg.message?.conversation ||
         msg.message?.extendedTextMessage?.text ||
@@ -860,37 +870,15 @@ async function processMediaToText(
 // prova de que o Evolution Go ecoa `instance_token` no corpo; enforce cego
 // mataria a ingestão em silêncio. Só flipar para 401 depois de o log mostrar
 // `B3-SHADOW would_pass` em tráfego REAL (reconectar meuteste1-sal-o1 + 1 msg).
-function timingSafeEq(a: string, b: string): boolean {
-  const ab = new TextEncoder().encode(a);
-  const bb = new TextEncoder().encode(b);
-  if (ab.length !== bb.length) return false;
-  let diff = 0;
-  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
-  return diff === 0;
-}
-
-/** Token reenviado pela Evolution: corpo (apikey, v2) OU header (fallback). */
-function extractWebhookToken(payload: any, headers: Headers): string {
-  const body =
-    (typeof payload?.apikey === "string" && payload.apikey.trim()) ||
-    (typeof payload?.data?.apikey === "string" && payload.data.apikey.trim()) ||
-    "";
-  if (body) return body;
-  const h = (headers.get("apikey") || headers.get("x-webhook-token") || "").trim();
-  if (h) return h;
-  const m = (headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : "";
-}
-
-/** Resolve a instância (injection-safe) e EXIGE token válido. */
+/** Resolve a instância (injection-safe) e compara token via shared (shadow). */
 async function authenticateInstance(
   supabase: any,
   instanceRef: string,
   payload: any,
   headers: Headers,
 ): Promise<{ ok: true; instance: any } | { ok: false; reason: string }> {
-  const token = extractWebhookToken(payload, headers);
-  if (!token) return { ok: false, reason: "no_token" };
+  const received = extractEvolutionWebhookCredentials(payload, headers);
+  if (received.length === 0) return { ok: false, reason: "no_token" };
   const SEL = "id, instance_token";
   let inst: any = null;
   for (const q of [
@@ -903,9 +891,31 @@ async function authenticateInstance(
     if (data && data.length) { inst = data[0]; break; }
   }
   if (!inst) return { ok: false, reason: "unknown_instance" };
-  const known = String(inst.instance_token || "").trim();
-  if (!known || !timingSafeEq(token, known)) return { ok: false, reason: "token_mismatch" };
+  const gate = authenticateEvolutionWebhookCallback(inst.instance_token, payload, headers);
+  if (!gate.ok) return { ok: false, reason: gate.reason };
   return { ok: true, instance: inst };
+}
+
+async function persistConversationWaLid(
+  supabase: any,
+  conversationId: string | null,
+  lidJid: string | null | undefined,
+): Promise<void> {
+  const lidId = lidDigitsFromWaLid(lidJid);
+  if (!lidId || !conversationId) return;
+  const { data: convRow } = await supabase
+    .from("webchat_conversations")
+    .select("metadata")
+    .eq("id", conversationId)
+    .maybeSingle();
+  const meta = (convRow?.metadata && typeof convRow.metadata === "object")
+    ? { ...(convRow.metadata as Record<string, unknown>) }
+    : {};
+  if (meta.wa_lid === lidId) return;
+  await supabase
+    .from("webchat_conversations")
+    .update({ metadata: { ...meta, wa_lid: lidId } })
+    .eq("id", conversationId);
 }
 
 Deno.serve(async (req) => {
@@ -932,7 +942,7 @@ Deno.serve(async (req) => {
     const gate = await authenticateInstance(supabase, String(rawInstance || "").trim(), payload, req.headers);
     console.log(`[evolution-webhook] B3-SHADOW ${gate.ok ? "would_pass" : "would_block:" + gate.reason}`
       + ` instance=${rawInstance || "<none>"} event=${rawEvent}`
-      + ` tokenPresent=${extractWebhookToken(payload, req.headers) !== ""}`);
+      + ` tokenPresent=${extractEvolutionWebhookCredentials(payload, req.headers).length > 0}`);
     // SEM return — segue o processamento normal
 
     // ---- F6: HISTÓRICO (syncFullHistory) → carteira de clientes ----
@@ -1788,6 +1798,8 @@ Deno.serve(async (req) => {
         if (lead?.id) newConv.lead_id = lead.id;
         if (initialAgentId) newConv.current_agent_id = initialAgentId;
         if (defaultSectorId) newConv.sector_id = defaultSectorId;
+        const inboundLid = lidDigitsFromWaLid(lidJid);
+        if (inboundLid) newConv.metadata = { wa_lid: inboundLid };
 
         // If a funnel matches, the funnel takes over: bot_active + flow state set
         if (funnelToRun && funnelToRun.start_block_id) {
@@ -1956,6 +1968,8 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      await persistConversationWaLid(supabase, conversationId, lidJid);
 
       // ---- MULTIMODAL ENRICHMENT (audio / image / video / document / sticker) ----
       // For ALL inbound media we attempt to:
@@ -2495,7 +2509,7 @@ Deno.serve(async (req) => {
       try {
         const { data: conv } = await supabase
           .from("webchat_conversations")
-          .select("id, status, widget_id, visitor_name, current_agent_id, lead_id, current_flow_id, current_block_id, flow_variables, flow_completed, flow_source, orchestrator_state, webchat_widgets(product_id)")
+          .select("id, status, widget_id, visitor_name, current_agent_id, lead_id, current_flow_id, current_block_id, flow_variables, flow_completed, flow_source, orchestrator_state, metadata, webchat_widgets(product_id)")
           .eq("id", conversationId)
           .maybeSingle();
 
@@ -3073,12 +3087,20 @@ Deno.serve(async (req) => {
                 // 2) Envia o balão
                 let externalId: string | null = null;
                 try {
+                  const convWaLid = lidDigitsFromWaLid((conv as any)?.metadata?.wa_lid) || lidId || null;
+                  const quoted = quotedFromInbound({
+                    evolutionMessageId: norm.messageId,
+                    content: processedContent || norm.content,
+                    fromMe: false,
+                    remoteJid: remoteJidForQuote({ waLid: convWaLid, phoneDigits: phone }),
+                  });
                   const sendRes = await sendEvo({
                     organization_id: instance.organization_id,
                     instance_id: instance.id,
                     type: "text",
                     to: phone,
-                    payload: { text },
+                    wa_lid: convWaLid,
+                    payload: { text, ...(quoted ? { quoted } : {}) },
                   });
                   const sendBody = await sendRes.text();
                   console.log("[evolution-webhook] bot_send chunk", i + 1, "/", chunks.length, "status:", sendRes.status, "body:", sendBody.slice(0, 200));

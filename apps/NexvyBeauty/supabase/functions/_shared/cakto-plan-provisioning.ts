@@ -622,7 +622,7 @@ const SALON_AUTOMATION_SEED: Array<{ tipo: string; antecedencia_dias: number }> 
 
 /**
  * Faz a org recém-provisionada nascer OPERACIONAL (B5/B6/B7):
- *  - servico_catalogo: catálogo-template (shape provado em OficinaServicesStep).
+ *  - products tipo=servico: catálogo-template (shape provado em OficinaServicesStep).
  *  - salon_automation_rules: as 4 regras cadastradas, DESLIGADAS (upsert
  *    ignore-dup pela UNIQUE(organization_id,tipo) → idempotente por si só).
  *  - opportunity_scan_schedules: agenda do Radar (diária 08h UTC; is_active
@@ -643,17 +643,19 @@ async function seedSalonDataForNewOrg(
   try {
     const rows = SALON_SERVICE_TEMPLATE.map((nome) => ({
       organization_id: organizationId,
-      nome,
-      ativo: true,
+      name: nome,
+      tipo: 'servico',
+      status: 'published',
+      settings: { preco_base: 0, duracao_minutos: 30 },
     }));
-    const { error } = await admin.from('servico_catalogo').insert(rows);
+    const { error } = await admin.from('products').insert(rows);
     if (error) {
       ok = false;
-      console.warn('[cakto-provisioning] seed servico_catalogo:', error.message);
+      console.warn('[cakto-provisioning] seed products servico:', error.message);
     }
   } catch (e: any) {
     ok = false;
-    console.warn('[cakto-provisioning] seed servico_catalogo exception:', e?.message ?? String(e));
+    console.warn('[cakto-provisioning] seed products servico exception:', e?.message ?? String(e));
   }
 
   // B6 — automações (desligadas), idempotente via UNIQUE(organization_id,tipo)

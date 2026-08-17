@@ -16,8 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MaybeSalaoShell, NoOrg, formatCurrency, useOrganizationId } from './_shared'
 import { PageHeader } from '@/components/layout/PageHeader'
 
-// Re-skin premium data-injectable. Camada de dados preservada: tabela
-// `servico_catalogo` por organization_id (CRUD completo).
+// Reads em `servico_catalogo` (view); writes em `products` tipo=servico.
 
 export interface Servico {
   id: string
@@ -68,18 +67,21 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
     mutationFn: async () => {
       const payload = {
         organization_id: organizationId!,
-        nome: form.nome.trim(),
-        categoria: form.categoria.trim() || null,
-        descricao: form.descricao.trim() || null,
-        duracao_minutos: form.duracao_minutos ? Number(form.duracao_minutos) : 30,
-        preco_base: form.preco_base ? Number(form.preco_base) : 0,
-        ativo: form.ativo,
+        name: form.nome.trim(),
+        tipo: 'servico' as const,
+        status: (form.ativo ? 'published' : 'draft') as 'published' | 'draft',
+        category: form.categoria.trim() || null,
+        description: form.descricao.trim() || null,
+        settings: {
+          preco_base: form.preco_base ? Number(form.preco_base) : 0,
+          duracao_minutos: form.duracao_minutos ? Number(form.duracao_minutos) : 30,
+        },
       }
       if (editingId) {
-        const { error } = await supabase.from('servico_catalogo').update(payload).eq('id', editingId).eq('organization_id', organizationId!)
+        const { error } = await supabase.from('products').update(payload).eq('id', editingId).eq('organization_id', organizationId!).eq('tipo', 'servico')
         if (error) throw error
       } else {
-        const { error } = await supabase.from('servico_catalogo').insert(payload)
+        const { error } = await supabase.from('products').insert(payload)
         if (error) throw error
       }
     },
@@ -93,7 +95,7 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
 
   const excluir = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('servico_catalogo').delete().eq('id', id).eq('organization_id', organizationId!)
+      const { error } = await supabase.from('products').delete().eq('id', id).eq('organization_id', organizationId!).eq('tipo', 'servico')
       if (error) throw error
     },
     onSuccess: () => {

@@ -20,7 +20,7 @@ export function isNetworkError(e: unknown): boolean {
 
 /** Reexecuta SÓ em falha de rede (Wi-Fi de salão oscila), com backoff 1s/2s.
  *  Erro de negócio sobe na hora — retentar não mudaria a resposta. */
-export async function withNetworkRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+export async function withNetworkRetry<T>(fn: () => PromiseLike<T>, tries = 3): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < tries; attempt++) {
     try {

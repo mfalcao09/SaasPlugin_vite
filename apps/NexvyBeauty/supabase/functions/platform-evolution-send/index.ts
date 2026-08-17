@@ -75,8 +75,14 @@ function buildSendBody(
   payload: Record<string, any>,
 ): Record<string, any> {
   switch (type) {
-    case "text":
-      return { number, text: payload.text };
+    case "text": {
+      const body: Record<string, any> = { number, text: payload.text };
+      const q = payload.quoted;
+      if (q && typeof q === "object" && q.key && typeof q.key.id === "string" && q.key.id) {
+        body.quoted = q;
+      }
+      return body;
+    }
     case "presence": {
       // Evolution (nexvy.tech) EXIGE `delay` — sem ele → 400
       // `instance requires property "delay"` e o "digitando…" nunca aparece.

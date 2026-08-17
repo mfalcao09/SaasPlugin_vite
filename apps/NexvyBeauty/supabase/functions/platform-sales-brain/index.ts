@@ -71,6 +71,15 @@ import {
   type TurnEvents,
 } from '../_shared/conversation-state.ts';
 import { BLOCO_TAGS_CLASSIFICADORAS, extrairTags } from '../_shared/turn-tags.ts';
+import {
+  RAIOX_TAG,
+  deveLiberarRaiox,
+  ensureRaioxPreflight,
+  isRaioxUrl,
+  replyJaTemPreflight,
+  stripRaioxArtifacts,
+} from '../_shared/raiox-preflight.ts';
+import { inboundForQuote, quotedFromInbound, remoteJidForQuote } from '../_shared/evolution-quoted.ts';
 import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { splitIntoBubbles } from '../_shared/bubble-split.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
@@ -162,7 +171,6 @@ const PASS_BIA_TAG = '[PASSAR_BIA]';
 // (nome+whatsapp da própria conversa), recebe /implantacao/<token> e entrega o link
 // na mesma resposta. Sem humano de plantão (pedido explícito Marcelo 2026-07-19 —
 // o prompt já mandava "disparar a isca" sem existir braço para isso).
-const RAIOX_TAG = '[ENVIAR_RAIOX]';
 // Bolha de transição calorosa da passagem SDR→closer. SÓ pode sair quando existe
 // closer ATIVO: prometer uma especialista que não vai falar é pior que não passar.
 const PASS_BIA_MSG = 'Te deixo com a Bia, nossa especialista — ela já sabe tudo que a gente conversou 💚';
@@ -524,6 +532,7 @@ async function deliverViaEvolution(
   conversation: Record<string, any> | null,
   toPhone: string,
   content: string,
+  quoted?: { key: { id: string; fromMe: boolean; remoteJid?: string }; message: { conversation: string } } | null,
 ): Promise<DeliveryResult> {
   const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
   const instanceId = typeof conversation?.evolution_instance_id === 'string'
@@ -566,7 +575,7 @@ async function deliverViaEvolution(
         type: 'text',
         to,
         ...(waLid ? { wa_lid: waLid } : {}),
-        payload: { text: content },
+        payload: { text: content, ...(quoted ? { quoted } : {}) },
       },
     });
     // A edge devolve o envelope do evoFetch ({ok,status,body}) — `ok:false` é
@@ -632,9 +641,10 @@ async function deliver(
   conversation: Record<string, any> | null,
   toPhone: string,
   content: string,
+  quoted?: { key: { id: string; fromMe: boolean; remoteJid?: string }; message: { conversation: string } } | null,
 ): Promise<DeliveryResult> {
   if (conversation?.channel === 'whatsapp_evolution') {
-    return await deliverViaEvolution(supabase, conversation, toPhone, content);
+    return await deliverViaEvolution(supabase, conversation, toPhone, content, quoted);
   }
   const r = await deliverViaWhatsAppCloud(
     supabase,
@@ -1223,7 +1233,8 @@ A DEMONSTRAÇÃO (o raio-x) — o que é e como disparar
 ═══════════════════════════════════════
 O QUE É: um link automático que a própria cliente abre NA HORA e faz sozinha, em minutos. Ela conecta o WhatsApp dela e vê na tela quanto está parado em cliente que sumiu. É self-service, imediato, sem compromisso.
 ⛔ O QUE NÃO É: NÃO é reunião, NÃO é call, NÃO é videochamada, NÃO tem agenda, NÃO tem horário, NÃO tem uma pessoa do outro lado. É PROIBIDO oferecer para "agendar", perguntar "qual melhor horário", citar disponibilidade ("hoje à tarde", "amanhã de manhã") ou prometer duração de reunião. Nada disso existe — prometer isso é MENTIR para a cliente e ela ficará esperando alguém que nunca vai aparecer.
-COMO DISPARAR: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link REAL e envia automaticamente com as instruções do QR code. NUNCA invente nem digite um link você mesma. NUNCA prometa "já te mando" sem emitir a tag. Se a lead topar fazer o raio-x/demonstração/teste em QUALQUER momento (um "pode ser", "quero ver", "como funciona?" depois da oferta), emita a tag NA MESMA resposta — não pergunte de novo, não peça horário, só dispare.
+COMO DISPARAR: inclua a tag ${RAIOX_TAG} no FIM da sua mensagem — o sistema gera o link REAL e envia automaticamente com as instruções do QR code. NUNCA invente nem digite um link você mesma. NUNCA prometa "já te mando" sem emitir a tag.
+⛔ PREFLIGHT OBRIGATÓRIO: ANTES de qualquer ${RAIOX_TAG} ou link de implantação, você DEVE perguntar (1) se ela tem outras dúvidas, (2) se entendeu a ferramenta por completo, (3) se quer saber algo mais. Um "pode ser" / "quero ver" / "sim" NÃO autoriza o link no mesmo turno. Só emita a tag no turno SEGUINTE, depois que ela confirmar que não tem mais dúvida.
 ⚠️ AO EMITIR A TAG, SUA FALA É **UMA LINHA CURTA** e mais nada (ex.: "Boa! Já te mando aqui 👇"). O sistema anexa o link e a instrução do QR logo depois — se você TAMBÉM explicar o que o link faz, a cliente recebe a mesma coisa três vezes e vira textão. NÃO descreva o passo a passo, NÃO diga "vou te enviar um link", NÃO explique o QR. Uma linha e a tag.`;
 
 /**
@@ -1247,7 +1258,7 @@ UMA pergunta por vez, nesta ordem, PULANDO o que ela já respondeu (confira "O Q
 (b) quantas cadeiras/profissionais atendem com você? (se autônoma: atende sozinha mesmo?)
 (c) usa algum sistema/agenda hoje, ou é tudo no caderno e no WhatsApp?
 (d) quantas clientes você tem na base e quantas sumiram nos últimos meses?
-Depois da 2ª-3ª resposta, PARE de perguntar e DISPARE o raio-x — a demonstração qualifica o resto sozinha (ela se qualifica ao ver o próprio dinheiro parado).
+Depois da 2ª-3ª resposta, faça o PREFLIGHT do Raio-X (dúvidas / entendeu / quer saber mais) — NÃO dispare o link no mesmo turno. A demonstração só sai depois que ela confirmar que não tem mais dúvida.
 ⛔ NÃO faça perguntas de vaidade que não decidem nada: "há quanto tempo você atua", "quantos clientes ao longo dos anos", "como começou na área". O que importa é a base ATIVA e quantas SUMIRAM — é dessa conta que sai o valor a recuperar.
 ⛔ NUNCA se apresente por cargo interno ("sou a SDR", "SDR Qualificadora", "consultora de qualificação"). Ninguém fala assim no WhatsApp. Diga o que você FAZ, em linguagem de gente: "eu ajudo profissionais de beleza a trazer de volta cliente que sumiu".
 
@@ -1575,7 +1586,7 @@ Deno.serve(async (req) => {
     // relógio é o errado, mas a lição não tinha atravessado estas 20 linhas.
 
     let historyDesc = await loadMessages();
-    const triggerInbound = lastInboundOf(historyDesc);
+    let triggerInbound = inboundForQuote(historyDesc);
 
     // Marca d'água da rajada JÁ COBERTA por esta execução — base do hand-back.
     // Usa `seq` (identity, atribuído pelo banco no INSERT) e NUNCA created_at ou
@@ -1747,6 +1758,7 @@ Deno.serve(async (req) => {
       }
       historyDesc = await loadMessages();
       coveredInboundSeq = maxInboundSeq(historyDesc);
+      triggerInbound = inboundForQuote(historyDesc);
     }
 
     // 4) Idempotência leve: última msg = outbound do bot com <5s ⇒ não responde.
@@ -2240,10 +2252,15 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // O gate duro (proibirReapresentar) lia conversation_state.apresentou — que
     // abertura fromMe NUNCA grava. Sem jaFalouOutbound, Camila re-saudava
     // ("Marcelo, tudo bem?") com pitch já no histórico (7b24e943, 2026-08-11).
+    const raioxLiberadoAgora = deveLiberarRaiox({
+      preflightAsked: estadoAtual?.raiox_preflight_asked === true,
+      inboundText: String(triggerInbound?.content ?? ''),
+    });
     const pol = politica(estadoAtual, {
       leadAceitouAgora,
       seqAtual,
       jaFalouOutbound: botAlreadySpoke,
+      raioxLiberadoAgora,
     });
 
     // Os fatos vão no FIM do system: o modelo obedece melhor o que leu por último,
@@ -2354,8 +2371,16 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     const ehConversaDeEval = String(conversation.visitor_id ?? '').startsWith('wa:eval-');
 
     let sentRaiox = false;
-    if (reply.includes(RAIOX_TAG)) {
-      reply = reply.split(RAIOX_TAG).join('').replace(/\s+$/, '').trim();
+    let marcouRaioxPreflight = false;
+    if (reply.includes(RAIOX_TAG) || isRaioxUrl(reply)) {
+      if (pol.proibirRaiox) {
+        reply = ensureRaioxPreflight(reply);
+        marcouRaioxPreflight = true;
+        console.warn('[platform-sales-brain] [ENVIAR_RAIOX] bloqueado — preflight obrigatório', {
+          conversation_id: conversationId,
+        });
+      } else {
+      reply = stripRaioxArtifacts(reply);
       try {
         const appUrl = Deno.env.get('APP_URL') || 'https://app.nexvybeauty.com.br';
         const demoRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/demo-start`, {
@@ -2395,6 +2420,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         );
         reply = `${reply ? reply + '\n\n' : ''}Vou preparar o seu Raio-X agora e te mando o link aqui em instantes 😉`;
       }
+      }
     }
 
     // 11) Escalada/handoff: detecta as tags (mesmo tratamento), remove do texto.
@@ -2427,7 +2453,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     }
     // Corte na 1ª pergunta só quando NÃO é handoff NEM passagem pra Bia (essas
     // fecham com transição calorosa, sem pergunta — truncar comeria a despedida).
-    if (!needsHandoff && !passedToBia && !sentRaiox) reply = keepFirstQuestion(reply);
+    if (!needsHandoff && !passedToBia && !sentRaiox && !marcouRaioxPreflight) reply = keepFirstQuestion(reply);
     let bubbles = splitReplyIntoBubbles(reply);
     if (bubbles.length === 0) {
       bubbles = [needsHandoff ? WARM_HANDOFF_MSG : (passedToBia ? PASS_BIA_MSG : 'Me conta um pouco mais pra eu te ajudar do jeito certo?')];
@@ -2519,6 +2545,15 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       for (const b of bubbles) {
         const urls = b.match(URL_RE) ?? [];
         if (urls.length === 0) { saneadas.push(b); continue; }
+        const raioxUrls = urls.filter((u: string) => isRaioxUrl(u));
+        if (raioxUrls.length && pol.proibirRaiox) {
+          console.error('[platform-sales-brain] RAIO-X URL BLOQUEADA sem preflight', {
+            conversation_id: conversation.id,
+          });
+          const semRaiox = stripRaioxArtifacts(b);
+          if (semRaiox.length >= 8) saneadas.push(semRaiox);
+          continue;
+        }
         const semLink = b.replace(URL_RE, '')
           .replace(/(aqui está|aqui esta|tá aqui|ta aqui|segue o link)\s*👉?\s*/gi, '')
           .replace(/👉/g, '').replace(/\s{2,}/g, ' ').trim();
@@ -2640,6 +2675,24 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     );
     const tDeliveryStart = Date.now();
     let entregues = 0; // bolhas REALMENTE enviadas — o lote pode ser abortado no meio
+
+    const inboundMeta = (triggerInbound?.metadata && typeof triggerInbound.metadata === 'object')
+      ? triggerInbound.metadata as Record<string, unknown>
+      : {};
+    const quoteRemote = remoteJidForQuote({
+      waLid: typeof (conversation.metadata as any)?.wa_lid === 'string'
+        ? (conversation.metadata as any).wa_lid
+        : null,
+      phoneDigits: String(dest ?? '').replace(/\D/g, ''),
+    });
+    const quoteInbound = quotedFromInbound({
+      evolutionMessageId: typeof inboundMeta.evolution_message_id === 'string'
+        ? inboundMeta.evolution_message_id
+        : null,
+      wamid: typeof inboundMeta.wamid === 'string' ? inboundMeta.wamid : null,
+      content: String(triggerInbound?.content ?? ''),
+      remoteJid: quoteRemote,
+    });
 
     for (let i = 0; i < total; i++) {
       const bubbleText = bubbles[i];
@@ -2770,6 +2823,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         conversation,
         dest,
         bubbleText,
+        i === 0 ? quoteInbound : null,
       );
       if (delivered) anyDelivered = true; else lastDeliveryError = deliveryError;
 
@@ -2995,6 +3049,8 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         tagOfertaDemo: sentRaiox,                                      // tier 1 (link gerado)
         leadRecusou: tags.recusouDemo,                                 // tier 2 (tag)
         tagsObjecao: tags.objecoes,                                    // tier 2 (tag)
+        marcouRaioxPreflight: marcouRaioxPreflight || replyJaTemPreflight(bubbles.join('\n')),
+        liberouRaiox: raioxLiberadoAgora || sentRaiox,
       };
 
       let novo = reduzir(estadoAtual, ev);

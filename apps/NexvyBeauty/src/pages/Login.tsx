@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -95,14 +95,6 @@ export default function Login() {
   const navigate = useNavigate();
 
   const accentText = textOnAccent(BRAND.accent);
-
-  // Bootstrap idempotente do Super Admin padrão (no remix novo).
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem('vendus_bootstrap_attempted') === '1') return;
-    sessionStorage.setItem('vendus_bootstrap_attempted', '1');
-    supabase.functions.invoke('ensure-default-super-admin').catch(() => {});
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
