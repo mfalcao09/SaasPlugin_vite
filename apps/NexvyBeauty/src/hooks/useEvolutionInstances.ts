@@ -101,7 +101,7 @@ export function useEvolutionInstances() {
     queryFn: async (): Promise<EvolutionInstance[]> => {
       const { data, error } = await supabase
         .from('evolution_instances')
-        .select('*')
+        .select('id, organization_id, name, status, qr_code, phone_number, is_default, metadata')
         .eq('organization_id', profile!.organization_id!)
         .order('created_at', { ascending: true });
       if (error) throw error;

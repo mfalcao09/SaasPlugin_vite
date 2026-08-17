@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "pretty": false
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/pages/salao/**/*",
+    "src/cockpit/**/*",
+    "src/hooks/useAuth.tsx",
+    "src/hooks/useImplantacao.ts",
+    "src/hooks/useEvolutionInstances.ts",
+    "src/hooks/useMetaConnections.ts"
+  ]
+}

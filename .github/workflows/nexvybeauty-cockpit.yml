@@ -1,0 +1,46 @@
+name: NexvyBeauty Cockpit
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/NexvyBeauty/**'
+      - '.github/workflows/nexvybeauty-cockpit.yml'
+  pull_request:
+    paths:
+      - 'apps/NexvyBeauty/**'
+      - '.github/workflows/nexvybeauty-cockpit.yml'
+
+defaults:
+  run:
+    working-directory: apps/NexvyBeauty
+
+jobs:
+  cockpit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/NexvyBeauty/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck Cockpit
+        run: npm run typecheck:cockpit
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno tests (Evolution shared + cakto)
+        run: >
+          deno test --frozen --allow-read --allow-env
+          supabase/functions/_shared/evolution-webhook-auth.test.ts
+          supabase/functions/_shared/evolution-baileys-jid.test.ts
+          supabase/functions/_shared/evolution-quoted.test.ts
+          supabase/functions/_shared/cakto-plan-provisioning.test.ts

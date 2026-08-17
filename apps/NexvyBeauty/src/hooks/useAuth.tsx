@@ -164,7 +164,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 'suspended' explícito trava o acesso.
         const orgId = prof?.organization_id;
         if (orgId) {
-          supabase.from('organizations').select('plan_status').eq('id', orgId).maybeSingle()
+          void Promise.resolve(
+            supabase.from('organizations').select('plan_status').eq('id', orgId).maybeSingle()
+          )
             .then(({ data }) => setOrgPlanStatus((data?.plan_status as string) ?? null))
             .catch(() => setOrgPlanStatus(null));
         } else {

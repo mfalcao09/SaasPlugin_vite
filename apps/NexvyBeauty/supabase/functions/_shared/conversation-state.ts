@@ -39,6 +39,10 @@ export interface ConversationState {
   objecoes_vistas?: string[];
   /** Marca d'água: maior `seq` já reduzido. Base da trava otimista. */
   atualizado_seq?: number;
+  /** TIER 1 — o código injetou/confirmou o preflight do Raio-X neste chat. */
+  raiox_preflight_asked?: boolean;
+  /** TIER 1 — lead confirmou o preflight; código pode emitir o link. */
+  raiox_preflight_ok?: boolean;
 }
 
 /** Eventos do turno — TODOS derivados de ato do código ou tag explícita. */
@@ -57,6 +61,10 @@ export interface TurnEvents {
   leadRecusou?: boolean;
   /** TIER 2: tags de objeção emitidas pelo modelo neste turno. */
   tagsObjecao?: string[];
+  /** TIER 1: este turno fez a pergunta obrigatória pré-link. */
+  marcouRaioxPreflight?: boolean;
+  /** TIER 1: este turno liberou o Raio-X (preflight ok + confirmação). */
+  liberouRaiox?: boolean;
 }
 
 // ─── Estágio: FUNÇÃO PURA, nunca campo armazenado ────────────────────────────
@@ -95,6 +103,8 @@ export function reduzir(
 
   if (ev.enviouOutbound) s.apresentou = true;
   if (ev.enviouLink) s.link_enviado = true;
+  if (ev.marcouRaioxPreflight) s.raiox_preflight_asked = true;
+  if (ev.liberouRaiox) s.raiox_preflight_ok = true;
   if (ev.usouNome) s.nome_ultimo_uso_seq = ev.seq;
   if (ev.tagOfertaDemo) s.demo_ofertas = (s.demo_ofertas ?? 0) + 1;
   if (ev.leadRecusou) s.demo_recusas = (s.demo_recusas ?? 0) + 1;
@@ -120,6 +130,8 @@ export interface Politica {
   /** Bloqueios que o chamador aplica sobre as bolhas prontas. */
   proibirOfertaDemo: boolean;
   proibirLink: boolean;
+  /** Sem preflight confirmado: PROIBIDO [ENVIAR_RAIOX] e URL /implantacao/. */
+  proibirRaiox: boolean;
   proibirNome: boolean;
   proibirReapresentar: boolean;
 }
@@ -138,6 +150,8 @@ export interface PoliticaOpts {
    * flag, PR #166 só injetava CONTINUE no prompt e a Camila re-saudava.
    */
   jaFalouOutbound?: boolean;
+  /** Preflight já perguntado + lead confirmou NESTE turno. */
+  raioxLiberadoAgora?: boolean;
 }
 
 /**
@@ -165,6 +179,21 @@ export function politica(
 
   // LINK — só com aceite explícito. Sem aceite, a oferta sobrevive, a URL morre.
   const proibirLink = !opts.leadAceitouAgora;
+
+  // RAIO-X — aceite genérico ("sim", "pode ser") NÃO basta. Medido 2026-08-17.
+  const proibirRaiox = st.raiox_preflight_ok !== true && !opts.raioxLiberadoAgora;
+  // Gate vale desde o turno 0. O FATO só entra depois que já falamos — senão a
+  // abertura vira "tem alguma dúvida?" antes de explicar a ferramenta.
+  const jaConversou = st.apresentou === true ||
+    st.raiox_preflight_asked === true ||
+    (st.demo_ofertas ?? 0) > 0;
+  if (proibirRaiox && jaConversou) {
+    fatos.push(
+      'FATO DESTE TURNO: PROIBIDO enviar link de Raio-X ou /implantacao/. ' +
+        'Antes você DEVE perguntar se ela tem outras dúvidas, se entendeu a ferramenta por completo, e se quer saber algo mais. ' +
+        'Só no turno seguinte, se ela confirmar que não tem mais dúvida, a tag [ENVIAR_RAIOX] é permitida.',
+    );
+  }
 
   // NOME — racionamento por distância de seq (absorve o lookback do PR-14).
   const janela = opts.janelaNome ?? 8;
@@ -196,7 +225,7 @@ export function politica(
     );
   }
 
-  return { fatos, proibirOfertaDemo, proibirLink, proibirNome, proibirReapresentar };
+  return { fatos, proibirOfertaDemo, proibirLink, proibirRaiox, proibirNome, proibirReapresentar };
 }
 
 // ─── Trava otimista (achado de lost update, revisão da Controladora) ─────────

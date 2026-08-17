@@ -24,6 +24,7 @@ Deno.test('estado vazio OMITE tudo — nenhum default vira fato por acidente', (
   // que não possa provar. Estado ausente → modelo improvisa (aceitável).
   const p = politica(s);
   assertEquals(p.fatos.length, 0);
+  assert(p.proibirRaiox);
   assertFalse(p.proibirOfertaDemo);
   assertFalse(p.proibirNome);
   assertFalse(p.proibirReapresentar);
@@ -192,4 +193,20 @@ Deno.test('lost update: o perdedor relê e reduz de novo, sem perder contagem', 
     (lote3Correto.demo_ofertas ?? 0) > (lote3Errado.demo_ofertas ?? 0),
     'a trava é o que separa contagem correta de estado que mente',
   );
+});
+
+Deno.test('proibirRaiox: aceite genérico NÃO libera (caso 2026-08-17)', () => {
+  const s = reduzir(estadoVazio(), { seq: 70, enviouOutbound: true });
+  assert(politica(s, { leadAceitouAgora: true }).proibirRaiox);
+  assertFalse(politica(s, { raioxLiberadoAgora: true }).proibirRaiox);
+});
+
+Deno.test('raiox_preflight: asked → ok só com liberouRaiox', () => {
+  let s = reduzir(estadoVazio(), { seq: 80, marcouRaioxPreflight: true });
+  assert(s.raiox_preflight_asked);
+  assertFalse(!!s.raiox_preflight_ok);
+  assert(politica(s).proibirRaiox);
+  s = reduzir(s, { seq: 81, liberouRaiox: true });
+  assert(s.raiox_preflight_ok);
+  assertFalse(politica(s).proibirRaiox);
 });

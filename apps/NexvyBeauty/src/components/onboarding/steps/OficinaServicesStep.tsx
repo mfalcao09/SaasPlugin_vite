@@ -50,11 +50,12 @@ export const OficinaServicesStep: FC<StepProps> = ({ onNext, onSkip, onBack }) =
       if (!organizationId || nomes.length === 0) return
       const rows = nomes.map((nome) => ({
         organization_id: organizationId,
-        nome,
-        ativo: true,
+        name: nome,
+        tipo: 'servico' as const,
+        status: 'published' as const,
+        settings: { preco_base: 0, duracao_minutos: 30 },
       }))
-      // servico_catalogo ainda não está em types.ts -> cast as any
-      const { error } = await (supabase as any).from('servico_catalogo').insert(rows)
+      const { error } = await supabase.from('products').insert(rows)
       if (error) throw error
     },
     onSuccess: () => {

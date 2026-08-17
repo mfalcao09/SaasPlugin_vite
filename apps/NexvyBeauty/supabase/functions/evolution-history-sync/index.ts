@@ -31,6 +31,7 @@
 // ============================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizePhoneBR } from "../_shared/phone.ts";
+import { phoneDigitsFromJid, resolveBaileysMessageJids } from "../_shared/evolution-baileys-jid.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,56 +77,33 @@ function extractInstance(payload: any): string {
 const drops = { lid: 0, grupo: 0, vazio: 0 };
 function resetDrops() { drops.lid = 0; drops.grupo = 0; drops.vazio = 0; }
 
-// JID individual → telefone canônico BR (ou null se não for contato válido).
-// ⚠️ @lid NÃO é telefone: é o endereçamento "LID" do WhatsApp, hoje maioria das
-// conversas. Esta função não o resolve sozinha — quem chama deve tentar os campos
-// alternativos via resolvePhone() ANTES de desistir.
-function jidToPhone(jid: unknown): string | null {
-  if (typeof jid !== "string" || !jid) return null;
-  const j = jid.trim();
-  if (
-    j.endsWith("@g.us") ||        // grupos
-    j.endsWith("@broadcast") ||   // broadcast e status@broadcast
-    j.endsWith("@newsletter")     // canais
-  ) {
+function isGroupishJid(j: string): boolean {
+  return j.endsWith("@g.us") || j.endsWith("@broadcast") || j.endsWith("@newsletter");
+}
+
+/** Tenta o jid principal e Alt via evolution-baileys-jid (mesmo contrato do webhook). */
+function resolvePhone(primary: unknown, ...objs: any[]): string | null {
+  const bag: Record<string, unknown> = {};
+  for (const o of objs) {
+    if (o && typeof o === "object") Object.assign(bag, o);
+  }
+  const primaryStr = typeof primary === "string" ? primary : "";
+  const existingKey = (bag.key && typeof bag.key === "object")
+    ? bag.key as Record<string, unknown>
+    : {};
+  const resolved = resolveBaileysMessageJids({
+    ...bag,
+    key: { ...existingKey, remoteJid: primaryStr || existingKey.remoteJid || "" },
+  });
+  const digits = phoneDigitsFromJid(resolved.remoteJid);
+  if (digits) return normalizePhoneBR(digits);
+
+  if (primaryStr && isGroupishJid(primaryStr)) {
     drops.grupo += 1;
     return null;
   }
-  if (j.includes("@lid")) return null; // não conta drop aqui — resolvePhone tenta o alt
-  const raw = j.split("@")[0].split(":")[0].replace(/\D/g, "");
-  if (!raw) return null;
-  return normalizePhoneBR(raw);
-}
-
-/**
- * Campos onde a Evolution/Baileys traz o telefone REAL quando o jid principal
- * veio em LID. A ordem importa: o primeiro que resolver vence.
- *
- * ⚠️ BUG CORRIGIDO 2026-07-20: antes, todo jid contendo "@lid" era descartado
- * cegamente e o contato sumia SEM LOG. Como LID é o endereçamento padrão do
- * WhatsApp moderno, isso derrubava a maior parte da carteira — o raio-x saía
- * vazio e a demonstração não demonstrava nada.
- */
-const ALT_JID_FIELDS = [
-  "remoteJidAlt", "senderPn", "participantPn", "participantAlt",
-  "phoneNumber", "pn", "jid", "number", "id",
-] as const;
-
-/** Tenta o jid principal e, se ele for LID/inválido, varre os campos alternativos. */
-function resolvePhone(primary: unknown, ...objs: any[]): string | null {
-  const direct = jidToPhone(primary);
-  if (direct) return direct;
-  for (const o of objs) {
-    if (!o || typeof o !== "object") continue;
-    for (const f of ALT_JID_FIELDS) {
-      const v = (o as Record<string, unknown>)[f];
-      if (v === primary) continue;
-      const p = jidToPhone(v);
-      if (p) return p;
-    }
-  }
-  const isLid = typeof primary === "string" && primary.includes("@lid");
-  if (isLid) drops.lid += 1; else drops.vazio += 1;
+  if (primaryStr.includes("@lid")) drops.lid += 1;
+  else drops.vazio += 1;
   return null;
 }
 
