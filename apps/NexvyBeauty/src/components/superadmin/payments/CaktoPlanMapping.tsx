@@ -21,9 +21,11 @@ interface Plan {
   name: string;
   slug: string;
   price_monthly: number | null;
+  price_quarterly: number | null;
   price_yearly: number | null;
   cakto_product_id: string | null;
   checkout_url: string | null;
+  checkout_url_quarterly: string | null;
   checkout_url_yearly: string | null;
 }
 
@@ -58,7 +60,7 @@ export function CaktoPlanMapping() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_plans')
-        .select('id,name,slug,price_monthly,price_yearly,cakto_product_id,checkout_url,checkout_url_yearly')
+        .select('id,name,slug,price_monthly,price_quarterly,price_yearly,cakto_product_id,checkout_url,checkout_url_quarterly,checkout_url_yearly')
         .order('display_order', { ascending: true });
       if (error) throw error;
       return (data as unknown as Plan[]) ?? [];
@@ -142,7 +144,7 @@ export function CaktoPlanMapping() {
       <div className="grid gap-3">
         {plans?.map((plan) => {
           const result = results[plan.id];
-          const isFree = !plan.price_monthly && !plan.price_yearly;
+          const isFree = !plan.price_monthly && !plan.price_quarterly && !plan.price_yearly;
           return (
             <Card key={plan.id}>
               <CardContent className="pt-6">
@@ -152,6 +154,7 @@ export function CaktoPlanMapping() {
                     <div className="text-xs text-muted-foreground">
                       {plan.slug}
                       {plan.price_monthly ? ` · ${moneyBR(plan.price_monthly)}/mês` : ''}
+                      {plan.price_quarterly ? ` · ${moneyBR(plan.price_quarterly)}/trim` : ''}
                       {plan.price_yearly ? ` · ${moneyBR(plan.price_yearly)}/ano` : ''}
                     </div>
                   </div>
@@ -164,8 +167,9 @@ export function CaktoPlanMapping() {
                   </p>
                 ) : (
                   <>
-                    <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                    <div className="grid sm:grid-cols-3 gap-3 mb-3">
                       <CheckoutLink label="Checkout mensal" url={plan.checkout_url} />
+                      <CheckoutLink label="Checkout trimestral" url={plan.checkout_url_quarterly} />
                       <CheckoutLink label="Checkout anual" url={plan.checkout_url_yearly} />
                     </div>
 

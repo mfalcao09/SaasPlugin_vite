@@ -17126,9 +17126,12 @@ export type Database = {
       platform_plans: {
         Row: {
           cakto_offer_slug: string | null
+          cakto_offer_slug_quarterly: string | null
+          cakto_offer_slug_yearly: string | null
           cakto_product_id: string | null
           checkout_url: string | null
           checkout_url_cakto: string | null
+          checkout_url_quarterly: string | null
           checkout_url_yearly: string | null
           created_at: string
           description: string | null
@@ -17172,6 +17175,7 @@ export type Database = {
           modules: Json
           name: string
           price_monthly: number
+          price_quarterly: number
           price_yearly: number
           product_id: string | null
           slug: string
@@ -17180,9 +17184,12 @@ export type Database = {
         }
         Insert: {
           cakto_offer_slug?: string | null
+          cakto_offer_slug_quarterly?: string | null
+          cakto_offer_slug_yearly?: string | null
           cakto_product_id?: string | null
           checkout_url?: string | null
           checkout_url_cakto?: string | null
+          checkout_url_quarterly?: string | null
           checkout_url_yearly?: string | null
           created_at?: string
           description?: string | null
@@ -17226,6 +17233,7 @@ export type Database = {
           modules?: Json
           name: string
           price_monthly?: number
+          price_quarterly?: number
           price_yearly?: number
           product_id?: string | null
           slug: string
@@ -17234,9 +17242,12 @@ export type Database = {
         }
         Update: {
           cakto_offer_slug?: string | null
+          cakto_offer_slug_quarterly?: string | null
+          cakto_offer_slug_yearly?: string | null
           cakto_product_id?: string | null
           checkout_url?: string | null
           checkout_url_cakto?: string | null
+          checkout_url_quarterly?: string | null
           checkout_url_yearly?: string | null
           created_at?: string
           description?: string | null
@@ -17280,6 +17291,7 @@ export type Database = {
           modules?: Json
           name?: string
           price_monthly?: number
+          price_quarterly?: number
           price_yearly?: number
           product_id?: string | null
           slug?: string
@@ -22366,6 +22378,7 @@ export type Database = {
       public_plans: {
         Row: {
           checkout_url: string | null
+          checkout_url_quarterly: string | null
           checkout_url_yearly: string | null
           description: string | null
           display_order: number | null
@@ -22393,12 +22406,14 @@ export type Database = {
           list_price_monthly: number | null
           name: string | null
           price_monthly: number | null
+          price_quarterly: number | null
           price_yearly: number | null
           slug: string | null
           trial_days: number | null
         }
         Insert: {
           checkout_url?: string | null
+          checkout_url_quarterly?: string | null
           checkout_url_yearly?: string | null
           description?: string | null
           display_order?: number | null
@@ -22426,12 +22441,14 @@ export type Database = {
           list_price_monthly?: number | null
           name?: string | null
           price_monthly?: number | null
+          price_quarterly?: number | null
           price_yearly?: number | null
           slug?: string | null
           trial_days?: number | null
         }
         Update: {
           checkout_url?: string | null
+          checkout_url_quarterly?: string | null
           checkout_url_yearly?: string | null
           description?: string | null
           display_order?: number | null
@@ -22459,6 +22476,7 @@ export type Database = {
           list_price_monthly?: number | null
           name?: string | null
           price_monthly?: number | null
+          price_quarterly?: number | null
           price_yearly?: number | null
           slug?: string | null
           trial_days?: number | null

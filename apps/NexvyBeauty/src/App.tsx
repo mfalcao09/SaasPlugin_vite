@@ -102,6 +102,7 @@ const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
 // LP "Clientes de Volta" (portada do Lovable) — LP de vendas VIGENTE: serve o apex
 // (nexvybeauty.com.br) e /vendas.
 const ClientesDeVoltaLandingPage = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPage"));
+const ClientesDeVoltaLandingPageV2 = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPageV2"));
 
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -261,6 +262,7 @@ const App = () => (
                   foi REMOVIDA: com o apex e /vendas servindo a mesma LP, um terceiro
                   caminho pra ela só criaria URL duplicada (conteúdo duplicado p/ SEO). */}
               <Route path="/vendas" element={<ClientesDeVoltaLandingPage />} />
+              <Route path="/vendas-v2" element={<ClientesDeVoltaLandingPageV2 />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
                   o painel do salão fica em /demo/salao. */}
               <Route path="/demo" element={<Navigate to="/demo/cockpit" replace />} />

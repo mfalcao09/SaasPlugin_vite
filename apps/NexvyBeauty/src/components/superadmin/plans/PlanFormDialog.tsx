@@ -86,6 +86,7 @@ const emptyPlan: PlatformPlanInput = {
   display_order: 0,
   price_monthly: 0,
   list_price_monthly: null, // âncora "de" (exibição). null = sem âncora, nunca 0.
+  price_quarterly: 0,
   price_yearly: 0,
   trial_days: 7,
   grace_period_days: 3,
@@ -118,6 +119,7 @@ const emptyPlan: PlatformPlanInput = {
   feature_forms: true,
   feature_webhooks: false,
   checkout_url: '',
+  checkout_url_quarterly: '',
   checkout_url_yearly: '',
   highlight_label: '',
 };
@@ -190,7 +192,7 @@ export function PlanFormBody({
     try {
       const res = await syncCakto.mutateAsync(planId);
       if (res?.skipped) return; // sem cakto_product_id -> paste manual segue valendo
-      const generated = [res?.monthly, res?.yearly].some((c) => c?.url);
+      const generated = [res?.monthly, res?.quarterly, res?.yearly].some((c) => c?.url);
       if (generated) toast.success('Checkout Cakto gerado/atualizado');
     } catch (e: any) {
       toast.warning(`Plano salvo, mas a oferta Cakto não foi gerada: ${e?.message ?? e}`);
@@ -313,7 +315,7 @@ export function PlanFormBody({
           </div>
 
           <div className="grid grid-cols-1 gap-4 pt-2 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Link de contratação — Mensal</Label>
                 <Input
@@ -327,11 +329,23 @@ export function PlanFormBody({
                 </p>
               </div>
               <div className="space-y-2">
+                <Label>Link de contratação — Trimestral</Label>
+                <Input
+                  type="url"
+                  value={form.checkout_url_quarterly || ''}
+                  onChange={(e) => set('checkout_url_quarterly', e.target.value)}
+                  placeholder="https://pay.cakto.com.br/..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Abre quando o cliente seleciona o plano no ciclo <strong>trimestral</strong>.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>Link de contratação — Anual</Label>
                 <Input
                   type="url"
-                  value={(form as any).checkout_url_yearly || ''}
-                  onChange={(e) => set('checkout_url_yearly' as any, e.target.value as any)}
+                  value={form.checkout_url_yearly || ''}
+                  onChange={(e) => set('checkout_url_yearly', e.target.value)}
                   placeholder="https://pay.cakto.com.br/..."
                 />
                 <p className="text-xs text-muted-foreground">
@@ -352,8 +366,17 @@ export function PlanFormBody({
         </TabsContent>
 
         <TabsContent value="pricing" className="space-y-4 pt-4">
+          <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <p className="text-sm font-medium">Cobrança recorrente via Cakto (assinatura)</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Planos SaaS sincronizam como <strong>subscription</strong> (renovação automática).
+              Mensal = 30 dias · trimestral = 90 dias · anual = 365 dias. Avulso (<code>unique</code>)
+              não é oferecido neste form — o sync atual permanece assinatura.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             {numberField('price_monthly', 'Preço mensal (R$)')}
+            {numberField('price_quarterly', 'Preço trimestral (R$)')}
             {/* Âncora "de" do de-para (exibição). Nullable: vazio => null (sem
                 âncora), nunca 0 — 0 renderizaria um "de R$0" falso. Não é cobrado:
                 quem cobra é o Preço mensal (Cakto). Nunca é enviado à Cakto. */}
