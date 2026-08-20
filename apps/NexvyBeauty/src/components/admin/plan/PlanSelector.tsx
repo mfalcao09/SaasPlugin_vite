@@ -48,7 +48,15 @@ const FEATURE_LABELS: Record<string, string> = {
 
 const FEATURE_ORDER = Object.keys(FEATURE_LABELS) as (keyof typeof FEATURE_LABELS)[];
 
-type BillingCycle = 'monthly' | 'yearly';
+type BillingCycle = 'monthly' | 'quarterly' | 'yearly';
+
+function hasQuarterlyPrice(p?: PlatformPlan): boolean {
+  return Number(p?.price_quarterly) > 0;
+}
+
+function hasYearlyPrice(p?: PlatformPlan): boolean {
+  return Number(p?.price_yearly) > 0;
+}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat('pt-BR', {
@@ -96,8 +104,20 @@ export function PlanSelector() {
   const currentPlanId = effective?.plan_id || null;
 
   // Para comparar upgrade/downgrade, usamos sempre o mesmo ciclo selecionado
-  const getPrice = (p: PlatformPlan) =>
-    cycle === 'yearly' ? p.price_yearly : p.price_monthly;
+  const quarterlyEnabled = useMemo(
+    () => visiblePlans.some(hasQuarterlyPrice),
+    [visiblePlans],
+  );
+  const yearlyEnabled = useMemo(
+    () => visiblePlans.some(hasYearlyPrice),
+    [visiblePlans],
+  );
+
+  const getPrice = (p: PlatformPlan) => {
+    if (cycle === 'yearly') return p.price_yearly;
+    if (cycle === 'quarterly') return p.price_quarterly;
+    return p.price_monthly;
+  };
 
   const currentPrice = useMemo(() => {
     if (!currentPlanId) return null;
@@ -105,8 +125,11 @@ export function PlanSelector() {
     return cur ? getPrice(cur) : null;
   }, [currentPlanId, visiblePlans, cycle]);
 
-  const getCheckoutUrl = (p: PlatformPlan) =>
-    (cycle === 'yearly' ? p.checkout_url_yearly : p.checkout_url) || null;
+  const getCheckoutUrl = (p: PlatformPlan) => {
+    if (cycle === 'yearly') return p.checkout_url_yearly || null;
+    if (cycle === 'quarterly') return p.checkout_url_quarterly || null;
+    return p.checkout_url || null;
+  };
 
   const handleSelect = (plan: PlatformPlan) => {
     const url = getCheckoutUrl(plan);
@@ -175,7 +198,7 @@ export function PlanSelector() {
         </p>
       </div>
 
-      {/* Toggle Mensal / Anual */}
+      {/* Toggle Mensal / Trimestral / Anual — trimestral só se houver preço */}
       <div className="flex justify-center mb-6">
         <div className="inline-flex items-center bg-muted rounded-full p-1">
           <button
@@ -190,14 +213,30 @@ export function PlanSelector() {
           >
             Mensal
           </button>
+          {quarterlyEnabled && (
+            <button
+              type="button"
+              onClick={() => setCycle('quarterly')}
+              className={cn(
+                'px-5 py-2 rounded-full text-sm font-medium transition-all',
+                cycle === 'quarterly'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Trimestral
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setCycle('yearly')}
+            onClick={() => yearlyEnabled && setCycle('yearly')}
+            disabled={!yearlyEnabled}
             className={cn(
               'px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
               cycle === 'yearly'
                 ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+              !yearlyEnabled && 'opacity-50 cursor-not-allowed'
             )}
           >
             Anual
@@ -238,9 +277,12 @@ export function PlanSelector() {
             const isCurrent = plan.id === currentPlanId;
             const features = FEATURE_ORDER.filter((k) => (plan as any)[k]);
             const price = getPrice(plan);
-            const monthlyEquivalent = cycle === 'yearly' && plan.price_yearly
-              ? Math.round(plan.price_yearly / 12)
-              : null;
+            const monthlyEquivalent =
+              cycle === 'yearly' && plan.price_yearly
+                ? Math.round(plan.price_yearly / 12)
+                : cycle === 'quarterly' && plan.price_quarterly
+                  ? Math.round(plan.price_quarterly / 3)
+                  : null;
 
             const limits = [
               { icon: Users,         label: 'Usuários',        value: plan.max_users },
@@ -293,7 +335,7 @@ export function PlanSelector() {
                 <div className="text-center mb-1">
                   <span className="text-3xl font-bold">{formatPrice(price)}</span>
                   <span className="text-muted-foreground text-sm ml-1">
-                    {cycle === 'yearly' ? '/ano' : '/mês'}
+                    {cycle === 'yearly' ? '/ano' : cycle === 'quarterly' ? '/trimestre' : '/mês'}
                   </span>
                 </div>
                 {monthlyEquivalent !== null && monthlyEquivalent > 0 && (

@@ -28,6 +28,7 @@ import {
   type CaktoProduct,
 } from '../_shared/cakto-client.ts';
 import { pickOffersToDisable } from './pick-offers.ts';
+import { CYCLE_SPECS, matchesCycle, priceColumnForCycle, type BillingCycle } from './cycles.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,9 +44,9 @@ function json(body: unknown, status = 200) {
 
 const MIN_PRICE = 5; // mínimo de preço aceito pela Cakto (R$ 5,00)
 const PLAN_COLS =
-  'id,name,slug,price_monthly,price_yearly,trial_days,cakto_product_id,checkout_url,checkout_url_yearly,checkout_url_cakto,cakto_offer_slug';
+  'id,name,slug,price_monthly,price_quarterly,price_yearly,trial_days,cakto_product_id,checkout_url,checkout_url_quarterly,checkout_url_yearly,checkout_url_cakto,cakto_offer_slug,cakto_offer_slug_quarterly,cakto_offer_slug_yearly';
 
-type Cycle = 'monthly' | 'yearly';
+type Cycle = BillingCycle;
 
 interface CycleResult {
   cycle: Cycle;
@@ -62,6 +63,7 @@ interface PlanSyncResult {
   matched_by: 'existing' | 'name' | 'price' | null;
   status: 'synced' | 'no_product_match' | 'skipped_free' | 'error';
   monthly?: CycleResult;
+  quarterly?: CycleResult;
   yearly?: CycleResult;
   /** ids das ofertas ANTIGAS/divergentes colapsadas (status→disabled) nesta sync. */
   disabled_offers?: string[];
@@ -85,7 +87,7 @@ function matchProduct(
   return { product: null, matchedBy: null };
 }
 
-// Reconcilia um ciclo (mensal/anual) contra as ofertas do produto.
+// Reconcilia um ciclo (mensal/trimestral/anual) contra as ofertas do produto.
 async function syncCycle(
   cycle: Cycle,
   plan: any,
@@ -95,28 +97,28 @@ async function syncCycle(
   trialDays: number,
   base: string,
 ): Promise<CycleResult> {
-  const price = Number(cycle === 'monthly' ? plan.price_monthly : plan.price_yearly);
+  const spec = CYCLE_SPECS[cycle];
+  const price = Number(plan[priceColumnForCycle(cycle)]);
   if (!Number.isFinite(price) || price < MIN_PRICE) {
     return { cycle, action: 'skipped_min_price', slug: null, url: null };
   }
 
-  const intervalType = cycle === 'monthly' ? 'month' : 'year';
   const desired: CaktoOfferInput = {
-    name: `${plan.name} — ${cycle === 'monthly' ? 'Mensal' : 'Anual'}`.slice(0, 255),
+    name: `${plan.name} — ${spec.label}`.slice(0, 255),
     price,
     product: productId,
-    type: 'subscription',
-    intervalType,
-    interval: 1,
-    recurrence_period: cycle === 'monthly' ? 30 : 365,
-    quantity_recurrences: -1,
+    type: spec.type,
+    intervalType: spec.intervalType,
+    interval: spec.interval,
+    recurrence_period: spec.recurrence_period,
+    quantity_recurrences: spec.quantity_recurrences,
     trial_days: trialDays,
     status: 'active',
   };
 
   const existing = offers.find(
     (o) =>
-      o.intervalType === intervalType &&
+      matchesCycle(o, spec) &&
       Number(o.price) === price &&
       o.type === 'subscription' &&
       o.status === 'active',
@@ -134,14 +136,26 @@ async function syncCycle(
   return { cycle, action: 'created', slug: created.id, url: buildCaktoCheckoutUrl(created.id, base) };
 }
 
-function buildUpdate(monthly: CycleResult, yearly: CycleResult, productId: string): Record<string, string> {
+function buildUpdate(
+  monthly: CycleResult,
+  quarterly: CycleResult,
+  yearly: CycleResult,
+  productId: string,
+): Record<string, string> {
   const u: Record<string, string> = { cakto_product_id: productId };
   if (monthly.url) {
     u.checkout_url = monthly.url;
     u.checkout_url_cakto = monthly.url; // espelho da mensal (casamento de pedido / LP)
     if (monthly.slug) u.cakto_offer_slug = monthly.slug;
   }
-  if (yearly.url) u.checkout_url_yearly = yearly.url;
+  if (quarterly.url) {
+    u.checkout_url_quarterly = quarterly.url;
+    if (quarterly.slug) u.cakto_offer_slug_quarterly = quarterly.slug;
+  }
+  if (yearly.url) {
+    u.checkout_url_yearly = yearly.url;
+    if (yearly.slug) u.cakto_offer_slug_yearly = yearly.slug;
+  }
   return u;
 }
 
@@ -154,10 +168,12 @@ async function syncPlan(
   base: string,
 ): Promise<PlanSyncResult> {
   const priceM = Number(plan.price_monthly);
+  const priceQ = Number(plan.price_quarterly);
   const priceY = Number(plan.price_yearly);
   const head = { plan_id: plan.id, plan_name: plan.name };
+  const belowMin = (p: number) => !Number.isFinite(p) || p < MIN_PRICE;
 
-  if ((!Number.isFinite(priceM) || priceM < MIN_PRICE) && (!Number.isFinite(priceY) || priceY < MIN_PRICE)) {
+  if (belowMin(priceM) && belowMin(priceQ) && belowMin(priceY)) {
     return { ...head, product_id: null, matched_by: null, status: 'skipped_free' };
   }
 
@@ -181,19 +197,18 @@ async function syncPlan(
   const offers = await caktoListOffers(accessToken, productId);
   const trialDays = Number(plan.trial_days ?? 0);
   const monthly = await syncCycle('monthly', plan, productId, offers, accessToken, trialDays, base);
+  const quarterly = await syncCycle('quarterly', plan, productId, offers, accessToken, trialDays, base);
   const yearly = await syncCycle('yearly', plan, productId, offers, accessToken, trialDays, base);
 
-  const update = buildUpdate(monthly, yearly, productId);
+  const update = buildUpdate(monthly, quarterly, yearly, productId);
   const { error } = await admin.from('platform_plans').update(update).eq('id', plan.id);
   if (error) throw new Error(`Falha ao gravar plano ${plan.name}: ${error.message}`);
 
   // Colapsa as ofertas ANTIGAS/divergentes: toda outra oferta de assinatura ATIVA
-  // do MESMO produto (que não seja a mensal/anual recém-assentadas) tem seu link
-  // aposentado (status=disabled). Sem isso, mudar o preço deixava a oferta velha
-  // ativa vendendo pelo preço defasado para sempre. Best-effort por oferta —
-  // uma falha isolada não derruba a sync.
-  const keepIds = [monthly.slug, yearly.slug];
-  const toDisable = pickOffersToDisable(offers, keepIds);
+  // do MESMO produto (que não seja a mensal/trimestral/anual recém-assentadas)
+  // tem seu link aposentado (status=disabled). Best-effort por oferta.
+  const keepIds = [monthly.slug, quarterly.slug, yearly.slug];
+  const toDisable = pickOffersToDisable(offers, keepIds, undefined, Boolean(quarterly.slug));
   const disabled: string[] = [];
   for (const offerId of toDisable) {
     try {
@@ -211,6 +226,7 @@ async function syncPlan(
     matched_by: matchedBy,
     status: 'synced',
     monthly,
+    quarterly,
     yearly,
     disabled_offers: disabled,
     disabled_count: disabled.length,
@@ -315,6 +331,7 @@ Deno.serve(async (req) => {
       plan_id: planId,
       product_id: result.product_id,
       monthly: result.monthly,
+      quarterly: result.quarterly,
       yearly: result.yearly,
       disabled_offers: result.disabled_offers ?? [],
       disabled_count: result.disabled_count ?? 0,

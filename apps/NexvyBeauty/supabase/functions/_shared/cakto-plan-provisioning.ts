@@ -30,6 +30,35 @@ export interface CaktoOrderLike {
   raw_payload?: any;
 }
 
+export type PlanBillingCycle = 'monthly' | 'quarterly' | 'yearly';
+
+export interface PlanPriceLookup {
+  price_monthly?: number | null;
+  price_quarterly?: number | null;
+  price_yearly?: number | null;
+  cakto_offer_slug?: string | null;
+  cakto_offer_slug_quarterly?: string | null;
+  cakto_offer_slug_yearly?: string | null;
+}
+
+/**
+ * Preço vigente do plano no ciclo da oferta Cakto. Fallback mensal quando o
+ * slug não casa (resolve por product_id). Decisão PURA — sem I/O.
+ */
+export function resolvePlanPriceForOffer(
+  plan: PlanPriceLookup,
+  offerSlug: string | null | undefined,
+): { cycle: PlanBillingCycle; price: number | null } {
+  const slug = (offerSlug ?? '').trim();
+  if (slug && plan.cakto_offer_slug_quarterly && slug === plan.cakto_offer_slug_quarterly) {
+    return { cycle: 'quarterly', price: Number(plan.price_quarterly) };
+  }
+  if (slug && plan.cakto_offer_slug_yearly && slug === plan.cakto_offer_slug_yearly) {
+    return { cycle: 'yearly', price: Number(plan.price_yearly) };
+  }
+  return { cycle: 'monthly', price: Number(plan.price_monthly) };
+}
+
 /** Tolerância (em reais) para arredondamento antes de considerar um pedido defasado. */
 export const PRICE_TOLERANCE_REAIS = 0.5;
 
@@ -136,18 +165,22 @@ async function resolvePlatformPlan(
   offerSlug: string | null,
   productCaktoId: string | null,
 ) {
+  const planCols =
+    'id, name, slug, price_monthly, price_quarterly, price_yearly, cakto_offer_slug, cakto_offer_slug_quarterly, cakto_offer_slug_yearly, cakto_product_id, product_id';
   if (offerSlug) {
-    const { data } = await admin
-      .from('platform_plans')
-      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id, product_id')
-      .eq('cakto_offer_slug', offerSlug)
-      .maybeSingle();
-    if (data) return data;
+    for (const col of ['cakto_offer_slug', 'cakto_offer_slug_quarterly', 'cakto_offer_slug_yearly'] as const) {
+      const { data } = await admin
+        .from('platform_plans')
+        .select(planCols)
+        .eq(col, offerSlug)
+        .maybeSingle();
+      if (data) return data;
+    }
   }
   if (productCaktoId) {
     const { data } = await admin
       .from('platform_plans')
-      .select('id, name, slug, price_monthly, cakto_offer_slug, cakto_product_id, product_id')
+      .select(planCols)
       .eq('cakto_product_id', productCaktoId)
       .maybeSingle();
     if (data) return data;
@@ -184,15 +217,16 @@ export async function provisionPlatformPlan(
     };
   }
 
-  // Rede cinto-e-suspensório: pagou ABAIXO do preço atual (sem cupom) sinaliza
-  // link de oferta ANTIGA/defasada ainda vendendo. NUNCA nega quem pagou —
-  // provisiona igual — mas alerta o operador (nunca em silêncio). Cupom explica
-  // legitimamente o desconto → não alerta. sendTelegramAlert é non-fatal.
-  if (!order.coupon_code && isUnderpaid(order.amount, Number(plan.price_monthly))) {
+  // Rede cinto-e-suspensório: pagou ABAIXO do preço atual do CICLO da oferta
+  // (sem cupom) sinaliza link antigo/defasado. NUNCA nega quem pagou.
+  // TODO: subscriptions.billing_cycle existe mas este webhook não grava linha
+  // em subscriptions — não inventar job; ciclo vai só no metadata do billing.
+  const priced = resolvePlanPriceForOffer(plan, offerSlug);
+  if (!order.coupon_code && isUnderpaid(order.amount, priced.price)) {
     await sendTelegramAlert(
       `⚠️ Cakto: PREÇO DEFASADO / underpay (possível oferta antiga vendendo)\n` +
-        `Comprador: ${email}\nPlano: ${plan.name}\n` +
-        `Pago: R$ ${Number(order.amount).toFixed(2)} < atual: R$ ${Number(plan.price_monthly).toFixed(2)}\n` +
+        `Comprador: ${email}\nPlano: ${plan.name} (${priced.cycle})\n` +
+        `Pago: R$ ${Number(order.amount).toFixed(2)} < atual: R$ ${Number(priced.price).toFixed(2)}\n` +
         `Oferta: ${offerSlug ?? '-'} · provisionando assim mesmo.`,
     );
   }
@@ -324,13 +358,14 @@ export async function provisionPlatformPlan(
     if (!existingBill) {
       const { error: billErr } = await admin.from('billing_history').insert({
         organization_id: orgId,
-        amount: order.amount ?? plan.price_monthly ?? 0,
+        amount: order.amount ?? priced.price ?? plan.price_monthly ?? 0,
         status: 'paid',
         description: `Plano ${plan.name} — Cakto`,
         payment_date: new Date().toISOString(),
         metadata: {
           cakto_id: caktoId,
           cakto_offer_slug: offerSlug,
+          billing_cycle: priced.cycle,
           source: 'cakto',
         } as any,
       });

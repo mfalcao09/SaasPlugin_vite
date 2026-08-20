@@ -16,6 +16,7 @@ export interface PlatformPlan {
   // cobrado — quem cobra é price_monthly (Cakto). Só exibição; nunca vai à Cakto.
   // Nullable = plano sem âncora. A coluna existe em platform_plans (default null).
   list_price_monthly: number | null;
+  price_quarterly: number;
   price_yearly: number;
   trial_days: number;
   grace_period_days: number;
@@ -54,6 +55,7 @@ export interface PlatformPlan {
   feature_webhooks: boolean;
 
   checkout_url: string | null;
+  checkout_url_quarterly: string | null;
   checkout_url_yearly: string | null;
   highlight_label: string | null;
 
@@ -101,9 +103,9 @@ export function useActivePlans() {
 // só colunas de exibição (sem max_*/extra_features), então o tipo é um
 // subconjunto de PlatformPlan; o cast é seguro para os campos que a LP usa.
 export type PublicPlan = Pick<PlatformPlan,
-  'id' | 'name' | 'slug' | 'description' | 'price_monthly' | 'price_yearly' |
+  'id' | 'name' | 'slug' | 'description' | 'price_monthly' | 'price_quarterly' | 'price_yearly' |
   'trial_days' | 'highlight_label' | 'display_order' | 'is_public' |
-  'checkout_url' | 'checkout_url_yearly' |
+  'checkout_url' | 'checkout_url_quarterly' | 'checkout_url_yearly' |
   'feature_whatsapp' | 'feature_instagram' | 'feature_facebook' |
   'feature_scheduling' | 'feature_kanban' | 'feature_pipeline' |
   'feature_campaigns' | 'feature_outreach' | 'feature_capture_funnels' |
@@ -220,10 +222,10 @@ export function useDeletePlan() {
 
 // ---- Sincronização de ofertas Cakto ----------------------------------------
 // Aciona a Edge Function cakto-sync-offer, que cria/reaproveita as ofertas
-// (mensal + anual) na Cakto e grava as URLs de checkout no plano.
+// (mensal + trimestral + anual) na Cakto e grava as URLs de checkout no plano.
 
 export interface CaktoCycleResult {
-  cycle: 'monthly' | 'yearly';
+  cycle: 'monthly' | 'quarterly' | 'yearly';
   action: 'created' | 'recreated' | 'unchanged' | 'skipped_min_price';
   slug: string | null;
   url: string | null;
@@ -235,6 +237,7 @@ export interface CaktoSyncResult {
   reason?: string;
   plan_id?: string;
   monthly?: CaktoCycleResult;
+  quarterly?: CaktoCycleResult;
   yearly?: CaktoCycleResult;
 }
 
@@ -325,6 +328,7 @@ export interface CaktoPlanSyncResult {
   matched_by: 'existing' | 'name' | 'price' | null;
   status: 'synced' | 'no_product_match' | 'skipped_free' | 'error';
   monthly?: CaktoCycleResult;
+  quarterly?: CaktoCycleResult;
   yearly?: CaktoCycleResult;
   error?: string;
 }
