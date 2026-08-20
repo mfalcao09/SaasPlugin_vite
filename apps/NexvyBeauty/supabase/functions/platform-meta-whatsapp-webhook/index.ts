@@ -25,6 +25,12 @@ import { hmacSha256Hex, timingSafeEqual } from '../_shared/meta-graph.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
 import { type CtwaReferral, ctwaUtm, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
+import {
+  decideMetaWebhookRoute,
+  lookupMetaWebhookConnections,
+  scopeCollisionResponse,
+} from '../_shared/meta-webhook-routing.ts';
+import { resolveDeclaredAppSecret } from '../_shared/meta-app-secret.ts';
 
 type Json = Record<string, unknown>;
 
@@ -304,38 +310,23 @@ async function resolveConnectionForValue(
   if (cached) return cached;
 
   // As duas buscas em paralelo. Custo hoje: uma query a mais numa tabela vazia.
-  const [plat, tenant] = await Promise.all([
-    supabase
-      .from('platform_crm_whatsapp_meta_connections')
-      .select('id, product_id')
-      .eq('phone_number_id', phoneNumberId)
-      .maybeSingle(),
-    supabase
-      .from('whatsapp_meta_connections')
-      .select('id, organization_id')
-      .eq('phone_number_id', phoneNumberId)
-      .maybeSingle(),
-  ]);
+  const found = await lookupMetaWebhookConnections(supabase, phoneNumberId);
+  const decision = decideMetaWebhookRoute(found.platform, found.tenant);
 
-  // Estado impossível em operação normal. Devolver null joga a mensagem no
-  // caminho de não-resolvido em vez de atribuí-la ao escopo errado.
-  if (plat.data?.id && tenant.data?.id) {
+  if (decision.scope === 'collision') {
     console.error(
       `[platform-meta-whatsapp-webhook] COLISÃO DE ESCOPO: phone_number_id ${phoneNumberId}` +
-        ` existe em platform(${plat.data.id}) E tenant(${tenant.data.id}).` +
+        ` existe em platform(${found.platform?.id}) E tenant(${found.tenant?.id}).` +
         ` Nenhuma atribuição é segura — mensagem NÃO roteada.`,
     );
-    // NÃO devolver null aqui: null significa "não achei", e o consumidor trata
-    // isso caindo na conexão do path — que rotearia a mensagem, contradizendo
-    // a linha de log acima. 'collision' é um estado próprio, tratado no gate.
     return { id: '', product_id: null, organization_id: null, scope: 'collision' };
   }
 
-  if (tenant.data?.id) {
+  if (decision.scope === 'tenant' && decision.connectionId) {
     const resolvedTenant: ResolvedConn = {
-      id: tenant.data.id as string,
+      id: decision.connectionId,
       product_id: null,
-      organization_id: (tenant.data.organization_id as string | null) ?? null,
+      organization_id: decision.organizationId,
       scope: 'tenant',
     };
     memo.set(phoneNumberId, resolvedTenant);
@@ -346,19 +337,17 @@ async function resolveConnectionForValue(
     return resolvedTenant;
   }
 
-  const { data, error } = plat;
-
-  if (error || !data?.id) {
+  if (decision.scope !== 'platform' || !decision.connectionId) {
     console.warn(
       `[platform-meta-whatsapp-webhook] phone_number_id ${phoneNumberId} sem conexão cadastrada` +
-        ` — caindo na conexão do path ${pathConnectionId}${error ? ` (${error.message})` : ''}`,
+        ` — caindo na conexão do path ${pathConnectionId}`,
     );
     return null;
   }
 
   const resolved: ResolvedConn = {
-    id: data.id as string,
-    product_id: (data.product_id as string | null) ?? null,
+    id: decision.connectionId,
+    product_id: decision.productId,
     organization_id: null,
     scope: 'platform',
   };
@@ -773,13 +762,14 @@ Deno.serve(async (req: Request) => {
 
   const { data: conn } = await supabase
     .from('platform_crm_whatsapp_meta_connections')
-    .select('id, app_secret_encrypted, status, product_id')
+    .select('id, app_secret_encrypted, app_secret_source, status, product_id')
     .eq('id', connectionId)
     .maybeSingle();
   if (!conn) return new Response('unknown connection', { status: 404 });
 
   try {
-    const appSecret = await decryptSecret(conn.app_secret_encrypted as string);
+    const appSecret = await resolveDeclaredAppSecret(conn);
+    if (!appSecret) return new Response('forbidden', { status: 403 });
     const expected = `sha256=${await hmacSha256Hex(appSecret, rawBody)}`;
     if (!signature || !timingSafeEqual(expected, signature)) {
       console.warn('[platform-meta-whatsapp-webhook] assinatura inválida — descartando');
@@ -888,7 +878,7 @@ Deno.serve(async (req: Request) => {
               processed: false,
               error: 'colisao de escopo: phone_number_id existe na tabela de plataforma E na org-scoped; nao roteada',
             });
-            continue;
+            return scopeCollisionResponse();
           }
 
           const targetConnectionId = real?.id ?? connectionId;

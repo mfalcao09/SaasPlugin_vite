@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,12 @@ import {
   usePlatformCrmInstagramConnections, useTestPlatformCrmInstagramConnection, useDeletePlatformCrmInstagramConnection,
   type PlatformCrmInstagramConnection,
 } from '@/components/superadmin/crm/data/usePlatformCrmInstagram';
-import { PlatformCrmInstagramWizard } from './PlatformCrmInstagramWizard';
+import { PlatformCrmInstagramLoginWizard } from './PlatformCrmInstagramLoginWizard';
+
+const PlatformCrmInstagramWizard = lazy(async () => {
+  const m = await import('./PlatformCrmInstagramWizard');
+  return { default: m.PlatformCrmInstagramWizard };
+});
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -32,6 +37,7 @@ export function PlatformCrmInstagramConnectionsPanel({ hideHeader, openWizard, o
   const test = useTestPlatformCrmInstagramConnection();
   const del = useDeletePlatformCrmInstagramConnection();
   const [internalOpen, setInternalOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const wizardOpen = internalOpen || !!openWizard;
   const close = () => { setInternalOpen(false); setEditing(null); onCloseWizard?.(); };
   const [editing, setEditing] = useState<PlatformCrmInstagramConnection | null>(null);
@@ -50,7 +56,7 @@ export function PlatformCrmInstagramConnectionsPanel({ hideHeader, openWizard, o
               <p className="text-xs text-muted-foreground">Receba e responda DMs do Instagram dentro da Inbox.</p>
             </div>
           </div>
-          <Button onClick={() => { setEditing(null); setInternalOpen(true); }}>
+          <Button onClick={() => { setEditing(null); setLoginOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />Nova conexão
           </Button>
         </div>
@@ -95,7 +101,15 @@ export function PlatformCrmInstagramConnectionsPanel({ hideHeader, openWizard, o
         </div>
       )}
 
-      <PlatformCrmInstagramWizard open={wizardOpen} onClose={close} editing={editing} />
+      <PlatformCrmInstagramLoginWizard
+        open={loginOpen && !editing}
+        onClose={() => setLoginOpen(false)}
+      />
+      {editing && (
+        <Suspense fallback={null}>
+          <PlatformCrmInstagramWizard open={wizardOpen} onClose={close} editing={editing} />
+        </Suspense>
+      )}
 
       <AlertDialog open={!!toDelete} onOpenChange={(v) => !v && setToDelete(null)}>
         <AlertDialogContent>

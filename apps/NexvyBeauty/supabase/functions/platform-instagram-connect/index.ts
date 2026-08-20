@@ -66,6 +66,14 @@ Deno.serve(async (req: Request) => {
       console.error('[platform-ig-connect] decrypt do app_secret salvo falhou (segue sem)', String(e));
     }
   }
+  if (!effectiveAppSecret) {
+    const platformSecret = Deno.env.get('META_WHATSAPP_APP_SECRET') || Deno.env.get('META_ADS_APP_SECRET') || '';
+    const platformAppId = Deno.env.get('META_WHATSAPP_APP_ID') || '';
+    if (platformSecret && platformAppId && String(app_id) === platformAppId) {
+      effectiveAppSecret = platformSecret;
+      console.log('[platform-ig-connect] app_secret via env do app Nexvy');
+    }
+  }
 
   // Token em branco em conexao existente = manter o atual: decripta o salvo e
   // usa como effectiveToken, pulando a troca long-lived (o salvo ja e o efetivo).
@@ -179,7 +187,12 @@ Deno.serve(async (req: Request) => {
   };
   if (providedSecret) updates.app_secret_encrypted = await encryptSecret(providedSecret);
   else if (!existing.app_secret_encrypted) {
-    return json({ error: 'app_secret e obrigatorio na primeira ativacao' }, 400);
+    const platformAppId = Deno.env.get('META_WHATSAPP_APP_ID') || '';
+    if (effectiveAppSecret && String(app_id) === platformAppId) {
+      updates.app_secret_encrypted = await encryptSecret(effectiveAppSecret);
+    } else {
+      return json({ error: 'app_secret e obrigatorio na primeira ativacao' }, 400);
+    }
   }
 
   const { error: updErr } = await sbAdmin

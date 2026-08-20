@@ -2,7 +2,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { Smartphone, ShieldCheck, Instagram, ChevronRight } from 'lucide-react';
 
-export type PlatformCrmConnectionProvider = 'evolution' | 'meta_whatsapp' | 'meta_instagram';
+export type PlatformCrmConnectionProvider =
+  | 'evolution'
+  | 'meta_whatsapp_new'
+  | 'meta_whatsapp_existing'
+  | 'meta_instagram';
 
 interface Props {
   open: boolean;
@@ -66,17 +70,25 @@ export function PlatformCrmNewConnectionDialog({ open, onClose, onSelect }: Prop
           <Option
             icon={<ShieldCheck className="h-5 w-5 text-emerald-600" />}
             iconBg="bg-emerald-500/10"
-            title="WhatsApp Oficial (Meta Cloud API)"
-            description="API oficial da Meta com templates, automações e envio em escala. Requer um Meta App próprio. Ideal para número próprio, templates aprovados e maior estabilidade."
-            badge={{ label: 'Avançado', variant: 'outline' }}
-            onClick={() => handle('meta_whatsapp')}
+            title="Criar número oficial novo"
+            description="Abre o login da Meta para criar um número oficial da Cloud API. O sistema grava a conexão no gestao."
+            badge={{ label: 'Oficial', variant: 'outline' }}
+            onClick={() => handle('meta_whatsapp_new')}
+          />
+          <Option
+            icon={<ShieldCheck className="h-5 w-5 text-emerald-600" />}
+            iconBg="bg-emerald-500/10"
+            title="Conectar API oficial existente"
+            description="Abre o login da Meta para selecionar uma WABA e um número já oficiais. O sistema grava a conexão no gestao."
+            badge={{ label: 'Oficial', variant: 'outline' }}
+            onClick={() => handle('meta_whatsapp_existing')}
           />
           <Option
             icon={<Instagram className="h-5 w-5 text-pink-500" />}
             iconBg="bg-pink-500/10"
-            title="Instagram Direct (Meta)"
-            description="API oficial para receber e responder mensagens do Instagram profissional via Meta. Requer Instagram Business/Creator vinculado a uma Página do Facebook."
-            badge={{ label: 'Avançado', variant: 'outline' }}
+            title="Conectar Instagram existente"
+            description="Facebook Login para escolher uma conta Business/Creator já vinculada a uma Página do Facebook."
+            badge={{ label: 'Oficial', variant: 'outline' }}
             onClick={() => handle('meta_instagram')}
           />
         </div>
