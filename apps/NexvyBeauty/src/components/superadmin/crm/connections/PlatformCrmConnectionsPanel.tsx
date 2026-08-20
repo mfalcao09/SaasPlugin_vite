@@ -5,6 +5,8 @@ import { PlatformCrmEvolutionInstancesPanel } from './PlatformCrmEvolutionInstan
 import { PlatformCrmMetaWhatsAppConnectionsPanel } from './PlatformCrmMetaWhatsAppConnectionsPanel';
 import { PlatformCrmInstagramConnectionsPanel } from './PlatformCrmInstagramConnectionsPanel';
 import { PlatformCrmNewConnectionDialog, type PlatformCrmConnectionProvider } from './PlatformCrmNewConnectionDialog';
+import { PlatformCrmEmbeddedSignupWizard, type EmbeddedSignupIntent } from './PlatformCrmEmbeddedSignupWizard';
+import { PlatformCrmInstagramLoginWizard } from './PlatformCrmInstagramLoginWizard';
 
 /**
  * "Suas Conexões" do CRM de PLATAFORMA (super_admin) — porte 1:1 do
@@ -19,13 +21,19 @@ import { PlatformCrmNewConnectionDialog, type PlatformCrmConnectionProvider } fr
 export function PlatformCrmConnectionsPanel() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [openEvolutionCreate, setOpenEvolutionCreate] = useState(false);
-  const [openMetaWizard, setOpenMetaWizard] = useState(false);
-  const [openIgWizard, setOpenIgWizard] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [signupIntent, setSignupIntent] = useState<EmbeddedSignupIntent>('existing');
+  const [igLoginOpen, setIgLoginOpen] = useState(false);
 
   const handleSelect = (provider: PlatformCrmConnectionProvider) => {
     if (provider === 'evolution') setOpenEvolutionCreate(true);
-    else if (provider === 'meta_whatsapp') setOpenMetaWizard(true);
-    else if (provider === 'meta_instagram') setOpenIgWizard(true);
+    else if (provider === 'meta_whatsapp_new') {
+      setSignupIntent('create');
+      setSignupOpen(true);
+    } else if (provider === 'meta_whatsapp_existing') {
+      setSignupIntent('existing');
+      setSignupOpen(true);
+    } else if (provider === 'meta_instagram') setIgLoginOpen(true);
   };
 
   return (
@@ -49,22 +57,25 @@ export function PlatformCrmConnectionsPanel() {
         onCloseCreate={() => setOpenEvolutionCreate(false)}
       />
 
-      <PlatformCrmMetaWhatsAppConnectionsPanel
-        hideHeader
-        openWizard={openMetaWizard}
-        onCloseWizard={() => setOpenMetaWizard(false)}
-      />
+      <PlatformCrmMetaWhatsAppConnectionsPanel hideHeader />
 
-      <PlatformCrmInstagramConnectionsPanel
-        hideHeader
-        openWizard={openIgWizard}
-        onCloseWizard={() => setOpenIgWizard(false)}
-      />
+      <PlatformCrmInstagramConnectionsPanel hideHeader />
 
       <PlatformCrmNewConnectionDialog
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSelect={handleSelect}
+      />
+
+      <PlatformCrmEmbeddedSignupWizard
+        open={signupOpen}
+        intent={signupIntent}
+        onClose={() => setSignupOpen(false)}
+      />
+
+      <PlatformCrmInstagramLoginWizard
+        open={igLoginOpen}
+        onClose={() => setIgLoginOpen(false)}
       />
     </div>
   );

@@ -9,6 +9,11 @@ import { hmacSha256Hex, timingSafeEqual } from '../_shared/meta-graph.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { normalizePhoneBR } from '../_shared/phone.ts';
 import { isOptOutMessage, markLeadOptOut } from '../_shared/optin-guard.ts';
+import {
+  decideMetaWebhookRoute,
+  lookupMetaWebhookConnections,
+  scopeCollisionResponse,
+} from '../_shared/meta-webhook-routing.ts';
 
 
 const corsHeaders = {
@@ -191,19 +196,40 @@ Deno.serve(async (req: Request) => {
       const value = change?.value ?? {};
       const phoneNumberId = value?.metadata?.phone_number_id;
 
-      // Resolve conexão: pinned (path) tem prioridade; fallback por phone_number_id.
+      // Resolve conexão: pinned (path) tem prioridade; fallback por phone_number_id
+      // nas DUAS tabelas (callback do app Nexvy pode cair neste webhook).
       let conn: any = pinnedConn;
-      if (!conn) {
-        if (!phoneNumberId) continue;
-        const { data } = await sb
-          .from('whatsapp_meta_connections')
-          .select('id, organization_id, app_secret_encrypted, app_secret_source, access_token_encrypted')
-          .eq('phone_number_id', phoneNumberId)
-          .limit(1)
-          .maybeSingle();
-        conn = data ?? null;
+      if (phoneNumberId) {
+        const found = await lookupMetaWebhookConnections(sb, String(phoneNumberId));
+        const decision = decideMetaWebhookRoute(found.platform, found.tenant);
+        if (decision.scope === 'collision') {
+          await sb.from('whatsapp_meta_webhook_logs').insert({
+            event_type: 'scope_collision',
+            payload,
+            processed: false,
+            error: 'colisao de escopo: phone_number_id existe na tabela de plataforma E na org-scoped; nao roteada',
+          });
+          return scopeCollisionResponse();
+        }
+        if (decision.scope === 'platform') {
+          // Inbox de plataforma — não gravar no salão.
+          console.log(
+            `[meta-whatsapp-webhook] phone_number_id ${phoneNumberId} é conexão de plataforma` +
+              ` (${decision.connectionId}); inbound não entra no inbox tenant`,
+          );
+          continue;
+        }
+        if (!conn && decision.scope === 'tenant' && decision.connectionId) {
+          const { data } = await sb
+            .from('whatsapp_meta_connections')
+            .select('id, organization_id, app_secret_encrypted, app_secret_source, access_token_encrypted')
+            .eq('id', decision.connectionId)
+            .maybeSingle();
+          conn = data ?? null;
+        }
       }
       if (!conn) {
+        if (!phoneNumberId) continue;
         await sb.from('whatsapp_meta_webhook_logs').insert({
           event_type: 'unknown_phone_id',
           payload,

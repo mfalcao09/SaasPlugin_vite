@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,13 @@ import {
   useRegisterPlatformCrmMetaWAConnection,
   type PlatformCrmMetaWAConnection,
 } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
-import { PlatformCrmMetaWhatsAppWizard } from './PlatformCrmMetaWhatsAppWizard';
 import { PlatformCrmMetaWhatsAppTemplatesPanel } from './PlatformCrmMetaWhatsAppTemplatesPanel';
+import { PlatformCrmEmbeddedSignupWizard } from './PlatformCrmEmbeddedSignupWizard';
+
+const PlatformCrmMetaWhatsAppWizard = lazy(async () => {
+  const m = await import('./PlatformCrmMetaWhatsAppWizard');
+  return { default: m.PlatformCrmMetaWhatsAppWizard };
+});
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -42,6 +47,7 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
   const del = useDeletePlatformCrmMetaWAConnection();
   const register = useRegisterPlatformCrmMetaWAConnection();
   const [wizardInternal, setWizardInternal] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
   const wizardOpen = wizardInternal || !!openWizard;
   const closeWizard = () => { setWizardInternal(false); setEditing(null); onCloseWizard?.(); };
   const [editing, setEditing] = useState<PlatformCrmMetaWAConnection | null>(null);
@@ -78,7 +84,7 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
               <p className="text-xs text-muted-foreground">As credenciais ficam criptografadas.</p>
             </div>
           </div>
-          <Button onClick={() => { setEditing(null); setWizardInternal(true); }}>
+          <Button onClick={() => { setEditing(null); setSignupOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />Nova conexão
           </Button>
         </div>
@@ -146,7 +152,16 @@ export function PlatformCrmMetaWhatsAppConnectionsPanel({ hideHeader, openWizard
         </div>
       )}
 
-      <PlatformCrmMetaWhatsAppWizard open={wizardOpen} onClose={closeWizard} editing={editing} />
+      <PlatformCrmEmbeddedSignupWizard
+        open={signupOpen && !editing}
+        intent="existing"
+        onClose={() => setSignupOpen(false)}
+      />
+      {editing && (
+        <Suspense fallback={null}>
+          <PlatformCrmMetaWhatsAppWizard open={wizardOpen} onClose={closeWizard} editing={editing} />
+        </Suspense>
+      )}
 
       {templatesFor && (
         <PlatformCrmMetaWhatsAppTemplatesPanel

@@ -42,6 +42,14 @@ verify_jwt = false
 [functions.meta-whatsapp-webhook]
 verify_jwt = false
 
+# Embedded Signup do gestao (super_admin). Gateway exige JWT; a função ainda
+# revalida com authenticatePlatformAgent e devolve 401 + unauthorized.
+[functions.platform-embedded-signup-exchange]
+verify_jwt = true
+
+[functions.platform-embedded-signup-register]
+verify_jwt = true
+
 # Registro/re-registro de número na Cloud API (aplica display name aprovado pela Meta).
 # Chamada server-to-server (operação), não pelo frontend — por isso sem JWT no gateway.
 # Auth real DENTRO da função: authenticatePlatformAgent (service_role ou super_admin).
