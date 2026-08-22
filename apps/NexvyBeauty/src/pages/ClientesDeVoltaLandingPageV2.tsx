@@ -18,6 +18,7 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
   maximumFractionDigits: 0,
 });
+const BRL_NUM = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 /* ── P2: WhatsApp comercial (NEXVY_VENDAS, número oficial) — Hero + Raio-X + rodapé ── */
 const WHATSAPP_URL =
@@ -1544,7 +1545,10 @@ function PlanoPreco({
           de {BRL.format(plan.list_price_monthly as number)}
         </small>
       )}
-      <span className="preco-val">{BRL.format(price)}</span>
+      <span className="preco-val">
+        <span className="preco-cur">R$</span>
+        {BRL_NUM.format(price)}
+      </span>
       <small>{period}</small>
       {monthlyEq != null && monthlyEq > 0 && (
         <span className="preco-eq">equivale a {BRL.format(monthlyEq)}/mês</span>

@@ -685,7 +685,7 @@ body:has(.lp-v2) {
 .lp-v2 .btn-terra:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -12px rgba(86, 16, 31, .55); }
 .lp-v2 .cta3 { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; margin-top: 42px; }
 .lp-v2 .plano h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.lp-v2 .preco { margin-top: 18px; font-size: clamp(28px, 12cqi, 56px); line-height: 1; font-variant-numeric: tabular-nums; }
+.lp-v2 .preco { margin-top: 18px; line-height: 1; font-variant-numeric: tabular-nums; }
 .lp-v2 .preco small { font-size: 15px; font-family: -apple-system, "SF Pro Text", "Segoe UI", sans-serif; color: var(--muted); }
 .lp-v2 .plano.destaque .preco small { color: var(--band-ink); opacity: .7; }
 .lp-v2 .p-desc { margin: 14px 0 0; font-size: 13.5px; color: var(--muted); }
@@ -782,7 +782,14 @@ body:has(.lp-v2) {
 @media (max-width: 360px) {
   .lp-v2 .ciclo-hint { white-space: normal; }
 }
-.lp-v2 .preco-val { white-space: nowrap; }
+.lp-v2 .preco-val {
+  white-space: nowrap;
+  font-size: clamp(34px, 18cqi, 44px);
+}
+.lp-v2 .preco-cur {
+  font-size: 0.58em;
+  margin-right: 0.16em;
+}
 .lp-v2 .preco-de {
   display: block;
   opacity: .55;
@@ -810,9 +817,6 @@ body:has(.lp-v2) {
   white-space: normal;
 }
 .lp-v2 .plano.destaque .preco-miss { color: var(--band-ink); opacity: .8; }
-@media (max-width: 420px) {
-  .lp-v2 .preco { font-size: 40px; }
-}
 
 /* ─── FAQ ─── */
 .lp-v2 .faq { max-width: 780px; margin: 0 auto; }
