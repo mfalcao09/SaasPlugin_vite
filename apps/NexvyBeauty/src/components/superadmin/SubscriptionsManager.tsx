@@ -210,7 +210,7 @@ export function SubscriptionsManager() {
               Assinaturas em Atraso ({overdueSubs.length})
             </CardTitle>
             <CardDescription>
-              Empresas com pagamento pendente que precisam de atenção
+              Clientes com pagamento pendente que precisam de atenção
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -129,6 +129,8 @@ interface ChatAreaProps {
   onPickCatalog?: () => void;
   /** Abre o dialog de geração de link de pagamento. */
   onSendPaymentLink?: () => void;
+  /** Abre o painel de contato na aba Visão e foca notas internas. */
+  onOpenInternalNotes?: () => void;
 }
 
 export function ChatArea({
@@ -190,6 +192,7 @@ export function ChatArea({
   peerOnline = false,
   onPickCatalog,
   onSendPaymentLink,
+  onOpenInternalNotes,
 }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -448,11 +451,11 @@ export function ChatArea({
                     Devolver à fila
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={onOpenInternalNotes}>
                   <StickyNote className="h-4 w-4 mr-2" />
                   Notas internas
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={onAnalyze}>
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Ver métricas
                 </DropdownMenuItem>
@@ -658,11 +661,11 @@ export function ChatArea({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenInternalNotes}>
                 <StickyNote className="h-4 w-4 mr-2" />
                 Notas internas
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={onAnalyze}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Ver métricas
               </DropdownMenuItem>

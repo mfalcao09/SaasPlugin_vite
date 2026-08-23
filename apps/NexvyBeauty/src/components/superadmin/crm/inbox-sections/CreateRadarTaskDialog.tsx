@@ -18,10 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { usePlatformCrmTeamMembers } from '../data/usePlatformCrmTeam';
 import { useCreatePlatformCrmTask } from '../data/usePlatformCrmTasks';
+import { validateCreateLeadProduct } from '../leads/createPlatformCrmLeadProduct';
 import { toast } from 'sonner';
 
 /**
@@ -30,6 +32,8 @@ import { toast } from 'sonner';
  * DESACOPLAMENTO: `platform_crm_tasks` (sem organization_id); responsáveis =
  * time da plataforma (`usePlatformCrmTeamMembers`); usuário atual via
  * supabase.auth (sem useAuth de tenant).
+ * Regra B: locked = activeProductId; “Todos” + catálogo → Select; sem
+ * effectiveProductId / products[0].
  */
 
 interface Props {
@@ -49,6 +53,12 @@ export function CreateRadarTaskDialog({
 }: Props) {
   const { data: members } = usePlatformCrmTeamMembers();
   const createTask = useCreatePlatformCrmTask();
+  const { activeProductId, products } = useActivePlatformProduct();
+  const catalogHasProducts = products.length > 0;
+  const lockedProductName =
+    activeProductId != null
+      ? (products.find((p) => p.id === activeProductId)?.name ?? 'Produto ativo')
+      : null;
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [title, setTitle] = useState(defaultTitle || '');
@@ -56,6 +66,7 @@ export function CreateRadarTaskDialog({
   const [assignee, setAssignee] = useState<string>('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('high');
   const [dueIn, setDueIn] = useState<string>('4');
+  const [selectedProductId, setSelectedProductId] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
@@ -68,8 +79,9 @@ export function CreateRadarTaskDialog({
       setAssignee(currentUserId || '');
       setPriority('high');
       setDueIn('4');
+      setSelectedProductId(activeProductId ?? '');
     }
-  }, [open, defaultTitle, defaultDescription, lead.name, currentUserId]);
+  }, [open, defaultTitle, defaultDescription, lead.name, currentUserId, activeProductId]);
 
   async function handleSubmit() {
     if (!assignee) {
@@ -78,6 +90,15 @@ export function CreateRadarTaskDialog({
     }
     if (!title.trim()) {
       toast.error('Defina um título.');
+      return;
+    }
+    const productCheck = validateCreateLeadProduct({
+      lockedProductId: activeProductId,
+      selectedProductId,
+      catalogHasProducts,
+    });
+    if (!productCheck.ok) {
+      toast.error(productCheck.error);
       return;
     }
     const due = new Date(Date.now() + Number(dueIn) * 3600 * 1000).toISOString();
@@ -91,6 +112,7 @@ export function CreateRadarTaskDialog({
         status: 'pending',
         due_date: due,
         created_by: currentUserId,
+        product_id: productCheck.productId,
       });
       toast.success('Tarefa criada');
       onOpenChange(false);
@@ -157,6 +179,37 @@ export function CreateRadarTaskDialog({
               </Select>
             </div>
           </div>
+
+          {catalogHasProducts && activeProductId ? (
+            <div
+              className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+              title="Produto do switcher da sidebar"
+            >
+              <Package className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">Produto</span>
+              <span className="font-medium truncate">{lockedProductName}</span>
+            </div>
+          ) : null}
+          {catalogHasProducts && !activeProductId ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Produto *</Label>
+              <Select
+                value={selectedProductId || undefined}
+                onValueChange={setSelectedProductId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="space-y-1">
             <Label className="text-xs">Prazo</Label>

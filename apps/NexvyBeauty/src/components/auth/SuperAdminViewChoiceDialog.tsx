@@ -1,6 +1,6 @@
 // ─── SuperAdminViewChoiceDialog — escolha inicial (porte do Intentus) ───
-// Super admin escolhe a cada login: "Gestão Multi-Empresas" (painel da
-// plataforma) ou "Empresa Master" (operar a empresa master). Substitui o
+// Super admin escolhe a cada login: gestão da plataforma (casa SaaS +
+// clientes) ou "Empresa Master" (operar o tenant master). Substitui o
 // antigo DualRoleDialog. UI espelhada 1:1 do Intentus.
 
 import { Crown, Building2 } from 'lucide-react';
@@ -42,9 +42,9 @@ export function SuperAdminViewChoiceDialog() {
             className="flex flex-col items-center gap-3 rounded-lg border-2 border-muted p-6 transition-all hover:border-primary hover:bg-accent"
           >
             <Crown className="h-10 w-10 text-amber-500" />
-            <span className="text-sm font-semibold">Gestão Multi-Empresas</span>
+            <span className="text-sm font-semibold">Gestão da plataforma</span>
             <span className="text-xs text-muted-foreground text-center">
-              Gerenciar a plataforma SaaS
+              Casa SaaS e clientes que compram
             </span>
           </button>
           <button

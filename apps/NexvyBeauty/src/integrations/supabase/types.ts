@@ -22764,6 +22764,8 @@ export type Database = {
         Args: {
           p_assigned_user_ids?: string[]
           p_channel?: string
+          p_connection_keys?: string[]
+          p_agent_ids?: string[]
           p_include_no_product?: boolean
           p_include_no_sector?: boolean
           p_include_unassigned?: boolean
@@ -22783,6 +22785,8 @@ export type Database = {
         Args: {
           p_assigned_user_ids?: string[]
           p_channel?: string
+          p_connection_keys?: string[]
+          p_agent_ids?: string[]
           p_cursor_last_message_at?: string
           p_include_no_product?: boolean
           p_include_no_sector?: boolean

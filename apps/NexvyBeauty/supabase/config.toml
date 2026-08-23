@@ -242,6 +242,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Webhook público de Direct do Instagram Login (Meta → tenant). Sem JWT.
+# Auth real = X-Hub-Signature-256 (HMAC de INSTAGRAM_LOGIN_APP_SECRET) na função.
 # GET devolve hub.challenge (INSTAGRAM_LOGIN_WEBHOOK_VERIFY_TOKEN). NÃO é Page
 # nem platform-instagram-webhook. start-instagram-conversation fica no default
 # (verify_jwt=true) — chamada pelo inbox autenticado.

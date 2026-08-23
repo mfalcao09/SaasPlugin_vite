@@ -71,6 +71,7 @@ import {
   Tag,
   ListTodo,
   Plus,
+  Package,
   X,
   CheckCircle2 as CheckCircleAlt,
   Shield,
@@ -108,11 +109,16 @@ import {
 } from '../data/usePlatformCrmTasks';
 import { usePlatformCrmLeadStageHistory } from '../data/usePlatformCrmLeadStageHistory';
 import { usePlatformCrmSellers } from '../data/usePlatformCrmSellers';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
 import { PlatformCrmLeadTagsBlock } from './detail/PlatformCrmLeadTagsBlock';
 import { PlatformCrmLeadKeyResponses } from './detail/PlatformCrmLeadKeyResponses';
 import { PlatformCrmLeadCustomFields } from './detail/PlatformCrmLeadCustomFields';
 import { PlatformCrmLeadConversationPreview } from './detail/PlatformCrmLeadConversationPreview';
 import { PlatformCrmLeadSquadCard } from './detail/PlatformCrmLeadSquadCard';
+import { PlatformCrmLeadPartyProductsCard } from './detail/PlatformCrmLeadPartyProductsCard';
+import { PlatformCrmLeadHouseAgentsCard } from './detail/PlatformCrmLeadHouseAgentsCard';
+import { validateCreateLeadProduct } from './createPlatformCrmLeadProduct';
+import type { PartyGraphLead } from '../data/usePlatformCrmPartyGraph';
 
 /**
  * DETALHE DO LEAD do CRM de PLATAFORMA (super_admin) — porte fiel do `LeadDetailPage`
@@ -131,6 +137,8 @@ import { PlatformCrmLeadSquadCard } from './detail/PlatformCrmLeadSquadCard';
 interface PlatformCrmLeadDetailProps {
   leadId: string;
   onBack: () => void;
+  /** Abrir o lead irmão (mesmo party, outro produto) sem F5. */
+  onOpenLead?: (leadId: string) => void;
 }
 
 // -------------------------------------------------------------------------------------
@@ -166,7 +174,7 @@ const LEAD_CHANNELS = [
   { value: 'email', label: 'E-mail' },
 ];
 
-export function PlatformCrmLeadDetail({ leadId, onBack }: PlatformCrmLeadDetailProps) {
+export function PlatformCrmLeadDetail({ leadId, onBack, onOpenLead }: PlatformCrmLeadDetailProps) {
   const [activeTab, setActiveTab] = useState('summary');
 
   const { data: lead, isLoading, refetch } = usePlatformCrmLead(leadId);
@@ -252,6 +260,7 @@ export function PlatformCrmLeadDetail({ leadId, onBack }: PlatformCrmLeadDetailP
                 stagesCount={stages?.length || 7}
                 onUpdateLead={handleUpdateLead}
                 onNavigateTab={setActiveTab}
+                onOpenLead={onOpenLead}
               />
             </TabsContent>
             <TabsContent value="bant" className="mt-0">
@@ -561,16 +570,31 @@ function LeadDetailHeader({
 // DROP: seletor de Plano/pricing (dependia de products/pricing do tenant — inexistente
 // na plataforma). Edição manual de valor da negociação mantida 1:1.
 // =====================================================================================
+function toPartyGraphLead(lead: LeadRow): PartyGraphLead {
+  return {
+    id: lead.id,
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    company: lead.company,
+    position: lead.position,
+    product_id: lead.product_id,
+    party_id: (lead as LeadRow & { party_id?: string | null }).party_id ?? null,
+  };
+}
+
 function LeadSummaryTab({
   lead,
   stagesCount = 7,
   onUpdateLead,
   onNavigateTab,
+  onOpenLead,
 }: {
   lead: LeadRow;
   stagesCount?: number;
   onUpdateLead: (updates: Record<string, unknown>) => Promise<void>;
   onNavigateTab: (tab: string) => void;
+  onOpenLead?: (leadId: string) => void;
 }) {
   const [isEditingValue, setIsEditingValue] = useState(false);
   const [dealValueInput, setDealValueInput] = useState('');
@@ -634,6 +658,9 @@ function LeadSummaryTab({
           Adicionar nota
         </Button>
       </div>
+
+      <PlatformCrmLeadPartyProductsCard lead={toPartyGraphLead(lead)} onOpenLead={onOpenLead} />
+      <PlatformCrmLeadHouseAgentsCard lead={toPartyGraphLead(lead)} />
 
       {/* Alerts */}
       {stats.isStale && (
@@ -1881,12 +1908,25 @@ function LeadNotesTab({
   const [taskPriority, setTaskPriority] = useState<string>('medium');
   const [taskDueDate, setTaskDueDate] = useState('');
   const [taskAssignee, setTaskAssignee] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
+
+  const { activeProductId, products } = useActivePlatformProduct();
+  const catalogHasProducts = products.length > 0;
+  const lockedProductName =
+    activeProductId != null
+      ? (products.find((p) => p.id === activeProductId)?.name ?? 'Produto ativo')
+      : null;
 
   const { data: notes, isLoading: notesLoading } = usePlatformCrmLeadNotes(lead.id);
   const createNote = useCreatePlatformCrmLeadNote();
   const { data: leadTasks, isLoading: tasksLoading } = usePlatformCrmLeadTasks(lead.id);
   const createTask = useCreatePlatformCrmTask();
   const toggleTask = useTogglePlatformCrmTask();
+
+  useEffect(() => {
+    if (!isTaskDialogOpen) return;
+    setSelectedProductId(activeProductId ?? '');
+  }, [isTaskDialogOpen, activeProductId]);
 
   const handleSubmitNote = async () => {
     if (!noteContent.trim()) return;
@@ -1905,6 +1945,15 @@ function LeadNotesTab({
 
   const handleCreateTask = async () => {
     if (!taskTitle.trim()) return;
+    const productCheck = validateCreateLeadProduct({
+      lockedProductId: activeProductId,
+      selectedProductId,
+      catalogHasProducts,
+    });
+    if (!productCheck.ok) {
+      toast.error(productCheck.error);
+      return;
+    }
     try {
       const {
         data: { user },
@@ -1919,12 +1968,14 @@ function LeadNotesTab({
         lead_id: lead.id,
         status: 'pending',
         created_by: user.id,
+        product_id: productCheck.productId,
       });
       setTaskTitle('');
       setTaskDescription('');
       setTaskPriority('medium');
       setTaskDueDate('');
       setTaskAssignee('');
+      setSelectedProductId('');
       setIsTaskDialogOpen(false);
       toast.success('Tarefa criada com sucesso');
     } catch {
@@ -2118,6 +2169,36 @@ function LeadNotesTab({
                     </SelectContent>
                   </Select>
                 </div>
+                {catalogHasProducts && activeProductId ? (
+                  <div
+                    className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+                    title="Produto do switcher da sidebar"
+                  >
+                    <Package className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-muted-foreground">Produto</span>
+                    <span className="font-medium truncate">{lockedProductName}</span>
+                  </div>
+                ) : null}
+                {catalogHasProducts && !activeProductId ? (
+                  <div className="space-y-2">
+                    <Label>Produto *</Label>
+                    <Select
+                      value={selectedProductId || undefined}
+                      onValueChange={setSelectedProductId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o produto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <Button
                   className="w-full"
                   onClick={handleCreateTask}

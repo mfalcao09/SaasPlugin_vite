@@ -1,5 +1,5 @@
 // ─── useSuperAdminView — impersonação multi-empresa (porte do Intentus) ──
-// Super admin escolhe "Gestão Multi-Empresas" (painel /super-admin) ou
+// Super admin escolhe "Gestão da plataforma" (painel /super-admin) ou
 // "Empresa Master" (operar a empresa master) e pode IMPERSONAR qualquer
 // empresa. A troca muda o próprio profiles.organization_id via RPC gated
 // set_active_organization; a RLS (get_user_organization) propaga sozinha.

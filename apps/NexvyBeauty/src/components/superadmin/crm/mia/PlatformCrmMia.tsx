@@ -342,6 +342,20 @@ export function PlatformCrmMia() {
                   <Row label="Responsável" value={d.lead?.responsavel ?? '—'} />
                   <Row label="Temperatura" value={d.lead?.temperatura ?? '—'} highlight={d.lead?.temperatura === 'hot'} />
                   <Row label="Último contato" value={d.lead?.ultimo_contato ? new Date(d.lead.ultimo_contato).toLocaleDateString('pt-BR') : '—'} />
+                  {(d.produtos_da_casa?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {d.produtos_da_casa.map((p: { productId: string; name: string; isCurrent?: boolean }) => (
+                        <Badge key={p.productId} variant={p.isCurrent ? 'default' : 'outline'} className="text-[10px]">
+                          {p.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {d.casa?.lens === 'saas_products' && (d.alcada?.partyProductIds?.length ?? 0) > 1 && (
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                      Alçada da casa · {d.alcada.partyProductIds.length} produtos do mesmo party
+                    </p>
+                  )}
                   {(d.tags?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {d.tags.map((t: string) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}

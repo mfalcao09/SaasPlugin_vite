@@ -18,21 +18,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Download, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Upload, Download, Loader2, CheckCircle2, AlertTriangle, Package } from 'lucide-react';
 import { parseCsv } from '@/lib/leadsExport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateCreateLeadProduct } from './createPlatformCrmLeadProduct';
 
 /**
- * Importação de leads (CSV) do CRM de PLATAFORMA (super_admin) — pipeline único,
- * desacoplado do tenant. Baixa modelo, mapeia colunas → campos de `platform_crm_leads`,
- * dedup por unique-constraint (código 23505). "Produto padrão" DROPADO — plataforma sem
- * catálogo; mantém apenas "Squad padrão" (opcional). Zero organization_id / product_id.
+ * Importação de leads (CSV) do CRM de PLATAFORMA. Regra B: 1 produto para o lote
+ * (campo do dialog, não coluna CSV). Switcher travado → carimba activeProductId;
+ * “Todos” + catálogo → Select obrigatório; catálogo vazio → product_id null.
  */
 interface PlatformCrmImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   squads: { id: string; name: string }[];
+  products: { id: string; name: string }[];
+  lockedProductId: string | null;
   onDone?: () => void;
 }
 
@@ -69,6 +71,8 @@ export function PlatformCrmImportLeadsDialog({
   open,
   onOpenChange,
   squads,
+  products,
+  lockedProductId,
   onDone,
 }: PlatformCrmImportLeadsDialogProps) {
   const [step, setStep] = useState<'upload' | 'map' | 'importing' | 'done'>('upload');
@@ -76,10 +80,17 @@ export function PlatformCrmImportLeadsDialog({
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [squadId, setSquadId] = useState<string>('__none');
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ created: number; duplicated: number; errors: number } | null>(
     null,
   );
+
+  const catalogHasProducts = products.length > 0;
+  const lockedProductName =
+    lockedProductId != null
+      ? (products.find((p) => p.id === lockedProductId)?.name ?? 'Produto ativo')
+      : null;
 
   const reset = () => {
     setStep('upload');
@@ -87,6 +98,7 @@ export function PlatformCrmImportLeadsDialog({
     setRows([]);
     setMapping({});
     setSquadId('__none');
+    setSelectedProductId('');
     setProgress(0);
     setResult(null);
   };
@@ -121,6 +133,16 @@ export function PlatformCrmImportLeadsDialog({
   };
 
   const importNow = async () => {
+    const productCheck = validateCreateLeadProduct({
+      lockedProductId,
+      selectedProductId,
+      catalogHasProducts,
+    });
+    if (!productCheck.ok) {
+      toast.error(productCheck.error);
+      return;
+    }
+
     setStep('importing');
 
     const mapped = rows
@@ -142,6 +164,7 @@ export function PlatformCrmImportLeadsDialog({
       .filter((r) => r.name || r.email || r.phone);
 
     if (squadId !== '__none') mapped.forEach((r) => (r.squad_id = squadId));
+    if (productCheck.productId) mapped.forEach((r) => (r.product_id = productCheck.productId));
 
     let created = 0;
     let duplicated = 0;
@@ -238,6 +261,35 @@ export function PlatformCrmImportLeadsDialog({
               ))}
             </div>
             <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+              <div className="col-span-2 space-y-2">
+                {catalogHasProducts && lockedProductId ? (
+                  <div
+                    className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+                    title="Produto do switcher da sidebar"
+                  >
+                    <Package className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-muted-foreground">Produto do lote</span>
+                    <span className="font-medium truncate">{lockedProductName}</span>
+                  </div>
+                ) : null}
+                {catalogHasProducts && !lockedProductId ? (
+                  <>
+                    <Label className="text-xs">Produto do lote *</Label>
+                    <Select value={selectedProductId || undefined} onValueChange={setSelectedProductId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o produto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : null}
+              </div>
               <div>
                 <Label className="text-xs">Squad padrão (opcional)</Label>
                 <Select value={squadId} onValueChange={setSquadId}>

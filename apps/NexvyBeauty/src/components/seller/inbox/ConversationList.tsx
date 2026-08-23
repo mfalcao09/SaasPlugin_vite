@@ -52,6 +52,8 @@ interface ConversationListProps {
   headerLabel?: string;
   /** Substitui o botão de filtro padrão (usado para ancorar popover). */
   filtersSlot?: React.ReactNode;
+  /** Barra de métricas rápidas (ativas / não lidas / aguardando). */
+  metricsSlot?: React.ReactNode;
   /** Aba ativa controlada (backend filtra por status). */
   activeTab?: StatusTab;
   onTabChange?: (tab: StatusTab) => void;
@@ -82,6 +84,7 @@ export function ConversationList({
   onToggleSound,
   showAssignedUser = false,
   filtersSlot,
+  metricsSlot,
   activeTab: activeTabProp,
   onTabChange,
   tabCounts,
@@ -271,6 +274,10 @@ export function ConversationList({
           </Tooltip>
         )}
       </div>
+
+      {metricsSlot && (
+        <div className="px-3 py-2 border-b bg-background">{metricsSlot}</div>
+      )}
 
       {/* Tabs pílula — limpas, sem barra verde sólida */}
       <div className="px-2 py-2 border-b bg-background">
