@@ -14,7 +14,7 @@ const RULES = [
   { title: 'Hold', text: 'Comissão fica pending por 30 dias (alinhado ao reembolso). Só depois pode ser aprovada.' },
   { title: 'Atribuição', text: 'Last-click, janela de 60 dias. Cookie na LP + e-mail/WhatsApp na captura + cupom no checkout Cakto. Sem cookie eterno.' },
   { title: 'Cupom', text: 'Cada afiliado ganha um código de DESCONTO Cakto (?coupon=). Não usamos o programa oficial/split da Cakto — a Nexvy atribui a comissão.' },
-  { title: 'O que não fazemos', text: 'Sem multi-nível, sem CPF do comprador, sem PIX em massa nesta fase. Pagamento via PIX manual após aprovação.' },
+  { title: 'O que não fazemos', text: 'Sem multi-nível, sem CPF do comprador, sem PIX em massa nesta fase. Dona de salão cliente escolhe crédito na assinatura ou PIX.' },
 ];
 
 export default function AffiliatesLanding() {

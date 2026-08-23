@@ -19,6 +19,8 @@ export interface Affiliate {
   email: string;
   phone: string | null;
   pix_key: string | null;
+  payout_preference?: 'pix' | 'subscription_credit' | null;
+  organization_id?: string | null;
   status: AffiliateStatus;
   commission_pct: number; // percentual inteiro (30 = 30%)
   notes: string | null;
@@ -140,6 +142,7 @@ interface UpdateAffiliateInput {
     name?: string;
     phone?: string | null;
     pix_key?: string | null;
+    payout_preference?: 'pix' | 'subscription_credit';
     status?: AffiliateStatus;
     commission_pct?: number; // percentual humano
     notes?: string | null;

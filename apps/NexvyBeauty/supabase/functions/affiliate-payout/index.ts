@@ -37,7 +37,7 @@ function makeDb(admin: any): PayoutDb {
     async listApprovedCommissions(): Promise<CommissionRow[]> {
       const { data } = await admin
         .from('affiliate_commissions')
-        .select('id, affiliate_id, amount_cents, status, payout_item_id')
+        .select('id, affiliate_id, amount_cents, status, payout_item_id, payout_method')
         .eq('status', 'approved')
         .is('payout_item_id', null)
         .order('created_at', { ascending: true });

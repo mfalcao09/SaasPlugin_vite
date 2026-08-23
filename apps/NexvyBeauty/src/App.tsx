@@ -134,6 +134,7 @@ const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissiona
 const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
 const SalaoClientes = lazyWithRetry(() => import("./pages/salao/Clientes"));
 const SalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/Financeiro"));
+const SalaoIndicar = lazyWithRetry(() => import("./pages/salao/IndicarSalao"));
 
 // Global loading fallback
 const PageLoader = () => (
@@ -439,6 +440,7 @@ const App = () => (
               <Route path="/salao/servicos" element={<ProtectedRoute><SalaoServicos /></ProtectedRoute>} />
               <Route path="/salao/clientes" element={<ProtectedRoute><SalaoClientes /></ProtectedRoute>} />
               <Route path="/salao/financeiro" element={<ProtectedRoute><SalaoFinanceiro /></ProtectedRoute>} />
+              <Route path="/salao/indicar" element={<ProtectedRoute><SalaoIndicar /></ProtectedRoute>} />
               <Route
                 path="/perfil"
                 element={

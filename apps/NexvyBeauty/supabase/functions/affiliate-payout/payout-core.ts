@@ -20,6 +20,7 @@ export interface CommissionRow {
   amount_cents: number;
   status: string;
   payout_item_id: string | null;
+  payout_method?: string | null;
 }
 export interface PayoutBatchRow {
   id: string;
@@ -101,6 +102,7 @@ export function groupApproved(
 ): ApprovedGroup[] {
   const byAff = new Map<string, ApprovedGroup>();
   for (const c of commissions) {
+    if ((c.payout_method ?? 'pix') === 'subscription_credit') continue;
     let g = byAff.get(c.affiliate_id);
     if (!g) {
       const a = affiliates[c.affiliate_id];

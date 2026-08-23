@@ -13,6 +13,8 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { canApproveCommission } from '../_shared/affiliate-policy.ts';
+import { parsePayoutPreference, settleSubscriptionCredit } from '../_shared/affiliate-onda2.ts';
+import { makeCreditDb } from '../_shared/affiliate-onda2-notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -222,6 +224,11 @@ Deno.serve(async (req) => {
           const h = Number(patch.commission_pct);
           if (!Number.isFinite(h) || h < 0) return json({ error: 'commission_pct inválido' }, 400);
           update.commission_pct = h; // percentual inteiro (30 = 30%)
+        }
+        if ('payout_preference' in patch) {
+          const pref = parsePayoutPreference(patch.payout_preference);
+          if (!pref) return json({ error: 'payout_preference inválido' }, 400);
+          update.payout_preference = pref;
         }
         // email NÃO é editável (chave do auth user).
 
@@ -458,7 +465,7 @@ Deno.serve(async (req) => {
         if (!id) return json({ error: 'id obrigatório' }, 400);
         const { data: current } = await admin
           .from('affiliate_commissions')
-          .select('id, status, hold_until')
+          .select('id, status, hold_until, affiliate_id, amount_cents, payout_method, metadata')
           .eq('id', id)
           .maybeSingle();
         if (!current) return json({ error: 'comissão não encontrada' }, 404);
@@ -479,6 +486,19 @@ Deno.serve(async (req) => {
             .from('affiliate_commissions').select('status').eq('id', id).maybeSingle();
           if (!cur) return json({ error: 'comissão não encontrada' }, 404);
           return json({ error: `comissão não está pending (status atual: ${cur.status})` }, 409);
+        }
+        if ((updated.payout_method ?? updated.metadata?.payout_method) === 'subscription_credit') {
+          try {
+            const credit = await settleSubscriptionCredit(makeCreditDb(admin), {
+              commissionId: updated.id,
+              affiliateId: updated.affiliate_id,
+              amountCents: Number(updated.amount_cents ?? 0),
+              now: new Date(),
+            });
+            return json({ ok: true, commission: updated, credit });
+          } catch (creditErr) {
+            console.error('[affiliate-admin] credit settle error', creditErr);
+          }
         }
         return json({ ok: true, commission: updated });
       }

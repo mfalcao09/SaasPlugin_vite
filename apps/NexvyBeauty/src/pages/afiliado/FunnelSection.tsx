@@ -1,10 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MousePointerClick, Users, CreditCard, CheckCircle2, Undo2 } from 'lucide-react';
-import { useMyAffiliateFunnel } from '@/hooks/useAffiliatePortal';
+import { Badge } from '@/components/ui/badge';
+import { useMyAffiliateFunnel, useMyAffiliateLeadStages } from '@/hooks/useAffiliatePortal';
+
+const STAGE_LABEL: Record<string, string> = {
+  captured: 'Capturado',
+  in_conversation: 'Em conversa',
+  checkout: 'Checkout',
+  paid: 'Pago',
+};
 
 export function FunnelSection() {
   const { data, isLoading } = useMyAffiliateFunnel();
+  const stages = useMyAffiliateLeadStages();
   const cards = [
     { label: 'Cliques', value: data?.clicks ?? 0, icon: MousePointerClick, hint: 'Visitas com ?ref=' },
     { label: 'Leads', value: data?.leads ?? 0, icon: Users, hint: 'Formulários com seu afiliado' },
@@ -46,6 +55,31 @@ export function FunnelSection() {
           })}
         </div>
       )}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Estágio por indicado</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p className="text-muted-foreground">Sem nome, e-mail, telefone ou CPF do comprador.</p>
+          {stages.isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : !stages.data?.length ? (
+            <p className="text-muted-foreground">Nenhum indicado ainda.</p>
+          ) : (
+            <ul className="space-y-2">
+              {stages.data.map((s, i) => (
+                <li key={`${s.updated_at}-${i}`} className="flex items-center justify-between">
+                  <Badge variant="secondary">{STAGE_LABEL[s.stage] ?? s.stage}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {s.co_sell ? 'co-sell · ' : ''}
+                    {s.updated_at ? new Date(s.updated_at).toLocaleDateString('pt-BR') : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

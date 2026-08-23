@@ -249,3 +249,7 @@ verify_jwt = false
 # Inscrição self-serve do programa de afiliados (anônimo).
 [functions.affiliate-apply]
 verify_jwt = false
+
+# Dono de salão cliente gera link (JWT do tenant).
+[functions.affiliate-salon]
+verify_jwt = true

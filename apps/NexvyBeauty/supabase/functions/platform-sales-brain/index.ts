@@ -93,6 +93,7 @@ import {
   buildInactivityRepertoire,
   parseRepertoireStage,
 } from '../_shared/inactivity-cadence.ts';
+import { firstNameOnly } from '../_shared/affiliate-onda2.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API (número
@@ -828,6 +829,13 @@ function buildLeadMemoryContext(lead: Record<string, any> | null): string {
   if (lead.bant_budget) known.push(`Potencial/carteira: ${lead.bant_budget}`);
   if (lead.bant_timing) known.push(`Tempo de casa: ${lead.bant_timing}`);
   if (lead.temperature) known.push(`Temperatura atual: ${lead.temperature}`);
+  const referrerHint = typeof meta.affiliate_referrer_first_name === 'string'
+    ? meta.affiliate_referrer_first_name
+    : (typeof meta.affiliate_referrer_name === 'string' ? meta.affiliate_referrer_name : '');
+  if (referrerHint && !/@/.test(referrerHint) && !/^\+?\d[\d\s().-]{7,}$/.test(referrerHint)) {
+    const first = referrerHint.trim().split(/\s+/)[0];
+    if (first.length >= 2) known.push(`Indicação: veio da ${first}`);
+  }
 
   // BLOCO DE SCORE COMO FATO (computado em TS no turno anterior — NÃO recalcule).
   // A Duda/Bia CONDUZ a conversa a partir daqui; a matemática já está feita.
@@ -1795,6 +1803,37 @@ Deno.serve(async (req) => {
         .eq('id', conversation.lead_id)
         .maybeSingle();
       lead = (leadRow as Record<string, any> | null) ?? null;
+    }
+    if (lead) {
+      try {
+        const meta = (lead.metadata && typeof lead.metadata === 'object')
+          ? lead.metadata as Record<string, unknown>
+          : {};
+        if (!meta.affiliate_referrer_first_name) {
+          const phone = String(conversation.visitor_phone || conversation.visitor_whatsapp || '').trim();
+          if (phone) {
+            const { data: sl } = await supabase
+              .from('sales_leads')
+              .select('affiliate_id')
+              .eq('whatsapp', phone)
+              .not('affiliate_id', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (sl?.affiliate_id) {
+              const { data: aff } = await supabase
+                .from('affiliates')
+                .select('name')
+                .eq('id', sl.affiliate_id)
+                .maybeSingle();
+              const first = firstNameOnly(aff?.name ?? null);
+              if (first) {
+                lead.metadata = { ...meta, affiliate_referrer_first_name: first };
+              }
+            }
+          }
+        }
+      } catch { /* hint de indicação é best-effort */ }
     }
     const leadMemoryContext = buildLeadMemoryContext(lead);
 

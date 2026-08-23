@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
       main_challenge: clean(body.main_pain, 500) || null,
       message: body.instagram ? `Instagram: ${clean(body.instagram, 120)}` : null,
       status: "novo",
+      affiliate_funnel_stage: affiliateId ? "captured" : null,
       lead_channel: ref ? `afiliado:${ref}` : "organico",
       ref_code: ref,
       affiliate_id: affiliateId,

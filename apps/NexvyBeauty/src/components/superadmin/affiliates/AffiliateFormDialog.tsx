@@ -35,6 +35,7 @@ export function AffiliateFormDialog({ open, onOpenChange, affiliate }: Props) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [pixKey, setPixKey] = useState('');
+  const [payoutPref, setPayoutPref] = useState<'pix' | 'subscription_credit'>('pix');
   const [commissionPct, setCommissionPct] = useState('30'); // percentual humano
   const [status, setStatus] = useState<AffiliateStatus>('active');
   const [notes, setNotes] = useState('');
@@ -46,6 +47,7 @@ export function AffiliateFormDialog({ open, onOpenChange, affiliate }: Props) {
       setEmail(affiliate?.email ?? '');
       setPhone(affiliate?.phone ?? '');
       setPixKey(affiliate?.pix_key ?? '');
+      setPayoutPref(affiliate?.payout_preference === 'subscription_credit' ? 'subscription_credit' : 'pix');
       // commission_pct é percentual inteiro (30 = 30%)
       setCommissionPct(affiliate ? String(affiliate.commission_pct ?? 30) : '30');
       setStatus(affiliate?.status ?? 'active');
@@ -79,6 +81,7 @@ export function AffiliateFormDialog({ open, onOpenChange, affiliate }: Props) {
             name: name.trim(),
             phone: phone.trim() || null,
             pix_key: pixKey.trim() || null,
+            payout_preference: payoutPref,
             status,
             commission_pct: pct,
             notes: notes.trim() || null,
@@ -157,6 +160,18 @@ export function AffiliateFormDialog({ open, onOpenChange, affiliate }: Props) {
                 onChange={(e) => setCommissionPct(e.target.value)}
                 placeholder="30"
               />
+            </div>
+            <div>
+              <Label>Payout</Label>
+              <Select value={payoutPref} onValueChange={(v) => setPayoutPref(v as 'pix' | 'subscription_credit')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="subscription_credit">Crédito na assinatura</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Status</Label>

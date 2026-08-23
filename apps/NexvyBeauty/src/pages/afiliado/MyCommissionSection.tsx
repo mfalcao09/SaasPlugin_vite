@@ -2,7 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircleDollarSign, Clock, CheckCircle2, Hash } from 'lucide-react';
-import { useCurrentAffiliate, useMyCommissionSummary } from '@/hooks/useAffiliatePortal';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { useCurrentAffiliate, useMyCommissionSummary, useSetPayoutPreference } from '@/hooks/useAffiliatePortal';
 
 function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -11,6 +13,8 @@ function formatBRL(cents: number): string {
 export function MyCommissionSection() {
   const { data: affiliate } = useCurrentAffiliate();
   const { data: summary, isLoading } = useMyCommissionSummary();
+  const setPref = useSetPayoutPreference();
+  const pref = affiliate?.payout_preference === 'subscription_credit' ? 'subscription_credit' : 'pix';
 
   const cards = [
     {
@@ -44,7 +48,7 @@ export function MyCommissionSection() {
       <div>
         <h2 className="text-xl font-semibold">Minha Comissão</h2>
         <p className="text-sm text-muted-foreground">
-          Acompanhe seus ganhos. O pagamento é feito via PIX.
+          Acompanhe seus ganhos. Escolha crédito na assinatura ou PIX.
         </p>
       </div>
 
@@ -81,15 +85,32 @@ export function MyCommissionSection() {
           <CardTitle className="text-base">Dados de pagamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
+          <div className="space-y-2">
+            <Label>Forma da comissão</Label>
+            <RadioGroup
+              value={pref}
+              onValueChange={(v) => setPref.mutate(v as 'pix' | 'subscription_credit')}
+              className="grid sm:grid-cols-2 gap-2"
+            >
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="subscription_credit" /> Crédito na assinatura
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="pix" /> PIX
+              </label>
+            </RadioGroup>
+          </div>
           {affiliate?.pix_key ? (
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Chave PIX:</span>
               <code className="rounded-md bg-muted px-2 py-1 text-xs">{affiliate.pix_key}</code>
-              <Badge variant="secondary">payout via PIX</Badge>
+              <Badge variant="secondary">{pref === 'subscription_credit' ? 'crédito (PIX como fallback)' : 'payout via PIX'}</Badge>
             </div>
           ) : (
             <p className="text-muted-foreground">
-              Nenhuma chave PIX cadastrada. Solicite ao administrador para receber seus pagamentos.
+              {pref === 'pix'
+                ? 'Nenhuma chave PIX cadastrada. Solicite ao administrador para receber via PIX.'
+                : 'Crédito cai na assinatura do salão vinculado. Sem CPF do comprador.'}
             </p>
           )}
         </CardContent>

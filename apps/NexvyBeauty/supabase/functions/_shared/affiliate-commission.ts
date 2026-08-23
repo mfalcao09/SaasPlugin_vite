@@ -12,6 +12,7 @@ import {
   isOverRecurringCap,
   resolveCommissionPct,
 } from './affiliate-policy.ts';
+import { resolvePayoutMethod, stampCommissionPayoutMeta } from './affiliate-onda2.ts';
 
 const VELOCITY_WINDOW_MS = 10 * 60 * 1000;
 const VELOCITY_MAX_SAME_BUYER = 1;
@@ -131,7 +132,7 @@ export async function attributeAffiliateCommission(
 
   const { data: affiliate } = await admin
     .from('affiliates')
-    .select('id, email, status, commission_pct')
+    .select('id, email, status, commission_pct, organization_id, payout_preference')
     .eq('id', affiliateId)
     .maybeSingle();
 
@@ -213,6 +214,11 @@ export async function attributeAffiliateCommission(
   if (!Number.isFinite(amount) || amount <= 0) return { created: false, skipped: 'no amount', affiliateId: affiliate.id };
   if (!Number.isFinite(pct) || pct <= 0) return { created: false, skipped: 'commission_pct=0', affiliateId: affiliate.id };
   const amountCents = Math.round(amount * pct);
+  const payout = resolvePayoutMethod({
+    preference: affiliate.payout_preference ?? null,
+    organizationId: affiliate.organization_id ?? null,
+    pixKey: null,
+  });
 
   const { data: inserted, error } = await admin
     .from('affiliate_commissions')
@@ -227,11 +233,12 @@ export async function attributeAffiliateCommission(
       status: 'pending',
       hold_until: computeHoldUntil(now),
       plan_slug: args.planSlug ?? null,
+      payout_method: payout.method,
       idempotency_key: orderRef,
       buyer_document: doc || null,
       buyer_ip: ip || null,
       review_status: flagged ? 'flagged' : 'clear',
-      metadata: {
+      metadata: stampCommissionPayoutMeta({
         kind,
         customer_email: email || null,
         amount_reais: amount,
@@ -239,7 +246,7 @@ export async function attributeAffiliateCommission(
         ...(args.planSlug ? { plan_slug: args.planSlug } : {}),
         ...(coupon ? { coupon_code: coupon } : {}),
         ...(flagged ? { fraud: fraudReasons } : {}),
-      },
+      }, payout.method),
     })
     .select('id')
     .single();
