@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { normalizeInboxChannels, parseConnectionKeys } from "./inbox-list-filters.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,7 +135,9 @@ serve(async (req) => {
       const { ids: sectorIds, includeNone: includeNoSector } = parseIdList(url.searchParams.get('sector_ids'));
       const { ids: assignedUserIds, includeUnassigned } = parseIdList(url.searchParams.get('assigned_user_ids'));
       const { ids: tagIds } = parseIdList(url.searchParams.get('tag_ids'));
-      const channel = url.searchParams.get('channel');
+      const { ids: agentIds } = parseIdList(url.searchParams.get('agent_ids'));
+      const channel = normalizeInboxChannels(url.searchParams.get('channel'));
+      const connectionKeys = parseConnectionKeys(url.searchParams.get('connection_keys'));
       const search = url.searchParams.get('search');
       const cursor = url.searchParams.get('cursor');
       const limitRaw = parseInt(url.searchParams.get('limit') || '50', 10);
@@ -150,10 +153,12 @@ serve(async (req) => {
         p_assigned_user_ids: assignedUserIds,
         p_include_unassigned: includeUnassigned,
         p_tag_ids: tagIds,
-        p_channel: channel || null,
+        p_channel: channel,
         p_search: search || null,
         p_cursor_last_message_at: cursor || null,
         p_limit: limit,
+        p_connection_keys: connectionKeys,
+        p_agent_ids: agentIds,
       });
 
       if (error) {
@@ -278,7 +283,9 @@ serve(async (req) => {
       const { ids: sectorIds, includeNone: includeNoSector } = parseIdList(url.searchParams.get('sector_ids'));
       const { ids: assignedUserIds, includeUnassigned } = parseIdList(url.searchParams.get('assigned_user_ids'));
       const { ids: tagIds } = parseIdList(url.searchParams.get('tag_ids'));
-      const channel = url.searchParams.get('channel');
+      const { ids: agentIds } = parseIdList(url.searchParams.get('agent_ids'));
+      const channel = normalizeInboxChannels(url.searchParams.get('channel'));
+      const connectionKeys = parseConnectionKeys(url.searchParams.get('connection_keys'));
       const search = url.searchParams.get('search');
 
       const { data: countRows, error } = await supabase.rpc('inbox_count_conversations', {
@@ -290,8 +297,10 @@ serve(async (req) => {
         p_assigned_user_ids: assignedUserIds,
         p_include_unassigned: includeUnassigned,
         p_tag_ids: tagIds,
-        p_channel: channel || null,
+        p_channel: channel,
         p_search: search || null,
+        p_connection_keys: connectionKeys,
+        p_agent_ids: agentIds,
       });
 
       if (error) {

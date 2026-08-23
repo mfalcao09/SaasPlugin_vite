@@ -1,15 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   User, Phone, Mail, MapPin, Building,
   ExternalLink, Plus, Calendar, CalendarPlus, X,
-  MessageCircle, Clock, DollarSign, Edit, Ban, Volume2,
+  MessageCircle, Clock, DollarSign, Edit,
   Tag, Route, Sparkles, History, Info, Bot, Users2, Plug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -80,6 +79,10 @@ interface LeadContextPanelProps {
   currentSectorId?: string | null;
   /** Conexão de origem (ex.: nome da instância WhatsApp) — somente leitura */
   connectionLabel?: string | null;
+  /** Handle Instagram do contato (@username), quando houver. */
+  instagramUsername?: string | null;
+  /** Incrementar para abrir aba Visão e focar notas internas. */
+  notesFocusToken?: number;
   onViewLead?: () => void;
   onMoveStage?: (stageId: string) => void;
   onCreateTask?: () => void;
@@ -102,6 +105,8 @@ export function LeadContextPanel({
   currentAgent,
   currentSectorId,
   connectionLabel,
+  instagramUsername,
+  notesFocusToken = 0,
   onViewLead,
   onMoveStage,
   onCreateTask,
@@ -109,10 +114,14 @@ export function LeadContextPanel({
   onEdit,
   onClose,
 }: LeadContextPanelProps) {
-  const [acceptAudio, setAcceptAudio] = useState(true);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    if (notesFocusToken > 0) setActiveTab('overview');
+  }, [notesFocusToken]);
 
   const setSector = useSetConversationSector();
   const { data: sectors = [] } = useSectors();
@@ -148,7 +157,7 @@ export function LeadContextPanel({
         )}
       </div>
 
-      <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="grid grid-cols-5 w-full rounded-none bg-muted/30 h-10 flex-shrink-0">
           <TabsTrigger value="overview" className="text-[10px] gap-1">
             <Info className="h-3 w-3" />
@@ -185,6 +194,9 @@ export function LeadContextPanel({
                   </AvatarFallback>
                 </Avatar>
                 <h4 className="font-semibold text-base leading-tight">{displayName}</h4>
+                {channel === 'instagram' && instagramUsername && (
+                  <p className="text-xs text-muted-foreground">@{instagramUsername}</p>
+                )}
                 {lead?.company && (
                   <p className="text-xs text-muted-foreground">{lead.company}</p>
                 )}
@@ -385,26 +397,12 @@ export function LeadContextPanel({
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="h-9" onClick={onEdit}>
+              {onEdit && (
+                <Button variant="outline" size="sm" className="h-9 w-full" onClick={onEdit}>
                   <Edit className="h-3.5 w-3.5 mr-1.5" />
                   Editar
                 </Button>
-                <Button variant="outline" size="sm" className="h-9 text-destructive hover:text-destructive">
-                  <Ban className="h-3.5 w-3.5 mr-1.5" />
-                  Bloquear
-                </Button>
-              </div>
-
-              {/* Audio Toggle */}
-              <div className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Volume2 className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="accept-audio" className="text-xs cursor-pointer">Aceitar áudios</Label>
-                </div>
-                <Switch id="accept-audio" checked={acceptAudio} onCheckedChange={setAcceptAudio} />
-              </div>
+              )}
 
               <Separator />
 
@@ -554,7 +552,7 @@ export function LeadContextPanel({
               <Separator />
 
               {/* Internal notes */}
-              <InternalNotes conversationId={conversationId} />
+              <InternalNotes conversationId={conversationId} focusToken={notesFocusToken} />
 
               <Separator />
 
@@ -581,7 +579,7 @@ export function LeadContextPanel({
                     Agendar Tarefa
                   </Button>
                 )}
-                {displayPhone && (
+                {displayPhone && channel !== 'instagram' && (
                   <Button
                     variant="outline" size="sm"
                     className="w-full justify-start text-emerald-600 hover:text-emerald-700"
