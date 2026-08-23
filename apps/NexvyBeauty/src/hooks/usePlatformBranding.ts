@@ -141,6 +141,8 @@ export function usePlatformBranding() {
         '--gradient-primary', '--gradient-accent', '--gradient-hero', '--shadow-glow',
         '--accent', '--accent-foreground',
       ].forEach((v) => root.style.removeProperty(v));
+      root.style.removeProperty('--font-sans');
+      document.body.style.removeProperty('font-family');
     }
     const primary = settings.primary_color || '#F97316';
     // Marca-padrão do produto (rosé #C54B60): o CSS :root já tem a paleta "Beauty
@@ -193,7 +195,7 @@ export function usePlatformBranding() {
       root.style.setProperty('--radius', `${settings.border_radius}px`);
     }
 
-    if (settings.font_family) {
+    if (settings.font_family && !isGestao) {
       injectFont(settings.font_family, settings.font_url);
     }
     if (settings.base_font_size) {
