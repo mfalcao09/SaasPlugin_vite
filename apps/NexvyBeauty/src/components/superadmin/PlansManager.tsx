@@ -97,7 +97,7 @@ export function PlansManager() {
                   <TableHead>Usuários</TableHead>
                   <TableHead>Conexões</TableHead>
                   <TableHead>Setores</TableHead>
-                  <TableHead>Empresas</TableHead>
+                  <TableHead>Clientes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>

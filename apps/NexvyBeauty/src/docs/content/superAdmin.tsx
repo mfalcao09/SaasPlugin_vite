@@ -124,14 +124,14 @@ export const superAdminPages: DocPage[] = [
 
   {
     slug: "empresas",
-    title: "Empresas (organizações)",
-    description: "Criar, suspender, mover e auditar empresas-cliente.",
+    title: "Empresas (clientes)",
+    description: "Criar, suspender, mover e auditar clientes que compram o SaaS.",
     track: "super-admin",
     section: "Operação",
     order: 4,
     content: (
       <>
-        <PageHero eyebrow="Operação" icon={Building2} title="Empresas (organizações)" />
+        <PageHero eyebrow="Operação" icon={Building2} title="Empresas (clientes)" />
         <h2>Criar uma empresa</h2>
         <Steps>
           <Step title="/super-admin → Empresas → Nova">Nome, e-mail do admin inicial, plano.</Step>

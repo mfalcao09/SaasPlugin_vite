@@ -337,7 +337,9 @@ export function OrganizationsManager({ onViewOrganization }: OrganizationsManage
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
-          <p className="text-muted-foreground">Gerencie todas as organizações da plataforma</p>
+          <p className="text-muted-foreground">
+            Clientes que compram o SaaS (salão, oficina…) — não a Nexvy
+          </p>
         </div>
         <Button onClick={() => setIsCreating(true)}>
           <Plus className="h-4 w-4 mr-2" />

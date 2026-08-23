@@ -207,6 +207,7 @@ export function KanbanTab({ productId }: KanbanTabProps) {
                 setDetailModalOpen(false);
                 setSelectedLeadId(null);
               }}
+              onOpenLead={setSelectedLeadId}
             />
           )}
         </DialogContent>

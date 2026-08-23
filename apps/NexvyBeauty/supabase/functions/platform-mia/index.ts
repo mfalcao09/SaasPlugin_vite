@@ -63,6 +63,10 @@ import {
   authenticatePlatformAgent,
 } from '../_shared/platform-crm-auth.ts';
 import { createPlatformServiceClient } from '../_shared/platform-crm-audience.ts';
+import {
+  attachHouseMiaToLeadContext,
+  buildHouseMiaPartyContext,
+} from '../_shared/house-agents.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 const MAX_TOOL_ROUNDS = 6;
@@ -414,7 +418,9 @@ async function getLeadContext(admin: any, args: any) {
 
   const nameMap = await profileNameMap(admin, [lead.assigned_to, lead.sdr_id, lead.closer_id]);
 
-  return {
+  const partyContext = await loadHouseMiaPartyContext(admin, lead);
+
+  return attachHouseMiaToLeadContext({
     encontrado: true,
     lead: {
       id: lead.id,
@@ -435,6 +441,7 @@ async function getLeadContext(admin: any, args: any) {
       ultimo_contato: lead.last_contact_at,
       criado_em: lead.created_at,
       valor_negociacao: lead.deal_value ?? 0,
+      produto_id: lead.product_id ?? null,
       utm: { source: lead.utm_source, medium: lead.utm_medium, campaign: lead.utm_campaign },
     },
     tags: (tags.data ?? []).map((t: any) => t.platform_crm_lead_tags?.name).filter(Boolean),
@@ -445,7 +452,45 @@ async function getLeadContext(admin: any, args: any) {
       historico_etapas: history.data ?? [],
       // Adaptação: tabela `interactions` inexistente na plataforma.
     },
-  };
+  }, partyContext);
+}
+
+/** Party × produtos SaaS da casa. Se a migration do grafo ainda não estiver no banco, cai no produto do lead. Sem lente CNPJ. */
+async function loadHouseMiaPartyContext(admin: any, lead: any) {
+  let catalog: { id: string; name: string }[] = [];
+  const { data: products, error: catalogErr } = await admin
+    .from('platform_crm_products')
+    .select('id, name');
+  if (!catalogErr) {
+    catalog = (products ?? []).map((p: any) => ({ id: String(p.id), name: String(p.name ?? 'Produto') }));
+  }
+
+  const memberships: Array<{ product_id: string | null; lead_id: string | null }> = [];
+  if (lead.product_id) {
+    memberships.push({ product_id: lead.product_id, lead_id: lead.id });
+  }
+  if (lead.party_id) {
+    const { data: rows, error: partyErr } = await admin
+      .from('platform_crm_party_products')
+      .select('product_id, lead_id')
+      .eq('party_id', lead.party_id);
+    if (!partyErr) {
+      for (const row of rows ?? []) {
+        memberships.push({
+          product_id: row.product_id ?? null,
+          lead_id: row.lead_id ?? null,
+        });
+      }
+    }
+  }
+
+  return buildHouseMiaPartyContext({
+    partyId: lead.party_id ?? null,
+    currentLeadId: lead.id,
+    currentProductId: lead.product_id ?? null,
+    memberships,
+    catalog,
+  });
 }
 
 async function fetchConversationForLeadOrId(admin: any, args: any) {
@@ -1151,7 +1196,7 @@ const LLM_TOOLS = [
     type: 'function',
     function: {
       name: 'get_lead_context',
-      description: "Análise contextual completa de um lead: dados básicos, etapa do pipeline, responsável (SDR/closer), tags, notas, tarefas, deals e jornada. Use para perguntas como 'me fale do lead X', 'por que perdemos Y', 'qual a situação de Z'.",
+      description: "Análise contextual completa de um lead: dados básicos, etapa, responsável, tags, notas, tarefas, deals, jornada e produtos SaaS do mesmo party (produtos_da_casa). Use para cross-sell ('já é tenant Beauty; oferecer Ads'). Sem recorte por CNPJ.",
       parameters: {
         type: 'object',
         properties: {
@@ -1381,7 +1426,7 @@ Depois disso, vá direto ao ponto em toda resposta.
 
 O que você faz por baixo dos panos:
 - CONSULTAS de métricas: get_operation_summary / get_team_status / get_unanswered_conversations / get_hot_leads / get_overdue_tasks / get_today_schedule.
-- ANÁLISE CONTEXTUAL: get_lead_context / get_conversation_summary / get_conversation_messages / get_seller_context / get_pipeline_context / get_followup_context / get_daily_ai_summary.
+- ANÁLISE CONTEXTUAL: get_lead_context / get_conversation_summary / get_conversation_messages / get_seller_context / get_pipeline_context / get_followup_context / get_daily_ai_summary. get_lead_context devolve produtos_da_casa (todas as linhas SaaS do mesmo party) e alcada da casa. NUNCA recorte por CNPJ.
 - INBOX E AGENTES IA: find_active_conversation / list_conversations / get_conversation_detail / list_agents / get_agent_workload.
 - CAMPANHAS E CADÊNCIAS: get_campaigns_overview / get_cadences_overview.
 - AGENDA: find_calendar_event.
