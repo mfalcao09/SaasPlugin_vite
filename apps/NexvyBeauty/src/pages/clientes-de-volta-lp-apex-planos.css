@@ -1,0 +1,343 @@
+/* LP-V2-PLANS-PORT — Plans CSS from clientes-de-volta-lp-v2.css.
+   Tokens + rules scoped under .lp-root .planos-wrap so apex stays intact. */
+
+.lp-root .planos-wrap {
+  --bg: #faf7f2;
+  --ink: #2a2124;
+  --muted: #7d6d71;
+  --rose: #c54b60;
+  --rose-2: #d9718a;
+  --rose-soft: rgba(197, 75, 96, .09);
+  --wine: #7c0f24;
+  --terra: #f2dfd5;
+  --card: #ffffff;
+  --paper: #fffdf8;
+  --line: #e5d9d0;
+  --band-bg: #4a0d1c;
+  --band-ink: #f6e9ec;
+  --shadow: 0 30px 70px -30px rgba(86, 16, 31, .32);
+  --shadow-sm: 0 12px 30px -14px rgba(86, 16, 31, .25);
+  position: relative;
+  background: var(--bg);
+  color: var(--ink);
+}
+.lp-root .planos-wrap::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 500px;
+  background: radial-gradient(ellipse, var(--rose-soft), transparent 70%);
+  pointer-events: none;
+}
+.lp-root .planos-wrap .planos-box {
+  margin: 40px auto 0;
+  max-width: 1040px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  outline: 1px solid var(--line);
+  outline-offset: 7px;
+  border-radius: 8px;
+  padding: 54px 54px 48px;
+  box-shadow: var(--shadow);
+  position: relative;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .lp-root .planos-wrap .planos-box { padding: 36px 22px; }
+}
+.lp-root .planos-wrap .planos-box .eyebrow,
+.lp-root .planos-wrap .planos-box h2 {
+  text-align: center;
+  margin-inline: auto;
+}
+.lp-root .planos-wrap .planos-box h2 {
+  margin: 20px 0 0;
+  font-size: clamp(36px, 4.6vw, 56px);
+  line-height: 1.08;
+  font-weight: 400;
+  letter-spacing: -.006em;
+  text-wrap: balance;
+  max-width: none;
+}
+.lp-root .planos-wrap .planos-box h2 em {
+  font-style: italic;
+  color: var(--rose);
+}
+.lp-root .planos-wrap .serie {
+  margin: 40px auto 0;
+  width: fit-content;
+  text-align: center;
+  background: var(--terra);
+  border: 1px solid var(--rose);
+  border-radius: 99px;
+  padding: 12px 28px;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.lp-root .planos-wrap .serie b { color: var(--rose); }
+.lp-root .planos-wrap .planos {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+  position: relative;
+  overflow: visible;
+}
+@media (max-width: 960px) {
+  .lp-root .planos-wrap .planos {
+    grid-template-columns: 1fr;
+    max-width: 460px;
+    margin-inline: auto;
+  }
+}
+.lp-root .planos-wrap .plano {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 38px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  box-shadow: none;
+  outline: none;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.lp-root .planos-wrap .plano:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
+.lp-root .planos-wrap .plano.destaque {
+  background: linear-gradient(160deg, var(--band-bg), #6b1128);
+  color: var(--band-ink);
+  border-color: transparent;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: visible;
+  container-type: normal;
+  outline: none;
+}
+.lp-root .planos-wrap .plano.destaque .p-tag {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 2;
+}
+.lp-root .planos-wrap .p-tag {
+  background: var(--terra);
+  color: var(--wine);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  border-radius: 99px;
+  box-shadow: 0 8px 20px -8px rgba(86, 16, 31, .5);
+  white-space: nowrap;
+}
+.lp-root .planos-wrap .btn {
+  display: inline-block;
+  padding: 16px 30px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 0;
+  box-shadow: none;
+  background: transparent;
+  color: inherit;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, color .18s ease;
+}
+.lp-root .planos-wrap .btn:hover {
+  transform: translateY(-2px);
+  background: transparent;
+  box-shadow: none;
+}
+.lp-root .planos-wrap .btn-quiet {
+  border-color: var(--line);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+}
+.lp-root .planos-wrap .btn-quiet:hover {
+  border-color: var(--rose);
+  color: var(--rose);
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  box-shadow: none;
+}
+.lp-root .planos-wrap .btn-terra {
+  background: var(--terra);
+  color: var(--wine);
+  font-weight: 700;
+}
+.lp-root .planos-wrap .btn-terra:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -12px rgba(86, 16, 31, .55);
+  background: var(--terra);
+  color: var(--wine);
+}
+.lp-root .planos-wrap .plano h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.lp-root .planos-wrap .preco {
+  margin-top: 18px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-size: inherit;
+}
+.lp-root .planos-wrap .preco small {
+  font-size: 15px;
+  font-family: -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+  color: var(--muted);
+}
+.lp-root .planos-wrap .plano.destaque .preco small { color: var(--band-ink); opacity: .7; }
+.lp-root .planos-wrap .p-desc { margin: 14px 0 0; font-size: 13.5px; color: var(--muted); }
+.lp-root .planos-wrap .plano.destaque .p-desc { color: var(--band-ink); opacity: .82; }
+.lp-root .planos-wrap .p-feats {
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  font-size: 14px;
+}
+.lp-root .planos-wrap .p-feats li { display: flex; gap: 10px; font-size: 14px; }
+.lp-root .planos-wrap .p-feats li::before { content: "\2014"; color: var(--rose-2); }
+.lp-root .planos-wrap .plano .btn {
+  margin-top: 30px;
+  text-align: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+}
+.lp-root .planos-wrap .plano.destaque .btn-quiet {
+  border-color: #ffffff55;
+  color: var(--band-ink);
+  background: transparent;
+}
+.lp-root .planos-wrap .plano.destaque .btn-quiet:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.lp-root .planos-wrap .ciclo-sel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  max-width: min(320px, 100%);
+  margin: 18px auto 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 12px;
+  gap: 0;
+  min-width: 0;
+}
+.lp-root .planos-wrap .ciclo-sel[data-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: min(480px, 100%);
+}
+.lp-root .planos-wrap .ciclo-opt {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 44px;
+  padding: 0 6px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background-color .18s ease, color .18s ease, transform .12s ease;
+}
+.lp-root .planos-wrap .ciclo-opt[aria-checked="true"] {
+  background: linear-gradient(135deg, var(--wine), var(--rose));
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lp-root .planos-wrap .ciclo-opt:hover:not(:disabled):not([aria-checked="true"]) {
+    color: var(--ink);
+    background: var(--terra);
+  }
+}
+.lp-root .planos-wrap .ciclo-opt:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: 2px;
+}
+.lp-root .planos-wrap .ciclo-opt:active:not(:disabled) { transform: translateY(1px); }
+.lp-root .planos-wrap .ciclo-opt:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.lp-root .planos-wrap .ciclo-sel[data-state="loading"] .ciclo-opt {
+  opacity: .7;
+  cursor: wait;
+}
+.lp-root .planos-wrap .ciclo-sel[data-state="error"] { border-color: var(--wine); }
+.lp-root .planos-wrap .ciclo-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  .lp-root .planos-wrap .ciclo-hint { white-space: normal; }
+}
+.lp-root .planos-wrap .preco-val {
+  white-space: nowrap;
+  font-size: clamp(34px, 18cqi, 44px);
+}
+.lp-root .planos-wrap .preco-cur {
+  font-size: 0.58em;
+  margin-right: 0.16em;
+}
+.lp-root .planos-wrap .preco-de {
+  display: block;
+  opacity: .55;
+  text-decoration: line-through;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.lp-root .planos-wrap .preco-eq {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-family: -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.lp-root .planos-wrap .plano.destaque .preco-eq { color: var(--band-ink); opacity: .75; }
+.lp-root .planos-wrap .preco-miss {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--muted);
+  white-space: normal;
+}
+.lp-root .planos-wrap .plano.destaque .preco-miss { color: var(--band-ink); opacity: .8; }

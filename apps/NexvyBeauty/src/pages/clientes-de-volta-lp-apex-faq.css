@@ -1,0 +1,95 @@
+/* LP-V2-FAQ-PORT — FAQ CSS from clientes-de-volta-lp-v2.css (+ live lp.css).
+   Tokens + rules scoped under .lp-root #faq so apex stays intact. */
+
+.lp-root #faq {
+  --bg: #faf7f2;
+  --ink: #2a2124;
+  --muted: #7d6d71;
+  --rose: #c54b60;
+  --rose-2: #d9718a;
+  --card: #ffffff;
+  --line: #e5d9d0;
+  --shadow-sm: 0 12px 30px -14px rgba(86, 16, 31, .25);
+  padding: 24px 0 72px;
+}
+
+.lp-root #faq .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--rose);
+}
+
+.lp-root #faq .faq-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0 32px;
+  text-align: center;
+}
+
+.lp-root #faq .faq-eyebrow::before,
+.lp-root #faq .faq-eyebrow::after {
+  content: "";
+  width: 36px;
+  height: 1px;
+  background: var(--rose);
+}
+
+.lp-root #faq .faq {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.lp-root #faq .faq details {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 12px;
+  background: var(--card);
+  overflow: hidden;
+  transition: box-shadow .25s;
+}
+
+.lp-root #faq .faq details[open] {
+  box-shadow: var(--shadow-sm);
+}
+
+.lp-root #faq .faq summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  font-size: 16.5px;
+  font-weight: 600;
+}
+
+.lp-root #faq .faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.lp-root #faq .faq summary::after {
+  content: "+";
+  font-size: 26px;
+  color: var(--rose);
+  font-weight: 300;
+  transition: transform .25s;
+}
+
+.lp-root #faq .faq details[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.lp-root #faq .faq .a {
+  padding: 0 24px 22px;
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 62ch;
+  margin: 0;
+}
