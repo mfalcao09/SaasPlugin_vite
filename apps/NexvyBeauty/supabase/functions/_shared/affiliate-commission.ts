@@ -132,11 +132,14 @@ export async function attributeAffiliateCommission(
 
   const { data: affiliate } = await admin
     .from('affiliates')
-    .select('id, email, status, commission_pct, organization_id, payout_preference')
+    .select('id, email, status, commission_pct, organization_id, payout_preference, program')
     .eq('id', affiliateId)
     .maybeSingle();
 
   if (!affiliate) return { created: false, skipped: 'affiliate not found' };
+  if ((affiliate as { program?: string | null }).program === 'tenant') {
+    return { created: false, skipped: 'tenant program is not platform', affiliateId: affiliate.id };
+  }
   if (affiliate.status !== 'active') {
     return { created: false, skipped: `affiliate ${affiliate.status}`, affiliateId: affiliate.id };
   }

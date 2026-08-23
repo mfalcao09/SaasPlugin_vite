@@ -135,6 +135,8 @@ const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
 const SalaoClientes = lazyWithRetry(() => import("./pages/salao/Clientes"));
 const SalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/Financeiro"));
 const SalaoIndicar = lazyWithRetry(() => import("./pages/salao/IndicarSalao"));
+const SalaoIndicacaoClientes = lazyWithRetry(() => import("./pages/salao/IndicacaoClientes"));
+const PublicTenantReferralStats = lazyWithRetry(() => import("./pages/PublicTenantReferralStats"));
 
 // Global loading fallback
 const PageLoader = () => (
@@ -292,6 +294,7 @@ const App = () => (
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
+              <Route path="/s/:slug/indicacao/:ref" element={<PublicTenantReferralStats />} />
 
               {/* Booking público do módulo CRM da plataforma (Calendly de reunião
                   de venda). PÚBLICO — sem auth/super-admin; anon só fala com as
@@ -441,6 +444,7 @@ const App = () => (
               <Route path="/salao/clientes" element={<ProtectedRoute><SalaoClientes /></ProtectedRoute>} />
               <Route path="/salao/financeiro" element={<ProtectedRoute><SalaoFinanceiro /></ProtectedRoute>} />
               <Route path="/salao/indicar" element={<ProtectedRoute><SalaoIndicar /></ProtectedRoute>} />
+              <Route path="/salao/indicacoes" element={<ProtectedRoute><SalaoIndicacaoClientes /></ProtectedRoute>} />
               <Route
                 path="/perfil"
                 element={

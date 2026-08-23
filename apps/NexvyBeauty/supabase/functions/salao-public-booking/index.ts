@@ -3,6 +3,7 @@
 // cliente por telefone, cria o agendamento na Agenda REAL (origem='publico') e
 // dispara confirmação no WhatsApp via evolution-send (MOAT do NX — fire-and-forget).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { attributeTenantReferralCommission } from '../_shared/affiliate-onda3.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
     const cliente_email = String(b?.cliente_email ?? '').trim().slice(0, 160) || null;
     const observacoes = String(b?.observacoes ?? '').slice(0, 500) || null;
     const tracking = (b?.tracking ?? {}) as Record<string, string>;
+    const ref = String(tracking?.ref ?? b?.ref ?? '').trim();
 
     if (!slug || !/^[0-9a-f-]{36}$/i.test(servico_id) || !/^[0-9a-f-]{36}$/i.test(profissional_id)
       || !/^\d{4}-\d{2}-\d{2}$/.test(data) || !/^\d{2}:\d{2}$/.test(hora)
@@ -139,6 +141,21 @@ Deno.serve(async (req) => {
         }
       }
     } catch (_) { /* fire-and-forget: nunca derruba o agendamento */ }
+
+    // Onda 3: atribuição no booking do salão (não no checkout Cakto da plataforma).
+    // Fire-and-forget — nunca derruba o agendamento. Pacote online continua desativado.
+    if (ref) {
+      try {
+        await attributeTenantReferralCommission(sb as any, {
+          ownerOrganizationId: org.id,
+          refCode: ref,
+          bookingId: ag.id,
+          amountReais: Number(serv.preco_base),
+          buyerClienteId: cliente_id,
+          buyerEmail: cliente_email,
+        });
+      } catch (_) { /* atribuição não pode impedir o horário */ }
+    }
 
     return json({ id: ag.id, data: ag.data, hora: ag.hora, whatsapp_enviado });
   } catch (e) {

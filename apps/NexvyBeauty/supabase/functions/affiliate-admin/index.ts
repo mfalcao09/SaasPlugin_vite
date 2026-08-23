@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
             status,
             commission_pct: pctPercent,
             notes: body.notes ?? null,
+            program: 'platform',
           })
           .select('*')
           .single();
@@ -306,6 +307,7 @@ Deno.serve(async (req) => {
         let q = admin
           .from('affiliates')
           .select('*', { count: 'exact' })
+          .eq('program', 'platform')
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
         if (status) q = q.eq('status', status);
@@ -361,6 +363,7 @@ Deno.serve(async (req) => {
         let q = admin
           .from('affiliate_commissions')
           .select('*', { count: 'exact' })
+          .eq('program', 'platform')
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
         if (body.affiliate_id) q = q.eq('affiliate_id', body.affiliate_id);

@@ -253,3 +253,7 @@ verify_jwt = false
 # Dono de salão cliente gera link (JWT do tenant).
 [functions.affiliate-salon]
 verify_jwt = true
+
+# Onda 3 — programa de indicação do SALÃO (cliente indica amiga). JWT do tenant.
+[functions.tenant-referral]
+verify_jwt = true
