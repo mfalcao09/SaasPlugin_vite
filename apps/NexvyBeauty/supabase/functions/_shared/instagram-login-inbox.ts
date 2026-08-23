@@ -100,14 +100,18 @@ export function igsidFromVisitorId(visitorId: string | null | undefined): string
   return normalizeIgsid(visitorId);
 }
 
+function uuidOrNull(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+    ? raw
+    : null;
+}
+
 export function connectionIdFromConversationMetadata(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== 'object') return null;
   const m = metadata as Record<string, unknown>;
-  const id = m.instagram_login_connection_id;
-  if (typeof id !== 'string') return null;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-    ? id
-    : null;
+  return uuidOrNull(m.instagram_login_connection_id)
+    ?? uuidOrNull(m.instagram_connection_id);
 }
 
 export function buildConversationMetadata(
@@ -117,6 +121,7 @@ export function buildConversationMetadata(
   return {
     channel: 'instagram',
     instagram_login_connection_id: connectionId,
+    instagram_connection_id: connectionId,
     ...(identity.igsid ? { ig_sender_id: identity.igsid } : {}),
     ...(identity.username ? { ig_username: identity.username } : {}),
   };
