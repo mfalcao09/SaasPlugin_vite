@@ -11,6 +11,7 @@ import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoi
 import { FooterDecoration } from "@/components/layout/FooterDecoration";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
+import { AffiliateRoute } from "@/components/auth/AffiliateRoute";
 import { HostConfinementGuard } from "@/components/auth/HostConfinementGuard";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
@@ -73,6 +74,7 @@ const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
+const AffiliatePortal = lazyWithRetry(() => import("./pages/afiliado/AffiliatePortal"));
 const PlatformShell = lazyWithRetry(() => import("./components/superadmin/platform-shell/PlatformShell"));
 const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -450,6 +452,14 @@ const App = () => (
                     <Settings />
                   </ProtectedRoute>
                 } 
+              />
+              <Route
+                path="/afiliado"
+                element={
+                  <AffiliateRoute>
+                    <AffiliatePortal />
+                  </AffiliateRoute>
+                }
               />
               <Route
                 path="/super-admin"
