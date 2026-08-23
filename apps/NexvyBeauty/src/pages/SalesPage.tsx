@@ -38,7 +38,7 @@ const SALES_WHATSAPP = '5511955021205';
 // Client-only: guardado por typeof window (a LP nunca é SSR, mas o guard evita
 // crash caso o bundle rode em contexto sem window).
 function buildPilotoWhatsAppUrl(): string {
-  const base = 'Oi! Quero saber mais sobre o Piloto Fundadora 💅';
+  const base = 'Oi! Quero ver como ficaria no meu espaço';
   const params =
     typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   // origem sempre presente ('lp-piloto'); UTMs só entram se existirem (sufixo enxuto).
@@ -482,15 +482,13 @@ export default function SalesPage() {
         <div className="mx-auto max-w-4xl">
           <Card className="relative overflow-hidden border-0 bg-zinc-900 text-white shadow-2xl shadow-[#c54b60]/20">
             <CardContent className="p-10 md:p-12">
-              <Badge className={`${GRADIENT} text-white shadow-lg`}>Piloto Fundadora · 30 vagas em 30 dias</Badge>
+              <Badge className={`${GRADIENT} text-white shadow-lg`}>Agenda Lotada sem Contratar</Badge>
               <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
-                Cliente de Volta — <span className={GRADIENT_TEXT}>30 dias</span> para recuperar
-                dinheiro parado na sua carteira
+                Agenda lotada — <span className={GRADIENT_TEXT}>sem contratar</span> gente nova
               </h2>
               <p className="mt-4 text-lg text-zinc-300">
-                Para salões, nails, lash, sobrancelhas, podologia e estética: a IA varre sua
-                carteira, mostra quem sumiu e quanto vale, escreve a mensagem e dispara pelo
-                <strong> seu</strong> WhatsApp — você só aprova.
+                Para salões, nails, lash, sobrancelhas, podologia e estética: recepção 24/7, quem
+                sumiu e quem não fechou, no <strong>seu</strong> WhatsApp — você só aprova.
               </p>
               <ul className="mt-8 grid gap-3 md:grid-cols-2">
                 {[
@@ -506,12 +504,10 @@ export default function SalesPage() {
                 ))}
               </ul>
               <div className="mt-8 rounded-xl border border-[#d9718a]/30 bg-[#c54b60]/10 p-5">
-                <p className="text-sm font-semibold text-[#e6a2b3]">Garantia do piloto</p>
+                <p className="text-sm font-semibold text-[#e6a2b3]">A gente mostra, não promete</p>
                 <p className="mt-1 text-zinc-200">
-                  Se em 30 dias corridos <strong>a partir do seu setup</strong> o painel não mostrar
-                  clientes recuperadas somando mais que a sua mensalidade,
-                  <strong> devolvemos 100% do que você pagou</strong> — e o seu link de agendamento
-                  fica configurado.
+                  Nada sai para a sua cliente sem você aprovar. Arrependimento de 7 dias (CDC),
+                  sem letra miúda e sem promessa de resultado.
                 </p>
               </div>
               {/* CTA principal do piloto: WhatsApp direto de vendas (funil autopilot).
@@ -522,13 +518,11 @@ export default function SalesPage() {
               <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                 <Button asChild size="lg" className={`${GRADIENT} px-8 text-white hover:opacity-90`}>
                   <a href={buildPilotoWhatsAppUrl()} target="_blank" rel="noopener noreferrer">
-                    Quero uma vaga do piloto <ArrowRight className="ml-2 h-4 w-4" />
+                    Veja como ficaria no seu espaço <ArrowRight className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
                 <p className="text-sm text-zinc-400">
-                  Entra no máximo <strong className="text-zinc-200">1 negócio novo por dia</strong> — é o
-                  limite real do acompanhamento 1-a-1. Vaga do dia não vendida não acumula. Depois das 30,
-                  o NexvyBeauty continua aberto — sem as condições de fundadora.
+                  Recepcionista 24/7, quem sumiu e quem não fechou — a EquipIA no seu WhatsApp.
                 </p>
               </div>
               <button

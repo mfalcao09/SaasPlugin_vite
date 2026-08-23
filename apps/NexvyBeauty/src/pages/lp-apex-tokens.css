@@ -1,0 +1,85 @@
+/* Hallmark tokens · live apex LP (scoped — do not leak into the app shell)
+ * studied-DNA from src/pages/clientes-de-volta-lp.css + src/index.css Beauty Rosé
+ * Paper is cream. Wine is NOT paper. Sage is a supporting wash, not the identity.
+ */
+.lp-root {
+  /* Recovered hex → OKLCH (clientes-de-volta-lp.css L14–23, index.css L19–119) */
+  --color-paper: oklch(97.7% 0.007 81); /* #faf7f2 cream */
+  --color-paper-2: oklch(95.5% 0.012 75); /* #f5efe7 cream-2 */
+  --color-paper-3: oklch(91.6% 0.025 50); /* #f2dfd5 terra */
+  --color-sage-wash: oklch(95.2% 0.018 154); /* soft sálvia paper, not dark wine */
+  --color-sage: oklch(58% 0.09 154); /* #4c8a62 index.css --chart-5 / success */
+  --color-rule: oklch(89.2% 0.018 59); /* #e5d9d0 line */
+  --color-rule-2: oklch(82% 0.02 50);
+  --color-neutral: oklch(55.1% 0.021 1); /* #7d6d71 muted */
+  --color-muted: oklch(55.1% 0.021 1);
+  --color-ink: oklch(25.9% 0.015 356); /* #2a2124 */
+  --color-ink-2: oklch(42% 0.018 356);
+  --color-accent: oklch(58.2% 0.156 13); /* #c54b60 rosé */
+  --color-accent-2: oklch(67.4% 0.132 6); /* #d9718a rose-2 */
+  --color-accent-soft: oklch(58.2% 0.156 13 / 0.09); /* --rose-soft */
+  --color-accent-ink: oklch(97.7% 0.007 81);
+  --color-accent-deep: oklch(40.6% 0.161 22); /* #8c041d wine — buttons/banner only */
+  --color-focus: oklch(58.2% 0.156 13);
+  --color-sheet: oklch(99.4% 0.007 89); /* #fffdf8 paper */
+  --color-sheet-2: oklch(95.5% 0.012 75);
+  --color-sheet-ink: oklch(25.9% 0.015 356);
+  --color-sheet-muted: oklch(55.1% 0.021 1);
+  --color-sheet-rule: oklch(89.2% 0.018 59);
+  --color-sheet-accent: oklch(58.2% 0.156 13);
+  --color-danger: oklch(58% 0.18 25);
+  --color-ok: oklch(58% 0.09 154);
+  --color-warm: oklch(64.2% 0.107 39); /* #c4755b terracotta */
+  --color-hot: oklch(68% 0.14 55);
+  --color-cool: oklch(55% 0.12 250);
+
+  --font-display: "Didot", "Bodoni MT", "Playfair Display", Georgia, serif;
+  --font-body: -apple-system, "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+  --page-gutter: clamp(1rem, 4vw, 2.5rem);
+  --banner-h: 0px;
+  --bar-h: 4rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.9531rem;
+  --text-2xl: 2.4414rem;
+  --text-3xl: 3.0518rem;
+  --text-display: clamp(2.25rem, 4.6vw + 0.5rem, 4.25rem);
+  --text-display-s: clamp(1.85rem, 3vw + 0.5rem, 3rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --rule-hair: 1px;
+  --radius-input: 0.5rem;
+  --radius-cta: 0.75rem; /* original .btn 12px — rounded rect, not pill */
+  --radius-card: 1.125rem; /* original album 18px */
+  --radius-chip: 0.75rem;
+
+  --shadow-sm: 0 12px 30px -14px oklch(29.9% 0.106 21 / 0.25);
+  --shadow-lg: 0 30px 70px -30px oklch(29.9% 0.106 21 / 0.32);
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 200;
+  --z-nav: 300;
+  --z-modal: 400;
+}

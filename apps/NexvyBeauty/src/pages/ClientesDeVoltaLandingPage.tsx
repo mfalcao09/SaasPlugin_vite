@@ -1,5 +1,5 @@
 /**
- * LP "Clientes de Volta" (portada do Lovable, project 304b956f).
+ * LP apex /vendas — oferta "Agenda Lotada sem Contratar".
  * Extraída de src/routes/index.tsx (TanStack Start) → página React 18.
  * Serve o APEX (nexvybeauty.com.br) e /vendas.
  *
@@ -11,7 +11,8 @@
  *   P5 PREÇO → 100% de public_plans (cards + calculadora). ZERO preço hardcoded nesta página.
  *   P6 modal Cofounder → posta no edge público `platform-form-submit` (slug `interesse-cofounder`),
  *      com loading/sucesso/erro tratados. Block IDs resolvidos em RUNTIME via {action:'load'}.
- *   BUG id="como-funciona" duplicado → Modulos virou id="modulos"; o nav aponta pra "Como Funciona".
+ *   BUG id="como-funciona" duplicado → Modulos ficou id="modulos".
+ *   #como-funciona agora é a seção das 3 cadeiras (ex-#como-fica); nav aponta para ela.
  *   P8 og:image / meta social → asset gerado A PARTIR DESTA LP (paleta/Didot/promessa do hero):
  *      public/og-clientes-de-volta.png (1200×630). As tags og:/twitter: vivem no index.html
  *      ESTÁTICO (o crawler não executa JS) — NÃO injetar daqui/helmet, senão o preview vem vazio.
@@ -29,7 +30,11 @@ import { Link } from "react-router-dom";
 import { usePublicPlans, type PublicPlan } from "@/hooks/usePlatformPlans";
 import { supabase } from "@/integrations/supabase/client";
 import { captureTrackingFromUrl, getTracking } from "@/lib/tracking";
-import "./clientes-de-volta-lp.css";
+import "./lp-apex-tokens.css";
+import "./clientes-de-volta-lp-apex.css";
+import "./clientes-de-volta-lp-apex-islands.css";
+import "./clientes-de-volta-lp-apex-planos.css";
+import "./clientes-de-volta-lp-apex-faq.css";
 
 /* ── formatação BRL (igual ao protótipo) ── */
 const BRL = new Intl.NumberFormat("pt-BR", {
@@ -37,17 +42,18 @@ const BRL = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
   maximumFractionDigits: 0,
 });
+const BRL_NUM = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
 
 /* ── P2: WhatsApp comercial (NEXVY_VENDAS, número oficial) — Hero + Raio-X + rodapé ── */
 const WHATSAPP_URL =
   "https://wa.me/5511955021205?text=" +
-  encodeURIComponent("Oi! Vim pela página e quero o Raio-X da minha carteira.");
+  encodeURIComponent("Oi! Quero ver como ficaria no meu espaço");
 
 /* ── P3: login "Entrar" → app do salão ── */
 const APP_URL = "https://app.nexvybeauty.com.br";
 
 /* ── P4: Instagram oficial ── */
-const INSTAGRAM_URL = "https://instagram.com/nexvytech";
+const INSTAGRAM_URL = "https://www.instagram.com/nexvybeauty.br";
 
 /* ── P6: form público do Programa Cofounder (platform_crm_forms.slug) ── */
 const COFOUNDER_FORM_SLUG = "interesse-cofounder";
@@ -123,18 +129,45 @@ function findPlan(plans: PublicPlan[] | undefined, slug: string): PublicPlan | u
   return (plans ?? []).find((p) => p.slug === slug && p.is_public);
 }
 
-/* ── rotação A/B/C de eyebrow + headline (variante rastreável por cookie) ── */
-const EYEBROWS = [
-  "A SUA NOVA MÁQUINA DE LOTAR AGENDA, RECUPERAR CLIENTES E FAZER DINHEIRO",
-  "O dinheiro que já é seu — só que parado",
-  "Antes de pagar, a gente te mostra o número",
-];
-type Seg = { t: string; em?: boolean };
-const HEADS: Seg[][] = [
-  [{ t: "Agenda cheia," }, { t: "sem gastar com anúncio —" }, { t: "com quem já é sua cliente.", em: true }],
-  [{ t: "5 minutos por dia." }, { t: "Clientes que somem," }, { t: "voltando sozinhas.", em: true }],
-  [{ t: "Antes de pagar," }, { t: "a gente te mostra" }, { t: "o dinheiro que está parado.", em: true }],
-];
+type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+/** Anual só existe se o banco trouxe price_yearly > 0. Nunca derivar 10×. */
+function hasYearlyPrice(plan?: PublicPlan): boolean {
+  return Number(plan?.price_yearly) > 0;
+}
+
+/** Trimestral só existe se o banco trouxe price_quarterly > 0. */
+function hasQuarterlyPrice(plan?: PublicPlan): boolean {
+  return Number(plan?.price_quarterly) > 0;
+}
+
+function cyclePrice(plan: PublicPlan, cycle: BillingCycle): number | null {
+  if (cycle === "yearly") {
+    const yearly = Number(plan.price_yearly);
+    return yearly > 0 ? yearly : null;
+  }
+  if (cycle === "quarterly") {
+    const quarterly = Number(plan.price_quarterly);
+    return quarterly > 0 ? quarterly : null;
+  }
+  const monthly = Number(plan.price_monthly);
+  return Number.isFinite(monthly) ? monthly : null;
+}
+
+/** Mensal usa checkout_url. Trimestral/anual usam a URL do ciclo; se só existir um, reusa mensal. */
+function cycleCheckout(plan: PublicPlan | undefined, cycle: BillingCycle): string | null {
+  if (!plan) return null;
+  if (cycle === "yearly") return plan.checkout_url_yearly || plan.checkout_url || null;
+  if (cycle === "quarterly") return plan.checkout_url_quarterly || plan.checkout_url || null;
+  return plan.checkout_url || null;
+}
+
+/* Hero live — woman + official isolated cards + live Canva headline (not a full-page PNG). */
+const HERO_WOMAN_SRC = "/hero/hero-woman.png";
+const HERO_CARD_INBOX_SRC = "/hero/NB-card-ana.png";
+const HERO_CARD_SEMANA_SRC = "/hero/NB-card-juliana.png";
+const NAV_LOGO_SRC = "/email/logo-v1-light.png";
+const HERO_ART_BG = "#410c18";
 
 /* ============================================================================
    Página
@@ -209,7 +242,7 @@ export default function LandingPage() {
      TODO(porte-B): pra zero-FOUT em produção, a controladora pode mover o <link> pro index.html. */
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "NexvyBeauty — Recupere clientes que sumiram pelo seu WhatsApp";
+    document.title = "NexvyBeauty: Feito com ❤️, para quem faz acontecer 🚀💪";
     const links: HTMLLinkElement[] = [];
     const add = (attrs: Record<string, string>) => {
       const l = document.createElement("link");
@@ -221,7 +254,7 @@ export default function LandingPage() {
     add({ rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" });
     add({
       rel: "stylesheet",
-      href: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap",
+      href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@600;700&display=swap",
     });
     return () => {
       document.title = prevTitle;
@@ -276,431 +309,135 @@ export default function LandingPage() {
     };
   }, []);
 
-  // data-theme="light" trava a paleta oficial: o bloco prefers-color-scheme:dark
-  // do clientes-de-volta-lp.css exclui [data-theme="light"] — sem isso, celular em
-  // modo escuro rendia a variante dark nunca aprovada.
+  // data-theme="light" trava a paleta Hallmark desta LP (tokens em .lp-root).
+  // Sem isto, um prefers-color-scheme:dark residual do app shell pode vazar.
   return (
-    <div className="lp-root" data-theme="light" ref={rootRef} id="top">
+    <div className="lp-root lp-apex" data-theme="light" ref={rootRef} id="top">
       <div id="progress" ref={progressRef} />
 
       <Nav />
       <Hero />
-      <Calculadora />
-      <RaioXDaCarteira />
-      <EyeSection />
       <Nichos />
-      <OQueResolvemos />
-      <Modulos />
+      <EyeSection />
+      <ComoFicaria />
       <Equipia />
-      <ComoFunciona />
       <Planos />
-      {/* Logo DEPOIS dos planos, de propósito: a objeção "tá caro" nasce ao ver
-          o preço, e é ali que a conta do mercado responde. */}
-      <Comparativo />
-      <ChamadaPosPlanos />
-      <Cofounder />
       <Faq />
       <Footer />
     </div>
   );
 }
 
-/* ── NAV transparente ── */
+/* ── Nav (sticky burgundy bar; Entrar on hero, CTA past hero) ── */
 function Nav() {
+  const navRef = useRef<HTMLElement>(null);
+  const [onHero, setOnHero] = useState(true);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const hero = () => document.querySelector<HTMLElement>(".hero.hero-live");
+    const syncHero = () => {
+      const section = hero();
+      if (!section) return;
+      const navBottom = nav.getBoundingClientRect().bottom;
+      setOnHero(section.getBoundingClientRect().bottom > navBottom + 24);
+    };
+    const onScroll = () => {
+      syncHero();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const section = hero();
+    let io: IntersectionObserver | null = null;
+    if (section && "IntersectionObserver" in window) {
+      io = new IntersectionObserver(() => syncHero(), {
+        threshold: [0, 0.12, 0.35, 0.6, 1],
+      });
+      io.observe(section);
+    }
+    syncHero();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      io?.disconnect();
+    };
+  }, []);
+
   return (
-    <nav>
-      <div className="nav-in">
-        <a href="#top" className="wordmark serif">
-          Nexvy<em>Beauty</em>
+    <header className={`nav${onHero ? " is-on-hero" : " is-past-hero"}`} ref={navRef} id="nav">
+      <div className="nav-bar">
+        <a href="#top" className="wordmark wordmark-logo">
+          <img src={NAV_LOGO_SRC} alt="NexvyBeauty" width={722} height={163} />
         </a>
-        <div className="nav-links">
-          <a href="#para-quem">Para Quem?</a>
-          <a href="#o-que-resolvemos">O que resolvemos</a>
+        <nav className="nav-cluster" aria-label="Seções">
           <a href="#como-funciona">Como Funciona</a>
-          <a href="#equipia">Sua EquipIA</a>
-          <a href="#calc">Onde está seu dinheiro?</a>
+          <a href="#equipia">EquipIA</a>
           <a href="#planos">Planos</a>
-        </div>
-        <div className="nav-cta">
-          {/* P3: login do salão. */}
-          <a className="btn btn-quiet btn-sm" href={APP_URL}>
+        </nav>
+        <div className="nav-end">
+          <a className="nav-login" href={APP_URL}>
             Entrar
           </a>
-          <a className="btn btn-rose btn-sm" href="#planos">
-            Assine Já!
+          <a className="btn btn-sm nav-cta-wide" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+            Veja como ficaria no seu espaço
           </a>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
 
-/* ── HERO (eyebrow/headline A/B/C + álbum de 3 telas) ── */
+/* ── HERO — live HTML/CSS from Canva DAHS_zHCndY (woman + cards + live type + CTA) ── */
 function Hero() {
-  const eyebrowRef = useRef<HTMLSpanElement>(null);
-  const headlineRef = useRef<HTMLHeadingElement>(null);
-  const slidesRef = useRef<HTMLDivElement>(null);
-  const dotsRef = useRef<HTMLDivElement>(null);
-  const prevRef = useRef<HTMLButtonElement>(null);
-  const nextRef = useRef<HTMLButtonElement>(null);
-
-  /* variante rastreável (mutação de DOM direta como no protótipo — sem re-render) */
-  useEffect(() => {
-    try {
-      // D2 (2026-07-19): variante CONGELADA na 0 durante o teste A/B de PÚBLICO do
-      // Meta — o sorteio (Math.random) criava uma 2ª variável não-medida que
-      // contaminava o teste e fazia o algoritmo otimizar contra página instável.
-      // Para reativar a rotação: religar o sorteio JUNTO com medição por variante.
-      const ei = 0;
-      const hi = 0;
-      if (eyebrowRef.current) eyebrowRef.current.textContent = EYEBROWS[ei];
-      const h1 = headlineRef.current;
-      if (h1) {
-        while (h1.firstChild) h1.removeChild(h1.firstChild);
-        HEADS[hi].forEach((seg, i) => {
-          if (i > 0) h1.appendChild(document.createElement("br"));
-          if (seg.em) {
-            const em = document.createElement("em");
-            em.textContent = seg.t;
-            h1.appendChild(em);
-          } else {
-            h1.appendChild(document.createTextNode(seg.t));
-          }
-        });
-      }
-      document.cookie = "nx_lp_var=eb" + ei + "-hl" + hi + "; path=/; max-age=2592000; SameSite=Lax";
-    } catch {
-      /* fallback estático já está no JSX */
-    }
-  }, []);
-
-  /* álbum de screenshots (swipe + dots + setas + auto-avanço 6s) */
-  useEffect(() => {
-    const slides = slidesRef.current;
-    const dotsWrap = dotsRef.current;
-    const prevBtn = prevRef.current;
-    const nextBtn = nextRef.current;
-    if (!slides || !dotsWrap || !prevBtn || !nextBtn) return;
-    const album = slides.closest(".album");
-    if (!album) return;
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const dots = Array.from(dotsWrap.querySelectorAll<HTMLElement>("i"));
-    let cur = 0;
-    const N = slides.children.length;
-    let timer: number | null = null;
-
-    const goSlide = (i: number) => {
-      cur = (i + N) % N;
-      slides.style.transform = "translateX(" + -cur * 100 + "%)";
-      dots.forEach((d, j) => (d.className = j === cur ? "on" : ""));
-    };
-    const stopAlbum = () => {
-      if (timer) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    };
-    const autoAlbum = () => {
-      stopAlbum();
-      if (!reduced) timer = window.setInterval(() => goSlide(cur + 1), 6000);
-    };
-
-    const onPrev = () => {
-      goSlide(cur - 1);
-      autoAlbum();
-    };
-    const onNext = () => {
-      goSlide(cur + 1);
-      autoAlbum();
-    };
-    prevBtn.addEventListener("click", onPrev);
-    nextBtn.addEventListener("click", onNext);
-    const dotHandlers = dots.map((d, j) => {
-      const h = () => {
-        goSlide(j);
-        autoAlbum();
-      };
-      d.addEventListener("click", h);
-      return h;
-    });
-
-    const onEnter = () => stopAlbum();
-    const onLeave = () => autoAlbum();
-    album.addEventListener("pointerenter", onEnter);
-    album.addEventListener("pointerleave", onLeave);
-
-    let x0: number | null = null;
-    const onDown = (e: Event) => {
-      const pe = e as PointerEvent;
-      x0 = pe.clientX;
-      slides.classList.add("drag");
-      try {
-        slides.setPointerCapture(pe.pointerId);
-      } catch {
-        /* noop */
-      }
-    };
-    const onMove = (e: Event) => {
-      const pe = e as PointerEvent;
-      if (x0 !== null) {
-        const dx = pe.clientX - x0;
-        slides.style.transform = "translateX(calc(" + -cur * 100 + "% + " + dx + "px))";
-      }
-    };
-    const endDrag = (e: Event) => {
-      const pe = e as PointerEvent;
-      if (x0 === null) return;
-      slides.classList.remove("drag");
-      const dx = pe.clientX - x0;
-      x0 = null;
-      if (Math.abs(dx) > 44) goSlide(cur + (dx < 0 ? 1 : -1));
-      else goSlide(cur);
-      autoAlbum();
-    };
-    slides.addEventListener("pointerdown", onDown);
-    slides.addEventListener("pointermove", onMove);
-    slides.addEventListener("pointerup", endDrag);
-    slides.addEventListener("pointercancel", endDrag);
-
-    goSlide(0);
-    autoAlbum();
-
-    return () => {
-      stopAlbum();
-      prevBtn.removeEventListener("click", onPrev);
-      nextBtn.removeEventListener("click", onNext);
-      dots.forEach((d, j) => d.removeEventListener("click", dotHandlers[j]));
-      album.removeEventListener("pointerenter", onEnter);
-      album.removeEventListener("pointerleave", onLeave);
-      slides.removeEventListener("pointerdown", onDown);
-      slides.removeEventListener("pointermove", onMove);
-      slides.removeEventListener("pointerup", endDrag);
-      slides.removeEventListener("pointercancel", endDrag);
-    };
-  }, []);
-
   return (
-    <header className="hero">
-      <div className="wrap hero-grid">
-        <div>
-          <span className="eyebrow" ref={eyebrowRef}>
-            Agenda cheia com quem já é sua cliente
-          </span>
-          <h1 className="serif" ref={headlineRef}>
-            Agenda cheia,
-            <br />
-            sem gastar com anúncio —
-            <br />
-            <em>com quem já é sua cliente.</em>
-          </h1>
-          <p className="hero-sub">
-            Em <b>5 minutos por dia</b>, <b>sem gastar com anúncio</b>: a sua EquipIA varre suas conversas de WhatsApp,
-            acha quem sumiu, escreve a mensagem no seu tom — e <b>você só aprova</b>. Antes de pagar um centavo, a gente
-            te mostra <b>quanto dá para recuperar em 30 dias</b>, com a sua base.
-          </p>
-          <div className="hero-ctas">
-            <a
-              className="btn btn-rose"
-              href={WHATSAPP_URL}
-              onClick={() => fbqTrack("Lead", { content_name: "raiox_hero", content_category: "whatsapp_cta" })}
-            >
-              Quero meu Raio-X grátis
-            </a>
-            <a className="btn btn-quiet" href="#equipia">
-              Ver demonstração e entender como o sistema funciona
-            </a>
-          </div>
+    <header className="hero hero-live" style={{ backgroundColor: HERO_ART_BG }}>
+      <div className="hero-live-stage">
+        <div className="hero-live-visual">
+          <img
+            className="hero-live-card hero-live-card-inbox"
+            src={HERO_CARD_INBOX_SRC}
+            alt=""
+            width={2000}
+            height={1280}
+            decoding="async"
+          />
+          <img
+            className="hero-live-card hero-live-card-semana"
+            src={HERO_CARD_SEMANA_SRC}
+            alt=""
+            width={2000}
+            height={1280}
+            decoding="async"
+          />
+          <img
+            className="hero-live-woman"
+            src={HERO_WOMAN_SRC}
+            alt=""
+            width={964}
+            height={1422}
+            decoding="async"
+            fetchPriority="high"
+          />
         </div>
-
-        <div className="stage" aria-hidden="true">
-          <div className="album">
-            <div className="slides-clip">
-              <div className="slides" ref={slidesRef}>
-                {/* slide 1 — radar EquipIA */}
-                <div className="slide">
-                  <div className="mock">
-                    <div className="mock-bar">
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                    </div>
-                    <div className="mock-body">
-                      <div className="radar-t">É assim que a sua EquipIA acha dinheiro para você</div>
-                      <p className="radar-s">
-                        Toda manhã ela varre suas conversas e te entrega quem dá para reconquistar — com a mensagem já
-                        pronta.
-                      </p>
-                      <div className="radar">
-                        <div>
-                          <div className="rl">↗ Recuperável esta semana</div>
-                          <div className="rvl">R$ 450,00</div>
-                          <div className="rs">
-                            Sua EquipIA encontrou <strong>3 clientes</strong> que dá para reconquistar com uma mensagem.
-                          </div>
-                        </div>
-                      </div>
-                      <div className="triage">
-                        <div className="tri hot">
-                          <div className="tt">
-                            <span>Prontas para fechar</span>
-                            <span>2</span>
-                          </div>
-                          <div className="tv">R$ 330,00</div>
-                          <div className="td">Quase fechando — chama hoje</div>
-                        </div>
-                        <div className="tri warm">
-                          <div className="tt">
-                            <span>Vale um lembrete</span>
-                            <span>1</span>
-                          </div>
-                          <div className="tv">R$ 120,00</div>
-                          <div className="td">Um carinho reacende</div>
-                        </div>
-                        <div className="tri cold">
-                          <div className="tt">
-                            <span>Esfriaram</span>
-                            <span>0</span>
-                          </div>
-                          <div className="tv">R$ 0,00</div>
-                          <div className="td">Sumiram faz tempo</div>
-                        </div>
-                      </div>
-                      <div className="ops-label">As 3 melhores oportunidades de hoje</div>
-                      <div className="ops">
-                        <div className="op">
-                          <span className="otag">Prioridade alta</span>
-                          <h4>8 clientes inativas há mais de 45 dias</h4>
-                          <p>Mensagem personalizada pronta para o seu WhatsApp.</p>
-                          <span className="oi">Impacto estimado · +R$ 2.800</span>
-                        </div>
-                        <div className="op">
-                          <span className="otag">Padrão detectado</span>
-                          <h4>Terças, 14h–16h: três horários vagos</h4>
-                          <p>Sugestão: promoção de manicure expressa.</p>
-                          <span className="oi">3 horários recuperáveis/semana</span>
-                        </div>
-                        <div className="op equipia">
-                          <span className="otag">Sua EquipIA · agora</span>
-                          <h4>Acabei de confirmar a Fernanda das 10:30 e chamei 4 clientes que sumiram. 💅</h4>
-                          <span className="oi">+R$ 720 em retorno estimado</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* slide 2 — agenda do dia */}
-                <div className="slide">
-                  <div className="mock">
-                    <div className="mock-bar">
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                    </div>
-                    <div className="mock-body">
-                      <div className="mock-head">
-                        <span className="mock-hi serif">Bom dia, Marina 🌸</span>
-                        <span className="chip">Recuperado no mês&nbsp; R$ 2.180</span>
-                      </div>
-                      <div className="kpis">
-                        <div className="kpi">
-                          <div className="kl">Agendamentos hoje</div>
-                          <div className="kv">
-                            8 <small>· 2 a confirmar</small>
-                          </div>
-                        </div>
-                        <div className="kpi">
-                          <div className="kl">Faturamento previsto</div>
-                          <div className="kv">
-                            R$ 1.240 <small>· hoje</small>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mock-rows">
-                        <div className="mock-row">
-                          <span className="h">09:00</span>
-                          <span>
-                            Juliana Alves <span className="s">· design de sobrancelha</span>
-                          </span>
-                          <span className="v">R$ 80</span>
-                        </div>
-                        <div className="mock-row">
-                          <span className="h">10:30</span>
-                          <span>
-                            Fernanda Rocha <span className="s">· cílios volume brasileiro</span>
-                          </span>
-                          <span className="v">R$ 180</span>
-                        </div>
-                        <div className="mock-row">
-                          <span className="h">13:00</span>
-                          <span>
-                            Patrícia Menezes <span className="s">· fibra de vidro</span>
-                          </span>
-                          <span className="v">R$ 250</span>
-                        </div>
-                        <div className="mock-row">
-                          <span className="h">15:00</span>
-                          <span>
-                            Camila Duarte <span className="s">· manutenção fio a fio</span>
-                          </span>
-                          <span className="v">R$ 120</span>
-                        </div>
-                        <div className="mock-row">
-                          <span className="h">17:00</span>
-                          <span>
-                            Beatriz Lima <span className="s">· spa das mãos</span>
-                          </span>
-                          <span className="v">R$ 110</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* slide 3 — WhatsApp */}
-                <div className="slide">
-                  <div className="mock">
-                    <div className="mock-bar">
-                      <i></i>
-                      <i></i>
-                      <i></i>
-                    </div>
-                    <div className="mock-body">
-                      <div className="radar-t">Sua EquipIA no WhatsApp</div>
-                      <p className="radar-s">Ela escreve com o seu tom — você só aprova.</p>
-                      <div className="wchat">
-                        <div className="wmsg out">
-                          Oi, Fernanda! 💕 Sentimos sua falta — seu último volume brasileiro já faz 52 dias. Que tal
-                          renovar essa semana?
-                        </div>
-                        <div className="wmsg in">Aiii verdade!! Tem horário quinta de manhã? 😅</div>
-                        <div className="wmsg out">Tenho sim! Quinta às 10h30 com a Ana. Confirmo pra você?</div>
-                        <div className="wmsg in">Fechado! 🥰</div>
-                        <div className="wmsg out">Agendado ✨ Te espero quinta!</div>
-                      </div>
-                      <div className="wfoot">
-                        <span>Reativação concluída</span>
-                        <b>+R$ 180 recuperados</b>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button className="anav prev" ref={prevRef} type="button" aria-label="Tela anterior">
-              ‹
-            </button>
-            <button className="anav next" ref={nextRef} type="button" aria-label="Próxima tela">
-              ›
-            </button>
-            <div className="dots" ref={dotsRef}>
-              <i className="on"></i>
-              <i></i>
-              <i></i>
-            </div>
-          </div>
-          <p className="mock-caption serif">O seu dia, organizado por quem entende do seu negócio.</p>
+        <h1 className="hero-live-copy">
+          <span className="hero-live-kicker">NÃO CONTRATE</span>
+          {" "}
+          <span className="hero-live-word">ATENDENTE</span>
+          {" "}
+          <span className="hero-live-sub">para o seu espaço</span>
+        </h1>
+      </div>
+      <div className="hero-live-bar">
+        <div className="hero-live-bar-inner">
+          <p className="hero-live-247">TENHA UMA 24/7</p>
+          <a
+            className="btn hero-live-cta"
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fbqTrack("Lead", { content_name: "lp_hero_espaco", content_category: "whatsapp_cta" })}
+          >
+            Veja como ficaria no seu espaço
+          </a>
         </div>
       </div>
     </header>
@@ -712,50 +449,61 @@ function EyeSection() {
   return _EyeSectionImpl();
 }
 
-/* ── RAIO-X DA CARTEIRA — prova antes de pagar ── */
-function RaioXDaCarteira() {
+/* ── COMO FICARIA — as 3 cadeiras da EquipIA (diagnóstico visual) ── */
+function ComoFicaria() {
+  const cadeiras = [
+    {
+      n: "1",
+      t: "Recepcionista 24/7",
+      d: "Tira dúvida, agenda e confirma — de noite e no domingo, enquanto você atende.",
+    },
+    {
+      n: "2",
+      t: "Quem Sumiu",
+      d: "Lista quem parou de vir e a mensagem no seu tom. Você aprova. Ela executa.",
+    },
+    {
+      n: "3",
+      t: "Quem Não Fechou",
+      d: "Follow-up de quem perguntou preço e sumiu — sem você caçar no WhatsApp.",
+    },
+  ];
   return (
-    <section className="dores-sec" id="raio-x">
-      <div className="firula" aria-hidden="true">
-        <svg viewBox="0 0 340 26">
-          <line x1="6" y1="13" x2="140" y2="13" />
-          <path d="M170 4 L179 13 L170 22 L161 13 Z" />
-          <path d="M170 9 L174 13 L170 17 L166 13 Z" />
-          <line x1="200" y1="13" x2="334" y2="13" />
-        </svg>
-      </div>
+    <section className="wb-sec como-fica-sec" id="como-funciona">
       <div className="wrap">
-        <span className="eyebrow rv">Antes de pagar um centavo</span>
-        <h2 className="serif rv">
-          A gente te manda o <em>Raio-X da sua carteira</em>.
-        </h2>
-        <p className="lead rv">
-          Em até 48h você recebe, <b>por escrito</b>: <b>quantas clientes sumiram</b>, <b>seu ticket médio</b> e{" "}
-          <b>quanto dá para recuperar em 30 dias</b> — com a sua base, não com um exemplo genérico. Se o número não te
-          animar, <b>não assina</b>. Simples assim.
-        </p>
-        <div className="dores">
-          <div className="dor rv">
-            <span className="n serif">✓</span>
-            <p><b>Prova antes de pagar.</b> Você vê o número real antes de qualquer boleto.</p>
-          </div>
-          <div className="dor rv">
-            <span className="n serif">✓</span>
-            <p><b>7 dias de arrependimento</b> — CDC art. 49, sem letra miúda.</p>
-          </div>
-          <div className="dor rv">
-            <span className="n serif">✓</span>
-            <p><b>Você conecta e autoriza</b> — sem senha, você no controle. Não assinou? A gente <b>apaga tudo em 72h</b>, com confirmação. E <b>nada sai pra sua cliente sem o seu ok</b>.</p>
-          </div>
+        <div className="como-story-grid">
+          <header className="como-story">
+            <p className="hero-kicker">Não contrate recepcionista</p>
+            <h2>
+              Agenda lotada,
+              <br />
+              sem contratar
+              <br />
+              <em>gente nova.</em>
+            </h2>
+            <p className="lead">
+              WhatsApp atendido de noite e no domingo. Quem sumiu e quem não fechou, de volta na agenda.
+              Você aprova cada mensagem. <b>Não contrata gente nova.</b>
+            </p>
+          </header>
+          <header className="como-story">
+            <p className="hero-kicker">Como ficaria no seu espaço</p>
+            <h3 className="seats-head">
+              Três cadeiras. <em>Você não contrata nenhuma.</em>
+            </h3>
+            <p className="lead">
+              O WhatsApp do seu espaço, com quem atende, quem reconquista e quem fecha o follow-up — sem folha nova.
+            </p>
+          </header>
         </div>
-        <div className="hero-ctas rv" style={{ marginTop: 24 }}>
-          <a
-            className="btn btn-rose"
-            href={WHATSAPP_URL}
-            onClick={() => fbqTrack("Lead", { content_name: "raiox_secao", content_category: "whatsapp_cta" })}
-          >
-            Quero ver o meu número
-          </a>
+        <div className="seats">
+          {cadeiras.map((c, i) => (
+            <article key={c.n} className={i === 0 ? "seat seat-lead" : "seat"}>
+              <span className="seat-n">{c.n}</span>
+              <h3>{c.t}</h3>
+              <p>{c.d}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -819,11 +567,11 @@ function _EyeSectionImpl() {
           <div className="wrap">
             <p className="m-kicker eye-reveal">Nosso compromisso</p>
             <h2 className="m eye-reveal">
-              Você não montou o seu espaço para viver refém de <em>caderninho</em>, <em>print de conversa</em> e{" "}
+              Você não montou o seu espaço para viver refém de <em>agenda vazia</em>, <em>gente nova</em> e{" "}
               <em>“amanhã eu te respondo”</em>.
             </h2>
             <div className="m-rule eye-reveal"></div>
-            <p className="m-small eye-reveal">O NexvyBeauty existe para te devolver o controle do seu tempo</p>
+            <p className="m-small eye-reveal">O NexvyBeauty existe para lotar a agenda — sem contratar</p>
           </div>
         </div>
       </section>
@@ -1018,10 +766,8 @@ function OQueResolvemos() {
 }
 
 /* ── MÓDULOS (8 sistemas + ícone integração 8-nós) ──
-   BUG(corrigido): esta seção usava id="como-funciona", DUPLICANDO o id da seção
-   ComoFunciona → HTML inválido, e o link do nav pulava pra cá (o primeiro no DOM).
-   Agora é id="modulos"; o "#como-funciona" do nav resolve pra ComoFunciona.
-   Corrigir TAMBÉM no Lovable upstream (project 304b956f), senão volta no sync. */
+   BUG(corrigido): esta seção usava id="como-funciona" (duplicado). Agora é id="modulos".
+   O hash #como-funciona ficou na seção das 3 cadeiras (nav "Como Funciona"). */
 function Modulos() {
   return (
     <section className="block" id="modulos" style={{ paddingTop: "60px", paddingBottom: "40px" }}>
@@ -1270,72 +1016,56 @@ function Equipia() {
   }, []);
 
   return (
-    <>
-      <svg className="curve-dark" viewBox="0 0 1440 74" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0,74 C420,8 1020,8 1440,74 L1440,74 L0,74 Z"></path>
-      </svg>
-      <section className="equipia" id="equipia">
-        <div className="sparkles" aria-hidden="true">
-          <i>✦</i>
-          <i>✧</i>
-          <i>✦</i>
-          <i>✧</i>
-          <i>✦</i>
-          <i>✧</i>
-          <i>✦</i>
-          <i>✧</i>
-        </div>
-        <div className="wrap">
-          <p className="eq-quote serif rv">
-            <span className="l1">Elas cuidam da gestão do seu espaço.</span>
-            <span className="l2">
-              <em>Você, de entregar o melhor resultado.</em>
-            </span>
-          </p>
-          <span className="eyebrow rv">Sua EquipIA</span>
-          <h2 className="serif rv">
-            Só quem empreende como você
-            <br />
-            entende <em>o valor.</em>
-          </h2>
-          <div className="eq-grid">
-            <div>
-              <p className="lead rv">
-                Quem vive de agenda cheia sabe: o difícil não é atender — é <b>tudo o que vem junto</b>. A sua EquipIA
-                existe para dividir esse peso: agentes de inteligência artificial que trabalham no seu WhatsApp com o seu
-                tom, o seu nome e as suas regras.
-              </p>
-              <ul className="eq-points">
-                <li className="rv">Atendem, agendam e confirmam horários — 24 horas, 7 dias</li>
-                <li className="rv">Reativam quem sumiu, com mensagem personalizada</li>
-                <li className="rv">Fazem o follow-up de quem perguntou e não fechou</li>
-                <li className="rv">Detectam horários fracos e sugerem a promoção certa</li>
-                <li className="rv">Você aprova tudo. Eles executam. O mérito é seu.</li>
-              </ul>
-            </div>
-            <div className="rv">
-              <div className="phone" ref={phoneRef}>
-                <div className="ph-top">
-                  <div className="ph-av">EA</div>
-                  <div>
-                    <div className="ph-name">Espaço Ana Beleza</div>
-                    <div className="ph-status">online agora</div>
-                  </div>
-                </div>
-                <div className="ph-chat" ref={chatRef}></div>
-                <div className="ph-foot">
-                  <span>Recuperado hoje</span>
-                  <span className="ph-rec" ref={recRef}>
-                    R$ 0
-                  </span>
+    <section className="equipia" id="equipia">
+      <div className="wrap">
+        <p className="eq-quote">
+          <span className="l1">Elas cuidam da gestão do seu espaço.</span>
+          <span className="l2">
+            <em>Você, de entregar o melhor resultado.</em>
+          </span>
+        </p>
+        <p className="hero-kicker">Sua EquipIA</p>
+        <h2>
+          Só quem empreende como você
+          <br />
+          entende <em>o valor.</em>
+        </h2>
+        <div className="eq-grid">
+          <div>
+            <p className="lead">
+              A EquipIA que atende, reconquista e confirma — você não contrata gente nova. No seu WhatsApp, com o seu
+              tom, o seu nome e as suas regras.
+            </p>
+            <ul className="eq-points">
+              <li>Atendem, agendam e confirmam horários — 24 horas, 7 dias</li>
+              <li>Reativam quem sumiu, com mensagem personalizada</li>
+              <li>Fazem o follow-up de quem perguntou e não fechou</li>
+              <li>Detectam horários fracos e sugerem a promoção certa</li>
+              <li>Você aprova tudo. Eles executam. O mérito é seu.</li>
+            </ul>
+          </div>
+          <figure>
+            <div className="phone" ref={phoneRef}>
+              <div className="ph-top">
+                <div className="ph-av">EA</div>
+                <div>
+                  <div className="ph-name">Espaço Ana Beleza</div>
+                  <div className="ph-status">online agora</div>
                 </div>
               </div>
-              <p className="ph-legend">▲ Demonstração do fluxo de reativação — a IA escreve, você aprova.</p>
+              <div className="ph-chat" ref={chatRef}></div>
+              <div className="ph-foot">
+                <span>Recuperado hoje</span>
+                <span className="ph-rec" ref={recRef}>
+                  R$ 0
+                </span>
+              </div>
             </div>
-          </div>
+            <figcaption className="ph-legend">Demonstração do fluxo de reativação — a IA escreve, você aprova.</figcaption>
+          </figure>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
@@ -1439,96 +1169,184 @@ function Calculadora() {
   );
 }
 
-/* ── COMO FUNCIONA (4 passos) ── */
-function ComoFunciona() {
-  return (
-    <section className="block" id="como-funciona" style={{ paddingTop: "30px", paddingBottom: "50px" }}>
-      <div className="wrap">
-        <span className="eyebrow rv">Onboarding guiado, tela a tela</span>
-        <h2 className="serif rv">
-          Seu negócio no automático em <em>quatro passos.</em>
-        </h2>
-        <p className="lead rv">
-          Nada de se virar sozinho com manuais: um assistente te conduz do início ao fim, e a nossa equipe acompanha
-          cada etapa.
-        </p>
-        <div className="passos">
-          <div className="passo rv">
-            <span className="pn serif">1</span>
-            <h3>Seu espaço</h3>
-            <p>
-              Você informa o básico — nome, marca, cor, horários — num <b>assistente guiado</b>. Minutos, não dias.
-            </p>
-          </div>
-          <div className="passo rv">
-            <span className="pn serif">2</span>
-            <h3>Serviços &amp; equipe</h3>
-            <p>O que você faz, quanto custa, quem atende. O catálogo nasce pronto para a agenda e para o seu link público.</p>
-          </div>
-          <div className="passo rv">
-            <span className="pn serif">3</span>
-            <h3>WhatsApp conectado</h3>
-            <p>
-              Escaneou o QR, pronto: <b>suas conversas viram sua carteira de clientes</b> — na hora, <b>sem pedir sua
-              senha</b> — você conecta e autoriza, e continua no controle de tudo.
-            </p>
-          </div>
-          <div className="passo rv">
-            <span className="pn serif">4</span>
-            <h3>EquipIA no ar</h3>
-            <p>
-              Os agentes assumem atendimento, confirmações e reativação — e o painel mostra <b>o retorno em R$</b>.
-            </p>
-          </div>
-        </div>
-        <p className="guiado rv">
-          Travou em qualquer passo? <b>A gente entra junto</b> — suporte durante toda a implantação.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ── PLANOS (box branco, 3 planos, 1 destaque) — preços reais de lançamento ── */
+/* ── PLANOS — LP-V2-PLANS-PORT + copy Marcelo (a/b/c). Preços só de public_plans. ── */
 /** P5(a)+P1: bloco de preço + CTA de um card. Preço e checkout SÓ do banco.
  *  - carregando/indisponível → CTA vira WhatsApp (nunca um href="#" morto) e o
  *    preço não é inventado;
- *  - list_price_monthly nulo → a âncora "de R$ X" simplesmente não aparece. */
-function PlanoPreco({ plan, loading }: { plan?: PublicPlan; loading: boolean }) {
+ *  - list_price_monthly nulo → a âncora "de R$ X" simplesmente não aparece.
+ *  - anual sem price_yearly / trimestral sem price_quarterly → some o número
+ *    (não fabrica múltiplo) e o CTA cai no WhatsApp. */
+function PlanoPreco({
+  plan,
+  loading,
+  cycle,
+}: {
+  plan?: PublicPlan;
+  loading: boolean;
+  cycle: BillingCycle;
+}) {
   if (loading) return <div className="preco serif"><small>carregando…</small></div>;
   if (!plan) return null;
+  if (cycle === "yearly" && !hasYearlyPrice(plan)) {
+    return (
+      <div className="preco serif">
+        <span className="preco-miss">Anual sob consulta</span>
+      </div>
+    );
+  }
+  if (cycle === "quarterly" && !hasQuarterlyPrice(plan)) {
+    return (
+      <div className="preco serif">
+        <span className="preco-miss">Trimestral sob consulta</span>
+      </div>
+    );
+  }
+  const price = cyclePrice(plan, cycle);
+  if (price == null) return null;
+  const showList =
+    cycle === "monthly" &&
+    plan.list_price_monthly != null &&
+    plan.list_price_monthly > plan.price_monthly;
+  const monthlyEq =
+    cycle === "yearly" ? Math.round(price / 12) : cycle === "quarterly" ? Math.round(price / 3) : null;
+  const period = cycle === "yearly" ? "/ano" : cycle === "quarterly" ? "/trimestre" : "/mês";
   return (
     <div className="preco serif">
-      {plan.list_price_monthly != null && plan.list_price_monthly > plan.price_monthly && (
-        <small style={{ display: "block", opacity: 0.55, textDecoration: "line-through", fontSize: 15, marginBottom: 4 }}>
-          de {BRL.format(plan.list_price_monthly)}
+      {showList && (
+        <small className="preco-de">
+          de {BRL.format(plan.list_price_monthly as number)}
         </small>
       )}
-      <span style={{ whiteSpace: "nowrap" }}>{BRL.format(plan.price_monthly)}</span>
-      <small>/mês</small>
+      <span className="preco-val">
+        <span className="preco-cur">R$</span>
+        {BRL_NUM.format(price)}
+      </span>
+      <small>{period}</small>
+      {monthlyEq != null && monthlyEq > 0 && (
+        <span className="preco-eq">equivale a {BRL.format(monthlyEq)}/mês</span>
+      )}
     </div>
   );
 }
 
-function PlanoCta({ plan, className }: { plan?: PublicPlan; className: string }) {
-  // Sem checkout_url ainda (ou plano fora do ar) → manda pro WhatsApp comercial
-  // em vez de um link morto. O checkout NUNCA é hardcoded aqui.
-  // R1: o checkout leva o tracking junto → o Cakto passa a saber a origem da venda.
-  const href = plan?.checkout_url ? withTracking(plan.checkout_url) : WHATSAPP_URL;
+function PlanoCta({
+  plan,
+  className,
+  cycle,
+}: {
+  plan?: PublicPlan;
+  className: string;
+  cycle: BillingCycle;
+}) {
+  // Sem checkout ainda (ou ciclo sem preço no banco) → WhatsApp comercial.
+  // O checkout NUNCA é hardcoded. R1: tracking segue no hop LP→Cakto.
+  const cycleMissing =
+    (cycle === "yearly" && !hasYearlyPrice(plan)) ||
+    (cycle === "quarterly" && !hasQuarterlyPrice(plan));
+  const checkout = cycleMissing ? null : cycleCheckout(plan, cycle);
+  const href = checkout ? withTracking(checkout) : WHATSAPP_URL;
+  const price = plan && !cycleMissing ? cyclePrice(plan, cycle) : null;
+  const label = checkout
+    ? cycle === "yearly"
+      ? "Assinar anual"
+      : cycle === "quarterly"
+        ? "Assinar trimestral"
+        : "Assinar agora"
+    : "Falar com a gente";
   return (
     <a
       className={className}
       href={href}
       onClick={() =>
-        fbqTrack(plan?.checkout_url ? "InitiateCheckout" : "Contact", {
-          content_name: plan?.slug ?? "sem-plano",
-          value: plan?.price_monthly ?? undefined,
+        fbqTrack(checkout ? "InitiateCheckout" : "Contact", {
+          content_name: `${plan?.slug ?? "sem-plano"}-${cycle}`,
+          value: price ?? undefined,
           currency: "BRL",
         })
       }
     >
-      {plan?.checkout_url ? "Assinar agora" : "Falar com a gente"}
+      {label}
     </a>
+  );
+}
+
+function CicloSelector({
+  cycle,
+  onCycle,
+  quarterlyEnabled,
+  yearlyEnabled,
+  loading,
+  error,
+}: {
+  cycle: BillingCycle;
+  onCycle: (next: BillingCycle) => void;
+  quarterlyEnabled: boolean;
+  yearlyEnabled: boolean;
+  loading: boolean;
+  error: boolean;
+}) {
+  const options: BillingCycle[] = [
+    "monthly",
+    ...(quarterlyEnabled ? (["quarterly"] as const) : []),
+    ...(yearlyEnabled ? (["yearly"] as const) : []),
+  ];
+  const pick = (next: BillingCycle) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.focus({ preventScroll: true });
+    if (next === "yearly" && !yearlyEnabled) return;
+    if (next === "quarterly" && !quarterlyEnabled) return;
+    onCycle(next);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const i = options.indexOf(cycle);
+    if (i < 0) return;
+    const next = e.key === "ArrowLeft"
+      ? options[Math.max(0, i - 1)]
+      : options[Math.min(options.length - 1, i + 1)];
+    onCycle(next);
+  };
+  return (
+    <div
+      className="ciclo-sel"
+      role="radiogroup"
+      aria-label="Periodicidade do plano"
+      data-state={loading ? "loading" : error ? "error" : "ready"}
+      data-count={quarterlyEnabled ? 3 : 2}
+      onKeyDown={onKeyDown}
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked={cycle === "monthly"}
+        className="ciclo-opt"
+        onClick={pick("monthly")}
+      >
+        Mensal
+      </button>
+      {quarterlyEnabled && (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={cycle === "quarterly"}
+          className="ciclo-opt"
+          onClick={pick("quarterly")}
+        >
+          Trimestral
+        </button>
+      )}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={cycle === "yearly"}
+        className="ciclo-opt"
+        disabled={!yearlyEnabled}
+        aria-disabled={!yearlyEnabled}
+        onClick={pick("yearly")}
+      >
+        Anual
+      </button>
+    </div>
   );
 }
 
@@ -1536,10 +1354,19 @@ function Planos() {
   // P5(a): catálogo 100% do banco (view public_plans, SELECT anônimo, já filtrada
   // por is_active e ordenada). Fetch falho → cards sem preço, página inteira segue
   // de pé (fallback gracioso, igual à SalesPage).
-  const { data: plans, isLoading } = usePublicPlans();
+  const { data: plans, isLoading, isError } = usePublicPlans();
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const essencial = findPlan(plans, PLAN_SLUG.essencial);
   const premium = findPlan(plans, PLAN_SLUG.premium);
   const ultra = findPlan(plans, PLAN_SLUG.ultra);
+  const quarterlyEnabled = [essencial, premium, ultra].some(hasQuarterlyPrice);
+  const yearlyEnabled = [essencial, premium, ultra].some(hasYearlyPrice);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (cycle === "yearly" && !yearlyEnabled) setCycle("monthly");
+    if (cycle === "quarterly" && !quarterlyEnabled) setCycle("monthly");
+  }, [cycle, quarterlyEnabled, yearlyEnabled, isLoading]);
 
   return (
     <section className="block planos-wrap" id="planos" style={{ paddingTop: "30px", paddingBottom: "40px" }}>
@@ -1548,28 +1375,28 @@ function Planos() {
           <h2 className="serif">
             Escolha o tamanho do <em>seu momento.</em>
           </h2>
-          <p className="lead">
-            Sem fidelidade. Cancele quando quiser, sem multa e sem burocracia.{" "}
-            {/* NÃO cravar constante aqui ("uma cliente paga a mensalidade", "duas pagam").
-                A frase anterior exigia ticket ≥ R$ 427 — o plano DESTAQUE, que é a
-                referência declarada do "×mensalidade" (ver :1307) — enquanto esta mesma
-                página exibe tickets de R$ 80 a R$ 250 e o simulador abre em R$ 120.
-                Falsificável em segundos por quem sabe o próprio ticket, que é exatamente
-                a leitora. E qualquer constante volta a mentir na próxima mudança de preço:
-                os planos já subiram uma vez (Essencial R$ 217 → R$ 275). A conta é do
-                Raio-X, que tem o ticket e a carteira REAIS dela. Decisão Marcelo 02/08. */}
-            <b>Quantas clientes precisam voltar pra pagar o plano? O Raio-X faz essa conta com o seu ticket.</b>
-          </p>
           <div className="serie">
             ✨ <b>Agentes de IA de série</b> em todos os planos — do primeiro ao último.
           </div>
-          <p className="lead rv" style={{ margin: "6px 0 18px" }}>
-            <b>Preço de lançamento</b> — sobe pra tabela em breve. <b>Anual:</b> 2 meses por nossa conta (10× o mensal).
+          <CicloSelector
+            cycle={cycle}
+            onCycle={setCycle}
+            quarterlyEnabled={quarterlyEnabled}
+            yearlyEnabled={yearlyEnabled || isLoading}
+            loading={isLoading}
+            error={isError}
+          />
+          <p className="ciclo-hint">
+            {cycle === "yearly"
+              ? "Cobrado anualmente · cancele quando quiser"
+              : cycle === "quarterly"
+                ? "Cobrado a cada 3 meses · cancele quando quiser"
+                : "Cobrado todo mês · cancele quando quiser"}
           </p>
           <div className="planos">
             <div className="plano rv">
               <h3>Essencial</h3>
-              <PlanoPreco plan={essencial} loading={isLoading} />
+              <PlanoPreco plan={essencial} loading={isLoading} cycle={cycle} />
               <p className="p-desc">Para quem atende sozinho: organiza a casa e liga a IA no atendimento.</p>
               <ul className="p-feats">
                 <li>Agentes de IA no WhatsApp (de série)</li>
@@ -1577,13 +1404,13 @@ function Planos() {
                 <li>Carteira de clientes importada do WhatsApp</li>
                 <li>Painel do dinheiro recuperado</li>
               </ul>
-              <PlanoCta plan={essencial} className="btn btn-quiet" />
+              <PlanoCta plan={essencial} className="btn btn-quiet" cycle={cycle} />
             </div>
             <div className="plano destaque rv">
               <span className="p-tag">Mais escolhido</span>
               <h3>Premium</h3>
               {/* card "Premium" da LP = slug `pro` no banco (ver PLAN_SLUG). */}
-              <PlanoPreco plan={premium} loading={isLoading} />
+              <PlanoPreco plan={premium} loading={isLoading} cycle={cycle} />
               <p className="p-desc">Para espaços com equipe: tudo do Essencial, em escala.</p>
               <ul className="p-feats">
                 <li>Tudo do Essencial</li>
@@ -1592,12 +1419,12 @@ function Planos() {
                 <li>Pacotes &amp; sessões com aviso de vencimento</li>
                 <li>Financeiro &amp; indicadores completos</li>
               </ul>
-              <PlanoCta plan={premium} className="btn btn-terra" />
+              <PlanoCta plan={premium} className="btn btn-terra" cycle={cycle} />
             </div>
             <div className="plano rv">
               <h3>Ultra</h3>
               {/* card "Ultra" da LP = slug `premium` no banco (ver PLAN_SLUG). */}
-              <PlanoPreco plan={ultra} loading={isLoading} />
+              <PlanoPreco plan={ultra} loading={isLoading} cycle={cycle} />
               <p className="p-desc">Para operações maiores: crescimento ativo e migração assistida.</p>
               <ul className="p-feats">
                 <li>Tudo do Premium</li>
@@ -1605,7 +1432,7 @@ function Planos() {
                 <li>Migração assistida da sua base</li>
                 <li>Suporte prioritário</li>
               </ul>
-              <PlanoCta plan={ultra} className="btn btn-quiet" />
+              <PlanoCta plan={ultra} className="btn btn-quiet" cycle={cycle} />
             </div>
           </div>
         </div>
@@ -1763,33 +1590,6 @@ function Comparativo() {
             que cada empresa publica; onde a empresa não publica preço, isso está dito na tabela em
             vez de estimado.
           </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── CHAMADA PÓS-PLANOS (3 botões "Começar com <plano>") ── */
-function ChamadaPosPlanos() {
-  return (
-    <section className="final" style={{ padding: "18px 0 110px" }}>
-      <div className="wrap">
-        <h2 className="serif rv">
-          O seu espaço merece uma gestão <em>à sua altura.</em>
-        </h2>
-        <p className="fnote rv">
-          Suas clientes só percebem uma coisa: o atendimento ficou melhor!
-        </p>
-        {/* D4: ponto de maior momentum (pós-preço) terminava SEM saída — o comentário
-            da seção prometia botões que nunca existiram. CTA único, mesmo padrão do hero. */}
-        <div className="hero-ctas rv" style={{ marginTop: 22 }}>
-          <a
-            className="btn btn-rose"
-            href={WHATSAPP_URL}
-            onClick={() => fbqTrack("Lead", { content_name: "pos_planos", content_category: "whatsapp_cta" })}
-          >
-            Quero começar pelo Raio-X grátis
-          </a>
         </div>
       </div>
     </section>
@@ -2104,7 +1904,7 @@ function Faq() {
     },
     {
       q: "Isso não é golpe? Vocês pegam meu WhatsApp?",
-      a: "Você conecta seu WhatsApp de um jeito seguro e padrão — a gente NÃO pede sua senha. A IA só propõe as mensagens; nada é enviado sem você aprovar. Antes de pagar, você recebe o Raio-X da sua carteira em até 48h; se o número não te animar, não assina — e a gente apaga seus dados em 72h.",
+      a: "Você conecta seu WhatsApp de um jeito seguro e padrão — a gente NÃO pede sua senha. A IA só propõe as mensagens; nada é enviado sem você aprovar. Não assinou? A gente apaga os dados em 72h.",
     },
     {
       q: "A IA não vai soar robô com minhas clientes?",
@@ -2116,7 +1916,7 @@ function Faq() {
     },
   ];
   return (
-    <section className="block" id="faq" style={{ paddingTop: "10px", paddingBottom: "10px" }}>
+    <section className="block" id="faq">
       <div className="wrap">
         <span className="eyebrow faq-eyebrow rv">Perguntas frequentes</span>
         <div className="faq rv">
@@ -2132,29 +1932,23 @@ function Faq() {
   );
 }
 
-/* ── FOOTER ── */
+/* ── FOOTER (V2 burgundy band — markup aligned to /vendas-v2) ── */
 function Footer() {
   return (
     <footer>
       <div className="wrap foot">
         <div className="foot-row">
         <div className="foot-brand">
-          <a href="#top" className="wordmark serif">
-            Nexvy<em>Beauty</em>
+          <a href="#top" className="wordmark wordmark-logo">
+            <img src={NAV_LOGO_SRC} alt="NexvyBeauty" width={722} height={163} />
           </a>
-          <p className="fsign serif">Feito no Brasil, para quem faz acontecer.</p>
+          <p className="fsign serif">Feito com ❤️, para quem faz acontecer 🚀💪</p>
         </div>
 
         <div className="foot-grid">
           <div className="foot-col">
-            <h4>Empresa</h4>
-            <a href="#careers">Ecossistema</a>
-            <a href="#about">Sobre nós</a>
-          </div>
-          <div className="foot-col">
             <h4>Redes</h4>
             <div className="fsocial">
-              {/* P4: Instagram oficial. */}
               <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer noopener" aria-label="Instagram">
                 <Instagram size={20} />
               </a>
@@ -2171,8 +1965,6 @@ function Footer() {
         <div className="fline">
           <p className="copy">© 2026 NexvyBeauty — Sistema premium para negócios de beleza e bem-estar.</p>
           <div className="foot-bottom">
-            {/* P4: rotas internas que JÁ existem (App.tsx /termos e /privacidade),
-                servidas pelo mesmo container no apex. <Link> mantém o SPA. */}
             <Link to="/termos">Termos de Uso</Link>
             <Link to="/privacidade">Privacidade (LGPD)</Link>
           </div>
