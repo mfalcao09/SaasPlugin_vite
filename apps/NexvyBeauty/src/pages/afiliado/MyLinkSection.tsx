@@ -77,6 +77,9 @@ export function MyLinkSection() {
                     {link.default_utm_campaign && (
                       <span>· campanha: {link.default_utm_campaign}</span>
                     )}
+                    {link.coupon_code && (
+                      <Badge variant="outline">cupom {link.coupon_code}</Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>

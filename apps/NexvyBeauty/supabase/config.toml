@@ -240,3 +240,12 @@ verify_jwt = false
 verify_jwt = true
 [functions.instagram-login-oauth-callback]
 verify_jwt = true
+
+
+# Captura pública da LP (anônimo). Sem JWT — o gateway não pode exigir sessão.
+[functions.capture-lead]
+verify_jwt = false
+
+# Inscrição self-serve do programa de afiliados (anônimo).
+[functions.affiliate-apply]
+verify_jwt = false

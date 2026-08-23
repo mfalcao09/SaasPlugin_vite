@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { mapCaktoOrderForUpsert } from '../_shared/cakto-client.ts';
 import { provisionFromOrder, extractOfferSlug } from '../_shared/cakto-plan-provisioning.ts';
 import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
-import { attributeAffiliateCommission } from '../_shared/affiliate-commission.ts';
+import { attributeAffiliateCommission, clawbackAffiliateCommission } from '../_shared/affiliate-commission.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -219,6 +219,18 @@ Deno.serve(async (req) => {
         st === 'refunded' || st === 'chargeback' ||
         ev.includes('refund') || ev.includes('chargeback') ||
         ev.includes('subscription_cancel') || ev.includes('subscription_canceled');
+      if (isRevocation && row.cakto_id) {
+        try {
+          const claw = await clawbackAffiliateCommission(admin, {
+            orderRef: row.cakto_id,
+            reason: (st === 'chargeback' || ev.includes('chargeback')) ? 'chargeback' : 'refund',
+            refundReais: row.amount ?? null,
+          });
+          console.log('[cakto-webhook] affiliate clawback', JSON.stringify(claw));
+        } catch (clawErr) {
+          console.error('[cakto-webhook] affiliate clawback error', clawErr);
+        }
+      }
       if (isRevocation && row.customer_email) {
         const { data: org } = await admin
           .from('organizations').select('id, plan_status')
@@ -284,6 +296,9 @@ Deno.serve(async (req) => {
             organizationId: org?.id ?? null,
             kind: 'first_sale',
             buyerDocument: row.customer_document ?? null,
+            couponCode: row.coupon_code ?? null,
+            customerPhone: row.customer_phone ?? null,
+            planSlug: row.cakto_offer_slug ?? null,
           });
           console.log('[cakto-webhook] affiliate attribution', JSON.stringify(affRes));
         } catch (affErr) {

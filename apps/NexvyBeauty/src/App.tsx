@@ -75,6 +75,7 @@ const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
 const AffiliatePortal = lazyWithRetry(() => import("./pages/afiliado/AffiliatePortal"));
+const AffiliatesLanding = lazyWithRetry(() => import("./pages/AffiliatesLanding"));
 const PlatformShell = lazyWithRetry(() => import("./components/superadmin/platform-shell/PlatformShell"));
 const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -267,6 +268,7 @@ const App = () => (
               {/* LP de vendas vigente. A rota temporária /lp-clientes-de-volta da Metade A
                   foi REMOVIDA: com o apex e /vendas servindo a mesma LP, um terceiro
                   caminho pra ela só criaria URL duplicada (conteúdo duplicado p/ SEO). */}
+              <Route path="/afiliados" element={<AffiliatesLanding />} />
               <Route path="/vendas" element={<ClientesDeVoltaLandingPage />} />
               <Route path="/vendas-v2" element={<ClientesDeVoltaLandingPageV2 />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);

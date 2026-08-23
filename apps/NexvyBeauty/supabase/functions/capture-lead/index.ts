@@ -5,6 +5,8 @@
 // atribuição mora aqui, na nossa camada — o meio de pagamento é só um adaptador.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { incrementAffiliateLinkClicks } from "../_shared/affiliate-clicks.ts";
+import { isClickAlreadyRecorded } from "../_shared/affiliate-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,8 +67,17 @@ Deno.serve(async (req) => {
     // resolve canal (afiliado) server-side — nunca confiar no client
     let affiliateId: string | null = null;
     if (ref) {
-      const { data } = await admin.rpc("resolve_affiliate_ref", { p_ref: ref });
-      affiliateId = (data as string | null) ?? null;
+      const already = isClickAlreadyRecorded((t as { click_recorded?: unknown }).click_recorded);
+      try {
+        const click = await incrementAffiliateLinkClicks(admin, ref, already);
+        if (click.affiliateId) affiliateId = click.affiliateId;
+      } catch (e) {
+        console.error("[capture-lead] increment clicks failed", e);
+      }
+      if (!affiliateId) {
+        const { data } = await admin.rpc("resolve_affiliate_ref", { p_ref: ref });
+        affiliateId = (data as string | null) ?? null;
+      }
     }
 
     const row = {

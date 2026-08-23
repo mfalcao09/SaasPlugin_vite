@@ -67,7 +67,12 @@ Deno.serve(async (req) => {
           orgId = org?.id ?? null;
         }
 
-        const r = await attributeAffiliateCommission(admin, { ...args, organizationId: orgId });
+        const raw = order as Record<string, unknown>;
+        const r = await attributeAffiliateCommission(admin, {
+          ...args,
+          organizationId: orgId,
+          couponCode: (raw.couponCode ?? raw.coupon ?? null) as string | null,
+        });
         if (r.created) created++;
         else skips[r.skipped ?? 'unknown'] = (skips[r.skipped ?? 'unknown'] ?? 0) + 1;
       }

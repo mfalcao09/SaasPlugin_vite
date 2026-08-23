@@ -32,6 +32,7 @@ export interface AffiliateLink {
   default_utm_medium: string | null;
   default_utm_campaign: string | null;
   clicks: number;
+  coupon_code?: string | null;
   created_at: string;
 }
 
@@ -129,6 +130,35 @@ export function useMyCommissionSummary() {
         .maybeSingle();
       if (error) throw error;
       return (data as AffiliateSummary | null) ?? null;
+    },
+  });
+}
+
+
+export interface AffiliateFunnel {
+  clicks: number;
+  leads: number;
+  checkouts: number;
+  paid: number;
+  refunds: number;
+}
+
+export function useMyAffiliateFunnel() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['affiliate-portal', 'funnel', user?.id],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<AffiliateFunnel> => {
+      const { data, error } = await (supabase as any).rpc('affiliate_my_funnel');
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        clicks: Number(row?.clicks ?? 0),
+        leads: Number(row?.leads ?? 0),
+        checkouts: Number(row?.checkouts ?? 0),
+        paid: Number(row?.paid ?? 0),
+        refunds: Number(row?.refunds ?? 0),
+      };
     },
   });
 }

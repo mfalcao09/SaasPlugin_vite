@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AffiliateStatus = 'active' | 'paused' | 'blocked';
+export type AffiliateStatus = 'active' | 'paused' | 'blocked' | 'pending';
 export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'cancelled';
 
 export interface AffiliateSummary {
@@ -37,6 +37,7 @@ export interface AffiliateLink {
   default_utm_medium: string | null;
   default_utm_campaign: string | null;
   clicks: number;
+  coupon_code?: string | null;
   created_at: string;
 }
 
@@ -160,6 +161,7 @@ interface GenerateLinkInput {
   default_utm_source?: string;
   default_utm_medium?: string;
   default_utm_campaign?: string;
+  coupon_code?: string;
 }
 
 export function useGenerateAffiliateLink() {
@@ -185,5 +187,14 @@ export function useCancelCommission() {
   return useMutation({
     mutationFn: async (input: { id: string; reason?: string }) => invoke('cancel_commission', input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['affiliates', 'commissions'] }),
+  });
+}
+
+
+export function useApproveAffiliateApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => invoke('approve_application', { id }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['affiliates'] }),
   });
 }

@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Link2, ShoppingBag, CircleDollarSign } from 'lucide-react';
+import { LogOut, Link2, ShoppingBag, CircleDollarSign, BookOpen, Filter } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentAffiliate } from '@/hooks/useAffiliatePortal';
 import { MyLinkSection } from './MyLinkSection';
 import { MySalesSection } from './MySalesSection';
 import { MyCommissionSection } from './MyCommissionSection';
+import { DisclosureKitSection } from './DisclosureKitSection';
+import { FunnelSection } from './FunnelSection';
 
-type Section = 'link' | 'sales' | 'commission';
+type Section = 'link' | 'kit' | 'funnel' | 'sales' | 'commission';
 
 export default function AffiliatePortal() {
   const navigate = useNavigate();
@@ -46,6 +48,14 @@ export default function AffiliatePortal() {
               <Link2 className="h-4 w-4" />
               Meu Link
             </TabsTrigger>
+            <TabsTrigger value="kit" className="gap-1.5">
+              <BookOpen className="h-4 w-4" />
+              Kit
+            </TabsTrigger>
+            <TabsTrigger value="funnel" className="gap-1.5">
+              <Filter className="h-4 w-4" />
+              Funil
+            </TabsTrigger>
             <TabsTrigger value="sales" className="gap-1.5">
               <ShoppingBag className="h-4 w-4" />
               Minhas Vendas
@@ -58,6 +68,12 @@ export default function AffiliatePortal() {
 
           <TabsContent value="link">
             <MyLinkSection />
+          </TabsContent>
+          <TabsContent value="kit">
+            <DisclosureKitSection />
+          </TabsContent>
+          <TabsContent value="funnel">
+            <FunnelSection />
           </TabsContent>
           <TabsContent value="sales">
             <MySalesSection />
