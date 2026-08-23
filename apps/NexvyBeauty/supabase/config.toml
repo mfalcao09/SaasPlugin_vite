@@ -226,3 +226,11 @@ verify_jwt = false
 # (default) e o cadastro-por-convite morre no gateway (401).
 [functions.accept-invite]
 verify_jwt = false
+
+# Instagram Login (NEXVY - IGLOG). Start e callback exigem JWT do tenant
+# (authenticateTenant). A SPA /instagram/oauth-return faz invoke autenticado.
+# NÃO abrir verify_jwt=false — o code volta pela SPA, não pelo redirect cru.
+[functions.instagram-login-oauth-start]
+verify_jwt = true
+[functions.instagram-login-oauth-callback]
+verify_jwt = true

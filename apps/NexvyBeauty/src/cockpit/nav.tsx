@@ -81,7 +81,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/empresa', label: 'Empresa', icon: Building2, visibility: 'admin' },
       { to: '/plano', label: 'Plano', icon: CreditCard, visibility: 'admin' },
       { to: '/horarios', label: 'Horários', icon: Clock, visibility: 'admin' },
-      { to: '/conexoes', label: 'Conexões (WhatsApp)', icon: Plug, visibility: 'admin' },
+      { to: '/conexoes', label: 'Conexões', icon: Plug, visibility: 'admin' },
       { to: '/equipes', label: 'Minha equipe', icon: Users, visibility: 'admin' },
       { to: '/setores', label: 'Departamentos', icon: Network, visibility: 'admin' },
       { to: '/suporte', label: 'Suporte', icon: LifeBuoy, visibility: 'admin' },

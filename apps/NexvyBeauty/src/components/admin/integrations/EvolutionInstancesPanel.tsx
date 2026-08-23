@@ -12,7 +12,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2 } from 'lucide-react';
+import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2, Instagram } from 'lucide-react';
+import {
+  useInstagramLoginConnections,
+  useStartInstagramLogin,
+  type InstagramLoginConnection,
+} from '@/hooks/useInstagramLoginConnection';
+import { INSTAGRAM_LOGIN_ENABLED } from '@/lib/instagramLoginApp';
+import { ChannelTypeChoiceDialog, type ChannelConnectionMode } from './channels/ChannelTypeChoiceDialog';
 import {
   useEvolutionInstances,
   useSetDefaultEvolutionInstance,
@@ -303,10 +310,63 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
   );
 }
 
+function startInstagramOAuth(
+  startMut: ReturnType<typeof useStartInstagramLogin>,
+) {
+  if (!INSTAGRAM_LOGIN_ENABLED) {
+    toast.error('config Instagram ausente');
+    return;
+  }
+  startMut.mutate(undefined, {
+    onSuccess: ({ authorize_url }) => {
+      window.location.assign(authorize_url);
+    },
+  });
+}
+
+function InstagramLoginCard({ connection }: { connection: InstagramLoginConnection }) {
+  const startMut = useStartInstagramLogin();
+  const active = connection.status === 'active';
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-lg bg-pink-500/10 flex items-center justify-center shrink-0">
+              <Instagram className="h-5 w-5 text-pink-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium">Instagram Comercial</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {connection.username ? `@${connection.username}` : connection.instagram_user_id}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {active && <Badge variant="default">Conectado</Badge>}
+            <Button
+              size="sm"
+              onClick={() => startInstagramOAuth(startMut)}
+              disabled={startMut.isPending}
+            >
+              {startMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Instagram className="h-4 w-4 mr-2" />
+              {active ? 'Reconectar' : 'Conectar Instagram'}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function EvolutionInstancesPanel() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { data: instances, isLoading } = useEvolutionInstances();
+  const { data: igConnections, isLoading: igLoading } = useInstagramLoginConnections();
+  const startIgMut = useStartInstagramLogin();
   const { data: effectivePlan } = useOrganizationEffectivePlan(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
   const disconnectMut = useDisconnectEvolutionInstance();
@@ -318,6 +378,7 @@ export function EvolutionInstancesPanel() {
   const [renaming, setRenaming] = useState<EvolutionInstance | null>(null);
   const [deleting, setDeleting] = useState<EvolutionInstance | null>(null);
   const [creating, setCreating] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const displayName = (inst: EvolutionInstance) =>
     (inst.metadata as any)?.display_name || inst.name;
@@ -327,33 +388,47 @@ export function EvolutionInstancesPanel() {
   const used = instances?.length ?? 0;
   const limit = effectivePlan?.limits?.max_connections ?? 1;
   const limitReached = used >= limit;
+  const igList = igConnections ?? [];
+  const hasAny = (instances?.length ?? 0) > 0 || igList.length > 0;
+  const listLoading = isLoading || igLoading;
 
   const handleUpgrade = () => navigate('/plano');
+
+  const handlePickChannel = (mode: ChannelConnectionMode) => {
+    if (mode === 'qrcode') {
+      if (limitReached) {
+        handleUpgrade();
+        return;
+      }
+      setCreating(true);
+      return;
+    }
+    startInstagramOAuth(startIgMut);
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="text-lg font-semibold">Suas Instâncias de WhatsApp</h3>
+          <h3 className="text-lg font-semibold">Suas conexões</h3>
           <p className="text-sm text-muted-foreground">
-            Conecte seus números de WhatsApp escaneando o QR Code com o aparelho.
+            Gerencie seus canais (WhatsApp via QR Code e Instagram).
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={limitReached ? 'destructive' : 'secondary'} className="text-sm">
             {used} / {limit} usadas
           </Badge>
-          {limitReached ? (
+          {limitReached && (
             <Button onClick={handleUpgrade} className="gap-2">
               <Sparkles className="h-4 w-4" />
               Fazer upgrade
             </Button>
-          ) : (
-            <Button onClick={() => setCreating(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nova conexão
-            </Button>
           )}
+          <Button onClick={() => setPickerOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova conexão
+          </Button>
         </div>
       </div>
 
@@ -366,24 +441,24 @@ export function EvolutionInstancesPanel() {
         </div>
       )}
 
-      {isLoading ? (
+      {listLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : !instances?.length ? (
+      ) : !hasAny ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhuma conexão criada ainda.</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp.
+              Clique em <strong>Nova conexão</strong> para conectar WhatsApp com QR Code ou Instagram Comercial.
             </p>
           </CardContent>
         </Card>
 
       ) : (
         <div className="grid gap-3">
-          {instances.map((inst) => (
+          {(instances ?? []).map((inst) => (
             <Card key={inst.id}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -470,8 +545,17 @@ export function EvolutionInstancesPanel() {
               </CardContent>
             </Card>
           ))}
+          {igList.map((connection) => (
+            <InstagramLoginCard key={connection.id} connection={connection} />
+          ))}
         </div>
       )}
+
+      <ChannelTypeChoiceDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={handlePickChannel}
+      />
 
       {connecting && (
         <ConnectDialog instance={connecting} onClose={() => setConnecting(null)} />
