@@ -241,6 +241,12 @@ verify_jwt = true
 [functions.instagram-login-oauth-callback]
 verify_jwt = true
 
+# Webhook público de Direct do Instagram Login (Meta → tenant). Sem JWT.
+# GET devolve hub.challenge (INSTAGRAM_LOGIN_WEBHOOK_VERIFY_TOKEN). NÃO é Page
+# nem platform-instagram-webhook. start-instagram-conversation fica no default
+# (verify_jwt=true) — chamada pelo inbox autenticado.
+[functions.instagram-login-webhook]
+verify_jwt = false
 
 # Captura pública da LP (anônimo). Sem JWT — o gateway não pode exigir sessão.
 [functions.capture-lead]
