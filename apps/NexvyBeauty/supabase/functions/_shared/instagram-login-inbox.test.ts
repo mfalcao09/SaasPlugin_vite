@@ -43,11 +43,18 @@ Deno.test('metadata aponta para instagram_login_connections, não platform_crm',
   const meta = buildConversationMetadata('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', identity);
   assert(meta.channel === 'instagram', JSON.stringify(meta));
   assert(meta.instagram_login_connection_id === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', JSON.stringify(meta));
+  assert(meta.instagram_connection_id === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', JSON.stringify(meta));
   assert(meta.ig_sender_id === '111222333', JSON.stringify(meta));
   assert(!JSON.stringify(meta).includes('platform_crm'), JSON.stringify(meta));
   assert(
     connectionIdFromConversationMetadata(meta) === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     'lê FK da conexão Login',
+  );
+  assert(
+    connectionIdFromConversationMetadata({
+      instagram_connection_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    }) === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    'lê legado instagram_connection_id',
   );
   assert(connectionIdFromConversationMetadata({ connection_id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' }) === null,
     'não aceita connection_id genérico (evita Page/gestao)');
