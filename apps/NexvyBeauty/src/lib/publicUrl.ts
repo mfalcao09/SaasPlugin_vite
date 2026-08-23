@@ -119,6 +119,7 @@ export function requiredHostClass(pathname: string): HostClass | 'any' {
   if (PUBLIC_EXACT.has(pathname)) return 'public';
   if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) return 'public';
   if (pathname === '/super-admin') return 'gestao';
+  if (pathname === '/afiliado') return 'app';
   // Resto = app do operador (logado): /crm, /admin, /salao/*, /perfil,
   // /configuracoes, /ajuda, /novidades, /install, /docs/*, filhas do cockpit.
   return 'app';

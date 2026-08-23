@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { mapCaktoOrderForUpsert } from '../_shared/cakto-client.ts';
 import { provisionFromOrder, extractOfferSlug } from '../_shared/cakto-plan-provisioning.ts';
 import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
+import { attributeAffiliateCommission } from '../_shared/affiliate-commission.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -262,6 +263,32 @@ Deno.serve(async (req) => {
             `Evento: ${event ?? '-'}\nComprador: ${buyer}\n` +
             `Motivo: ${String(provErr?.message ?? provErr).slice(0, 400)}`,
         );
+      }
+    }
+
+    // Atribuição de comissão de afiliado (escopo platform, venda paga) — camada própria.
+    // Aditivo e isolado: try/catch próprio para NUNCA impactar provisionamento/tags/recovery.
+    if (scopeParam === 'platform') {
+      const st = (row.status || '').toLowerCase();
+      if (st === 'paid' || st === 'approved') {
+        try {
+          const { data: org } = await admin
+            .from('organizations')
+            .select('id')
+            .eq('cakto_customer_email', row.customer_email)
+            .maybeSingle();
+          const affRes = await attributeAffiliateCommission(admin, {
+            customerEmail: row.customer_email,
+            orderRef: row.cakto_id,
+            amountReais: row.amount,
+            organizationId: org?.id ?? null,
+            kind: 'first_sale',
+            buyerDocument: row.customer_document ?? null,
+          });
+          console.log('[cakto-webhook] affiliate attribution', JSON.stringify(affRes));
+        } catch (affErr) {
+          console.error('[cakto-webhook] affiliate attribution error', affErr);
+        }
       }
     }
 

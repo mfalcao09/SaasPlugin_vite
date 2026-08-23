@@ -12,9 +12,11 @@ export interface TemplateEntry {
 import { template as platformGeneric } from './platform-generic.tsx'
 import { template as testEmail } from './test-email.tsx'
 import { template as welcomeAdminAccess } from './welcome-admin-access.tsx'
+import { template as affiliateWelcomeAccess } from './affiliate-welcome-access.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'platform-generic': platformGeneric,
   'test-email': testEmail,
   'welcome-admin-access': welcomeAdminAccess,
+  'affiliate-welcome-access': affiliateWelcomeAccess,
 }

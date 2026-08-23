@@ -197,6 +197,12 @@ verify_jwt = false
 [functions.cakto-webhook]
 verify_jwt = false
 
+# Reconciliador de comissão: cron/server-to-server com Bearer service_role do vault.
+# verify_jwt=false por consistência (service_role no formato novo sb_secret_ não é JWT).
+# Auth real = invocação interna; a função usa SERVICE_ROLE internamente.
+[functions.cakto-affiliate-reconcile]
+verify_jwt = false
+
 # Recuperação de carrinho Cakto: chamada server-to-server com Bearer service_role.
 # verify_jwt=false por consistência (service_role no formato novo sb_secret_ não é JWT).
 [functions.cakto-recovery-trigger]

@@ -14,7 +14,7 @@ import { PlatformCrmProductsSection } from '@/components/superadmin/crm/products
 import { SubscriptionsManager } from '@/components/superadmin/SubscriptionsManager';
 import { BillingManager } from '@/components/superadmin/BillingManager';
 import { CaktoSuperAdminPanel } from '@/components/superadmin/payments/CaktoSuperAdminPanel';
-import { AffiliatesPanel } from '@/components/superadmin/AffiliatesPanel';
+import { AffiliatesPanel } from '@/components/superadmin/affiliates/AffiliatesPanel';
 import { CaktoAdminPanel } from '@/components/admin/payments/CaktoAdminPanel';
 import { EvolutionManager } from '@/components/superadmin/EvolutionManager';
 import { IntegrationsManager } from '@/components/admin/integrations/IntegrationsManager';
