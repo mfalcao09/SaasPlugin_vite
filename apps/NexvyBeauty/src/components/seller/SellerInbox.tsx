@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
 import { useWebChatConversations, useWebChatConversationCounts, useWebChatConversation, useSendAgentMessage, useCloseConversation, useReopenConversation, useReturnToQueue, useResumeConversation, useActivateBot, useEditMessage, useDeleteMessage, useStarMessage, useForwardMessage, useAssignConversation, type InboxBackendFilters } from '@/hooks/useWebChat';
 import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
+import { useInstagramLoginConnections } from '@/hooks/useInstagramLoginConnection';
 import { useAssignedProducts, useProducts } from '@/hooks/useProducts';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,6 +62,7 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
   const isMobile = useIsMobile();
   const { playNotification, isEnabled: soundEnabled, toggleSound } = useNotificationSound();
   const { data: evolutionInstances } = useEvolutionInstances();
+  const { data: instagramLoginConnections } = useInstagramLoginConnections();
 
   /**
    * Resolve label da conexão DO BOT (não o telefone do lead).
@@ -83,9 +85,14 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
       }
       return 'WhatsApp';
     }
+    if (ch === 'instagram') {
+      const ig = (instagramLoginConnections || []).find((c) => c.status === 'active');
+      if (ig?.username) return `@${ig.username}`;
+      return 'Instagram';
+    }
     if (!ch) return null;
     return ch.charAt(0).toUpperCase() + ch.slice(1);
-  }, [evolutionInstances]);
+  }, [evolutionInstances, instagramLoginConnections]);
   
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   // Painel "Dados do Contato": no mobile sempre começa fechado (chat aparece primeiro);
