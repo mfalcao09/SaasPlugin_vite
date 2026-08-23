@@ -3,7 +3,7 @@
 // Mocka o client Supabase (sem banco) — prova a lógica de comissão, idempotência e antifraude.
 
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { attributeAffiliateCommission } from './affiliate-commission.ts';
+import { attributeAffiliateCommission, clawbackAffiliateCommission } from './affiliate-commission.ts';
 
 type Resp = { data: unknown; error: unknown };
 
@@ -31,10 +31,17 @@ function makeAdmin(
       const chain = () => b;
       b.select = chain;
       b.eq = chain;
+      b.neq = chain;
       b.not = chain;
       b.order = chain;
       b.limit = chain;
       b.gte = chain;
+      b.ilike = chain;
+      b.in = chain;
+      b.update = (row: unknown) => {
+        captured[table + ':update'] = row;
+        return b;
+      };
       b.insert = (row: unknown) => {
         captured[table] = row;
         return b;
@@ -49,8 +56,13 @@ function makeAdmin(
       return b;
     },
   };
+  const rpcs: Array<{ name: string; args: unknown }> = [];
+  (admin as { rpc?: unknown }).rpc = (name: string, args: unknown) => {
+    rpcs.push({ name, args });
+    return Promise.resolve(responses[`rpc:${name}`] ?? { data: null, error: null });
+  };
   // deno-lint-ignore no-explicit-any
-  return { admin: admin as any, captured };
+  return { admin: admin as any, captured, rpcs };
 }
 
 const LEAD = { data: { id: 'lead-1', affiliate_id: 'aff-1' }, error: null };
@@ -258,4 +270,120 @@ Deno.test('regressão: sem buyerDocument e sem buyerIp comporta-se como antes (c
   assertEquals(row.buyer_ip, null);
   const meta = row.metadata as { fraud?: string[] };
   assertEquals(meta.fraud, undefined); // sem bloco fraud quando clear
+});
+
+
+// ---------------------------------------------------------------------------
+// Onda 1 — hold, janela, cupom, teto, clawback
+// ---------------------------------------------------------------------------
+
+Deno.test('hold: comissão nova nasce pending com hold_until', async () => {
+  const { admin, captured } = makeAdmin({
+    sales_leads: LEAD,
+    affiliates: AFF_ACTIVE,
+    affiliate_commissions: { data: { id: 'comm-hold' }, error: null },
+  });
+  const res = await attributeAffiliateCommission(admin, {
+    customerEmail: 'comprador@x.com',
+    orderRef: 'ORDER-HOLD-1',
+    amountReais: 197,
+  });
+  assertEquals(res.created, true);
+  const row = captured['affiliate_commissions'] as Record<string, unknown>;
+  assertEquals(row.status, 'pending');
+  assertEquals(typeof row.hold_until, 'string');
+  const hold = new Date(String(row.hold_until)).getTime();
+  const createdSkew = hold - Date.now();
+  // ~30 dias (tolerância 2 min)
+  assertEquals(createdSkew > 29 * 86400000 && createdSkew < 31 * 86400000, true);
+});
+
+Deno.test('atribuição: lead fora da janela de 60 dias não gera comissão', async () => {
+  const stale = {
+    data: { id: 'lead-stale', affiliate_id: 'aff-1', created_at: '2026-01-01T00:00:00.000Z' },
+    error: null,
+  };
+  const { admin, captured } = makeAdmin({
+    sales_leads: stale,
+    affiliates: AFF_ACTIVE,
+    affiliate_commissions: { data: { id: 'x' }, error: null },
+  });
+  const res = await attributeAffiliateCommission(admin, {
+    customerEmail: 'comprador@x.com',
+    orderRef: 'ORDER-STALE-1',
+    amountReais: 197,
+  });
+  assertEquals(res.created, false);
+  assertEquals(res.skipped, 'attribution window expired');
+  assertEquals(captured['affiliate_commissions'], undefined);
+});
+
+Deno.test('cupom atribui venda sem lead ?ref=', async () => {
+  const { admin, captured } = makeAdmin({
+    sales_leads: { data: null, error: null },
+    affiliate_links: { data: { affiliate_id: 'aff-1', coupon_code: 'MARIA30' }, error: null },
+    affiliates: AFF_ACTIVE,
+    affiliate_commissions: { data: { id: 'comm-cupom' }, error: null },
+  });
+  const res = await attributeAffiliateCommission(admin, {
+    customerEmail: 'sem-ref@x.com',
+    orderRef: 'ORDER-CUPOM-1',
+    amountReais: 197,
+    couponCode: 'MARIA30',
+  });
+  assertEquals(res.created, true);
+  assertEquals(res.affiliateId, 'aff-1');
+  const row = captured['affiliate_commissions'] as Record<string, unknown>;
+  assertEquals(row.affiliate_id, 'aff-1');
+  const meta = row.metadata as { attribution?: string };
+  assertEquals(meta.attribution, 'coupon');
+});
+
+Deno.test('teto: 12 ciclos do mesmo comprador bloqueia o 13º', async () => {
+  const nowIso = new Date().toISOString();
+  const twelve = Array.from({ length: 12 }, (_, i) => ({
+    affiliate_id: 'aff-1',
+    buyer_document: String(88000000000 + i),
+    buyer_ip: `10.1.0.${i}`,
+    created_at: '2026-01-01T00:00:00.000Z', // fora da janela de velocidade
+    status: 'pending',
+    metadata: { customer_email: 'recorrente@x.com' },
+  }));
+  const { admin, captured } = makeAdmin(
+    { sales_leads: LEAD, affiliates: AFF_ACTIVE, affiliate_commissions: { data: { id: 'x' }, error: null } },
+    { affiliate_commissions: { data: twelve, error: null } },
+  );
+  const res = await attributeAffiliateCommission(admin, {
+    customerEmail: 'recorrente@x.com',
+    orderRef: 'ORDER-CAP-13',
+    amountReais: 197,
+    kind: 'recurring',
+  });
+  assertEquals(res.created, false);
+  assertEquals(res.skipped, 'recurring cap reached');
+  assertEquals(captured['affiliate_commissions'], undefined);
+});
+
+Deno.test('clawback: reembolso zera comissão pending (idempotente)', async () => {
+  const pending = {
+    id: 'comm-1',
+    status: 'pending',
+    amount_cents: 5910,
+    metadata: { amount_reais: 197 },
+  };
+  const { admin, captured } = makeAdmin({
+    affiliate_commissions: { data: pending, error: null },
+  }, {
+    affiliate_commissions: { data: [pending], error: null },
+  });
+  const res = await clawbackAffiliateCommission(admin, {
+    orderRef: 'ORDER-123',
+    reason: 'refund',
+    refundReais: 197,
+  });
+  assertEquals(res.updated, true);
+  assertEquals(res.cancelled, 1);
+  const upd = captured['affiliate_commissions:update'] as Record<string, unknown>;
+  assertEquals(upd.status, 'cancelled');
+  assertEquals(upd.amount_cents, 0);
 });

@@ -248,3 +248,19 @@ verify_jwt = true
 # (verify_jwt=true) — chamada pelo inbox autenticado.
 [functions.instagram-login-webhook]
 verify_jwt = false
+
+# Captura pública da LP (anônimo). Sem JWT — o gateway não pode exigir sessão.
+[functions.capture-lead]
+verify_jwt = false
+
+# Inscrição self-serve do programa de afiliados (anônimo).
+[functions.affiliate-apply]
+verify_jwt = false
+
+# Dono de salão cliente gera link (JWT do tenant).
+[functions.affiliate-salon]
+verify_jwt = true
+
+# Onda 3 — programa de indicação do SALÃO (cliente indica amiga). JWT do tenant.
+[functions.tenant-referral]
+verify_jwt = true

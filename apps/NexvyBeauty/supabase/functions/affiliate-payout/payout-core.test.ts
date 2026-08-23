@@ -111,6 +111,19 @@ function approved(id: string, aff: string, cents: number): CommissionRow {
   return { id, affiliate_id: aff, amount_cents: cents, status: 'approved', payout_item_id: null };
 }
 
+Deno.test('groupApproved ignora comissão tenant mesmo aprovada', () => {
+  const groups = groupApproved(
+    [
+      approved('c1', 'aff-1', 3000),
+      { id: 'ten', affiliate_id: 'aff-t', amount_cents: 9999, status: 'approved', payout_item_id: null, program: 'tenant' },
+    ],
+    { ...AFFS, 'aff-t': { name: 'Cliente', pix_key: 't@pix' } },
+  );
+  assertEquals(groups.length, 1);
+  assertEquals(groups[0].affiliate_id, 'aff-1');
+  assertEquals(groups[0].amount_cents, 3000);
+});
+
 Deno.test('groupApproved soma por afiliado e coleta commission_ids', () => {
   const groups = groupApproved(
     [approved('c1', 'aff-1', 3000), approved('c2', 'aff-1', 2000), approved('c3', 'aff-2', 1500)],

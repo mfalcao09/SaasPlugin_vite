@@ -12,6 +12,9 @@
 // que o helper de comissão usa (amountCents = amount * pct). A UI envia 30; grava 30.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { canApproveCommission } from '../_shared/affiliate-policy.ts';
+import { parsePayoutPreference, settleSubscriptionCredit } from '../_shared/affiliate-onda2.ts';
+import { makeCreditDb } from '../_shared/affiliate-onda2-notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,7 +28,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const VALID_STATUS = new Set(['active', 'paused', 'blocked']);
+const VALID_STATUS = new Set(['active', 'paused', 'blocked', 'pending']);
 
 function randomPassword(): string {
   const bytes = new Uint8Array(24);
@@ -163,6 +166,7 @@ Deno.serve(async (req) => {
             status,
             commission_pct: pctPercent,
             notes: body.notes ?? null,
+            program: 'platform',
           })
           .select('*')
           .single();
@@ -222,6 +226,11 @@ Deno.serve(async (req) => {
           if (!Number.isFinite(h) || h < 0) return json({ error: 'commission_pct inválido' }, 400);
           update.commission_pct = h; // percentual inteiro (30 = 30%)
         }
+        if ('payout_preference' in patch) {
+          const pref = parsePayoutPreference(patch.payout_preference);
+          if (!pref) return json({ error: 'payout_preference inválido' }, 400);
+          update.payout_preference = pref;
+        }
         // email NÃO é editável (chave do auth user).
 
         const { data: affiliate, error } = await admin
@@ -267,6 +276,9 @@ Deno.serve(async (req) => {
               default_utm_source: body.default_utm_source ?? null,
               default_utm_medium: body.default_utm_medium ?? null,
               default_utm_campaign: body.default_utm_campaign ?? null,
+              coupon_code: typeof body.coupon_code === 'string' && body.coupon_code.trim()
+                ? body.coupon_code.trim()
+                : null,
             })
             .select('*')
             .single();
@@ -295,6 +307,7 @@ Deno.serve(async (req) => {
         let q = admin
           .from('affiliates')
           .select('*', { count: 'exact' })
+          .eq('program', 'platform')
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
         if (status) q = q.eq('status', status);
@@ -350,6 +363,7 @@ Deno.serve(async (req) => {
         let q = admin
           .from('affiliate_commissions')
           .select('*', { count: 'exact' })
+          .eq('program', 'platform')
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
         if (body.affiliate_id) q = q.eq('affiliate_id', body.affiliate_id);
@@ -376,9 +390,91 @@ Deno.serve(async (req) => {
       }
 
       // ─────────────────────────────────────────────────────────────────
+      case 'approve_application': {
+        const id = body.id as string;
+        if (!id) return json({ error: 'id obrigatório' }, 400);
+        const { data: aff } = await admin.from('affiliates').select('*').eq('id', id).maybeSingle();
+        if (!aff) return json({ error: 'afiliado não encontrado' }, 404);
+        if (aff.status !== 'pending') return json({ error: `não está pending (status: ${aff.status})` }, 409);
+
+        let authUserId: string | null = aff.user_id ?? null;
+        let userCreated = false;
+        if (!authUserId) {
+          const { data: foundId } = await admin.rpc('get_auth_user_id_by_email', { _email: aff.email });
+          if (typeof foundId === 'string') authUserId = foundId;
+        }
+        if (!authUserId) {
+          const { data: created, error: createErr } = await admin.auth.admin.createUser({
+            email: aff.email,
+            password: randomPassword(),
+            email_confirm: true,
+            user_metadata: { full_name: aff.name },
+          });
+          if (createErr || !created?.user?.id) {
+            return json({ error: `createUser: ${createErr?.message ?? 'unknown'}` }, 500);
+          }
+          authUserId = created.user.id;
+          userCreated = true;
+        }
+
+        const { data: updated, error } = await admin
+          .from('affiliates')
+          .update({ status: 'active', user_id: authUserId, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('status', 'pending')
+          .select('*')
+          .maybeSingle();
+        if (error) return json({ error: error.message }, 500);
+        if (!updated) return json({ error: 'não foi possível aprovar' }, 409);
+
+        const coupon = (typeof body.coupon_code === 'string' && body.coupon_code.trim())
+          ? body.coupon_code.trim()
+          : slugify(aff.name).replace(/-/g, '').slice(0, 10).toUpperCase();
+        const refCode = `${slugify(aff.name)}-${randomSuffix()}`;
+        await admin.from('affiliate_links').insert({
+          affiliate_id: id,
+          ref_code: refCode,
+          label: 'Principal',
+          coupon_code: coupon || null,
+        });
+
+        let welcomeSent = false;
+        try {
+          const { data: linkData } = await admin.auth.admin.generateLink({ type: 'recovery', email: aff.email });
+          const recoveryLink =
+            (linkData as any)?.properties?.action_link ||
+            (linkData as any)?.action_link ||
+            null;
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_KEY}` },
+            body: JSON.stringify({
+              templateName: 'affiliate-welcome-access',
+              recipientEmail: aff.email,
+              idempotencyKey: `affiliate-welcome-${authUserId}`,
+              templateData: { fullName: aff.name, recoveryLink, email: aff.email },
+            }),
+          });
+          welcomeSent = resp.ok;
+        } catch (_e) {
+          welcomeSent = false;
+        }
+
+        return json({ ok: true, affiliate: updated, user_created: userCreated, welcome_sent: welcomeSent, coupon });
+      }
+
       case 'approve_commission': {
         const id = body.id as string;
         if (!id) return json({ error: 'id obrigatório' }, 400);
+        const { data: current } = await admin
+          .from('affiliate_commissions')
+          .select('id, status, hold_until, affiliate_id, amount_cents, payout_method, metadata')
+          .eq('id', id)
+          .maybeSingle();
+        if (!current) return json({ error: 'comissão não encontrada' }, 404);
+        if (!canApproveCommission({ status: current.status, holdUntil: current.hold_until, now: new Date() })) {
+          return json({ error: 'comissão ainda em hold ou não está pending' }, 409);
+        }
         const { data: updated, error } = await admin
           .from('affiliate_commissions')
           .update({ status: 'approved', updated_at: new Date().toISOString() })
@@ -393,6 +489,19 @@ Deno.serve(async (req) => {
             .from('affiliate_commissions').select('status').eq('id', id).maybeSingle();
           if (!cur) return json({ error: 'comissão não encontrada' }, 404);
           return json({ error: `comissão não está pending (status atual: ${cur.status})` }, 409);
+        }
+        if ((updated.payout_method ?? updated.metadata?.payout_method) === 'subscription_credit') {
+          try {
+            const credit = await settleSubscriptionCredit(makeCreditDb(admin), {
+              commissionId: updated.id,
+              affiliateId: updated.affiliate_id,
+              amountCents: Number(updated.amount_cents ?? 0),
+              now: new Date(),
+            });
+            return json({ ok: true, commission: updated, credit });
+          } catch (creditErr) {
+            console.error('[affiliate-admin] credit settle error', creditErr);
+          }
         }
         return json({ ok: true, commission: updated });
       }

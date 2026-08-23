@@ -35,6 +35,7 @@ export function AffiliateLinksDialog({ open, onOpenChange, affiliate }: Props) {
   const [utmSource, setUtmSource] = useState('');
   const [utmMedium, setUtmMedium] = useState('');
   const [utmCampaign, setUtmCampaign] = useState('');
+  const [couponCode, setCouponCode] = useState('');
 
   const publicUrlFor = (code: string) => `${getPublicAppUrl()}/vendas?ref=${code}`;
 
@@ -52,12 +53,14 @@ export function AffiliateLinksDialog({ open, onOpenChange, affiliate }: Props) {
         default_utm_source: utmSource.trim() || undefined,
         default_utm_medium: utmMedium.trim() || undefined,
         default_utm_campaign: utmCampaign.trim() || undefined,
+        coupon_code: couponCode.trim() || undefined,
       });
       setRefCode('');
       setLabel('');
       setUtmSource('');
       setUtmMedium('');
       setUtmCampaign('');
+      setCouponCode('');
       toast.success('Link gerado');
     } catch (e: any) {
       toast.error(e.message ?? 'Erro ao gerar link');
@@ -96,6 +99,10 @@ export function AffiliateLinksDialog({ open, onOpenChange, affiliate }: Props) {
               <div>
                 <Label>utm_campaign</Label>
                 <Input value={utmCampaign} onChange={(e) => setUtmCampaign(e.target.value)} placeholder="lanc" />
+              </div>
+              <div className="sm:col-span-3">
+                <Label>Cupom Cakto (desconto, não split)</Label>
+                <Input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="MARIA30" />
               </div>
             </div>
             <Button onClick={handleGenerate} disabled={generate.isPending}>

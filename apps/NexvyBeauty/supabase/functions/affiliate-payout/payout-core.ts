@@ -10,6 +10,7 @@ import {
   getPixAdapter,
   type PayoutResult,
 } from '../_shared/payout-adapter.ts';
+import { filterPlatformPayoutCommissions, isPlatformPayoutCommission } from '../_shared/affiliate-onda3.ts';
 
 // ---------------------------------------------------------------------------
 // Tipos de linha (subconjunto das colunas usadas; espelham a migration 20260620).
@@ -20,6 +21,8 @@ export interface CommissionRow {
   amount_cents: number;
   status: string;
   payout_item_id: string | null;
+  payout_method?: string | null;
+  program?: string | null;
 }
 export interface PayoutBatchRow {
   id: string;
@@ -101,6 +104,8 @@ export function groupApproved(
 ): ApprovedGroup[] {
   const byAff = new Map<string, ApprovedGroup>();
   for (const c of commissions) {
+    if (!isPlatformPayoutCommission(c)) continue;
+    if ((c.payout_method ?? 'pix') === 'subscription_credit') continue;
     let g = byAff.get(c.affiliate_id);
     if (!g) {
       const a = affiliates[c.affiliate_id];
@@ -131,7 +136,7 @@ export async function listApproved(db: PayoutDb): Promise<{
   total_cents: number;
   affiliates_count: number;
 }> {
-  const commissions = await db.listApprovedCommissions();
+  const commissions = filterPlatformPayoutCommissions(await db.listApprovedCommissions());
   const ids = [...new Set(commissions.map((c) => c.affiliate_id))];
   const affiliates = ids.length ? await db.getAffiliates(ids) : {};
   const groups = groupApproved(commissions, affiliates);
@@ -149,7 +154,7 @@ export async function createBatch(db: PayoutDb, args: {
   | { ok: false; error: string; status: number }
 > {
   const provider = args.provider || 'manual';
-  const commissions = await db.listApprovedCommissions();
+  const commissions = filterPlatformPayoutCommissions(await db.listApprovedCommissions());
   const ids = [...new Set(commissions.map((c) => c.affiliate_id))];
   const affiliates = ids.length ? await db.getAffiliates(ids) : {};
   let groups = groupApproved(commissions, affiliates);

@@ -8,6 +8,11 @@
 //     um motor dedicado: // TODO(edge): platform-booking-dispatcher (igual aos
 //     demais motores da plataforma — a submissão nunca depende do envio).
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  dispatchAffiliateWaNotice,
+  makePlatformEvolutionSendPort,
+  resolvePlatformProductId,
+} from '../_shared/affiliate-onda2-notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,6 +158,45 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[platform-booking-submit] booking created: ${booking.id}`);
+
+    try {
+      const { data: sl } = await supabase
+        .from('sales_leads')
+        .select('id, affiliate_id, affiliate_funnel_stage')
+        .eq('email', guestEmail.trim().toLowerCase())
+        .not('affiliate_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (sl?.affiliate_id) {
+        const productId = await resolvePlatformProductId(supabase);
+        await dispatchAffiliateWaNotice(
+          supabase,
+          makePlatformEvolutionSendPort({
+            supabaseUrl: Deno.env.get('SUPABASE_URL')!,
+            serviceKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+            productId,
+          }),
+          {
+            affiliateId: sl.affiliate_id,
+            leadId: sl.id,
+            event: 'booked',
+            currentStage: sl.affiliate_funnel_stage ?? 'captured',
+          },
+        );
+        await supabase
+          .from('sales_leads')
+          .update({
+            co_sell: true,
+            co_sell_meeting_at: startTimeIso,
+            affiliate_funnel_stage: sl.affiliate_funnel_stage === 'paid' ? 'paid' : 'in_conversation',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', sl.id);
+      }
+    } catch (affErr) {
+      console.error('[platform-booking-submit] affiliate booked notice (non-fatal)', affErr);
+    }
 
     // 6. Notificações (confirmação por WhatsApp ao convidado + aviso interno ao
     //    vendedor): delegadas ao platform-booking-dispatcher. Fire-and-forget e

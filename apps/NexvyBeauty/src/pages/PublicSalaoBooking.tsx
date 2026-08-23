@@ -2,7 +2,7 @@
 // Wizard de 5 passos contra as edge fns públicas (salao-public-bootstrap /
 // salao-availability / salao-public-booking). Sem auth. Re-home do agendar.$slug
 // do CBA pra React Router + edge fns Deno.
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,8 +72,19 @@ export default function PublicSalaoBooking() {
 
   const tracking = useMemo(() => {
     const q = new URLSearchParams(window.location.search);
-    return { utm_source: q.get('utm_source') ?? undefined, utm_medium: q.get('utm_medium') ?? undefined, utm_campaign: q.get('utm_campaign') ?? undefined };
+    return {
+      utm_source: q.get('utm_source') ?? undefined,
+      utm_medium: q.get('utm_medium') ?? undefined,
+      utm_campaign: q.get('utm_campaign') ?? undefined,
+      ref: q.get('ref') ?? undefined,
+    };
   }, []);
+
+  useEffect(() => {
+    const ref = tracking.ref?.trim();
+    if (!ref) return;
+    void (supabase as any).rpc('record_affiliate_click', { p_ref: ref });
+  }, [tracking.ref]);
 
   const submit = useMutation({
     mutationFn: async () => {

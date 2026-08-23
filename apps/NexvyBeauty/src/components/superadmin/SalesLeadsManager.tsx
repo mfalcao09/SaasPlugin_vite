@@ -303,6 +303,32 @@ export function SalesLeadsManager() {
                     </div>
                   )}
 
+                  {selectedLead.affiliate_id && (
+                    <div className="rounded-md border p-3 space-y-2">
+                      <Label>Co-sell (afiliado agenda, BDR/Camila fecha)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Estágio: {selectedLead.affiliate_funnel_stage || '—'}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant={selectedLead.co_sell ? 'secondary' : 'outline'}
+                        onClick={() => {
+                          const next = !selectedLead.co_sell;
+                          updateMutation.mutate({
+                            id: selectedLead.id,
+                            updates: {
+                              co_sell: next,
+                              co_sell_meeting_at: next ? new Date().toISOString() : null,
+                            },
+                          });
+                          setSelectedLead({ ...selectedLead, co_sell: next });
+                        }}
+                      >
+                        {selectedLead.co_sell ? 'Co-sell marcado' : 'Marcar co-sell'}
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>Status</Label>
                     <Select

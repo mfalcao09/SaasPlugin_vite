@@ -26,7 +26,7 @@ export function AffiliateRoute({ children }: AffiliateRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!affiliate) {
+  if (!affiliate || affiliate.status === 'pending' || affiliate.status === 'blocked') {
     return <Navigate to="/" replace />;
   }
 

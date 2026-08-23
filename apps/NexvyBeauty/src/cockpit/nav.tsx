@@ -38,6 +38,7 @@ export const COCKPIT_NAV: ShellNavGroup[] = [
       { to: '/ai-growth', label: 'Oportunidades', icon: Sparkles }, // funde AI Growth + Ações (abas)
       { to: '/automacoes', label: 'Mensagens automáticas', icon: Zap },
       { to: '/meta', label: 'Meta do Mês', icon: Target },
+      { to: '/salao/indicacoes', label: 'Indicação de clientes', icon: UserPlus },
       { to: '/minha-ia', label: 'Minha IA', icon: Bot }, // inclui aba "Ofertas da IA"
     ],
   },

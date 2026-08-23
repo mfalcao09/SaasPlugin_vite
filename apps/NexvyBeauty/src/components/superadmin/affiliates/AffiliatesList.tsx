@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Plus, Search, Link2, Pencil } from 'lucide-react';
-import { useAffiliates, type Affiliate, type AffiliateStatus } from '@/hooks/useAffiliateAdmin';
+import { Loader2, Plus, Search, Link2, Pencil, Check } from 'lucide-react';
+import { useAffiliates, useApproveAffiliateApplication, type Affiliate, type AffiliateStatus } from '@/hooks/useAffiliateAdmin';
 import { AffiliateFormDialog } from './AffiliateFormDialog';
 import { AffiliateLinksDialog } from './AffiliateLinksDialog';
 
@@ -14,6 +14,7 @@ const STATUS_META: Record<AffiliateStatus, { label: string; className: string }>
   active: { label: 'Ativo', className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
   paused: { label: 'Pausado', className: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   blocked: { label: 'Bloqueado', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+  pending: { label: 'Aguardando', className: 'bg-sky-500/10 text-sky-700 border-sky-500/20' },
 };
 
 function brl(cents: number) {
@@ -27,6 +28,7 @@ export function AffiliatesList() {
   const [editing, setEditing] = useState<Affiliate | null>(null);
   const [linksFor, setLinksFor] = useState<Affiliate | null>(null);
 
+  const approveApp = useApproveAffiliateApplication();
   const { data, isLoading } = useAffiliates({
     search: search.trim() || undefined,
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -64,6 +66,7 @@ export function AffiliatesList() {
             <SelectItem value="active">Ativo</SelectItem>
             <SelectItem value="paused">Pausado</SelectItem>
             <SelectItem value="blocked">Bloqueado</SelectItem>
+            <SelectItem value="pending">Aguardando</SelectItem>
           </SelectContent>
         </Select>
         <Button onClick={openCreate}>
@@ -95,7 +98,7 @@ export function AffiliatesList() {
               </TableHeader>
               <TableBody>
                 {affiliates.map((a) => {
-                  const meta = STATUS_META[a.status];
+                  const meta = STATUS_META[a.status] ?? { label: a.status, className: '' };
                   const s = a.summary;
                   return (
                     <TableRow key={a.id}>
@@ -115,6 +118,23 @@ export function AffiliatesList() {
                           <Button variant="ghost" size="icon" title="Links" onClick={() => setLinksFor(a)}>
                             <Link2 className="h-4 w-4" />
                           </Button>
+                          {a.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Aprovar inscrição"
+                              disabled={approveApp.isPending}
+                              onClick={async () => {
+                                try {
+                                  await approveApp.mutateAsync(a.id);
+                                } catch (e: any) {
+                                  console.error(e);
+                                }
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(a)}>
                             <Pencil className="h-4 w-4" />
                           </Button>

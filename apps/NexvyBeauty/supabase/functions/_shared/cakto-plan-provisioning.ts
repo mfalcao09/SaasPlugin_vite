@@ -160,7 +160,7 @@ interface ProvisionResult {
 /**
  * Resolve um plano pelo cakto_offer_slug (preferencial) ou cakto_product_id (fallback).
  */
-async function resolvePlatformPlan(
+export async function resolvePlatformPlan(
   admin: SupabaseClient,
   offerSlug: string | null,
   productCaktoId: string | null,

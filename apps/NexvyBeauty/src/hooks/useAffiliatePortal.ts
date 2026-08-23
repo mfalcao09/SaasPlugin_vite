@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -16,6 +16,8 @@ export interface Affiliate {
   email: string;
   phone: string | null;
   pix_key: string | null;
+  payout_preference?: 'pix' | 'subscription_credit' | null;
+  organization_id?: string | null;
   status: string; // active | paused | blocked
   commission_pct: number; // percentual inteiro (30 = 30%)
   notes: string | null;
@@ -32,6 +34,7 @@ export interface AffiliateLink {
   default_utm_medium: string | null;
   default_utm_campaign: string | null;
   clicks: number;
+  coupon_code?: string | null;
   created_at: string;
 }
 
@@ -129,6 +132,72 @@ export function useMyCommissionSummary() {
         .maybeSingle();
       if (error) throw error;
       return (data as AffiliateSummary | null) ?? null;
+    },
+  });
+}
+
+
+export interface AffiliateFunnel {
+  clicks: number;
+  leads: number;
+  checkouts: number;
+  paid: number;
+  refunds: number;
+}
+
+export interface AffiliateLeadStageRow {
+  stage: string;
+  updated_at: string | null;
+  co_sell: boolean;
+  meeting_at: string | null;
+}
+
+export function useMyAffiliateLeadStages() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['affiliate-portal', 'lead-stages', user?.id],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<AffiliateLeadStageRow[]> => {
+      const { data, error } = await (supabase as any).rpc('affiliate_my_lead_stages');
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []) as AffiliateLeadStageRow[];
+    },
+  });
+}
+
+export function useSetPayoutPreference() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (payout_preference: 'pix' | 'subscription_credit') => {
+      const { data, error } = await (supabase as any).rpc('affiliate_set_payout_preference', {
+        p_preference: payout_preference,
+      });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['affiliate-portal', 'me', user?.id] });
+    },
+  });
+}
+
+export function useMyAffiliateFunnel() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['affiliate-portal', 'funnel', user?.id],
+    enabled: !!user?.id,
+    queryFn: async (): Promise<AffiliateFunnel> => {
+      const { data, error } = await (supabase as any).rpc('affiliate_my_funnel');
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        clicks: Number(row?.clicks ?? 0),
+        leads: Number(row?.leads ?? 0),
+        checkouts: Number(row?.checkouts ?? 0),
+        paid: Number(row?.paid ?? 0),
+        refunds: Number(row?.refunds ?? 0),
+      };
     },
   });
 }
