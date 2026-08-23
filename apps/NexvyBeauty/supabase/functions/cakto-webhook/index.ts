@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { mapCaktoOrderForUpsert } from '../_shared/cakto-client.ts';
-import { provisionFromOrder, extractOfferSlug } from '../_shared/cakto-plan-provisioning.ts';
+import { provisionFromOrder, extractOfferSlug, resolvePlatformPlan } from '../_shared/cakto-plan-provisioning.ts';
 import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
 import { attributeAffiliateCommission, clawbackAffiliateCommission } from '../_shared/affiliate-commission.ts';
 
@@ -289,6 +289,11 @@ Deno.serve(async (req) => {
             .select('id')
             .eq('cakto_customer_email', row.customer_email)
             .maybeSingle();
+          let planSlug: string | null = null;
+          try {
+            const plan = await resolvePlatformPlan(admin, row.cakto_offer_slug ?? null, row.product_cakto_id ?? null);
+            planSlug = plan?.slug ?? null;
+          } catch { /* best-effort: cai no % do afiliado */ }
           const affRes = await attributeAffiliateCommission(admin, {
             customerEmail: row.customer_email,
             orderRef: row.cakto_id,
@@ -298,7 +303,7 @@ Deno.serve(async (req) => {
             buyerDocument: row.customer_document ?? null,
             couponCode: row.coupon_code ?? null,
             customerPhone: row.customer_phone ?? null,
-            planSlug: row.cakto_offer_slug ?? null,
+            planSlug,
           });
           console.log('[cakto-webhook] affiliate attribution', JSON.stringify(affRes));
         } catch (affErr) {
