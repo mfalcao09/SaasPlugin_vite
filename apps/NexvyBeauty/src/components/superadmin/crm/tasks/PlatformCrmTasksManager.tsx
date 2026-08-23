@@ -56,6 +56,7 @@ import {
 import { usePlatformCrmTeamMembers } from '../data/usePlatformCrmTeam';
 import { usePlatformCrmLeads } from '../data/usePlatformCrmLeads';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { resolveCreateLeadProductId } from '../leads/createPlatformCrmLeadProduct';
 import { PlatformCrmLeadDetail } from '../leads/PlatformCrmLeadDetail';
 import { PlatformCrmTaskFormDialog, type TaskFormValues } from './PlatformCrmTaskFormDialog';
 
@@ -139,7 +140,7 @@ export function PlatformCrmTasksManager() {
 
   // A1.3 — filtro GLOBAL de produto (client-side, aditivo — mesma semântica do
   // LeadsManager: com "Todos" (null) a lista é idêntica ao comportamento atual).
-  const { activeProductId } = useActivePlatformProduct();
+  const { activeProductId, products } = useActivePlatformProduct();
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   useEffect(() => {
@@ -272,11 +273,16 @@ export function PlatformCrmTasksManager() {
         await updateTask.mutateAsync({ id: editingTask.id, ...values });
         toast.success('Tarefa atualizada!');
       } else {
+        const productId = resolveCreateLeadProductId({
+          lockedProductId: activeProductId,
+          selectedProductId: values.product_id,
+          catalogHasProducts: products.length > 0,
+        });
         await createTask.mutateAsync({
           ...values,
           status: 'pending',
           type: 'manual',
-          product_id: activeProductId ?? null,
+          product_id: productId,
           created_by: currentUserId,
         });
         toast.success('Tarefa criada com sucesso!');
@@ -682,6 +688,8 @@ export function PlatformCrmTasksManager() {
           label: l.company ? `${l.name} — ${l.company}` : l.name,
         }))}
         defaultUserId={currentUserId}
+        products={products.map((p) => ({ id: p.id, name: p.name }))}
+        lockedProductId={activeProductId}
       />
 
       {/* Confirmação de exclusão (mesmo padrão do LeadsManager) */}
@@ -717,7 +725,11 @@ export function PlatformCrmTasksManager() {
             <DialogTitle>Detalhes do Lead</DialogTitle>
           </VisuallyHidden>
           {leadDetailId && (
-            <PlatformCrmLeadDetail leadId={leadDetailId} onBack={() => setLeadDetailId(null)} />
+            <PlatformCrmLeadDetail
+              leadId={leadDetailId}
+              onBack={() => setLeadDetailId(null)}
+              onOpenLead={setLeadDetailId}
+            />
           )}
         </DialogContent>
       </Dialog>

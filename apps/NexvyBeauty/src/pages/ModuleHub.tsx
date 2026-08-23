@@ -142,7 +142,7 @@ const ModuleHub = () => {
       title={firstName ? `Olá, ${firstName}` : 'Olá'}
       subtitle={orgName || undefined}
     >
-      {/* A dialog de escolha (Gestão Multi-Empresas / Empresa Master) é
+      {/* A dialog de escolha (Gestão da plataforma / Empresa Master) é
           global, montada no App.tsx via SuperAdminViewProvider. */}
 
       {/* Onboarding guiado (admin de organização, 1º acesso) — exige NÃO

@@ -178,7 +178,7 @@ export function PlatformCrmProductListPage({ onProductSelect }: PlatformCrmProdu
         <div>
           <h1 className="text-2xl font-bold text-foreground">Negócios</h1>
           <p className="text-muted-foreground">
-            Catálogo dos produtos do grupo — cada produto tem funil, cérebro e equipe próprios
+            Linhas SaaS da casa — cada produto tem funil, cérebro e equipe próprios
           </p>
         </div>
         <Button onClick={() => setShowOnboarding(true)} size="lg">

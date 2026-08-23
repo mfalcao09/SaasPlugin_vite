@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import type { PlatformCrmTaskWithRefs } from '../data/usePlatformCrmTasks';
+import { validateCreateLeadProduct } from '../leads/createPlatformCrmLeadProduct';
 
 /**
  * Dialog de criação/edição de tarefa da Gestão de Tarefas (módulo Vendas).
@@ -38,6 +39,8 @@ export interface TaskFormValues {
   due_date: string | null;
   lead_id: string | null;
   user_id: string;
+  /** Só no create (regra B). Edição não altera product_id. */
+  product_id: string | null;
 }
 
 interface Option {
@@ -56,6 +59,8 @@ interface PlatformCrmTaskFormDialogProps {
   leads: Option[];
   /** Default do responsável na criação (usuário atual). */
   defaultUserId?: string | null;
+  products: { id: string; name: string }[];
+  lockedProductId: string | null;
 }
 
 const toLocalInput = (iso: string | null | undefined) =>
@@ -70,8 +75,15 @@ export function PlatformCrmTaskFormDialog({
   members,
   leads,
   defaultUserId,
+  products,
+  lockedProductId,
 }: PlatformCrmTaskFormDialogProps) {
   const isEdit = Boolean(task);
+  const catalogHasProducts = products.length > 0;
+  const lockedProductName =
+    lockedProductId != null
+      ? (products.find((p) => p.id === lockedProductId)?.name ?? 'Produto ativo')
+      : null;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -79,6 +91,7 @@ export function PlatformCrmTaskFormDialog({
   const [dueDate, setDueDate] = useState('');
   const [leadId, setLeadId] = useState<string>('none');
   const [userId, setUserId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Re-hidrata o formulário a cada abertura (criação zera; edição preenche).
@@ -99,8 +112,9 @@ export function PlatformCrmTaskFormDialog({
       setDueDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       setLeadId('none');
       setUserId(defaultUserId ?? '');
+      setSelectedProductId(lockedProductId ?? '');
     }
-  }, [open, task, defaultUserId]);
+  }, [open, task, defaultUserId, lockedProductId]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -111,6 +125,19 @@ export function PlatformCrmTaskFormDialog({
       setError('Selecione um responsável');
       return;
     }
+    let productId: string | null = task?.product_id ?? null;
+    if (!isEdit) {
+      const productCheck = validateCreateLeadProduct({
+        lockedProductId,
+        selectedProductId,
+        catalogHasProducts,
+      });
+      if (!productCheck.ok) {
+        setError(productCheck.error);
+        return;
+      }
+      productId = productCheck.productId;
+    }
     setError(null);
     await onSubmit({
       title: title.trim(),
@@ -119,6 +146,7 @@ export function PlatformCrmTaskFormDialog({
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
       lead_id: leadId === 'none' ? null : leadId,
       user_id: userId,
+      product_id: productId,
     });
   };
 
@@ -201,6 +229,37 @@ export function PlatformCrmTaskFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {!isEdit && catalogHasProducts && lockedProductId ? (
+            <div
+              className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+              title="Produto do switcher da sidebar"
+            >
+              <Package className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">Produto</span>
+              <span className="font-medium truncate">{lockedProductName}</span>
+            </div>
+          ) : null}
+          {!isEdit && catalogHasProducts && !lockedProductId ? (
+            <div className="space-y-2">
+              <Label>Produto *</Label>
+              <Select
+                value={selectedProductId || undefined}
+                onValueChange={setSelectedProductId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label>Vincular a um Lead (opcional)</Label>

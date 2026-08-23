@@ -64,7 +64,7 @@ export function OrganizationSelector() {
     try {
       await exitImpersonation();
       navigate('/super-admin');
-      toast.success('Voltou para Gestão Multi-Empresas');
+      toast.success('Voltou para a gestão da plataforma');
     } catch (e) {
       toast.error((e as Error).message || 'Erro ao sair da impersonação');
     } finally {
@@ -94,8 +94,8 @@ export function OrganizationSelector() {
                 <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium">Gestão Multi-Empresas</div>
-                <div className="text-xs text-muted-foreground">Voltar ao painel administrativo</div>
+                <div className="font-medium">Gestão da plataforma</div>
+                <div className="text-xs text-muted-foreground">Voltar à casa SaaS e aos clientes</div>
               </div>
             </button>
           </div>

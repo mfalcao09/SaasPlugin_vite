@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,19 +26,23 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, User, Building, Mail, Phone, FileText } from 'lucide-react';
+import { Loader2, User, Building, Mail, Phone, FileText, Package } from 'lucide-react';
 import { LEAD_ORIGINS, LEAD_CHANNELS } from '@/hooks/useLeadTracking';
 import type { PlatformCrmStage } from '../data/usePlatformCrmStages';
+import {
+  resolveCreateLeadProductId,
+  validateCreateLeadProduct,
+} from './createPlatformCrmLeadProduct';
 
 /**
- * Criação de lead no CRM de PLATAFORMA (super_admin) — pipeline único, desacoplado do
- * tenant. Porte 1:1 do CreateLeadDialog: nome, empresa, email, telefone, cargo,
- * temperatura, origem, canal, estágio, valor, vendedor (rep da plataforma), squad,
- * observações. "Produto" DROPADO (plataforma sem catálogo). Zero organization_id.
+ * Criação de lead no CRM de PLATAFORMA (super_admin). Regra B (CB-lead-todos):
+ * switcher com produto → carimba lockedProductId (read-only); “Todos” + catálogo
+ * → Select obrigatório; catálogo vazio → product_id null. Zero organization_id.
+ * NÃO usa effectiveProductId / products[0].
  */
 const NONE = '__none';
 
-const formSchema = z.object({
+const createLeadFormFields = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   company: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
@@ -51,9 +56,30 @@ const formSchema = z.object({
   assigned_to: z.string().optional(),
   squad_id: z.string().optional(),
   notes: z.string().optional(),
+  product_id: z.string().optional(),
 });
 
-export type CreatePlatformCrmLeadFormData = z.infer<typeof formSchema>;
+export type CreatePlatformCrmLeadFormData = z.infer<typeof createLeadFormFields>;
+
+function buildCreateLeadFormSchema(
+  lockedProductId: string | null,
+  catalogHasProducts: boolean,
+) {
+  return createLeadFormFields.superRefine((data, ctx) => {
+    const result = validateCreateLeadProduct({
+      lockedProductId,
+      selectedProductId: data.product_id,
+      catalogHasProducts,
+    });
+    if (!result.ok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['product_id'],
+        message: result.error,
+      });
+    }
+  });
+}
 
 /** Payload já normalizado para a mutation de criação de `platform_crm_leads`. */
 export interface CreatePlatformCrmLeadValues {
@@ -70,6 +96,7 @@ export interface CreatePlatformCrmLeadValues {
   assigned_to: string | null;
   squad_id: string | null;
   notes: string | null;
+  product_id: string | null;
 }
 
 interface CreatePlatformCrmLeadDialogProps {
@@ -80,7 +107,27 @@ interface CreatePlatformCrmLeadDialogProps {
   stages: PlatformCrmStage[];
   sellers: { id: string; full_name: string }[];
   squads: { id: string; name: string }[];
+  products: { id: string; name: string }[];
+  /** activeProductId do switcher: string = produto travado; null = “Todos”. */
+  lockedProductId: string | null;
 }
+
+const EMPTY_FORM: CreatePlatformCrmLeadFormData = {
+  name: '',
+  company: '',
+  email: '',
+  phone: '',
+  position: '',
+  temperature: 'warm',
+  lead_origin: '',
+  lead_channel: '',
+  stageId: NONE,
+  dealValue: '',
+  assigned_to: '',
+  squad_id: '',
+  notes: '',
+  product_id: '',
+};
 
 export function CreatePlatformCrmLeadDialog({
   open,
@@ -90,25 +137,30 @@ export function CreatePlatformCrmLeadDialog({
   stages,
   sellers,
   squads,
+  products,
+  lockedProductId,
 }: CreatePlatformCrmLeadDialogProps) {
+  const catalogHasProducts = products.length > 0;
+  const lockedProductName =
+    lockedProductId != null
+      ? (products.find((p) => p.id === lockedProductId)?.name ?? 'Produto ativo')
+      : null;
+
   const form = useForm<CreatePlatformCrmLeadFormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      company: '',
-      email: '',
-      phone: '',
-      position: '',
-      temperature: 'warm',
-      lead_origin: '',
-      lead_channel: '',
-      stageId: NONE,
-      dealValue: '',
-      assigned_to: '',
-      squad_id: '',
-      notes: '',
-    },
+    // Resolver lido a cada submit — locked/catálogo mudam com o switcher sem remount.
+    resolver: async (values, context, options) =>
+      zodResolver(buildCreateLeadFormSchema(lockedProductId, catalogHasProducts))(
+        values,
+        context,
+        options,
+      ),
+    defaultValues: { ...EMPTY_FORM, product_id: lockedProductId ?? '' },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    form.reset({ ...EMPTY_FORM, product_id: lockedProductId ?? '' });
+  }, [open, lockedProductId, form]);
 
   const handleSubmit = (data: CreatePlatformCrmLeadFormData) => {
     const parsedValue =
@@ -130,8 +182,13 @@ export function CreatePlatformCrmLeadDialog({
       assigned_to: data.assigned_to || null,
       squad_id: data.squad_id || null,
       notes: data.notes?.trim() ? data.notes.trim() : null,
+      product_id: resolveCreateLeadProductId({
+        lockedProductId,
+        selectedProductId: data.product_id,
+        catalogHasProducts,
+      }),
     });
-    form.reset();
+    form.reset({ ...EMPTY_FORM, product_id: lockedProductId ?? '' });
   };
 
   return (
@@ -306,6 +363,46 @@ export function CreatePlatformCrmLeadDialog({
                 )}
               />
             </div>
+
+            {/* Produto — regra B: obrigatório em “Todos”; read-only se switcher travado */}
+            {catalogHasProducts && lockedProductId ? (
+              <div
+                className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+                title="Produto do switcher da sidebar"
+              >
+                <Package className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-muted-foreground">Produto</span>
+                <span className="font-medium truncate">{lockedProductName}</span>
+              </div>
+            ) : null}
+            {catalogHasProducts && !lockedProductId ? (
+              <FormField
+                control={form.control}
+                name="product_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1">
+                      <Package className="h-3 w-3" /> Produto *
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o produto" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
 
             {/* Estágio + Valor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -345,6 +345,7 @@ export function PlatformCrmKanban() {
             <PlatformCrmLeadDetail
               leadId={selectedLeadId}
               onBack={() => setSelectedLeadId(null)}
+              onOpenLead={setSelectedLeadId}
             />
           )}
         </DialogContent>

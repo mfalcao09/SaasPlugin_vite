@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { 
   Building2, 
   Users, 
@@ -6,11 +7,18 @@ import {
   DollarSign,
   Target,
   Activity,
-  CheckCircle
+  CheckCircle,
+  Package
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSuperAdminStats, useAuditLogs, useAllOrganizations } from '@/hooks/useSuperAdmin';
 import { useActivePlans } from '@/hooks/usePlatformPlans';
+import {
+  usePlatformCrmProducts,
+  usePlatformCrmProductsStats,
+} from '@/components/superadmin/crm/data/usePlatformCrmProducts';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { buildHouseProductRecorte } from '@/components/superadmin/house/buildHouseProductRecorte';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -33,6 +41,24 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
   const { data: logs, isLoading: logsLoading } = useAuditLogs(10);
   const { data: orgs, isLoading: orgsLoading } = useAllOrganizations();
   const { data: activePlans } = useActivePlans();
+  const { data: catalogProducts, isLoading: catalogLoading } = usePlatformCrmProducts();
+  const { data: productStats, isLoading: productStatsLoading } = usePlatformCrmProductsStats();
+  const { activeProductId } = useActivePlatformProduct();
+
+  const houseRecorte = useMemo(
+    () =>
+      buildHouseProductRecorte(
+        (catalogProducts ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          status: p.status,
+        })),
+        productStats,
+        activeProductId,
+      ),
+    [catalogProducts, productStats, activeProductId],
+  );
+  const houseRecorteLoading = catalogLoading || productStatsLoading;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -47,8 +73,10 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard Administrativo</h1>
-        <p className="text-muted-foreground">Visão geral da plataforma</p>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard da casa SaaS</h1>
+        <p className="text-muted-foreground">
+          Assinaturas dos clientes e recorte por linha de produto
+        </p>
       </div>
 
       {/* KPI Cards - Row 1 */}
@@ -66,7 +94,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
             ) : (
               <>
                 <div className="text-2xl font-bold tabular-nums">{formatCurrency(stats?.mrr || 0)}</div>
-                <p className="text-xs text-muted-foreground">Receita recorrente mensal</p>
+                <p className="text-xs text-muted-foreground">Assinaturas dos clientes</p>
               </>
             )}
           </CardContent>
@@ -85,7 +113,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
             ) : (
               <>
                 <div className="text-2xl font-bold tabular-nums">{formatCurrency(stats?.arr || 0)}</div>
-                <p className="text-xs text-muted-foreground">Receita recorrente anual</p>
+                <p className="text-xs text-muted-foreground">Assinaturas × 12</p>
               </>
             )}
           </CardContent>
@@ -145,7 +173,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
             ) : (
               <>
                 <div className="text-2xl font-bold tabular-nums">{stats?.organizations || 0}</div>
-                <p className="text-xs text-muted-foreground">Organizações ativas</p>
+                <p className="text-xs text-muted-foreground">Clientes que compram o SaaS</p>
               </>
             )}
           </CardContent>
@@ -237,11 +265,11 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
           </CardContent>
         </Card>
 
-        {/* Recent Organizations */}
+        {/* Recent client tenants */}
         <Card>
           <CardHeader>
-            <CardTitle>Empresas Recentes</CardTitle>
-            <CardDescription>Últimas organizações cadastradas</CardDescription>
+            <CardTitle>Clientes recentes</CardTitle>
+            <CardDescription>Empresas que compram o SaaS — não a Nexvy</CardDescription>
           </CardHeader>
           <CardContent>
             {orgsLoading ? (
@@ -252,7 +280,7 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
               </div>
             ) : recentOrgs.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                Nenhuma empresa cadastrada ainda
+                Nenhum cliente cadastrado ainda
               </p>
             ) : (
               <div className="space-y-3">
@@ -285,6 +313,74 @@ export function SuperAdminDashboard({ onNavigate }: SuperAdminDashboardProps = {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recorte por produto — catálogo + pipeline real (sem MRR inventado) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Por produto</CardTitle>
+          <CardDescription>
+            Linhas SaaS do catálogo
+            {activeProductId ? ' · recorte do produto ativo' : ' · todos os produtos'}
+            {' · '}
+            {houseRecorte.totals.products} {houseRecorte.totals.products === 1 ? 'linha' : 'linhas'}
+            {', '}
+            {houseRecorte.totals.leadCount.toLocaleString('pt-BR')} leads
+            {', '}
+            {houseRecorte.totals.wonCount.toLocaleString('pt-BR')} ganhos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {houseRecorteLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : houseRecorte.rows.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              {activeProductId
+                ? 'Produto ativo não está no catálogo'
+                : 'Nenhum produto no catálogo ainda'}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {houseRecorte.rows.map((row) => (
+                <div
+                  key={row.productId}
+                  className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Package className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {row.name}
+                        {row.status ? (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {row.status}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.leadCount.toLocaleString('pt-BR')} leads
+                        {' · '}
+                        {row.wonCount.toLocaleString('pt-BR')} ganhos
+                        {' · '}
+                        {row.sellersCount.toLocaleString('pt-BR')} vendedores
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium tabular-nums">{formatCurrency(row.wonValue)}</p>
+                    <p className="text-xs text-muted-foreground">ganhos fechados</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Activity */}
       <Card>

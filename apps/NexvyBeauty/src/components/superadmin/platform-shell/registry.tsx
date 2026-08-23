@@ -96,7 +96,7 @@ const ERP_NAV: PlatformNavGroup[] = [
     items: [
       {
         id: 'dashboard',
-        label: 'Dashboard da Plataforma',
+        label: 'Dashboard da casa SaaS',
         icon: I.LayoutDashboard,
         render: () => <SuperAdminDashboard />,
       },
@@ -104,8 +104,8 @@ const ERP_NAV: PlatformNavGroup[] = [
         id: 'organizations',
         label: 'Empresas',
         icon: I.Building2,
-        // OrganizationsManager exige onViewOrganization; drill-down de org
-        // fica fora do escopo desta shell (no-op seguro por ora).
+        // Empresas = clientes que compram o SaaS (tenants), não a Nexvy.
+        // Sem lente/menu CNPJ enquanto N=1. Drill-down de org: no-op nesta shell.
         render: () => <OrganizationsManager onViewOrganization={() => {}} />,
       },
       {
@@ -504,10 +504,8 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         id: 'v-negocios',
         label: 'Negócios',
         icon: I.Package,
-        // "Negócios" = catálogo de PRODUTOS do grupo (os SaaS que vendemos). Decisão
-        // Marcelo D3-multiproduto (2026-07-02): 1 CRM vende N produtos → esta é a casa
-        // deles. (Reverte a premissa mono-produto anterior de apontar pros planos.) Os
-        // planos de assinatura do Beauty seguem no PlansManager DENTRO do módulo ERP.
+        // "Negócios" = linhas SaaS (catálogo platform_crm_products). Não é CNPJ
+        // nem empresa-cliente. Planos de assinatura do tenant ficam no ERP.
         render: () => <PlatformCrmProductsSection />,
       },
       {
@@ -593,7 +591,7 @@ export const PLATFORM_MODULES: PlatformModuleDefinition[] = [
   {
     id: 'erp',
     label: 'Gestão',
-    description: 'Gestão da plataforma, empresas e SaaS',
+    description: 'Casa SaaS — clientes (quem compra) e assinaturas',
     icon: I.Building2,
     color: 'bg-slate-600',
     nav: ERP_NAV,

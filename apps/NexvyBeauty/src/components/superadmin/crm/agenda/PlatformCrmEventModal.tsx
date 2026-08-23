@@ -10,7 +10,15 @@ import {
   Check,
   ChevronsUpDown,
   UserPlus,
+  Package,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,12 +50,14 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { validateCreateLeadProduct } from '../leads/createPlatformCrmLeadProduct';
 
 /**
  * Modal de evento da Agenda do CRM de PLATAFORMA (super_admin) — porte 1:1 do
  * EventModal do CRM original, desacoplado do tenant:
- *  - SEM product_id (coluna não existe em `platform_crm_calendar_events`).
- *  - lead → `platform_crm_leads` (busca + criação inline).
+ *  - Evento: SEM product_id (coluna não existe em `platform_crm_calendar_events`).
+ *  - Lead inline: regra B — product_id obrigatório em “Todos” + catálogo.
  *  - Tipos de Evento configurados (booking) e envio de confirmação/lembretes
  *    via `manual-booking-create` = TODO(edge): subsistema de booking não
  *    portado no core.
@@ -99,6 +109,8 @@ export function PlatformCrmEventModal({
   const updateEvent = useUpdatePlatformCrmCalendarEvent();
   const createLead = useCreatePlatformCrmLead();
   const { data: leads, refetch: refetchLeads } = usePlatformCrmLeads();
+  const { activeProductId, products } = useActivePlatformProduct();
+  const catalogHasProducts = products.length > 0;
 
   const [formData, setFormData] = useState<PlatformCrmCreateEventData>({
     title: '',
@@ -124,6 +136,7 @@ export function PlatformCrmEventModal({
   const [leadSearch, setLeadSearch] = useState('');
   const [createLeadOpen, setCreateLeadOpen] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', phone: '', email: '' });
+  const [newLeadProductId, setNewLeadProductId] = useState('');
 
   useEffect(() => {
     if (event) {
@@ -189,6 +202,15 @@ export function PlatformCrmEventModal({
       toast({ title: 'Preencha nome e WhatsApp', variant: 'destructive' });
       return;
     }
+    const productCheck = validateCreateLeadProduct({
+      lockedProductId: activeProductId,
+      selectedProductId: newLeadProductId,
+      catalogHasProducts,
+    });
+    if (!productCheck.ok) {
+      toast({ title: productCheck.error, variant: 'destructive' });
+      return;
+    }
     try {
       const {
         data: { user },
@@ -202,11 +224,13 @@ export function PlatformCrmEventModal({
         assigned_to: user.id,
         source: 'manual_calendar',
         lead_origin: 'manual_calendar',
+        product_id: productCheck.productId,
       });
       await refetchLeads();
       setFormData((prev) => ({ ...prev, lead_id: lead.id }));
       setCreateLeadOpen(false);
       setNewLead({ name: '', phone: '', email: '' });
+      setNewLeadProductId('');
       toast({ title: 'Lead criado e vinculado' });
     } catch (e: any) {
       toast({ title: 'Erro ao criar lead', description: e.message, variant: 'destructive' });
@@ -426,6 +450,7 @@ export function PlatformCrmEventModal({
                         <CommandItem
                           onSelect={() => {
                             setLeadOpen(false);
+                            setNewLeadProductId(activeProductId ?? '');
                             setCreateLeadOpen(true);
                           }}
                           className="text-primary font-medium"
@@ -644,6 +669,38 @@ export function PlatformCrmEventModal({
                 placeholder="email@exemplo.com"
               />
             </div>
+            {catalogHasProducts && activeProductId ? (
+              <div
+                className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm"
+                title="Produto do switcher da sidebar"
+              >
+                <Package className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-muted-foreground">Produto</span>
+                <span className="font-medium truncate">
+                  {products.find((p) => p.id === activeProductId)?.name ?? 'Produto ativo'}
+                </span>
+              </div>
+            ) : null}
+            {catalogHasProducts && !activeProductId ? (
+              <div className="space-y-2">
+                <Label>Produto *</Label>
+                <Select
+                  value={newLeadProductId || undefined}
+                  onValueChange={setNewLeadProductId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o produto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="flex gap-2 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setCreateLeadOpen(false)}>
                 Cancelar

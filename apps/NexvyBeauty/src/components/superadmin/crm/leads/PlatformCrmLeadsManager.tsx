@@ -45,6 +45,7 @@ import {
   CreatePlatformCrmLeadDialog,
   type CreatePlatformCrmLeadValues,
 } from './CreatePlatformCrmLeadDialog';
+import { resolveCreateLeadProductId } from './createPlatformCrmLeadProduct';
 import { PlatformCrmLeadDetail } from './PlatformCrmLeadDetail';
 
 /**
@@ -146,11 +147,15 @@ export function PlatformCrmLeadsManager() {
   };
 
   const handleCreateLead = async (values: CreatePlatformCrmLeadValues) => {
-    // Carimba o produto ativo GLOBAL (D3 F2): o lead manual nasce vinculado ao
-    // produto do switcher da sidebar. "Todos os produtos" (activeProductId null)
-    // → product_id null (fallback). Antes ficava SEMPRE null (bug: sumia da lista
-    // ao ter um produto ativo, pois visibleLeads filtra por product_id).
-    await createLead.mutateAsync({ ...values, product_id: activeProductId ?? null });
+    // Regra B (CB-lead-todos): switcher com produto → carimba activeProductId;
+    // “Todos” → product_id escolhido no dialog (obrigatório se há catálogo).
+    // NÃO usa effectiveProductId / products[0]. NÃO inclui null no filtro da lista.
+    const productId = resolveCreateLeadProductId({
+      lockedProductId: activeProductId,
+      selectedProductId: values.product_id,
+      catalogHasProducts: products.length > 0,
+    });
+    await createLead.mutateAsync({ ...values, product_id: productId });
     setCreateDialogOpen(false);
   };
 
@@ -455,6 +460,8 @@ export function PlatformCrmLeadsManager() {
         stages={stages}
         sellers={sellers.map((s) => ({ id: s.id, full_name: s.full_name }))}
         squads={squads.map((s) => ({ id: s.id, name: s.name }))}
+        products={products.map((p) => ({ id: p.id, name: p.name }))}
+        lockedProductId={activeProductId}
       />
 
       {/* Transferência em massa */}
@@ -473,6 +480,8 @@ export function PlatformCrmLeadsManager() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         squads={squads.map((s) => ({ id: s.id, name: s.name }))}
+        products={products.map((p) => ({ id: p.id, name: p.name }))}
+        lockedProductId={activeProductId}
       />
 
       {/* Confirmação de exclusão */}
@@ -505,7 +514,11 @@ export function PlatformCrmLeadsManager() {
             <DialogTitle>Detalhes do Lead</DialogTitle>
           </VisuallyHidden>
           {selectedLeadId && (
-            <PlatformCrmLeadDetail leadId={selectedLeadId} onBack={() => setLeadDetailOpen(false)} />
+            <PlatformCrmLeadDetail
+              leadId={selectedLeadId}
+              onBack={() => setLeadDetailOpen(false)}
+              onOpenLead={setSelectedLeadId}
+            />
           )}
         </DialogContent>
       </Dialog>
