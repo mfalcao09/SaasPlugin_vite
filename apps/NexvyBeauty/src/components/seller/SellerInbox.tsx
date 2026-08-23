@@ -87,7 +87,8 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
       return 'WhatsApp com QR Code';
     }
     if (ch === 'instagram') {
-      const metaId = (conv.metadata as any)?.instagram_connection_id;
+      const meta = (conv.metadata || {}) as any;
+      const metaId = meta.instagram_login_connection_id || meta.instagram_connection_id;
       const list = instagramConnections || [];
       const inst =
         list.find((i) => i.id === metaId) ||

@@ -1,11 +1,90 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { normalizeInboxChannels, parseConnectionKeys } from "./inbox-list-filters.ts";
+import { decryptSecret } from "../_shared/meta-crypto.ts";
+import {
+  connectionIdFromConversationMetadata,
+  igsidFromVisitorId,
+  postInstagramLoginMessage,
+} from "../_shared/instagram-login-inbox.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+type InboxClient = ReturnType<typeof createClient>;
+
+/** Direct via Instagram Login (graph.instagram.com). Sem visitor_phone. */
+async function deliverInstagramLoginOutbound(
+  supabase: InboxClient,
+  orgId: string,
+  conversation: { id?: string; visitor_id?: string | null; metadata?: unknown },
+  opts: { text?: string; media?: { url: string; kind?: string } },
+): Promise<{ ok: boolean; error?: string; message_id?: string | null; connection_id?: string }> {
+  const meta = (conversation.metadata && typeof conversation.metadata === 'object')
+    ? conversation.metadata as Record<string, unknown>
+    : {};
+  const recipientId = igsidFromVisitorId(conversation.visitor_id)
+    || (typeof meta.ig_sender_id === 'string' ? String(meta.ig_sender_id) : null);
+  if (!recipientId) {
+    return { ok: false, error: 'Conversa Instagram sem IGSID (user id).' };
+  }
+
+  let connectionId = connectionIdFromConversationMetadata(conversation.metadata);
+  let tokenRow: { id: string; access_token_encrypted: string } | null = null;
+  if (connectionId) {
+    const { data } = await supabase
+      .from('instagram_login_connections')
+      .select('id, access_token_encrypted, status')
+      .eq('id', connectionId)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (data && data.status === 'active') {
+      tokenRow = data as { id: string; access_token_encrypted: string };
+    }
+  }
+  if (!tokenRow) {
+    const { data } = await supabase
+      .from('instagram_login_connections')
+      .select('id, access_token_encrypted, status')
+      .eq('organization_id', orgId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      tokenRow = data as { id: string; access_token_encrypted: string };
+      connectionId = data.id;
+    }
+  }
+  if (!tokenRow || !connectionId) {
+    return { ok: false, error: 'Nenhuma conexão Instagram Comercial ativa.' };
+  }
+
+  let accessToken = '';
+  try {
+    accessToken = await decryptSecret(String(tokenRow.access_token_encrypted ?? ''));
+  } catch (e) {
+    console.error('[webchat-inbox] IG token decrypt failed:', e);
+    return { ok: false, error: 'Falha ao ler o token da conexão Instagram.' };
+  }
+
+  const media = opts.media?.url
+    ? {
+      url: opts.media.url,
+      type: opts.media.kind === 'document' ? 'file' : (opts.media.kind || 'image'),
+    }
+    : undefined;
+  const sent = await postInstagramLoginMessage({
+    accessToken,
+    recipientId,
+    text: opts.text,
+    media,
+  });
+  if (!sent.ok) return { ok: false, error: sent.error };
+  return { ok: true, message_id: sent.message_id, connection_id: connectionId };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -545,7 +624,7 @@ serve(async (req) => {
       // Verify agent has access to conversation
       const { data: conversation, error: convError } = await supabase
         .from('webchat_conversations')
-        .select('id, assigned_user_id, status, channel, visitor_phone, evolution_instance_id')
+        .select('id, assigned_user_id, status, channel, visitor_phone, visitor_id, evolution_instance_id, metadata')
         .eq('id', body.conversation_id)
         .eq('organization_id', orgId)
         .single();
@@ -711,6 +790,63 @@ serve(async (req) => {
           }
         } catch (sendError) {
           console.error('[webchat-inbox] WhatsApp send error (non-fatal):', sendError);
+        }
+      }
+
+      if (conversation.channel === 'instagram') {
+        try {
+          const igSend = await deliverInstagramLoginOutbound(supabase, orgId, conversation, {
+            text: body.content || undefined,
+            media: hasMedia ? { url: body.media.url, kind: body.media.kind } : undefined,
+          });
+          if (!igSend.ok) {
+            console.error('[webchat-inbox] instagram-login send FAILED:', igSend.error);
+            const baseMeta = (insertData.metadata as Record<string, unknown>) || {};
+            await supabase
+              .from('webchat_messages')
+              .update({
+                metadata: {
+                  ...baseMeta,
+                  channel: 'instagram',
+                  delivery_status: 'failed',
+                  error: igSend.error || 'Unknown error',
+                  failed_at: new Date().toISOString(),
+                },
+              })
+              .eq('id', message.id);
+          } else {
+            const baseMeta = (insertData.metadata as Record<string, unknown>) || {};
+            await supabase
+              .from('webchat_messages')
+              .update({
+                metadata: {
+                  ...baseMeta,
+                  channel: 'instagram',
+                  instagram_login_connection_id: igSend.connection_id,
+                  ig_message_id: igSend.message_id,
+                  delivery_status: 'sent',
+                },
+              })
+              .eq('id', message.id);
+            if (igSend.connection_id && !connectionIdFromConversationMetadata(conversation.metadata)) {
+              const prev = (conversation.metadata && typeof conversation.metadata === 'object')
+                ? conversation.metadata as Record<string, unknown>
+                : {};
+              await supabase
+                .from('webchat_conversations')
+                .update({
+                  metadata: {
+                    ...prev,
+                    channel: 'instagram',
+                    instagram_login_connection_id: igSend.connection_id,
+                    ig_sender_id: igsidFromVisitorId(conversation.visitor_id),
+                  },
+                })
+                .eq('id', body.conversation_id);
+            }
+          }
+        } catch (sendError) {
+          console.error('[webchat-inbox] Instagram Login send error (non-fatal):', sendError);
         }
       }
 
@@ -1360,6 +1496,20 @@ serve(async (req) => {
                       await new Promise((r) => setTimeout(r, 1200));
                     }
                   }
+                } else if (chunks.length > 0 && conv.channel === 'instagram') {
+                  for (let i = 0; i < chunks.length; i++) {
+                    try {
+                      const igSend = await deliverInstagramLoginOutbound(supabase, orgId, conv, {
+                        text: chunks[i],
+                      });
+                      console.log('[webchat-inbox] activate-bot IG chunk', i + 1, '/', chunks.length, igSend.ok, igSend.error || igSend.message_id);
+                    } catch (sendErr) {
+                      console.error('[webchat-inbox] activate-bot IG exception:', sendErr);
+                    }
+                    if (i < chunks.length - 1) {
+                      await new Promise((r) => setTimeout(r, 1200));
+                    }
+                  }
                 } else if (chunks.length === 0) {
                   console.warn('[webchat-inbox] activate-bot: bot returned no content to deliver');
                 }
@@ -1504,9 +1654,20 @@ serve(async (req) => {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', body.conversation_id);
 
-      // Send via external channel if needed (use unified evolution-send for WhatsApp)
+      // Send via external channel if needed (Evolution WhatsApp ou Instagram Login)
       const isExternalChannel = ['whatsapp', 'instagram', 'facebook'].includes(conv.channel || '');
-      if (isExternalChannel && conv.visitor_phone && conv.channel === 'whatsapp') {
+      if (isExternalChannel && conv.channel === 'instagram') {
+        try {
+          const igSend = await deliverInstagramLoginOutbound(supabase, orgId, conv, {
+            text: reactivationMessage,
+          });
+          if (!igSend.ok) {
+            console.error('[webchat-inbox] ai-reactivate IG send failed:', igSend.error);
+          }
+        } catch (sendError) {
+          console.error('[webchat-inbox] Instagram Login send error (non-fatal):', sendError);
+        }
+      } else if (isExternalChannel && conv.visitor_phone && conv.channel === 'whatsapp') {
         try {
           const sendRes = await fetch(`${supabaseUrl}/functions/v1/evolution-send`, {
             method: 'POST',
