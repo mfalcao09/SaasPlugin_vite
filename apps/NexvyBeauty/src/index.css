@@ -835,3 +835,14 @@
     @apply bg-card/90 backdrop-blur-sm border-border/50;
   }
 }
+
+/* ── L4-fix · SF Pro no gestao (Lux) ─────────────────────────────────────
+   O .theme-nexvy-institucional já aplica o stack Apple no <html>, mas o
+   <body> herda 'Inter' (regra base do app), quebrando a cascata p/ toda a
+   UI. Esta regra é UNLAYERED e de especificidade (0,2,1) — vence qualquer
+   font-family de body/html/utility (por spec: unlayered > @layer, e a
+   especificidade bate `body`). Escopo lux → o app.* segue Inter intocado.
+   A referência aprovada usa exatamente este --font-sans (lux-reference). */
+:root.theme-nexvy-institucional body {
+  font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+}
