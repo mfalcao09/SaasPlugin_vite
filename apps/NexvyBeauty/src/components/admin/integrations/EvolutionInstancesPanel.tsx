@@ -15,10 +15,9 @@ import {
 import { Smartphone, Star, Loader2, Info, QrCode, CheckCircle2, Pause, LogOut, Plus, Sparkles, Pencil, Trash2, Instagram } from 'lucide-react';
 import {
   useInstagramLoginConnections,
-  useStartInstagramLogin,
   type InstagramLoginConnection,
 } from '@/hooks/useInstagramLoginConnection';
-import { INSTAGRAM_LOGIN_ENABLED } from '@/lib/instagramLoginApp';
+import { useInstagramOAuthPopup } from '@/hooks/useInstagramOAuthPopup';
 import { ChannelTypeChoiceDialog, type ChannelConnectionMode } from './channels/ChannelTypeChoiceDialog';
 import {
   useEvolutionInstances,
@@ -310,22 +309,15 @@ function RenameDialog({ instance, onClose }: { instance: EvolutionInstance; onCl
   );
 }
 
-function startInstagramOAuth(
-  startMut: ReturnType<typeof useStartInstagramLogin>,
-) {
-  if (!INSTAGRAM_LOGIN_ENABLED) {
-    toast.error('config Instagram ausente');
-    return;
-  }
-  startMut.mutate(undefined, {
-    onSuccess: ({ authorize_url }) => {
-      window.location.assign(authorize_url);
-    },
-  });
-}
-
-function InstagramLoginCard({ connection }: { connection: InstagramLoginConnection }) {
-  const startMut = useStartInstagramLogin();
+function InstagramLoginCard({
+  connection,
+  onConnect,
+  connecting,
+}: {
+  connection: InstagramLoginConnection;
+  onConnect: () => void;
+  connecting: boolean;
+}) {
   const active = connection.status === 'active';
 
   return (
@@ -347,10 +339,10 @@ function InstagramLoginCard({ connection }: { connection: InstagramLoginConnecti
             {active && <Badge variant="default">Conectado</Badge>}
             <Button
               size="sm"
-              onClick={() => startInstagramOAuth(startMut)}
-              disabled={startMut.isPending}
+              onClick={onConnect}
+              disabled={connecting}
             >
-              {startMut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {connecting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               <Instagram className="h-4 w-4 mr-2" />
               {active ? 'Reconectar' : 'Conectar Instagram'}
             </Button>
@@ -366,7 +358,7 @@ export function EvolutionInstancesPanel() {
   const { profile } = useAuth();
   const { data: instances, isLoading } = useEvolutionInstances();
   const { data: igConnections, isLoading: igLoading } = useInstagramLoginConnections();
-  const startIgMut = useStartInstagramLogin();
+  const { start: startIgOAuth, isPending: igOAuthPending } = useInstagramOAuthPopup();
   const { data: effectivePlan } = useOrganizationEffectivePlan(profile?.organization_id);
   const setDefaultMut = useSetDefaultEvolutionInstance();
   const disconnectMut = useDisconnectEvolutionInstance();
@@ -403,7 +395,7 @@ export function EvolutionInstancesPanel() {
       setCreating(true);
       return;
     }
-    startInstagramOAuth(startIgMut);
+    startIgOAuth();
   };
 
   return (
@@ -546,7 +538,12 @@ export function EvolutionInstancesPanel() {
             </Card>
           ))}
           {igList.map((connection) => (
-            <InstagramLoginCard key={connection.id} connection={connection} />
+            <InstagramLoginCard
+              key={connection.id}
+              connection={connection}
+              onConnect={startIgOAuth}
+              connecting={igOAuthPending}
+            />
           ))}
         </div>
       )}

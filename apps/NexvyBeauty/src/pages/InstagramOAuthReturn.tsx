@@ -8,8 +8,18 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Logo } from '@/components/ui/Logo';
 import { INSTAGRAM_LOGIN_APP_ID } from '@/lib/instagramLoginApp';
+import { notifyInstagramOAuthOpener } from '@/lib/instagramOAuthPopup';
 
 type ReturnState = 'loading' | 'success' | 'error';
+
+function finishReturn(
+  navigate: ReturnType<typeof useNavigate>,
+  outcome: { ok: true } | { ok: false; error: string },
+  delayMs: number,
+) {
+  if (notifyInstagramOAuthOpener(outcome)) return;
+  setTimeout(() => navigate('/conexoes', { replace: true }), delayMs);
+}
 
 export default function InstagramOAuthReturn() {
   const navigate = useNavigate();
@@ -31,10 +41,11 @@ export default function InstagramOAuthReturn() {
         const r = oauthError ?? 'missing_code_or_state';
         setState('error');
         setReason(r);
-        toast.error('Falha ao conectar Instagram', {
-          description: oauthError ? 'Consentimento negado no Instagram.' : 'Código de autorização ausente.',
-        });
-        setTimeout(() => navigate('/conexoes', { replace: true }), 2500);
+        const error = oauthError ? 'Consentimento negado no Instagram.' : 'Código de autorização ausente.';
+        if (!window.opener) {
+          toast.error('Falha ao conectar Instagram', { description: error });
+        }
+        finishReturn(navigate, { ok: false, error }, 2500);
         return;
       }
 
@@ -49,20 +60,26 @@ export default function InstagramOAuthReturn() {
           const r = (data as { reason?: string } | null)?.reason ?? 'unknown';
           setState('error');
           setReason(r);
-          toast.error('Falha ao conectar Instagram', { description: r });
-          setTimeout(() => navigate('/conexoes', { replace: true }), 2500);
+          if (!window.opener) {
+            toast.error('Falha ao conectar Instagram', { description: r });
+          }
+          finishReturn(navigate, { ok: false, error: r }, 2500);
           return;
         }
 
         setState('success');
-        toast.success('Instagram conectado com sucesso');
-        setTimeout(() => navigate('/conexoes', { replace: true }), 1200);
+        if (!window.opener) {
+          toast.success('Instagram conectado com sucesso');
+        }
+        finishReturn(navigate, { ok: true }, 1200);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'exchange_failed';
         setState('error');
         setReason(msg);
-        toast.error('Falha ao conectar Instagram', { description: msg });
-        setTimeout(() => navigate('/conexoes', { replace: true }), 2500);
+        if (!window.opener) {
+          toast.error('Falha ao conectar Instagram', { description: msg });
+        }
+        finishReturn(navigate, { ok: false, error: msg }, 2500);
       }
     })();
   }, [searchParams, navigate]);
@@ -84,7 +101,9 @@ export default function InstagramOAuthReturn() {
       {state === 'success' && (
         <>
           <CheckCircle2 className="h-10 w-10 text-pink-600" />
-          <p className="text-sm text-muted-foreground">Instagram conectado. Redirecionando...</p>
+          <p className="text-sm text-muted-foreground">
+            {window.opener ? 'Instagram conectado.' : 'Instagram conectado. Redirecionando...'}
+          </p>
         </>
       )}
 
@@ -94,7 +113,9 @@ export default function InstagramOAuthReturn() {
           <div className="space-y-1">
             <p className="text-sm font-medium">Não foi possível conectar o Instagram.</p>
             {reason && <p className="text-xs text-muted-foreground break-all">{reason}</p>}
-            <p className="text-xs text-muted-foreground">Redirecionando...</p>
+            {!window.opener && (
+              <p className="text-xs text-muted-foreground">Redirecionando...</p>
+            )}
           </div>
         </>
       )}
