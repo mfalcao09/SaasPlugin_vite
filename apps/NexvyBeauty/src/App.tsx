@@ -87,6 +87,7 @@ const PlatformCrmBookingConfirmation = lazyWithRetry(() => import("./pages/Platf
 // Pouso do redirect OAuth BRANDED do Meta Ads (NexvyAds F1) — verify_jwt=false
 // na edge por trás, então roda fora de ProtectedRoute/SuperAdminRoute.
 const AdsOAuthReturn = lazyWithRetry(() => import("./pages/AdsOAuthReturn"));
+const InstagramOAuthReturn = lazyWithRetry(() => import("./pages/InstagramOAuthReturn"));
 const PublicSalaoPacotes = lazyWithRetry(() => import("./pages/PublicSalaoPacotes"));
 const PublicChat = lazyWithRetry(() => import("./pages/PublicChat"));
 const PublicQuiz = lazyWithRetry(() => import("./pages/PublicQuiz"));
@@ -257,6 +258,9 @@ const App = () => (
                   Público — a edge ads-oauth-callback é verify_jwt=false, a
                   confiança vem do state HMAC, não de sessão local. */}
               <Route path="/ads/oauth-return" element={<AdsOAuthReturn />} />
+              {/* Instagram Login (NEXVY - IGLOG). SPA chama a edge com JWT
+                  (verify_jwt=true); CSRF extra = state HMAC. */}
+              <Route path="/instagram/oauth-return" element={<InstagramOAuthReturn />} />
 
               {/* LP de vendas vigente. A rota temporária /lp-clientes-de-volta da Metade A
                   foi REMOVIDA: com o apex e /vendas servindo a mesma LP, um terceiro
