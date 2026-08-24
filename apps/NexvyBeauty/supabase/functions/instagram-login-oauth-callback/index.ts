@@ -13,6 +13,7 @@ import {
   loadInstagramLoginApp,
 } from '../_shared/instagram-login-oauth.ts';
 import { getStateSecret, verifyState } from '../_shared/instagram-login-oauth-state.ts';
+import { postInstagramLoginSubscribe } from '../_shared/instagram-login-inbox.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -116,9 +117,50 @@ Deno.serve(async (req: Request) => {
       .upsert(row, { onConflict: 'organization_id,instagram_user_id' });
     if (error) throw new Error(error.message);
 
+    let subscribedApps = false;
+    try {
+      const sub = await postInstagramLoginSubscribe({
+        accessToken,
+        instagramUserId: igUserId,
+        graphVersion: app.graph_version,
+      });
+      if (sub.ok) {
+        subscribedApps = true;
+      } else {
+        console.error('[instagram-login-oauth-callback] subscribed_apps failed', sub.error);
+        await sbAdmin
+          .from('instagram_login_connections')
+          .update({
+            last_error: `subscribed_apps: ${sub.error}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('organization_id', organizationId)
+          .eq('instagram_user_id', igUserId);
+      }
+    } catch (e) {
+      const msg = String((e as Error).message ?? e);
+      console.error('[instagram-login-oauth-callback] subscribed_apps failed', msg);
+      try {
+        await sbAdmin
+          .from('instagram_login_connections')
+          .update({
+            last_error: `subscribed_apps: ${msg}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('organization_id', organizationId)
+          .eq('instagram_user_id', igUserId);
+      } catch (persistErr) {
+        console.error(
+          '[instagram-login-oauth-callback] last_error persist failed',
+          String((persistErr as Error).message ?? persistErr),
+        );
+      }
+    }
+
     return json({
       ok: true,
       ig_connected: true,
+      subscribed_apps: subscribedApps,
       username,
       instagram_user_id: igUserId,
     });

@@ -230,6 +230,58 @@ export type InstagramLoginSendResult =
   | { ok: true; message_id: string | null }
   | { ok: false; error: string; status: number };
 
+export type InstagramLoginSubscribeResult =
+  | { ok: true }
+  | { ok: false; error: string; status: number };
+
+/** POST /{ig-user-id}/subscribed_apps — Instagram Login, token só no Bearer. */
+export function instagramLoginSubscribeRequestUrl(
+  igUserId: string,
+  version?: string,
+): string {
+  const url = new URL(instagramLoginSubscribeUrl(igUserId, version));
+  url.searchParams.set('subscribed_fields', instagramLoginSubscribeFieldsCsv());
+  assertNotFacebookGraph(url.toString());
+  return url.toString();
+}
+
+export async function postInstagramLoginSubscribe(opts: {
+  accessToken: string;
+  instagramUserId: string;
+  graphVersion?: string;
+  fetchFn?: typeof fetch;
+}): Promise<InstagramLoginSubscribeResult> {
+  if (!String(opts.accessToken ?? '').trim()) {
+    return { ok: false, error: 'access token ausente', status: 0 };
+  }
+  let url: string;
+  try {
+    url = instagramLoginSubscribeRequestUrl(opts.instagramUserId, opts.graphVersion);
+  } catch (e) {
+    return { ok: false, error: String((e as Error).message ?? e), status: 0 };
+  }
+  const fetchFn = opts.fetchFn ?? fetch;
+  try {
+    const res = await fetchFn(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${opts.accessToken}` },
+    });
+    const json = await res.json().catch(() => ({})) as {
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: json.error?.message ?? `subscribed_apps ${res.status}`,
+        status: res.status,
+      };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String((e as Error).message ?? e), status: 0 };
+  }
+}
+
 export async function postInstagramLoginMessage(opts: {
   accessToken: string;
   recipientId: string;

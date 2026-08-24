@@ -10,10 +10,12 @@ import {
   igsidFromVisitorId,
   instagramLoginSendUrl,
   instagramLoginSubscribeFieldsCsv,
+  instagramLoginSubscribeRequestUrl,
   instagramLoginSubscribeUrl,
   matchVerifyChallenge,
   parseInstagramIdentity,
   postInstagramLoginMessage,
+  postInstagramLoginSubscribe,
   verifyInstagramLoginSignature,
 } from './instagram-login-inbox.ts';
 
@@ -137,4 +139,44 @@ Deno.test('postInstagramLoginMessage chama /me/messages com Bearer', async () =>
   assert(seenUrl.includes('graph.instagram.com') && seenUrl.includes('/me/messages'), seenUrl);
   assert(!seenUrl.includes('facebook.com'), seenUrl);
   assert(seenAuth === 'Bearer IGTOKEN', seenAuth);
+});
+
+Deno.test('postInstagramLoginSubscribe: graph.instagram.com + fields + Bearer, token fora da URL', async () => {
+  const built = instagramLoginSubscribeRequestUrl('17841405822304914', 'v21.0');
+  assert(built.startsWith('https://graph.instagram.com/v21.0/17841405822304914/subscribed_apps'), built);
+  assert(built.includes('subscribed_fields='), built);
+  assert(built.includes('messages'), built);
+  assert(!built.includes('facebook.com'), built);
+  assert(!built.includes('access_token'), built);
+  assert(!built.includes('IGTOKEN'), built);
+
+  let seenUrl = '';
+  let seenAuth = '';
+  let seenMethod = '';
+  const fakeFetch = (async (input: URL | Request | string, init?: { method?: string; headers?: HeadersInit }) => {
+    seenUrl = String(input);
+    seenAuth = new Headers(init?.headers).get('Authorization') ?? '';
+    seenMethod = init?.method ?? '';
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  }) as typeof fetch;
+  const res = await postInstagramLoginSubscribe({
+    accessToken: 'IGTOKEN',
+    instagramUserId: '17841405822304914',
+    graphVersion: 'v21.0',
+    fetchFn: fakeFetch,
+  });
+  assert(res.ok === true, JSON.stringify(res));
+  assert(seenMethod === 'POST', seenMethod);
+  assert(seenUrl.startsWith('https://graph.instagram.com/v21.0/17841405822304914/subscribed_apps'), seenUrl);
+  assert(seenUrl.includes('subscribed_fields=') && seenUrl.includes('messages'), seenUrl);
+  assert(!seenUrl.includes('facebook.com'), seenUrl);
+  assert(!seenUrl.includes('IGTOKEN') && !seenUrl.includes('access_token'), seenUrl);
+  assert(seenAuth === 'Bearer IGTOKEN', seenAuth);
+
+  const fail = await postInstagramLoginSubscribe({
+    accessToken: 'IGTOKEN',
+    instagramUserId: '17841405822304914',
+    fetchFn: (async () => new Response(JSON.stringify({ error: { message: 'app not subscribed' } }), { status: 400 })) as typeof fetch,
+  });
+  assert(fail.ok === false && fail.error === 'app not subscribed', JSON.stringify(fail));
 });
