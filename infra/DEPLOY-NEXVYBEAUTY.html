@@ -47,7 +47,11 @@
   <h1>Deploy NexvyBeauty — Runbook Canônico</h1>
   <p class="meta">Fonte única de verdade do deploy do NexvyBeauty no VPS <code>vps-hostinger</code> (145.223.29.96).<br>
   Última reconciliação: <strong>2026-07-11</strong> (git do VPS regularizado — ver §6).<br>
-  Última correção: <strong>2026-07-19</strong> (domínio fantasma removido do runbook — ver §2.1). Par <code>.md</code> + <code>.html</code> — editar os dois em sincronia.</p>
+  Última correção: <strong>2026-07-19</strong> (domínio fantasma removido do runbook — ver §2.1).<br>
+  Última sanitização: <strong>2026-09-01</strong> — ban explícito a Vercel no contexto de deploy (§0). Par <code>.md</code> + <code>.html</code> — editar os dois em sincronia.</p>
+
+  <h2>0. Deploy canônico = VPS Hostinger (não Vercel)</h2>
+  <div class="lead gold"><strong>Proibido</strong> tratar Vercel (CLI, MCP, <code>vercel deploy</code>, GitHub Deployments da Vercel, <code>.vercel/</code>, <code>vercel.json</code>) como pipeline de produção deste app. Canônico: <code>ssh vps-hostinger</code> → <code>./infra/deploy-vps.sh …</code> → <code class="ok">DEPLOY-VERDE:</code>. Edges: <code>supabase functions deploy</code>. Sem projeto Vercel ligado a NexvyBeauty neste repo.</div>
 
   <h2>1. TL;DR — o fluxo determinístico</h2>
   <pre><code># 1. no Mac: commite e PUSHE tudo que vai pra produção
@@ -133,6 +137,7 @@ git pull --ff-only origin main
     <li><strong>Branch de trabalho → main via PR (fast-forward).</strong> Não deixar feature branch virar trunk de facto.</li>
     <li><strong>Deploy só é "verde" com <code>DEPLOY-VERDE:</code></strong> — o gate anti-phantom é a prova.</li>
     <li><strong>O alvo do gate tem que ser um domínio que o Traefik realmente serve</strong> — conferir em <code>/opt/stacks/traefik/dynamic/</code> antes. Domínio errado = <code class="warn">GATE FALHOU … (HTTP 000000)</code> com o deploy intacto (§2.1). Antes de fazer rollback por gate vermelho, confirme se o container está healthy e se os domínios reais respondem 200.</li>
+    <li><strong>Nunca Vercel para este app</strong> — ver §0. Agente que “confere <code>vercel whoami</code> / <code>vercel ls</code> / MCP Vercel” está fora do caminho canônico.</li>
   </ol>
 
   <h2>8. Rollback de deploy</h2>

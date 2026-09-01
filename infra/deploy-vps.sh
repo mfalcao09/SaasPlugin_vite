@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Deploy idempotente de 1 app Vite no padrao Traefik FILE PROVIDER.
 #
+# CANONICO: VPS Hostinger + Traefik. Nao e pipeline Vercel.
+#   NexvyBeauty: ver infra/DEPLOY-NEXVYBEAUTY.md §0 (ban Vercel CLI/MCP/dashboard).
+#
 # Uso: ./infra/deploy-vps.sh APP_DIR CONTAINER DOMAIN
 #   ex: ./infra/deploy-vps.sh NexvyBeauty   nexvy-beauty         beauty.exemplo.com.br
 #       ./infra/deploy-vps.sh NexvyOficinas nexvy-oficinas-vite  nexvyoficinas.com.br
