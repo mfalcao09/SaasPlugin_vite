@@ -63,7 +63,7 @@ import { AgentSupportTab } from './AgentSupportTab';
 import { AgentOrchestratorRoutingTab } from './AgentOrchestratorRoutingTab';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlatformCrmProducts } from '@/components/superadmin/crm/data/usePlatformCrmProducts';
-import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '@/components/superadmin/crm/data/usePlatformCrmWaQrInstances';
 import { usePlatformCrmMetaWAConnections } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
 import { usePlatformCrmInstagramConnections } from '@/components/superadmin/crm/data/usePlatformCrmInstagram';
 import { usePlatformCrmAgentConnections } from '@/components/superadmin/crm/data/usePlatformCrmAgentConnections';
@@ -151,7 +151,7 @@ export function AgentEditor({
   const [customContext, setCustomContext] = useState('');
   const { isGenerating, generateAgent, optimizeField } = useGenerateAgentAI();
   const { data: products } = usePlatformCrmProducts();
-  const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
+  const { data: waQrInstances } = usePlatformCrmWaQrInstances();
   const { data: metaConnections } = usePlatformCrmMetaWAConnections();
   const { data: instagramConnections } = usePlatformCrmInstagramConnections();
   const { data: existingConnections } = usePlatformCrmAgentConnections(agent?.id);
@@ -1139,7 +1139,7 @@ export function AgentEditor({
                       return {
                         ...prev,
                         dedicated_connections: next,
-                        evolution_instance_id: firstEvo?.id ?? null,
+                        wa_qr_instance_id: firstEvo?.id ?? null,
                       };
                     });
                   };
@@ -1196,12 +1196,12 @@ export function AgentEditor({
                           <Smartphone className="h-3 w-3" />
                           WhatsApp (QR)
                         </div>
-                        {(evolutionInstances || []).map((inst) => {
+                        {(waQrInstances || []).map((inst) => {
                           const connected = inst.status === 'connected' || inst.status === 'paired';
                           const label = `${inst.name}${inst.phone_number ? ` — ${inst.phone_number}` : ''}`;
                           return renderRow('evolution', inst.id, label, connected, Smartphone);
                         })}
-                        {(!evolutionInstances || evolutionInstances.length === 0) && (
+                        {(!waQrInstances || waQrInstances.length === 0) && (
                           <p className="text-xs text-muted-foreground pl-6">Nenhuma conexão WhatsApp via QR cadastrada.</p>
                         )}
                       </div>

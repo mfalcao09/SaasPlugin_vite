@@ -568,7 +568,7 @@ export interface PostSaleEventAction {
   flow_id: string | null;
   inline_message: string | null;
   message_channel: 'whatsapp' | 'email';
-  evolution_instance_id: string | null;
+  wa_qr_instance_id: string | null;
   target_stage_id: string | null;
   deal_outcome: 'none' | 'won' | 'lost';
   deal_value_source: 'none' | 'webhook' | 'manual';

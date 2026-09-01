@@ -29,9 +29,9 @@
 //   instâncias Evolution — ids de tabelas DIFERENTES. Quando o connection_id não
 //   existe em platform_crm_whatsapp_meta_connections, procura em
 //   platform_crm_evolution_instances; achando, delega o envio pra
-//   `platform-evolution-send` e cria a conversa com a IDENTIDADE do
-//   platform-evolution-webhook (channel 'whatsapp_evolution',
-//   visitor_id 'wa_evo:<digits>', evolution_instance_id) — é essa tripla que
+//   `platform-whatsapp-qr-send` e cria a conversa com a IDENTIDADE do
+//   platform-whatsapp-qr-webhook (channel 'whatsapp_evolution',
+//   visitor_id 'wa_evo:<digits>', wa_qr_instance_id) — é essa tripla que
 //   faz o webhook reencontrar a conversa em vez de abrir outra. Em nenhuma das
 //   duas tabelas → 404 connection_not_found, como antes.
 //   A POSSE, porém, segue a regra da linha 17 e NÃO o webhook: caminho humano
@@ -47,6 +47,12 @@ import {
   platformCrmCorsHeaders as corsHeaders,
   authenticatePlatformAgent,
 } from '../_shared/platform-crm-auth.ts';
+import {
+  WA_QR_CHANNEL_CANONICAL,
+  WA_QR_CHANNELS,
+  waQrVisitorId,
+  waQrVisitorIdsForLookup,
+} from '../_shared/platform-wa-qr-identity.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE } from '../_shared/meta-graph.ts';
 import { normalizePhoneBR, phoneVariantsBR } from '../_shared/phone.ts';
@@ -124,7 +130,7 @@ async function resolveEvolutionInstance(
   instanceId: string,
 ): Promise<EvolutionInstance | null> {
   const { data, error } = await supabase
-    .from('platform_crm_evolution_instances')
+    .from('platform_crm_wa_qr_instances')
     .select('id, name, product_id, status')
     .eq('id', instanceId)
     .maybeSingle();
@@ -264,11 +270,11 @@ async function ensureConversation(
 
 /** Cria/reusa a conversa do canal Evolution.
  *
- *  IDENTIDADE espelhada de platform-evolution-webhook/index.ts:395-411
+ *  IDENTIDADE espelhada de platform-whatsapp-qr-webhook/index.ts:395-411
  *  (`ensureConversation`): visitor_id 'wa_evo:<digits>', visitor_phone/whatsapp
  *  com '+', channel 'whatsapp_evolution', needs_human false,
- *  evolution_instance_id. Essa paridade é OBRIGATÓRIA: o webhook reencontra a
- *  conversa por (visitor_id, channel, evolution_instance_id) — webhook:369-376.
+ *  wa_qr_instance_id. Essa paridade é OBRIGATÓRIA: o webhook reencontra a
+ *  conversa por (visitor_id, channel, wa_qr_instance_id) — webhook:369-376.
  *  Divergir em qualquer um dos três faria a resposta da lead abrir uma SEGUNDA
  *  conversa.
  *
@@ -293,13 +299,14 @@ async function ensureEvolutionConversation(
   leadId: string | null,
   userId: string,
 ): Promise<{ conversation: Record<string, unknown> | null; isNew: boolean }> {
-  const visitorId = `wa_evo:${digits}`;
+  const visitorId = waQrVisitorId(digits);
+  const visitorIds = waQrVisitorIdsForLookup(digits);
   const { data: rows, error: selectError } = await supabase
     .from('platform_crm_conversations')
     .select('*')
-    .eq('visitor_id', visitorId)
-    .eq('channel', 'whatsapp_evolution')
-    .eq('evolution_instance_id', instanceId)
+    .in('visitor_id', visitorIds)
+    .in('channel', [...WA_QR_CHANNELS])
+    .eq('wa_qr_instance_id', instanceId)
     .order('created_at', { ascending: false })
     .limit(1);
   if (selectError) {
@@ -351,13 +358,13 @@ async function ensureEvolutionConversation(
       visitor_id: visitorId,
       visitor_phone: `+${digits}`,
       visitor_whatsapp: `+${digits}`,
-      channel: 'whatsapp_evolution',
+      channel: WA_QR_CHANNEL_CANONICAL,
       // Quem inicia ASSUME (cabeçalho :17, ramo Meta :243-244) — diverge do
       // webhook de propósito; ver docblock desta função.
       status: 'human_active',
       assigned_to: userId,
       needs_human: false,
-      evolution_instance_id: instanceId,
+      wa_qr_instance_id: instanceId,
       ...(productId ? { product_id: productId } : {}),
       ...(leadId ? { lead_id: leadId } : {}),
     })
@@ -373,7 +380,7 @@ async function ensureEvolutionConversation(
   return { conversation: created as Record<string, unknown>, isNew: true };
 }
 
-// ─── Entrega Evolution (delega pra platform-evolution-send) ─────────────────
+// ─── Entrega Evolution (delega pra platform-whatsapp-qr-send) ─────────────────
 
 interface EvolutionSendResult {
   messageId: string | null;
@@ -381,7 +388,7 @@ interface EvolutionSendResult {
   status: number | null;
 }
 
-/** Delega o envio pra `platform-evolution-send` (SendBody: product_id,
+/** Delega o envio pra `platform-whatsapp-qr-send` (SendBody: product_id,
  *  instance_id, type, to, payload) — mesma invocação do motor de cold outreach
  *  em platform-cold-outreach/index.ts:383-385. O client é service-role, então o
  *  Bearer bate com o gate "interno only" daquela função. */
@@ -393,7 +400,7 @@ async function sendTextViaEvolution(
   text: string,
 ): Promise<EvolutionSendResult> {
   try {
-    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+    const { data, error } = await supabase.functions.invoke('platform-whatsapp-qr-send', {
       body: {
         product_id: productId,
         instance_id: instanceId,
@@ -405,7 +412,7 @@ async function sendTextViaEvolution(
     if (error) {
       return { messageId: null, error: String(error?.message ?? error).slice(0, 300), status: null };
     }
-    // Envelope da platform-evolution-send: { ok, status, body } (index.ts:49,147).
+    // Envelope da platform-whatsapp-qr-send: { ok, status, body } (index.ts:49,147).
     const res = data as { ok?: boolean; status?: number; body?: any } | null;
     if (!res || res.ok !== true) {
       return {
@@ -436,7 +443,7 @@ async function startViaEvolution(
   leadIdInput: string | null,
   userId: string,
 ): Promise<Response> {
-  // platform-evolution-send resolve a instância por (id, product_id) —
+  // platform-whatsapp-qr-send resolve a instância por (id, product_id) —
   // index.ts:80-82. Sem product_id na instância o envio é impossível.
   if (!instance.product_id) {
     console.error(
@@ -448,7 +455,7 @@ async function startViaEvolution(
       422,
     );
   }
-  // O SEND usa o product da instância (senão platform-evolution-send devolve
+  // O SEND usa o product da instância (senão platform-whatsapp-qr-send devolve
   // 404). O product da CONVERSA segue a precedência A1.3 do ramo Meta.
   const sendProductId = instance.product_id;
   const effectiveProductId = productIdInput || instance.product_id;
@@ -504,7 +511,7 @@ async function startViaEvolution(
       {
         error: 'delivery_failed',
         detail: sendResult.error,
-        channel: 'whatsapp_evolution',
+        channel: WA_QR_CHANNEL_CANONICAL,
         needs_template: false,
         conversation_id: conversationId,
         lead_id: leadId,
@@ -526,9 +533,9 @@ async function startViaEvolution(
       content_type: 'text',
       metadata: {
         evolution_message_id: sendResult.messageId,
-        evolution_instance_id: instance.id,
+        wa_qr_instance_id: instance.id,
         delivery_status: 'sent',
-        channel: 'whatsapp_evolution',
+        channel: WA_QR_CHANNEL_CANONICAL,
         origin: 'start_conversation',
       },
     })
@@ -548,7 +555,7 @@ async function startViaEvolution(
       wamid: sendResult.messageId,
       lead_id: leadId,
       is_new_conversation: isNew,
-      channel: 'whatsapp_evolution',
+      channel: WA_QR_CHANNEL_CANONICAL,
       persist_warning: 'mensagem entregue mas não persistida — verifique os logs',
     });
   }
@@ -573,7 +580,7 @@ async function startViaEvolution(
     wamid: sendResult.messageId,
     lead_id: leadId,
     is_new_conversation: isNew,
-    channel: 'whatsapp_evolution',
+    channel: WA_QR_CHANNEL_CANONICAL,
   });
 }
 

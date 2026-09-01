@@ -100,7 +100,7 @@ export function PlatformCrmCampaignThroughputPanel() {
             .in('campaign_id', campaignIds)
         : Promise.resolve({ data: [], error: null } as any),
       supabase
-        .from('platform_crm_evolution_instances')
+        .from('platform_crm_wa_qr_instances' as never)
         .select('*')
         .gt('cooldown_until', nowIso),
       supabase
@@ -279,7 +279,7 @@ export function PlatformCrmCampaignThroughputPanel() {
                   <div key={`${h.provider}-${h.connection_id}`} className="flex items-center justify-between gap-2 p-3 rounded-md border">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{h.provider === 'evolution' ? 'Evolution' : 'API Oficial'}</Badge>
+                        <Badge variant="outline" className="text-xs">{h.provider === 'evolution' ? 'WhatsApp via QR' : 'API Oficial'}</Badge>
                         <span className="font-medium truncate">{h.connection_name}</span>
                       </div>
                       {h.last_failure_reason && (

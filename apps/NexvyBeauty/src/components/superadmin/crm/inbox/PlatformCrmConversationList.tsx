@@ -52,7 +52,7 @@ export interface Conversation {
   current_agent_id?: string | null;
   current_agent_name?: string | null;
   current_agent_avatar?: string | null;
-  evolution_instance_id?: string | null;
+  wa_qr_instance_id?: string | null;
   meta_connection_id?: string | null;
   instagram_connection_id?: string | null;
 }

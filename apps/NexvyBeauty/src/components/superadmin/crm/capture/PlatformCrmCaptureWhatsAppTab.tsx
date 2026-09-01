@@ -73,7 +73,7 @@ import { useDuplicatePlatformCrmCaptureFunnel } from '@/components/superadmin/cr
 import { usePlatformCrmSquads } from '@/components/superadmin/crm/data/usePlatformCrmSquads';
 import { usePlatformCrmTeamMembers } from '@/components/superadmin/crm/data/usePlatformCrmTeam';
 import { usePlatformCrmMetaWAConnections } from '@/components/superadmin/crm/data/usePlatformCrmMetaWhatsApp';
-import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '@/components/superadmin/crm/data/usePlatformCrmWaQrInstances';
 
 /**
  * CRM de PLATAFORMA (super_admin) — CAPTAÇÃO via WHATSAPP (porte 1:1 do
@@ -159,9 +159,9 @@ export function PlatformCrmCaptureWhatsAppTab() {
   // Evolution (QR) pareada. Predicados canônicos do codebase (AgentEditor l.1147/1163;
   // meta='active', evolution='connected'|'paired').
   const { data: metaConnections } = usePlatformCrmMetaWAConnections();
-  const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
+  const { data: waQrInstances } = usePlatformCrmWaQrInstances();
   const connectedMeta = (metaConnections ?? []).find((c) => c.status === 'active');
-  const connectedEvolution = (evolutionInstances ?? []).find(
+  const connectedEvolution = (waQrInstances ?? []).find(
     (i) => i.status === 'connected' || i.status === 'paired',
   );
   const isChannelConnected = !!connectedMeta || !!connectedEvolution;
@@ -180,7 +180,7 @@ export function PlatformCrmCaptureWhatsAppTab() {
       id: c.id,
       label: `${c.display_name}${c.phone_number ? ` — ${c.phone_number}` : ''}`,
     })),
-    ...(evolutionInstances ?? []).map((i) => ({
+    ...(waQrInstances ?? []).map((i) => ({
       key: `evolution:${i.id}`,
       provider: 'evolution' as const,
       id: i.id,

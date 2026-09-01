@@ -140,6 +140,10 @@ Deno.test("requiresLidSend: camila name ou flag", () => {
     requiresLidSend({ name: "outro", metadata: { require_lid_send: true } }),
     true,
   );
+  assertEquals(
+    requiresLidSend({ name: "camila-zapi-test", metadata: { require_lid_send: false } }),
+    false,
+  );
 });
 
 // ===== cold first-touch PN→LID (whatsappNumbers) — adições 463 =====

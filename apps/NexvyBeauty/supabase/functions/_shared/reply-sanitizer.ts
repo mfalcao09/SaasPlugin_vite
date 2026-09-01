@@ -15,7 +15,7 @@
  * (1) GUARDA DE UMA PORTA SÓ. O guard olhava `fonte.slice(offset - 40, offset)` —
  *     só os 40 caracteres à ESQUERDA. Aqui o termo ABRE a frase e a negação vem à
  *     DIREITA ("Desconto não tem como"), então o guard não viu nada e substituiu.
- *     Mesma família do platform-evolution-send, que conferia só `Authorization` e
+ *     Mesma família do platform-whatsapp-qr-send, que conferia só `Authorization` e
  *     ignorava `apikey`: cuidado aparente, cobertura parcial.
  * (2) SPLICE SUBSTANTIVO→ORAÇÃO. Trocar "desconto" (substantivo) por "a conta da
  *     recuperação (...)" (oração inteira) quebra a sintaxe MESMO SEM NEGAÇÃO

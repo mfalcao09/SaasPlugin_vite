@@ -84,7 +84,7 @@ export async function syncPlatformCrmAgentConnections(
 /**
  * Resolve o rótulo das conexões dedicadas de um agente para o badge do AgentCard.
  * 1 conexão → nome + telefone/@handle; +de 1 → "N conexões dedicadas".
- * Fallback legado: `evolution_instance_id` direto na linha do agente.
+ * Fallback legado: `wa_qr_instance_id` direto na linha do agente.
  * null = sem conexão dedicada (não renderiza badge).
  */
 export function usePlatformCrmAgentConnectionsSummary(
@@ -105,10 +105,10 @@ export function usePlatformCrmAgentConnectionsSummary(
       const rows = (links ?? []) as Array<{ connection_type: string; connection_id: string }>;
 
       if (rows.length === 0) {
-        // Fallback legado: coluna única evolution_instance_id
+        // Fallback legado: coluna única wa_qr_instance_id
         if (legacyEvolutionInstanceId) {
           const { data } = await supabase
-            .from('platform_crm_evolution_instances')
+            .from('platform_crm_wa_qr_instances' as never)
             .select('name, phone_number')
             .eq('id', legacyEvolutionInstanceId)
             .maybeSingle();
@@ -124,7 +124,7 @@ export function usePlatformCrmAgentConnectionsSummary(
         let label = '';
         if (r.connection_type === 'evolution') {
           const { data } = await supabase
-            .from('platform_crm_evolution_instances')
+            .from('platform_crm_wa_qr_instances' as never)
             .select('name, phone_number')
             .eq('id', r.connection_id)
             .maybeSingle();

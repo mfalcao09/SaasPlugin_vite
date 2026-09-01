@@ -16,7 +16,7 @@ import {
   tenantWebhookUnauthorizedResponse,
 } from "./evolution-webhook-auth.ts";
 import { createPlatformEvolutionWebhookHandler } from "./platform-evolution-webhook-handler.ts";
-import { createPlatformEvolutionWebhookReceiver } from "../platform-evolution-webhook/index.ts";
+import { createPlatformEvolutionWebhookReceiver } from "../platform-whatsapp-qr-webhook/index.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -39,7 +39,7 @@ const provisioners: Array<
     TENANT_EVOLUTION_WEBHOOK_EVENTS,
   ],
   [
-    "platform-evolution-proxy",
+    "platform-whatsapp-qr-proxy",
     configurePlatformEvolutionProxyWebhook,
     PLATFORM_EVOLUTION_WEBHOOK_EVENTS,
   ],
@@ -222,7 +222,7 @@ function webhookRequest(
   payload: Record<string, unknown>,
   headers: HeadersInit = {},
 ): Request {
-  return new Request("https://example.invalid/platform-evolution-webhook", {
+  return new Request("https://example.invalid/platform-whatsapp-qr-webhook", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(payload),
@@ -394,7 +394,7 @@ function ackReceiverHarness(messageConnectionId: string) {
         },
         limit: (_count: number) =>
           Promise.resolve({
-            data: table === "platform_crm_evolution_instances"
+            data: table === "platform_crm_wa_qr_instances"
               ? [authenticated]
               : [],
           }),

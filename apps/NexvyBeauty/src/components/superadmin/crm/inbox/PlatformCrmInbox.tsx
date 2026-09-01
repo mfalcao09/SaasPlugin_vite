@@ -245,7 +245,7 @@ export function PlatformCrmInbox({
           // A1.3/FRENTE 3: ids de conexão materializados pelo backend na
           // conversa (canal por conversa). Leitura defensiva — o tipo TS do
           // row ainda não reflete as colunas novas (padrão A1.2).
-          evolution_instance_id: (row as any).evolution_instance_id ?? null,
+          wa_qr_instance_id: (row as any).wa_qr_instance_id ?? null,
           meta_connection_id: (row as any).meta_connection_id ?? null,
           instagram_connection_id: (row as any).instagram_connection_id ?? null,
         } as Conversation;
@@ -951,7 +951,7 @@ export function PlatformCrmInbox({
               channel={freshSelected?.channel || 'webchat'}
               metaConnectionId={freshSelected?.meta_connection_id ?? null}
               instagramConnectionId={freshSelected?.instagram_connection_id ?? null}
-              evolutionInstanceId={freshSelected?.evolution_instance_id ?? null}
+              evolutionInstanceId={freshSelected?.wa_qr_instance_id ?? null}
               status={freshStatus}
               messages={messages}
               isLoading={!!selectedConversation && loadingDetail}
@@ -1110,7 +1110,7 @@ export function PlatformCrmInbox({
           conversationId={selectedConversation.id}
           currentAssignedUserId={currentUserId}
           currentChannel={freshSelected?.channel}
-          currentEvolutionInstanceId={freshSelected?.evolution_instance_id ?? null}
+          currentEvolutionInstanceId={freshSelected?.wa_qr_instance_id ?? null}
           onTransfer={handleTransfer}
         />
       )}

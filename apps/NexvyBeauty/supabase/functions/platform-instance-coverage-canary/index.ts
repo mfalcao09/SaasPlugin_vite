@@ -6,7 +6,7 @@
 //
 // Não foi um alerta que falhou: foi um alerta que nunca olhou. O
 // `whatsapp-health-alert` lê `evolution_instances` (tenant); a instância da
-// prospecção vive em `platform_crm_evolution_instances` (plataforma). Duas
+// prospecção vive em `platform_crm_wa_qr_instances` (plataforma). Duas
 // tabelas, e só o lado tenant tinha vigia.
 //
 // Medido no mesmo dia: SETE edge functions leem a tabela da plataforma para
@@ -54,7 +54,7 @@ const json = (b: unknown, s = 200) =>
  * não concorrer com `whatsapp-health-alert`.
  *
  * `colunas` difere por fonte porque o SCHEMA difere (medido 2026-08-07):
- * `evolution_instances` tem `organization_id`; `platform_crm_evolution_instances`
+ * `evolution_instances` tem `organization_id`; `platform_crm_wa_qr_instances`
  * NÃO tem (tem `product_id`). Pedir coluna inexistente faz o PostgREST devolver
  * erro — e a fonte inteira sumiria do tick, que é exatamente o silêncio que este
  * canário existe para combater.
@@ -63,7 +63,7 @@ const FONTES: Array<
   { tabela: string; origem: InstanciaVigiada["origem"]; colunas: string }
 > = [
   {
-    tabela: "platform_crm_evolution_instances",
+    tabela: "platform_crm_wa_qr_instances",
     origem: "plataforma",
     colunas:
       "id, name, status, last_connected_at, created_at, metadata, product_id",
@@ -144,12 +144,12 @@ Deno.serve(async (req) => {
 
   // Uma campanha WhatsApp autorizada depende de UM burner pinado por instance_id.
   // O schema real declara esse elo em platform_crm_cold_campaigns e o motor envia
-  // pelo platform_crm_evolution_instances. Só avaliamos o elo se essa fonte foi
+  // pelo platform_crm_wa_qr_instances. Só avaliamos o elo se essa fonte foi
   // legível; do contrário, "não encontrei" seria um falso "instância ausente".
   // O throttle vive na própria campanha: um estado por campanha, independente de
   // troca de pin, sem interferir nas linhas de saúde usadas pelo motor de envio.
   const vereditosCampanha: VereditoCampanhaAtivada[] = [];
-  if (!falhas.some((f) => f.startsWith("platform_crm_evolution_instances:"))) {
+  if (!falhas.some((f) => f.startsWith("platform_crm_wa_qr_instances:"))) {
     const { data: campanhas, error: errCampanhas } = await db
       .from("platform_crm_cold_campaigns")
       .select(

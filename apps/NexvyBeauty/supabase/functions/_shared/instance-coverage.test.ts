@@ -119,7 +119,7 @@ Deno.test("filtro é por plan_status, NÃO por nome: instância 'demo-...' de or
 });
 
 Deno.test("instância de PLATAFORMA não tem org — filtro não se aplica, segue vigiada", () => {
-  // `platform_crm_evolution_instances` não tem `organization_id` (medido). A
+  // `platform_crm_wa_qr_instances` não tem `organization_id` (medido). A
   // ausência significa "não é de cliente", não "caso omisso" — e a Camila, que
   // motivou o canário, vive exatamente aí.
   const v = avaliarInstancia(
@@ -260,7 +260,7 @@ Deno.test("o texto NOMEIA o lado — é o que revela o vão a quem lê", () => {
   const t = textoDoAlerta(
     avaliarInstancia(inst({ name: "prospeccao-ativa-camila" }), AGORA),
   );
-  if (!t.includes("platform_crm_evolution_instances")) {
+  if (!t.includes("platform_crm_wa_qr_instances")) {
     throw new Error(
       "o alerta precisa dizer de QUAL tabela veio, senão a causa some",
     );

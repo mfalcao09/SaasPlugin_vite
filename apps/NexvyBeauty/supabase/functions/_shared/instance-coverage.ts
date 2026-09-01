@@ -11,10 +11,10 @@
 //
 // A causa não foi um alerta que falhou — foi um alerta que nunca olhou.
 // `whatsapp-health-alert` lê `evolution_instances` (lado tenant). A instância da
-// prospecção vive em `platform_crm_evolution_instances` (lado plataforma). São
+// prospecção vive em `platform_crm_wa_qr_instances` (lado plataforma). São
 // duas tabelas, e o vigia conhecia uma.
 //
-// Medido no mesmo dia: SETE edge functions leem `platform_crm_evolution_instances`
+// Medido no mesmo dia: SETE edge functions leem `platform_crm_wa_qr_instances`
 // para trabalhar (send, proxy, webhook, check-number, start-conversation,
 // sales-brain, post-sale). ZERO a vigiam. Uma tabela com sete consumidores e
 // nenhum guarda.
@@ -52,7 +52,7 @@ export interface InstanciaVigiada {
   /**
    * Org dona da instância. OPCIONAL porque só existe de UM lado: medido em
    * 2026-08-07, `evolution_instances` tem `organization_id` e
-   * `platform_crm_evolution_instances` NÃO tem (tem `product_id`).
+   * `platform_crm_wa_qr_instances` NÃO tem (tem `product_id`).
    *
    * Instância de plataforma não pertence a cliente nenhum — logo nunca é demo, e
    * o filtro abaixo não se aplica a ela. Ausência aqui significa "não é de org",
@@ -111,7 +111,7 @@ export interface CampanhaAtivada {
   scheduledStartAt: string | null;
   scheduledEndAt: string | null;
   productId: string;
-  /** Pin do burner Evolution dedicado (`platform_crm_evolution_instances.id`). */
+  /** Pin do burner Evolution dedicado (`platform_crm_wa_qr_instances.id`). */
   instanceId: string | null;
   /** Throttle persistente do alerta do elo campanha → burner. */
   coverageAlertAt: string | null;
@@ -387,7 +387,7 @@ export function textoDoAlerta(v: VereditoInstancia): string {
     }`
     : "sem registro de última conexão";
   const lado = i.origem === "plataforma"
-    ? "PLATAFORMA (platform_crm_evolution_instances)"
+    ? "PLATAFORMA (platform_crm_wa_qr_instances)"
     : "tenant (evolution_instances)";
   return (
     `🔴 WhatsApp DESCONECTADO — detectado pelo canário de cobertura\n` +

@@ -2,7 +2,7 @@
 //
 // Orquestra os módulos PUROS de _shared/cold-outreach (anti-ban, segment-gate,
 // script, opt-out, persona) sobre os leads raspados (platform_crm_extracted_leads),
-// enviando pelo número BURNER via platform-evolution-send (WA) ou platform-ig-send (IG).
+// enviando pelo número BURNER via platform-whatsapp-qr-send (WA) ou platform-ig-send (IG).
 //
 // DUPLO GATE (nada dispara sem o Marcelo):
 //   1. campaign.dry_run  (default true)  → simula: gera+enfileira+instrumenta, NÃO envia.
@@ -37,6 +37,12 @@ import {
 import { assignVariant, type Channel, CAMILA_PROSPECTOR_AGENT_ID, renderOpeningFromDb, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
 import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
+import {
+  WA_QR_CHANNEL_CANONICAL,
+  WA_QR_CHANNELS,
+  waQrVisitorId,
+  waQrVisitorIdsForLookup,
+} from '../_shared/platform-wa-qr-identity.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -584,13 +590,13 @@ async function deliver(
   try {
     if (a.channel === "whatsapp") {
       if (!a.to) return { ok: false, error: "no phone" };
-      const { data, error } = await sb.functions.invoke("platform-evolution-send", {
+      const { data, error } = await sb.functions.invoke("platform-whatsapp-qr-send", {
         body: { product_id: a.productId, instance_id: a.instanceId, type: "text", to: a.to, payload: { text: a.text } },
       });
       if (error || (data && (data as any).ok === false)) return { ok: false, error: error?.message ?? JSON.stringify(data) };
       // WAMID — a chave que faltava pra medir ENTREGA.
       //
-      // O `data` já vinha completo do platform-evolution-send (que devolve a
+      // O `data` já vinha completo do platform-whatsapp-qr-send (que devolve a
       // resposta bruta da Evolution) e este `return { ok: true }` DESCARTAVA tudo.
       // Sem o wamid gravado não há como casar o ACK de MESSAGES_UPDATE com a
       // campanha — e sem isso delivered_count fica em zero pra sempre, deixando o
@@ -627,7 +633,7 @@ async function deliver(
  * referia ("É o que?" → "Oi Marcelo, tudo bem?") e se apresentava DE NOVO, 17
  * minutos depois de já ter se apresentado. Do lado da lead isso lê como golpe.
  *
- * A IDENTIDADE aqui é a MESMA tripla que o platform-evolution-webhook usa para
+ * A IDENTIDADE aqui é a MESMA tripla que o platform-whatsapp-qr-webhook usa para
  * REENCONTRAR a conversa (visitor_id='wa_evo:<dígitos>' + channel + instância —
  * webhook:403-411). Divergir dela abriria uma SEGUNDA conversa quando a lead
  * respondesse — pior que o defeito que esta função fecha.
@@ -658,15 +664,16 @@ async function persistOpeningInInbox(
       );
       return null;
     }
-    const visitorId = `wa_evo:${digits}`;
+    const visitorId = waQrVisitorId(digits);
+    const visitorIds = waQrVisitorIdsForLookup(digits);
     const phonePlus = `+${digits}`;
 
     const { data: found } = await sb
       .from("platform_crm_conversations")
       .select("id, status")
-      .eq("visitor_id", visitorId)
-      .eq("channel", "whatsapp_evolution")
-      .eq("evolution_instance_id", o.instanceId)
+      .in("visitor_id", visitorIds)
+      .in("channel", [...WA_QR_CHANNELS])
+      .eq("wa_qr_instance_id", o.instanceId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -698,10 +705,10 @@ async function persistOpeningInInbox(
           visitor_name: o.nome,
           visitor_phone: phonePlus,
           visitor_whatsapp: phonePlus,
-          channel: "whatsapp_evolution",
+          channel: WA_QR_CHANNEL_CANONICAL,
           status: "bot_active",
           needs_human: false,
-          evolution_instance_id: o.instanceId,
+          wa_qr_instance_id: o.instanceId,
           product_id: o.productId,
           // ⚠️ PIN DA PERSONA — sem isto, a prospecção ativa é atendida pela DUDA.
           //
@@ -744,7 +751,7 @@ async function persistOpeningInInbox(
       content_type: "text",
       message_type: "text",
       metadata: {
-        channel: "whatsapp_evolution",
+        channel: WA_QR_CHANNEL_CANONICAL,
         connection_id: o.instanceId,
         agent_id: o.agentId,
         delivery_status: "sent",
@@ -839,7 +846,7 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
   // Localiza as linhas de fila do lead por QUALQUER identificador presente (OR),
   // nunca pelo primeiro que existir. Era um else-if e o `conversation_id` vencia
   // sempre — mas no canal WhatsApp a fila tem conversation_id NULL: a conversa
-  // só NASCE quando a lead responde (criada pelo platform-evolution-webhook),
+  // só NASCE quando a lead responde (criada pelo platform-whatsapp-qr-webhook),
   // depois do envio. Resultado: 0 linhas, `queueStatus` (opted_out) não era
   // aplicado, `next_followup_at` não era limpo e a cadência seguia disparando
   // pra quem pediu PARE — invisível, porque a supressão em
@@ -848,7 +855,7 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
   // `.or()` do PostgREST é uma STRING: vírgula separa filtros e parêntese agrupa.
   // Valor vindo do body com esses caracteres reescreveria o filtro, então só
   // entra no OR o identificador que passa por regex estrita (mesma régua
-  // injection-safe do gate de instância do platform-evolution-webhook).
+  // injection-safe do gate de instância do platform-whatsapp-qr-webhook).
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const PHONE_RE = /^[0-9]{6,20}$/;
   const HANDLE_RE = /^[A-Za-z0-9._-]{1,64}$/;
@@ -968,9 +975,9 @@ async function actionStatus(sb: SupabaseClient, campaignId: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // MEDIDO 2026-08-04 (mesmo defeito de platform-evolution-send): `functions.invoke`
+  // MEDIDO 2026-08-04 (mesmo defeito de platform-whatsapp-qr-send): `functions.invoke`
   // manda a chave de serviço no header `apikey`, não no Authorization. O
-  // platform-evolution-webhook notifica o inbound por invoke — e caía em 401, ou
+  // platform-whatsapp-qr-webhook notifica o inbound por invoke — e caía em 401, ou
   // seja, "a lead respondeu" era descartado em silêncio. platform-sales-brain:183
   // já aceita as duas portas; espelhado aqui.
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

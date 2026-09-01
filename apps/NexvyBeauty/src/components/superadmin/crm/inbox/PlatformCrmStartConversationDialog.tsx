@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
-import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '../data/usePlatformCrmWaQrInstances';
 import { usePlatformCrmMetaWAConnections } from '../data/usePlatformCrmMetaWhatsApp';
 import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
 import { PlatformCrmSendTemplateDialog } from './PlatformCrmSendTemplateDialog';
@@ -34,7 +34,7 @@ import { Loader2, Search, MessageCircle, User, Phone, BadgeCheck } from 'lucide-
  * Vendus v5 original) — seletor de conexão (Evolution QR + Meta Oficial), busca
  * de lead, badge de lead selecionado, telefone e primeira mensagem. Trocas:
  * (a) prefixo PlatformCrm*; (b) dados — `leads` → `platform_crm_leads`,
- * instâncias/conexões → `usePlatformCrmEvolutionInstances` /
+ * instâncias/conexões → `usePlatformCrmWaQrInstances` /
  * `usePlatformCrmMetaWAConnections`; criação — A1.2-FRONT (contrato 1): edge
  * `platform-start-whatsapp-conversation` POST { phone, message, connection_id?,
  * lead_id? } → { ok, conversation_id, message_id }; erro `needs_template` abre
@@ -71,12 +71,12 @@ export function PlatformCrmStartConversationDialog({
   const [sendTemplateOpen, setSendTemplateOpen] = useState(false);
   const [templatePhone, setTemplatePhone] = useState('');
 
-  const { data: evoInstances } = usePlatformCrmEvolutionInstances();
+  const { data: waQrInstances } = usePlatformCrmWaQrInstances();
   const { data: metaConnections } = usePlatformCrmMetaWAConnections();
 
   const connectionOptions = useMemo<ConnectionOption[]>(() => {
     const opts: ConnectionOption[] = [];
-    (evoInstances || []).forEach((inst: any) => {
+    (waQrInstances || []).forEach((inst: any) => {
       if (inst.status && inst.status !== 'connected' && inst.status !== 'active') return;
       const name = (inst.metadata as any)?.display_name || inst.name;
       const phone = inst.phone_number ? ` · +${inst.phone_number}` : '';
@@ -99,7 +99,7 @@ export function PlatformCrmStartConversationDialog({
       });
     });
     return opts;
-  }, [evoInstances, metaConnections]);
+  }, [waQrInstances, metaConnections]);
 
   useEffect(() => {
     if (open && !connectionKey && connectionOptions.length > 0) {

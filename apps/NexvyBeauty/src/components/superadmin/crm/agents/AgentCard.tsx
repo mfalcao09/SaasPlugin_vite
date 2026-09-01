@@ -79,10 +79,10 @@ export const AgentCard = memo(function AgentCard({
 
   // Resumo das conexões dedicadas (multi-canal: evolution + meta + instagram),
   // via twin product-scoped `platform_crm_agent_connections`. Fallback legado:
-  // coluna única `evolution_instance_id`. null = agente atende em qualquer conexão.
+  // coluna única `wa_qr_instance_id`. null = agente atende em qualquer conexão.
   const { data: dedicatedSummary } = usePlatformCrmAgentConnectionsSummary(
     agent.id,
-    agent.evolution_instance_id,
+    agent.wa_qr_instance_id,
   );
   const instanceLabel = dedicatedSummary ?? null;
 

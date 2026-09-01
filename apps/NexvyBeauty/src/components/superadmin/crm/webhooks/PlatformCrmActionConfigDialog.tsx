@@ -29,7 +29,7 @@ import { usePlatformCrmSquads } from '@/components/superadmin/crm/data/usePlatfo
 import { usePlatformCrmCustomFields } from '@/components/superadmin/crm/data/usePlatformCrmCustomFields';
 import { usePlatformCrmCaptureFunnels } from '@/components/superadmin/crm/data/usePlatformCrmCaptureFunnels';
 import { usePlatformCrmProductAgents } from '@/components/superadmin/crm/data/usePlatformCrmProductAgents';
-import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '@/components/superadmin/crm/data/usePlatformCrmWaQrInstances';
 import { usePlatformCrmSectors } from '@/components/superadmin/crm/data/usePlatformCrmSectors';
 import { usePlatformCrmTags } from '@/components/superadmin/crm/data/usePlatformCrmTags';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,7 +81,7 @@ export function PlatformCrmActionConfigDialog({
   const { data: customFields } = usePlatformCrmCustomFields();
   const { data: funnels } = usePlatformCrmCaptureFunnels();
   const { data: allAgents } = usePlatformCrmProductAgents(productId);
-  const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
+  const { data: waQrInstances } = usePlatformCrmWaQrInstances();
   const { data: sectors } = usePlatformCrmSectors();
   const { data: leadTags } = usePlatformCrmTags();
 
@@ -952,7 +952,7 @@ export function PlatformCrmActionConfigDialog({
   const renderTriggerFlowConfig = () => {
     const channel = config.flow_channel || 'whatsapp';
     const activeFunnels = (funnels || []).filter((f: any) => f.status === 'active' || f.status === 'draft');
-    const connectedInstances = (evolutionInstances || []).filter((i) => i.status === 'connected');
+    const connectedInstances = (waQrInstances || []).filter((i) => i.status === 'connected');
 
     return (
       <div className="space-y-5">
@@ -1057,7 +1057,7 @@ export function PlatformCrmActionConfigDialog({
               <RadioGroupItem value="whatsapp" id="flow-wa" />
               <label htmlFor="flow-wa" className="cursor-pointer flex-1">
                 <div className="font-medium text-sm">WhatsApp</div>
-                <div className="text-xs text-muted-foreground">Envia o fluxo no WhatsApp do lead via Evolution Go</div>
+                <div className="text-xs text-muted-foreground">Envia o fluxo no WhatsApp do lead via WhatsApp QR (Z-API)</div>
               </label>
             </div>
             <div className="flex items-center space-x-3 p-3 rounded-lg border border-border">
@@ -1074,9 +1074,9 @@ export function PlatformCrmActionConfigDialog({
           <div className="space-y-2">
             <Label>Instância WhatsApp (opcional)</Label>
             <Select
-              value={config.flow_evolution_instance_id || '__auto'}
+              value={config.flow_wa_qr_instance_id || (config as any).flow_evolution_instance_id || '__auto'}
               onValueChange={(v) =>
-                setConfig((prev) => ({ ...prev, flow_evolution_instance_id: v === '__auto' ? undefined : v }))
+                setConfig((prev) => ({ ...prev, flow_wa_qr_instance_id: v === '__auto' ? undefined : v }))
               }
             >
               <SelectTrigger>

@@ -93,13 +93,13 @@ import {
   buildInactivityRepertoire,
   parseRepertoireStage,
 } from '../_shared/inactivity-cadence.ts';
+import { WA_QR_CHANNELS, isWaQrChannel } from '../_shared/platform-wa-qr-identity.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
-// Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API (número
-// oficial); 'whatsapp_evolution' = Evolution (número não-oficial via QR, criado
-// pelo platform-evolution-webhook). Não é lista de "canais existentes": webchat e
-// Instagram têm outro motor e continuam de fora.
-const BRAIN_CHANNELS: string[] = ['whatsapp', 'whatsapp_evolution'];
+// Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API;
+// WA_QR_CHANNELS = WhatsApp via QR (legado whatsapp_evolution + canônico whatsapp_qr).
+// Webchat/Instagram ficam de fora.
+const BRAIN_CHANNELS: string[] = ['whatsapp', ...WA_QR_CHANNELS];
 // Janela de deduplicação: se o bot acabou de falar (<5s), não responde de novo.
 const DEDUP_WINDOW_MS = 5000;
 // Debounce: agrega mensagens curtas da lead que chegam em rajada numa só resposta.
@@ -293,7 +293,7 @@ async function sendTypingIndicator(
 /**
  * "Digitando…" no canal Evolution. NÃO existe equivalente ao par
  * read+typing_indicator do Graph (que se pendura num wamid): a Evolution expõe
- * presença de chat (`/chat/sendPresence`, type 'presence' no platform-evolution-send),
+ * presença de chat (`/chat/sendPresence`, type 'presence' no platform-whatsapp-qr-send),
  * que é justamente o sinal que transforma a pausa em "ela está escrevendo".
  * NON-FATAL pelo mesmo contrato do irmão Graph: qualquer falha aqui é logada e
  * ignorada — a pausa e a entrega seguem.
@@ -305,8 +305,8 @@ async function sendEvolutionPresence(
   delayMs: number,
 ): Promise<void> {
   const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
-  const instanceId = typeof conversation?.evolution_instance_id === 'string'
-    ? conversation.evolution_instance_id
+  const instanceId = typeof conversation?.wa_qr_instance_id === 'string'
+    ? conversation.wa_qr_instance_id
     : null;
   const to = String(toPhone ?? '').replace(/\D/g, '');
   if (!instanceId || !to) {
@@ -327,7 +327,7 @@ async function sendEvolutionPresence(
     const waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
       ? meta.wa_lid.trim()
       : null;
-    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+    const { data, error } = await supabase.functions.invoke('platform-whatsapp-qr-send', {
       body: {
         product_id: productId,
         instance_id: instanceId,
@@ -362,7 +362,7 @@ async function sendTypingSignal(
   toPhone: string,
   pauseMs = 0,
 ): Promise<void> {
-  if (conversation?.channel === 'whatsapp_evolution') {
+  if (isWaQrChannel(conversation?.channel)) {
     await sendEvolutionPresence(supabase, conversation, toPhone, pauseMs);
     return;
   }
@@ -426,7 +426,7 @@ interface DeliveryResult {
  * Resolve o product_id DA INSTÂNCIA Evolution. Não serve o product_id da
  * CONVERSA: o webhook herda o produto da instância só no INSERT e nunca
  * sobrescreve atribuição manual — os dois podem divergir, e o
- * platform-evolution-send casa `id + product_id` (`.eq().eq()`), então
+ * platform-whatsapp-qr-send casa `id + product_id` (`.eq().eq()`), então
  * product_id errado devolve 404 "No platform Evolution instance found".
  */
 async function evolutionInstanceProductId(
@@ -435,7 +435,7 @@ async function evolutionInstanceProductId(
   conversationId: string | null,
 ): Promise<string | null> {
   const { data, error } = await supabase
-    .from('platform_crm_evolution_instances')
+    .from('platform_crm_wa_qr_instances')
     .select('id, product_id')
     .eq('id', instanceId)
     .maybeSingle();
@@ -459,13 +459,13 @@ async function evolutionInstanceProductId(
  *
  * A tela "Canais → Conexões dedicadas" do editor de agente já grava em
  * `platform_crm_agent_connections` (e mantém `platform_crm_product_agents
- * .evolution_instance_id` em sync como legado). Até aqui NENHUMA edge function
+ * .wa_qr_instance_id` em sync como legado). Até aqui NENHUMA edge function
  * lia esse vínculo — medido: 0 leituras no repo, 0 linhas na tabela. O efeito
  * era que conversa nova SEMPRE abria com a SDR: uma lead prospectada pela BDR
  * num número dedicado a ela era atendida pela Duda.
  *
  * Espelha a regra que já roda em produção do lado do salão — webchat-bot
- * ("instance-bound agent"), que resolve o agente por `evolution_instance_id`.
+ * ("instance-bound agent"), que resolve o agente por `wa_qr_instance_id`.
  *
  * Devolve o id do agente dedicado à conexão por onde a conversa corre, ou null
  * quando não há vínculo — nesse caso o roteamento anterior segue intacto.
@@ -474,8 +474,8 @@ async function resolveConnectionBoundAgentId(
   supabase: any,
   conversation: Record<string, any> | null,
 ): Promise<string | null> {
-  const evo = typeof conversation?.evolution_instance_id === 'string'
-    ? conversation.evolution_instance_id
+  const evo = typeof conversation?.wa_qr_instance_id === 'string'
+    ? conversation.wa_qr_instance_id
     : null;
   const meta = typeof conversation?.meta_connection_id === 'string'
     ? conversation.meta_connection_id
@@ -510,7 +510,7 @@ async function resolveConnectionBoundAgentId(
     const { data } = await supabase
       .from('platform_crm_product_agents')
       .select('id')
-      .eq('evolution_instance_id', evo)
+      .eq('wa_qr_instance_id', evo)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
@@ -521,10 +521,10 @@ async function resolveConnectionBoundAgentId(
 
 /**
  * Entrega no canal Evolution (WhatsApp não-oficial via QR) pela edge
- * platform-evolution-send — a mesma que o cold outreach usa. O `connectionId`
- * devolvido aqui é o evolution_instance_id (é ele que diz por qual número saiu a
+ * platform-whatsapp-qr-send — a mesma que o cold outreach usa. O `connectionId`
+ * devolvido aqui é o wa_qr_instance_id (é ele que diz por qual número saiu a
  * bolha); e `evolutionMessageId` é o key.id da Evolution, que o
- * platform-evolution-webhook usa como chave de idempotência — persistir isso
+ * platform-whatsapp-qr-webhook usa como chave de idempotência — persistir isso
  * impede que o eco fromMe do nosso próprio envio vire uma segunda linha outbound.
  */
 async function deliverViaEvolution(
@@ -535,12 +535,12 @@ async function deliverViaEvolution(
   quoted?: { key: { id: string; fromMe: boolean; remoteJid?: string }; message: { conversation: string } } | null,
 ): Promise<DeliveryResult> {
   const conversationId = typeof conversation?.id === 'string' ? conversation.id : null;
-  const instanceId = typeof conversation?.evolution_instance_id === 'string'
-    ? conversation.evolution_instance_id
+  const instanceId = typeof conversation?.wa_qr_instance_id === 'string'
+    ? conversation.wa_qr_instance_id
     : null;
   if (!instanceId) {
     console.error(
-      `[platform-sales-brain] entrega Evolution SEM evolution_instance_id conversation_id=${conversationId} — não há por qual número responder`,
+      `[platform-sales-brain] entrega Evolution SEM wa_qr_instance_id conversation_id=${conversationId} — não há por qual número responder`,
     );
     return { wamid: null, error: 'no_evolution_instance', connectionId: null, delivered: false };
   }
@@ -568,7 +568,7 @@ async function deliverViaEvolution(
         delivered: false,
       };
     }
-    const { data, error } = await supabase.functions.invoke('platform-evolution-send', {
+    const { data, error } = await supabase.functions.invoke('platform-whatsapp-qr-send', {
       body: {
         product_id: productId,
         instance_id: instanceId,
@@ -584,7 +584,7 @@ async function deliverViaEvolution(
     if (error || (data as any)?.ok === false || (data as any)?.error) {
       // INSTRUMENTO (2026-08-04): `error.message` do supabase-js é SEMPRE o
       // genérico "Edge Function returned a non-2xx status code". Foi ele que
-      // escondeu por completo o motivo do 401 do platform-evolution-send — as
+      // escondeu por completo o motivo do 401 do platform-whatsapp-qr-send — as
       // bolhas ficaram com delivery_status='failed' e um erro que não diz nada,
       // e o diagnóstico só saiu lendo log de gateway. O corpo da resposta vive
       // em `error.context` (Response); lê-lo AQUI faz o motivo do callee
@@ -643,7 +643,7 @@ async function deliver(
   content: string,
   quoted?: { key: { id: string; fromMe: boolean; remoteJid?: string }; message: { conversation: string } } | null,
 ): Promise<DeliveryResult> {
-  if (conversation?.channel === 'whatsapp_evolution') {
+  if (isWaQrChannel(conversation?.channel)) {
     return await deliverViaEvolution(supabase, conversation, toPhone, content, quoted);
   }
   const r = await deliverViaWhatsAppCloud(
@@ -1430,13 +1430,13 @@ Deno.serve(async (req) => {
       .from('platform_crm_conversations')
       // meta_connection_id é OBRIGATÓRIO no select: é ele que diz por qual
       // número responder (a conexão que RECEBEU a mensagem da lead).
-      // evolution_instance_id é o equivalente do canal Evolution (qual número
+      // wa_qr_instance_id é o equivalente do canal Evolution (qual número
       // burner recebeu) — sem ele não há por onde responder naquele canal.
       // conversation_state (PR-B): a memória do que JÁ foi feito nesta conversa.
       // Sem ela, cada invocação re-deriva do histórico bruto "já me apresentei?",
       // "já ofereci a demo?" — e re-deriva ERRADO sob pressão.
       // visitor_id: usado pelo GATE DO CANARY logo abaixo (prefixo 'wa:eval-').
-      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, evolution_instance_id, conversation_state, metadata')
+      .select('id, channel, status, product_id, lead_id, current_agent_id, visitor_id, visitor_name, visitor_phone, visitor_whatsapp, meta_connection_id, wa_qr_instance_id, conversation_state, metadata')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -1813,7 +1813,7 @@ Deno.serve(async (req) => {
       const { data: agents } = await supabase
         .from('platform_crm_product_agents')
         .select(
-          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id, model',
+          'id, name, agent_type, primary_objective, tone_style, additional_prompt, prohibited_phrases, qualification_schema, is_active, active_in_whatsapp, product_id, model, openrouter_api_key',
         )
         .eq('product_id', conversation.product_id)
         .eq('is_active', true)
@@ -2073,7 +2073,7 @@ Deno.serve(async (req) => {
     // FATO — injetada DEPOIS das instruções da persona (recência vence).
     let nomeParaRacionar = '';
     let nameRationContext = '';
-    if (conversation.channel === 'whatsapp_evolution' && visitorName) {
+    if (isWaQrChannel(conversation.channel) && visitorName) {
       const primeiroNome = String(visitorName).trim().split(/\s+/)[0] ?? '';
       if (primeiroNome.length >= 3) {
         const nomeRe = new RegExp(
@@ -2181,10 +2181,32 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     //     AI_SALES_BRAIN_MODEL → DEFAULT_MODEL); a Duda usa AI_SALES_BRAIN_MODEL
     //     (default gemini-2.5-flash). Mesmo transporte do sales-copilot. O modelo
     //     efetivo volta no metadata da resposta (campo `model`).
-    const apiKey = Deno.env.get('AI_API_KEY') ?? '';
+    //     API key: re-fetch por id (coluna pode faltar no select em cache) >
+    //     persona.openrouter_api_key > AI_API_KEY (env).
+    let personaApiKey = typeof persona.openrouter_api_key === 'string'
+      ? persona.openrouter_api_key.trim()
+      : '';
+    if (!personaApiKey && persona?.id) {
+      const { data: keyRow } = await supabase
+        .from('platform_crm_product_agents')
+        .select('openrouter_api_key')
+        .eq('id', persona.id)
+        .maybeSingle();
+      const fetched = typeof keyRow?.openrouter_api_key === 'string'
+        ? keyRow.openrouter_api_key.trim()
+        : '';
+      if (fetched) personaApiKey = fetched;
+    }
+    const apiKey = personaApiKey || (Deno.env.get('AI_API_KEY') ?? '');
+    const keySource = personaApiKey ? 'persona' : 'env';
     if (!apiKey) {
-      console.error('[platform-sales-brain] AI_API_KEY não configurada.');
+      console.error('[platform-sales-brain] AI_API_KEY não configurada (e persona sem openrouter_api_key).');
       return json({ error: 'AI_API_KEY não configurada na plataforma.' }, 500);
+    }
+    if (personaApiKey) {
+      console.log(
+        `[platform-sales-brain] api_key por persona: ${persona.name ?? persona.id} (sk…${personaApiKey.slice(-4)})`,
+      );
     }
     const gatewayBase = (Deno.env.get('AI_GATEWAY_URL') ?? 'https://openrouter.ai/api/v1').replace(/\/+$/, '');
     // PRECEDÊNCIA: override da PERSONA > env > default. O override existe porque
@@ -2293,13 +2315,21 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         model,
         messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
         stream: false,
+        // 256: resposta WA curta; keys com pouco crédito + prompt Camila (~13k)
+        // falham com 2048/512 (OpenRouter weight_exceeds_budget). Medido 2026-09-01.
+        max_tokens: 256,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       console.error('[platform-sales-brain] AI gateway error:', response.status, errorText.slice(0, 200));
-      return json({ error: `Erro do provedor de IA: ${response.status}` }, 502);
+      return json({
+        error: `Erro do provedor de IA: ${response.status}`,
+        key_source: keySource,
+        persona_id: persona?.id ?? null,
+        persona_name: persona?.name ?? null,
+      }, 502);
     }
 
     const completion = await response.json().catch(() => null);
@@ -2532,7 +2562,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // seguidas (2026-08-04/05) com link empurrado sem aceite e aglutinado com
     // pergunta — instrução de prompt não segurou nenhuma das 3 vezes.
     // Prompt ensina a falar; código impede de errar.
-    if (conversation.channel === 'whatsapp_evolution') {
+    if (isWaQrChannel(conversation.channel)) {
       const URL_RE = /https?:\/\/\S+/g;
       // PR-B: o aceite é calculado UMA vez por turno, lá em cima, antes do prompt
       // (`leadAceitouAgora`) — e a política de link nasce dele. Recalcular aqui
@@ -2741,7 +2771,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       // saturava em 134 chars, entregando 300 chars em ~6s (≈610 wpm, ~200x humano).
       const pauseMs = i === 0
         ? Math.max(0, readDelayMs - (Date.now() - tDeliveryStart))
-        : (conversation.channel === 'whatsapp_evolution'
+        : (isWaQrChannel(conversation.channel)
           ? evoTypingPauseMs(bubbleText)   // PR-BDR-13: ritmo humano, só Camila
           : typingPauseMs(bubbleText));
       if (pauseMs > 0) {
@@ -2785,7 +2815,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       }
 
       const baseMeta = {
-        channel: conversation.channel === 'whatsapp_evolution' ? 'whatsapp_evolution' : 'whatsapp_cloud',
+        channel: isWaQrChannel(conversation.channel) ? conversation.channel : 'whatsapp_cloud',
         agent_id: persona.id,
         score: currentScore,
         rota: currentRota,
@@ -2833,7 +2863,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
             wamid,
             delivery_status: 'sent',
             ...(connectionId ? { connection_id: connectionId } : {}),
-            // Chave de idempotência do platform-evolution-webhook: sem ela o eco
+            // Chave de idempotência do platform-whatsapp-qr-webhook: sem ela o eco
             // fromMe do nosso próprio envio viraria uma segunda linha outbound.
             ...(evolutionMessageId ? { evolution_message_id: evolutionMessageId } : {}),
           }
