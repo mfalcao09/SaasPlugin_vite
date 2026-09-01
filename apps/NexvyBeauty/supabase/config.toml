@@ -14,6 +14,9 @@ verify_jwt = false
 [functions.platform-evolution-webhook]
 verify_jwt = false
 
+[functions.platform-whatsapp-qr-webhook]
+verify_jwt = false
+
 # Webhook público do Evolution (servidor externo -> TENANT/salão). Sem JWT no
 # gateway (a Evolution não manda Authorization). Auth real na função = a
 # instância do payload PRECISA existir em evolution_instances (payload de
@@ -166,10 +169,15 @@ verify_jwt = false
 [functions.nina-health-scan]
 verify_jwt = false
 
-# Envio WhatsApp via Evolution BURNER platform-side (cold outreach). Chamada
-# server-to-server pelo motor platform-cold-outreach. Sem JWT no gateway; auth
-# real na função = Bearer == SERVICE_ROLE_KEY. Twin do tenant evolution-send.
+# Envio WhatsApp via Z-API (QR) platform-side. Alias legado: platform-evolution-send.
 [functions.platform-evolution-send]
+verify_jwt = false
+
+[functions.platform-whatsapp-qr-send]
+verify_jwt = false
+
+# Proxy WhatsApp QR (Z-API) plataforma. Alias: platform-evolution-proxy.
+[functions.platform-whatsapp-qr-proxy]
 verify_jwt = false
 
 # Motor de cold outreach (enqueue/tick/on-inbound/status). Chamado por pg_cron

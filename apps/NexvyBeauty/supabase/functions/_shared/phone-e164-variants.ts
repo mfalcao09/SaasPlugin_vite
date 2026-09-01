@@ -23,7 +23,7 @@
 //           manda a variante para a API do PROVEDOR, que não aceita "+".
 //       evolution-webhook/index.ts:1138   ← TENANT
 //           o telefone nasce do JID da Evolution, que já é dígitos puros.
-//           ⚠️ `evolution-webhook` (tenant) ≠ `platform-evolution-webhook`
+//           ⚠️ `evolution-webhook` (tenant) ≠ `platform-whatsapp-qr-webhook`
 //              (plataforma). São duas funções distintas; só a de tenant está aqui.
 //
 // ── Por que este arquivo existe ──────────────────────────────────────────────

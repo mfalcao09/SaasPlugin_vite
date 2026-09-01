@@ -40,7 +40,7 @@ const PRODUCT_AGENTS_COLUMNS = new Set<string>([
   'active_in_copilot', 'active_in_whatsapp', 'active_in_instagram', 'active_in_facebook',
   'is_active', 'is_default',
   'activation_keywords', 'activation_phrases', 'activation_priority', 'activation_scope',
-  'takeover_on_match', 'evolution_instance_id', 'humanization',
+  'takeover_on_match', 'wa_qr_instance_id', 'humanization',
   'allowed_event_type_ids', 'default_schedule_user_id',
   'booking_notification_user_ids', 'booking_notify_org_admins',
   'enable_audio_transcription', 'enable_image_vision',
@@ -64,6 +64,9 @@ function pickAgentFields<T extends Record<string, unknown>>(payload: T): Partial
   return out as Partial<T>;
 }
 
+/** Colunas seguras para o client — NUNCA inclui openrouter_api_key (segredo server-only). */
+const PRODUCT_AGENTS_SELECT = Array.from(PRODUCT_AGENTS_COLUMNS).join(',');
+
 // ─── Listagem por produto ────────────────────────────────────────────────────
 export function usePlatformCrmProductAgents(productId?: string) {
   return useQuery({
@@ -71,7 +74,7 @@ export function usePlatformCrmProductAgents(productId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_crm_product_agents')
-        .select('*')
+        .select(PRODUCT_AGENTS_SELECT)
         .eq('product_id', productId!)
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false });
@@ -111,7 +114,7 @@ export function usePlatformCrmProductAgent(agentId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('platform_crm_product_agents')
-        .select('*')
+        .select(PRODUCT_AGENTS_SELECT)
         .eq('id', agentId!)
         .single();
       if (error) throw error;
@@ -176,7 +179,7 @@ export function useCreatePlatformCrmProductAgent() {
         activation_priority: agent.activation_priority ?? 0,
         activation_scope: agent.activation_scope ?? 'all',
         takeover_on_match: agent.takeover_on_match ?? true,
-        evolution_instance_id: agent.evolution_instance_id ?? null,
+        wa_qr_instance_id: agent.wa_qr_instance_id ?? null,
         humanization: ((agent as Record<string, unknown>).humanization ?? {}) as Record<string, unknown>,
       };
 

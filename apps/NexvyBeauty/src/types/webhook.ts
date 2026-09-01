@@ -51,6 +51,8 @@ export interface WebhookActionConfig {
   flow_id?: string;
   flow_agent_id?: string;
   flow_channel?: 'whatsapp' | 'webchat';
+  flow_wa_qr_instance_id?: string;
+  /** @deprecated */
   flow_evolution_instance_id?: string;
   flow_assigned_user_id?: string;
   flow_sector_id?: string;

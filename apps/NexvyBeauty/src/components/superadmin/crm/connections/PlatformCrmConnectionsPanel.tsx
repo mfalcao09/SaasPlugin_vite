@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { PlatformCrmEvolutionInstancesPanel } from './PlatformCrmEvolutionInstancesPanel';
+import { PlatformCrmWaQrInstancesPanel } from './PlatformCrmWaQrInstancesPanel';
 import { PlatformCrmMetaWhatsAppConnectionsPanel } from './PlatformCrmMetaWhatsAppConnectionsPanel';
 import { PlatformCrmInstagramConnectionsPanel } from './PlatformCrmInstagramConnectionsPanel';
 import { PlatformCrmNewConnectionDialog, type PlatformCrmConnectionProvider } from './PlatformCrmNewConnectionDialog';
@@ -51,7 +51,7 @@ export function PlatformCrmConnectionsPanel() {
         </Button>
       </div>
 
-      <PlatformCrmEvolutionInstancesPanel
+      <PlatformCrmWaQrInstancesPanel
         hideHeader
         openCreate={openEvolutionCreate}
         onCloseCreate={() => setOpenEvolutionCreate(false)}

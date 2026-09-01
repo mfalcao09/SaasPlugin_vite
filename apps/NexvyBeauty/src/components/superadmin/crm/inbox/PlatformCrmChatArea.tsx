@@ -743,7 +743,7 @@ export function PlatformCrmChatArea({
                   channel,
                   meta_connection_id: metaConnectionId,
                   instagram_connection_id: instagramConnectionId,
-                  evolution_instance_id: evolutionInstanceId,
+                  wa_qr_instance_id: evolutionInstanceId,
                 }}
                 size="sm"
               />

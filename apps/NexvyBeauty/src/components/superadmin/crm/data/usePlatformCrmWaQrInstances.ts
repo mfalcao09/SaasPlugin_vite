@@ -4,38 +4,33 @@ import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
 /**
- * Conexões de WhatsApp via QR (Evolution) do CRM de PLATAFORMA (super_admin).
- * Porte 1:1 do `useEvolutionInstances.ts` do CRM Vendus, mas:
- *   • `.from('platform_crm_evolution_instances')` (não `evolution_instances`)
- *   • Edge `platform-evolution-proxy` (roteia por `body.action`)
- *   • SEM organization_id / useAuth — a RLS super_admin-only isola os dados.
- *   • Operador = ILIMITADO: nenhum gate de plano/`max_connections`.
+ * Conexões WhatsApp via QR (Z-API) do CRM de plataforma (super_admin).
  */
 
-export type PlatformCrmEvolutionInstance = Tables<'platform_crm_evolution_instances'>;
+export type PlatformCrmWaQrInstance = Tables<'platform_crm_wa_qr_instances'>;
 
 async function proxy(body: Record<string, any>) {
-  const { data, error } = await supabase.functions.invoke('platform-evolution-proxy', { body });
+  const { data, error } = await supabase.functions.invoke('platform-whatsapp-qr-proxy', { body });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
   return data;
 }
 
-export function usePlatformCrmEvolutionInstances() {
+const QUERY_KEY = ['platform-crm-wa-qr-instances'] as const;
+
+export function usePlatformCrmWaQrInstances() {
   return useQuery({
-    queryKey: ['platform-crm-evolution-instances'],
-    queryFn: async (): Promise<PlatformCrmEvolutionInstance[]> => {
+    queryKey: QUERY_KEY,
+    queryFn: async (): Promise<PlatformCrmWaQrInstance[]> => {
       const { data, error } = await supabase
-        .from('platform_crm_evolution_instances')
+        .from('platform_crm_wa_qr_instances')
         .select('*')
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as PlatformCrmEvolutionInstance[];
+      return (data ?? []) as PlatformCrmWaQrInstance[];
     },
-    // Espelho do tenant (`useEvolutionInstances`): pareamento chega via webhook→DB.
-    // Sem refetch a lista congela em qr_pending depois que o dialog de QR fecha.
     refetchInterval: (query) => {
-      const rows = (query.state.data ?? []) as PlatformCrmEvolutionInstance[];
+      const rows = (query.state.data ?? []) as PlatformCrmWaQrInstance[];
       if (!rows.length) return 30_000;
       return rows.some((r) => r.status !== 'connected') ? 3_000 : 30_000;
     },
@@ -43,12 +38,15 @@ export function usePlatformCrmEvolutionInstances() {
   });
 }
 
+
 function useInvalidate() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: ['platform-crm-evolution-instances'] });
+  return () => {
+    qc.invalidateQueries({ queryKey: QUERY_KEY });
+  };
 }
 
-export function useCreatePlatformCrmEvolutionInstance() {
+export function useCreatePlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (vars: { name: string; product_id?: string | null; agent_ids?: string[] }) =>
@@ -66,7 +64,7 @@ export function useCreatePlatformCrmEvolutionInstance() {
   });
 }
 
-export function useConnectPlatformCrmEvolutionInstance() {
+export function useConnectPlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => proxy({ action: 'connect_instance', id }),
@@ -75,7 +73,7 @@ export function useConnectPlatformCrmEvolutionInstance() {
   });
 }
 
-export function useDisconnectPlatformCrmEvolutionInstance() {
+export function useDisconnectPlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => proxy({ action: 'disconnect_instance', id }),
@@ -87,7 +85,7 @@ export function useDisconnectPlatformCrmEvolutionInstance() {
   });
 }
 
-export function useLogoutPlatformCrmEvolutionInstance() {
+export function useLogoutPlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => proxy({ action: 'logout_instance', id }),
@@ -99,7 +97,7 @@ export function useLogoutPlatformCrmEvolutionInstance() {
   });
 }
 
-export function useDeletePlatformCrmEvolutionInstance() {
+export function useDeletePlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => proxy({ action: 'delete_instance', id }),
@@ -111,7 +109,7 @@ export function useDeletePlatformCrmEvolutionInstance() {
   });
 }
 
-export function useRenamePlatformCrmEvolutionInstance() {
+export function useRenamePlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (vars: { id: string; name: string }) =>
@@ -124,7 +122,7 @@ export function useRenamePlatformCrmEvolutionInstance() {
   });
 }
 
-export function useSetDefaultPlatformCrmEvolutionInstance() {
+export function useSetDefaultPlatformCrmWaQrInstance() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => proxy({ action: 'set_default', id }),

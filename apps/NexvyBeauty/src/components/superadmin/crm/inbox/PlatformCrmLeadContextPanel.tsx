@@ -1088,7 +1088,7 @@ function VerifyWhatsAppButton({
                 <p>
                   {lastResult.wa_lid
                     ? 'O lead já respondeu e possui LID WhatsApp. A conexão recusou o envio/validação, então o problema é sessão/provedor — não o telefone cadastrado.'
-                    : 'Há histórico com este número. A falha parece ser da sessão WhatsApp/Evolution, não do telefone do lead.'}
+                    : 'Há histórico com este número. A falha parece ser da sessão WhatsApp QR, não do telefone do lead.'}
                 </p>
                 {lastResult.wa_lid && (
                   <p className="font-mono text-[10px] break-all">LID: {lastResult.wa_lid}</p>

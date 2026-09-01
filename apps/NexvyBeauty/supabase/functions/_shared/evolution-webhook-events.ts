@@ -2,7 +2,7 @@
 //
 // POR QUE ESTE ARQUIVO EXISTE (incidente 2026-08-07)
 // A lista de eventos estava duplicada em três lugares (evolution-proxy,
-// platform-evolution-proxy, demo-evolution). Em 20/07 a cópia da demo ganhou
+// platform-whatsapp-qr-proxy, demo-evolution). Em 20/07 a cópia da demo ganhou
 // `MESSAGING_HISTORY_SET` — nome de evento do **Baileys** (`messaging-history.set`),
 // a biblioteca por baixo. A Evolution NÃO tem esse nome no enum dela: ela reexpõe
 // aquele evento como MESSAGES_SET / CONTACTS_SET / CHATS_SET.

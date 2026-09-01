@@ -8,7 +8,7 @@ import { toast } from 'sonner';
  * INBOX do CRM de PLATAFORMA (super_admin) — conversas + mensagens do canal de
  * webchat/atendimento da própria plataforma. Desacoplado do tenant: toca APENAS
  * `platform_crm_conversations` e `platform_crm_messages`. Sem organization_id /
- * product_id / sector_id / evolution_instance_id — a RLS super_admin-only já isola
+ * product_id / sector_id / wa_qr_instance_id — a RLS super_admin-only já isola
  * os dados. (Porte 1:1 da UX do CRM Vendus `seller/SellerInbox.tsx`.)
  *
  * ⚠️ ENTREGA POR CANAL (webchat/whatsapp) e IA: NÃO acontecem aqui. As mutations

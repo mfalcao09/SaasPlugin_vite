@@ -21,13 +21,13 @@
 //     `_shared/post-sale-engine.ts` (step 8: product_id, event_type, lead_id,
 //     source, action_id, executed_actions[], event_data).
 //   * Mensagem inline (send_mode='message'):
-//       - whatsapp → invoca `platform-evolution-send` (twin 1:1 de
+//       - whatsapp → invoca `platform-whatsapp-qr-send` (twin 1:1 de
 //         `evolution-send`; contrato idêntico trocando organization_id por
-//         product_id). Instância = `action.evolution_instance_id`, coluna que
+//         product_id). Instância = `action.wa_qr_instance_id`, coluna que
 //         já existe em `platform_crm_post_sale_event_actions` (mirror de schema
 //         do F4) — NÃO simplificado para Meta Cloud API: a coluna existe
 //         porque o CRM de plataforma também tem `platform_crm_evolution_instances`
-//         (ver `platform-evolution-webhook`/`platform-evolution-proxy`).
+//         (ver `platform-whatsapp-qr-webhook`/`platform-whatsapp-qr-proxy`).
 //       - email → `enqueue_email` (RPC global pgmq, sem FK em lead_id/template_id
 //         — reuso direto e seguro com platform_crm_leads.id).
 //   * Agente IA (`action.agent_id`) → invoca `platform-manual-outreach` (twin 1:1
@@ -192,15 +192,15 @@ Deno.serve(async (req) => {
           const message = replaceVars(action.inline_message, vars);
           if (action.message_channel === 'whatsapp' && lead.phone) {
             const phone = normalizePhone(lead.phone);
-            const { data: sd, error: se } = await supabase.functions.invoke('platform-evolution-send', {
+            const { data: sd, error: se } = await supabase.functions.invoke('platform-whatsapp-qr-send', {
               body: {
                 type: 'text', to: phone, payload: { text: message },
                 product_id: run.product_id,
-                instance_id: action.evolution_instance_id ?? undefined,
+                instance_id: action.wa_qr_instance_id ?? undefined,
               },
             });
             if (se || (sd && sd.error)) {
-              const msg = `platform-evolution-send: ${se?.message || sd?.error}`;
+              const msg = `platform-whatsapp-qr-send: ${se?.message || sd?.error}`;
               errors.push(msg);
               executedActions.push({ action: 'send_inline_message', success: false, error: msg });
             } else {

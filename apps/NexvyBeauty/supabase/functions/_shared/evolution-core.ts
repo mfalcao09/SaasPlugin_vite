@@ -2,8 +2,8 @@
 //
 // ⚠️ DÍVIDA CONHECIDA (2026-07-20): estas funções são CÓPIA VERBATIM do topo de
 // `evolution-proxy/index.ts` (linhas 9-193). Hoje o Evolution Go é falado por
-// SEIS cópias privadas do mesmo código (evolution-proxy, platform-evolution-proxy,
-// demo-evolution, evolution-send, platform-evolution-send, wipe-demo-org) —
+// SEIS cópias privadas do mesmo código (evolution-proxy, platform-whatsapp-qr-proxy,
+// demo-evolution, evolution-send, platform-whatsapp-qr-send, wipe-demo-org) —
 // nenhuma exportada. Este módulo nasceu para a `onboarding-evolution` não criar
 // a sétima cópia à mão, e para que a unificação futura seja "apagar as cópias e
 // importar daqui" em vez de arqueologia.

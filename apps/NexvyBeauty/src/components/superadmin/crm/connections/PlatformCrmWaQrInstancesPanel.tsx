@@ -14,16 +14,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Smartphone, Star, Loader2, QrCode, CheckCircle2, Pause, LogOut, Pencil, Trash2, Bot } from 'lucide-react';
 import {
-  usePlatformCrmEvolutionInstances,
-  useSetDefaultPlatformCrmEvolutionInstance,
-  useConnectPlatformCrmEvolutionInstance,
-  useDisconnectPlatformCrmEvolutionInstance,
-  useLogoutPlatformCrmEvolutionInstance,
-  useCreatePlatformCrmEvolutionInstance,
-  useDeletePlatformCrmEvolutionInstance,
-  useRenamePlatformCrmEvolutionInstance,
-  type PlatformCrmEvolutionInstance,
-} from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+  usePlatformCrmWaQrInstances,
+  useSetDefaultPlatformCrmWaQrInstance,
+  useConnectPlatformCrmWaQrInstance,
+  useDisconnectPlatformCrmWaQrInstance,
+  useLogoutPlatformCrmWaQrInstance,
+  useCreatePlatformCrmWaQrInstance,
+  useDeletePlatformCrmWaQrInstance,
+  useRenamePlatformCrmWaQrInstance,
+  type PlatformCrmWaQrInstance,
+} from '@/components/superadmin/crm/data/usePlatformCrmWaQrInstances';
 import { usePlatformCrmProductAgents } from '@/components/superadmin/crm/data/usePlatformCrmProductAgents';
 import { PlatformCrmCaptureProductField } from '@/components/superadmin/crm/capture/PlatformCrmCaptureProductField';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
@@ -41,8 +41,8 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
-function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionInstance; onClose: () => void }) {
-  const connectMut = useConnectPlatformCrmEvolutionInstance();
+function ConnectDialog({ instance, onClose }: { instance: PlatformCrmWaQrInstance; onClose: () => void }) {
+  const connectMut = useConnectPlatformCrmWaQrInstance();
   const [qr, setQr] = useState<string | null>(instance.qr_code);
   const [status, setStatus] = useState(instance.status);
   const [elapsed, setElapsed] = useState(0);
@@ -73,7 +73,7 @@ function ConnectDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIn
     if (status === 'connected') return;
     const interval = setInterval(async () => {
       const { data } = await supabase
-        .from('platform_crm_evolution_instances')
+        .from('platform_crm_wa_qr_instances' as never)
         .select('status, qr_code')
         .eq('id', instance.id)
         .maybeSingle();
@@ -162,14 +162,14 @@ function CreateInstanceDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: (instance: PlatformCrmEvolutionInstance, opts: { scanNow: boolean }) => void;
+  onCreated: (instance: PlatformCrmWaQrInstance, opts: { scanNow: boolean }) => void;
 }) {
   const { products, effectiveProductId } = useActivePlatformProduct();
   const [productId, setProductId] = useState('');
   const [name, setName] = useState('');
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [pendingMode, setPendingMode] = useState<'create' | 'scan' | null>(null);
-  const createMut = useCreatePlatformCrmEvolutionInstance();
+  const createMut = useCreatePlatformCrmWaQrInstance();
   const { data: agents, isLoading: agentsLoading } = usePlatformCrmProductAgents(
     productId || undefined,
   );
@@ -215,7 +215,7 @@ function CreateInstanceDialog({
         product_id: productId || null,
         agent_ids: selectedAgentIds,
       });
-      const instance = (data?.instance ?? data) as PlatformCrmEvolutionInstance | undefined;
+      const instance = (data?.instance ?? data) as PlatformCrmWaQrInstance | undefined;
       if (!instance?.id) {
         toast.error('Conexão criada, mas não foi possível abrir o QR. Use Conectar na lista.');
         resetAndClose();
@@ -344,10 +344,10 @@ function CreateInstanceDialog({
   );
 }
 
-function RenameDialog({ instance, onClose }: { instance: PlatformCrmEvolutionInstance; onClose: () => void }) {
+function RenameDialog({ instance, onClose }: { instance: PlatformCrmWaQrInstance; onClose: () => void }) {
   const initial = (instance.metadata as any)?.display_name || instance.name;
   const [name, setName] = useState<string>(initial);
-  const renameMut = useRenamePlatformCrmEvolutionInstance();
+  const renameMut = useRenamePlatformCrmWaQrInstance();
 
   const valid = name.trim().length >= 2 && name.trim().length <= 60;
 
@@ -393,7 +393,7 @@ function RenameDialog({ instance, onClose }: { instance: PlatformCrmEvolutionIns
   );
 }
 
-interface PlatformCrmEvolutionInstancesPanelProps {
+interface PlatformCrmWaQrInstancesPanelProps {
   /** Esconde o cabeçalho interno. Quando true, o controle de criação fica externo. */
   hideHeader?: boolean;
   /** Quando hideHeader=true, controla a abertura do dialog de criação externamente. */
@@ -402,22 +402,22 @@ interface PlatformCrmEvolutionInstancesPanelProps {
   onCloseCreate?: () => void;
 }
 
-export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onCloseCreate }: PlatformCrmEvolutionInstancesPanelProps = {}) {
-  const { data: instances, isLoading } = usePlatformCrmEvolutionInstances();
-  const setDefaultMut = useSetDefaultPlatformCrmEvolutionInstance();
-  const disconnectMut = useDisconnectPlatformCrmEvolutionInstance();
-  const logoutMut = useLogoutPlatformCrmEvolutionInstance();
-  const deleteMut = useDeletePlatformCrmEvolutionInstance();
-  const [connecting, setConnecting] = useState<PlatformCrmEvolutionInstance | null>(null);
-  const [pausing, setPausing] = useState<PlatformCrmEvolutionInstance | null>(null);
-  const [unlinking, setUnlinking] = useState<PlatformCrmEvolutionInstance | null>(null);
-  const [renaming, setRenaming] = useState<PlatformCrmEvolutionInstance | null>(null);
-  const [deleting, setDeleting] = useState<PlatformCrmEvolutionInstance | null>(null);
+export function PlatformCrmWaQrInstancesPanel({ hideHeader, openCreate, onCloseCreate }: PlatformCrmWaQrInstancesPanelProps = {}) {
+  const { data: instances, isLoading } = usePlatformCrmWaQrInstances();
+  const setDefaultMut = useSetDefaultPlatformCrmWaQrInstance();
+  const disconnectMut = useDisconnectPlatformCrmWaQrInstance();
+  const logoutMut = useLogoutPlatformCrmWaQrInstance();
+  const deleteMut = useDeletePlatformCrmWaQrInstance();
+  const [connecting, setConnecting] = useState<PlatformCrmWaQrInstance | null>(null);
+  const [pausing, setPausing] = useState<PlatformCrmWaQrInstance | null>(null);
+  const [unlinking, setUnlinking] = useState<PlatformCrmWaQrInstance | null>(null);
+  const [renaming, setRenaming] = useState<PlatformCrmWaQrInstance | null>(null);
+  const [deleting, setDeleting] = useState<PlatformCrmWaQrInstance | null>(null);
   const [creatingInternal, setCreatingInternal] = useState(false);
   const creating = hideHeader ? !!openCreate : creatingInternal;
   const closeCreate = () => { if (hideHeader) { onCloseCreate?.(); } else { setCreatingInternal(false); } };
 
-  const displayName = (inst: PlatformCrmEvolutionInstance) =>
+  const displayName = (inst: PlatformCrmWaQrInstance) =>
     (inst.metadata as any)?.display_name || inst.name;
 
   const isLinked = (s: string) => s === 'connected' || s === 'paired';
@@ -434,7 +434,7 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
             <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhuma instância de WhatsApp via QR ainda.</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp via QR (Evolution API).
+              Clique em <strong>Nova conexão</strong> para criar sua primeira instância de WhatsApp via QR.
             </p>
           </CardContent>
         </Card>
@@ -598,7 +598,7 @@ export function PlatformCrmEvolutionInstancesPanel({ hideHeader, openCreate, onC
             <AlertDialogTitle>Excluir esta conexão?</AlertDialogTitle>
             <AlertDialogDescription>
               A conexão <strong>{deleting ? displayName(deleting) : ''}</strong> será removida
-              permanentemente, junto com a instância no servidor Evolution. Esta ação não pode ser desfeita.
+              permanentemente, junto com a instância no servidor WhatsApp (QR). Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

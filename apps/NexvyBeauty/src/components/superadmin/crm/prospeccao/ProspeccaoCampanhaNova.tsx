@@ -63,7 +63,7 @@ function useInstancias(productId: string | null) {
     enabled: !!productId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('platform_crm_evolution_instances' as never)
+        .from('platform_crm_wa_qr_instances' as never)
         .select('id, name, status, phone_number')
         .eq('product_id', productId as string);
       if (error) throw error;

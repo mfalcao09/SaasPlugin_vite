@@ -10,7 +10,7 @@ import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
 import { usePlatformCrmTags } from '../data/usePlatformCrmTags';
 import { usePlatformCrmTeamMembers } from '../data/usePlatformCrmTeam';
 import { usePlatformCrmProducts } from '../data/usePlatformCrmProducts';
-import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '../data/usePlatformCrmWaQrInstances';
 import { usePlatformCrmMetaWAConnections } from '../data/usePlatformCrmMetaWhatsApp';
 import { usePlatformCrmInstagramConnections } from '../data/usePlatformCrmInstagram';
 import { usePlatformCrmAgentConfigs } from '../data/usePlatformCrmAgentConfigs';
@@ -75,23 +75,23 @@ export const defaultPlatformCrmInboxFilters: PlatformCrmInboxFiltersState = {
 };
 
 /**
- * Provider da conversa para fins de filtro. Usa o resolver canônico e cobre o
- * caso extra `channel === 'whatsapp_evolution'` (valor real presente em
- * `platform_crm_conversations.channel` que o resolver canônico ainda não
- * mapeia) + fallback por `evolution_instance_id` materializado.
+ * Provider da conversa para fins de filtro. Dual-read: canal legado
+ * `whatsapp_evolution` e canônico `whatsapp_qr` caem no mesmo chip do drawer.
  */
 function providerForFilter(conv: Conversation): ConvProvider {
   const base = resolveProvider(conv);
   if (base !== 'unknown') return base;
-  if ((conv.channel || '').toLowerCase() === 'whatsapp_evolution') return 'whatsapp_evolution';
-  if (conv.evolution_instance_id) return 'whatsapp_evolution';
+  const ch = (conv.channel || '').toLowerCase();
+  if (ch === 'whatsapp_evolution' || ch === 'whatsapp_qr') return 'whatsapp_evolution';
+  if (conv.wa_qr_instance_id) return 'whatsapp_evolution';
   return 'unknown';
 }
 
 /** Chaves de conexão da conversa — mesmo formato dos filtros ("provider:id"). */
 function connectionKeysOf(conv: Conversation): string[] {
   const keys: string[] = [];
-  if (conv.evolution_instance_id) keys.push(`evolution:${conv.evolution_instance_id}`);
+  // Prefixo `evolution:` mantido no UI do drawer (lista de conexões).
+  if (conv.wa_qr_instance_id) keys.push(`evolution:${conv.wa_qr_instance_id}`);
   if (conv.meta_connection_id) keys.push(`meta:${conv.meta_connection_id}`);
   if (conv.instagram_connection_id) keys.push(`instagram:${conv.instagram_connection_id}`);
   return keys;
@@ -188,7 +188,7 @@ export function PlatformCrmInboxFiltersDrawer({
   const { data: tags = [] } = usePlatformCrmTags();
   const { data: members = [] } = usePlatformCrmTeamMembers();
   const { data: products = [] } = usePlatformCrmProducts();
-  const { data: evolutionInstances = [] } = usePlatformCrmEvolutionInstances();
+  const { data: waQrInstances = [] } = usePlatformCrmWaQrInstances();
   const { data: metaConnections = [] } = usePlatformCrmMetaWAConnections();
   const { data: instagramConnections = [] } = usePlatformCrmInstagramConnections();
   const { data: allAgents = [] } = usePlatformCrmAgentConfigs();
@@ -243,7 +243,7 @@ export function PlatformCrmInboxFiltersDrawer({
 
   // Lista unificada de conexões
   const connectionOptions = useMemo(() => {
-    const evo = (evolutionInstances || []).map((i: any) => ({
+    const evo = (waQrInstances || []).map((i: any) => ({
       key: `evolution:${i.id}`,
       label: ((i.metadata as any)?.display_name || i.name || 'WhatsApp') + (i.phone_number ? ` · +${i.phone_number}` : ''),
       provider: 'evolution' as const,
@@ -259,7 +259,7 @@ export function PlatformCrmInboxFiltersDrawer({
       provider: 'instagram' as const,
     }));
     return [...evo, ...meta, ...ig];
-  }, [evolutionInstances, metaConnections, instagramConnections]);
+  }, [waQrInstances, metaConnections, instagramConnections]);
 
   const renderHeader = (title: string, onBack?: () => void) => (
     <div className="flex items-center justify-between px-4 h-14 border-b border-border bg-background">

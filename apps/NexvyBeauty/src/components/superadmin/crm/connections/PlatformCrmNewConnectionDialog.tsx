@@ -63,7 +63,7 @@ export function PlatformCrmNewConnectionDialog({ open, onClose, onSelect }: Prop
             icon={<Smartphone className="h-5 w-5 text-green-600" />}
             iconBg="bg-green-500/10"
             title="WhatsApp via QR Code"
-            description="Evolution — conecta rápido escaneando o QR no celular. Sem precisar de Meta App."
+            description="WhatsApp via QR — conecta rápido escaneando o QR no celular. Sem precisar de Meta App."
             badge={{ label: 'Recomendado', variant: 'default' }}
             onClick={() => handle('evolution')}
           />

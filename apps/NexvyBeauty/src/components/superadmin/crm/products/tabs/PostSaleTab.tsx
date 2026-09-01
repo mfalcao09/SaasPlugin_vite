@@ -23,7 +23,7 @@ import {
 import { usePlatformCrmTags, useCreatePlatformCrmTag } from '@/components/superadmin/crm/data/usePlatformCrmTags';
 import { usePlatformCrmSectors } from '@/components/superadmin/crm/data/usePlatformCrmSectors';
 import { usePlatformCrmTeamMembers } from '@/components/superadmin/crm/data/usePlatformCrmTeam';
-import { usePlatformCrmEvolutionInstances } from '@/components/superadmin/crm/data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '@/components/superadmin/crm/data/usePlatformCrmWaQrInstances';
 import { PlatformCrmTagPackageGeneratorDialog } from '@/components/superadmin/crm/tags/PlatformCrmTagPackageGeneratorDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -154,8 +154,8 @@ function EventCard({ productId, event, existing, agents, templates, stages, tags
   const [flowId, setFlowId] = useState<string | null>(existing?.flow_id ?? null);
   const [inlineMessage, setInlineMessage] = useState<string>(existing?.inline_message ?? '');
   const [messageChannel, setMessageChannel] = useState<'whatsapp' | 'email'>(existing?.message_channel ?? 'whatsapp');
-  const [evolutionInstanceId, setEvolutionInstanceId] = useState<string | null>(existing?.evolution_instance_id ?? null);
-  const { data: evolutionInstances } = usePlatformCrmEvolutionInstances();
+  const [evolutionInstanceId, setEvolutionInstanceId] = useState<string | null>(existing?.wa_qr_instance_id ?? null);
+  const { data: waQrInstances } = usePlatformCrmWaQrInstances();
   const [targetStageId, setTargetStageId] = useState<string | null>(existing?.target_stage_id ?? null);
   const [dealOutcome, setDealOutcome] = useState<'none' | 'won' | 'lost'>(existing?.deal_outcome ?? 'none');
   const [dealValueSource, setDealValueSource] = useState<'none' | 'webhook' | 'manual'>(existing?.deal_value_source ?? 'none');
@@ -196,7 +196,7 @@ function EventCard({ productId, event, existing, agents, templates, stages, tags
       flow_id: sendMode === 'flow' ? flowId : null,
       inline_message: sendMode === 'message' ? (inlineMessage || null) : null,
       message_channel: messageChannel,
-      evolution_instance_id: messageChannel === 'whatsapp' && sendMode === 'message' ? evolutionInstanceId : null,
+      wa_qr_instance_id: messageChannel === 'whatsapp' && sendMode === 'message' ? evolutionInstanceId : null,
       target_stage_id: targetStageId,
       deal_outcome: dealOutcome,
       deal_value_source: dealValueSource,
@@ -327,7 +327,7 @@ function EventCard({ productId, event, existing, agents, templates, stages, tags
                         <SelectTrigger><SelectValue placeholder="Instância padrão da plataforma" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={NONE}>Instância padrão (automático)</SelectItem>
-                          {(evolutionInstances || []).map((inst) => (
+                          {(waQrInstances || []).map((inst) => (
                             <SelectItem key={inst.id} value={inst.id}>
                               {inst.name}{inst.phone_number ? ` · ${inst.phone_number}` : ''}
                             </SelectItem>

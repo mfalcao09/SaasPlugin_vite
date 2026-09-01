@@ -256,6 +256,8 @@ export function requiresLidSend(instance: {
   const meta = (instance.metadata && typeof instance.metadata === "object")
     ? instance.metadata as Record<string, unknown>
     : {};
+  // Opt-out explícito (teste Z-API só PN) vence o heurístico do nome "camila".
+  if (meta.require_lid_send === false) return false;
   if (meta.require_lid_send === true) return true;
   return String(instance.name || "").toLowerCase().includes("camila");
 }

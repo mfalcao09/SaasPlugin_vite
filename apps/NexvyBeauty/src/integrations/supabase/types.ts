@@ -12519,7 +12519,7 @@ export type Database = {
           channel: string
           created_at: string
           current_agent_id: string | null
-          evolution_instance_id: string | null
+          wa_qr_instance_id: string | null
           id: string
           instagram_connection_id: string | null
           last_message_at: string | null
@@ -12547,7 +12547,7 @@ export type Database = {
           channel?: string
           created_at?: string
           current_agent_id?: string | null
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           id?: string
           instagram_connection_id?: string | null
           last_message_at?: string | null
@@ -12575,7 +12575,7 @@ export type Database = {
           channel?: string
           created_at?: string
           current_agent_id?: string | null
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           id?: string
           instagram_connection_id?: string | null
           last_message_at?: string | null
@@ -12598,10 +12598,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "platform_crm_conversations_evolution_instance_id_fkey"
-            columns: ["evolution_instance_id"]
+            foreignKeyName: "platform_crm_conversations_wa_qr_instance_id_fkey"
+            columns: ["wa_qr_instance_id"]
             isOneToOne: false
-            referencedRelation: "platform_crm_evolution_instances"
+            referencedRelation: "platform_crm_wa_qr_instances"
             referencedColumns: ["id"]
           },
           {
@@ -12828,7 +12828,7 @@ export type Database = {
         }
         Relationships: []
       }
-      platform_crm_evolution_instances: {
+      platform_crm_wa_qr_instances: {
         Row: {
           consecutive_failures: number
           cooldown_until: string | null
@@ -12894,7 +12894,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "platform_crm_evolution_instances_product_id_fkey"
+            foreignKeyName: "platform_crm_wa_qr_instances_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "platform_crm_products"
@@ -14942,7 +14942,7 @@ export type Database = {
           delay_minutes: number
           email_template_id: string | null
           event_type: string
-          evolution_instance_id: string | null
+          wa_qr_instance_id: string | null
           flow_id: string | null
           id: string
           inline_message: string | null
@@ -14971,7 +14971,7 @@ export type Database = {
           delay_minutes?: number
           email_template_id?: string | null
           event_type: string
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           flow_id?: string | null
           id?: string
           inline_message?: string | null
@@ -15000,7 +15000,7 @@ export type Database = {
           delay_minutes?: number
           email_template_id?: string | null
           event_type?: string
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           flow_id?: string | null
           id?: string
           inline_message?: string | null
@@ -15133,7 +15133,7 @@ export type Database = {
           enable_audio_transcription: boolean
           enable_image_vision: boolean
           end_conversation_triggers: string[] | null
-          evolution_instance_id: string | null
+          wa_qr_instance_id: string | null
           followup_attempt_hints: Json
           followup_channels: string[]
           followup_enabled: boolean
@@ -15217,7 +15217,7 @@ export type Database = {
           enable_audio_transcription?: boolean
           enable_image_vision?: boolean
           end_conversation_triggers?: string[] | null
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           followup_attempt_hints?: Json
           followup_channels?: string[]
           followup_enabled?: boolean
@@ -15301,7 +15301,7 @@ export type Database = {
           enable_audio_transcription?: boolean
           enable_image_vision?: boolean
           end_conversation_triggers?: string[] | null
-          evolution_instance_id?: string | null
+          wa_qr_instance_id?: string | null
           followup_attempt_hints?: Json
           followup_channels?: string[]
           followup_enabled?: boolean
@@ -15343,10 +15343,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "platform_crm_product_agents_evolution_instance_id_fkey"
-            columns: ["evolution_instance_id"]
+            foreignKeyName: "platform_crm_product_agents_wa_qr_instance_id_fkey"
+            columns: ["wa_qr_instance_id"]
             isOneToOne: false
-            referencedRelation: "platform_crm_evolution_instances"
+            referencedRelation: "platform_crm_wa_qr_instances"
             referencedColumns: ["id"]
           },
           {

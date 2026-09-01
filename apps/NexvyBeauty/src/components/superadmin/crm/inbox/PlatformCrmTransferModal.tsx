@@ -28,7 +28,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { usePlatformCrmTeamMembers } from '../data/usePlatformCrmTeam';
 import { usePlatformCrmSectors } from '../data/usePlatformCrmSectors';
-import { usePlatformCrmEvolutionInstances } from '../data/usePlatformCrmEvolutionInstances';
+import { usePlatformCrmWaQrInstances } from '../data/usePlatformCrmWaQrInstances';
 import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
 
 /**
@@ -38,7 +38,7 @@ import { parsePlatformCrmFnError } from '../data/usePlatformCrmConversations';
  *   - profiles (equipe da org)      -> usePlatformCrmTeamMembers()
  *   - sectors                       -> usePlatformCrmSectors()
  *   - product_agents                -> platform_crm_product_agents (+ embed platform_crm_products)
- *   - evolution_instances           -> usePlatformCrmEvolutionInstances()
+ *   - evolution_instances           -> usePlatformCrmWaQrInstances()
  *   - webchat_conversations         -> platform_crm_conversations (assigned_to / current_agent_id / status)
  *   - conversation_transfers        -> platform_crm_lead_transfer_history (best-effort, via lead_id da conversa)
  *   - useAuth (user/profile)        -> supabase.auth.getUser() + profiles
@@ -160,9 +160,9 @@ export function PlatformCrmTransferModal({
   // is_default desc + name asc no servidor; o hook platform ordena por
   // created_at — reordenação equivalente aplicada em memória.
   const isWhatsApp = (currentChannel || '').toLowerCase() === 'whatsapp';
-  const evolutionInstancesQuery = usePlatformCrmEvolutionInstances();
-  const evolutionInstances = isWhatsApp
-    ? [...(evolutionInstancesQuery.data ?? [])].sort(
+  const waQrInstancesQuery = usePlatformCrmWaQrInstances();
+  const waQrInstances = isWhatsApp
+    ? [...(waQrInstancesQuery.data ?? [])].sort(
         (a, b) =>
           Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name),
       )
@@ -289,12 +289,12 @@ export function PlatformCrmTransferModal({
         selectedInstanceId !== 'keep' &&
         selectedInstanceId !== (currentEvolutionInstanceId || '');
       const newInstance = willChangeInstance
-        ? evolutionInstances.find((i) => i.id === selectedInstanceId)
+        ? waQrInstances.find((i) => i.id === selectedInstanceId)
         : null;
       if (willChangeInstance && newInstance) {
         // Grava a nova conexão Evolution na conversa (paridade com a fonte v5) —
         // a nota/histórico abaixo permanece como trilha legível.
-        updateData.evolution_instance_id = newInstance.id;
+        updateData.wa_qr_instance_id = newInstance.id;
       }
 
       // Admin takeover: mescla os flags no metadata (jsonb) da conversa, sem
@@ -637,7 +637,7 @@ export function PlatformCrmTransferModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="keep">Manter conexão atual</SelectItem>
-                  {evolutionInstances
+                  {waQrInstances
                     .filter((i) => i.id !== (currentEvolutionInstanceId || ''))
                     .map((i) => (
                       <SelectItem key={i.id} value={i.id}>
