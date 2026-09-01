@@ -355,7 +355,9 @@ export interface InboxBackendFilters {
   sector_ids?: string[];         // pode incluir '__none__'
   assigned_user_ids?: string[];  // pode incluir 'unassigned'
   tag_ids?: string[];
-  channel?: string | null;
+  channel?: string | null;       // lista: whatsapp,instagram,webchat
+  connection_keys?: string[];    // evolution:<id> | instagram:<id>
+  agent_ids?: string[];
   search?: string | null;
 }
 
@@ -368,6 +370,8 @@ function buildInboxParams(filters?: InboxBackendFilters): URLSearchParams {
   if (filters?.assigned_user_ids?.length) params.set('assigned_user_ids', filters.assigned_user_ids.join(','));
   if (filters?.tag_ids?.length) params.set('tag_ids', filters.tag_ids.join(','));
   if (filters?.channel) params.set('channel', filters.channel);
+  if (filters?.connection_keys?.length) params.set('connection_keys', filters.connection_keys.join(','));
+  if (filters?.agent_ids?.length) params.set('agent_ids', filters.agent_ids.join(','));
   if (filters?.search) params.set('search', filters.search);
   return params;
 }

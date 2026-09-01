@@ -1,7 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { mapCaktoOrderForUpsert } from '../_shared/cakto-client.ts';
-import { provisionFromOrder, extractOfferSlug } from '../_shared/cakto-plan-provisioning.ts';
+import { provisionFromOrder, extractOfferSlug, resolvePlatformPlan } from '../_shared/cakto-plan-provisioning.ts';
 import { sendTelegramAlert } from '../_shared/platform-alerts.ts';
+import { attributeAffiliateCommission, clawbackAffiliateCommission } from '../_shared/affiliate-commission.ts';
+import {
+  dispatchAffiliateWaNotice,
+  makePlatformEvolutionSendPort,
+  resolvePlatformProductId,
+} from '../_shared/affiliate-onda2-notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -218,6 +224,40 @@ Deno.serve(async (req) => {
         st === 'refunded' || st === 'chargeback' ||
         ev.includes('refund') || ev.includes('chargeback') ||
         ev.includes('subscription_cancel') || ev.includes('subscription_canceled');
+      if (isRevocation && row.cakto_id) {
+        try {
+          const claw = await clawbackAffiliateCommission(admin, {
+            orderRef: row.cakto_id,
+            reason: (st === 'chargeback' || ev.includes('chargeback')) ? 'chargeback' : 'refund',
+            refundReais: row.amount ?? null,
+          });
+          console.log('[cakto-webhook] affiliate clawback', JSON.stringify(claw));
+          try {
+            const { data: comm } = await admin
+              .from('affiliate_commissions')
+              .select('affiliate_id, lead_id, payout_method')
+              .eq('order_ref', row.cakto_id)
+              .maybeSingle();
+            if (comm?.affiliate_id) {
+              const productId = await resolvePlatformProductId(admin);
+              await dispatchAffiliateWaNotice(
+                admin,
+                makePlatformEvolutionSendPort({ supabaseUrl: SUPABASE_URL, serviceKey: SERVICE_KEY, productId }),
+                {
+                  affiliateId: comm.affiliate_id,
+                  leadId: comm.lead_id,
+                  event: 'refund_requested',
+                  payoutMethod: comm.payout_method ?? null,
+                },
+              );
+            }
+          } catch (waErr) {
+            console.error('[cakto-webhook] affiliate wa refund notice', waErr);
+          }
+        } catch (clawErr) {
+          console.error('[cakto-webhook] affiliate clawback error', clawErr);
+        }
+      }
       if (isRevocation && row.customer_email) {
         const { data: org } = await admin
           .from('organizations').select('id, plan_status')
@@ -262,6 +302,63 @@ Deno.serve(async (req) => {
             `Evento: ${event ?? '-'}\nComprador: ${buyer}\n` +
             `Motivo: ${String(provErr?.message ?? provErr).slice(0, 400)}`,
         );
+      }
+    }
+
+    // Atribuição de comissão de afiliado (escopo platform, venda paga) — camada própria.
+    // Aditivo e isolado: try/catch próprio para NUNCA impactar provisionamento/tags/recovery.
+    if (scopeParam === 'platform') {
+      const st = (row.status || '').toLowerCase();
+      if (st === 'paid' || st === 'approved') {
+        try {
+          const { data: org } = await admin
+            .from('organizations')
+            .select('id')
+            .eq('cakto_customer_email', row.customer_email)
+            .maybeSingle();
+          let planSlug: string | null = null;
+          try {
+            const plan = await resolvePlatformPlan(admin, row.cakto_offer_slug ?? null, row.product_cakto_id ?? null);
+            planSlug = plan?.slug ?? null;
+          } catch { /* best-effort: cai no % do afiliado */ }
+          const affRes = await attributeAffiliateCommission(admin, {
+            customerEmail: row.customer_email,
+            orderRef: row.cakto_id,
+            amountReais: row.amount,
+            organizationId: org?.id ?? null,
+            kind: 'first_sale',
+            buyerDocument: row.customer_document ?? null,
+            couponCode: row.coupon_code ?? null,
+            customerPhone: row.customer_phone ?? null,
+            planSlug,
+          });
+          console.log('[cakto-webhook] affiliate attribution', JSON.stringify(affRes));
+          if (affRes.created && affRes.affiliateId) {
+            try {
+              const { data: comm } = await admin
+                .from('affiliate_commissions')
+                .select('lead_id, payout_method')
+                .eq('id', affRes.commissionId)
+                .maybeSingle();
+              const productId = await resolvePlatformProductId(admin);
+              await dispatchAffiliateWaNotice(
+                admin,
+                makePlatformEvolutionSendPort({ supabaseUrl: SUPABASE_URL, serviceKey: SERVICE_KEY, productId }),
+                {
+                  affiliateId: affRes.affiliateId,
+                  leadId: comm?.lead_id ?? null,
+                  event: 'paid',
+                  currentStage: 'checkout',
+                  payoutMethod: comm?.payout_method ?? null,
+                },
+              );
+            } catch (waErr) {
+              console.error('[cakto-webhook] affiliate wa paid notice', waErr);
+            }
+          }
+        } catch (affErr) {
+          console.error('[cakto-webhook] affiliate attribution error', affErr);
+        }
       }
     }
 

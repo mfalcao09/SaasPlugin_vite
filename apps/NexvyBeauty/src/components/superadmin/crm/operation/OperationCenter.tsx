@@ -181,6 +181,7 @@ export function PlatformCrmOperationCenter() {
             <PlatformCrmLeadDetail
               leadId={selectedLeadId}
               onBack={() => setSelectedLeadId(null)}
+              onOpenLead={setSelectedLeadId}
             />
           )}
         </DialogContent>

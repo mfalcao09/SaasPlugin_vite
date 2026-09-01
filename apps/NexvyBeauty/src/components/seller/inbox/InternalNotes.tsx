@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, StickyNote, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,14 +27,22 @@ interface ConversationNote {
 interface InternalNotesProps {
   conversationId: string;
   className?: string;
+  focusToken?: number;
 }
 
-export function InternalNotes({ conversationId, className }: InternalNotesProps) {
+export function InternalNotes({ conversationId, className, focusToken = 0 }: InternalNotesProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusToken <= 0) return;
+    setIsAdding(true);
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusToken]);
 
   // Fetch notes
   const { data: notes = [], isLoading } = useQuery({
@@ -102,7 +110,7 @@ export function InternalNotes({ conversationId, className }: InternalNotesProps)
   };
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div ref={rootRef} className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold flex items-center gap-2">
           <StickyNote className="h-4 w-4" />

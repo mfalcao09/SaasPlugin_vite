@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useConvertLeadToCliente } from '@/hooks/useLeadToCliente';
 import { useWebChatConversations, useWebChatConversationCounts, useWebChatConversation, useSendAgentMessage, useCloseConversation, useReopenConversation, useReturnToQueue, useResumeConversation, useActivateBot, useEditMessage, useDeleteMessage, useStarMessage, useForwardMessage, useAssignConversation, type InboxBackendFilters } from '@/hooks/useWebChat';
 import { useEvolutionInstances } from '@/hooks/useEvolutionInstances';
+import { useInstagramLoginConnections } from '@/hooks/useInstagramLoginConnection';
 import { useAssignedProducts, useProducts } from '@/hooks/useProducts';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,10 +62,12 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
   const isMobile = useIsMobile();
   const { playNotification, isEnabled: soundEnabled, toggleSound } = useNotificationSound();
   const { data: evolutionInstances } = useEvolutionInstances();
+  const { data: instagramConnections } = useInstagramLoginConnections();
 
   /**
    * Resolve label da conexão DO BOT (não o telefone do lead).
-   * - WhatsApp: instância Evolution vinculada à conversa, ou a padrão da org.
+   * - WhatsApp: instância QR vinculada à conversa, ou a padrão da org.
+   * - Instagram: conexão Login ativa.
    * - Outros canais: nome do canal.
    */
   const buildConnectionLabel = useCallback((conv: any): string | null => {
@@ -81,11 +84,24 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
         const phone = inst.phone_number ? ` · +${inst.phone_number}` : '';
         return `${display}${phone}`;
       }
-      return 'WhatsApp';
+      return 'WhatsApp com QR Code';
     }
+    if (ch === 'instagram') {
+      const meta = (conv.metadata || {}) as any;
+      const metaId = meta.instagram_login_connection_id || meta.instagram_connection_id;
+      const list = instagramConnections || [];
+      const inst =
+        list.find((i) => i.id === metaId) ||
+        list.find((i) => i.status === 'active') ||
+        list[0];
+      if (inst?.username) return `@${inst.username}`;
+      if (inst?.name) return inst.name;
+      return 'Instagram';
+    }
+    if (ch === 'webchat') return 'Site';
     if (!ch) return null;
     return ch.charAt(0).toUpperCase() + ch.slice(1);
-  }, [evolutionInstances]);
+  }, [evolutionInstances, instagramConnections]);
   
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   // Painel "Dados do Contato": no mobile sempre começa fechado (chat aparece primeiro);
@@ -116,6 +132,7 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
   const [showFiltersDrawer, setShowFiltersDrawer] = useState(false);
   const [filters, setFilters] = useState<InboxFiltersState>(defaultInboxFilters);
   const [activeTab, setActiveTab] = useState<'attending' | 'waiting' | 'resolved'>('attending');
+  const [notesFocusToken, setNotesFocusToken] = useState(0);
 
   const assignMutation = useAssignConversation();
 
@@ -180,6 +197,9 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
       sector_ids: filters.selectedSectorIds.length ? filters.selectedSectorIds : undefined,
       assigned_user_ids: isAdminMode && filters.selectedUserIds.length ? filters.selectedUserIds : undefined,
       tag_ids: filters.selectedTagIds.length ? filters.selectedTagIds : undefined,
+      channel: filters.selectedChannels.length ? filters.selectedChannels.join(',') : undefined,
+      connection_keys: filters.selectedConnections.length ? filters.selectedConnections : undefined,
+      agent_ids: filters.selectedAgentIds.length ? filters.selectedAgentIds : undefined,
       search: filters.search || undefined,
     };
   }, [activeTab, filters, isAdminMode]);
@@ -285,6 +305,8 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
           current_agent_id: conv.current_agent_id || null,
           current_agent_name: conv.current_agent?.name || null,
           current_agent_avatar: conv.current_agent?.avatar_url || null,
+          evolution_instance_id: conv.evolution_instance_id || null,
+          metadata: conv.metadata || null,
         } as any;
       }),
     [conversationsData, productNameById],
@@ -857,7 +879,26 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
     (filters.selectedSectorIds.length > 0 ? 1 : 0) +
     (filters.selectedUserIds.length > 0 ? 1 : 0) +
     (filters.selectedProductIds.length > 0 ? 1 : 0) +
+    (filters.selectedChannels.length > 0 ? 1 : 0) +
+    (filters.selectedConnections.length > 0 ? 1 : 0) +
+    (filters.selectedAgentIds.length > 0 ? 1 : 0) +
     (filters.showResolved ? 1 : 0);
+
+  const instagramUsername = useMemo(() => {
+    const conv: any = conversationDetail?.conversation || selectedConversation;
+    if ((conv?.channel || selectedConversation?.channel) !== 'instagram') return null;
+    const meta = conv?.metadata || {};
+    const raw = meta.instagram_username || meta.username || meta.ig_username || conv?.visitor_name;
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    if (raw.trim().startsWith('@')) return raw.trim().replace(/^@/, '');
+    if (!raw.includes(' ') && raw.trim().length > 1) return raw.trim();
+    return null;
+  }, [conversationDetail, selectedConversation]);
+
+  const openInternalNotes = useCallback(() => {
+    setShowPanel(true);
+    setNotesFocusToken((n) => n + 1);
+  }, []);
 
   // Backend já aplica todos os filtros (produto/setor/usuário/etiqueta/busca/aba)
   // e a visibilidade por permissões. Aqui só repassamos a lista para a UI.
@@ -904,6 +945,7 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               activeTab={activeTab}
               onTabChange={setActiveTab}
               tabCounts={tabCounts}
+              metricsSlot={<InboxMetricsHeader conversations={visibleConversations} />}
               filtersSlot={
                 <InboxFiltersDrawer
                   open={showFiltersDrawer}
@@ -1005,6 +1047,8 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
               onSendFlow={() => setShowSendFlow(true)}
               onSendCadence={() => setShowSendCadence(true)}
               onAnalyze={() => setShowAnalysis(true)}
+              onOpenInternalNotes={openInternalNotes}
+              onSendPaymentLink={() => setShowPaymentLink(true)}
               onScheduleMessage={() => setShowScheduleMessage(true)}
               onCreateEvent={handleAgendarAtendimento}
               onCreateDeal={linkedLead?.id ? () => setShowCreateDeal(true) : undefined}
@@ -1042,7 +1086,12 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
                   : null)
               }
               currentSectorId={(conversationDetail?.conversation as any)?.sector_id || (selectedConversation as any).sector_id || null}
-              connectionLabel={buildConnectionLabel(selectedConversation)}
+              connectionLabel={buildConnectionLabel({
+                ...selectedConversation,
+                ...(conversationDetail?.conversation || {}),
+              })}
+              instagramUsername={instagramUsername}
+              notesFocusToken={notesFocusToken}
               onMoveStage={handleMoveStage}
               onEdit={() => setShowEditContact(true)}
               onCreateTask={() => setShowScheduleFollowup(true)}
@@ -1079,7 +1128,12 @@ export function SellerInbox({ productId, pendingConversationId, onConversationSe
                   : null)
               }
               currentSectorId={(conversationDetail?.conversation as any)?.sector_id || (selectedConversation as any).sector_id || null}
-              connectionLabel={buildConnectionLabel(selectedConversation)}
+              connectionLabel={buildConnectionLabel({
+                ...selectedConversation,
+                ...(conversationDetail?.conversation || {}),
+              })}
+              instagramUsername={instagramUsername}
+              notesFocusToken={notesFocusToken}
               onMoveStage={handleMoveStage}
               onEdit={() => setShowEditContact(true)}
               onCreateTask={() => setShowScheduleFollowup(true)}

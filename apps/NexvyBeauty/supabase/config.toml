@@ -205,6 +205,12 @@ verify_jwt = false
 [functions.cakto-webhook]
 verify_jwt = false
 
+# Reconciliador de comissão: cron/server-to-server com Bearer service_role do vault.
+# verify_jwt=false por consistência (service_role no formato novo sb_secret_ não é JWT).
+# Auth real = invocação interna; a função usa SERVICE_ROLE internamente.
+[functions.cakto-affiliate-reconcile]
+verify_jwt = false
+
 # Recuperação de carrinho Cakto: chamada server-to-server com Bearer service_role.
 # verify_jwt=false por consistência (service_role no formato novo sb_secret_ não é JWT).
 [functions.cakto-recovery-trigger]
@@ -241,4 +247,28 @@ verify_jwt = false
 [functions.instagram-login-oauth-start]
 verify_jwt = true
 [functions.instagram-login-oauth-callback]
+verify_jwt = true
+
+# Webhook público de Direct do Instagram Login (Meta → tenant). Sem JWT.
+# Auth real = X-Hub-Signature-256 (HMAC de INSTAGRAM_LOGIN_APP_SECRET) na função.
+# GET devolve hub.challenge (INSTAGRAM_LOGIN_WEBHOOK_VERIFY_TOKEN). NÃO é Page
+# nem platform-instagram-webhook. start-instagram-conversation fica no default
+# (verify_jwt=true) — chamada pelo inbox autenticado.
+[functions.instagram-login-webhook]
+verify_jwt = false
+
+# Captura pública da LP (anônimo). Sem JWT — o gateway não pode exigir sessão.
+[functions.capture-lead]
+verify_jwt = false
+
+# Inscrição self-serve do programa de afiliados (anônimo).
+[functions.affiliate-apply]
+verify_jwt = false
+
+# Dono de salão cliente gera link (JWT do tenant).
+[functions.affiliate-salon]
+verify_jwt = true
+
+# Onda 3 — programa de indicação do SALÃO (cliente indica amiga). JWT do tenant.
+[functions.tenant-referral]
 verify_jwt = true

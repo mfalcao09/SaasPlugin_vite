@@ -1,14 +1,16 @@
 // ─── Rastreamento de aquisição (canal + plataforma) ────────────────────────
-// Captura ref (afiliado/canal) + UTMs (plataforma) + fbclid + referrer/landing
-// no carregamento da LP e persiste num COOKIE 1st-party (sobrevive ao hop
-// LP→checkout e a recargas). Tudo é client e SEM segredo — a fonte de verdade
-// é o lead gravado server-side pela Edge Function `capture-lead`.
+// Captura ref (afiliado/canal) + UTMs + cupom. Cookie 1st-party, last-click,
+// janela 60 dias (não eterno). Clique ?ref= incrementa via RPC record_affiliate_click.
+
+import { supabase } from '@/integrations/supabase/client';
 
 const COOKIE = 'nxv_track';
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
+const MAX_AGE = 60 * 60 * 24 * 60; // 60 dias — política pública last-click
 
 export interface Tracking {
-  ref?: string; // canal (afiliado)
+  ref?: string;
+  coupon?: string;
+  click_recorded?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -22,10 +24,21 @@ export interface Tracking {
   landing_page?: string;
 }
 
-// chaves lidas direto da querystring
 const URL_KEYS: (keyof Tracking)[] = [
-  'ref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'src', 'sck',
+  'ref', 'coupon', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'src', 'sck',
 ];
+
+function clickKey(ref: string): string {
+  return `nxv_aff_click:${ref.toLowerCase()}`;
+}
+
+function sessionHasClick(ref: string): boolean {
+  try {
+    return sessionStorage.getItem(clickKey(ref)) === '1';
+  } catch {
+    return false;
+  }
+}
 
 function readCookie(): Tracking {
   try {
@@ -37,8 +50,6 @@ function readCookie(): Tracking {
   }
 }
 
-// Domínio do cookie: compartilha entre apex e subdomínios (app./www.) usando o
-// domínio registrável. Em localhost/IP não seta domain (cookie por host).
 function cookieDomain(): string {
   const host = window.location.hostname;
   if (host === 'localhost' || /^[0-9.]+$/.test(host)) return '';
@@ -49,13 +60,28 @@ function writeCookie(t: Tracking) {
   try {
     document.cookie = `${COOKIE}=${encodeURIComponent(JSON.stringify(t))}; path=/; max-age=${MAX_AGE}; SameSite=Lax${cookieDomain()}`;
   } catch {
-    /* cookies indisponíveis — segue sem persistir */
+    /* cookies indisponíveis */
   }
 }
 
-// Lê params da URL + cookies do Facebook e persiste no cookie 1st-party.
-// UTM/ref são "last-touch" (params novos sobrescrevem); landing/referrer são
-// "first-touch" (só gravados na 1ª visita). Não sobrescreve com vazio.
+async function hydrateAffiliateFromRef(ref: string): Promise<void> {
+  try {
+    if (!sessionHasClick(ref)) {
+      sessionStorage.setItem(clickKey(ref), '1');
+      await (supabase as any).rpc('record_affiliate_click', { p_ref: ref });
+    }
+    const { data } = await (supabase as any).rpc('resolve_affiliate_link', { p_ref: ref });
+    const row = data as { coupon_code?: string | null } | null;
+    const coupon = row?.coupon_code;
+    if (coupon) {
+      const merged = { ...readCookie(), ref, coupon, click_recorded: '1' };
+      writeCookie(merged);
+    }
+  } catch {
+    /* clique/cupom best-effort */
+  }
+}
+
 export function captureTrackingFromUrl(): Tracking {
   const merged: Tracking = { ...readCookie() };
   const p = new URLSearchParams(window.location.search);
@@ -73,11 +99,14 @@ export function captureTrackingFromUrl(): Tracking {
   if (!merged.landing_page) merged.landing_page = window.location.href.split('#')[0].slice(0, 500);
   if (!merged.referrer_url && document.referrer) merged.referrer_url = document.referrer.slice(0, 500);
 
+  const refNow = p.get('ref') || merged.ref;
+  if (refNow && sessionHasClick(refNow)) merged.click_recorded = '1';
+  if (p.get('ref')) void hydrateAffiliateFromRef(p.get('ref')!);
+
   if (Object.keys(merged).length > 0) writeCookie(merged);
   return merged;
 }
 
-// Retorna o tracking consolidado (cookie + params atuais).
 export function getTracking(): Tracking {
   return captureTrackingFromUrl();
 }

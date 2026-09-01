@@ -6,7 +6,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useSalaoCatalogo, type SalaoCatalogItem, type SalaoCatalogKind } from '@/hooks/useSalaoCatalogo';
@@ -60,15 +59,15 @@ export function CatalogPickerDialog({ open, onOpenChange, onSend }: CatalogPicke
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] p-0 max-h-[85vh] flex flex-col">
-        <DialogHeader className="p-4 pb-0">
+      <DialogContent className="sm:max-w-[640px] p-0 max-h-[85vh] gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0 p-4 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
             Catálogo do negócio
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-4 py-3 border-b">
+        <div className="shrink-0 px-4 py-3 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -84,8 +83,8 @@ export function CatalogPickerDialog({ open, onOpenChange, onSend }: CatalogPicke
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : (
-          <Tabs defaultValue="servico" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mx-4 mt-3 grid grid-cols-3">
+          <Tabs defaultValue="servico" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <TabsList className="mx-4 mt-3 grid shrink-0 grid-cols-3">
               {TABS.map(({ kind, label, icon: Icon }) => (
                 <TabsTrigger key={kind} value={kind} className="gap-1.5 text-xs">
                   <Icon className="h-3.5 w-3.5" />
@@ -97,8 +96,8 @@ export function CatalogPickerDialog({ open, onOpenChange, onSend }: CatalogPicke
             {TABS.map(({ kind, label }) => {
               const list = byKind(kind);
               return (
-                <TabsContent key={kind} value={kind} className="flex-1 min-h-0 mt-0">
-                  <ScrollArea className="h-full">
+                <TabsContent key={kind} value={kind} className="flex-1 flex flex-col min-h-0 overflow-hidden mt-0">
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                     {list.length === 0 ? (
                       <div className="p-12 text-center text-muted-foreground">
                         <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
@@ -139,7 +138,7 @@ export function CatalogPickerDialog({ open, onOpenChange, onSend }: CatalogPicke
                         ))}
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </TabsContent>
               );
             })}

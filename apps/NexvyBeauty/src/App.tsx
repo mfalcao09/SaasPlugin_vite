@@ -11,6 +11,7 @@ import { SuperAdminViewChoiceDialog } from "@/components/auth/SuperAdminViewChoi
 import { FooterDecoration } from "@/components/layout/FooterDecoration";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
+import { AffiliateRoute } from "@/components/auth/AffiliateRoute";
 import { HostConfinementGuard } from "@/components/auth/HostConfinementGuard";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
@@ -73,6 +74,8 @@ const Login = lazyWithRetry(() => import("./pages/Login"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Admin = lazyWithRetry(() => import("./pages/Admin"));
 const SuperAdmin = lazyWithRetry(() => import("./pages/SuperAdmin"));
+const AffiliatePortal = lazyWithRetry(() => import("./pages/afiliado/AffiliatePortal"));
+const AffiliatesLanding = lazyWithRetry(() => import("./pages/AffiliatesLanding"));
 const PlatformShell = lazyWithRetry(() => import("./components/superadmin/platform-shell/PlatformShell"));
 const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -131,6 +134,9 @@ const SalaoProfissionais = lazyWithRetry(() => import("./pages/salao/Profissiona
 const SalaoServicos = lazyWithRetry(() => import("./pages/salao/Servicos"));
 const SalaoClientes = lazyWithRetry(() => import("./pages/salao/Clientes"));
 const SalaoFinanceiro = lazyWithRetry(() => import("./pages/salao/Financeiro"));
+const SalaoIndicar = lazyWithRetry(() => import("./pages/salao/IndicarSalao"));
+const SalaoIndicacaoClientes = lazyWithRetry(() => import("./pages/salao/IndicacaoClientes"));
+const PublicTenantReferralStats = lazyWithRetry(() => import("./pages/PublicTenantReferralStats"));
 
 // Global loading fallback
 const PageLoader = () => (
@@ -265,6 +271,7 @@ const App = () => (
               {/* LP de vendas vigente. A rota temporária /lp-clientes-de-volta da Metade A
                   foi REMOVIDA: com o apex e /vendas servindo a mesma LP, um terceiro
                   caminho pra ela só criaria URL duplicada (conteúdo duplicado p/ SEO). */}
+              <Route path="/afiliados" element={<AffiliatesLanding />} />
               <Route path="/vendas" element={<ClientesDeVoltaLandingPage />} />
               <Route path="/vendas-v2" element={<ClientesDeVoltaLandingPageV2 />} />
               {/* Demo público (sem login). /demo → Home de Valor (o pitch que vende);
@@ -287,6 +294,7 @@ const App = () => (
               {/* Onda 2 — booking público de salão (por-org, slug) */}
               <Route path="/s/:slug" element={<PublicSalaoBooking />} />
               <Route path="/s/:slug/pacotes" element={<PublicSalaoPacotes />} />
+              <Route path="/s/:slug/indicacao/:ref" element={<PublicTenantReferralStats />} />
 
               {/* Booking público do módulo CRM da plataforma (Calendly de reunião
                   de venda). PÚBLICO — sem auth/super-admin; anon só fala com as
@@ -435,6 +443,8 @@ const App = () => (
               <Route path="/salao/servicos" element={<ProtectedRoute><SalaoServicos /></ProtectedRoute>} />
               <Route path="/salao/clientes" element={<ProtectedRoute><SalaoClientes /></ProtectedRoute>} />
               <Route path="/salao/financeiro" element={<ProtectedRoute><SalaoFinanceiro /></ProtectedRoute>} />
+              <Route path="/salao/indicar" element={<ProtectedRoute><SalaoIndicar /></ProtectedRoute>} />
+              <Route path="/salao/indicacoes" element={<ProtectedRoute><SalaoIndicacaoClientes /></ProtectedRoute>} />
               <Route
                 path="/perfil"
                 element={
@@ -450,6 +460,14 @@ const App = () => (
                     <Settings />
                   </ProtectedRoute>
                 } 
+              />
+              <Route
+                path="/afiliado"
+                element={
+                  <AffiliateRoute>
+                    <AffiliatePortal />
+                  </AffiliateRoute>
+                }
               />
               <Route
                 path="/super-admin"
