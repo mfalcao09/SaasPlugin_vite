@@ -602,13 +602,18 @@ async function deliver(
       // campanha — e sem isso delivered_count fica em zero pra sempre, deixando o
       // kill-switch por não-entrega inerte (ver anti-ban.ts).
       //
-      // Shape da Evolution: { body: { key: { id: "<wamid>" } } }. Tolerante a
-      // variação entre versões; se não achar, devolve null e o chamador grava
-      // null. Campo AUSENTE é melhor que id ERRADO: id errado casaria o ACK com a
-      // mensagem de outra campanha e corromperia o contador — e contador corrompido
-      // pausa campanha saudável, que é o modo de falha caro deste mecanismo.
+      // Shape Evolution: { body: { key: { id } } }. Shape Z-API: { body: { messageId } }
+      // (envelope de platform-whatsapp-qr-send). Preferir messageId WA; zaapId é
+      // id interno Z-API — MessageStatusCallback.ids usa o messageId do WA.
+      // Campo AUSENTE > id ERRADO (id errado corrompe delivered_count e pausa
+      // campanha saudável).
       const d = data as any;
-      const wamid: string | null = d?.body?.key?.id ?? d?.key?.id ?? null;
+      const wamid: string | null =
+        d?.body?.messageId ??
+        d?.body?.key?.id ??
+        d?.key?.id ??
+        (typeof d?.body?.zaapId === "string" ? d.body.zaapId : null) ??
+        null;
       return { ok: true, wamid };
     } else {
       // Instagram DM: a Graph API (platform-ig-send) precisa do PSID do

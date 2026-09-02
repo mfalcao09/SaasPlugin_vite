@@ -1325,6 +1325,62 @@ async function handleAuthorizedWebhook(
     );
   }
 
+  // ─── Z-API ACK DE ENTREGA → delivered_count (espelha bloco Evolution acima) ─
+  // MessageStatusCallback RECEIVED casa wamid → campaign_id → bump. Delivery
+  // sem error e READ/SENT são ignored (não inflar contador).
+  if (norm.kind === "delivery") {
+    try {
+      if (norm.outcome === "delivered" || norm.outcome === "failed") {
+        for (const wamid of norm.messageIds) {
+          if (!wamid) continue;
+          const { data: msg } = await supabase
+            .from("platform_crm_messages")
+            .select("metadata, created_at")
+            .eq("metadata->>wamid", wamid)
+            .eq("metadata->>connection_id", instance.id)
+            .maybeSingle();
+          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+          if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
+          const campaignId = meta.campaign_id as string | undefined;
+          if (!campaignId) continue;
+          const day = String(msg?.created_at ?? "").slice(0, 10);
+          if (!day) continue;
+
+          await supabase.rpc("pcrm_cold_bump_counter", {
+            p_campaign: campaignId,
+            p_instance: instance.id,
+            p_day: day,
+            p_sent: 0,
+            p_delivered: norm.outcome === "delivered" ? 1 : 0,
+            p_blocked: 0,
+            p_reported: 0,
+            p_failed: norm.outcome === "failed" ? 1 : 0,
+          });
+          console.log("[platform-whatsapp-qr-webhook] zapi delivery ack", {
+            campaignId,
+            day,
+            wamid,
+            outcome: norm.outcome,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "[platform-whatsapp-qr-webhook] Z-API delivery ack falhou (non-fatal):",
+        String(e).slice(0, 200),
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        handled: "zapi_delivery_ack",
+        outcome: norm.outcome,
+        ids: norm.messageIds.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   // ---- MESSAGE (ingestão A1.3) ----
   if (norm.kind === "message") {
     return await handleMessage(supabase, instance, norm, opts);

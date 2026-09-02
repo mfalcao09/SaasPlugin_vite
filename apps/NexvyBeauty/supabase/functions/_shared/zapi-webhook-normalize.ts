@@ -21,6 +21,22 @@ export type ZapiNormalized =
       needsDownload?: boolean;
     };
   }
+  /**
+   * ACK de status/entrega. outcome:
+   * - delivered = mensagem chegou no aparelho (MessageStatusCallback RECEIVED)
+   * - failed = DeliveryCallback com error (falha de envio)
+   * - ignored = sinal que NÃO alimenta delivered_count (SENT/READ/Delivery ok)
+   *
+   * DeliveryCallback sem error = só "aceitou no servidor WA" — NÃO é entrega
+   * no aparelho. Contar isso como delivered inflaria a taxa e mascararia queima.
+   */
+  | {
+    kind: "delivery";
+    instance: string;
+    messageIds: string[];
+    outcome: "delivered" | "failed" | "ignored";
+    statusRaw: string;
+  }
   | { kind: "unknown"; instance: string; event: string };
 
 function digitsOrLid(raw: unknown): string {
@@ -72,8 +88,58 @@ export function normalizeZapiWebhook(
     return { kind: "connection", instance, state: "close" };
   }
 
-  if (type === "PresenceChatCallback" || type === "DeliveryCallback" || type === "MessageStatusCallback") {
+  if (type === "PresenceChatCallback") {
     return { kind: "unknown", instance, event: type };
+  }
+
+  // On-send (Z-API "Delivery"): aceito pelo servidor WA ≠ entregue no aparelho.
+  // Só falha (campo error) alimenta métrica; sucesso vira ignored.
+  if (type === "DeliveryCallback") {
+    const ids = [payload.messageId, payload.zaapId]
+      .map((x) => String(x ?? "").trim())
+      .filter(Boolean);
+    const err = payload.error != null ? String(payload.error).trim() : "";
+    if (err) {
+      return {
+        kind: "delivery",
+        instance,
+        messageIds: [...new Set(ids)],
+        outcome: "failed",
+        statusRaw: err,
+      };
+    }
+    return {
+      kind: "delivery",
+      instance,
+      messageIds: [...new Set(ids)],
+      outcome: "ignored",
+      statusRaw: "DeliveryCallback",
+    };
+  }
+
+  // Status no WhatsApp: RECEIVED = 2º check (entregue). READ/PLAYED implicam
+  // entrega mas NÃO contam — senão sent+received+read triplicaria o contador
+  // (mesma regra do bloco Evolution: só DELIVERY, não read).
+  if (type === "MessageStatusCallback") {
+    const rawIds = Array.isArray(payload.ids) ? payload.ids : [];
+    const single = payload.messageId ?? payload.zaapId;
+    const ids = [
+      ...rawIds.map((x) => String(x ?? "").trim()),
+      ...(single != null ? [String(single).trim()] : []),
+    ].filter(Boolean);
+    const st = String(payload.status ?? "").toUpperCase();
+    const outcome = st === "RECEIVED"
+      ? "delivered" as const
+      : st === "SENT" || st === "READ" || st === "READ_BY_ME" || st === "PLAYED"
+      ? "ignored" as const
+      : "ignored" as const;
+    return {
+      kind: "delivery",
+      instance,
+      messageIds: [...new Set(ids)],
+      outcome,
+      statusRaw: st || type,
+    };
   }
 
   if (type === "ReceivedCallback" || type === "ReceivedCallbackDelivery") {

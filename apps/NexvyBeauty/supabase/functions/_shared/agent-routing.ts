@@ -10,9 +10,20 @@
 // FALLBACK de transição por match-nome (o `hay` já incluía agent_type, então o
 // tipo-primário é aditivo — Duda/Bia/Lia casam mesmo antes do backfill).
 
+/** É o agente BDR/prospector (Camila) — abre cold, NÃO abre venda no número oficial. */
+export function isProspectorAgent(a: Record<string, any> | null): boolean {
+  if (!a) return false;
+  if ((a.agent_type ?? '').toLowerCase() === 'prospector') return true;
+  const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
+  return hay.includes('prospector') || hay.includes('prospec') || hay.includes('camila');
+}
+
 /** É o agente SDR (Duda) — abre/qualifica/recomenda? Base da linha travada. */
 export function isSdrAgent(a: Record<string, any> | null): boolean {
   if (!a) return false;
+  // Prospector NÃO é SDR — senão "prospecção" no nome poderia vazar no futuro
+  // se alguém acrescentar match frouxo. Explicitamente fora.
+  if (isProspectorAgent(a) && (a.agent_type ?? '').toLowerCase() === 'prospector') return false;
   if ((a.agent_type ?? '').toLowerCase() === 'sdr') return true;
   const hay = `${a.agent_type ?? ''} ${a.name ?? ''}`.toLowerCase();
   return hay.includes('sdr') || hay.includes('qualifica') || hay.includes('duda');

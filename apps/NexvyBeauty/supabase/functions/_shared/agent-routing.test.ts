@@ -14,6 +14,7 @@ import {
   isSdrAgent,
   isCloserAgent,
   isRetentionAgent,
+  isProspectorAgent,
   pickSdrPersona,
   pickPersonaForConversation,
   resolvePersonaForConversation,
@@ -36,8 +37,18 @@ const ninaCustom = { id: 'nina', name: 'Nina — Sucesso, Suporte & Retenção',
 const ninaRet = { id: 'nina', name: 'Nina — Sucesso, Suporte & Retenção', agent_type: 'retention' };
 const nexvy = { id: 'nexvy', name: 'Nexvy — Ativação Pós-Venda', agent_type: 'custom' };
 const orq = { id: 'orq', name: 'Orquestrador Cliente-de-Volta', agent_type: 'custom' };
+const camila = { id: 'camila', name: 'Camila · Prospecção', agent_type: 'prospector' };
 
 const cascas = [ninaCustom, nexvy, orq];
+
+Deno.test('isProspectorAgent — Camila por tipo; NÃO é SDR', () => {
+  eq(isProspectorAgent(camila), true, 'Camila casa por agent_type=prospector');
+  eq(isSdrAgent(camila), false, 'prospector NÃO é SDR (não abre venda oficial)');
+  eq(isProspectorAgent(dudaSdr), false, 'Duda não é prospector');
+  eq(pickSdrPersona([camila, bia, lia]), null, 'só Camila+closer → null (não abre como SDR)');
+  eq(pickPersonaForConversation([dudaSdr, camila, bia], 'camila')?.id, 'camila', 'pin Camila respeitado');
+  eq(pickPersonaForConversation([dudaSdr, camila, bia], null)?.id, 'duda', 'sem pin → Duda, não Camila');
+});
 
 Deno.test('isSdrAgent — só a Duda (por nome pré-backfill E por tipo pós)', () => {
   eq(isSdrAgent(dudaCustom), true, 'Duda custom casa por nome');
