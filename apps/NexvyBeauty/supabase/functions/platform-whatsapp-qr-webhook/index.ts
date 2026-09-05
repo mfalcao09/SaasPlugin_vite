@@ -41,6 +41,13 @@ import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.t
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
+  pickCanonicalWaQrConversation,
+  mergedIntoTargetId,
+  waQrCanonicalVisitorPhone,
+  waQrVisitorIdsForPhoneVariants,
+  type WaQrConversationRow,
+} from "../_shared/wa-qr-conversation-resolve.ts";
+import {
   allowsDeviceOutboundCreateConversation,
   lidDigitsFromWaLid,
   lidLookupNeeded,
@@ -375,7 +382,7 @@ async function ensureLead(
   productId: string | null,
 ): Promise<string | null> {
   try {
-    const phonePlus = `+${fromDigits}`;
+    const phonePlus = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
     // `.in()` e não `.or()`: o array é passado COMO VALOR ao client, que serializa
     // e cita cada item. No `.or()` os valores viram uma string de filtro PostgREST
     // onde `,`/`(`/`)` são delimitadores e o escape seria manual. As variantes só
@@ -439,35 +446,77 @@ async function ensureConversation(
   pushName: string | null,
   productId: string | null,
 ): Promise<any | null> {
-  const visitorIds = waQrVisitorIdsForLookup(fromDigits);
-  const visitorId = waQrVisitorId(fromDigits);
-  const { data: rows } = await supabase
+  // Lookup por TODAS as variantes BR (com/sem 9º) — senão inbound sem 9 cria
+  // thread nova e o interesse da lead some da canônica (Jeissiane 2026-09-03).
+  const visitorIds = waQrVisitorIdsForPhoneVariants(fromDigits);
+  const visitorId = waQrVisitorId(
+    (waQrCanonicalVisitorPhone(fromDigits).replace(/\D/g, "") || fromDigits),
+  );
+  const phoneCanon = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
+
+  const { data: byVisitor } = await supabase
     .from("platform_crm_conversations")
     .select("*")
-    .in("visitor_id", visitorIds)
+    .in("visitor_id", visitorIds.length ? visitorIds : waQrVisitorIdsForLookup(fromDigits))
     .in("channel", [...WA_QR_CHANNELS])
     .eq("wa_qr_instance_id", instance.id)
-    .order("created_at", { ascending: false })
-    .limit(1);
-  let conversation = rows?.[0] ?? null;
+    .order("created_at", { ascending: true })
+    .limit(20);
+
+  let candidates = (byVisitor ?? []) as WaQrConversationRow[];
+
+  if (candidates.length === 0) {
+    const phoneVariants = phoneVariantsWithPlusBR(fromDigits);
+    if (phoneVariants.length > 0) {
+      const { data: byPhone } = await supabase
+        .from("platform_crm_conversations")
+        .select("*")
+        .in("visitor_phone", phoneVariants)
+        .in("channel", [...WA_QR_CHANNELS])
+        .eq("wa_qr_instance_id", instance.id)
+        .order("created_at", { ascending: true })
+        .limit(20);
+      candidates = (byPhone ?? []) as WaQrConversationRow[];
+    }
+  }
+
+  let conversation: any | null = pickCanonicalWaQrConversation(candidates);
+
+  // Perdedora de merge: NÃO reabrir — seguir merged_into (mesmo fora do batch).
+  if (conversation) {
+    const mergeTarget = mergedIntoTargetId(conversation);
+    if (mergeTarget && mergeTarget !== conversation.id) {
+      const { data: targetRow } = await supabase
+        .from("platform_crm_conversations")
+        .select("*")
+        .eq("id", mergeTarget)
+        .maybeSingle();
+      if (targetRow) {
+        console.log(
+          `[platform-whatsapp-qr-webhook] follow merged_into ${conversation.id} → ${mergeTarget}`,
+        );
+        conversation = targetRow;
+      }
+    }
+  }
 
   if (conversation && conversation.status === "closed") {
-    const { data: reopened, error } = await supabase
-      .from("platform_crm_conversations")
-      .update({
-        // PR-BDR-4: o send+brain por canal Evolution passou a existir (deliver()
-        // no platform-sales-brain + despacho no fim deste arquivo), então a
-        // conversa volta a nascer/reabrir com o bot no comando, como no V5.
-        status: "bot_active",
-        needs_human: false,
-        accepted_at: null,
-        accepted_by: null,
-        assigned_to: null,
-      })
-      .eq("id", conversation.id)
-      .select()
-      .single();
-    if (!error && reopened) conversation = reopened;
+    // Só reabre se NÃO for perdedora de merge (sem merged_into ou alvo inválido).
+    if (!mergedIntoTargetId(conversation)) {
+      const { data: reopened, error } = await supabase
+        .from("platform_crm_conversations")
+        .update({
+          status: "bot_active",
+          needs_human: false,
+          accepted_at: null,
+          accepted_by: null,
+          assigned_to: null,
+        })
+        .eq("id", conversation.id)
+        .select()
+        .single();
+      if (!error && reopened) conversation = reopened;
+    }
   }
 
   if (!conversation) {
@@ -476,17 +525,12 @@ async function ensureConversation(
       .insert({
         visitor_id: visitorId,
         visitor_name: pushName || null,
-        visitor_phone: `+${fromDigits}`,
-        visitor_whatsapp: `+${fromDigits}`,
+        visitor_phone: phoneCanon,
+        visitor_whatsapp: phoneCanon,
         channel: WA_QR_CHANNEL_CANONICAL,
-        // PR-BDR-4: ver comentário no reabrir acima — o canal Evolution já tem
-        // envio e cérebro. NOTA: o platform-start-whatsapp-conversation continua
-        // criando 'human_active' de PROPÓSITO (lá um humano clicou e assume);
-        // só o caminho do webhook (a lead falou primeiro) nasce com o bot.
         status: "bot_active",
         needs_human: false,
         wa_qr_instance_id: instance.id,
-        // Só no INSERT: conversa existente nunca tem product_id sobrescrito.
         ...(productId ? { product_id: productId } : {}),
       })
       .select()
@@ -569,9 +613,10 @@ async function persistConversationWaLid(
 
 /** Veredito do on-inbound do cold outreach.
  *  `optOut`  → a lead pediu PARE/SAIR: o cérebro NÃO pode responder.
+ *  `suppressBrain` → auto-resposta ou apresentar em curso: brain não responde.
  *  `ok:false` → não deu pra saber (invoke falhou/rejeitou). Ver a decisão
  *  registrada em dispatchSalesBrain: desconhecido NÃO é tratado como opt-out. */
-type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean };
+type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean; suppressBrain: boolean };
 
 // PR-BDR-1 — OPT-OUT VIVO. A action 'on-inbound' do platform-cold-outreach
 // (supressão Art.18 do SAIR/PARE, parada da cadência, silenciamento da conversa
@@ -604,33 +649,39 @@ async function notifyColdOutreachInbound(
       console.error(
         `[platform-whatsapp-qr-webhook] cold-outreach on-inbound FAILED conversation_id=${a.conversationId} reason=${error?.message ?? String(error)}`,
       );
-      return { ok: false, optOut: false };
+      return { ok: false, optOut: false, suppressBrain: false };
     }
     const res = data as
-      | { ok?: boolean; intent?: string; affected?: number; handoff?: unknown; error?: string }
+      | { ok?: boolean; intent?: string; affected?: number; handoff?: unknown; error?: string; suppress_brain?: boolean }
       | null;
     if (!res || res.ok !== true) {
       console.error(
         `[platform-whatsapp-qr-webhook] cold-outreach on-inbound REJECTED conversation_id=${a.conversationId} response=${JSON.stringify(res)}`,
       );
-      return { ok: false, optOut: false };
+      return { ok: false, optOut: false, suppressBrain: false };
     }
     if (res.intent === "opt_out") {
       // Lead pediu pra sair: registro legível aqui; o efeito é do motor.
       console.warn(
         `[platform-whatsapp-qr-webhook] cold-outreach OPT-OUT conversation_id=${a.conversationId} telefone=${a.telefone} queue_rows=${res.affected ?? 0}`,
       );
-      return { ok: true, optOut: true };
+      return { ok: true, optOut: true, suppressBrain: true };
+    }
+    if (res.suppress_brain === true || res.intent === "auto_reply") {
+      console.log(
+        `[platform-whatsapp-qr-webhook] cold-outreach suppress brain conversation_id=${a.conversationId} intent=${res.intent}`,
+      );
+      return { ok: true, optOut: false, suppressBrain: true };
     }
     console.log(
       `[platform-whatsapp-qr-webhook] cold-outreach on-inbound ok conversation_id=${a.conversationId} intent=${res.intent} affected=${res.affected ?? 0} handoff=${JSON.stringify(res.handoff ?? null)}`,
     );
-    return { ok: true, optOut: false };
+    return { ok: true, optOut: false, suppressBrain: false };
   } catch (e: any) {
     console.error(
       `[platform-whatsapp-qr-webhook] cold-outreach on-inbound EXCEPTION conversation_id=${a.conversationId} reason=${e?.message ?? String(e)}`,
     );
-    return { ok: false, optOut: false };
+    return { ok: false, optOut: false, suppressBrain: false };
   }
 }
 
@@ -1147,9 +1198,10 @@ async function handleMessage(
     return ok({ stored: "inbound", brain: "skipped" });
   }
 
-  if (coldVerdict.optOut) {
+  if (coldVerdict.optOut || coldVerdict.suppressBrain) {
+    const reason = coldVerdict.optOut ? "opt-out" : "suppress_brain";
     console.warn(
-      `[platform-whatsapp-qr-webhook] brain NÃO despachado (opt-out) conversation_id=${conversation.id} telefone=${fromDigits}`,
+      `[platform-whatsapp-qr-webhook] brain NÃO despachado (${reason}) conversation_id=${conversation.id} telefone=${fromDigits}`,
     );
   } else {
     if (!coldVerdict.ok) {
@@ -1322,6 +1374,62 @@ async function handleAuthorizedWebhook(
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
+    );
+  }
+
+  // ─── Z-API ACK DE ENTREGA → delivered_count (espelha bloco Evolution acima) ─
+  // MessageStatusCallback RECEIVED casa wamid → campaign_id → bump. Delivery
+  // sem error e READ/SENT são ignored (não inflar contador).
+  if (norm.kind === "delivery") {
+    try {
+      if (norm.outcome === "delivered" || norm.outcome === "failed") {
+        for (const wamid of norm.messageIds) {
+          if (!wamid) continue;
+          const { data: msg } = await supabase
+            .from("platform_crm_messages")
+            .select("metadata, created_at")
+            .eq("metadata->>wamid", wamid)
+            .eq("metadata->>connection_id", instance.id)
+            .maybeSingle();
+          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+          if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
+          const campaignId = meta.campaign_id as string | undefined;
+          if (!campaignId) continue;
+          const day = String(msg?.created_at ?? "").slice(0, 10);
+          if (!day) continue;
+
+          await supabase.rpc("pcrm_cold_bump_counter", {
+            p_campaign: campaignId,
+            p_instance: instance.id,
+            p_day: day,
+            p_sent: 0,
+            p_delivered: norm.outcome === "delivered" ? 1 : 0,
+            p_blocked: 0,
+            p_reported: 0,
+            p_failed: norm.outcome === "failed" ? 1 : 0,
+          });
+          console.log("[platform-whatsapp-qr-webhook] zapi delivery ack", {
+            campaignId,
+            day,
+            wamid,
+            outcome: norm.outcome,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "[platform-whatsapp-qr-webhook] Z-API delivery ack falhou (non-fatal):",
+        String(e).slice(0, 200),
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        handled: "zapi_delivery_ack",
+        outcome: norm.outcome,
+        ids: norm.messageIds.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 

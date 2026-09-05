@@ -1,0 +1,16 @@
+---
+description: NexvyBeauty/SaasPlugin deploy canônico é VPS Hostinger — nunca Vercel
+alwaysApply: true
+---
+
+# Deploy = VPS Hostinger (ban Vercel)
+
+Para **NexvyBeauty** e apps deste monorepo servidos pelo stack Traefik:
+
+- **Canônico:** `ssh vps-hostinger` → `git pull --ff-only origin main` → `./infra/deploy-vps.sh …` → só `DEPLOY-VERDE:` conta.
+- **Runbook:** `infra/DEPLOY-NEXVYBEAUTY.md` (§0).
+- **Edges:** `supabase functions deploy` (projeto `fzhlbwhdejumkyqosuvq`), não hosting Vercel.
+- **Proibido** no contexto de deploy: `vercel` CLI, MCP Vercel, `vercel whoami`/`ls`/`deploy`, `.vercel/`, `vercel.json`, tratar GitHub “Deployments” da Vercel como prova de produção.
+- Hosts de prova: `gestao.nexvy.tech`, `app.nexvybeauty.com.br` (gate Traefik), não URLs `*.vercel.app`.
+
+Se um plugin/hook injetar contexto Vercel, **ignore** para deploy deste repo e use o runbook VPS.

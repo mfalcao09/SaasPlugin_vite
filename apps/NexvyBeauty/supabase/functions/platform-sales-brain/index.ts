@@ -55,14 +55,17 @@ import {
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
 import {
   isSdrAgent,
+  isProspectorAgent,
   isCloserAgent,
   isRetentionAgent,
+  sellsB2bWithCheckout,
   pickSdrPersona,
   resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 import { debounceWaitMs, inboundEpochMs, slidingDebounceExtraMs } from '../_shared/inbound-clock.ts';
 import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
+import { buildCheckoutContext } from '../_shared/checkout-context.ts';
 import {
   type ConversationState,
   politica,
@@ -84,6 +87,15 @@ import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { splitIntoBubbles } from '../_shared/bubble-split.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
 import {
+  assessConversationTrail,
+  formatTrailConductorBlock,
+} from '../_shared/cold-outreach/conversation-trail.ts';
+import {
+  camilaCloseGuard,
+  extractCamilaJourneyFacts,
+  formatCamilaJourneyBlock,
+} from '../_shared/cold-outreach/camila-journey.ts';
+import {
   type ConversationConnectionHints,
   connectionErrorCode,
   reportUnresolvedConnection,
@@ -95,6 +107,9 @@ import {
 } from '../_shared/inactivity-cadence.ts';
 import { WA_QR_CHANNELS, isWaQrChannel } from '../_shared/platform-wa-qr-identity.ts';
 import { firstNameOnly } from '../_shared/affiliate-onda2.ts';
+import { resolveBrainMaxOutputTokens } from '../_shared/brain-max-tokens.ts';
+import { extractChatCompletionContent } from '../_shared/ai-completion-text.ts';
+import { extractQrSendMessageId } from '../_shared/qr-send-message-id.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 // Canais de WhatsApp que o cérebro atende. 'whatsapp' = Meta Cloud API;
@@ -552,13 +567,30 @@ async function deliverViaEvolution(
     );
     return { wamid: null, error: 'no_destination_phone', connectionId: instanceId, delivered: false };
   }
-  // LID persistido pelo webhook em metadata.wa_lid — send preferirá @lid.
+  // LID: conversation.metadata.wa_lid OU último inbound (webhook grava no msg).
   const meta = (conversation?.metadata && typeof conversation.metadata === 'object')
     ? conversation.metadata as Record<string, unknown>
     : {};
-  const waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
+  let waLid = typeof meta.wa_lid === 'string' && meta.wa_lid.trim()
     ? meta.wa_lid.trim()
     : null;
+  if (!waLid && conversationId) {
+    const { data: lidRow } = await supabase
+      .from('platform_crm_messages')
+      .select('metadata')
+      .eq('conversation_id', conversationId)
+      .eq('direction', 'inbound')
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    for (const row of lidRow ?? []) {
+      const m = row?.metadata;
+      if (m && typeof m === 'object' && typeof (m as any).wa_lid === 'string' && (m as any).wa_lid.trim()) {
+        waLid = String((m as any).wa_lid).trim();
+        break;
+      }
+    }
+  }
   try {
     const productId = await evolutionInstanceProductId(supabase, instanceId, conversationId);
     if (!productId) {
@@ -615,12 +647,22 @@ async function deliverViaEvolution(
       );
       return { wamid: null, error: String(reason).slice(0, 500), connectionId: instanceId, delivered: false };
     }
-    const evolutionMessageId = typeof (data as any)?.body?.key?.id === 'string'
-      ? (data as any).body.key.id
-      : null;
-    // Entregue = a Evolution aceitou. O id pode faltar (shape varia por versão) e
-    // isso NÃO é falha — marcar como falha aqui geraria alarme falso e um
-    // delivery_status errado numa bolha que a lead recebeu.
+    // Z-API: body.messageId. Evolution: body.key.id. Sem id = NÃO entregue
+    // (2026-09-03: brain marcava sent com wamid null — CRM mentia; lead sem WA).
+    const provider = typeof (data as any)?.provider === 'string' ? (data as any).provider : '';
+    const evolutionMessageId = extractQrSendMessageId(data);
+    if (!evolutionMessageId) {
+      const snap = JSON.stringify(data ?? null).slice(0, 400);
+      console.error(
+        `[platform-sales-brain] qr-send sem messageId conversation_id=${conversationId} provider=${provider} body=${snap}`,
+      );
+      return {
+        wamid: null,
+        error: `qr_send_no_message_id provider=${provider || 'unknown'} body=${snap}`,
+        connectionId: instanceId,
+        delivered: false,
+      };
+    }
     return { wamid: evolutionMessageId, error: null, connectionId: instanceId, delivered: true, evolutionMessageId };
   } catch (e) {
     console.error(
@@ -687,63 +729,7 @@ function buildKnowledgeContext(
   return ctx;
 }
 
-/**
- * slugify — normaliza o nome da persona para o valor de ?src=. Lowercase, sem
- * acento, espaços/pontuação → '-', colapsa hifens repetidos e apara as pontas.
- * Ex.: 'Duda — SDR' → 'duda-sdr'; 'Bia' → 'bia'. Vazio se nada sobrar.
- */
-function slugify(name: string): string {
-  return String(name ?? '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '') // tira acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-') // não-alfanumérico vira hífen
-    .replace(/-+/g, '-')         // colapsa hifens repetidos
-    .replace(/^-+|-+$/g, '');    // apara hifens das pontas
-}
-
-/**
- * appendSellerRef — carimba ?src=<slug-do-agente> no checkout_url pra atribuir a
- * venda a quem fechou (Duda/Bia). DEFENSIVO: usa new URL()/searchParams (preserva
- * query existente, sobrescreve src anterior); se a URL for inválida ou o slug
- * vazio, devolve a url original SEM quebrar.
- */
-function appendSellerRef(url: string, personaName: string): string {
-  // Ref estável = 1º token do nome ('Duda — SDR Qualificadora' → 'duda'),
-  // casando com o ref_code seedado em 20260706_sellers_e_relatorio_vendas.sql
-  // (renomear o sufixo da persona não quebra a atribuição).
-  const src = slugify(personaName).split('-')[0];
-  if (!url || !src) return url;
-  try {
-    const u = new URL(url);
-    u.searchParams.set('src', src);
-    return u.toString();
-  } catch {
-    return url; // url malformada (sem protocolo, etc.) — não quebra o fluxo
-  }
-}
-
-/** Links de checkout reais (do banco). É a "maquininha" da Duda: cliente que
- *  DECIDE recebe o link na hora, sem passar por closer. Cada link carrega
- *  ?src=<slug-do-agente> pra atribuir a venda a quem fechou. Vazio se não houver. */
-function buildCheckoutContext(plans: Array<Record<string, any>>, personaName: string): string {
-  if (!plans.length) return '';
-  let ctx = `\n## LINKS DE PAGAMENTO (a sua maquininha — mande o link DIRETO quando o cliente DECIDIR contratar)\n`;
-  for (const p of plans) {
-    const url = appendSellerRef(p.checkout_url, personaName);
-    // PREÇO COMPARADO DO PRESENTE: quando há preço de TABELA (list_price_monthly)
-    // acima do vigente (price_monthly), renderiza "custa R$X, hoje sai por R$Y".
-    // Os dois números continuam vindo do banco em runtime; o que MORREU aqui foi a
-    // afirmação sobre o futuro ("sobe em breve"). NÃO EXISTE DATA DE SUBIDA
-    // (Marcelo, 2026-08-04) — e esta linha é a FONTE que a persona é instruída a
-    // citar como preço, então prometer aqui é prometer na boca da agente.
-    const priceLabel = Number(p.list_price_monthly) > Number(p.price_monthly)
-      ? `custa R$${p.list_price_monthly}, hoje sai por R$${p.price_monthly}`
-      : `R$${p.price_monthly}`;
-    ctx += `- ${p.name} (${priceLabel}): ${url}\n`;
-  }
-  ctx += `REGRA: cliente que já decidiu ("quero contratar", "como pago", "quero começar") NÃO precisa de demonstração nem de passar pra ninguém — mande o link do plano recomendado, diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição. O cliente QUALIFICADO que ainda está EM DÚVIDA/CÉTICO é SEU também: aprofunde o valor e conduza ao fechamento você mesma — não existe passar adiante.\n`;
-  return ctx;
-}
+/** Links + benefícios/limites: ver _shared/checkout-context.ts (fonte = platform_plans). */
 
 /** AGORA — fonte única de data e hora (America/Sao_Paulo).
  *
@@ -1413,6 +1399,9 @@ Deno.serve(async (req) => {
     // Profundidade do hand-back (payload interno; ausente = chamada externa = 0).
     const handbackDepth = Number(body?.handback_depth) || 0;
     const ensureReply = body?.ensure_reply === true;
+    // Harness Camila: wake do conductor (dívida / condução / cold_resume).
+    // NÃO é a régua Duda — não injeta repertoire_stage. Só fura stale+debounce.
+    const conductorWake = body?.conductor_wake === true;
     orphanWakeConversationId = conversationId;
     orphanWakeHandbackDepth = handbackDepth;
     orphanWakeReqUrl = req.url;
@@ -1427,6 +1416,25 @@ Deno.serve(async (req) => {
     const inactivityOccurrence = Number(body?.occurrence) || null;
     const inactivityDeadline = typeof body?.deadline_context === 'string'
       ? body.deadline_context.slice(0, 300)
+      : '';
+
+    // Retomada / ai-reactivate: objective + extra_context (ficha da conversa).
+    // Antes era ignorado — o operador mandava contexto e o cérebro pensava cego.
+    const reactivation = body?.reactivation && typeof body.reactivation === 'object'
+      ? body.reactivation as Record<string, unknown>
+      : null;
+    const reactivationObjective = typeof reactivation?.objective === 'string'
+      ? reactivation.objective.trim().slice(0, 500)
+      : '';
+    const reactivationExtra = typeof reactivation?.extra_context === 'string'
+      ? reactivation.extra_context.trim().slice(0, 4000)
+      : (typeof body?.extra_context === 'string' ? body.extra_context.trim().slice(0, 4000) : '');
+    const reactivationBlock = (reactivationObjective || reactivationExtra)
+      ? [
+        `\n\n═══ CONTEXTO DE RETOMADA DESTE TURNO (obedeça; leia o histórico antes) ═══`,
+        reactivationObjective ? `OBJETIVO: ${reactivationObjective}` : '',
+        reactivationExtra ? `FICHA / CONTEXTO:\n${reactivationExtra}` : '',
+      ].filter(Boolean).join('\n')
       : '';
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -1709,8 +1717,9 @@ Deno.serve(async (req) => {
     //    (senão a Duda se reapresenta 13 min depois, bug real de 2026-07-04). Exige a
     //    fonte da Meta: o created_at recente de uma re-entrega enganaria o guard.
     //    NÃO se aplica ao modo inatividade: ali a inbound é VELHA por definição
-    //    (o silêncio É o gatilho).
-    if (triggerInbound && !inactivityMode) {
+    //    (o silêncio É o gatilho). Tampouco ao conductor_wake da Camila (dívida
+    //    de resposta / condução de trilha — inbound pode ter horas).
+    if (triggerInbound && !inactivityMode && !conductorWake) {
       const meta = (triggerInbound.metadata && typeof triggerInbound.metadata === 'object')
         ? triggerInbound.metadata as Record<string, any> : {};
       const tsSecs = typeof meta.wa_timestamp === 'number' ? meta.wa_timestamp
@@ -1739,7 +1748,7 @@ Deno.serve(async (req) => {
     //        resposta, não cancela ela.
     //    (Modo inatividade pula: não há rajada — não há mensagem nova.)
     let debounceWaitedMs = 0;
-    if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode) {
+    if (triggerInbound && DEBOUNCE_MS > 0 && !inactivityMode && !conductorWake) {
       const tDebounce0 = Date.now();
       let extensoes = 0;
       let refMs = inboundEpochMs(triggerInbound);
@@ -1935,16 +1944,20 @@ Deno.serve(async (req) => {
 
     // Papel do agente que vai falar AGORA (condiciona [PASSAR_BIA] e continuidade).
     const personaIsSdr = isSdrAgent(persona);
+    const personaIsProspector = isProspectorAgent(persona);
     const personaIsCloser = isCloserAgent(persona);
+    // Camila (prospector) fecha e qualifica no mesmo brain que a Duda, mas NÃO
+    // herda a régua 8/20/25/35 nem [PASSAR_BIA] — harness próprio (conductor).
+    const personaSellsB2b = sellsB2bWithCheckout(persona);
     // MODO RETENÇÃO (P2 · PR-B): a Nina (retention) cuida de quem já comprou —
     // sem links/preço, regras de cuidado. Tem PRECEDÊNCIA sobre o modo
     // implantação/venda (a persona pinada é quem manda). Só vira true quando a
     // persona escolhida é a Nina (por pin do nina-health-scan).
     const retentionActive = isRetentionAgent(persona);
 
-    // MODO INATIVIDADE: a régua SÓ corre com persona SDR (espec — funil de
-    // venda com SDR ativa). O sweeper já filtra; este é o cinto duplo contra
-    // race (handoff pra Bia/Nina entre o sweep e esta execução).
+    // MODO INATIVIDADE: a régua SÓ corre com persona SDR (Duda). Prospector
+    // (Camila) é excluída de propósito — loop próprio = platform-camila-conductor.
+    // O sweeper já filtra; este é o cinto duplo contra race.
     if (inactivityMode && !personaIsSdr) {
       return json({ skipped: 'inactivity_requires_sdr', persona_id: persona.id });
     }
@@ -2042,18 +2055,22 @@ Deno.serve(async (req) => {
           )
           .eq('id', conversation.product_id)
           .maybeSingle(),
-        // Planos + LINK DE CHECKOUT reais (a "maquininha" da Duda): quando o
-        // cliente DECIDE, ela mesma manda o link — não precisa de closer.
-        // list_price_monthly = preço de tabela (de-para do preço comparado em LINKS DE PAGAMENTO).
+        // Planos + limites (conexões/users/agentes) + link — fonte platform_plans.
+        // public_plans NÃO expõe max_connections; service_role lê a tabela base.
         supabase
-          .from('public_plans')
-          .select('name, slug, price_monthly, list_price_monthly, checkout_url, is_public')
+          .from('platform_plans')
+          .select(
+            'name, slug, description, price_monthly, list_price_monthly, checkout_url, is_public, is_active, ' +
+              'max_connections, max_users, max_ai_agents, ' +
+              'feature_whatsapp, feature_instagram, feature_scheduling, feature_ai_agents, ' +
+              'feature_pipeline, feature_campaigns, feature_kanban',
+          )
+          .eq('is_active', true)
+          .eq('is_public', true)
           .order('price_monthly', { ascending: true }),
       ]);
       product = (productRes.data as Record<string, any> | null) ?? null;
-      // R5: só planos PÚBLICOS entram na venda. A view public_plans traz Trial/Teste
-      // (is_public=false); sem is_public no filtro, o "Teste E2E" R$10 com checkout LIVE
-      // vazaria como link ofertável a um lead real. Exige checkout_url + is_public=true.
+      // R5: só planos PÚBLICOS com checkout. Trial/Teste (is_public=false) fora.
       plans = ((plansRes.data as Array<Record<string, any>>) ?? []).filter((p) => p.checkout_url && p.is_public);
     }
 
@@ -2153,11 +2170,11 @@ REGRAS INVIOLÁVEIS DO CÉREBRO
 4. Preços e dados do produto: use SOMENTE o que está no conhecimento acima. Se não tiver, diga que confirma e não invente.
 5. Você NUNCA rejeita uma venda nem decide que a lead "não está apta" — somos SaaS: pagou, é cliente. Toda conversa caminha para RECOMENDAR o plano certo pra realidade dela (carteira pequena/começando → plano de entrada com a conta honesta). NUNCA diga "você não se encaixa"; Trial só se a lead pedir para testar sem compromisso.
 6. A tag ${ESCALATE_TAG} é SÓ para: a lead pediu humano, caso sensível ou fora do script (preço custom, parceria, imprensa) — JAMAIS por perfil ou tamanho de carteira. Se o cliente fizer RECLAMAÇÃO GRAVE ou exigir humano, use ${HANDOFF_TAG}.
-${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaIsSdr ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada — quem já decidiu não precisa de nada além do link.
+${retentionActive ? RETENTION_RULE_BLOCK : onboardingActive ? ONBOARDING_RULE_BLOCK : !isRealB2bFunnel ? '' : personaSellsB2b ? `7. CLIENTE DECIDIU → VOCÊ MESMA FECHA (nunca passe adiante quem já quer contratar): se a lead sinaliza DECISÃO ("quero contratar", "como pago", "quero começar", "fechou", "manda o link", aceitou explicitamente), a SUA RESPOSTA DEVE CONTER A URL do link do plano recomendado — cole o https://… exato da seção LINKS DE PAGAMENTO acima (é PROIBIDO responder "como pago"/"quero contratar" SEM a URL, ou perguntar "quer começar?"/"quer que eu te ajude?" a quem JÁ decidiu — ele já quer, mande o link). Diga que assim que o pagamento cair o acesso é liberado na hora, e fique à disposição para dúvidas. NÃO demonstre mais nada — quem já decidiu não precisa de nada além do link.
 8. VOCÊ CONDUZ A CONVERSA ATÉ O FIM. Não existe "passar para outra pessoa" dentro do bot: lead cética/hesitante é SUA — aprofunde o VALOR (a conta da recuperação + a PROVA na carteira dela) e conduza ao fechamento você mesma. Só ${ESCALATE_TAG}/${HANDOFF_TAG} tiram a conversa de você, e só pelos motivos da regra 6.` : `7. VOCÊ É A CLOSER DE VALOR. Recebeu um cliente QUALIFICADO e CÉTICO que a SDR não convenceu sozinha — ele pode pagar mas ainda não quer, é exigente, cobra coerência. Seu trabalho é vender VALOR: conecte a dor concreta dele (carteira parada, cadeira vazia) ao mecanismo, reduza o risco com PROVA (demonstração na carteira dele) e a conta personalizada — NUNCA com garantia de devolução e NUNCA com pressa (não existe data de subida de preço — ver regra 3). NUNCA se reapresente (continue do dossiê). Quando ELE decidir, mande o LINK DE PAGAMENTO do plano na hora — não enrole quem já fechou.`}
 ${botAlreadySpoke ? '8. Esta conversa JÁ ESTÁ EM ANDAMENTO. CONTINUE do ponto atual. NUNCA se reapresente, NUNCA recomece do zero, NUNCA repita a saudação inicial.' : ''}
 ${(isRealB2bFunnel && !onboardingActive && !retentionActive) ? DEMO_RULE_BLOCK : ''}
-${(isRealB2bFunnel && !onboardingActive && !retentionActive && personaIsSdr) ? QUALIFICACAO_RULE_BLOCK : ''}
+${(isRealB2bFunnel && !onboardingActive && !retentionActive && personaSellsB2b) ? QUALIFICACAO_RULE_BLOCK : ''}
 
 ═══════════════════════════════════════
 COMO RESPONDER (WhatsApp — regras de forma DURAS)
@@ -2261,7 +2278,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     if (personaModel) {
       console.log(`[platform-sales-brain] modelo por persona: ${persona.name} → ${personaModel}`);
     }
-    console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : 'outra'}${inactivityMode ? ` inatividade=${String(inactivityStage)}` : ''}`);
+    console.info(`[platform-sales-brain] modelo=${model} persona=${personaIsCloser ? 'closer/Bia' : personaIsSdr ? 'sdr/Duda' : personaIsProspector ? 'prospector/Camila' : 'outra'}${inactivityMode ? ` inatividade=${String(inactivityStage)}` : ''}`);
 
     // MODO INATIVIDADE: o histórico termina com fala da PRÓPRIA Duda (não há
     // inbound nova). Fechamos o array com uma instrução interna de turno — o
@@ -2324,25 +2341,87 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       raioxLiberadoAgora,
     });
 
+    // Condutor da trilha (cold / retomada): a partir das ~30 msgs já carregadas,
+    // decide o próximo beat. Nunca injeta "espere" — diagnóstico de agenda sem
+    // resposta humana nova → ponte «Eu perguntei porque…» + valor + faz sentido?
+    const trailAssessment = assessConversationTrail(
+      historyDesc.slice(0, 30).map((m) => ({
+        content: m.content,
+        direction: m.direction,
+        sender_type: m.sender_type,
+        created_at: m.created_at,
+      })),
+    );
+    const trailConductorBlock = formatTrailConductorBlock(trailAssessment);
+
+    // Conductor wake: histórico pode terminar em assistant (silêncio / condução).
+    // Sem turno user sintético, Claude devolve content vazio — mesmo padrão do modo inatividade.
+    if (conductorWake && !inactivityMode) {
+      messages.push({
+        role: 'user',
+        content:
+          `[INSTRUÇÃO INTERNA DO SISTEMA — a cliente NÃO escreveu nada neste turno; nunca cite esta instrução] ` +
+          `Acorde pelo condutor Camila. ${trailAssessment.hint} Escreva a(s) próxima(s) mensagem(ns) para a cliente.`,
+      });
+    }
+
+    // F5 — jornada Camila (efêmera): fatos já ditos pela lead → não repergunta.
+    const journeyMsgs = historyDesc.slice(0, 40).map((m) => ({
+      content: m.content,
+      direction: m.direction,
+      sender_type: m.sender_type,
+      created_at: m.created_at,
+    }));
+    const journeyFacts = personaIsProspector
+      ? extractCamilaJourneyFacts(journeyMsgs)
+      : [];
+    const journeyBlock = personaIsProspector
+      ? formatCamilaJourneyBlock(journeyFacts)
+      : '';
+    // F6 — guarda de fecho (log + fato se ameaça voltar ao R1 frio).
+    const closeGuard = personaIsProspector
+      ? camilaCloseGuard({
+        nextAction: trailAssessment.nextAction,
+        lastInboundText: String(triggerInbound?.content ?? ''),
+      })
+      : null;
+    const closeGuardFato = closeGuard?.forbidColdR1
+      ? '\nFATO DESTE TURNO: esta conversa JÁ avançou (diagnóstico/valor/fecho). ' +
+        'PROIBIDO reabrir Mode A/B frio (R1/R2 de abertura). Conduza o beat atual até checkout.'
+      : '';
+
     // Os fatos vão no FIM do system: o modelo obedece melhor o que leu por último,
     // e estes são fatos DESTE turno — não fazem parte da persona.
     // O bloco de tags pede OBSERVAÇÃO (rotular o que a lead disse), nunca contenção
     // — a contenção é aplicada por CÓDIGO, com este mesmo estado, no turno seguinte.
     const systemPromptComEstado = [
       systemPrompt,
-      pol.fatos.length ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}` : '',
+      pol.fatos.length ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}${closeGuardFato}` : (closeGuardFato ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${closeGuardFato}` : ''),
+      journeyBlock,
+      reactivationBlock,
+      trailConductorBlock,
       `\n\n${BLOCO_TAGS_CLASSIFICADORAS}`,
     ].join('');
 
-    if (pol.fatos.length) {
+    if (pol.fatos.length || reactivationBlock || trailConductorBlock || conductorWake || journeyBlock || closeGuardFato) {
       console.log('[platform-sales-brain] estado→política', {
         conversation_id: conversation.id,
         fatos: pol.fatos.length,
+        reactivation: !!reactivationBlock,
+        conductor_wake: conductorWake,
+        trail_action: trailAssessment.nextAction,
+        trail_beat: trailAssessment.lastBeat,
+        journey_facts: journeyFacts,
+        close_forbid_cold_r1: closeGuard?.forbidColdR1 ?? false,
+        close_expect_checkout: closeGuard?.expectCheckoutIntent ?? false,
+        close_expect_demo: closeGuard?.expectDemoIntent ?? false,
         proibir_oferta_demo: pol.proibirOfertaDemo,
         proibir_nome: pol.proibirNome,
         proibir_reapresentar: pol.proibirReapresentar,
       });
     }
+
+    const maxOutputTokens = resolveBrainMaxOutputTokens(personaIsProspector);
 
     const response = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
@@ -2354,9 +2433,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         model,
         messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
         stream: false,
-        // 256: resposta WA curta; keys com pouco crédito + prompt Camila (~13k)
-        // falham com 2048/512 (OpenRouter weight_exceeds_budget). Medido 2026-09-01.
-        max_tokens: 256,
+        max_tokens: maxOutputTokens,
       }),
     });
 
@@ -2372,9 +2449,18 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     }
 
     const completion = await response.json().catch(() => null);
-    let reply: string = completion?.choices?.[0]?.message?.content?.trim?.() ?? '';
+    const finishReason = completion?.choices?.[0]?.finish_reason ?? null;
+    if (finishReason === 'length') {
+      console.warn('[platform-sales-brain] completion truncada (finish_reason=length)', {
+        conversation_id: conversation.id,
+        max_output_tokens: maxOutputTokens,
+        persona: personaIsProspector ? 'prospector' : 'other',
+        model,
+      });
+    }
+    let reply = extractChatCompletionContent(completion);
     if (!reply) {
-      console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 300));
+      console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 500));
       return json({ error: 'O modelo não retornou resposta.' }, 502);
     }
 

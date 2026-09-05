@@ -69,6 +69,61 @@ Deno.test("normalizeZapiWebhook maps connected", () => {
   }
 });
 
+Deno.test("normalizeZapiWebhook MessageStatusCallback RECEIVED → delivery", () => {
+  const norm = normalizeZapiWebhook({
+    type: "MessageStatusCallback",
+    status: "RECEIVED",
+    ids: ["WAMID_ABC"],
+    phone: "5511999999999",
+  }, "INST");
+  assertEquals(norm.kind, "delivery");
+  if (norm.kind === "delivery") {
+    assertEquals(norm.outcome, "delivered");
+    assertEquals(norm.messageIds, ["WAMID_ABC"]);
+    assertEquals(norm.statusRaw, "RECEIVED");
+  }
+});
+
+Deno.test("normalizeZapiWebhook MessageStatusCallback READ → ignored (não double-count)", () => {
+  const norm = normalizeZapiWebhook({
+    type: "MessageStatusCallback",
+    status: "READ",
+    ids: ["WAMID_ABC"],
+  }, "INST");
+  assertEquals(norm.kind, "delivery");
+  if (norm.kind === "delivery") {
+    assertEquals(norm.outcome, "ignored");
+  }
+});
+
+Deno.test("normalizeZapiWebhook DeliveryCallback ok → ignored (não é entrega no aparelho)", () => {
+  // CONTROLE NEGATIVO: contar DeliveryCallback como delivered mascara queima.
+  const norm = normalizeZapiWebhook({
+    type: "DeliveryCallback",
+    messageId: "MID1",
+    zaapId: "ZAAP1",
+    phone: "5511999999999",
+  }, "INST");
+  assertEquals(norm.kind, "delivery");
+  if (norm.kind === "delivery") {
+    assertEquals(norm.outcome, "ignored");
+    assertEquals(norm.messageIds.includes("MID1"), true);
+  }
+});
+
+Deno.test("normalizeZapiWebhook DeliveryCallback error → failed", () => {
+  const norm = normalizeZapiWebhook({
+    type: "DeliveryCallback",
+    messageId: "MID_FAIL",
+    error: "Phone number does not exist",
+  }, "INST");
+  assertEquals(norm.kind, "delivery");
+  if (norm.kind === "delivery") {
+    assertEquals(norm.outcome, "failed");
+    assertEquals(norm.messageIds, ["MID_FAIL"]);
+  }
+});
+
 Deno.test("extractZapiQr accepts value base64", () => {
   const qr = extractZapiQr({ value: "data:image/png;base64,aaaa" + "b".repeat(40) });
   assertExists(qr);

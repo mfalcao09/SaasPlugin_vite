@@ -234,13 +234,22 @@ export function PlatformCrmInbox({
           sector_color: (row as any).sector_id
             ? sectorById.get((row as any).sector_id)?.color ?? undefined
             : undefined,
-          current_agent_id: row.current_agent_id || null,
+          current_agent_id: row.current_agent_id
+            || (typeof row.last_message_metadata === "object" && row.last_message_metadata && (row.last_message_metadata as Record<string, unknown>).agent_id
+              ? String((row.last_message_metadata as Record<string, unknown>).agent_id)
+              : null),
           // Sem fallback inventado: agente desconhecido vira null e a UI omite o
           // badge. Mentir um nome é pior que não mostrar — foi o que escondeu
           // por meses que a Mavi atendia e a tela dizia Duda.
-          current_agent_name: row.current_agent_id
-            ? agentNameById.get(row.current_agent_id) ?? null
-            : null,
+          // F1 fallback: cold outreach grava agent_id só na mensagem quando a
+          // conversa foi reutilizada sem pin — usa last_message_metadata.
+          current_agent_name: (() => {
+            const agentId = row.current_agent_id
+              || (typeof row.last_message_metadata === "object" && row.last_message_metadata
+                ? (row.last_message_metadata as Record<string, unknown>).agent_id as string | undefined
+                : undefined);
+            return agentId ? agentNameById.get(agentId) ?? null : null;
+          })(),
           current_agent_avatar: null,
           // A1.3/FRENTE 3: ids de conexão materializados pelo backend na
           // conversa (canal por conversa). Leitura defensiva — o tipo TS do

@@ -576,8 +576,8 @@ function triggerSalesBrain(conversationId: string, extra?: Record<string, unknow
     const call = fetch(`${supabaseUrl}/functions/v1/platform-sales-brain`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-brain-secret': brainSecret },
-      // `extra` (ONDA-2b): campos adicionais repassados ao brain — hoje ele lê só
-      // conversation_id e IGNORA o resto (aditivo/forward-compatible por contrato).
+      // `extra` (ONDA-2b + F5): repassado ao brain. `reactivation.{objective,extra_context}`
+      // entra no system prompt do turno (antes era ignorado).
       body: JSON.stringify({ conversation_id: conversationId, ...(extra ?? {}) }),
     })
       .then(async (r) => {
@@ -1579,8 +1579,8 @@ async function handleTriggerFlow(
  *  - Sem campos novos → comportamento de HOJE, byte a byte: acorda o
  *    platform-sales-brain (fire-and-forget) e devolve {success,triggered,status}.
  *  - mode='conversational' (default) com campos novos → mesmo fluxo do brain; os
- *    extras vão no POST (campo `reactivation`) — o brain atual os ignora
- *    (consumo = extensão futura DELE; esta edge não toca o brain nesta onda).
+ *    extras vão no POST (campo `reactivation`) — o brain injeta objective +
+ *    extra_context no system prompt do turno (F5 retomada).
  *  - mode='direct' → UMA mensagem gerada aqui (persona_prompt de
  *    platform_crm_agent_configs quando agent_id vier) e enviada como bot pelo
  *    caminho único do send. Ato explícito do operador: NÃO passa pelos gates de

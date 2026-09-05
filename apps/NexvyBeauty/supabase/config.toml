@@ -265,6 +265,12 @@ verify_jwt = false
 [functions.affiliate-apply]
 verify_jwt = false
 
+# Loop da vendedora Camila (harness próprio). Cron/service-role.
+# Auth real = Bearer service_role OU x-brain-secret. Flag CAMILA_CONDUCTOR_ENABLED
+# default OFF → {skipped:flag_off}. Dry-run default ON.
+[functions.platform-camila-conductor]
+verify_jwt = false
+
 # Dono de salão cliente gera link (JWT do tenant).
 [functions.affiliate-salon]
 verify_jwt = true

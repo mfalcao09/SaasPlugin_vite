@@ -180,6 +180,18 @@ Deno.test("não-entrega: CONTROLE NEGATIVO — delivered undefined NÃO acusa", 
   assertEquals(v.reason, null);
 });
 
+Deno.test("não-entrega: CONTROLE NEGATIVO — Z-API DeliveryCallback NÃO equivale a delivered=0 falso", () => {
+  // Fonte errada é pior que fonte ausente. Se o webhook contar DeliveryCallback
+  // (aceitação no servidor) como não-entrega e gravar delivered=0 com amostra
+  // grande, o kill-switch pausa campanha saudável. Com delivered undefined o
+  // ramo dorme; com delivered real (MessageStatus RECEIVED) a taxa faz sentido.
+  // Este teste trava o contrato do killSwitch; o normalize cobre o mapeamento.
+  const v = killSwitch({ ...BASE, sent: 100 }, DEFAULT_KILLSWITCH);
+  assertEquals(v.tripped, false, "sem delivered → não acusa (contrato anti zero-falso)");
+  const saudavel = killSwitch({ ...BASE, sent: 100, delivered: 95 }, DEFAULT_KILLSWITCH);
+  assertEquals(saudavel.tripped, false, "delivered real alto → não pausa");
+});
+
 Deno.test("não-entrega: CONTROLE NEGATIVO — delivered 0 com amostra PEQUENA não acusa", () => {
   // ACK demora. Tratar "ainda não entregou" como "nunca vai" pausaria a campanha
   // por impaciência, logo no começo, quando ninguém teve tempo de receber.

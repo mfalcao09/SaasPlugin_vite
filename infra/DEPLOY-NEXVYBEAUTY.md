@@ -3,7 +3,22 @@
 > **Fonte única de verdade do deploy do NexvyBeauty no VPS `vps-hostinger` (145.223.29.96).**
 > Última reconciliação: **2026-07-11** (git do VPS regularizado — ver §6).
 > Última correção: **2026-07-19** (domínio fantasma removido do runbook — ver §2.1).
+> Última sanitização: **2026-09-01** — ban explícito a Vercel no contexto de deploy (§0).
 > Par `.md` + `.html` (Seção 4 CLAUDE.md). Editar os dois em sincronia.
+
+---
+
+## 0. Deploy canônico = VPS Hostinger (não Vercel)
+
+**Proibido** tratar Vercel (CLI, MCP, `vercel deploy`, GitHub Deployments da Vercel, `.vercel/`, `vercel.json`) como pipeline de produção deste app.
+
+| Canônico | Fora de escopo |
+|---|---|
+| `ssh vps-hostinger` → `./infra/deploy-vps.sh …` | Vercel CLI / MCP / dashboard |
+| Gate `DEPLOY-VERDE:` em host Traefik | “Deployments” da Vercel no GitHub |
+| Edges: `supabase functions deploy` | Qualquer cutover de volta para Vercel |
+
+Front: container `nexvy-beauty` atrás do Traefik (`gestao.nexvy.tech` / `app.nexvybeauty.com.br`). Sem projeto Vercel ligado a este repo para NexvyBeauty.
 
 ---
 
@@ -119,6 +134,7 @@ O bundle vite (frontend) **não** inclui `supabase/functions/*` nem `supabase/mi
 4. **Branch de trabalho → main via PR (fast-forward).** Não deixar feature branch virar trunk de facto.
 5. **Deploy só é "verde" com `DEPLOY-VERDE:`** — o gate anti-phantom é a prova; sem ele, o deploy não terminou.
 6. **O alvo do gate tem que ser um domínio que o Traefik realmente serve** — conferir em `/opt/stacks/traefik/dynamic/` antes. Domínio errado = `GATE FALHOU ... (HTTP 000000)` com o deploy intacto (§2.1). Antes de fazer rollback por gate vermelho, confirme se o container está healthy e se os domínios reais respondem 200.
+7. **Nunca Vercel para este app** — ver §0. Agente que “confere Vercel whoami / vercel ls / MCP Vercel” está fora do caminho canônico.
 
 ---
 

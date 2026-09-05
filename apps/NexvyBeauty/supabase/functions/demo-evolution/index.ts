@@ -114,13 +114,14 @@ function shapeOf(v: any, depth = 0): any {
   for (const k of Object.keys(v).slice(0, 20)) out[k] = shapeOf(v[k], depth + 1);
   return out;
 }
-// geo por CDN (sem outbound: a borda já resolveu; IP nunca sai — B1-compliant)
+// geo por CDN Cloudflare / Traefik (sem outbound: a borda já resolveu; IP nunca sai — B1-compliant).
+// Sem fallback Vercel: produção NexvyBeauty não passa por Vercel.
 function cdnGeo(req: Request) {
   const h = (n: string) => (req.headers.get(n) || "").trim() || null;
   return {
-    city: h("cf-ipcity") || h("x-vercel-ip-city") || null,
-    region: h("cf-region") || h("cf-region-code") || h("x-vercel-ip-country-region") || null,
-    country: h("cf-ipcountry") || h("x-vercel-ip-country") || null,
+    city: h("cf-ipcity") || null,
+    region: h("cf-region") || h("cf-region-code") || null,
+    country: h("cf-ipcountry") || null,
   };
 }
 function clientIp(req: Request): string | null {
