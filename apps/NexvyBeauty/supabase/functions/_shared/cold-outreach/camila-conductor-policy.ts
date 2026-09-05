@@ -13,6 +13,7 @@ import {
 } from "./conversation-trail.ts";
 import { normalize } from "./opt-out.ts";
 import { isAutoReply } from "./auto-reply.ts";
+import { isNationalHoliday } from "./br-national-holidays.ts";
 
 /**
  * Auto-reply de loja (away) — NÃO usar isAutoReply cru: o padrão pix+agendamento
@@ -76,6 +77,11 @@ export interface CamilaWakeInput {
    * null/undefined → não sabemos; usa só a janela da Camila.
    */
   leadAcceptingOutbound?: boolean | null;
+  /**
+   * Datas YYYY-MM-DD (fuso America/Sao_Paulo) importadas da BrasilAPI /
+   * `platform_crm_business_holidays`. Vazio/ausente = fail-open (sem calendário).
+   */
+  holidayDates?: ReadonlySet<string> | null;
 }
 
 export interface CamilaWakeDecision {
@@ -143,6 +149,9 @@ export function decideCamilaWake(input: CamilaWakeInput): CamilaWakeDecision {
   }
   if (wakesHour >= MAX_WAKES_PER_HOUR) {
     return { kind: "noop", due: false, reason: "cap_hour", nextAction: null };
+  }
+  if (isNationalHoliday(input.now, input.holidayDates)) {
+    return { kind: "noop", due: false, reason: "national_holiday", nextAction: null };
   }
 
   const chrono = input.messages.slice().sort((a, b) => {

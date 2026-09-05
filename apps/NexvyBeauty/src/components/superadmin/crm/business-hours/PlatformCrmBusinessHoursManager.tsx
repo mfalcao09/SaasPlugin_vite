@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Clock, CalendarOff, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Trash2, Clock, CalendarOff, CheckCircle2, XCircle, Download } from 'lucide-react';
 import {
   usePlatformCrmBusinessHours,
   useUpsertPlatformCrmBusinessHours,
   usePlatformCrmBusinessHolidays,
   useAddPlatformCrmHoliday,
   useDeletePlatformCrmHoliday,
+  useImportBrasilApiNationalHolidays,
   isWithinPlatformCrmBusinessHoursLocal,
   DAY_LABELS,
   DAY_ORDER,
@@ -56,6 +57,7 @@ export function PlatformCrmBusinessHoursManager() {
   const upsert = useUpsertPlatformCrmBusinessHours();
   const addHoliday = useAddPlatformCrmHoliday();
   const delHoliday = useDeletePlatformCrmHoliday();
+  const importNational = useImportBrasilApiNationalHolidays();
 
   const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
   const [timezone, setTimezone] = useState('America/Sao_Paulo');
@@ -219,9 +221,21 @@ export function PlatformCrmBusinessHoursManager() {
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarOff className="h-4 w-4" /> Feriados e datas bloqueadas
           </CardTitle>
-          <CardDescription>Datas em que a empresa estará fechada mesmo sendo dia útil.</CardDescription>
+          <CardDescription>
+            Datas em que a empresa estará fechada mesmo sendo dia útil. Fonte nacional:
+            BrasilAPI (legislação federal; não há REST de feriados em gov.br).
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => importNational.mutate()}
+            disabled={importNational.isPending}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {importNational.isPending ? 'Importando…' : 'Importar feriados nacionais'}
+          </Button>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input type="date" value={newHolidayDate} onChange={(e) => setNewHolidayDate(e.target.value)} className="sm:w-44" />
             <Input value={newHolidayDesc} onChange={(e) => setNewHolidayDesc(e.target.value)} placeholder="Descrição (opcional, ex.: Natal)" className="flex-1" />

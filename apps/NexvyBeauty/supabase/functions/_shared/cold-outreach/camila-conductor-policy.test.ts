@@ -296,12 +296,50 @@ Deno.test("domingo 15h BRT → dívida fora (janela ativa é seg–sáb, não do
   assertEquals(d.reason, "outside_active_debt_window");
 });
 
-Deno.test("feriado 7/set/2026 11h BRT (Independência, segunda) → cold AINDA due (sem calendário de feriado)", () => {
+Deno.test("feriado 7/set/2026 11h BRT sem calendário → cold AINDA due (fail-open)", () => {
   const independia1100 = new Date("2026-09-07T14:00:00.000Z");
   const d = decide({
     conversationId: EXPERT_ID,
     messages: expertMsgs(),
     now: independia1100,
+  });
+  assertEquals(d.kind, "cold_resume");
+  assertEquals(d.due, true);
+});
+
+Deno.test("feriado 7/set/2026 11h BRT com calendário BrasilAPI → cold national_holiday", () => {
+  const independia1100 = new Date("2026-09-07T14:00:00.000Z");
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: independia1100,
+    holidayDates: new Set(["2026-09-07"]),
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.due, false);
+  assertEquals(d.reason, "national_holiday");
+});
+
+Deno.test("feriado 7/set/2026 11h BRT com calendário → dívida também national_holiday", () => {
+  const independia1100 = new Date("2026-09-07T14:00:00.000Z");
+  const d = decide({
+    conversationId: DEISE_ID,
+    messages: deiseMsgs(),
+    now: independia1100,
+    holidayDates: new Set(["2026-09-07"]),
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.due, false);
+  assertEquals(d.reason, "national_holiday");
+});
+
+Deno.test("8/set/2026 11h BRT (terça após Independência) com calendário → cold due", () => {
+  const tue1100 = new Date("2026-09-08T14:00:00.000Z");
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: tue1100,
+    holidayDates: new Set(["2026-09-07"]),
   });
   assertEquals(d.kind, "cold_resume");
   assertEquals(d.due, true);

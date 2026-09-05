@@ -157,6 +157,54 @@ export function useDeletePlatformCrmHoliday() {
   });
 }
 
+const BRASIL_API_HOLIDAYS = 'https://brasilapi.com.br/api/feriados/v1';
+
+/** Importa feriados nacionais (ano BRT atual + seguinte) da BrasilAPI. */
+export function useImportBrasilApiNationalHolidays() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const yearStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+      }).format(new Date());
+      const year = Number(yearStr);
+      const years = [year, year + 1];
+      const rows: { date: string; description: string }[] = [];
+      for (const y of years) {
+        const res = await fetch(`${BRASIL_API_HOLIDAYS}/${y}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error(`BrasilAPI ${y}: HTTP ${res.status}`);
+        const payload: unknown = await res.json();
+        if (!Array.isArray(payload)) throw new Error('BrasilAPI: resposta inválida');
+        for (const row of payload) {
+          if (!row || typeof row !== 'object') continue;
+          const rec = row as { date?: unknown; name?: unknown };
+          const date = String(rec.date ?? '');
+          const name = String(rec.name ?? '').trim();
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name) continue;
+          rows.push({ date, description: `${name} (nacional/BrasilAPI)` });
+        }
+      }
+      if (!rows.length) throw new Error('BrasilAPI: nenhum feriado retornado');
+      const { error } = await supabase
+        .from('platform_crm_business_holidays')
+        .upsert(rows, { onConflict: 'date' });
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (n) => {
+      queryClient.invalidateQueries({ queryKey: [PLATFORM_CRM_KEY, 'business-holidays'] });
+      toast.success(`${n} feriados nacionais importados (BrasilAPI)`);
+    },
+    onError: (error: unknown) => {
+      console.error('Error importing BrasilAPI holidays:', error);
+      toast.error('Erro ao importar feriados nacionais');
+    },
+  });
+}
+
 /** Avaliação local de "está aberto agora?" — idêntica ao original, sem I/O. */
 export function isWithinPlatformCrmBusinessHoursLocal(
   bh: PlatformCrmBusinessHours | null,
