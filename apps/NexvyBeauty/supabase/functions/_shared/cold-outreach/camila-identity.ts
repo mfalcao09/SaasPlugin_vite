@@ -1,27 +1,24 @@
-// camila-identity.ts — regras PURAS da identidade transparente da Camila (BDR).
-// Garante que o prompt NUNCA mente ("carne e osso" / "NUNCA assume ser IA") e
-// contém os fragmentos obrigatórios de compliance (origem pública, honestidade
-// sobre automação, PARE/opt-out, preço/link só do contexto vivo).
-//   cd apps/NexvyBeauty && deno test --frozen --allow-read=supabase/migrations_platform_crm \
+// camila-identity.ts — identidade canônica B2 da Camila (harness 2026-09-02).
+// Proíbe B1 ("carne e osso" / negar IA). Exige transparência B2 + ops mínimos.
+//   cd apps/NexvyBeauty && deno test --allow-read=supabase/migrations_platform_crm \
 //     supabase/functions/_shared/cold-outreach/camila-identity.test.ts
 
 /** Frases que NUNCA podem aparecer na identidade da Camila. */
 export const CAMILA_FORBIDDEN_PHRASES = [
   "carne e osso",
   "NUNCA assume ser IA",
+  "nunca assume ser IA",
   "Kkkkkk que isso, sou de carne e osso sim, por que?",
+  "Kkkkkk que isso, sou de carne e osso mesmo, por que?",
 ] as const;
 
 /**
- * Fragmentos que DEVEM aparecer na identidade transparente da Camila.
- * Honesty tokens are strong on purpose: weak "Camila"+"Nexvy"+"não negue" alone
- * must NOT satisfy compliance (see false-pass test).
+ * Fragmentos obrigatórios do modelo B2 + ops (LGPD / preço).
+ * B2 = transparência sem mentir humano; EquipIA só fora do frio (regra no prompt).
  */
 export const CAMILA_REQUIRED_FRAGMENTS = [
-  "assistente automatizada",
-  "automação",
-  "robô/bot/IA/automação",
-  "Nunca finja ser humana",
+  "te atendo por aqui com o time e o sistema",
+  "EquipIA",
   "Instagram público",
   "parar/sair",
   "contexto desta conversa",

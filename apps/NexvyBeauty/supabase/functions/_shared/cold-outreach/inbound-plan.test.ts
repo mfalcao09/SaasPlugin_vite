@@ -18,6 +18,18 @@ Deno.test("opt-out: grava supressão, para cadência, silencia conversa, NÃO fa
   assertEquals(p.clearFollowups, true);
   assertEquals(p.handoff, false);
   assertEquals(p.silenceConversation, true);
+  assertEquals(p.suppressBrain, true);
+  assertEquals(p.abortApresentar, true);
+});
+
+Deno.test("auto-resposta: não marca replied, suprime brain, bump apresentar", () => {
+  const long = "Agradecemos seu contato. Fora do horário de atendimento. Atendemos de segunda a sexta das 8h às 18h. Responderemos assim que possível.";
+  const p = planInbound(long, rows, ctx);
+  assertEquals(p.intent, "auto_reply");
+  assertEquals(p.queueStatus, null);
+  assertEquals(p.suppressBrain, true);
+  assertEquals(p.bumpApresentar, true);
+  assertEquals(p.abortApresentar, false);
 });
 
 Deno.test("want: handoff pra Duda, para cadência, sem opt-out", () => {
@@ -27,6 +39,8 @@ Deno.test("want: handoff pra Duda, para cadência, sem opt-out", () => {
   assertEquals(p.queueStatus, "handed_off");
   assertEquals(p.optOut, null);
   assertEquals(p.clearFollowups, true);
+  assertEquals(p.suppressBrain, false);
+  assertEquals(p.abortApresentar, true);
 });
 
 Deno.test("want SEM conversa: cai em 'replied' (não dá pra fazer handoff sem thread)", () => {

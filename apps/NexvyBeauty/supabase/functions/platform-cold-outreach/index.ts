@@ -34,9 +34,21 @@ import {
   dispatchTier,
   TIER_ORDER,
 } from "../_shared/cold-outreach/segment-gate.ts";
-import { assignVariant, type Channel, CAMILA_PROSPECTOR_AGENT_ID, renderOpeningFromDb, renderFollowup, type ScriptTokens } from "../_shared/cold-outreach/script.ts";
+import { assignVariant, type Channel, CAMILA_PROSPECTOR_AGENT_ID, renderOpeningFromDb, renderFollowup, type ScriptTokens, extractApresentarBubbles, fillAgentTemplate, fetchAgentAdditionalPrompt } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
 import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
+import {
+  advanceApresentarState,
+  buildApresentarState,
+  bumpApresentarAfterAutoReply,
+  abortApresentarForHuman,
+  isApresentarDue,
+  nextBubbleText,
+  parseApresentarState,
+  type ApresentarSequenceState,
+} from "../_shared/cold-outreach/apresentar-sequence.ts";
+import { validateRealSend, validateWindowForRealSend } from "../_shared/cold-outreach/go-live-gates.ts";
+import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
   WA_QR_CHANNEL_CANONICAL,
   WA_QR_CHANNELS,
@@ -176,11 +188,127 @@ async function actionEnqueue(sb: SupabaseClient, campaignId: string, limit: numb
   return json({ ok: true, enqueued, byTier, considered: (rawLeads ?? []).length, eligible: eligible.length });
 }
 
+// ── Sequência APRESENTAR (bolhas 2–4) ────────────────────────────────────────
+async function loadConversationMeta(sb: SupabaseClient, conversationId: string) {
+  const { data } = await sb.from("platform_crm_conversations")
+    .select("id, metadata, visitor_phone, wa_qr_instance_id, product_id, current_agent_id, status")
+    .eq("id", conversationId).maybeSingle();
+  return data as Record<string, unknown> | null;
+}
+
+async function saveApresentarState(sb: SupabaseClient, conversationId: string, meta: Record<string, unknown>, state: ApresentarSequenceState | null) {
+  const next = { ...meta };
+  if (state && state.status === "in_progress") {
+    next.apresentar_sequence = state;
+  } else {
+    delete next.apresentar_sequence;
+  }
+  await sb.from("platform_crm_conversations").update({ metadata: next, updated_at: new Date().toISOString() }).eq("id", conversationId);
+}
+
+async function startApresentarSequence(
+  sb: SupabaseClient,
+  o: { conversationId: string; campaignId: string; queueId: string; agentId: string; tokens: ScriptTokens },
+) {
+  try {
+    const prompt = await fetchAgentAdditionalPrompt(sb, o.agentId);
+    const bubbles = extractApresentarBubbles(prompt);
+    const bubbles234 = bubbles.slice(1, 4).map((b) => fillAgentTemplate(b, o.tokens));
+    if (bubbles234.length === 0) return;
+    const conv = await loadConversationMeta(sb, o.conversationId);
+    if (!conv) return;
+    const meta = (conv.metadata && typeof conv.metadata === "object") ? conv.metadata as Record<string, unknown> : {};
+    const state = buildApresentarState({
+      campaignId: o.campaignId,
+      queueId: o.queueId,
+      agentId: o.agentId,
+      bubbles234,
+    });
+    await saveApresentarState(sb, o.conversationId, meta, state);
+  } catch (e) {
+    console.error("[platform-cold-outreach] startApresentarSequence falhou:", String(e).slice(0, 200));
+  }
+}
+
+async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled: boolean) {
+  const { data: rows } = await sb
+    .from("platform_crm_conversations")
+    .select("id, metadata, visitor_phone, wa_qr_instance_id, product_id, current_agent_id")
+    .filter("metadata->apresentar_sequence->>status", "eq", "in_progress")
+    .limit(20);
+  const results: any[] = [];
+  for (const conv of rows ?? []) {
+    const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+    const state = parseApresentarState(meta);
+    if (!state || !isApresentarDue(state, now)) continue;
+    const text = nextBubbleText(state);
+    if (!text) continue;
+    const phone = String(conv.visitor_phone ?? "").replace(/\D/g, "");
+    const instanceId = conv.wa_qr_instance_id as string | null;
+    const productId = conv.product_id as string;
+    if (!phone || !instanceId || !productId) continue;
+    const sendRes = await deliver(sb, {
+      channel: "whatsapp",
+      dryRun: !envEnabled,
+      productId,
+      instanceId,
+      to: phone,
+      handle: null,
+      text,
+    });
+    if (!sendRes.ok) {
+      results.push({ conversation_id: conv.id, action: "apresentar_failed", error: sendRes.error });
+      continue;
+    }
+    const newState = advanceApresentarState(state, now);
+    await saveApresentarState(sb, String(conv.id), meta, newState.status === "in_progress" ? newState : null);
+    await sb.from("platform_crm_messages").insert({
+      conversation_id: conv.id,
+      direction: "outbound",
+      sender_type: "bot",
+      content: text,
+      content_type: "text",
+      message_type: "text",
+      metadata: {
+        channel: WA_QR_CHANNEL_CANONICAL,
+        connection_id: instanceId,
+        agent_id: state.agent_id,
+        delivery_status: "sent",
+        origem: "cold_outreach_apresentar",
+        campaign_id: state.campaign_id,
+        apresentar_step: newState.last_sent,
+        wamid: sendRes.wamid ?? null,
+      },
+    });
+    results.push({ conversation_id: conv.id, action: "apresentar_sent", step: newState.last_sent, done: newState.status === "done" });
+  }
+  return results;
+}
+
+async function updateApresentarOnInbound(sb: SupabaseClient, conversationId: string, plan: ReturnType<typeof planInbound>) {
+  const conv = await loadConversationMeta(sb, conversationId);
+  if (!conv) return;
+  const meta = (conv.metadata && typeof conv.metadata === "object") ? conv.metadata as Record<string, unknown> : {};
+  const state = parseApresentarState(meta);
+  if (!state) return;
+  const now = new Date();
+  if (plan.abortApresentar) {
+    abortApresentarForHuman(state, now);
+    await saveApresentarState(sb, conversationId, meta, null);
+    return;
+  }
+  if (plan.bumpApresentar) {
+    const next = bumpApresentarAfterAutoReply(state, now);
+    await saveApresentarState(sb, conversationId, meta, next);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TICK — anti-ban gate + envio (dry-run OU real) + follow-ups
 // ═══════════════════════════════════════════════════════════════════════════
 async function actionTick(sb: SupabaseClient, onlyCampaign: string | null, envEnabled: boolean) {
   const now = new Date();
+  const apresentarResults = await processApresentarSteps(sb, now, envEnabled);
   // Traz TODOS os estados não-terminais — inclusive `draft` e `paused`.
   //
   // Antes filtrava `in (active, warming)`, e era esse filtro que esvaziava o
@@ -201,7 +329,7 @@ async function actionTick(sb: SupabaseClient, onlyCampaign: string | null, envEn
   for (const c of campaigns ?? []) {
     results.push(await tickCampaign(sb, c, now, envEnabled));
   }
-  return json({ ok: true, now: now.toISOString(), campaigns: results });
+  return json({ ok: true, now: now.toISOString(), apresentar: apresentarResults, campaigns: results });
 }
 
 /**
@@ -309,6 +437,24 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
         .eq("id", c.id);
     }
     return { campaign: c.id, action: "skip", reason: `lifecycle:${lifecycle.motivo}`, transicao: lifecycle.transicao };
+  }
+
+  // F4 — go-live gates: impede envio real acidental em campanha piloto / janela 24/7.
+  const campaignWantsReal = c.dry_run === false;
+  if (campaignWantsReal) {
+    const realGate = validateRealSend({
+      campaignName: String(c.name ?? ""),
+      dryRun: dryRun,
+      envEnabled,
+      allowRealSendEnv: Deno.env.get("ALLOW_REAL_SEND"),
+    });
+    if (!realGate.allowed) {
+      return { campaign: c.id, action: "skip", reason: `go_live:${realGate.reason}` };
+    }
+    const winGate = validateWindowForRealSend(windowCfg, Deno.env.get("ALLOW_PERMISSIVE_WINDOW"));
+    if (!winGate.allowed) {
+      return { campaign: c.id, action: "skip", reason: `go_live:${winGate.reason}` };
+    }
   }
 
   const { health, counters, leituraFalhou } = await loadHealthAndCounters(sb, c.id, instanceId, day);
@@ -505,6 +651,15 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     if (!dryRun && due.extracted_lead_id) {
       await sb.from("platform_crm_extracted_leads").update({ finalidade: "prospeccao_comercial_b2b" }).eq("id", due.extracted_lead_id);
     }
+    if (!dryRun && channel === "whatsapp" && inboxConversationId) {
+      await startApresentarSequence(sb, {
+        conversationId: inboxConversationId,
+        campaignId: c.id,
+        queueId: due.id,
+        agentId,
+        tokens,
+      });
+    }
     // Jitter: espaça a PRÓXIMA abertura da fila.
     await scheduleNext(sb, c.id, now, jitterMs(jitterCfg));
     return { campaign: c.id, action: dryRun ? "sent_dry" : "sent", lead: due.id, remaining: gate.remaining - 1, followups: followupResult };
@@ -673,7 +828,9 @@ async function persistOpeningInInbox(
     const visitorIds = waQrVisitorIdsForLookup(digits);
     const phonePlus = `+${digits}`;
 
-    const { data: found } = await sb
+    const phoneVariants = phoneVariantsWithPlusBR(digits);
+    let found: { id: string; status: string } | null = null;
+    const { data: byVisitor } = await sb
       .from("platform_crm_conversations")
       .select("id, status")
       .in("visitor_id", visitorIds)
@@ -682,26 +839,30 @@ async function persistOpeningInInbox(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    found = byVisitor as { id: string; status: string } | null;
+    if (!found?.id && phoneVariants.length > 0) {
+      const { data: byPhone } = await sb
+        .from("platform_crm_conversations")
+        .select("id, status")
+        .in("visitor_phone", phoneVariants)
+        .in("channel", [...WA_QR_CHANNELS])
+        .eq("wa_qr_instance_id", o.instanceId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      found = byPhone as { id: string; status: string } | null;
+    }
 
     let conversationId: string | null = found?.id ?? null;
 
     if (conversationId) {
-      // Fechada volta a bot_active — mesma régua do webhook: a abertura reativa o fio.
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (found?.status === "closed") {
-        await sb.from("platform_crm_conversations")
-          // O pin vai TAMBÉM no caminho de reuso. Sem isto o fix seria meia guarda:
-          // conversa que já existe (criada antes deste commit, ou por outro fluxo)
-          // continuaria com current_agent_id NULL e cairia na Duda — e é justamente
-          // a conversa reutilizada que tem histórico, ou seja, onde a troca de
-          // persona no meio do caminho é mais visível pra lead.
-          .update({
-            status: "bot_active",
-            needs_human: false,
-            current_agent_id: o.agentId ?? null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", conversationId);
+        patch.status = "bot_active";
+        patch.needs_human = false;
       }
+      if (o.agentId) patch.current_agent_id = o.agentId;
+      await sb.from("platform_crm_conversations").update(patch).eq("id", conversationId);
     } else {
       const { data: created, error } = await sb
         .from("platform_crm_conversations")
@@ -926,12 +1087,15 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
   }
   // 4) silencia o brain nesta conversa (opt-out)
   if (plan.silenceConversation && conversation_id) await silenceConversation(sb, conversation_id);
+  if (conversation_id && (plan.bumpApresentar || plan.abortApresentar)) {
+    await updateApresentarOnInbound(sb, conversation_id, plan);
+  }
   // 5) instrumentação
   await logJourney(sb, productId, rows?.[0]?.lead_id ?? null, plan.journey.type, plan.journey.category, "whatsapp", plan.journey.title, {
     matched: plan.journey.matched, intent: plan.intent, buy_intent: plan.handoff,
   });
 
-  return json({ ok: true, intent: plan.intent, affected: rows?.length ?? 0 });
+  return json({ ok: true, intent: plan.intent, affected: rows?.length ?? 0, suppress_brain: plan.suppressBrain });
 }
 
 /** Silencia o brain nesta conversa sem editar o brain: 'closed' (≠ 'bot_active').

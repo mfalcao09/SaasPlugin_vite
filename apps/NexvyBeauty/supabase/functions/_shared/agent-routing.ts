@@ -29,6 +29,12 @@ export function isSdrAgent(a: Record<string, any> | null): boolean {
   return hay.includes('sdr') || hay.includes('qualifica') || hay.includes('duda');
 }
 
+/** Duda (SDR) ou Camila (prospector): fecho + qualificação B2B no brain.
+ *  NÃO implica régua de inatividade (essa continua só isSdrAgent). */
+export function sellsB2bWithCheckout(a: Record<string, any> | null): boolean {
+  return isSdrAgent(a) || isProspectorAgent(a);
+}
+
 /** É o agente closer (Bia) — recebe o dossiê e FECHA a venda? (a Bia JÁ era 'closer'). */
 export function isCloserAgent(a: Record<string, any> | null): boolean {
   if (!a) return false;

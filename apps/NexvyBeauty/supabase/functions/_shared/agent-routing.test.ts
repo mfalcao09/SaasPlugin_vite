@@ -15,6 +15,7 @@ import {
   isCloserAgent,
   isRetentionAgent,
   isProspectorAgent,
+  sellsB2bWithCheckout,
   pickSdrPersona,
   pickPersonaForConversation,
   resolvePersonaForConversation,
@@ -48,6 +49,14 @@ Deno.test('isProspectorAgent — Camila por tipo; NÃO é SDR', () => {
   eq(pickSdrPersona([camila, bia, lia]), null, 'só Camila+closer → null (não abre como SDR)');
   eq(pickPersonaForConversation([dudaSdr, camila, bia], 'camila')?.id, 'camila', 'pin Camila respeitado');
   eq(pickPersonaForConversation([dudaSdr, camila, bia], null)?.id, 'duda', 'sem pin → Duda, não Camila');
+});
+
+Deno.test('sellsB2bWithCheckout — Duda e Camila fecham; Bia/Nina não via este gate', () => {
+  eq(sellsB2bWithCheckout(camila), true, 'Camila vende/fecha no brain');
+  eq(sellsB2bWithCheckout(dudaSdr), true, 'Duda vende/fecha');
+  eq(sellsB2bWithCheckout(bia), false, 'Bia não usa este gate (é closer por outro ramo)');
+  eq(sellsB2bWithCheckout(ninaRet), false, 'Nina não vende');
+  eq(isSdrAgent(camila), false, 'Camila segue fora da régua de inatividade (não-SDR)');
 });
 
 Deno.test('isSdrAgent — só a Duda (por nome pré-backfill E por tipo pós)', () => {
