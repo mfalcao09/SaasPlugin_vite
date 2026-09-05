@@ -15,6 +15,7 @@
 // │   cooldown 2h via metadata.camila_last_wake_at (lido de verdade)          │
 // │   allowlist fixa de 5 (INCIDENT_ALLOWLIST)                                │
 // │   auto-reply inbound → noop (não responde away-message)                   │
+// │   lead_closed (horário WA da loja) → noop no cold/conduct; dívida fica    │
 // └───────────────────────────────────────────────────────────────────────────┘
 //
 // Auth: service-role (bearer/apikey) OU x-brain-secret — igual inactivity-sweeper.
@@ -28,6 +29,18 @@ import {
   MAX_WAKES_PER_HOUR,
 } from '../_shared/cold-outreach/camila-conductor-policy.ts';
 import type { TrailMessage } from '../_shared/cold-outreach/conversation-trail.ts';
+import {
+  asWaLeadProfile,
+  formatWaLeadBrainContext,
+  isLeadAcceptingOutbound,
+  normalizeWaLeadProfile,
+  type WaLeadProfile,
+} from '../_shared/cold-outreach/wa-lead-profile.ts';
+import { zapiGetBusinessProfile, zapiGetChat } from '../_shared/zapi-client.ts';
+import {
+  loadPlatformQrProviderConfig,
+  zapiCredsFromInstance,
+} from '../_shared/platform-qr-provider.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,18 +79,46 @@ function parseWakeAt(meta: Record<string, unknown> | null | undefined): number |
   return Number.isFinite(t) ? t : null;
 }
 
-async function invokeBrain(conversationId: string): Promise<{ ok: boolean; body: string }> {
+const FETCH_RETRY_MS = 30 * 60 * 1000;
+
+function digitsOf(raw: unknown): string {
+  return String(raw ?? '').split('@')[0].replace(/\D/g, '');
+}
+
+function shouldFetchWaProfile(meta: Record<string, unknown>): boolean {
+  if (asWaLeadProfile(meta.wa_profile)) return false;
+  const err = meta.wa_profile_fetch_error;
+  if (err && typeof err === 'object' && !Array.isArray(err)) {
+    const at = (err as Record<string, unknown>).at;
+    if (typeof at === 'string') {
+      const t = Date.parse(at);
+      if (Number.isFinite(t) && Date.now() - t < FETCH_RETRY_MS) return false;
+    }
+  }
+  return true;
+}
+
+async function invokeBrain(
+  conversationId: string,
+  extraContext = '',
+): Promise<{ ok: boolean; body: string }> {
   const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/platform-sales-brain`;
   const brainSecret = Deno.env.get('BRAIN_INTERNAL_SECRET') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (brainSecret) headers['x-brain-secret'] = brainSecret;
   else headers['Authorization'] = `Bearer ${serviceKey}`;
+  const payload: Record<string, unknown> = {
+    conversation_id: conversationId,
+    conductor_wake: true,
+  };
+  const ficha = extraContext.trim().slice(0, 4000);
+  if (ficha) payload.extra_context = ficha;
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ conversation_id: conversationId, conductor_wake: true }),
+      body: JSON.stringify(payload),
     });
     const body = await res.text().catch(() => '');
     return { ok: res.ok, body: body.slice(0, 300) };
@@ -114,23 +155,79 @@ Deno.serve(async (req) => {
   const woken: string[] = [];
   const skippedCap: string[] = [];
   const errors: string[] = [];
+  const enriched: string[] = [];
 
-  // Pré-carrega metadata (cooldown) das 5 — 1 query.
   const { data: convRows } = await supabase
     .from('platform_crm_conversations')
-    .select('id, metadata')
+    .select('id, metadata, visitor_phone, visitor_whatsapp, visitor_name, wa_qr_instance_id')
     .in('id', allowlist);
   const metaById = new Map<string, Record<string, unknown>>();
+  const convById = new Map<string, Record<string, unknown>>();
   const wakeTimes: number[] = [];
   for (const row of convRows ?? []) {
-    const meta = (row.metadata && typeof row.metadata === 'object')
-      ? row.metadata as Record<string, unknown>
+    const rec = row as Record<string, unknown>;
+    const meta = (rec.metadata && typeof rec.metadata === 'object')
+      ? rec.metadata as Record<string, unknown>
       : {};
-    metaById.set(String(row.id), meta);
+    metaById.set(String(rec.id), meta);
+    convById.set(String(rec.id), rec);
     const w = parseWakeAt(meta);
     if (w != null) wakeTimes.push(w);
   }
   const wakesInLastHour = wakeTimes.filter((t) => nowMs - t < 60 * 60 * 1000).length;
+
+  const { data: queueRows } = await supabase
+    .from('platform_crm_cold_outreach_queue')
+    .select('conversation_id, extracted_lead_id')
+    .in('conversation_id', allowlist);
+  const extractedByConv = new Map<string, string>();
+  const extractedIds: string[] = [];
+  for (const q of queueRows ?? []) {
+    const cid = String((q as { conversation_id?: string }).conversation_id ?? '');
+    const eid = (q as { extracted_lead_id?: string | null }).extracted_lead_id;
+    if (cid && eid) {
+      extractedByConv.set(cid, eid);
+      extractedIds.push(eid);
+    }
+  }
+  const igByExtracted = new Map<string, {
+    name: string | null;
+    handle: string | null;
+    primeiro_nome: string | null;
+    telefone: string | null;
+  }>();
+  if (extractedIds.length) {
+    const { data: leadRows } = await supabase
+      .from('platform_crm_extracted_leads')
+      .select('id, name, handle, primeiro_nome, telefone')
+      .in('id', extractedIds);
+    for (const lead of leadRows ?? []) {
+      const r = lead as Record<string, unknown>;
+      igByExtracted.set(String(r.id), {
+        name: typeof r.name === 'string' ? r.name : null,
+        handle: typeof r.handle === 'string' ? r.handle : null,
+        primeiro_nome: typeof r.primeiro_nome === 'string' ? r.primeiro_nome : null,
+        telefone: typeof r.telefone === 'string' ? r.telefone : null,
+      });
+    }
+  }
+
+  const instanceIds = [...new Set(
+    [...convById.values()]
+      .map((c) => typeof c.wa_qr_instance_id === 'string' ? c.wa_qr_instance_id : '')
+      .filter(Boolean),
+  )];
+  const instanceById = new Map<string, Record<string, unknown>>();
+  if (instanceIds.length) {
+    const { data: instRows } = await supabase
+      .from('platform_crm_wa_qr_instances')
+      .select('id, instance_id, instance_token, metadata')
+      .in('id', instanceIds);
+    for (const inst of instRows ?? []) {
+      instanceById.set(String((inst as { id: string }).id), inst as Record<string, unknown>);
+    }
+  }
+  const qrCfg = await loadPlatformQrProviderConfig(supabase);
 
   for (const conversationId of allowlist) {
     try {
@@ -144,14 +241,87 @@ Deno.serve(async (req) => {
       if (error) throw error;
 
       const messages = (msgs ?? []) as TrailMessage[];
-      const meta = metaById.get(conversationId) ?? {};
+      let meta = metaById.get(conversationId) ?? {};
+      const conv = convById.get(conversationId) ?? {};
+      const extractedId = extractedByConv.get(conversationId) ?? null;
+      const ig = extractedId ? igByExtracted.get(extractedId) : null;
+
+      if (qrCfg.zapi && shouldFetchWaProfile(meta)) {
+        const phone = digitsOf(conv.visitor_whatsapp) || digitsOf(conv.visitor_phone) || digitsOf(ig?.telefone);
+        const instRow = typeof conv.wa_qr_instance_id === 'string'
+          ? instanceById.get(conv.wa_qr_instance_id)
+          : undefined;
+        const creds = (instRow ? zapiCredsFromInstance({
+          instance_id: typeof instRow.instance_id === 'string' ? instRow.instance_id : null,
+          instance_token: typeof instRow.instance_token === 'string' ? instRow.instance_token : null,
+          metadata: instRow.metadata,
+        }) : null) ?? qrCfg.bootstrap;
+        if (phone && creds) {
+          try {
+            const [chatRes, bizRes] = await Promise.all([
+              zapiGetChat(qrCfg.zapi, creds, phone),
+              zapiGetBusinessProfile(qrCfg.zapi, creds, phone),
+            ]);
+            const profile: WaLeadProfile = normalizeWaLeadProfile({
+              chat: chatRes.body,
+              business: bizRes.body,
+              igName: ig?.name,
+              handle: ig?.handle,
+              primeiroNome: ig?.primeiro_nome,
+              now,
+            });
+            const nextMeta: Record<string, unknown> = { ...meta, wa_profile: profile };
+            delete nextMeta.wa_profile_fetch_error;
+            await supabase
+              .from('platform_crm_conversations')
+              .update({ metadata: nextMeta })
+              .eq('id', conversationId);
+            if (extractedId) {
+              const { error: leadErr } = await supabase
+                .from('platform_crm_extracted_leads')
+                .update({
+                  wa_profile: profile,
+                  wa_profile_fetched_at: profile.fetched_at,
+                })
+                .eq('id', extractedId);
+              if (leadErr) {
+                console.warn(
+                  '[platform-camila-conductor] extracted_leads.wa_profile skip',
+                  leadErr.message.slice(0, 160),
+                );
+              }
+            }
+            meta = nextMeta;
+            metaById.set(conversationId, nextMeta);
+            enriched.push(conversationId);
+          } catch (fetchErr) {
+            const nextMeta = {
+              ...meta,
+              wa_profile_fetch_error: {
+                at: now.toISOString(),
+                message: String(fetchErr).slice(0, 160),
+              },
+            };
+            await supabase
+              .from('platform_crm_conversations')
+              .update({ metadata: nextMeta })
+              .eq('id', conversationId);
+            meta = nextMeta;
+            metaById.set(conversationId, nextMeta);
+          }
+        }
+      }
+
       const lastWakeAtMs = parseWakeAt(meta);
+      const waProfile = asWaLeadProfile(meta.wa_profile);
+      const leadOpen = isLeadAcceptingOutbound(waProfile, now);
       const decision = decideCamilaWake({
         conversationId,
         messages,
         now,
         lastWakeAtMs,
         wakesInLastHour,
+        leadAcceptingOutbound: leadOpen,
       });
       classified.push({
         conversation_id: conversationId,
@@ -160,6 +330,8 @@ Deno.serve(async (req) => {
         reason: decision.reason,
         nextAction: decision.nextAction,
         last_wake_at: typeof meta.camila_last_wake_at === 'string' ? meta.camila_last_wake_at : null,
+        hours_mode: waProfile?.hours_mode ?? null,
+        lead_open: leadOpen,
       });
 
       if (!dry && decision.due) {
@@ -167,7 +339,10 @@ Deno.serve(async (req) => {
           skippedCap.push(conversationId);
           continue;
         }
-        const brain = await invokeBrain(conversationId);
+        const brain = await invokeBrain(
+          conversationId,
+          formatWaLeadBrainContext(waProfile, now, String(conv.visitor_name ?? '')),
+        );
         if (!brain.ok) {
           errors.push(`${conversationId}: ${brain.body}`);
         } else {
@@ -200,6 +375,7 @@ Deno.serve(async (req) => {
     classified,
     woken,
     skipped_cap: skippedCap,
+    enriched,
     errors,
   });
 });

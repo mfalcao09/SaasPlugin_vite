@@ -70,6 +70,12 @@ export interface CamilaWakeInput {
   /** default: INCIDENT_ALLOWLIST.has(id) */
   inAllowlist?: boolean;
   window?: WindowConfig;
+  /**
+   * Loja aceita OUT nossa agora (perfil WA business hours).
+   * false → cold/conduct viram noop lead_closed; dívida (ela falou) permanece.
+   * null/undefined → não sabemos; usa só a janela da Camila.
+   */
+  leadAcceptingOutbound?: boolean | null;
 }
 
 export interface CamilaWakeDecision {
@@ -200,6 +206,14 @@ export function decideCamilaWake(input: CamilaWakeInput): CamilaWakeDecision {
 
     if (CONDUCT_ACTIONS.has(trail.nextAction)) {
       if (silence >= CONDUCT_AFTER_MS) {
+        if (input.leadAcceptingOutbound === false) {
+          return {
+            kind: "noop",
+            due: false,
+            reason: "lead_closed",
+            nextAction: trail.nextAction,
+          };
+        }
         return {
           kind: "conduct",
           due: true,
@@ -216,6 +230,14 @@ export function decideCamilaWake(input: CamilaWakeInput): CamilaWakeDecision {
     }
 
     if (trail.nextAction === "mode_a_r1_r2") {
+      if (input.leadAcceptingOutbound === false) {
+        return {
+          kind: "noop",
+          due: false,
+          reason: "lead_closed",
+          nextAction: trail.nextAction,
+        };
+      }
       // Já estamos na janela (checado acima) → due.
       return {
         kind: "cold_resume",

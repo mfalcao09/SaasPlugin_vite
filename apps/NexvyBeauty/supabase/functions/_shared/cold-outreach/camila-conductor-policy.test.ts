@@ -250,6 +250,75 @@ Deno.test("cold_resume 18:05 BRT → ainda outside_window (não prorroga frio)",
   assertEquals(d.reason, "outside_window");
 });
 
+Deno.test("Expert 09:30 BRT loja fechada → cold noop lead_closed (dívida não mexe)", () => {
+  const fri0930 = new Date("2026-09-04T12:30:00.000Z");
+  const cold = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: fri0930,
+    leadAcceptingOutbound: false,
+  });
+  assertEquals(cold.kind, "noop");
+  assertEquals(cold.due, false);
+  assertEquals(cold.reason, "lead_closed");
+
+  const debt = decide({
+    conversationId: DEISE_ID,
+    messages: deiseMsgs(),
+    now: NOW_16BRT,
+    leadAcceptingOutbound: false,
+  });
+  assertEquals(debt.kind, "debt");
+  assertEquals(debt.due, true);
+});
+
+Deno.test("sábado 11h BRT → cold fora (CAMILA_WINDOW é seg–sex)", () => {
+  const sat1100 = new Date("2026-09-05T14:00:00.000Z");
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: sat1100,
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.due, false);
+  assertEquals(d.reason, "outside_window");
+});
+
+Deno.test("domingo 15h BRT → dívida fora (janela ativa é seg–sáb, não domingo)", () => {
+  const sun1500 = new Date("2026-09-06T18:00:00.000Z");
+  const d = decide({
+    conversationId: DEISE_ID,
+    messages: deiseMsgs(),
+    now: sun1500,
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.due, false);
+  assertEquals(d.reason, "outside_active_debt_window");
+});
+
+Deno.test("feriado 7/set/2026 11h BRT (Independência, segunda) → cold AINDA due (sem calendário de feriado)", () => {
+  const independia1100 = new Date("2026-09-07T14:00:00.000Z");
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: independia1100,
+  });
+  assertEquals(d.kind, "cold_resume");
+  assertEquals(d.due, true);
+});
+
+Deno.test("Expert 11:00 BRT loja aberta → cold_resume due", () => {
+  const fri1100 = new Date("2026-09-04T14:00:00.000Z");
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: fri1100,
+    leadAcceptingOutbound: true,
+  });
+  assertEquals(d.kind, "cold_resume");
+  assertEquals(d.due, true);
+});
+
 Deno.test("auto-reply inbound após OUT → noop (não acorda brain)", () => {
   const msgs: TrailMessage[] = [
     {

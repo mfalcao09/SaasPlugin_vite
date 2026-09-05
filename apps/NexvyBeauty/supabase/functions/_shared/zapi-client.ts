@@ -162,6 +162,33 @@ export async function zapiSendDocument(
   });
 }
 
+/** Metadata do chat (nome, about). Não envia mensagem. */
+export async function zapiGetChat(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  phone: string,
+) {
+  const digits = phone.replace(/\D/g, "");
+  return zapiFetch(config, creds, `/chats/${encodeURIComponent(digits)}`, {
+    method: "GET",
+  });
+}
+
+/** Perfil WhatsApp Business (descrição, endereço, horário). Não envia mensagem. */
+export async function zapiGetBusinessProfile(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  phone: string,
+) {
+  const digits = phone.replace(/\D/g, "");
+  return zapiFetch(
+    config,
+    creds,
+    `/business/profile?phone=${encodeURIComponent(digits)}`,
+    { method: "GET" },
+  );
+}
+
 /** Verifica número e, quando disponível, retorna @lid. */
 export async function zapiPhoneExists(
   config: ZapiConfig,
