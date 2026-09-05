@@ -16,6 +16,7 @@
 // │   allowlist fixa de 5 (INCIDENT_ALLOWLIST)                                │
 // │   auto-reply inbound → noop (não responde away-message)                   │
 // │   lead_closed (horário WA da loja) → noop no cold/conduct; dívida fica    │
+// │   national_holiday (BrasilAPI → platform_crm_business_holidays) → noop    │
 // └───────────────────────────────────────────────────────────────────────────┘
 //
 // Auth: service-role (bearer/apikey) OU x-brain-secret — igual inactivity-sweeper.
@@ -36,6 +37,12 @@ import {
   normalizeWaLeadProfile,
   type WaLeadProfile,
 } from '../_shared/cold-outreach/wa-lead-profile.ts';
+import {
+  fetchBrasilApiHolidays,
+  missingYears,
+  rowsForUpsert,
+  yearsToSync,
+} from '../_shared/cold-outreach/br-national-holidays.ts';
 import { zapiGetBusinessProfile, zapiGetChat } from '../_shared/zapi-client.ts';
 import {
   loadPlatformQrProviderConfig,
@@ -98,6 +105,41 @@ function shouldFetchWaProfile(meta: Record<string, unknown>): boolean {
   return true;
 }
 
+async function loadCamilaHolidayDates(
+  supabase: ReturnType<typeof createClient>,
+  now: Date,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('platform_crm_business_holidays')
+    .select('date');
+  if (error) {
+    console.warn('[platform-camila-conductor] holidays select skip', error.message.slice(0, 160));
+  }
+  const dates = new Set<string>();
+  for (const row of data ?? []) {
+    const d = String((row as { date?: string }).date ?? '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dates.add(d);
+  }
+  for (const year of missingYears(dates, yearsToSync(now))) {
+    try {
+      const holidays = await fetchBrasilApiHolidays(year);
+      const rows = rowsForUpsert(holidays);
+      if (!rows.length) continue;
+      const { error: upErr } = await supabase
+        .from('platform_crm_business_holidays')
+        .upsert(rows, { onConflict: 'date' });
+      if (upErr) {
+        console.warn('[platform-camila-conductor] holidays upsert skip', upErr.message.slice(0, 160));
+        continue;
+      }
+      for (const r of rows) dates.add(r.date);
+    } catch (e) {
+      console.warn('[platform-camila-conductor] holidays fetch skip', String(e).slice(0, 160));
+    }
+  }
+  return dates;
+}
+
 async function invokeBrain(
   conversationId: string,
   extraContext = '',
@@ -150,6 +192,7 @@ Deno.serve(async (req) => {
   );
   const now = new Date();
   const nowMs = now.getTime();
+  const holidayDates = await loadCamilaHolidayDates(supabase, now);
   const allowlist = [...INCIDENT_ALLOWLIST];
   const classified: Array<Record<string, unknown>> = [];
   const woken: string[] = [];
@@ -322,6 +365,7 @@ Deno.serve(async (req) => {
         lastWakeAtMs,
         wakesInLastHour,
         leadAcceptingOutbound: leadOpen,
+        holidayDates,
       });
       classified.push({
         conversation_id: conversationId,
@@ -376,6 +420,7 @@ Deno.serve(async (req) => {
     woken,
     skipped_cap: skippedCap,
     enriched,
+    holidays_loaded: holidayDates.size,
     errors,
   });
 });
