@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "prd": "PRD-02",
+  "result": "PASS",
+  "branch": "feat/camila-autonomy-02-ci-parity",
+  "commit": "7bca45c",
+  "pull_request": 194,
+  "checks": {
+    "deno_check_entrypoints": {
+      "passed": 4,
+      "failed": 0
+    },
+    "deno_tests": {
+      "passed": 182,
+      "failed": 0
+    },
+    "github_cockpit": "pass",
+    "independent_code_review": "approve",
+    "independent_typescript_review": "approve"
+  },
+  "deployment": {
+    "function": "platform-camila-conductor",
+    "version": 13,
+    "bundle_sha256": "58e06dc1dc4240921a631500627888ca8eb92691331cbb6640e0781fc1563cee",
+    "entrypoint_parity": true,
+    "runtime_result": {
+      "skipped": "flag_off"
+    }
+  }
+}
