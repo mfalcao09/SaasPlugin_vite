@@ -88,6 +88,10 @@ function parseWakeAt(meta: Record<string, unknown> | null | undefined): number |
 
 const FETCH_RETRY_MS = 30 * 60 * 1000;
 
+type SupabaseTableClient = {
+  from: (table: string) => any;
+};
+
 function digitsOf(raw: unknown): string {
   return String(raw ?? '').split('@')[0].replace(/\D/g, '');
 }
@@ -106,7 +110,7 @@ function shouldFetchWaProfile(meta: Record<string, unknown>): boolean {
 }
 
 async function loadCamilaHolidayDates(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseTableClient,
   now: Date,
 ): Promise<Set<string>> {
   const { data, error } = await supabase
