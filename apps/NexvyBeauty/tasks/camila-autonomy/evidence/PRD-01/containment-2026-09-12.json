@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "prd": "PRD-01",
+  "result": "PASS",
+  "snapshot_at": "2026-09-12T19:22:39.536607Z",
+  "verified_at": "2026-09-12T19:27:06.523944Z",
+  "baseline": {
+    "total_outbound_five_conversations": 131,
+    "last_outbound_at": "2026-09-11T20:08:36.628735Z",
+    "campaign_status": "paused",
+    "campaign_dry_run": true,
+    "instance_status": "disconnected"
+  },
+  "containment": {
+    "conductor_result": {
+      "skipped": "flag_off"
+    },
+    "cron_successes_after_snapshot": 5,
+    "new_outbound_after_snapshot": 0,
+    "campaign_safe": true
+  }
+}
