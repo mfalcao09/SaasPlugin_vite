@@ -4,7 +4,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { classifyReply, isOptOut, isWantSignal, normalize } from "./opt-out.ts";
 
 Deno.test("opt-out: pega SAIR/PARE e variações, com/sem acento e maiúscula", () => {
-  for (const t of ["SAIR", "pare", "PARA de me mandar msg", "não quero mais receber", "me tira daqui", "descadastrar", "sem interesse", "STOP", "quero cancelar"]) {
+  for (const t of ["SAIR", "pare", "PARA de me mandar msg", "não quero mais receber", "me tira daqui", "descadastrar", "sem interesse", "STOP", "quero cancelar", "cancelar", "remover", "por favor remover meu contato"]) {
     assertEquals(isOptOut(t), true, `deveria ser opt-out: ${t}`);
   }
 });
@@ -23,6 +23,9 @@ Deno.test("prioridade: opt-out vence want ('quero sair')", () => {
 Deno.test("neutral: texto sem sinal", () => {
   assertEquals(classifyReply("oi tudo bem?").intent, "neutral");
   assertEquals(classifyReply("quem é você?").intent, "neutral");
+  assertEquals(classifyReply("posso cancelar depois?").intent, "neutral");
+  assertEquals(classifyReply("como cancelo o plano?").intent, "neutral");
+  assertEquals(classifyReply("dá para remover uma cliente da agenda?").intent, "neutral");
 });
 
 Deno.test("want puro classifica como want", () => {
