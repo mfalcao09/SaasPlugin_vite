@@ -49,6 +49,12 @@ import {
 } from "../_shared/cold-outreach/apresentar-sequence.ts";
 import { validateRealSend, validateWindowForRealSend } from "../_shared/cold-outreach/go-live-gates.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
+import { ensureLeadForColdOpening } from "../_shared/platform-crm-find-create-lead.ts";
+import {
+  buildLeadName,
+  ensureCanonicalLeadState,
+} from "../_shared/platform-crm-lead-context.ts";
+import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import {
   WA_QR_CHANNEL_CANONICAL,
   WA_QR_CHANNELS,
@@ -600,6 +606,39 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     };
   }
 
+  // Abertura real só cruza o provider depois de existir lead + estado canônico.
+  // Dry-run continua sem inventar registros de CRM.
+  const nomeReal = tokens.nome && tokens.nome !== "tudo bem?" ? tokens.nome : null;
+  let crmLeadId = typeof due.lead_id === "string" && due.lead_id ? due.lead_id : null;
+  if (!dryRun && channel === "whatsapp") {
+    crmLeadId = crmLeadId ?? await ensureLeadForColdOpening(sb, {
+      phone: String(due.telefone ?? ""),
+      pushName: nomeReal,
+      productId,
+    });
+    if (!crmLeadId) {
+      await sb.from("platform_crm_cold_outreach_queue").update({
+        status: "failed",
+        last_error: "canonical_lead_unavailable",
+        updated_at: now.toISOString(),
+      }).eq("id", due.id);
+      return { campaign: c.id, action: "canonical_lead_unavailable", lead: due.id, followups: followupResult };
+    }
+    await ensurePlatformLeadInPipeline(sb, crmLeadId);
+    if (!await ensureCanonicalLeadState(sb, crmLeadId, productId)) {
+      await sb.from("platform_crm_cold_outreach_queue").update({
+        status: "failed",
+        lead_id: crmLeadId,
+        last_error: "canonical_state_unavailable",
+        updated_at: now.toISOString(),
+      }).eq("id", due.id);
+      return { campaign: c.id, action: "canonical_state_unavailable", lead: due.id, followups: followupResult };
+    }
+    await sb.from("platform_crm_cold_outreach_queue")
+      .update({ lead_id: crmLeadId, updated_at: now.toISOString() })
+      .eq("id", due.id);
+  }
+
   const sendRes = await deliver(sb, { channel, dryRun, productId, instanceId, to: due.telefone, handle: due.handle, text });
 
   if (sendRes.ok) {
@@ -609,14 +648,14 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     // dry-run não inventa conversa, e o IG tem outra identidade de thread.
     // `tokens.nome` cai em "tudo bem?" quando o lead não tem primeiro_nome — isso
     // é saudação, não nome, e não pode virar visitor_name no inbox.
-    const nomeReal = tokens.nome && tokens.nome !== "tudo bem?" ? tokens.nome : null;
-    const inboxConversationId = (!dryRun && channel === "whatsapp")
+    const inboxConversationId = (!dryRun && channel === "whatsapp" && crmLeadId)
       ? await persistOpeningInInbox(sb, {
         productId,
         instanceId,
         telefone: due.telefone,
         text,
         nome: nomeReal,
+        leadId: crmLeadId,
         agentId: c.agent_id ?? null,
         campaignId: c.id,
         variant: due.variant ?? null,
@@ -809,6 +848,7 @@ async function persistOpeningInInbox(
     telefone: string;
     text: string;
     nome: string | null;
+    leadId: string;
     agentId: string | null;
     campaignId: string;
     /** wamid da mensagem enviada — chave pro ACK de entrega casar (pode ser null). */
@@ -827,30 +867,34 @@ async function persistOpeningInInbox(
     const visitorId = waQrVisitorId(digits);
     const visitorIds = waQrVisitorIdsForLookup(digits);
     const phonePlus = `+${digits}`;
+    const resolvedVisitorName = buildLeadName(o.nome, phonePlus);
+    const safeVisitorName = resolvedVisitorName.startsWith("WhatsApp ")
+      ? null
+      : resolvedVisitorName;
 
     const phoneVariants = phoneVariantsWithPlusBR(digits);
-    let found: { id: string; status: string } | null = null;
+    let found: { id: string; status: string; lead_id?: string | null } | null = null;
     const { data: byVisitor } = await sb
       .from("platform_crm_conversations")
-      .select("id, status")
+      .select("id, status, lead_id")
       .in("visitor_id", visitorIds)
       .in("channel", [...WA_QR_CHANNELS])
       .eq("wa_qr_instance_id", o.instanceId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    found = byVisitor as { id: string; status: string } | null;
+    found = byVisitor as { id: string; status: string; lead_id?: string | null } | null;
     if (!found?.id && phoneVariants.length > 0) {
       const { data: byPhone } = await sb
         .from("platform_crm_conversations")
-        .select("id, status")
+        .select("id, status, lead_id")
         .in("visitor_phone", phoneVariants)
         .in("channel", [...WA_QR_CHANNELS])
         .eq("wa_qr_instance_id", o.instanceId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      found = byPhone as { id: string; status: string } | null;
+      found = byPhone as { id: string; status: string; lead_id?: string | null } | null;
     }
 
     let conversationId: string | null = found?.id ?? null;
@@ -862,13 +906,14 @@ async function persistOpeningInInbox(
         patch.needs_human = false;
       }
       if (o.agentId) patch.current_agent_id = o.agentId;
+      if (!found?.lead_id) patch.lead_id = o.leadId;
       await sb.from("platform_crm_conversations").update(patch).eq("id", conversationId);
     } else {
       const { data: created, error } = await sb
         .from("platform_crm_conversations")
         .insert({
           visitor_id: visitorId,
-          visitor_name: o.nome,
+          visitor_name: safeVisitorName,
           visitor_phone: phonePlus,
           visitor_whatsapp: phonePlus,
           channel: WA_QR_CHANNEL_CANONICAL,
@@ -876,6 +921,7 @@ async function persistOpeningInInbox(
           needs_human: false,
           wa_qr_instance_id: o.instanceId,
           product_id: o.productId,
+          lead_id: o.leadId,
           // ⚠️ PIN DA PERSONA — sem isto, a prospecção ativa é atendida pela DUDA.
           //
           // Medido em produção 2026-08-06: a campanha DECLARA agent_id = "Camila ·
