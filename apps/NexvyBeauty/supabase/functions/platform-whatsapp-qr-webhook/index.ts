@@ -37,6 +37,12 @@ import {
 import {
   createPlatformEvolutionWebhookHandler,
 } from "../_shared/platform-evolution-webhook-handler.ts";
+import { findOrCreateLeadByPhone } from "../_shared/platform-crm-find-create-lead.ts";
+import {
+  appendCanonicalLeadMemory,
+  buildLeadName,
+  ensureCanonicalLeadState,
+} from "../_shared/platform-crm-lead-context.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
 import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
@@ -381,58 +387,13 @@ async function ensureLead(
   pushName: string | null,
   productId: string | null,
 ): Promise<string | null> {
-  try {
-    const phonePlus = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
-    // `.in()` e não `.or()`: o array é passado COMO VALOR ao client, que serializa
-    // e cita cada item. No `.or()` os valores viram uma string de filtro PostgREST
-    // onde `,`/`(`/`)` são delimitadores e o escape seria manual. As variantes só
-    // contêm dígitos e "+", mas a construção segura não fica dependendo disso.
-    const variants = phoneVariantsWithPlusBR(fromDigits);
-    // Fallback defensivo: telefone que o helper não consegue variar (<8 dígitos)
-    // preserva exatamente o casamento anterior em vez de virar `.in(…, [])`,
-    // que casaria ZERO e criaria lead novo sempre.
-    const phoneMatches = variants.length > 0 ? variants : [fromDigits, phonePlus];
-    const { data: existing, error: lookupError } = await supabase
-      .from("platform_crm_leads")
-      .select("id")
-      .in("phone", phoneMatches)
-      // Com N variantes o SELECT pode casar mais de um lead; o mais antigo é o
-      // canônico. Torna determinístico o que antes era ordem arbitrária do banco.
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (lookupError) {
-      // O erro do SELECT era DESCARTADO aqui. O fluxo segue caindo no INSERT
-      // (comportamento preservado), mas o caminho que gera lead duplicado deixa
-      // de ser invisível.
-      console.error(
-        `[platform-whatsapp-qr-webhook] lead lookup by phone FAILED phone=${phonePlus} ` +
-          `reason=${lookupError?.message ?? JSON.stringify(lookupError)}`,
-      );
-    }
-    if (existing?.id) return existing.id as string;
-
-    const { data: created, error } = await supabase
-      .from("platform_crm_leads")
-      .insert({
-        name: pushName || `WhatsApp ${phonePlus}`,
-        phone: phonePlus,
-        source: WA_QR_CHANNEL_CANONICAL,
-        lead_channel: WA_QR_CHANNEL_CANONICAL,
-        // Só no INSERT: lead existente nunca tem product_id sobrescrito.
-        ...(productId ? { product_id: productId } : {}),
-      })
-      .select("id")
-      .single();
-    if (error) {
-      console.error("[platform-whatsapp-qr-webhook] auto-create lead failed (non-fatal):", error);
-      return null;
-    }
-    return (created?.id as string) ?? null;
-  } catch (e) {
-    console.error("[platform-whatsapp-qr-webhook] ensureLead error (non-fatal):", e);
-    return null;
-  }
+  return await findOrCreateLeadByPhone(supabase, {
+    phone: fromDigits,
+    pushName,
+    productId,
+    source: WA_QR_CHANNEL_CANONICAL,
+    leadChannel: WA_QR_CHANNEL_CANONICAL,
+  });
 }
 
 /** Conversa da caixa Evolution (isolada por instância, V5-style) ou cria
@@ -520,11 +481,12 @@ async function ensureConversation(
   }
 
   if (!conversation) {
+    const resolvedVisitorName = buildLeadName(pushName, phoneCanon);
     const { data: created, error } = await supabase
       .from("platform_crm_conversations")
       .insert({
         visitor_id: visitorId,
-        visitor_name: pushName || null,
+        visitor_name: resolvedVisitorName.startsWith("WhatsApp ") ? null : resolvedVisitorName,
         visitor_phone: phoneCanon,
         visitor_whatsapp: phoneCanon,
         channel: WA_QR_CHANNEL_CANONICAL,
@@ -582,6 +544,17 @@ async function ensureConversation(
           `enquanto não for vinculada a um lead`,
       );
     }
+  }
+
+  const canonicalProductId = String(conversation.product_id ?? productId ?? "");
+  if (conversation.lead_id && canonicalProductId) {
+    conversation.canonical_state_ready = await ensureCanonicalLeadState(
+      supabase,
+      String(conversation.lead_id),
+      canonicalProductId,
+    );
+  } else {
+    conversation.canonical_state_ready = false;
   }
 
   return conversation;
@@ -1157,11 +1130,28 @@ async function handleMessage(
     return ok({ stored: false });
   }
 
+  const memoryReady = await appendCanonicalLeadMemory(supabase, {
+    leadId: String(conversation.lead_id ?? ""),
+    productId: String(conversation.product_id ?? productId ?? ""),
+    conversationId: String(conversation.id),
+    messageId: String(inserted.id),
+    content: inboundContent,
+  });
+  if (!memoryReady) {
+    conversation.canonical_state_ready = false;
+    console.error(
+      `[platform-whatsapp-qr-webhook] canonical memory unavailable conversation_id=${conversation.id} message_id=${inserted.id}`,
+    );
+  }
+
   await supabase
     .from("platform_crm_conversations")
     .update({
       last_message_at: new Date().toISOString(),
-      ...(norm.pushName && !conversation.visitor_name ? { visitor_name: norm.pushName } : {}),
+      ...(norm.pushName && !conversation.visitor_name &&
+          !buildLeadName(norm.pushName, "").startsWith("WhatsApp ")
+        ? { visitor_name: norm.pushName }
+        : {}),
     })
     .eq("id", conversation.id);
 
@@ -1191,11 +1181,12 @@ async function handleMessage(
   // presumir "pediu PARE" a cada falha de infra transformaria indisponibilidade
   // em silêncio para toda lead — que é a troca cara (silêncio perde venda).
   // Fica registrado alto para não ser uma decisão invisível.
-  if (opts.skipBrain) {
+  if (opts.skipBrain || conversation.canonical_state_ready === false) {
+    const reason = opts.skipBrain ? "skip_brain" : "canonical_state_not_ready";
     console.log(
-      `[platform-whatsapp-qr-webhook] brain NÃO despachado (skip_brain) conversation_id=${conversation.id} telefone=${fromDigits}`,
+      `[platform-whatsapp-qr-webhook] brain NÃO despachado (${reason}) conversation_id=${conversation.id} telefone=${fromDigits}`,
     );
-    return ok({ stored: "inbound", brain: "skipped" });
+    return ok({ stored: "inbound", brain: "skipped", reason });
   }
 
   if (coldVerdict.optOut || coldVerdict.suppressBrain) {
