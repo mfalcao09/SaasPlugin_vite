@@ -55,7 +55,9 @@ import {
 } from '../_shared/platform-wa-qr-identity.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE } from '../_shared/meta-graph.ts';
-import { normalizePhoneBR, phoneVariantsBR } from '../_shared/phone.ts';
+import { normalizePhoneBR } from '../_shared/phone.ts';
+import { findOrCreateLeadByPhone } from '../_shared/platform-crm-find-create-lead.ts';
+import { ensureCanonicalLeadState } from '../_shared/platform-crm-lead-context.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
 
@@ -152,45 +154,14 @@ async function ensureLeadByPhone(
   productId: string | null,
   userId: string,
 ): Promise<string | null> {
-  try {
-    // Variantes com/sem DDI, com/sem 9º dígito, com/sem '+' — cobre leads
-    // criados pelo webhook (+55...) e cadastros manuais.
-    const variants = new Set<string>(phoneVariantsBR(digits));
-    for (const v of phoneVariantsBR(digits)) variants.add(`+${v}`);
-    variants.add(`+${digits}`);
-    const list = Array.from(variants).map((v) => `"${v}"`).join(',');
-
-    const { data: existing } = await supabase
-      .from('platform_crm_leads')
-      .select('id')
-      .or(`phone.in.(${list})`)
-      .limit(1)
-      .maybeSingle();
-    if (existing?.id) return existing.id as string;
-
-    const phonePlus = `+${digits}`;
-    const { data: created, error } = await supabase
-      .from('platform_crm_leads')
-      .insert({
-        name: `WhatsApp ${phonePlus}`,
-        phone: phonePlus,
-        source: 'whatsapp',
-        lead_channel: 'whatsapp',
-        assigned_to: userId,
-        // Só no INSERT: lead existente nunca tem product_id sobrescrito.
-        ...(productId ? { product_id: productId } : {}),
-      })
-      .select('id')
-      .single();
-    if (error) {
-      console.error('[platform-start-whatsapp-conversation] create lead failed (non-fatal):', error.message);
-      return null;
-    }
-    return (created?.id as string) ?? null;
-  } catch (e) {
-    console.error('[platform-start-whatsapp-conversation] ensureLeadByPhone error (non-fatal):', e);
-    return null;
-  }
+  return await findOrCreateLeadByPhone(supabase, {
+    phone: digits,
+    pushName: null,
+    productId,
+    source: 'whatsapp',
+    leadChannel: 'whatsapp',
+    assignedTo: userId,
+  });
 }
 
 // ─── Conversa (cria/reusa por visitor_id='wa:<digits>') ─────────────────────
@@ -473,7 +444,13 @@ async function startViaEvolution(
   } else {
     leadId = await ensureLeadByPhone(supabase, digits, effectiveProductId, userId);
   }
-  if (leadId) await ensurePlatformLeadInPipeline(supabase, leadId);
+  if (!leadId || !effectiveProductId) {
+    return json({ error: 'canonical_lead_unavailable' }, 503);
+  }
+  await ensurePlatformLeadInPipeline(supabase, leadId);
+  if (!await ensureCanonicalLeadState(supabase, leadId, effectiveProductId)) {
+    return json({ error: 'canonical_state_unavailable' }, 503);
+  }
 
   // 2) Conversa (shape do webhook)
   const { conversation, isNew } = await ensureEvolutionConversation(
@@ -735,7 +712,13 @@ Deno.serve(async (req) => {
     } else {
       leadId = await ensureLeadByPhone(supabase, digits, effectiveProductId, user.id);
     }
-    if (leadId) await ensurePlatformLeadInPipeline(supabase, leadId);
+    if (!leadId || !effectiveProductId) {
+      return json({ error: 'canonical_lead_unavailable' }, 503);
+    }
+    await ensurePlatformLeadInPipeline(supabase, leadId);
+    if (!await ensureCanonicalLeadState(supabase, leadId, effectiveProductId)) {
+      return json({ error: 'canonical_state_unavailable' }, 503);
+    }
 
     // 3) Conversa (cria/reusa)
     const { conversation, isNew } = await ensureConversation(

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "prd": "PRD-03",
+  "result": "PASS",
+  "branch": "feat/camila-autonomy-03-canonical-ficha",
+  "code_commit": "923d489",
+  "pull_request": 195,
+  "migration": {
+    "file": "20260912_platform_crm_lead_state_and_memory.sql",
+    "sha256": "f412fbfd9cc41c250952e294aa1c5687cc9de7bc41a9b4c4faa75b193d74a19f",
+    "applied": true,
+    "idempotent_reapply": true
+  },
+  "checks": {
+    "focused_tests": 65,
+    "full_tests": 246,
+    "test_failures": 0,
+    "entrypoints_checked": 5,
+    "github_cockpit": "pass",
+    "code_review": "approve",
+    "typescript_review": "approve",
+    "database_review": "approve"
+  },
+  "backfill": {
+    "conversations": 5,
+    "with_lead": 5,
+    "with_state": 5,
+    "product_match": 5,
+    "generic_names": 0,
+    "memories": 19,
+    "duplicate_memory_keys": 0,
+    "outbound_after_containment": 0
+  },
+  "deployment": {
+    "edges_deployed": false,
+    "reason": "deferred until Safety Kernel and Action Ledger are present",
+    "conductor_enabled": false
+  }
+}

@@ -2,14 +2,15 @@
   "schema": 1,
   "program": "camila-autonomy-recovery",
   "release_state": "OFF",
-  "current_prd": "PRD-03",
+  "current_prd": "PRD-04",
   "state": "QUEUED",
   "retry_count": 0,
   "completed_prds": [
     "PRD-01",
-    "PRD-02"
+    "PRD-02",
+    "PRD-03"
   ],
   "master_gate_green": false,
   "real_leads_allowed": false,
-  "last_checkpoint": "evidence/PRD-02/ci-parity-2026-09-12.json"
+  "last_checkpoint": "evidence/PRD-03/canonical-ficha-2026-09-12.json"
 }
