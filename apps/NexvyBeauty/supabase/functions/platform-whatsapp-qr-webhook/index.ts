@@ -1130,6 +1130,20 @@ async function handleMessage(
     return ok({ stored: false });
   }
 
+  // Cancela qualquer ação proativa reservada antes de fazer trabalho adicional.
+  const { error: cancelError } = await supabase.rpc(
+    "pcrm_cancel_pending_agent_actions",
+    {
+      p_conversation_id: conversation.id,
+      p_inbound_message_id: inserted.id,
+    },
+  );
+  if (cancelError) {
+    console.error(
+      `[platform-whatsapp-qr-webhook] pending action cancellation failed conversation_id=${conversation.id}: ${cancelError.message}`,
+    );
+  }
+
   const memoryReady = await appendCanonicalLeadMemory(supabase, {
     leadId: String(conversation.lead_id ?? ""),
     productId: String(conversation.product_id ?? productId ?? ""),

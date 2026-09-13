@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "prd": "PRD-04",
+  "result": "PASS",
+  "branch": "feat/camila-autonomy-04-safety-ledger",
+  "code_commit": "b190c70",
+  "pull_request": 196,
+  "migration": {
+    "file": "20260912_camila_safety_kernel_action_ledger.sql",
+    "sha256": "8bdf3b06d4452ac7ec569375b1867efc21965281626f2f5983720cfeb2b7ebb2",
+    "applied": true,
+    "idempotent_reapply": true
+  },
+  "checks": {
+    "entrypoints_checked": 6,
+    "full_tests": 271,
+    "test_failures": 0,
+    "github_cockpit": "pass",
+    "code_review": "approve",
+    "typescript_review": "approve",
+    "database_review": "approve",
+    "security_review": "approve"
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "kill_switch": false,
+    "reservation_attempts": 100,
+    "denied": 100,
+    "deny_reason": "release_off",
+    "reserved": 0,
+    "ledger_rows": 100,
+    "ledger_denied": 100,
+    "ledger_reserved": 0,
+    "outbound_after_containment": 0
+  },
+  "deployment": {
+    "edges_deployed": false,
+    "reason": "deferred until Z-API/ACK hardening and Master Gate staging",
+    "conductor_enabled": false
+  }
+}
