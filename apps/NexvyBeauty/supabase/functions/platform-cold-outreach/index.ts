@@ -14,6 +14,10 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
+  runReservedAgentAction,
+  type AgentActionInput,
+} from "../_shared/agent-action-ledger.ts";
+import {
   canSendNow,
   type KillSwitchStats,
   killSwitch,
@@ -239,7 +243,7 @@ async function startApresentarSequence(
 async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled: boolean) {
   const { data: rows } = await sb
     .from("platform_crm_conversations")
-    .select("id, metadata, visitor_phone, wa_qr_instance_id, product_id, current_agent_id")
+    .select("id, metadata, visitor_phone, wa_qr_instance_id, product_id, current_agent_id, lead_id")
     .filter("metadata->apresentar_sequence->>status", "eq", "in_progress")
     .limit(20);
   const results: any[] = [];
@@ -261,6 +265,17 @@ async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled:
       to: phone,
       handle: null,
       text,
+      ledger: conv.lead_id && conv.current_agent_id
+        ? {
+          leadId: String(conv.lead_id),
+          conversationId: String(conv.id),
+          agentId: String(conv.current_agent_id),
+          actionType: "followup",
+          proactive: true,
+          bubbleCount: 1,
+          sourceEventId: `${state.queue_id || conv.id}:apresentar:${state.last_sent + 1}`,
+        }
+        : undefined,
     });
     if (!sendRes.ok) {
       results.push({ conversation_id: conv.id, action: "apresentar_failed", error: sendRes.error });
@@ -284,6 +299,7 @@ async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled:
         campaign_id: state.campaign_id,
         apresentar_step: newState.last_sent,
         wamid: sendRes.wamid ?? null,
+        action_id: sendRes.actionId ?? null,
       },
     });
     results.push({ conversation_id: conv.id, action: "apresentar_sent", step: newState.last_sent, done: newState.status === "done" });
@@ -639,7 +655,26 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
       .eq("id", due.id);
   }
 
-  const sendRes = await deliver(sb, { channel, dryRun, productId, instanceId, to: due.telefone, handle: due.handle, text });
+  const sendRes = await deliver(sb, {
+    channel,
+    dryRun,
+    productId,
+    instanceId,
+    to: due.telefone,
+    handle: due.handle,
+    text,
+    ledger: crmLeadId
+      ? {
+        leadId: crmLeadId,
+        conversationId: due.conversation_id ?? null,
+        agentId,
+        actionType: "opening",
+        proactive: true,
+        bubbleCount: 1,
+        sourceEventId: String(due.id),
+      }
+      : undefined,
+  });
 
   if (sendRes.ok) {
     const followupDelayH = 48; // D+2
@@ -659,6 +694,7 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
         agentId: c.agent_id ?? null,
         campaignId: c.id,
         variant: due.variant ?? null,
+        actionId: sendRes.actionId ?? null,
         // Fecha a cadeia: envio → wamid → metadata da mensagem → ACK do webhook
         // acha esta linha e sabe de qual campanha incrementar delivered_count.
         wamid: sendRes.wamid ?? null,
@@ -748,7 +784,26 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
     const step = (f.followups_sent ?? 0) + 1; // 1=D+2, 2=breakup
     const tokens = await buildTokens(sb, c, f);
     const text = renderFollowup(channel, step as 1 | 2, tokens, f.variant ?? undefined);
-    const res = await deliver(sb, { channel, dryRun, productId, instanceId, to: f.telefone, handle: f.handle, text });
+    const res = await deliver(sb, {
+      channel,
+      dryRun,
+      productId,
+      instanceId,
+      to: f.telefone,
+      handle: f.handle,
+      text,
+      ledger: f.lead_id && f.conversation_id && c.agent_id
+        ? {
+          leadId: String(f.lead_id),
+          conversationId: String(f.conversation_id),
+          agentId: String(c.agent_id),
+          actionType: "followup",
+          proactive: true,
+          bubbleCount: 1,
+          sourceEventId: `${f.id}:followup:${step}`,
+        }
+        : undefined,
+    });
     if (res.ok) {
       const isLast = step >= maxFollowups;
       const nextDelayH = step === 1 ? 60 : 0; // D+2 -> D+4/5 (48+60=108h)
@@ -775,8 +830,27 @@ async function processFollowups(sb: SupabaseClient, c: any, now: Date, dryRun: b
 // ── entrega (dry-run curto-circuita o envio real) ────────────────────────────
 async function deliver(
   sb: SupabaseClient,
-  a: { channel: Channel; dryRun: boolean; productId: string; instanceId: string | null; to: string | null; handle: string | null; text: string },
-): Promise<{ ok: boolean; error?: string; manual?: boolean; conversationId?: string | null; wamid?: string | null }> {
+  a: {
+    channel: Channel;
+    dryRun: boolean;
+    productId: string;
+    instanceId: string | null;
+    to: string | null;
+    handle: string | null;
+    text: string;
+    ledger?: Omit<
+      AgentActionInput,
+      "productId" | "instanceId" | "channel" | "content"
+    >;
+  },
+): Promise<{
+  ok: boolean;
+  error?: string;
+  manual?: boolean;
+  conversationId?: string | null;
+  wamid?: string | null;
+  actionId?: string | null;
+}> {
   if (a.dryRun) {
     console.log(`[cold-outreach][DRY] ${a.channel} -> ${a.handle ?? a.to}: ${a.text.slice(0, 80)}...`);
     return { ok: true, conversationId: null };
@@ -784,31 +858,46 @@ async function deliver(
   try {
     if (a.channel === "whatsapp") {
       if (!a.to) return { ok: false, error: "no phone" };
-      const { data, error } = await sb.functions.invoke("platform-whatsapp-qr-send", {
-        body: { product_id: a.productId, instance_id: a.instanceId, type: "text", to: a.to, payload: { text: a.text } },
+      if (!a.instanceId || !a.ledger) {
+        return { ok: false, error: "safety_reservation_input_missing" };
+      }
+      let rawWamid: string | null = null;
+      const executed = await runReservedAgentAction(sb, {
+        ...a.ledger,
+        productId: a.productId,
+        instanceId: a.instanceId,
+        channel: a.channel,
+        content: a.text,
+      }, async () => {
+        const { data, error } = await sb.functions.invoke("platform-whatsapp-qr-send", {
+          body: { product_id: a.productId, instance_id: a.instanceId, type: "text", to: a.to, payload: { text: a.text } },
+        });
+        if (error || (data && (data as any).ok === false)) {
+          return { ok: false, error: error?.message ?? JSON.stringify(data) };
+        }
+        const d = data as any;
+        rawWamid =
+          d?.body?.messageId ??
+          d?.body?.key?.id ??
+          d?.key?.id ??
+          (typeof d?.body?.zaapId === "string" ? d.body.zaapId : null) ??
+          null;
+        return rawWamid
+          ? { ok: true, providerMessageId: rawWamid }
+          : { ok: false, error: "provider_message_id_missing" };
       });
-      if (error || (data && (data as any).ok === false)) return { ok: false, error: error?.message ?? JSON.stringify(data) };
-      // WAMID — a chave que faltava pra medir ENTREGA.
-      //
-      // O `data` já vinha completo do platform-whatsapp-qr-send (que devolve a
-      // resposta bruta da Evolution) e este `return { ok: true }` DESCARTAVA tudo.
-      // Sem o wamid gravado não há como casar o ACK de MESSAGES_UPDATE com a
-      // campanha — e sem isso delivered_count fica em zero pra sempre, deixando o
-      // kill-switch por não-entrega inerte (ver anti-ban.ts).
-      //
-      // Shape Evolution: { body: { key: { id } } }. Shape Z-API: { body: { messageId } }
-      // (envelope de platform-whatsapp-qr-send). Preferir messageId WA; zaapId é
-      // id interno Z-API — MessageStatusCallback.ids usa o messageId do WA.
-      // Campo AUSENTE > id ERRADO (id errado corrompe delivered_count e pausa
-      // campanha saudável).
-      const d = data as any;
-      const wamid: string | null =
-        d?.body?.messageId ??
-        d?.body?.key?.id ??
-        d?.key?.id ??
-        (typeof d?.body?.zaapId === "string" ? d.body.zaapId : null) ??
-        null;
-      return { ok: true, wamid };
+      if (executed.ok && !executed.ledgerTransitioned) {
+        console.error(
+          `[platform-cold-outreach] provider accepted but ledger transition failed action_id=${executed.actionId}`,
+        );
+      }
+      return executed.ok
+        ? { ok: true, wamid: rawWamid, actionId: executed.actionId }
+        : {
+          ok: false,
+          error: executed.reason ?? executed.error ?? "safety_kernel_denied",
+          actionId: executed.actionId,
+        };
     } else {
       // Instagram DM: a Graph API (platform-ig-send) precisa do PSID do
       // destinatário — que NÃO existe pra @handle raspado a frio (só se obtém
@@ -851,6 +940,7 @@ async function persistOpeningInInbox(
     leadId: string;
     agentId: string | null;
     campaignId: string;
+    actionId?: string | null;
     /** wamid da mensagem enviada — chave pro ACK de entrega casar (pode ser null). */
     wamid?: string | null;
     variant: unknown;
@@ -969,6 +1059,7 @@ async function persistOpeningInInbox(
         delivery_status: "sent",
         origem: "cold_outreach_abertura",
         campaign_id: o.campaignId,
+        action_id: o.actionId ?? null,
         variant: o.variant ?? null,
         step: 0,
         // Elo da cadeia de ENTREGA: o webhook recebe MESSAGES_UPDATE com key.id e

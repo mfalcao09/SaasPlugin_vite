@@ -47,6 +47,10 @@
 //      lead (bant_*, temperature, name) e grava o estado em leads.metadata.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  reserveAgentAction,
+  transitionAgentAction,
+} from '../_shared/agent-action-ledger.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, timingSafeEqual } from '../_shared/meta-graph.ts';
 import {
@@ -1587,7 +1591,7 @@ Deno.serve(async (req) => {
         // d'água da rajada. A ORDENAÇÃO do histórico segue por created_at de
         // propósito: mudar o critério de ordem das 30 msgs é outro assunto e
         // outro risco — aqui a régua é não mexer no que já fatura.
-        .select('seq, content, sender_type, direction, is_deleted, created_at, metadata')
+        .select('id, seq, content, sender_type, direction, is_deleted, created_at, metadata')
         .eq('conversation_id', conversationId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -2808,8 +2812,58 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     }
 
     const total = bubbles.length;
+    let safetyActionId: string | null = null;
+    if (personaIsProspector && !isWaQrChannel(conversation.channel)) {
+      return json({
+        skipped: 'prospector_requires_qr_channel',
+        channel: conversation.channel,
+      });
+    }
+    if (personaIsProspector && isWaQrChannel(conversation.channel)) {
+      const safetyProductId = typeof conversation.product_id === 'string'
+        ? conversation.product_id
+        : '';
+      const safetyLeadId = typeof conversation.lead_id === 'string'
+        ? conversation.lead_id
+        : '';
+      const safetyInstanceId = typeof conversation.wa_qr_instance_id === 'string'
+        ? conversation.wa_qr_instance_id
+        : '';
+      const safetyAgentId = typeof persona.id === 'string' ? persona.id : '';
+      if (!safetyProductId || !safetyLeadId || !safetyInstanceId || !safetyAgentId) {
+        return json({ skipped: 'safety_input_missing' });
+      }
+      const reservation = await reserveAgentAction(supabase, {
+        productId: safetyProductId,
+        leadId: safetyLeadId,
+        conversationId: String(conversation.id),
+        agentId: safetyAgentId,
+        instanceId: safetyInstanceId,
+        channel: String(conversation.channel),
+        actionType: conductorWake ? 'resume' : 'reply',
+        proactive: conductorWake,
+        bubbleCount: total,
+        content: bubbles.join('\n\n'),
+        sourceEventId: String(
+          triggerInbound?.id ??
+            `${conversation.id}:${seqAtual}:${conductorWake ? 'conductor' : 'turn'}`,
+        ),
+      });
+      if (!reservation.allowed || !reservation.actionId) {
+        console.warn('[platform-sales-brain] Safety Kernel negou ação', {
+          conversation_id: conversation.id,
+          reason: reservation.reason,
+        });
+        return json({
+          skipped: 'safety_kernel_denied',
+          reason: reservation.reason,
+        });
+      }
+      safetyActionId = reservation.actionId;
+    }
     let anyDelivered = false;
     let lastDeliveryError: string | null = null;
+    let lastProviderMessageId: string | null = null;
     // Score/rota do turno ANTERIOR (o que a Duda USOU para conduzir esta resposta).
     // O score deste turno é computado depois, no bloco 13, sobre os fatos novos.
     const currentQual = (lead?.metadata as any)?.qualificacao ?? {};
@@ -2951,6 +3005,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         bubble_n: i + 1,
         bubble_total: total,
         delivery_status: 'sent',
+        ...(safetyActionId ? { action_id: safetyActionId } : {}),
         // Trilha de auditoria da régua de inatividade (quando foi ela que acionou).
         ...(inactivityMode ? { cadence_stage: inactivityStage, cadence_occurrence: inactivityOccurrence } : {}),
       };
@@ -2980,7 +3035,10 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         bubbleText,
         i === 0 ? quoteInbound : null,
       );
-      if (delivered) anyDelivered = true; else lastDeliveryError = deliveryError;
+      if (delivered) {
+        anyDelivered = true;
+        lastProviderMessageId = wamid;
+      } else lastDeliveryError = deliveryError;
 
       const deliveryMeta = delivered
         ? {
@@ -3024,6 +3082,22 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       `[platform-sales-brain] entrega: ${entregues}/${total} bolha(s) em ${Date.now() - tDeliveryStart}ms` +
         (entregues < total ? ' — lote abortado, a lead falou no meio' : ''),
     );
+    if (safetyActionId) {
+      const transitioned = await transitionAgentAction(
+        supabase,
+        safetyActionId,
+        'reserved',
+        anyDelivered ? 'accepted' : 'failed',
+        lastProviderMessageId,
+        anyDelivered ? null : lastDeliveryError ?? 'no_bubble_delivered',
+      );
+      if (!transitioned) {
+        console.error('[platform-sales-brain] Action Ledger transition failed', {
+          conversation_id: conversation.id,
+          action_id: safetyActionId,
+        });
+      }
+    }
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
