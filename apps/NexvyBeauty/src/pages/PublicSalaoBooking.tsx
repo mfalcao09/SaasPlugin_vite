@@ -51,6 +51,12 @@ const fmtBR = (iso: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 };
+/** Minutos entre dois "HH:MM" — usado para desenhar o vão entre paradas do roteiro. */
+const minutosEntre = (fim: string, inicio: string) => {
+  const p = (h: string) => { const [a, b] = h.split(':').map(Number); return (a || 0) * 60 + (b || 0); };
+  return Math.max(0, p(inicio) - p(fim));
+};
+const inicial = (nome: string) => (nome ?? '').trim().charAt(0).toUpperCase();
 /** Máscara brasileira progressiva: (11) 91234-5678 */
 function mascararTelefone(bruto: string): string {
   const d = bruto.replace(/\D/g, '').slice(0, 11);
@@ -244,12 +250,19 @@ export default function PublicSalaoBooking() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      <header className="border-b bg-card/40">
+      {/* Cabeçalho institucional: o gradiente da marca (vinho→rosé) existia nos tokens
+          e não era usado em lugar nenhum — a página inteira era cinza. */}
+      <header className="border-b bg-card/60 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="h-5 w-5" /></div>
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary-foreground shadow-md shadow-primary/25"
+              style={{ backgroundImage: 'var(--gradient-signature)' }}
+            >
+              <Sparkles className="h-5 w-5" />
+            </div>
             <div className="min-w-0">
-              <h1 className="truncate font-bold text-foreground">{org.name}</h1>
+              <h1 className="truncate text-[17px] font-semibold tracking-tight text-foreground">{org.name}</h1>
               {endereco && <p className="truncate text-xs text-muted-foreground">{endereco}</p>}
             </div>
           </div>
@@ -297,21 +310,41 @@ export default function PublicSalaoBooking() {
                 {principais.map((s) => {
                   const escolhido = comanda.temItem(s.id);
                   return (
-                    <PickCard key={s.id} active={escolhido} onClick={() => comanda.alternar(s.id)}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium">{s.nome}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {s.categoria && <Badge variant="secondary" className="text-[10px]">{s.categoria}</Badge>}
-                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatarDuracao(s.duracao_minutos ?? 60)}</span>
-                            <span>· {formatarMoeda(s.valor)}</span>
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={escolhido}
+                      onClick={() => comanda.alternar(s.id)}
+                      className={`group rounded-2xl border p-4 text-left transition-all duration-200 ${
+                        escolhido
+                          ? 'border-primary/60 bg-primary/[0.06] shadow-md shadow-primary/10'
+                          : 'border-border/70 shadow-sm hover:border-primary/30 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          {s.categoria && (
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/70">
+                              {s.categoria}
+                            </span>
+                          )}
+                          <div className="mt-0.5 font-medium leading-snug">{s.nome}</div>
+                          <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />{formatarDuracao(s.duracao_minutos ?? 60)}
                           </div>
                         </div>
-                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${escolhido ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
-                          {escolhido ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <span className="text-sm font-semibold tabular-nums">{formatarMoeda(s.valor)}</span>
+                          <span className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
+                            escolhido
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-muted-foreground/25 text-muted-foreground group-hover:border-primary/50 group-hover:text-primary'
+                          }`}>
+                            {escolhido ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                          </span>
                         </div>
                       </div>
-                    </PickCard>
+                    </button>
                   );
                 })}
                 {principais.length === 0 && <Empty>Nenhum serviço disponível.</Empty>}
@@ -398,38 +431,92 @@ export default function PublicSalaoBooking() {
               )}
 
               {!disponibilidade.isFetching && roteiros.length > 0 && (
-                <div className="space-y-3">
-                  {roteiros.map((r, i) => (
-                    <button
-                      key={`${r.inicio}-${i}`}
-                      type="button"
-                      onClick={() => setRoteiroIdx(i)}
-                      className={`w-full rounded-xl border p-4 text-left transition-colors ${roteiroIdx === i ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-base font-semibold">{r.inicio} – {r.fim}</span>
-                        {r.tipo === 'fracionado'
-                          ? <Badge variant="secondary" className="text-[10px]">com intervalo</Badge>
-                          : r.tipo === 'sequencial'
-                            ? <Badge variant="secondary" className="text-[10px]">2 profissionais</Badge>
-                            : <Badge variant="secondary" className="text-[10px]">direto</Badge>}
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        {r.itens.map((it, n) => (
-                          <div key={n} className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">{it.inicio}–{it.fim}</span>
-                            <span className="truncate">{it.nome}</span>
-                            <span className="shrink-0">· {it.profissional_nome}</span>
+                <div className="space-y-4">
+                  {roteiros.map((r, i) => {
+                    const ativo = roteiroIdx === i;
+                    const qtdProf = r.profissionais_ids.length;
+                    return (
+                      <button
+                        key={`${r.inicio}-${i}`}
+                        type="button"
+                        onClick={() => setRoteiroIdx(i)}
+                        aria-pressed={ativo}
+                        className={`w-full overflow-hidden rounded-2xl border text-left transition-all duration-200 ${
+                          ativo
+                            ? 'border-primary/60 shadow-lg shadow-primary/10 ring-1 ring-primary/40'
+                            : 'border-border/70 shadow-sm hover:border-primary/30 hover:shadow-md'
+                        }`}
+                      >
+                        {/* faixa superior: horário do itinerário + natureza do roteiro */}
+                        <div className={`flex items-center justify-between gap-3 px-5 py-3.5 ${ativo ? 'bg-primary/[0.07]' : 'bg-muted/40'}`}>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-semibold tabular-nums tracking-tight">{r.inicio}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="text-xl font-semibold tabular-nums tracking-tight">{r.fim}</span>
                           </div>
-                        ))}
-                      </div>
-                      {r.espera_minutos > 0 && (
-                        <p className="mt-2 text-xs text-amber-600">
-                          Inclui {formatarDuracao(r.espera_minutos)} de intervalo livre
-                        </p>
-                      )}
-                    </button>
-                  ))}
+                          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                            {r.espera_minutos > 0 && (
+                              <Badge variant="secondary" className="text-[10px] font-medium">com intervalo</Badge>
+                            )}
+                            {/* contagem REAL — antes era "2 profissionais" fixo, mentindo com 3 nomes na lista */}
+                            <Badge variant="secondary" className="text-[10px] font-medium">
+                              {qtdProf === 1 ? '1 profissional' : `${qtdProf} profissionais`}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* itinerário: cada serviço é uma parada; o vão livre é desenhado, não narrado */}
+                        <div className="px-5 py-4">
+                          <ol>
+                            {r.itens.map((it, n) => {
+                              const proximo = r.itens[n + 1];
+                              // vão de SAÍDA: o espaço entre esta parada e a próxima.
+                              const vao = proximo ? minutosEntre(it.fim, proximo.inicio) : 0;
+                              const ultimo = n === r.itens.length - 1;
+                              return (
+                                <li key={n} className="flex gap-3.5">
+                                  {/* trilho contínuo: marcador + conector até a próxima parada */}
+                                  <div className="flex w-2.5 shrink-0 flex-col items-center">
+                                    <span className={`mt-[7px] h-2.5 w-2.5 shrink-0 rounded-full ${ativo ? 'bg-primary' : 'bg-primary/35'}`} />
+                                    {!ultimo && (
+                                      <span
+                                        className={`w-px flex-1 ${vao > 0
+                                          ? 'my-1 border-l border-dashed border-amber-400/80'
+                                          : 'my-1 bg-border'}`}
+                                      />
+                                    )}
+                                  </div>
+
+                                  <div className={`min-w-0 flex-1 ${ultimo ? '' : 'pb-1'}`}>
+                                    <div className="flex items-baseline justify-between gap-2">
+                                      <span className="truncate text-sm font-medium leading-tight">{it.nome}</span>
+                                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                        {it.inicio}–{it.fim}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                                        {inicial(it.profissional_nome)}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">{it.profissional_nome}</span>
+                                    </div>
+                                    {vao > 0 && (
+                                      <div className="my-2 flex items-center gap-2">
+                                        <span className="text-[11px] font-medium text-amber-600">
+                                          {formatarDuracao(vao)} livres
+                                        </span>
+                                        <span className="h-px flex-1 bg-amber-400/30" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
