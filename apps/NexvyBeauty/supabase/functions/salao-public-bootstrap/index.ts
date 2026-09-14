@@ -28,16 +28,22 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!org) return json({ error: 'Espaço não encontrado' }, 404);
 
-    const [servicos, profissionais, pacotes] = await Promise.all([
+    const [servicos, profissionais, pacotes, crossSell] = await Promise.all([
       sb.from('servico_catalogo')
-        .select('id, nome, categoria, duracao_minutos, valor:preco_base')
+        .select('id, nome, categoria, duracao_minutos, valor:preco_base, tipo')
         .eq('organization_id', org.id).eq('ativo', true).order('nome'),
       sb.from('profissionais')
-        .select('id, nome, especialidades, hora_inicio, hora_fim')
+        .select('id, nome, especialidades, hora_inicio, hora_fim, intervalo_inicio, intervalo_fim')
         .eq('organization_id', org.id).eq('ativo', true).order('nome'),
       sb.from('pacotes')
         .select('id, nome, descricao, total_sessoes, valor, validade_dias')
         .eq('organization_id', org.id).eq('ativo', true).order('valor'),
+      // Regras de cross-sell do tenant ("quem faz X também leva Y"). Configuração
+      // por salão — não heurística de nome de categoria, que varia entre tenants.
+      sb.from('servico_cross_sell')
+        .select('servico_origem_id, servico_sugerido_id, prioridade')
+        .eq('organization_id', org.id).eq('ativo', true)
+        .order('prioridade', { ascending: false }),
     ]);
 
     return json({
@@ -45,6 +51,7 @@ Deno.serve(async (req) => {
       servicos: servicos.data ?? [],
       profissionais: profissionais.data ?? [],
       pacotes: pacotes.data ?? [],
+      cross_sell: crossSell.data ?? [],
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'unknown' }, 500);

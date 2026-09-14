@@ -1,10 +1,14 @@
-// PublicSalaoBooking — Onda 2: agendamento público de salão (rota /s/:slug).
-// Wizard de 5 passos contra as edge fns públicas (salao-public-bootstrap /
-// salao-availability / salao-public-booking). Sem auth. Re-home do agendar.$slug
-// do CBA pra React Router + edge fns Deno.
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+// PublicSalaoBooking — agendamento público do salão (rota /s/:slug).
+// Wizard de 5 passos sobre as edge fns públicas (salao-public-bootstrap /
+// salao-availability / salao-public-booking). Sem auth.
+//
+// A jornada é uma COMANDA (cesta), não um serviço solto: o cliente acumula N
+// serviços, o servidor monta os roteiros possíveis (mesmo profissional em bloco
+// corrido, dois profissionais em sequência, ou fracionado com intervalo) e ele
+// escolhe um. Pagamento é só intenção — quem cobra é o salão, no balcão.
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,63 +16,85 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Store, Clock, ChevronLeft, ChevronRight, Check, Loader2,
-  User, Phone, Mail, Sparkles, Package,
+  ArrowRight, Check, ChevronLeft, Clock, CreditCard, Loader2, Mail, Package,
+  Phone, Plus, Sparkles, Store, User, Users, Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatAddress, type OrgAddress } from '@/lib/formatAddress';
+import { ComandaBar } from '@/components/booking/publico/ComandaBar';
+import {
+  formatarDuracao, formatarMoeda, useComandaBooking,
+  type ModoAtendimento, type ProfissionalPublico, type RegraCrossSell,
+  type Roteiro, type ServicoPublico,
+} from '@/hooks/useComandaBooking';
 
-type Servico = { id: string; nome: string; categoria: string | null; duracao_minutos: number | null; valor: number | null };
-type Profissional = { id: string; nome: string; especialidades: string[] | null; hora_inicio: string | null; hora_fim: string | null };
 type Bootstrap = {
   // address é jsonb no banco — nunca string. O tipo antigo mentia e derrubava a página.
   org: { id: string; name: string; logo_url: string | null; phone: string | null; address: OrgAddress; slug: string };
-  servicos: Servico[]; profissionais: Profissional[];
+  servicos: ServicoPublico[];
+  profissionais: ProfissionalPublico[];
   pacotes: { id: string; nome: string }[];
+  cross_sell: RegraCrossSell[];
 };
 
-const fmtBR = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? `${m[3]}/${m[2]}/${m[1]}` : iso; };
-const fmtMoney = (v: number | null) => v == null ? '—' : `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+const PAGAMENTOS = [
+  { valor: 'pix', rotulo: 'PIX no local' },
+  { valor: 'cartao_credito', rotulo: 'Cartão de crédito' },
+  { valor: 'cartao_debito', rotulo: 'Cartão de débito' },
+  { valor: 'dinheiro', rotulo: 'Dinheiro' },
+] as const;
+
+const STEPS = ['Serviços', 'Atendimento', 'Horário', 'Seus dados', 'Confirmar'];
+
 const hojeISO = () => new Date().toISOString().slice(0, 10);
+const fmtBR = (iso: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+};
+/** Máscara brasileira progressiva: (11) 91234-5678 */
+function mascararTelefone(bruto: string): string {
+  const d = bruto.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
 
 export default function PublicSalaoBooking() {
   const { slug = '' } = useParams();
   const [step, setStep] = useState(1);
-  const [servicoId, setServicoId] = useState('');
-  const [profId, setProfId] = useState('');
+  const [modo, setModo] = useState<ModoAtendimento | null>(null);
+  const [profPreferido, setProfPreferido] = useState('');
   const [data, setData] = useState(hojeISO());
-  const [hora, setHora] = useState('');
+  const [roteiroIdx, setRoteiroIdx] = useState<number | null>(null);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
-  const [done, setDone] = useState<{ data: string; hora: string; whatsapp: boolean } | null>(null);
+  const [pagamento, setPagamento] = useState<string>('');
+  const [done, setDone] = useState<{
+    itens: Array<{ servico_nome: string; profissional_nome: string; hora: string }>;
+    data: string; total: number; whatsapp: boolean;
+  } | null>(null);
 
   const boot = useQuery({
     queryKey: ['salao-bootstrap', slug],
     queryFn: async (): Promise<Bootstrap> => {
-      const { data, error } = await supabase.functions.invoke('salao-public-bootstrap', { body: { slug } });
+      const { data: r, error } = await supabase.functions.invoke('salao-public-bootstrap', { body: { slug } });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      return data as Bootstrap;
+      if ((r as any)?.error) throw new Error((r as any).error);
+      return r as Bootstrap;
     },
     enabled: !!slug,
     retry: false,
   });
 
-  const servico = boot.data?.servicos.find((s) => s.id === servicoId);
-  const profissional = boot.data?.profissionais.find((p) => p.id === profId);
+  const catalogo = boot.data?.servicos ?? [];
+  const comanda = useComandaBooking(catalogo, boot.data?.cross_sell ?? []);
 
-  const slots = useQuery({
-    queryKey: ['salao-slots', slug, servicoId, profId, data],
-    queryFn: async (): Promise<string[]> => {
-      const { data: r, error } = await supabase.functions.invoke('salao-availability', {
-        body: { slug, servico_id: servicoId, profissional_id: profId, data },
-      });
-      if (error) throw error;
-      return (r as any)?.slots ?? [];
-    },
-    enabled: step === 3 && !!slug && !!servicoId && !!profId && !!data,
-  });
+  const principais = useMemo(
+    () => catalogo.filter((s) => (s.tipo ?? 'principal') !== 'extra'),
+    [catalogo],
+  );
 
   const tracking = useMemo(() => {
     const q = new URLSearchParams(window.location.search);
@@ -86,22 +112,83 @@ export default function PublicSalaoBooking() {
     void (supabase as any).rpc('record_affiliate_click', { p_ref: ref });
   }, [tracking.ref]);
 
+  const disponibilidade = useQuery({
+    queryKey: ['salao-roteiros', slug, comanda.ids, data, modo, profPreferido],
+    queryFn: async (): Promise<{ roteiros: Roteiro[]; aviso?: string }> => {
+      const { data: r, error } = await supabase.functions.invoke('salao-availability', {
+        body: {
+          slug,
+          servico_ids: comanda.ids,
+          data,
+          modo: modo ?? 'auto',
+          profissional_id: modo === 'preferido' ? profPreferido : undefined,
+        },
+      });
+      if (error) throw error;
+      return { roteiros: (r as any)?.roteiros ?? [], aviso: (r as any)?.aviso };
+    },
+    enabled: step === 3 && !!slug && comanda.ids.length > 0 && !!data && !!modo,
+  });
+
+  const roteiros = disponibilidade.data?.roteiros ?? [];
+  const roteiro = roteiroIdx != null ? roteiros[roteiroIdx] : undefined;
+
   const submit = useMutation({
     mutationFn: async () => {
+      if (!roteiro) throw new Error('Escolha um horário');
       const { data: r, error } = await supabase.functions.invoke('salao-public-booking', {
-        body: { slug, servico_id: servicoId, profissional_id: profId, data, hora, cliente_nome: nome, cliente_telefone: telefone, cliente_email: email, tracking },
+        body: {
+          slug,
+          cliente_nome: nome,
+          cliente_telefone: telefone,
+          cliente_email: email,
+          forma_pagamento: pagamento || undefined,
+          tracking,
+          itens: roteiro.itens.map((i) => ({
+            servico_id: i.servico_id,
+            profissional_id: i.profissional_id,
+            data,
+            hora: i.inicio,
+            execution_order: i.execution_order,
+          })),
+        },
       });
       if (error) {
         // edge fn devolve 409/4xx com {error} — supabase-js encapsula em FunctionsHttpError
         const ctx = (error as any)?.context;
-        if (ctx?.json) { try { const body = await ctx.json(); if (body?.error) throw new Error(body.error); } catch (e) { if (e instanceof Error && e.message) throw e; } }
+        if (ctx?.json) {
+          try {
+            const body = await ctx.json();
+            if (body?.error) throw new Error(body.error);
+          } catch (e) { if (e instanceof Error && e.message) throw e; }
+        }
         throw error;
       }
       if ((r as any)?.error) throw new Error((r as any).error);
-      return r as { id: string; data: string; hora: string; whatsapp_enviado: boolean };
+      return r as any;
     },
-    onSuccess: (r) => { setDone({ data: r.data, hora: r.hora, whatsapp: r.whatsapp_enviado }); toast.success('Agendamento confirmado!'); },
-    onError: (e: any) => toast.error(e?.message || 'Não foi possível agendar'),
+    onSuccess: (r) => {
+      setDone({
+        itens: (r.itens ?? []).map((i: any) => ({
+          servico_nome: i.servico_nome,
+          profissional_nome: i.profissional_nome,
+          hora: String(i.hora).slice(0, 5),
+        })),
+        data: r.data,
+        total: Number(r.valor_total ?? 0),
+        whatsapp: !!r.whatsapp_enviado,
+      });
+      toast.success('Agendamento confirmado!');
+    },
+    onError: (e: any) => {
+      toast.error(e?.message || 'Não foi possível agendar');
+      // Horário tomado no meio do caminho: volta pro passo do horário e recarrega.
+      if (String(e?.message ?? '').includes('indisponível')) {
+        setRoteiroIdx(null);
+        setStep(3);
+        void disponibilidade.refetch();
+      }
+    },
   });
 
   if (boot.isLoading) {
@@ -110,37 +197,64 @@ export default function PublicSalaoBooking() {
   if (boot.isError || !boot.data) {
     return <Centered><Store className="h-10 w-10 text-muted-foreground" /><p className="mt-3 text-lg font-medium">Negócio não encontrado</p></Centered>;
   }
-  const { org, servicos, profissionais } = boot.data;
+  const { org, profissionais } = boot.data;
 
   if (done) {
     return (
       <Centered>
-        <div className="h-16 w-16 rounded-full bg-emerald-500/15 flex items-center justify-center"><Check className="h-8 w-8 text-emerald-500" /></div>
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15"><Check className="h-8 w-8 text-emerald-500" /></div>
         <h1 className="mt-4 text-2xl font-bold">Agendamento confirmado!</h1>
-        <p className="mt-1 text-muted-foreground">{servico?.nome} com {profissional?.nome}</p>
-        <p className="text-muted-foreground">{fmtBR(done.data)} às {done.hora.slice(0, 5)}</p>
+        <p className="mt-1 text-muted-foreground">{fmtBR(done.data)}</p>
+        <div className="mt-4 w-full max-w-sm space-y-2 text-left">
+          {done.itens.map((i, n) => (
+            <div key={n} className="flex items-center justify-between rounded-xl border p-3 text-sm">
+              <div>
+                <div className="font-medium">{i.servico_nome}</div>
+                <div className="text-xs text-muted-foreground">com {i.profissional_nome}</div>
+              </div>
+              <span className="font-semibold">{i.hora}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 font-semibold">Total: {formatarMoeda(done.total)}</p>
         {done.whatsapp && <p className="mt-2 text-sm text-emerald-600">Confirmação enviada por WhatsApp 📱</p>}
-        <Button className="mt-6" variant="outline" onClick={() => { setDone(null); setStep(1); setServicoId(''); setProfId(''); setHora(''); setNome(''); setTelefone(''); setEmail(''); }}>Novo agendamento</Button>
+        <Button
+          className="mt-6"
+          variant="outline"
+          onClick={() => {
+            setDone(null); setStep(1); comanda.limpar(); setModo(null); setProfPreferido('');
+            setRoteiroIdx(null); setNome(''); setTelefone(''); setEmail(''); setPagamento('');
+          }}
+        >
+          Novo agendamento
+        </Button>
       </Centered>
     );
   }
 
-  const canNext = step === 1 ? !!servicoId : step === 2 ? !!profId : step === 3 ? !!hora : step === 4 ? (nome.trim().length >= 2 && telefone.replace(/\D/g, '').length >= 8) : true;
+  const podeAvancar =
+    step === 1 ? comanda.itens.length > 0
+      : step === 2 ? (modo === 'auto' || modo === 'unico' || (modo === 'preferido' && !!profPreferido))
+        : step === 3 ? roteiroIdx != null
+          : step === 4 ? (nome.trim().length >= 2 && telefone.replace(/\D/g, '').length >= 10)
+            : true;
+
   const endereco = formatAddress(org.address);
+  const avancar = () => setStep((s) => Math.min(5, s + 1));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-28">
       <header className="border-b bg-card/40">
-        <div className="mx-auto max-w-2xl px-4 py-5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0"><Sparkles className="h-5 w-5" /></div>
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="h-5 w-5" /></div>
             <div className="min-w-0">
-              <h1 className="font-bold text-foreground truncate">{org.name}</h1>
-              {endereco && <p className="text-xs text-muted-foreground truncate">{endereco}</p>}
+              <h1 className="truncate font-bold text-foreground">{org.name}</h1>
+              {endereco && <p className="truncate text-xs text-muted-foreground">{endereco}</p>}
             </div>
           </div>
           {boot.data.pacotes.length > 0 && (
-            <Button asChild variant="outline" size="sm"><Link to={`/s/${slug}/pacotes`}><Package className="h-4 w-4 mr-1" />Pacotes</Link></Button>
+            <Button asChild variant="outline" size="sm"><Link to={`/s/${slug}/pacotes`}><Package className="mr-1 h-4 w-4" />Pacotes</Link></Button>
           )}
         </div>
       </header>
@@ -149,96 +263,293 @@ export default function PublicSalaoBooking() {
         <Stepper step={step} />
 
         <div className="mt-6 space-y-4">
+          {/* 1. Catálogo + cross-sell */}
           {step === 1 && (
-            <Grid>
-              {servicos.map((s) => (
-                <PickCard key={s.id} active={servicoId === s.id} onClick={() => setServicoId(s.id)}>
-                  <div className="font-medium">{s.nome}</div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    {s.categoria && <Badge variant="secondary" className="text-[10px]">{s.categoria}</Badge>}
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.duracao_minutos ?? 60} min</span>
-                    <span>· {fmtMoney(s.valor)}</span>
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">O que você quer fazer?</h2>
+                <p className="text-sm text-muted-foreground">Escolha quantos serviços quiser — montamos a agenda pra você.</p>
+              </div>
+
+              {comanda.sugestoes.length > 0 && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <p className="text-sm font-medium">Quem faz isso também costuma levar:</p>
+                  <div className="mt-3 space-y-2">
+                    {comanda.sugestoes.slice(0, 3).map((s) => (
+                      <div key={s.id} className="flex items-center gap-3 rounded-lg bg-background/70 p-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{s.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            +{formatarDuracao(s.duracao_minutos ?? 60)} · {formatarMoeda(s.valor)}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => comanda.adicionar(s.id)}>
+                          <Plus className="mr-1 h-3.5 w-3.5" />Adicionar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => comanda.dispensar(s.id)}>Agora não</Button>
+                      </div>
+                    ))}
                   </div>
-                </PickCard>
-              ))}
-              {servicos.length === 0 && <Empty>Nenhum serviço disponível.</Empty>}
-            </Grid>
+                </div>
+              )}
+
+              <Grid>
+                {principais.map((s) => {
+                  const escolhido = comanda.temItem(s.id);
+                  return (
+                    <PickCard key={s.id} active={escolhido} onClick={() => comanda.alternar(s.id)}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium">{s.nome}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            {s.categoria && <Badge variant="secondary" className="text-[10px]">{s.categoria}</Badge>}
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatarDuracao(s.duracao_minutos ?? 60)}</span>
+                            <span>· {formatarMoeda(s.valor)}</span>
+                          </div>
+                        </div>
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${escolhido ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'}`}>
+                          {escolhido ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </div>
+                      </div>
+                    </PickCard>
+                  );
+                })}
+                {principais.length === 0 && <Empty>Nenhum serviço disponível.</Empty>}
+              </Grid>
+            </>
           )}
 
+          {/* 2. Preferência de atendimento */}
           {step === 2 && (
-            <Grid>
-              {profissionais.map((p) => (
-                <PickCard key={p.id} active={profId === p.id} onClick={() => setProfId(p.id)}>
-                  <div className="font-medium">{p.nome}</div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    {p.especialidades?.[0] && <Badge variant="secondary" className="text-[10px]">{p.especialidades[0]}</Badge>}
-                    {p.hora_inicio && p.hora_fim && <span>{p.hora_inicio.slice(0, 5)}–{p.hora_fim.slice(0, 5)}</span>}
-                  </div>
-                </PickCard>
-              ))}
-              {profissionais.length === 0 && <Empty>Nenhum profissional disponível.</Empty>}
-            </Grid>
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">Como prefere ser atendida?</h2>
+                <p className="text-sm text-muted-foreground">
+                  {comanda.itens.length} {comanda.itens.length === 1 ? 'serviço' : 'serviços'}, {formatarDuracao(comanda.duracaoTotal)} no total.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <OpcaoModo
+                  ativo={modo === 'unico'} onClick={() => { setModo('unico'); setProfPreferido(''); setRoteiroIdx(null); }}
+                  icone={<User className="h-5 w-5" />}
+                  titulo="Tudo com a mesma pessoa"
+                  descricao="Só mostramos quem consegue fazer todos os serviços da comanda."
+                />
+                <OpcaoModo
+                  ativo={modo === 'preferido'} onClick={() => { setModo('preferido'); setRoteiroIdx(null); }}
+                  icone={<Sparkles className="h-5 w-5" />}
+                  titulo="Tenho preferência"
+                  descricao="Sua profissional favorita faz o que puder; o resto fica com a equipe."
+                />
+                <OpcaoModo
+                  ativo={modo === 'auto'} onClick={() => { setModo('auto'); setProfPreferido(''); setRoteiroIdx(null); }}
+                  icone={<Users className="h-5 w-5" />}
+                  titulo="Tanto faz — quero o mais rápido"
+                  descricao="Combinamos a equipe pra encaixar no melhor horário."
+                />
+              </div>
+
+              {modo === 'preferido' && (
+                <div className="pt-2">
+                  <Label className="mb-2 block text-sm">Com quem você prefere?</Label>
+                  <Grid>
+                    {profissionais.map((p) => (
+                      <PickCard key={p.id} active={profPreferido === p.id} onClick={() => { setProfPreferido(p.id); setRoteiroIdx(null); }}>
+                        <div className="font-medium">{p.nome}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                          {p.especialidades?.[0] && <Badge variant="secondary" className="text-[10px]">{p.especialidades[0]}</Badge>}
+                          {p.hora_inicio && p.hora_fim && <span>{p.hora_inicio.slice(0, 5)}–{p.hora_fim.slice(0, 5)}</span>}
+                        </div>
+                      </PickCard>
+                    ))}
+                    {profissionais.length === 0 && <Empty>Nenhum profissional disponível.</Empty>}
+                  </Grid>
+                </div>
+              )}
+            </>
           )}
 
+          {/* 3. Data + roteiros */}
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="data">Data</Label>
-                <Input id="data" type="date" min={hojeISO()} value={data} onChange={(e) => { setData(e.target.value); setHora(''); }} className="mt-1 max-w-xs" />
+                <Label htmlFor="data">Para quando?</Label>
+                <Input
+                  id="data" type="date" min={hojeISO()} value={data}
+                  onChange={(e) => { setData(e.target.value); setRoteiroIdx(null); }}
+                  className="mt-1 max-w-xs"
+                />
               </div>
-              {slots.isFetching && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Calculando disponibilidade…</p>}
-              {!slots.isFetching && (slots.data?.length ?? 0) === 0 && <Empty>Sem horários disponíveis nessa data.</Empty>}
-              {!slots.isFetching && (slots.data?.length ?? 0) > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {slots.data!.map((h) => (
-                    <Button key={h} variant={hora === h ? 'default' : 'outline'} size="sm" onClick={() => setHora(h)}>{h}</Button>
+
+              {disponibilidade.isFetching && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />Montando as opções…
+                </p>
+              )}
+
+              {!disponibilidade.isFetching && roteiros.length === 0 && (
+                <Empty>
+                  {disponibilidade.data?.aviso === 'sem_profissional_no_dia'
+                    ? 'A equipe não atende nesse dia. Tente outra data.'
+                    : disponibilidade.data?.aviso === 'nenhum_profissional_cobre_tudo'
+                      ? 'Ninguém da equipe faz todos esses serviços sozinho. Volte e escolha "tanto faz" para dividirmos entre especialistas.'
+                      : 'Não encontramos horário para essa combinação nesse dia. Tente outra data.'}
+                </Empty>
+              )}
+
+              {!disponibilidade.isFetching && roteiros.length > 0 && (
+                <div className="space-y-3">
+                  {roteiros.map((r, i) => (
+                    <button
+                      key={`${r.inicio}-${i}`}
+                      type="button"
+                      onClick={() => setRoteiroIdx(i)}
+                      className={`w-full rounded-xl border p-4 text-left transition-colors ${roteiroIdx === i ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-base font-semibold">{r.inicio} – {r.fim}</span>
+                        {r.tipo === 'fracionado'
+                          ? <Badge variant="secondary" className="text-[10px]">com intervalo</Badge>
+                          : r.tipo === 'sequencial'
+                            ? <Badge variant="secondary" className="text-[10px]">2 profissionais</Badge>
+                            : <Badge variant="secondary" className="text-[10px]">direto</Badge>}
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {r.itens.map((it, n) => (
+                          <div key={n} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">{it.inicio}–{it.fim}</span>
+                            <span className="truncate">{it.nome}</span>
+                            <span className="shrink-0">· {it.profissional_nome}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {r.espera_minutos > 0 && (
+                        <p className="mt-2 text-xs text-amber-600">
+                          Inclui {formatarDuracao(r.espera_minutos)} de intervalo livre
+                        </p>
+                      )}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           )}
 
+          {/* 4. Dados + pagamento */}
           {step === 4 && (
-            <div className="space-y-3 max-w-md">
-              <Field icon={User} label="Nome"><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" /></Field>
-              <Field icon={Phone} label="WhatsApp / Telefone"><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" /></Field>
-              <Field icon={Mail} label="E-mail (opcional)"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" /></Field>
+            <div className="max-w-md space-y-4">
+              <Field icon={User} label="Nome">
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" />
+              </Field>
+              <Field icon={Phone} label="WhatsApp / Telefone">
+                <Input
+                  value={telefone} inputMode="tel" placeholder="(11) 99999-9999"
+                  onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
+                />
+              </Field>
+              <Field icon={Mail} label="E-mail (opcional)">
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" />
+              </Field>
+
+              <div>
+                <Label className="mb-2 flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />Como pretende pagar?
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAGAMENTOS.map((p) => (
+                    <button
+                      key={p.valor}
+                      type="button"
+                      onClick={() => setPagamento(p.valor)}
+                      className={`flex items-center gap-2 rounded-xl border p-3 text-sm transition-colors ${pagamento === p.valor ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}
+                    >
+                      <Wallet className="h-4 w-4 text-muted-foreground" />{p.rotulo}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  O pagamento é feito no estabelecimento, no momento do atendimento.
+                </p>
+              </div>
             </div>
           )}
 
-          {step === 5 && (
-            <Card><CardContent className="p-5 space-y-2 text-sm">
-              <Row label="Serviço" value={servico?.nome} />
-              <Row label="Profissional" value={profissional?.nome} />
-              <Row label="Data" value={`${fmtBR(data)} às ${hora}`} />
-              <Row label="Duração" value={`${servico?.duracao_minutos ?? 60} min`} />
-              <Row label="Cliente" value={nome} />
-              <Row label="Telefone" value={telefone} />
-              <div className="border-t pt-2 mt-2 flex justify-between font-semibold"><span>Total</span><span>{fmtMoney(servico?.valor ?? null)}</span></div>
-            </CardContent></Card>
+          {/* 5. Revisão */}
+          {step === 5 && roteiro && (
+            <Card>
+              <CardContent className="space-y-3 p-5 text-sm">
+                <div>
+                  <div className="font-semibold">{org.name}</div>
+                  {endereco && <div className="text-xs text-muted-foreground">{endereco}</div>}
+                </div>
+                <div className="space-y-2 border-t pt-3">
+                  {roteiro.itens.map((it, n) => (
+                    <div key={n} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{it.nome}</div>
+                        <div className="text-xs text-muted-foreground">com {it.profissional_nome}</div>
+                      </div>
+                      <span className="shrink-0 font-medium">{it.inicio}–{it.fim}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1 border-t pt-3">
+                  <Row label="Data" value={`${fmtBR(data)}, das ${roteiro.inicio} às ${roteiro.fim}`} />
+                  <Row label="Duração dos serviços" value={formatarDuracao(roteiro.duracao_total_minutos)} />
+                  {roteiro.espera_minutos > 0 && <Row label="Intervalo livre" value={formatarDuracao(roteiro.espera_minutos)} />}
+                  <Row label="Cliente" value={nome} />
+                  <Row label="Telefone" value={telefone} />
+                  <Row label="Pagamento" value={PAGAMENTOS.find((p) => p.valor === pagamento)?.rotulo ?? 'A combinar'} />
+                </div>
+                <div className="mt-2 flex justify-between border-t pt-3 text-base font-semibold">
+                  <span>Total</span><span>{formatarMoeda(comanda.valorTotal)}</span>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        <div className="mt-6 flex items-center justify-between">
-          <Button variant="ghost" disabled={step === 1} onClick={() => setStep((s) => s - 1)}><ChevronLeft className="h-4 w-4 mr-1" />Voltar</Button>
-          {step < 5
-            ? <Button disabled={!canNext} onClick={() => setStep((s) => s + 1)}>Próximo<ChevronRight className="h-4 w-4 ml-1" /></Button>
-            : <Button disabled={submit.isPending} onClick={() => submit.mutate()}>{submit.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}Confirmar agendamento</Button>}
-        </div>
+        {/* Navegação: no passo 1 quem avança é a ComandaBar fixa. */}
+        {step > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+              <ChevronLeft className="mr-1 h-4 w-4" />Voltar
+            </Button>
+            {step < 5
+              ? <Button disabled={!podeAvancar} onClick={avancar}>Próximo<ArrowRight className="ml-1 h-4 w-4" /></Button>
+              : (
+                <Button disabled={submit.isPending || !roteiro} onClick={() => submit.mutate()}>
+                  {submit.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                  Confirmar agendamento
+                </Button>
+              )}
+          </div>
+        )}
       </div>
+
+      {step === 1 && (
+        <ComandaBar
+          itens={comanda.itens}
+          duracaoTotal={comanda.duracaoTotal}
+          valorTotal={comanda.valorTotal}
+          onRemover={comanda.remover}
+          onAvancar={avancar}
+        />
+      )}
     </div>
   );
 }
 
-const STEPS = ['Serviço', 'Profissional', 'Horário', 'Seus dados', 'Confirmar'];
 function Stepper({ step }: { step: number }) {
   return (
     <div className="flex items-center gap-1">
       {STEPS.map((label, i) => {
         const n = i + 1, active = n === step, doneStep = n < step;
         return (
-          <div key={label} className="flex-1 flex items-center gap-1">
-            <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold ${active ? 'bg-primary text-primary-foreground' : doneStep ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>{doneStep ? <Check className="h-3.5 w-3.5" /> : n}</div>
+          <div key={label} className="flex flex-1 items-center gap-1">
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${active ? 'bg-primary text-primary-foreground' : doneStep ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              {doneStep ? <Check className="h-3.5 w-3.5" /> : n}
+            </div>
             {i < STEPS.length - 1 && <div className={`h-0.5 flex-1 ${doneStep ? 'bg-primary/40' : 'bg-muted'}`} />}
           </div>
         );
@@ -246,15 +557,50 @@ function Stepper({ step }: { step: number }) {
     </div>
   );
 }
-const Centered = ({ children }: { children: React.ReactNode }) => <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-4">{children}</div>;
-const Grid = ({ children }: { children: React.ReactNode }) => <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>;
-const PickCard = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
-  <button onClick={onClick} className={`text-left rounded-xl border p-4 transition-colors ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}>{children}</button>
+
+const Centered = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">{children}</div>
 );
-const Empty = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-muted-foreground py-8 text-center">{children}</p>;
+const Grid = ({ children }: { children: React.ReactNode }) => (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+);
+const PickCard = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-xl border p-4 text-left transition-colors ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}
+  >
+    {children}
+  </button>
+);
+const Empty = ({ children }: { children: React.ReactNode }) => (
+  <p className="py-8 text-center text-sm text-muted-foreground">{children}</p>
+);
 const Field = ({ icon: Icon, label, children }: { icon: any; label: string; children: React.ReactNode }) => (
-  <div><Label className="flex items-center gap-1.5 mb-1"><Icon className="h-3.5 w-3.5 text-muted-foreground" />{label}</Label>{children}</div>
+  <div>
+    <Label className="mb-1 flex items-center gap-1.5"><Icon className="h-3.5 w-3.5 text-muted-foreground" />{label}</Label>
+    {children}
+  </div>
 );
 const Row = ({ label, value }: { label: string; value?: string }) => (
-  <div className="flex justify-between gap-4"><span className="text-muted-foreground">{label}</span><span className="font-medium text-right">{value || '—'}</span></div>
+  <div className="flex justify-between gap-4">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="text-right font-medium">{value || '—'}</span>
+  </div>
+);
+
+const OpcaoModo = ({ ativo, onClick, icone, titulo, descricao }: {
+  ativo: boolean; onClick: () => void; icone: React.ReactNode; titulo: string; descricao: string;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${ativo ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'}`}
+  >
+    <div className={`mt-0.5 shrink-0 ${ativo ? 'text-primary' : 'text-muted-foreground'}`}>{icone}</div>
+    <div className="min-w-0">
+      <div className="font-medium">{titulo}</div>
+      <div className="text-xs text-muted-foreground">{descricao}</div>
+    </div>
+  </button>
 );
