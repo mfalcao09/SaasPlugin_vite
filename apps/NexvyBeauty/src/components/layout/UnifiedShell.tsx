@@ -82,7 +82,7 @@ export const TENANT_NAV: ShellNavGroup[] = [
   {
     title: 'Gestão',
     items: [
-      { to: '/admin', label: 'Administração', icon: Settings, visibility: 'admin' },
+      { to: '/empresa', label: 'Empresa', icon: Settings, visibility: 'admin' },
       { to: '/super-admin', label: 'Plataforma', icon: Crown, visibility: 'super_admin' },
     ],
   },

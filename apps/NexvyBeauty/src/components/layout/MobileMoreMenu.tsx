@@ -89,7 +89,7 @@ export function MobileMoreMenu({ open, onClose, activeTab, onTabChange, hasProdu
 
   const handleAdminClick = () => {
     haptics.medium();
-    navigate('/admin');
+    navigate('/empresa');
     onClose();
   };
 

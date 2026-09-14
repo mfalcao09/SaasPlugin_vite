@@ -82,8 +82,7 @@ export function FormResponseDetail({ submission, blocks, onClose }: FormResponse
 
   const navigateToLead = () => {
     if (submission.lead_id) {
-      // Navigate to lead detail in admin panel
-      window.location.href = `/admin#lead-${submission.lead_id}`;
+      window.location.href = `/leads?lead=${submission.lead_id}`;
     }
   };
 

@@ -28,8 +28,7 @@ export function Dashboard({ products, onSelectProduct }: DashboardProps) {
   const overdueCount = taskStats?.overdueCount || 0;
 
   const handleViewAgenda = () => {
-    navigate('/admin');
-    // Note: This navigates to admin, ideally we'd have a seller calendar view
+    navigate('/agenda');
   };
 
   const stats = [

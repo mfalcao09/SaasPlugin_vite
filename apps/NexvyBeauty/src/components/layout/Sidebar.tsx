@@ -207,7 +207,7 @@ export function Sidebar({
           </Link>
         )}
         {showAdminLink && (
-          <Link to="/admin" className={itemClass(false)} title={collapsed ? 'Painel Admin' : undefined}>
+          <Link to="/empresa" className={itemClass(false)} title={collapsed ? 'Painel Admin' : undefined}>
             <Shield className="h-4 w-4 shrink-0" />
             {!collapsed && <span className="truncate">Painel Admin</span>}
           </Link>

@@ -3,18 +3,31 @@ import { AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useSuperAdminView } from '@/hooks/useSuperAdminView';
 import { Button } from '@/components/ui/button';
+import { isGestaoHostname } from '@/lib/publicUrl';
+import { readCachedBrandingSync } from '@/hooks/usePlatformBranding';
+
+const DEFAULT_APP_URL = 'https://app.nexvybeauty.com.br';
+const CONEXOES_PATH = '/conexoes';
 
 /**
- * Banner global de alerta quando a empresa tem instâncias Evolution
- * configuradas, mas nenhuma está `connected`. Aparece pra qualquer
- * usuário da org — assim quem comprou via Doppus/Cakto/Hotmart e ficou
- * sem mensagem de pós-venda dispara o alerta.
+ * Banner global quando a org ativa tem instâncias Evolution, mas nenhuma
+ * está `connected`.
+ *
+ * Superfície:
+ * - App do tenant (app.*): sempre elegível.
+ * - Gestão (gestao.*): só com impersonação ativa (gestor “dentro” do salão).
+ *   Sem impersonação o banner não aparece — é ruído de plataforma.
+ *
+ * CTA: sempre a tela de Conexões do tenant (`/conexoes`), nunca `/admin`.
  */
 export function WhatsAppDisconnectedBanner() {
   const { profile, roles } = useAuth();
+  const { isImpersonating } = useSuperAdminView();
   const navigate = useNavigate();
   const orgId = profile?.organization_id;
+  const onGestao = isGestaoHostname();
 
   const { data } = useQuery({
     queryKey: ['evolution-instances-health', orgId],
@@ -25,14 +38,10 @@ export function WhatsAppDisconnectedBanner() {
         .select('status')
         .eq('organization_id', orgId);
       const total = rows?.length ?? 0;
-      const connected = (rows ?? []).filter((r: any) => r.status === 'connected').length;
+      const connected = (rows ?? []).filter((r: { status: string }) => r.status === 'connected').length;
       return { total, connected };
     },
-    enabled: !!orgId,
-    // Com 60s fixos, a dona escaneia o QR e continua vendo "WhatsApp
-    // desconectado" por até um minuto — com um botão "Reconectar" que derruba
-    // a sessão recém-criada. Com o alarme ACESO conferimos de 5 em 5s (estado
-    // transitório); apagado, 60s bastam.
+    enabled: !!orgId && (!onGestao || isImpersonating),
     refetchInterval: (query) => {
       const d = query.state.data as { total: number; connected: number } | undefined;
       return d && d.total > 0 && d.connected === 0 ? 5_000 : 60_000;
@@ -41,9 +50,24 @@ export function WhatsAppDisconnectedBanner() {
     staleTime: 3_000,
   });
 
+  // Gestão sem impersonação: nunca mostrar alerta de WhatsApp de tenant/master.
+  if (onGestao && !isImpersonating) return null;
   if (!data || data.total === 0 || data.connected > 0) return null;
 
-  const canManage = roles.includes('admin') || roles.includes('manager');
+  const canManage = roles.includes('admin') || roles.includes('manager') || isImpersonating;
+
+  const goConexoes = () => {
+    // Em gestao.* a rota /conexoes não monta no PlatformShell (sem Outlet).
+    // Leva ao app do operador, onde Conexões vive de verdade.
+    if (onGestao) {
+      const configured = (readCachedBrandingSync() as { public_app_url?: string | null } | null)
+        ?.public_app_url;
+      const base = (configured?.trim() || DEFAULT_APP_URL).replace(/\/+$/, '');
+      window.location.assign(`${base}${CONEXOES_PATH}`);
+      return;
+    }
+    navigate(CONEXOES_PATH);
+  };
 
   return (
     <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-2.5 flex items-center gap-3">
@@ -56,11 +80,7 @@ export function WhatsAppDisconnectedBanner() {
         </span>
       </div>
       {canManage && (
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => navigate('/admin?tab=integrations')}
-        >
+        <Button size="sm" variant="destructive" onClick={goConexoes}>
           Reconectar
         </Button>
       )}

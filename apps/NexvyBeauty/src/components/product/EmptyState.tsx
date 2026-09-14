@@ -43,7 +43,7 @@ export function EmptyState() {
           Cadastre um produto (pacote, plano ou serviço) para liberar o pipeline,
           os leads e a IA de vendas desta empresa.
         </p>
-        <Button onClick={() => navigate('/admin?tab=products')} className="gap-2">
+        <Button onClick={() => navigate('/minha-ia?tab=ofertas')} className="gap-2">
           <Package className="h-4 w-4" />
           Ir para Produtos
         </Button>

@@ -17,7 +17,7 @@ export default function Painel() {
   const navigate = useNavigate()
   return (
     <div className="p-6 space-y-8">
-      <OperationCenter onNavigate={(s) => navigate(SECTION_ROUTE[s] ?? `/admin?tab=${s}`)} />
+      <OperationCenter onNavigate={(s) => navigate(SECTION_ROUTE[s] ?? `/empresa`)} />
       <div className="border-t pt-6">
         <AttendancePanel onOpenConversation={(id) => navigate(`/conversas?conv=${id}`)} />
       </div>

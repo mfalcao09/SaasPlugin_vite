@@ -208,7 +208,7 @@ export function WebhooksLink() {
           Os webhooks customizados ficam em uma seção dedicada no menu lateral.
           Você pode criar gatilhos, filtros e ações conectadas a sistemas externos.
         </p>
-        <Button onClick={() => navigate('/admin?section=webhooks')}>
+        <Button onClick={() => navigate('/webhooks')}>
           Abrir Webhooks
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
