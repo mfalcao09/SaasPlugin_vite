@@ -23,8 +23,9 @@ export function ComandaBar({
   if (itens.length === 0) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.18)] backdrop-blur-md supports-[backdrop-filter]:bg-card/85">
+      {/* respeita a home bar do iPhone — a barra fica colada no fundo da tela */}
+      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
         <Drawer>
           <DrawerTrigger asChild>
             <button
@@ -88,7 +89,11 @@ export function ComandaBar({
           </DrawerContent>
         </Drawer>
 
-        <Button className="h-11 shrink-0 px-5" onClick={onAvancar}>
+        <Button
+          className="h-12 shrink-0 rounded-xl px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:brightness-105 active:scale-[0.98]"
+          style={{ backgroundImage: 'var(--gradient-signature)' }}
+          onClick={onAvancar}
+        >
           {rotuloAvancar}
           <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
