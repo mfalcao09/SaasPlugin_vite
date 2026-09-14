@@ -196,7 +196,7 @@ export function AgentSchedulingTab({ formData, onChange }: Props) {
                 asChild
                 className="h-7 text-xs"
               >
-                <Link to="/admin?tab=booking">
+                <Link to="/salao/agenda">
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Gerenciar tipos
                 </Link>
@@ -224,14 +224,14 @@ export function AgentSchedulingTab({ formData, onChange }: Props) {
                       <span className="font-medium text-foreground">"Apresentação {linkedProduct.name}"</span>{' '}
                       (30 min, Google Meet) na primeira reunião agendada por esse agente.
                       Você pode personalizar depois ou{' '}
-                      <Link to="/admin?tab=booking" className="text-primary underline">criar tipos específicos</Link>.
+                      <Link to="/salao/agenda" className="text-primary underline">criar tipos específicos</Link>.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground italic p-3 border border-dashed rounded-lg">
                   Esse anfitrião ainda não tem tipos de evento ativos.{' '}
-                  <Link to="/admin?tab=booking" className="text-primary underline">
+                  <Link to="/salao/agenda" className="text-primary underline">
                     Criar agora
                   </Link>
                 </div>

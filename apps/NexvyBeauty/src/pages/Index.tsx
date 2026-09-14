@@ -293,7 +293,7 @@ const Index = () => {
     !isSuperAdmin() &&
     !adminHasAssignedProducts
   ) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/empresa" replace />;
   }
 
   // NOTA: o super admin acessa o CRM (/crm) explicitamente pelo hub de

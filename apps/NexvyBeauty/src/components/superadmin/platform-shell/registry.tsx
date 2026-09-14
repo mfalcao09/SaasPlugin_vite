@@ -17,7 +17,6 @@ import { CaktoSuperAdminPanel } from '@/components/superadmin/payments/CaktoSupe
 import { AffiliatesPanel } from '@/components/superadmin/affiliates/AffiliatesPanel';
 import { CaktoAdminPanel } from '@/components/admin/payments/CaktoAdminPanel';
 import { EvolutionManager } from '@/components/superadmin/EvolutionManager';
-import { IntegrationsManager } from '@/components/admin/integrations/IntegrationsManager';
 import { PlatformSettings } from '@/components/superadmin/PlatformSettings';
 import { EmailSettings } from '@/components/superadmin/EmailSettings';
 import { HelpManager } from '@/components/superadmin/HelpManager';
@@ -173,12 +172,6 @@ const ERP_NAV: PlatformNavGroup[] = [
         label: 'WhatsApp / Evolution',
         icon: I.Smartphone,
         render: () => <EvolutionManager />,
-      },
-      {
-        id: 'integrations',
-        label: 'Integrações',
-        icon: I.Plug,
-        render: () => <IntegrationsManager />,
       },
       {
         id: 'branding',

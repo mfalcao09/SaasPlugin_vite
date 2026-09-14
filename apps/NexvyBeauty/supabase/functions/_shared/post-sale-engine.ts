@@ -403,7 +403,7 @@ export async function runPostSaleActions(
             type: 'system',
             title: 'WhatsApp desconectado — mensagem pós-venda não enviada',
             message: `Lead ${lead.name || lead.email || lead.phone} comprou (${ctx.eventType}) mas a instância do WhatsApp não está conectada. Reconecte para retomar os envios.`,
-            action_url: '/admin?tab=integrations',
+            action_url: '/conexoes',
             scope: 'all',
             scope_filters: {
               lead_id: lead.id,

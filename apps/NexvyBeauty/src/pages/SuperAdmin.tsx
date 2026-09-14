@@ -21,7 +21,6 @@ import { SupportTickets } from '@/components/admin/support/SupportTickets';
 import { AgentToolExecutionsPanel } from '@/components/superadmin/AgentToolExecutionsPanel';
 import { AIQualityPanel } from '@/components/superadmin/AIQualityPanel';
 import { AffiliatesPanel } from '@/components/superadmin/affiliates/AffiliatesPanel';
-import { IntegrationsManager } from '@/components/admin/integrations/IntegrationsManager';
 import { CaktoAdminPanel } from '@/components/admin/payments/CaktoAdminPanel';
 import { FirstAccessSuperAdminModal } from '@/components/superadmin/FirstAccessSuperAdminModal';
 import { AppTopBar } from '@/components/layout/AppTopBar';
@@ -63,7 +62,7 @@ export default function SuperAdmin() {
       case 'branding':
         return <PlatformSettings />;
       case 'integrations':
-        return <IntegrationsManager />;
+        return <EvolutionManager />;
       case 'email':
         return <EmailSettings />;
       case 'audit':

@@ -295,7 +295,7 @@ function ExecutiveAgentShortcut() {
             </div>
           </div>
           <Button
-            onClick={() => navigate('/admin?section=agents&open=executive')}
+            onClick={() => navigate('/minha-ia')}
             variant="outline"
             className="gap-2 shrink-0"
           >
