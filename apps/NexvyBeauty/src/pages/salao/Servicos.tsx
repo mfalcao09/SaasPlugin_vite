@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Sparkles, Plus, Search, Loader2, Pencil, Trash2, Gift } from 'lucide-react'
 import { CrossSellDialog } from '@/components/salao/CrossSellDialog'
+import { ImageUpload } from '@/components/ui/image-upload'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -30,15 +31,25 @@ export interface Servico {
   descricao: string | null
   /** 'principal' aparece no catálogo público; 'extra' só como adicional no cross-sell. */
   tipo?: 'principal' | 'extra' | null
+  /** Quando preenchido (e menor que preco_base), é o valor cobrado. */
+  preco_promocional?: number | null
+  imagem_url?: string | null
+  /** Combo: serviços que ele inclui (vitrine; não expande na agenda). */
+  combo_servico_ids?: string[] | null
 }
 
 interface ServicoForm {
   nome: string; categoria: string; descricao: string; duracao_minutos: string; preco_base: string
   ativo: boolean; tipo: 'principal' | 'extra'
+  preco_promocional: string
+  imagem_url: string
+  /** Combo: serviços que ele inclui. Vitrine — não expande na agenda. */
+  combo_servico_ids: string[]
 }
 
 const EMPTY_FORM: ServicoForm = {
   nome: '', categoria: '', descricao: '', duracao_minutos: '30', preco_base: '', ativo: true, tipo: 'principal',
+  preco_promocional: '', imagem_url: '', combo_servico_ids: [],
 }
 
 // Nichos multi-uso (cabeleireira/manicure/lash/podóloga/...). Categoria = nicho do serviço.
@@ -79,10 +90,14 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
         status: (form.ativo ? 'published' : 'draft') as 'published' | 'draft',
         category: form.categoria.trim() || null,
         description: form.descricao.trim() || null,
+        product_image_url: form.imagem_url || null,
         settings: {
           preco_base: form.preco_base ? Number(form.preco_base) : 0,
           duracao_minutos: form.duracao_minutos ? Number(form.duracao_minutos) : 30,
           tipo_servico: form.tipo,
+          // a view ignora promoção >= preço cheio, mas não adianta nem gravar
+          preco_promocional: form.preco_promocional ? Number(form.preco_promocional) : null,
+          combo_servico_ids: form.combo_servico_ids.length ? form.combo_servico_ids : null,
         },
       }
       if (editingId) {
@@ -121,6 +136,9 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
       duracao_minutos: s.duracao_minutos != null ? String(s.duracao_minutos) : '30',
       preco_base: s.preco_base != null ? String(s.preco_base) : '', ativo: s.ativo ?? true,
       tipo: s.tipo === 'extra' ? 'extra' : 'principal',
+      preco_promocional: s.preco_promocional != null ? String(s.preco_promocional) : '',
+      imagem_url: s.imagem_url ?? '',
+      combo_servico_ids: Array.isArray(s.combo_servico_ids) ? s.combo_servico_ids : [],
     })
     setShowForm(true)
   }
@@ -181,9 +199,15 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">
                       <span className="flex items-center gap-2">
+                        {s.imagem_url && (
+                          <img src={s.imagem_url} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />
+                        )}
                         {s.nome}
                         {s.tipo === 'extra' && (
                           <Badge variant="secondary" className="text-[10px] font-normal">extra</Badge>
+                        )}
+                        {s.preco_promocional != null && (
+                          <Badge variant="secondary" className="text-[10px] font-normal text-primary">promo</Badge>
                         )}
                       </span>
                       {s.descricao ? <span className="block text-xs font-normal text-muted-foreground">{s.descricao}</span> : null}
@@ -236,6 +260,68 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
               </div>
               <div className="space-y-2"><Label>Duração (min)</Label><Input type="number" min="0" step="5" value={form.duracao_minutos} onChange={(e) => setForm((f) => ({ ...f, duracao_minutos: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Preço (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_base} onChange={(e) => setForm((f) => ({ ...f, preco_base: e.target.value }))} /></div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Preço promocional (R$) <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+              <Input
+                type="number" min="0" step="0.01" placeholder="deixe vazio para não ter promoção"
+                value={form.preco_promocional}
+                onChange={(e) => setForm((f) => ({ ...f, preco_promocional: e.target.value }))}
+              />
+              {form.preco_promocional && Number(form.preco_promocional) >= Number(form.preco_base || 0) && (
+                <p className="text-xs text-amber-600">
+                  A promoção precisa ser menor que o preço cheio, senão será ignorada.
+                </p>
+              )}
+              {form.preco_promocional && Number(form.preco_promocional) > 0
+                && Number(form.preco_promocional) < Number(form.preco_base || 0) && (
+                <p className="text-xs text-muted-foreground">
+                  No agendamento aparece {formatCurrency(Number(form.preco_base))} riscado e{' '}
+                  {formatCurrency(Number(form.preco_promocional))} como valor cobrado.
+                </p>
+              )}
+            </div>
+
+            <ImageUpload
+              label="Foto do serviço (opcional)"
+              description="Aparece no card do agendamento online. Quadrada fica melhor."
+              bucket="catalog-media"
+              folder={`${organizationId ?? 'sem-org'}/servicos`}
+              aspectRatio="square"
+              value={form.imagem_url}
+              onChange={(url) => setForm((f) => ({ ...f, imagem_url: url }))}
+              onRemove={() => setForm((f) => ({ ...f, imagem_url: '' }))}
+              disabled={isDemo}
+            />
+
+            {/* Combo: vitrine. O serviço continua sendo UM bloco na agenda. */}
+            <div className="space-y-2">
+              <Label>Este serviço é um combo? <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">
+                {servicos.filter((o) => o.id !== editingId).map((o) => (
+                  <label key={o.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-[hsl(var(--primary))]"
+                      checked={form.combo_servico_ids.includes(o.id)}
+                      onChange={() => setForm((f) => ({
+                        ...f,
+                        combo_servico_ids: f.combo_servico_ids.includes(o.id)
+                          ? f.combo_servico_ids.filter((x) => x !== o.id)
+                          : [...f.combo_servico_ids, o.id],
+                      }))}
+                    />
+                    <span className="truncate">{o.nome}</span>
+                  </label>
+                ))}
+                {servicos.filter((o) => o.id !== editingId).length === 0 && (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">Cadastre outros serviços primeiro.</p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Marcados aparecem como “inclui X + Y”. Duração e preço continuam sendo os deste serviço.
+              </p>
             </div>
             <div className="space-y-2"><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} rows={2} /></div>
 
