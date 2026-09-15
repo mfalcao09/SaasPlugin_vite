@@ -16,16 +16,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  ArrowRight, Check, ChevronLeft, Clock, CreditCard, Loader2, Mail, Package,
-  Phone, Plus, Sparkles, Store, User, Users, Wallet,
+  ArrowRight, Check, ChevronLeft, Clock, CreditCard, Loader2, Mail, Minus, Package,
+  Phone, Plus, ShoppingBag, Sparkles, Store, User, Users, Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatAddress, type OrgAddress } from '@/lib/formatAddress';
 import { ComandaBar } from '@/components/booking/publico/ComandaBar';
 import {
-  formatarDuracao, formatarMoeda, useComandaBooking,
-  type ModoAtendimento, type ProfissionalPublico, type RegraCrossSell,
-  type Roteiro, type ServicoPublico,
+  formatarDuracao, formatarMoeda, precoEfetivo, useComandaBooking,
+  type ModoAtendimento, type ProdutoPublico, type ProfissionalPublico,
+  type RegraCrossSell, type Roteiro, type ServicoPublico,
 } from '@/hooks/useComandaBooking';
 
 type Bootstrap = {
@@ -35,6 +35,7 @@ type Bootstrap = {
   profissionais: ProfissionalPublico[];
   pacotes: { id: string; nome: string }[];
   cross_sell: RegraCrossSell[];
+  produtos: ProdutoPublico[];
 };
 
 const PAGAMENTOS = [
@@ -95,12 +96,25 @@ export default function PublicSalaoBooking() {
   });
 
   const catalogo = boot.data?.servicos ?? [];
-  const comanda = useComandaBooking(catalogo, boot.data?.cross_sell ?? []);
+  const comanda = useComandaBooking(catalogo, boot.data?.cross_sell ?? [], boot.data?.produtos ?? []);
 
   const principais = useMemo(
     () => catalogo.filter((s) => (s.tipo ?? 'principal') !== 'extra'),
     [catalogo],
   );
+
+  /** id do combo -> "Corte feminino + Escova". Nomes resolvidos do próprio catálogo. */
+  const combos = useMemo(() => {
+    const nomePorId = new Map(catalogo.map((s) => [s.id, s.nome]));
+    const mapa = new Map<string, string>();
+    for (const s of catalogo) {
+      const partes = (s.combo_servico_ids ?? [])
+        .map((id) => nomePorId.get(id))
+        .filter(Boolean) as string[];
+      if (partes.length > 0) mapa.set(s.id, partes.join(' + '));
+    }
+    return mapa;
+  }, [catalogo]);
 
   const tracking = useMemo(() => {
     const q = new URLSearchParams(window.location.search);
@@ -156,6 +170,10 @@ export default function PublicSalaoBooking() {
             data,
             hora: i.inicio,
             execution_order: i.execution_order,
+          })),
+          produtos: comanda.itensProduto.map(({ produto, quantidade }) => ({
+            produto_id: produto.id,
+            quantidade,
           })),
         },
       });
@@ -293,7 +311,13 @@ export default function PublicSalaoBooking() {
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium">{s.nome}</div>
                           <div className="text-xs text-muted-foreground">
-                            +{formatarDuracao(s.duracao_minutos ?? 60)} · {formatarMoeda(s.valor)}
+                            +{formatarDuracao(s.duracao_minutos ?? 60)} ·{' '}
+                            {s.preco_promocional != null && (
+                              <span className="line-through">{formatarMoeda(s.valor)} </span>
+                            )}
+                            <span className={s.preco_promocional != null ? 'font-semibold text-primary' : ''}>
+                              {formatarMoeda(precoEfetivo(s))}
+                            </span>
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => comanda.adicionar(s.id)}>
@@ -321,7 +345,13 @@ export default function PublicSalaoBooking() {
                           : 'border-border/70 shadow-sm hover:border-primary/30 hover:shadow-md'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        {s.imagem_url && (
+                          <img
+                            src={s.imagem_url} alt="" loading="lazy"
+                            className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           {s.categoria && (
                             <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-primary/70">
@@ -329,12 +359,27 @@ export default function PublicSalaoBooking() {
                             </span>
                           )}
                           <div className="mt-0.5 font-medium leading-snug">{s.nome}</div>
+                          {/* combo anuncia o que inclui — é o que justifica o preço fechado */}
+                          {combos.get(s.id) && (
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              inclui {combos.get(s.id)}
+                            </div>
+                          )}
                           <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />{formatarDuracao(s.duracao_minutos ?? 60)}
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-2">
-                          <span className="text-sm font-semibold tabular-nums">{formatarMoeda(s.valor)}</span>
+                          <span className="text-right">
+                            {s.preco_promocional != null && (
+                              <span className="block text-[11px] tabular-nums text-muted-foreground line-through">
+                                {formatarMoeda(s.valor)}
+                              </span>
+                            )}
+                            <span className={`text-sm font-semibold tabular-nums ${s.preco_promocional != null ? 'text-primary' : ''}`}>
+                              {formatarMoeda(precoEfetivo(s))}
+                            </span>
+                          </span>
                           <span className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
                             escolhido
                               ? 'border-primary bg-primary text-primary-foreground'
@@ -588,11 +633,75 @@ export default function PublicSalaoBooking() {
                   <Row label="Telefone" value={telefone} />
                   <Row label="Pagamento" value={PAGAMENTOS.find((p) => p.valor === pagamento)?.rotulo ?? 'A combinar'} />
                 </div>
+                {comanda.itensProduto.length > 0 && (
+                  <div className="space-y-1 border-t pt-3">
+                    {comanda.itensProduto.map(({ produto, quantidade }) => (
+                      <div key={produto.id} className="flex justify-between gap-3 text-sm">
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {produto.nome} × {quantidade}
+                        </span>
+                        <span className="shrink-0 font-medium tabular-nums">
+                          {formatarMoeda(produto.preco * quantidade)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-2 flex justify-between border-t pt-3 text-base font-semibold">
                   <span>Total</span><span>{formatarMoeda(comanda.valorTotal)}</span>
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Leve também: produtos de revenda. Não ocupam agenda — o cliente
+              retira no balcão junto com o atendimento. */}
+          {step === 5 && (boot.data.produtos ?? []).length > 0 && (
+            <div className="rounded-2xl border border-border/70 p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Leve também</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Você retira no salão, junto com o atendimento.
+              </p>
+              <div className="mt-3 space-y-2">
+                {boot.data.produtos.map((p) => {
+                  const qtd = comanda.produtos[p.id] ?? 0;
+                  return (
+                    <div key={p.id} className="flex items-center gap-3 rounded-xl border p-3">
+                      {p.imagem_url && (
+                        <img src={p.imagem_url} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{p.nome}</div>
+                        <div className="text-xs tabular-nums text-muted-foreground">{formatarMoeda(p.preco)}</div>
+                      </div>
+                      {qtd === 0 ? (
+                        <Button size="sm" variant="outline" onClick={() => comanda.definirProduto(p.id, 1, p.estoque)}>
+                          <Plus className="mr-1 h-3.5 w-3.5" />Adicionar
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="outline" className="h-8 w-8"
+                            aria-label={`Diminuir ${p.nome}`}
+                            onClick={() => comanda.definirProduto(p.id, qtd - 1, p.estoque)}>
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="w-6 text-center text-sm font-semibold tabular-nums">{qtd}</span>
+                          <Button size="icon" variant="outline" className="h-8 w-8"
+                            aria-label={`Aumentar ${p.nome}`}
+                            disabled={qtd >= p.estoque}
+                            onClick={() => comanda.definirProduto(p.id, qtd + 1, p.estoque)}>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
 

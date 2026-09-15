@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!org) return json({ error: 'Espaço não encontrado' }, 404);
 
-    const [servicos, profissionais, pacotes, crossSell] = await Promise.all([
+    const [servicos, profissionais, pacotes, crossSell, produtos] = await Promise.all([
       sb.from('servico_catalogo')
-        .select('id, nome, categoria, duracao_minutos, valor:preco_base, tipo')
+        .select('id, nome, categoria, duracao_minutos, valor:preco_base, tipo, preco_promocional, imagem_url, combo_servico_ids, descricao')
         .eq('organization_id', org.id).eq('ativo', true).order('nome'),
       sb.from('profissionais')
         .select('id, nome, especialidades, hora_inicio, hora_fim, intervalo_inicio, intervalo_fim')
@@ -44,7 +44,25 @@ Deno.serve(async (req) => {
         .select('servico_origem_id, servico_sugerido_id, prioridade')
         .eq('organization_id', org.id).eq('ativo', true)
         .order('prioridade', { ascending: false }),
+      // Produtos de revenda (shampoo, óleo...). Vendidos junto da comanda, mas
+      // NÃO ocupam agenda. Preço e estoque vivem em settings (ProdutosRevenda.tsx).
+      sb.from('products')
+        .select('id, name, category, settings, product_image_url')
+        .eq('organization_id', org.id).eq('tipo', 'produto').eq('status', 'published')
+        .order('name'),
     ]);
+
+    // Só oferece o que tem estoque — prometer produto esgotado queima a loja.
+    const produtosDisponiveis = (produtos.data ?? [])
+      .map((p: any) => ({
+        id: p.id,
+        nome: p.name,
+        categoria: p.category ?? null,
+        preco: Number(p.settings?.preco ?? 0),
+        estoque: Number(p.settings?.estoque ?? 0),
+        imagem_url: p.product_image_url ?? null,
+      }))
+      .filter((p: { estoque: number; preco: number }) => p.estoque > 0 && p.preco > 0);
 
     return json({
       org,
@@ -52,6 +70,7 @@ Deno.serve(async (req) => {
       profissionais: profissionais.data ?? [],
       pacotes: pacotes.data ?? [],
       cross_sell: crossSell.data ?? [],
+      produtos: produtosDisponiveis,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'unknown' }, 500);

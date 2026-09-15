@@ -75,6 +75,16 @@ Deno.serve(async (req) => {
         execution_order: 1,
       }];
 
+    // Produtos de revenda (opcional). O agente de IA não manda este campo —
+    // por isso ele é opcional e o fluxo antigo segue idêntico.
+    const produtos: Array<{ produto_id: string; quantidade: number }> =
+      Array.isArray(b?.produtos)
+        ? b.produtos.slice(0, 20).map((p: any) => ({
+          produto_id: String(p?.produto_id ?? ''),
+          quantidade: Math.max(1, Math.min(20, Number(p?.quantidade) || 1)),
+        })).filter((p: { produto_id: string }) => UUID_RE.test(p.produto_id))
+        : [];
+
     const itensValidos = itens.length > 0 && itens.length <= 12 && itens.every((it) =>
       UUID_RE.test(it.servico_id) && UUID_RE.test(it.profissional_id) &&
       /^\d{4}-\d{2}-\d{2}$/.test(it.data) && /^\d{2}:\d{2}$/.test(it.hora));
@@ -122,6 +132,7 @@ Deno.serve(async (req) => {
         utm_medium: tracking?.utm_medium ?? null,
         utm_campaign: tracking?.utm_campaign ?? null,
         itens,
+        produtos,
       },
     });
 
@@ -132,6 +143,9 @@ Deno.serve(async (req) => {
       }
       if (msg.includes('SERVICO_INVALIDO') || msg.includes('PROFISSIONAL_INVALIDO')) {
         return json({ error: 'profissional ou serviço não encontrado' }, 422);
+      }
+      if (msg.includes('PRODUTO_INVALIDO')) {
+        return json({ error: 'produto indisponível' }, 422);
       }
       if (msg.includes('COMANDA_VAZIA')) return json({ error: 'comanda vazia' }, 400);
       return json({ error: 'falha ao agendar: ' + msg }, 500);
