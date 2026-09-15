@@ -2,6 +2,7 @@ import { HeaderProductSwitcher } from '@/components/layout/HeaderProductSwitcher
 import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { WhatsAppDisconnectedBanner } from '@/components/layout/WhatsAppDisconnectedBanner';
 import { TopBarActions } from '@/components/layout/TopBarActions';
+import { isGestaoHostname } from '@/lib/publicUrl';
 import { Tables } from '@/integrations/supabase/types';
 
 type DBProduct = Tables<'products'>;
@@ -16,9 +17,8 @@ interface HeaderProps {
   onSelectProductObject?: (product: DBProduct) => void;
 }
 
-// Topbar do CRM: mesma barra global (OrganizationSelector + TopBarActions) das
-// demais áreas, MAIS o seletor de produto, que é específico do CRM. As ações
-// globais vêm de TopBarActions (fonte única compartilhada com a AppTopBar).
+// Topbar do CRM: mesma barra global (OrganizationSelector fora de gestao.* +
+// TopBarActions) das demais áreas, MAIS o seletor de produto (CRM).
 export function Header({
   title,
   subtitle,
@@ -26,6 +26,8 @@ export function Header({
   selectedProduct = null,
   onSelectProductObject,
 }: HeaderProps) {
+  const showImpersonation = !isGestaoHostname();
+
   return (
     <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
       <WhatsAppDisconnectedBanner />
@@ -38,8 +40,7 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Impersonação de empresa (super admin) — porte do Intentus */}
-          <OrganizationSelector />
+          {showImpersonation && <OrganizationSelector />}
 
           {/* Product Switcher — específico do CRM */}
           {assignedProducts.length > 0 && onSelectProductObject && (
