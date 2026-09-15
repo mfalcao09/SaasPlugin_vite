@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Sparkles, Plus, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Sparkles, Plus, Search, Loader2, Pencil, Trash2, Gift } from 'lucide-react'
+import { CrossSellDialog } from '@/components/salao/CrossSellDialog'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -27,13 +28,18 @@ export interface Servico {
   duracao_minutos: number | null
   categoria: string | null
   descricao: string | null
+  /** 'principal' aparece no catálogo público; 'extra' só como adicional no cross-sell. */
+  tipo?: 'principal' | 'extra' | null
 }
 
 interface ServicoForm {
-  nome: string; categoria: string; descricao: string; duracao_minutos: string; preco_base: string; ativo: boolean
+  nome: string; categoria: string; descricao: string; duracao_minutos: string; preco_base: string
+  ativo: boolean; tipo: 'principal' | 'extra'
 }
 
-const EMPTY_FORM: ServicoForm = { nome: '', categoria: '', descricao: '', duracao_minutos: '30', preco_base: '', ativo: true }
+const EMPTY_FORM: ServicoForm = {
+  nome: '', categoria: '', descricao: '', duracao_minutos: '30', preco_base: '', ativo: true, tipo: 'principal',
+}
 
 // Nichos multi-uso (cabeleireira/manicure/lash/podóloga/...). Categoria = nicho do serviço.
 const NICHOS = ['Cabelo', 'Unhas', 'Cílios', 'Sobrancelha', 'Maquiagem', 'Podologia', 'Estética', 'Depilação', 'Massagem', 'Outros']
@@ -46,6 +52,7 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<ServicoForm>(EMPTY_FORM)
+  const [crossSellDe, setCrossSellDe] = useState<{ id: string; nome: string } | null>(null)
 
   const { data: fetched = [], isLoading } = useQuery({
     queryKey: ['servicos', organizationId],
@@ -75,6 +82,7 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
         settings: {
           preco_base: form.preco_base ? Number(form.preco_base) : 0,
           duracao_minutos: form.duracao_minutos ? Number(form.duracao_minutos) : 30,
+          tipo_servico: form.tipo,
         },
       }
       if (editingId) {
@@ -112,6 +120,7 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
       nome: s.nome ?? '', categoria: s.categoria ?? '', descricao: s.descricao ?? '',
       duracao_minutos: s.duracao_minutos != null ? String(s.duracao_minutos) : '30',
       preco_base: s.preco_base != null ? String(s.preco_base) : '', ativo: s.ativo ?? true,
+      tipo: s.tipo === 'extra' ? 'extra' : 'principal',
     })
     setShowForm(true)
   }
@@ -171,7 +180,12 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
                 {filtered.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">
-                      {s.nome}
+                      <span className="flex items-center gap-2">
+                        {s.nome}
+                        {s.tipo === 'extra' && (
+                          <Badge variant="secondary" className="text-[10px] font-normal">extra</Badge>
+                        )}
+                      </span>
                       {s.descricao ? <span className="block text-xs font-normal text-muted-foreground">{s.descricao}</span> : null}
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">{s.categoria ?? '—'}</TableCell>
@@ -186,6 +200,14 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon" variant="ghost" title="Sugestões no agendamento online"
+                          onClick={() => isDemo
+                            ? toast.info('Ação indisponível no modo demonstração')
+                            : setCrossSellDe({ id: s.id, nome: s.nome })}
+                        >
+                          <Gift className="h-4 w-4" />
+                        </Button>
                         <Button size="icon" variant="ghost" onClick={() => abrirEdicao(s)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => onDelete(s)} title="Excluir" className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                       </div>
@@ -216,6 +238,30 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
               <div className="space-y-2"><Label>Preço (R$)</Label><Input type="number" min="0" step="0.01" value={form.preco_base} onChange={(e) => setForm((f) => ({ ...f, preco_base: e.target.value }))} /></div>
             </div>
             <div className="space-y-2"><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} rows={2} /></div>
+
+            {/* Define onde o serviço aparece na página pública de agendamento. */}
+            <div className="space-y-2">
+              <Label>Onde aparece no agendamento online</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { v: 'principal', t: 'Principal', d: 'Aparece na lista de serviços' },
+                  { v: 'extra', t: 'Extra', d: 'Só como adicional sugerido' },
+                ] as const).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, tipo: o.v }))}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      form.tipo === o.v ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{o.t}</div>
+                    <div className="text-xs text-muted-foreground">{o.d}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={(v) => setForm((f) => ({ ...f, ativo: v }))} />
               <Label className="cursor-pointer">Serviço ativo</Label>
@@ -229,6 +275,15 @@ export default function Servicos({ demo, bare }: { demo?: Servico[]; bare?: bool
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {organizationId && (
+        <CrossSellDialog
+          organizationId={organizationId}
+          servico={crossSellDe}
+          servicos={servicos}
+          onClose={() => setCrossSellDe(null)}
+        />
+      )}
     </MaybeSalaoShell>
   )
 }

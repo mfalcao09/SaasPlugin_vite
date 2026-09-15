@@ -29,6 +29,9 @@ export interface Profissional {
   hora_inicio?: string | null
   hora_fim?: string | null
   dias_atendimento?: number[] | null
+  /** Pausa (almoço). Sem ela, o agendamento online pode marcar em cima do intervalo. */
+  intervalo_inicio?: string | null
+  intervalo_fim?: string | null
   created_at?: string
 }
 
@@ -62,6 +65,8 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
   const [telefone, setTelefone] = useState('')
   const [especialidades, setEspecialidades] = useState('')
   const [comissaoPct, setComissaoPct] = useState('')
+  const [intervaloInicio, setIntervaloInicio] = useState('')
+  const [intervaloFim, setIntervaloFim] = useState('')
   const [horaInicio, setHoraInicio] = useState(HORA_INICIO_DEFAULT)
   const [horaFim, setHoraFim] = useState(HORA_FIM_DEFAULT)
   const [diasAtendimento, setDiasAtendimento] = useState<number[]>(DIAS_DEFAULT)
@@ -84,6 +89,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
     setShowForm(false); setEditingId(null)
     setNome(''); setEmail(''); setTelefone(''); setEspecialidades(''); setComissaoPct('')
     setHoraInicio(HORA_INICIO_DEFAULT); setHoraFim(HORA_FIM_DEFAULT); setDiasAtendimento(DIAS_DEFAULT)
+    setIntervaloInicio(''); setIntervaloFim('')
   }
 
   const toggleDia = (dia: number) =>
@@ -93,6 +99,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
     setEditingId(null)
     setNome(''); setEmail(''); setTelefone(''); setEspecialidades(''); setComissaoPct('')
     setHoraInicio(HORA_INICIO_DEFAULT); setHoraFim(HORA_FIM_DEFAULT); setDiasAtendimento(DIAS_DEFAULT)
+    setIntervaloInicio(''); setIntervaloFim('')
     setShowForm(true)
   }
 
@@ -106,6 +113,8 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
     setHoraInicio((p.hora_inicio ?? HORA_INICIO_DEFAULT).slice(0, 5))
     setHoraFim((p.hora_fim ?? HORA_FIM_DEFAULT).slice(0, 5))
     setDiasAtendimento(Array.isArray(p.dias_atendimento) ? p.dias_atendimento : DIAS_DEFAULT)
+    setIntervaloInicio((p.intervalo_inicio ?? '').slice(0, 5))
+    setIntervaloFim((p.intervalo_fim ?? '').slice(0, 5))
     setShowForm(true)
   }
 
@@ -117,6 +126,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
         nome, email: email || null, telefone: telefone || null,
         especialidades: especialidadesArr, comissao_pct: comissaoPct ? Number(comissaoPct) : 0, ativo: true,
         hora_inicio: horaInicio, hora_fim: horaFim, dias_atendimento: diasAtendimento,
+        intervalo_inicio: intervaloInicio || null, intervalo_fim: intervaloFim || null,
       })
       if (error) throw error
     },
@@ -135,6 +145,7 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
         nome, email: email || null, telefone: telefone || null,
         especialidades: especialidadesArr, comissao_pct: comissaoPct ? Number(comissaoPct) : 0,
         hora_inicio: horaInicio, hora_fim: horaFim, dias_atendimento: diasAtendimento,
+        intervalo_inicio: intervaloInicio || null, intervalo_fim: intervaloFim || null,
       }).eq('id', editingId!)
       if (error) throw error
     },
@@ -149,6 +160,15 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
   const onSave = () => {
     if (isDemo) { toast.info('Ação indisponível no modo demonstração'); return }
     if (horaInicio >= horaFim) { toast.error('A hora de início deve ser anterior à hora de fim.'); return }
+    if ((intervaloInicio && !intervaloFim) || (!intervaloInicio && intervaloFim)) {
+      toast.error('Preencha início e fim da pausa, ou deixe os dois vazios.'); return
+    }
+    if (intervaloInicio && intervaloFim) {
+      if (intervaloInicio >= intervaloFim) { toast.error('A pausa deve começar antes de terminar.'); return }
+      if (intervaloInicio < horaInicio || intervaloFim > horaFim) {
+        toast.error('A pausa precisa estar dentro do horário de trabalho.'); return
+      }
+    }
     if (editingId) atualizar.mutate(); else criar.mutate()
   }
 
@@ -243,8 +263,32 @@ export default function Profissionais({ demo }: { demo?: Profissional[] } = {}) 
             <div className="space-y-2"><Label>Comissão (%)</Label><Input type="number" min="0" max="100" step="0.01" value={comissaoPct} onChange={(e) => setComissaoPct(e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Hora de início</Label><Input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} /></div>
+
               <div className="space-y-2"><Label>Hora de fim</Label><Input type="time" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} /></div>
             </div>
+
+            {/* Pausa: o agendamento online não oferece horário dentro dela. */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Pausa / almoço <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+                {(intervaloInicio || intervaloFim) && (
+                  <Button
+                    type="button" size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs"
+                    onClick={() => { setIntervaloInicio(''); setIntervaloFim('') }}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input type="time" value={intervaloInicio} onChange={(e) => setIntervaloInicio(e.target.value)} aria-label="Início da pausa" />
+                <Input type="time" value={intervaloFim} onChange={(e) => setIntervaloFim(e.target.value)} aria-label="Fim da pausa" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Nenhum agendamento online será oferecido nesse intervalo.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label>Dias de atendimento</Label>
               <div className="flex flex-wrap gap-2">
