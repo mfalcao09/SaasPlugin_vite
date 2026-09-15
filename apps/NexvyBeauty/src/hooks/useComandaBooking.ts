@@ -10,7 +10,27 @@ export type ServicoPublico = {
   duracao_minutos: number | null;
   valor: number | null;
   tipo?: 'principal' | 'extra' | null;
+  /** Quando existe, é o preço cobrado; `valor` vira o "de" riscado. */
+  preco_promocional?: number | null;
+  imagem_url?: string | null;
+  /** Combo: ids dos serviços que ele inclui (exibição; não expande na agenda). */
+  combo_servico_ids?: string[] | null;
+  descricao?: string | null;
 };
+
+export type ProdutoPublico = {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  preco: number;
+  estoque: number;
+  imagem_url: string | null;
+};
+
+/** Preço que o cliente realmente paga — a promoção manda quando existe. */
+export function precoEfetivo(s: ServicoPublico): number {
+  return Number(s.preco_promocional ?? s.valor ?? 0);
+}
 
 export type ProfissionalPublico = {
   id: string;
@@ -51,9 +71,15 @@ export type ModoAtendimento = 'unico' | 'preferido' | 'auto';
 
 const DURACAO_PADRAO = 60;
 
-export function useComandaBooking(catalogo: ServicoPublico[], regras: RegraCrossSell[]) {
+export function useComandaBooking(
+  catalogo: ServicoPublico[],
+  regras: RegraCrossSell[],
+  produtosCatalogo: ProdutoPublico[] = [],
+) {
   const [ids, setIds] = useState<string[]>([]);
   const [dispensados, setDispensados] = useState<string[]>([]);
+  /** produto_id -> quantidade */
+  const [produtos, setProdutos] = useState<Record<string, number>>({});
 
   const porId = useMemo(() => new Map(catalogo.map((s) => [s.id, s])), [catalogo]);
 
@@ -67,10 +93,34 @@ export function useComandaBooking(catalogo: ServicoPublico[], regras: RegraCross
     () => itens.reduce((acc, s) => acc + (s.duracao_minutos ?? DURACAO_PADRAO), 0),
     [itens],
   );
-  const valorTotal = useMemo(
-    () => itens.reduce((acc, s) => acc + Number(s.valor ?? 0), 0),
+  // Soma pelo preço EFETIVO: com promoção ativa, o total tem que bater com o
+  // que a RPC cobra — senão a tela promete um valor e o salão cobra outro.
+  const valorServicos = useMemo(
+    () => itens.reduce((acc, s) => acc + precoEfetivo(s), 0),
     [itens],
   );
+
+  const produtosPorId = useMemo(
+    () => new Map(produtosCatalogo.map((p) => [p.id, p])),
+    [produtosCatalogo],
+  );
+
+  const itensProduto = useMemo(
+    () => Object.entries(produtos)
+      .map(([id, qtd]) => {
+        const p = produtosPorId.get(id);
+        return p ? { produto: p, quantidade: qtd } : null;
+      })
+      .filter(Boolean) as Array<{ produto: ProdutoPublico; quantidade: number }>,
+    [produtos, produtosPorId],
+  );
+
+  const valorProdutos = useMemo(
+    () => itensProduto.reduce((acc, i) => acc + i.produto.preco * i.quantidade, 0),
+    [itensProduto],
+  );
+
+  const valorTotal = valorServicos + valorProdutos;
 
   const temItem = useCallback((id: string) => ids.includes(id), [ids]);
 
@@ -89,6 +139,19 @@ export function useComandaBooking(catalogo: ServicoPublico[], regras: RegraCross
   const limpar = useCallback(() => {
     setIds([]);
     setDispensados([]);
+    setProdutos({});
+  }, []);
+
+  /** Ajusta quantidade do produto; 0 (ou menos) remove da comanda. */
+  const definirProduto = useCallback((id: string, quantidade: number, estoque: number) => {
+    setProdutos((atual) => {
+      const qtd = Math.max(0, Math.min(quantidade, Math.max(0, estoque)));
+      if (qtd === 0) {
+        const { [id]: _, ...resto } = atual;
+        return resto;
+      }
+      return { ...atual, [id]: qtd };
+    });
   }, []);
 
   const dispensar = useCallback((id: string) => {
@@ -116,8 +179,9 @@ export function useComandaBooking(catalogo: ServicoPublico[], regras: RegraCross
   }, [ids, regras, dispensados, porId]);
 
   return {
-    ids, itens, duracaoTotal, valorTotal, sugestoes,
-    temItem, adicionar, remover, alternar, limpar, dispensar,
+    ids, itens, duracaoTotal, valorTotal, valorServicos, valorProdutos, sugestoes,
+    itensProduto, produtos,
+    temItem, adicionar, remover, alternar, limpar, dispensar, definirProduto,
   };
 }
 

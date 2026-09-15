@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
     const [servRes, profRes] = await Promise.all([
       sb.from('servico_catalogo')
-        .select('id, nome, categoria, duracao_minutos, preco_base')
+        .select('id, nome, categoria, duracao_minutos, preco_base, preco_promocional')
         .eq('organization_id', org.id).eq('ativo', true).in('id', servicoIds),
       sb.from('profissionais')
         .select('id, nome, especialidades, hora_inicio, hora_fim, dias_atendimento, intervalo_inicio, intervalo_fim')
@@ -98,8 +98,12 @@ Deno.serve(async (req) => {
         duracao_minutos: s.duracao_minutos ?? 60,
       };
     });
-    const valorTotal = servicoIds.reduce(
-      (acc, id) => acc + Number((porId.get(id) as any)?.preco_base ?? 0), 0);
+    // Promoção manda: precisa bater com o que a RPC cobra, senão o roteiro
+    // anuncia um valor e a comanda grava outro.
+    const valorTotal = servicoIds.reduce((acc, id) => {
+      const s: any = porId.get(id);
+      return acc + Number(s?.preco_promocional ?? s?.preco_base ?? 0);
+    }, 0);
 
     const dow = new Date(data + 'T00:00:00Z').getUTCDay();
     let doDia = (profRes.data ?? []).filter((p: any) => atendeNoDia(p.dias_atendimento, dow));
