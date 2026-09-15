@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { isGestaoHostname } from '@/lib/publicUrl';
 
 interface OrgRow { id: string; name: string; status: string | null }
 
@@ -26,6 +27,8 @@ export function OrganizationSelector() {
   const [showSwitcher, setShowSwitcher] = useState(false);
   const navigate = useNavigate();
 
+  const onGestao = isGestaoHostname();
+
   const { data: orgs = [] } = useQuery({
     queryKey: ['sa-orgs-selector'],
     queryFn: async () => {
@@ -36,8 +39,11 @@ export function OrganizationSelector() {
       if (error) throw error;
       return (data ?? []) as OrgRow[];
     },
+    enabled: isSuperAdmin && !onGestao,
   });
 
+  // gestao.*: sem impersonação (bugava CRM + banner WhatsApp do tenant)
+  if (onGestao) return null;
   // defesa em profundidade: só super admin opera o seletor
   if (!isSuperAdmin) return null;
 

@@ -3,6 +3,9 @@
 // "Empresa Master" (operar a empresa master) e pode IMPERSONAR qualquer
 // empresa. A troca muda o próprio profiles.organization_id via RPC gated
 // set_active_organization; a RLS (get_user_organization) propaga sozinha.
+//
+// Em gestao.* a impersonação é PROIBIDA: limpa localStorage + volta à master.
+// O seletor "Acessando:" não monta nesse host (ver OrganizationSelector).
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,11 +45,17 @@ const LS_KEY = 'nx_view_mode';
 const LS_IMP_ID = 'nx_imp_org_id';
 const LS_IMP_NAME = 'nx_imp_org_name';
 
+function clearImpersonationStorage() {
+  localStorage.removeItem(LS_IMP_ID);
+  localStorage.removeItem(LS_IMP_NAME);
+}
+
 export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
   const { isSuperAdmin: isSuperAdminFn, user, refetchProfile } = useAuth();
   const isSuperAdmin = isSuperAdminFn();
   const queryClient = useQueryClient();
   const hasSynced = useRef<string | null>(null);
+  const gestaoCleared = useRef(false);
 
   // empresa master desta instalação
   const { data: masterOrgId = null } = useQuery({
@@ -67,10 +76,19 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
     return s === 'gestao' || s === 'empresa' ? s : null;
   });
   const [impersonatedOrgId, setImpersonatedOrgId] = useState<string | null>(
-    () => (typeof window === 'undefined' ? null : localStorage.getItem(LS_IMP_ID))
+    () => {
+      if (typeof window === 'undefined') return null;
+      // gestao.* nunca restaura impersonação do LS (estado travado)
+      if (isGestaoHostname()) return null;
+      return localStorage.getItem(LS_IMP_ID);
+    }
   );
   const [impersonatedOrgName, setImpersonatedOrgName] = useState<string | null>(
-    () => (typeof window === 'undefined' ? null : localStorage.getItem(LS_IMP_NAME))
+    () => {
+      if (typeof window === 'undefined') return null;
+      if (isGestaoHostname()) return null;
+      return localStorage.getItem(LS_IMP_NAME);
+    }
   );
 
   const isImpersonating = !!impersonatedOrgId && impersonatedOrgId !== masterOrgId;
@@ -80,9 +98,38 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LS_KEY, mode);
   }, []);
 
-  // Restaura a empresa ativa no banco a partir do localStorage (1x por user)
+  // gestao.*: força saída da impersonação (UI + LS + RPC master).
+  // Limpa estado local mesmo se a RPC falhar — destravar a topbar.
+  useEffect(() => {
+    if (!user || !isSuperAdmin || !isGestaoHostname()) return;
+    if (gestaoCleared.current) return;
+    gestaoCleared.current = true;
+
+    clearImpersonationStorage();
+    setImpersonatedOrgId(null);
+    setImpersonatedOrgName(null);
+    setViewModeState('gestao');
+    localStorage.setItem(LS_KEY, 'gestao');
+
+    (async () => {
+      if (!masterOrgId) {
+        await refetchProfile();
+        queryClient.invalidateQueries();
+        return;
+      }
+      const { error } = await supabase.rpc('set_active_organization', { p_org_id: masterOrgId });
+      if (!error) {
+        await refetchProfile();
+        queryClient.invalidateQueries();
+      }
+    })();
+  }, [user, isSuperAdmin, masterOrgId, refetchProfile, queryClient]);
+
+  // Restaura a empresa ativa no banco a partir do localStorage (1x por user).
+  // Nunca em gestao.* — lá o efeito acima manda o perfil de volta à master.
   useEffect(() => {
     if (!user || !isSuperAdmin || !masterOrgId) return;
+    if (isGestaoHostname()) return;
     if (hasSynced.current === user.id) return;
     hasSynced.current = user.id;
     const target = impersonatedOrgId && impersonatedOrgId !== masterOrgId ? impersonatedOrgId : masterOrgId;
@@ -91,11 +138,22 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
       if (!error) {
         await refetchProfile();
         queryClient.invalidateQueries();
+      } else if (target !== masterOrgId) {
+        // Org do LS sumiu ("Empresa inexistente") — limpa e volta à master
+        clearImpersonationStorage();
+        setImpersonatedOrgId(null);
+        setImpersonatedOrgName(null);
+        await supabase.rpc('set_active_organization', { p_org_id: masterOrgId });
+        await refetchProfile();
+        queryClient.invalidateQueries();
       }
     })();
   }, [user, isSuperAdmin, masterOrgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const impersonateOrganization = useCallback(async (orgId: string, orgName: string) => {
+    if (isGestaoHostname()) {
+      throw new Error('Impersonação não está disponível na gestão. Use o app do salão.');
+    }
     const { error } = await supabase.rpc('set_active_organization', { p_org_id: orgId });
     if (error) throw error;
     setImpersonatedOrgId(orgId);
@@ -109,15 +167,17 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
   }, [refetchProfile, queryClient]);
 
   const exitImpersonation = useCallback(async () => {
-    if (!masterOrgId) return;
-    const { error } = await supabase.rpc('set_active_organization', { p_org_id: masterOrgId });
-    if (error) throw error;
+    // Sempre limpa UI/LS primeiro — evita topbar travada se masterOrgId/RPC falhar
     setImpersonatedOrgId(null);
     setImpersonatedOrgName(null);
-    localStorage.removeItem(LS_IMP_ID);
-    localStorage.removeItem(LS_IMP_NAME);
+    clearImpersonationStorage();
     setViewModeState('gestao');
     localStorage.setItem(LS_KEY, 'gestao');
+
+    if (masterOrgId) {
+      const { error } = await supabase.rpc('set_active_organization', { p_org_id: masterOrgId });
+      if (error) throw error;
+    }
     await refetchProfile();
     queryClient.invalidateQueries();
   }, [masterOrgId, refetchProfile, queryClient]);
@@ -130,17 +190,16 @@ export function SuperAdminViewProvider({ children }: { children: ReactNode }) {
         setImpersonatedOrgId(null);
         setImpersonatedOrgName(null);
         localStorage.removeItem(LS_KEY);
-        localStorage.removeItem(LS_IMP_ID);
-        localStorage.removeItem(LS_IMP_NAME);
+        clearImpersonationStorage();
         hasSynced.current = null;
+        gestaoCleared.current = false;
       }
     });
     return () => subscription.unsubscribe();
   }, []);
 
   // Split por hostname: o gestao.* É o modo gestão; o app.*/apex É o modo
-  // empresa. A URL decide o viewMode, substituindo o dialog de escolha manual
-  // (impersonação segue via OrganizationSelector, independente disto).
+  // empresa. A URL decide o viewMode.
   useEffect(() => {
     if (!isSuperAdmin) return;
     const desired: ViewMode = isGestaoHostname() ? 'gestao' : 'empresa';

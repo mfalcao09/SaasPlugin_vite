@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { OrganizationSelector } from '@/components/layout/OrganizationSelector';
 import { TopBarActions } from '@/components/layout/TopBarActions';
 import { WhatsAppDisconnectedBanner } from '@/components/layout/WhatsAppDisconnectedBanner';
+import { isGestaoHostname } from '@/lib/publicUrl';
 
 interface AppTopBarProps {
   title: string;
@@ -12,9 +13,11 @@ interface AppTopBarProps {
 
 // Topbar canônica REUTILIZÁVEL (variante limpa, sem o seletor de produto do
 // CRM). Deve aparecer em TODOS os módulos pós-login: marca/título à esquerda +
-// "Acessar Empresa…" (OrganizationSelector) + ações globais (TopBarActions).
+// "Acessar Empresa…" (OrganizationSelector, só fora de gestao.*) + TopBarActions.
 // O CRM usa a Header própria (que adiciona o seletor de produto).
 export function AppTopBar({ title, subtitle, leading }: AppTopBarProps) {
+  const showImpersonation = !isGestaoHostname();
+
   return (
     <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
       <WhatsAppDisconnectedBanner />
@@ -28,8 +31,7 @@ export function AppTopBar({ title, subtitle, leading }: AppTopBarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Impersonação de empresa (super admin) — porte do Intentus */}
-          <OrganizationSelector />
+          {showImpersonation && <OrganizationSelector />}
           <TopBarActions />
         </div>
       </div>
