@@ -1,0 +1,59 @@
+{
+  "at": "2026-09-16T23:37:05.065868+00:00",
+  "question": "DB voltou \u2014 era s\u00f3 o billing/INACTIVE?",
+  "checks": {
+    "C1_project_ACTIVE_HEALTHY": "PASS",
+    "C2_db_select_1": "PASS",
+    "C3_functions_api_reachable": "PASS",
+    "C4_camila_still_OFF_kill_true": "PASS",
+    "C5_path_a_migration_applied": "FAIL",
+    "C6_REOPEN_secret_present": "FAIL",
+    "C7_path_a_F4_live_done": "FAIL",
+    "C8_harness_subset_deno": "PASS"
+  },
+  "detail": {
+    "project_ref": "fzhlbwhdejumkyqosuvq",
+    "project_status": "ACTIVE_HEALTHY",
+    "release": {
+      "agent_id": "68aeece9-26f2-4f7b-a595-a6ea5e8acfa7",
+      "release_state": "OFF",
+      "kill_switch": true
+    },
+    "optout_path_a_cols": {
+      "kind": false,
+      "active": false,
+      "revoked_at": false,
+      "scope": false
+    },
+    "secrets_camila_present": [
+      "CAMILA_CONDUCTOR_ALLOW_LIVE",
+      "CAMILA_CONDUCTOR_DRY_RUN",
+      "CAMILA_CONDUCTOR_ENABLED"
+    ],
+    "secrets_path_a_absent": [
+      "REOPEN_INTENT_V1_MODE",
+      "R2_AUTO_V1_MODE",
+      "REOPEN_INTENT_V1_ALLOWLIST"
+    ],
+    "wa_instance": {
+      "id": "80268751-958e-4750-8550-eeae942b3c4d",
+      "status": "connected",
+      "webhook_subscribed": true
+    },
+    "deployed_webhook": {
+      "slug": "platform-whatsapp-qr-webhook",
+      "version": 17,
+      "has_joice_shouldReopen": true,
+      "has_path_a_reopen_decision_import": false
+    },
+    "plan_b_was_blocked_by": "INACTIVE + unpaid invoices",
+    "plan_b_still_remaining": [
+      "apply migrations_platform_crm/20260916_path_a_soft_hard_optout.sql (+ related)",
+      "deploy webhook+cold with Path A modules",
+      "set REOPEN_INTENT_V1_MODE=enforce + allowlist canary (not broad)",
+      "PATH_A_F4_LIVE canary then OFF+kill",
+      "only then F6/F7 under GO"
+    ]
+  },
+  "verdict": "Billing/INACTIVE era o bloqueio de acesso. N\u00c3O era a \u00fanica pend\u00eancia do Path A / Camila no ar."
+}

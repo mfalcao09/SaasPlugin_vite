@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "r2_auto_mode": "shadow_code_ready_default_off",
+  "soft_plans": 1,
+  "hard_plans": 0,
+  "sends": 0,
+  "idempotency_dedup": true,
+  "f4_gate": "pass_harness",
+  "f4_live": "blocked_needs_PATH_A_F4_LIVE",
+  "at": "2026-09-16T14:03:33.492311+00:00"
+}

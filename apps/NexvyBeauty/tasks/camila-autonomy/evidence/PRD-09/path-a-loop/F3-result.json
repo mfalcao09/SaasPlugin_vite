@@ -1,0 +1,12 @@
+{
+  "status": "pass",
+  "path_a_sends": 0,
+  "deno_exit": 0,
+  "wiring": {
+    "webhook_decision": true,
+    "cold_same_gate": true,
+    "emergency_intact": true
+  },
+  "flags_default": "REOPEN_INTENT_V1_MODE unset \u2192 off (no prod shadow until set)",
+  "divergence_file": "F3-divergence.json"
+}

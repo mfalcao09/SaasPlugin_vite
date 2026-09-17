@@ -1,0 +1,99 @@
+{
+  "when": "2026-09-14T04:02:58.537694+00:00",
+  "question": "Ready for D1 at 09:00 BRT?",
+  "verdict": "YES_GO_AT_09",
+  "duplicate_phone_policy": "keep both espaco.leh and lu.heleno.nails",
+  "d1_scope": "wa:eval only — not the 5, not lu.heleno",
+  "checks": [
+    {
+      "id": "release_off",
+      "status": "PASS",
+      "detail": {
+        "kill_switch": false,
+        "release_state": "OFF"
+      }
+    },
+    {
+      "id": "incident_cohort_inactive",
+      "status": "PASS",
+      "detail": {
+        "active": false,
+        "members": 5,
+        "active_rpc": 0
+      }
+    },
+    {
+      "id": "campaign_paused_dry",
+      "status": "PASS",
+      "detail": {
+        "dry_run": true,
+        "name": "piloto-camila-zapi-20260901",
+        "status": "paused"
+      }
+    },
+    {
+      "id": "chip_db_connected",
+      "status": "PASS",
+      "detail": {
+        "status": "connected",
+        "phone_masked": "***6926"
+      }
+    },
+    {
+      "id": "chip_live",
+      "status": "PASS",
+      "detail": {
+        "connected": true,
+        "smartphoneConnected": true
+      }
+    },
+    {
+      "id": "wa_eval_ready",
+      "status": "PASS",
+      "detail": {
+        "id": "130624e9-e2a5-4880-831d-aee882b1937d",
+        "status": "bot_active",
+        "visitor_id": "wa:eval-e2e-b-20260914T024200Z"
+      }
+    },
+    {
+      "id": "brain_secret_local",
+      "status": "PASS",
+      "detail": {
+        "env_local": true
+      }
+    },
+    {
+      "id": "shortlist_validated",
+      "status": "PASS",
+      "detail": {
+        "n": 5,
+        "handles": [
+          "@espaco.leh",
+          "@joicefbeltramini",
+          "@alinemachadostudiodebeleza",
+          "@beatrizsouza_af",
+          "@beautycompany.af"
+        ],
+        "lu_in_dispatch": false
+      }
+    },
+    {
+      "id": "d1_wake_armed",
+      "status": "PASS",
+      "detail": {
+        "terminal": "694002",
+        "note": "sleep until 09:00 BRT"
+      }
+    },
+    {
+      "id": "window_note",
+      "status": "PASS",
+      "detail": {
+        "sp_now": "2026-09-14T01:02:58.537651-03:00",
+        "inside_kernel_window_now": false,
+        "d1_at": "09:00"
+      }
+    }
+  ]
+}

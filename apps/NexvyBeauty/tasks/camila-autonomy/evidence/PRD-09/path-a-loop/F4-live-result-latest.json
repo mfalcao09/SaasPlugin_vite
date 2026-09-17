@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "job": "path-a-f4-canary",
+  "when": "2026-09-17T00:08:00.797306+00:00",
+  "canary_phone": "5511945760964",
+  "agent_id": "68aeece9-26f2-4f7b-a595-a6ea5e8acfa7",
+  "conversation_id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+  "live": true,
+  "status": "pass_live",
+  "steps": {
+    "seed": {
+      "rows": [
+        {
+          "dnc": "true",
+          "id": "130624e9-e2a5-4880-831d-aee882b1937d",
+          "path_a_reopened_at": null,
+          "status": "closed"
+        },
+        {
+          "dnc": "true",
+          "id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+          "path_a_reopened_at": "2026-09-17T00:06:45.918Z",
+          "status": "closed"
+        }
+      ]
+    },
+    "farewell_http": {
+      "http": 200,
+      "body": {
+        "ok": true,
+        "stored": "inbound",
+        "brain": "skipped",
+        "reason": "skip_brain"
+      }
+    },
+    "farewell_decision": {
+      "content": "Pode deixar",
+      "conversation_id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+      "created_at": "2026-09-17 00:08:25.16972+00",
+      "id": "25130e4d-de56-4164-8d96-6193a3cd23cb",
+      "path_a_decision": {
+        "apply_mutation": false,
+        "class": "farewell_ack",
+        "classifier_version": "reopen-intent@1.0.0",
+        "divergence": "agree_hold",
+        "farewell_window_active": true,
+        "mode": "enforce",
+        "path_a_desired": "stay_closed",
+        "path_a_sends": 0,
+        "reason_code": "farewell_in_window"
+      }
+    },
+    "farewell_conv": {
+      "rows": [
+        {
+          "dnc": "true",
+          "id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+          "path_a_reopened_at": "2026-09-17T00:06:45.918Z",
+          "status": "closed"
+        },
+        {
+          "dnc": "true",
+          "id": "130624e9-e2a5-4880-831d-aee882b1937d",
+          "path_a_reopened_at": null,
+          "status": "closed"
+        }
+      ]
+    },
+    "reopen_http": {
+      "http": 500,
+      "body": "{\"error\":\"handler_failed\"}"
+    },
+    "reopen_decision": {
+      "content": "Obrigada, mudei de ideia, quero ver como funciona",
+      "conversation_id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+      "created_at": "2026-09-17 00:08:46.951759+00",
+      "id": "d6cd3a4b-fe40-4b83-bf92-01cbb22041a1",
+      "path_a_decision": {
+        "apply_mutation": true,
+        "class": "reopen_intent",
+        "classifier_version": "reopen-intent@1.0.0",
+        "divergence": "path_a_would_reopen",
+        "farewell_window_active": true,
+        "mode": "enforce",
+        "path_a_desired": "reopen_soft",
+        "path_a_sends": 0,
+        "reason_code": "explicit_reopen"
+      }
+    },
+    "reopen_conv": {
+      "rows": [
+        {
+          "dnc": "false",
+          "id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+          "path_a_reopened_at": "2026-09-17T00:08:46.986Z",
+          "status": "bot_active"
+        },
+        {
+          "dnc": "true",
+          "id": "130624e9-e2a5-4880-831d-aee882b1937d",
+          "path_a_reopened_at": null,
+          "status": "closed"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "farewell_stayed_closed": true,
+    "reopen_apply_mutation": true,
+    "reopen_bot_active": true,
+    "r2_auto": "off"
+  },
+  "finally": {
+    "release": [
+      {
+        "kill_switch": true,
+        "release_state": "OFF"
+      }
+    ],
+    "conv": {
+      "rows": [
+        {
+          "dnc": "true",
+          "id": "130624e9-e2a5-4880-831d-aee882b1937d",
+          "path_a_reopened_at": null,
+          "status": "closed"
+        },
+        {
+          "dnc": "true",
+          "id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+          "path_a_reopened_at": "2026-09-17T00:08:46.986Z",
+          "status": "closed"
+        }
+      ]
+    }
+  }
+}

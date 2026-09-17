@@ -14,7 +14,9 @@ import {
   zapiPhoneExists,
   zapiSendAudio,
   zapiSendImage,
+  zapiStatus,
   zapiSendText,
+  zapiSendLink,
 } from "../_shared/zapi-client.ts";
 import {
   instanceLooksZapi,
@@ -37,7 +39,7 @@ function json(body: unknown, status = 200): Response {
 interface SendBody {
   product_id?: string;
   instance_id?: string; // id da row em platform_crm_evolution_instances (o burner)
-  type: "text" | "media" | "audio" | "presence";
+  type: "text" | "media" | "audio" | "presence" | "link";
   to: string; // dígitos PN, JID, ou já `…@lid`
   /** LID conhecido (ex.: conversation.metadata.wa_lid). Preferido sobre PN. */
   wa_lid?: string | null;
@@ -113,6 +115,32 @@ Deno.serve(async (req) => {
       return json({ ok: true, status: 200, body: { ignored: "zapi_presence_via_delayTyping" }, provider: "zapi" });
     }
 
+    const statusRes = await zapiStatus(qrCfg.zapi, creds);
+    const statusBody = (statusRes.body ?? {}) as Record<string, unknown>;
+    const connected = statusRes.ok && statusBody.connected === true;
+    const smartphoneConnected = statusBody.smartphoneConnected === true ||
+      statusBody.smartphone_connected === true;
+    if (!connected || !smartphoneConnected) {
+      await supabase.from("platform_crm_wa_qr_instances").update({
+        status: "disconnected",
+        updated_at: new Date().toISOString(),
+        metadata: {
+          ...(instance.metadata ?? {}),
+          provider: "zapi",
+          last_status_check_at: new Date().toISOString(),
+          connected,
+          smartphoneConnected,
+        },
+      }).eq("id", instance.id);
+      return json({
+        ok: false,
+        error: "zapi_disconnected",
+        provider: "zapi",
+        connected,
+        smartphoneConnected,
+      }, 503);
+    }
+
     const mustLid = requiresLidSend(instance);
     const maskPhone = (d: string | null | undefined) => `***${String(d ?? "").slice(-4)}`;
     let effectiveWaLid = waLid;
@@ -152,6 +180,33 @@ Deno.serve(async (req) => {
       res = await zapiSendText(qrCfg.zapi, creds, {
         phone,
         message: String(payload.text ?? ""),
+        messageId: typeof quotedId === "string" ? quotedId : undefined,
+        delayTyping,
+      });
+    } else if (type === "link") {
+      // Z-API /send-link — preview explícito (send-text NÃO monta OG como o app).
+      const linkUrl = String(payload.linkUrl ?? payload.url ?? "").trim();
+      const title = String(payload.title ?? "").trim();
+      const linkDescription = String(payload.linkDescription ?? payload.description ?? "").trim();
+      const image = String(payload.image ?? "").trim();
+      const message = String(payload.message ?? payload.text ?? linkUrl).trim();
+      if (!linkUrl || !title || !linkDescription || !image) {
+        return json({ error: "link requires linkUrl, title, linkDescription, image" }, 400);
+      }
+      // Docs: message must include linkUrl at the end.
+      const msgWithUrl = message.includes(linkUrl) ? message : `${message}\n${linkUrl}`.trim();
+      const linkTypeRaw = String(payload.linkType ?? "LARGE").toUpperCase();
+      const linkType = (["SMALL", "MEDIUM", "LARGE"].includes(linkTypeRaw)
+        ? linkTypeRaw
+        : "LARGE") as "SMALL" | "MEDIUM" | "LARGE";
+      res = await zapiSendLink(qrCfg.zapi, creds, {
+        phone,
+        message: msgWithUrl,
+        image,
+        linkUrl,
+        title,
+        linkDescription,
+        linkType,
         messageId: typeof quotedId === "string" ? quotedId : undefined,
         delayTyping,
       });

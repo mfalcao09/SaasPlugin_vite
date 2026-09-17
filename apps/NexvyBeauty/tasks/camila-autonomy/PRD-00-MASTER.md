@@ -55,6 +55,7 @@ provider desconectado ou divergência SHA/deploy.
 - PRD-07: conductor seguro.
 - PRD-08: aprendizado e auto-promoção.
 - PRD-09: avaliações, Master Gate e rollout.
+- PRD-10: Caminho A reopen pós-opt-out (Opção B) + loop único F0→F6.
 
 ## MASTER_PASS
 

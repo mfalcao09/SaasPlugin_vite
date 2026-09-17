@@ -1,0 +1,23 @@
+{
+  "status": "pass",
+  "files": [
+    "tasks/camila-autonomy/evidence/PRD-09/path-a-loop/glossary-v1.json",
+    "tasks/camila-autonomy/evidence/PRD-09/path-a-loop/corpus-v1.json",
+    "tasks/camila-autonomy/evidence/PRD-09/path-a-loop/baseline-emergency.json",
+    "tasks/camila-autonomy/evidence/PRD-09/path-a-loop/checks-b1-b7.md",
+    "tasks/camila-autonomy/RULE-OPT-OUT-REMARKETING.md",
+    "tasks/camila-autonomy/LEARNING-CASE-JOICE-OPT-OUT.md",
+    "tasks/camila-autonomy/PRD-10-PATH-A-REOPEN-MASTER.md",
+    "tasks/camila-autonomy/evidence/PRD-09/PHASES-PATH-A-OPTION-B.md"
+  ],
+  "corpus_counts": 15,
+  "policy": {
+    "option": "B",
+    "q2_farewell_window_hours": 48,
+    "q4_r2_timing": "after_reopen_canary",
+    "ambiguous_clarify_per_24h": 1,
+    "reopen_liberates_soft_cold": true,
+    "reopen_blast_forbidden": true,
+    "reenqueue_on_reopen_forbidden": true
+  }
+}

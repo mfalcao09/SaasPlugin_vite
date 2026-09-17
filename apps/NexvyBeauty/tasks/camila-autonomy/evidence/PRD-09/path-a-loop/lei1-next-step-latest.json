@@ -1,0 +1,85 @@
+{
+  "at": "2026-09-17T02:04:38.291828+00:00",
+  "question": "estado Path A / próximo passo Camila — Lei1",
+  "checks": {
+    "C1_release_OFF_kill_true": "PASS",
+    "C2_path_a_secret_names_present": "PASS",
+    "C3_F6_result_pass_live": "PASS",
+    "C4_link_preview_evidence_pass": "PASS",
+    "C5_db_link_preview_outbound_6h": "PASS",
+    "C6_F7_result_f6_field_stale": "FAIL",
+    "C7_send_link_code_in_tree": "PASS",
+    "C8_path_a_link_code_committed": "FAIL",
+    "C9_no_broad_camila": "PASS"
+  },
+  "detail": {
+    "release": {
+      "kill_switch": true,
+      "release_state": "OFF"
+    },
+    "secrets_present": {
+      "R2_AUTO_V1_MODE": true,
+      "R2_AUTO_V1_ALLOWLIST": true,
+      "REOPEN_INTENT_V1_MODE": true,
+      "REOPEN_INTENT_V1_ALLOWLIST": true
+    },
+    "R2_AUTO_V1_MODE_meta": {
+      "updated_at": "2026-09-17T01:59:13.008Z",
+      "digest_prefix": "b4dc66dde806"
+    },
+    "C2_note": "digest only — value OFF not readable from secrets list",
+    "F6_result": {
+      "status": "pass_live",
+      "checks": {
+        "soft_r2_delivered": 2,
+        "hard_r2": 0,
+        "farewell_after_r2_outbound": 0,
+        "replay_extra_r2": 0
+      },
+      "when": "2026-09-17T01:09:16.893815+00:00"
+    },
+    "link_preview": {
+      "status": "pass",
+      "last": {
+        "content": "https://nexvybeauty.com.br",
+        "created_at": "2026-09-17 01:58:24.097276+00",
+        "link_preview": "true",
+        "link_title": "Não contrate atendente. Tenha uma 24/7.",
+        "link_url": "https://nexvybeauty.com.br",
+        "message_type": "link",
+        "origem": "path_a_r2_close",
+        "wamid": "3EB0E28F1AC024C799FF16"
+      }
+    },
+    "link_preview_outbound_6h": 1,
+    "F7_result_f6": {
+      "status": "blocked",
+      "live": null,
+      "ok": false
+    },
+    "loop_F6": {
+      "status": "pass",
+      "live": "pass_live"
+    },
+    "loop_F7": {
+      "status": "pass_tier1_gated",
+      "tier": 1
+    },
+    "loop_gate": "F6_PASS",
+    "loop_stop": "F6 R2 canary pass_live; Camila OFF+kill; no commercial widen without F7 tier>=2",
+    "git_branch": "## feat/camila-autonomy-04-safety-ledger...origin/feat/camila-autonomy-04-safety-ledger [ahead 4]",
+    "git_path_a_porcelain": [
+      "M apps/NexvyBeauty/supabase/functions/_shared/zapi-client.ts",
+      " M apps/NexvyBeauty/supabase/functions/platform-cold-outreach/index.ts",
+      " M apps/NexvyBeauty/supabase/functions/platform-whatsapp-qr-send/index.ts",
+      "?? apps/NexvyBeauty/supabase/functions/_shared/cold-outreach/r2-plan.ts"
+    ],
+    "C8_note": "FAIL means uncommitted local changes in Path A/R2 files"
+  },
+  "verdict": {
+    "path_a_canary_r2_validated": true,
+    "camila_broad_live": false,
+    "f7_evidence_needs_refresh": true,
+    "git_hygiene_needed": true
+  }
+}

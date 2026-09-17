@@ -1,0 +1,90 @@
+{
+  "when": "2026-09-14T03:47:06.292567+00:00",
+  "criteria": "salao_cliente, 2k-5k, not seed, person-first IG name → greeting_name",
+  "wa_note": "Z-API /chats = Chat not found (sem histórico). Vocativo vem do IG até haver wa_profile.",
+  "rejected_previous_shortlist": [
+    {
+      "handle": "@beautybreezeba",
+      "reason": "marca; pickCamila→Breeze/Beauty — proibido; WA chat inexistente"
+    },
+    {
+      "handle": "@angeelhair",
+      "reason": "marca ANGEL HAIR; WA chat inexistente"
+    },
+    {
+      "handle": "@beautyfast.belem",
+      "reason": "marca BEAUTY FAST"
+    },
+    {
+      "handle": "@arrazusstudio",
+      "reason": "só Salão de Beleza Recife; sem pessoa"
+    }
+  ],
+  "candidates": [
+    {
+      "handle": "@espaco.leh",
+      "handle_raw": "espaco.leh",
+      "name": "Leticia Pereira | cabeleireira | salão de beleza",
+      "seguidores": 2056,
+      "greeting": "Leticia",
+      "source": "ig_name_person_first",
+      "wa_profile": null
+    },
+    {
+      "handle": "@joicefbeltramini",
+      "handle_raw": "joicefbeltramini",
+      "name": "Joice Formentin Beltramini | Salão Joice Beauty",
+      "seguidores": 2122,
+      "greeting": "Joice",
+      "source": "ig_name_person_first",
+      "wa_profile": null
+    },
+    {
+      "handle": "@alinemachadostudiodebeleza",
+      "handle_raw": "alinemachadostudiodebeleza",
+      "name": "Aline Machado | Studio De Beleza",
+      "seguidores": 3251,
+      "greeting": "Aline",
+      "source": "ig_name_person_first",
+      "wa_profile": null,
+      "categoria": "Hair Salon"
+    },
+    {
+      "handle": "@beatrizsouza_af",
+      "handle_raw": "beatrizsouza_af",
+      "name": "Beatriz Souza / salão de beleza e cursos alta floresta",
+      "seguidores": 3361,
+      "greeting": "Beatriz",
+      "source": "ig_name_person_first",
+      "wa_profile": null
+    },
+    {
+      "handle": "@beautycompany.af",
+      "handle_raw": "beautycompany.af",
+      "name": "Adriana França | Salão de Beleza | Curitibanos SC",
+      "seguidores": 3806,
+      "greeting": "Adriana",
+      "source": "ig_name_person_first",
+      "wa_profile": null
+    }
+  ],
+  "d1_schedule": {
+    "at_local": "2026-09-14T09:00:05-03:00",
+    "action": "OFF→TEST; 1 turno wa:eval; prove delivered; then OFF/kill; then decide D2"
+  },
+  "validated_by_marcelo": true,
+  "validated_at": "2026-09-14T03:55:59.045060+00:00",
+  "manual_db_only": {
+    "handle": "@lu.heleno.nails",
+    "id": "02f26de1-7513-4ff9-adb0-1cb6d19cf4e1",
+    "phone_masked": "5511***2733",
+    "in_dispatch_list": false,
+    "in_shortlist_candidates": false,
+    "phone_also_on": [
+      {
+        "handle": "espaco.leh",
+        "name": "Leticia Pereira | cabeleireira | salão de beleza"
+      }
+    ]
+  }
+}

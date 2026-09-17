@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "job": "path-a-f6-canary-r2",
+  "when": "2026-09-17T01:09:16.893815+00:00",
+  "canary_phone": "5511945760964",
+  "live": true,
+  "status": "pass_live",
+  "checks": {
+    "soft_r2_delivered": 2,
+    "hard_r2": 0,
+    "farewell_after_r2_outbound": 0,
+    "replay_extra_r2": 0
+  },
+  "delivery_proof": {
+    "outbound_message_ids": [
+      "fcc312fa-7bc1-4a38-a015-84061282614c",
+      "f538e7e3-ebd7-4a28-bcb5-93f28101e527"
+    ],
+    "wamids": [
+      "9476ADBAEDFC92574867",
+      "3EB0C695796DF9032ABC80"
+    ],
+    "action_ids": [
+      "9ca59044-a4bb-4b83-b27c-426fe7dcdcdd",
+      "0416ae63-fe65-47e0-8549-3e52a4897348"
+    ],
+    "origem": "path_a_r2_close",
+    "lei1_note": "DB rows verified; post-pass re-run at 01:13 failed because R2_AUTO already off \u2014 ignored"
+  },
+  "finally": {
+    "release_state": "OFF",
+    "kill_switch": true,
+    "R2_AUTO_V1_MODE": "off"
+  },
+  "note": "Canary only; Camila not broad live",
+  "supersedes_fail_at": "2026-09-17T01:12:56.665284+00:00",
+  "supersedes_reason": "re-run after R2_AUTO=off teardown; soft delta=0 expected"
+}

@@ -1,0 +1,94 @@
+{
+  "case_id": "joice-opt-out-remarketing-20260915",
+  "captured_at": "2026-09-15T23:18:41.740304+00:00",
+  "conversation_id": "b23200a2-be5f-4a1e-9810-553ed43276dd",
+  "lead": {
+    "handle": "joicefbeltramini",
+    "greeting": "Joice",
+    "phone_mask": "5547***0702"
+  },
+  "proven_thread": [
+    {
+      "brt": "2026-09-15 10:02:01.743611",
+      "content": "Oi, Joice! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️",
+      "direction": "outbound"
+    },
+    {
+      "brt": "2026-09-15 10:19:01.255191",
+      "content": "Achei o seu número no Instagram @joicefbeltramini, e vim me apresentar.",
+      "direction": "outbound"
+    },
+    {
+      "brt": "2026-09-15 10:19:31.099137",
+      "content": "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, organiza a agenda e resgata clientes que não marcaram mais nenhum atendimento. Tudo automático, com atendimento por inteligência artificial de verdade — não chatbot de menuzinho.",
+      "direction": "outbound"
+    },
+    {
+      "brt": "2026-09-15 10:20:00.161188",
+      "content": "Você acha que faria diferença ter uma equipe de IA que atende os clientes, marca horário, confirma presença, encontra clientes que não voltaram, trabalhando para você, todos os dias?",
+      "direction": "outbound"
+    },
+    {
+      "brt": "2026-09-15 18:00:37.757362",
+      "content": "Oiee",
+      "direction": "inbound"
+    },
+    {
+      "brt": "2026-09-15 18:00:45.390927",
+      "content": "No momento não tenho interesse",
+      "direction": "inbound"
+    },
+    {
+      "brt": "2026-09-15 18:00:50.107907",
+      "content": "Talvez em outra oportunidade",
+      "direction": "inbound"
+    },
+    {
+      "brt": "2026-09-15 20:09:55.296084",
+      "content": "Pode deixar",
+      "direction": "inbound"
+    },
+    {
+      "brt": "2026-09-15 20:09:56.358842",
+      "content": "Obrigada",
+      "direction": "inbound"
+    }
+  ],
+  "proven_metadata": {
+    "dnc": "true",
+    "opt_out_text": "No momento não tenho interesse",
+    "reason": "runtime_opt_out_remarketing",
+    "remarketing": "true",
+    "remarketing_at": "2026-09-15 21:14:13.238703+00"
+  },
+  "gap": {
+    "human_outbound_in_crm": false,
+    "note": "Resposta humana não aparece em platform_crm_messages (envio pelo celular fora do sync). Fechamento inferido pelas inbound 20:09 BRT 'Pode deixar' + 'Obrigada'."
+  },
+  "gold_agent_reply": {
+    "bubble_1": "Sem problemas, Joice! Vou deixar aqui o nosso site para você dar uma olhada com calma, e se tiver interesse é só nos chamar no whatsapp novamente. Combinado?",
+    "bubble_2_link": "https://nexvybeauty.com.br",
+    "source": "RULES-AUTOMATED-COLD.md R2 + ditado Marcelo 2026-09-15"
+  },
+  "outcome": {
+    "lead_ack": [
+      "Pode deixar",
+      "Obrigada"
+    ],
+    "soft_close_accepted": true,
+    "remarketing_marked": true,
+    "do_not_contact": true
+  },
+  "learnings": [
+    "Soft opt-out ('No momento não tenho interesse' + 'Talvez em outra oportunidade') → R2: 1 bolha educada + link site, sem insistir.",
+    "Não reabrir pitch no mesmo dia após opt-out.",
+    "Marcar remarketing=true + do_not_contact=true (WHEN remarcar TBD).",
+    "Lead costuma acusar recebimento com 'Pode deixar'/'Obrigada' — isso NÃO reabre conversa; silenciar brain.",
+    "Outbound humano pelo chip celular pode não espelhar no CRM — agent runtime deve persistir as bolhas R2 que ELE enviar."
+  ],
+  "checks": {
+    "inbound_opt_out_present": true,
+    "ack_after_close_present": true,
+    "remarketing_true": true
+  }
+}

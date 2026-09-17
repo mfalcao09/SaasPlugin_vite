@@ -38,6 +38,13 @@ import {
   createPlatformEvolutionWebhookHandler,
 } from "../_shared/platform-evolution-webhook-handler.ts";
 import { findOrCreateLeadByPhone } from "../_shared/platform-crm-find-create-lead.ts";
+import { shouldReopenClosedWaQrConversation } from "../_shared/wa-qr-conversation-reopen.ts";
+import {
+  decidePathAClosedInbound,
+  hoursSinceR2FromMeta,
+  isPathAProtectedClosed,
+} from "../_shared/cold-outreach/path-a-reopen-decision.ts";
+import { getReopenIntentMode } from "../_shared/cold-outreach/path-a-flags.ts";
 import {
   appendCanonicalLeadMemory,
   buildLeadName,
@@ -65,12 +72,16 @@ import {
   isZapiWebhookPayload,
   normalizeZapiWebhook,
 } from "../_shared/zapi-webhook-normalize.ts";
+import { applyQrDeliveryAck } from "../_shared/agent-delivery-ack.ts";
+import { buildAssertivenessInboundMeta } from "../_shared/cold-outreach/camila-learning.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+type DeliveryOutcome = "sent" | "delivered" | "read" | "failed";
 
 /** Mídia básica extraída de uma mensagem whatsmeow/Baileys (cópia do V5, sem
  *  rawMessage/base64: não portamos o pipeline de download — persistimos só a
@@ -399,7 +410,7 @@ async function ensureLead(
 /** Conversa da caixa Evolution (isolada por instância, V5-style) ou cria
  *  (channel='whatsapp_evolution'). visitor_id usa prefixo 'wa_evo:' pra nunca
  *  colidir com a conversa 'wa:' do canal Meta Cloud do mesmo telefone.
- *  Reabre fechada como bot_active — padrão do inbox de plataforma. */
+ *  Reabre fechada como bot_active — EXCETO do_not_contact/opt-out/remarketing. */
 async function ensureConversation(
   supabase: any,
   instance: any,
@@ -462,8 +473,12 @@ async function ensureConversation(
   }
 
   if (conversation && conversation.status === "closed") {
-    // Só reabre se NÃO for perdedora de merge (sem merged_into ou alvo inválido).
-    if (!mergedIntoTargetId(conversation)) {
+    // Só reabre se NÃO for perdedora de merge (sem merged_into ou alvo inválido)
+    // E se NÃO for DNC/opt-out (Joice 2026-09-15: "Pode deixar" reabria bot_active).
+    if (
+      !mergedIntoTargetId(conversation) &&
+      shouldReopenClosedWaQrConversation(conversation)
+    ) {
       const { data: reopened, error } = await supabase
         .from("platform_crm_conversations")
         .update({
@@ -477,6 +492,10 @@ async function ensureConversation(
         .select()
         .single();
       if (!error && reopened) conversation = reopened;
+    } else if (!shouldReopenClosedWaQrConversation(conversation)) {
+      console.warn(
+        `[platform-whatsapp-qr-webhook] NÃO reabriu closed (DNC/opt-out) conversation_id=${conversation.id}`,
+      );
     }
   }
 
@@ -606,7 +625,13 @@ type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean; suppressBrain:
 // silêncio: todo caminho de erro sai em console.error com o conversation_id.
 async function notifyColdOutreachInbound(
   supabase: any,
-  a: { productId: string | null; conversationId: string; telefone: string; text: string },
+  a: {
+    productId: string | null;
+    conversationId: string;
+    telefone: string;
+    text: string;
+    inboundEventId: string;
+  },
 ): Promise<ColdOutreachInboundVerdict> {
   try {
     const { data, error } = await supabase.functions.invoke("platform-cold-outreach", {
@@ -616,6 +641,7 @@ async function notifyColdOutreachInbound(
         conversation_id: a.conversationId,
         telefone: a.telefone,
         text: a.text,
+        inbound_event_id: a.inboundEventId,
       },
     });
     if (error) {
@@ -1118,6 +1144,8 @@ async function handleMessage(
         push_name: norm.pushName || null,
         ...(audioTranscript ? { transcription: audioTranscript } : {}),
         ...(inboundMediaMeta ? { media: inboundMediaMeta } : {}),
+        // PRD-08 / E5.3b — label de assertividade no fio (affirmative|corrective|neutral)
+        ...buildAssertivenessInboundMeta(inboundContent),
       },
     })
     .select()
@@ -1128,6 +1156,92 @@ async function handleMessage(
       console.error("[platform-whatsapp-qr-webhook] insert message failed:", error);
     }
     return ok({ stored: false });
+  }
+
+  // Path A (PRD-10 / F3): classificar ANTES de qualquer mutação Path A.
+  // shadow|enforce: grava decisão canônica no metadata da mensagem.
+  // shadow/off: apply_mutation=false e path_a_sends=0 (contenção emergencial
+  // em ensureConversation permanece — DNC/remarketing não reabre).
+  const pathAMode = getReopenIntentMode();
+  if (pathAMode !== "off" && isPathAProtectedClosed(conversation)) {
+    const decision = decidePathAClosedInbound({
+      text: inboundContent,
+      conversation,
+      hoursSinceR2: hoursSinceR2FromMeta(conversation.metadata),
+      inboundMessageId: String(inserted.id),
+      mode: pathAMode,
+      phoneDigits: fromDigits,
+    });
+    console.log(
+      `[platform-whatsapp-qr-webhook] path_a_decision ${JSON.stringify({
+        conversation_id: conversation.id,
+        inbound_message_id: decision.inbound_message_id,
+        mode: decision.mode,
+        class: decision.class,
+        reason_code: decision.reason_code,
+        desired: decision.path_a_desired,
+        apply_mutation: decision.apply_mutation,
+        path_a_sends: decision.path_a_sends,
+        divergence: decision.divergence,
+        classifier_version: decision.classifier_version,
+      })}`,
+    );
+    const prevMeta =
+      inserted.metadata && typeof inserted.metadata === "object"
+        ? inserted.metadata as Record<string, unknown>
+        : {};
+    const { error: pathAMetaErr } = await supabase
+      .from("platform_crm_messages")
+      .update({
+        metadata: {
+          ...prevMeta,
+          path_a_decision: {
+            mode: decision.mode,
+            class: decision.class,
+            reason_code: decision.reason_code,
+            classifier_version: decision.classifier_version,
+            path_a_desired: decision.path_a_desired,
+            apply_mutation: decision.apply_mutation,
+            path_a_sends: decision.path_a_sends,
+            divergence: decision.divergence,
+            farewell_window_active: decision.farewell_window_active,
+          },
+        },
+      })
+      .eq("id", inserted.id);
+    if (pathAMetaErr) {
+      // Fail-closed para Path A enforce: sem decisão persistida, não mutar.
+      console.error(
+        `[platform-whatsapp-qr-webhook] path_a_decision persist failed conversation_id=${conversation.id}: ${pathAMetaErr.message}`,
+      );
+    } else if (decision.apply_mutation && decision.path_a_desired === "reopen_soft") {
+      // F4+ enforce allowlist — F3 shadow nunca entra aqui.
+      const effects = decision.effects;
+      const { data: reopened, error: reopenErr } = await supabase
+        .from("platform_crm_conversations")
+        .update({
+          status: "bot_active",
+          needs_human: false,
+          accepted_at: null,
+          accepted_by: null,
+          assigned_to: null,
+          metadata: {
+            ...(typeof conversation.metadata === "object" && conversation.metadata
+              ? conversation.metadata as Record<string, unknown>
+              : {}),
+            do_not_contact: false,
+            cold_suppressed: false,
+            soft_opt_out_active: false,
+            cold_not_before: effects?.coldNotBeforeIso ?? null,
+            path_a_reopened_at: new Date().toISOString(),
+            path_a_reopen_from_message_id: inserted.id,
+          },
+        })
+        .eq("id", conversation.id)
+        .select()
+        .single();
+      if (!reopenErr && reopened) conversation = reopened;
+    }
   }
 
   // Cancela qualquer ação proativa reservada antes de fazer trabalho adicional.
@@ -1180,6 +1294,7 @@ async function handleMessage(
     productId: (conversation.product_id as string | null) ?? productId,
     conversationId: String(conversation.id),
     telefone: fromDigits,
+    inboundEventId: String(inserted.id),
     // PR-BDR-11: com a transcrição, um "pare"/"me tira" FALADO em áudio também
     // chega ao detector de opt-out — antes o áudio era um "[áudio]" opaco que
     // nunca casava padrão nenhum.
@@ -1203,8 +1318,19 @@ async function handleMessage(
     return ok({ stored: "inbound", brain: "skipped", reason });
   }
 
-  if (coldVerdict.optOut || coldVerdict.suppressBrain) {
-    const reason = coldVerdict.optOut ? "opt-out" : "suppress_brain";
+  const metaDnc = (() => {
+    const m = conversation.metadata;
+    if (!m || typeof m !== "object") return false;
+    const v = (m as Record<string, unknown>).do_not_contact;
+    return v === true || v === "true";
+  })();
+
+  if (coldVerdict.optOut || coldVerdict.suppressBrain || metaDnc) {
+    const reason = coldVerdict.optOut
+      ? "opt-out"
+      : metaDnc
+      ? "do_not_contact"
+      : "suppress_brain";
     console.warn(
       `[platform-whatsapp-qr-webhook] brain NÃO despachado (${reason}) conversation_id=${conversation.id} telefone=${fromDigits}`,
     );
@@ -1301,47 +1427,65 @@ async function handleAuthorizedWebhook(
       const arr = Array.isArray(d?.messages) ? d.messages : [d];
       for (const m of arr) {
         const wamid: string | null = m?.key?.id ?? m?.keyId ?? null;
-        // Só ACK de ENTREGA conta. 'sent' já foi contado no envio, e 'read' vem
-        // DEPOIS de entregue — contar os dois somaria em dobro.
+        // Campanha só incrementa delivered. sent/read atualizam mensagem/ledger
+        // sem double-count.
         const st = String(m?.status ?? m?.update?.status ?? "").toUpperCase();
         const entregue = st.includes("DELIVERY") || st === "DELIVERED" ||
           st === "2";
-        if (!wamid || !entregue) continue;
+        const lida = st.includes("READ") || st === "3" || st === "PLAYED";
+        const enviada = st === "SENT" || st === "1";
+        const outcome: DeliveryOutcome | null = entregue
+          ? "delivered"
+          : lida
+          ? "read"
+          : enviada
+          ? "sent"
+          : null;
+        if (!wamid || !outcome) continue;
 
         const { data: msg } = await supabase
           .from("platform_crm_messages")
-          .select("metadata, created_at")
+          .select("id, metadata, created_at")
           .eq("metadata->>wamid", wamid)
           .eq("metadata->>connection_id", instance.id)
           .maybeSingle();
-        const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+        const ack = await applyQrDeliveryAck(supabase, {
+          message: msg,
+          instanceId: String(instance.id),
+          wamid,
+          outcome,
+        });
+        const meta = ack.meta;
         if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
         const campaignId = meta.campaign_id as string | undefined;
-        if (!campaignId) continue; // não é mensagem de campanha — nada a contar
+        if (campaignId && ack.applied && ack.countsDelivered) {
+          // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
+          // seguinte, e a taxa sent/delivered só significa alguma coisa se as
+          // duas pernas caírem no MESMO balde.
+          const day = String(msg?.created_at ?? "").slice(0, 10);
+          if (!day) continue;
 
-        // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
-        // seguinte, e a taxa sent/delivered só significa alguma coisa se as
-        // duas pernas caírem no MESMO balde. Contar no dia do ACK inflaria a
-        // não-entrega de ontem e a entrega de hoje — e não-entrega inflada
-        // PAUSA CAMPANHA SAUDÁVEL, o modo de falha caro deste mecanismo.
-        const day = String(msg?.created_at ?? "").slice(0, 10);
-        if (!day) continue;
-
-        await supabase.rpc("pcrm_cold_bump_counter", {
-          p_campaign: campaignId,
-          p_instance: instance.id,
-          p_day: day,
-          p_sent: 0,
-          p_delivered: 1,
-          p_blocked: 0,
-          p_reported: 0,
-          p_failed: 0,
-        });
-        console.log("[platform-whatsapp-qr-webhook] delivered+1", {
-          campaignId,
-          day,
-          wamid,
-        });
+          await supabase.rpc("pcrm_cold_bump_counter", {
+            p_campaign: campaignId,
+            p_instance: instance.id,
+            p_day: day,
+            p_sent: 0,
+            p_delivered: 1,
+            p_blocked: 0,
+            p_reported: 0,
+            p_failed: 0,
+          });
+          console.log("[platform-whatsapp-qr-webhook] delivered+1", {
+            campaignId,
+            day,
+            wamid,
+          });
+        } else {
+          console.log("[platform-whatsapp-qr-webhook] delivered ack sem campanha", {
+            wamid,
+            outcome,
+          });
+        }
       }
     } catch (e) {
       // NUNCA derrubar o webhook por causa de métrica: perder um ACK degrada a
@@ -1387,35 +1531,51 @@ async function handleAuthorizedWebhook(
   // sem error e READ/SENT são ignored (não inflar contador).
   if (norm.kind === "delivery") {
     try {
-      if (norm.outcome === "delivered" || norm.outcome === "failed") {
+      if (
+        norm.outcome === "delivered" ||
+        norm.outcome === "failed" ||
+        norm.outcome === "sent" ||
+        norm.outcome === "read"
+      ) {
         for (const wamid of norm.messageIds) {
           if (!wamid) continue;
           const { data: msg } = await supabase
             .from("platform_crm_messages")
-            .select("metadata, created_at")
+            .select("id, metadata, created_at")
             .eq("metadata->>wamid", wamid)
             .eq("metadata->>connection_id", instance.id)
             .maybeSingle();
-          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+          const ack = await applyQrDeliveryAck(supabase, {
+            message: msg,
+            instanceId: String(instance.id),
+            wamid,
+            outcome: norm.outcome,
+          });
+          const meta = ack.meta;
           if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
           const campaignId = meta.campaign_id as string | undefined;
-          if (!campaignId) continue;
-          const day = String(msg?.created_at ?? "").slice(0, 10);
-          if (!day) continue;
+          if (
+            campaignId &&
+            ack.applied &&
+            (ack.countsDelivered || ack.countsFailed)
+          ) {
+            const day = String(msg?.created_at ?? "").slice(0, 10);
+            if (!day) continue;
 
-          await supabase.rpc("pcrm_cold_bump_counter", {
-            p_campaign: campaignId,
-            p_instance: instance.id,
-            p_day: day,
-            p_sent: 0,
-            p_delivered: norm.outcome === "delivered" ? 1 : 0,
-            p_blocked: 0,
-            p_reported: 0,
-            p_failed: norm.outcome === "failed" ? 1 : 0,
-          });
+            await supabase.rpc("pcrm_cold_bump_counter", {
+              p_campaign: campaignId,
+              p_instance: instance.id,
+              p_day: day,
+              p_sent: 0,
+              p_delivered: norm.outcome === "delivered" ? 1 : 0,
+              p_blocked: 0,
+              p_reported: 0,
+              p_failed: norm.outcome === "failed" ? 1 : 0,
+            });
+          }
           console.log("[platform-whatsapp-qr-webhook] zapi delivery ack", {
-            campaignId,
-            day,
+            campaignId: campaignId ?? null,
+            day: String(msg?.created_at ?? "").slice(0, 10) || null,
             wamid,
             outcome: norm.outcome,
           });

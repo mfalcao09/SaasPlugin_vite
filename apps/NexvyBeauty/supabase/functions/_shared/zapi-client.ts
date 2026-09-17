@@ -129,6 +129,29 @@ export async function zapiSendText(
   });
 }
 
+/** Link com preview (OG). Docs: /message/send-message-link — path /send-link. */
+export async function zapiSendLink(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  body: {
+    phone: string;
+    message: string;
+    image: string;
+    linkUrl: string;
+    title: string;
+    linkDescription: string;
+    linkType?: "SMALL" | "MEDIUM" | "LARGE";
+    messageId?: string;
+    delayTyping?: number;
+    delayMessage?: number;
+  },
+) {
+  return zapiFetch(config, creds, "/send-link", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function zapiSendImage(
   config: ZapiConfig,
   creds: ZapiInstanceCreds,
