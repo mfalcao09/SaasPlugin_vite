@@ -1,0 +1,12 @@
+{
+  "when": "2026-09-15T11:56:59.273184+00:00",
+  "check": "deno test script.test.ts → 12 passed",
+  "removed": [
+    "WA_CTA_A",
+    "WA_CTA_B",
+    "IG_CTA",
+    "CtaVariant"
+  ],
+  "renderCta": "fail-closed throw",
+  "note": "FU D+2/breakup ainda mencionam raio-x — fora deste escopo"
+}

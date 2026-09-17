@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-09-16T06:30:26.174557+00:00",
+  "source": "optout-reopen-fix-latest.json + wa-qr-conversation-reopen.ts",
+  "emergency_behavior": {
+    "shouldReopenClosedWaQrConversation": "never reopen if do_not_contact or remarketing",
+    "webhook": "suppress brain when metadata.do_not_contact",
+    "kernel": "deny do_not_contact",
+    "path_a_status": "not_yet_enforced; emergency containment active"
+  },
+  "joice": {
+    "conversation_id": "b23200a2-be5f-4a1e-9810-553ed43276dd",
+    "inbound_farewell": [
+      "Pode deixar",
+      "Obrigada"
+    ],
+    "soft_opt_out": "No momento não tenho interesse"
+  },
+  "checks_at_baseline": {
+    "unit_reopen": true,
+    "joice_closed": true,
+    "dnc_bot_active_zero": true
+  }
+}

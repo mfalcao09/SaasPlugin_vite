@@ -40,9 +40,11 @@ import {
 } from "../_shared/cold-outreach/segment-gate.ts";
 import { assignVariant, type Channel, CAMILA_PROSPECTOR_AGENT_ID, renderOpeningFromDb, renderFollowup, type ScriptTokens, extractApresentarBubbles, fillAgentTemplate, fetchAgentAdditionalPrompt } from "../_shared/cold-outreach/script.ts";
 import { planInbound } from "../_shared/cold-outreach/inbound-plan.ts";
+import { pathAColdOpeningGate } from "../_shared/cold-outreach/path-a-reopen-decision.ts";
 import { isApprovedForSend, partitionByApproval, UNAPPROVED_SKIP_REASON } from "../_shared/cold-outreach/approved-gate.ts";
 import {
   advanceApresentarState,
+  APRESENTAR_SEQUENCE_ENABLED,
   buildApresentarState,
   bumpApresentarAfterAutoReply,
   abortApresentarForHuman,
@@ -220,6 +222,10 @@ async function startApresentarSequence(
   sb: SupabaseClient,
   o: { conversationId: string; campaignId: string; queueId: string; agentId: string; tokens: ScriptTokens },
 ) {
+  if (!APRESENTAR_SEQUENCE_ENABLED) {
+    // Corte 2026-09-15: opening = bolha 1 only; sem agenda 2–4.
+    return;
+  }
   try {
     const prompt = await fetchAgentAdditionalPrompt(sb, o.agentId);
     const bubbles = extractApresentarBubbles(prompt);
@@ -247,6 +253,18 @@ async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled:
     .filter("metadata->apresentar_sequence->>status", "eq", "in_progress")
     .limit(20);
   const results: any[] = [];
+  if (!APRESENTAR_SEQUENCE_ENABLED) {
+    // Drain: aborta estados legados sem chamar provider.
+    for (const conv of rows ?? []) {
+      const meta = (conv.metadata ?? {}) as Record<string, unknown>;
+      const state = parseApresentarState(meta);
+      if (!state) continue;
+      const aborted = abortApresentarForHuman(state, now);
+      await saveApresentarState(sb, String(conv.id), meta, aborted);
+      results.push({ conversation_id: conv.id, action: "apresentar_aborted_disabled" });
+    }
+    return results;
+  }
   for (const conv of rows ?? []) {
     const meta = (conv.metadata ?? {}) as Record<string, unknown>;
     const state = parseApresentarState(meta);
@@ -270,7 +288,7 @@ async function processApresentarSteps(sb: SupabaseClient, now: Date, envEnabled:
           leadId: String(conv.lead_id),
           conversationId: String(conv.id),
           agentId: String(conv.current_agent_id),
-          actionType: "followup",
+          actionType: "opening_part",
           proactive: true,
           bubbleCount: 1,
           sourceEventId: `${state.queue_id || conv.id}:apresentar:${state.last_sent + 1}`,
@@ -314,6 +332,14 @@ async function updateApresentarOnInbound(sb: SupabaseClient, conversationId: str
   const state = parseApresentarState(meta);
   if (!state) return;
   const now = new Date();
+  // Abordagem incompleta: NÃO aborta — completa bolhas 2–4 mesmo com reply humano.
+  // (Produto 2026-09-15: se a abertura já saiu, o script deve terminar.)
+  if (plan.abortApresentar && state.pending.length > 0) {
+    const next = bumpApresentarAfterAutoReply(state, now);
+    meta.apresentar_finish_despite_inbound = true;
+    await saveApresentarState(sb, conversationId, meta, next);
+    return;
+  }
   if (plan.abortApresentar) {
     abortApresentarForHuman(state, now);
     await saveApresentarState(sb, conversationId, meta, null);
@@ -577,6 +603,48 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     .update({ status: "sending", attempts: (due.attempts ?? 0) + 1, updated_at: now.toISOString() })
     .eq("id", due.id).eq("status", "queued").select("id").maybeSingle();
   if (!locked) return { campaign: c.id, action: "raced", followups: followupResult };
+
+  // Path A (PRD-10): mesma matriz do webhook — 0 opening se cold_suppressed /
+  // soft ativo / cold_not_before / conversa bot_active. Sem segundo classificador.
+  if (due.conversation_id) {
+    const { data: pathAConv } = await sb
+      .from("platform_crm_conversations")
+      .select("status, metadata")
+      .eq("id", due.conversation_id)
+      .maybeSingle();
+    if (pathAConv) {
+      const meta =
+        pathAConv.metadata && typeof pathAConv.metadata === "object"
+          ? pathAConv.metadata as Record<string, unknown>
+          : {};
+      const pathAGate = pathAColdOpeningGate({
+        dncHard: meta.dnc_hard === true,
+        coldSuppressed: meta.cold_suppressed === true || meta.do_not_contact === true,
+        softOptOutActive: meta.soft_opt_out_active === true ||
+          meta.do_not_contact === true,
+        conversationStatus: String(pathAConv.status ?? ""),
+        coldNotBeforeIso: typeof meta.cold_not_before === "string"
+          ? meta.cold_not_before
+          : null,
+        nowIso: now.toISOString(),
+      });
+      if (!pathAGate.allowed) {
+        await sb.from("platform_crm_cold_outreach_queue").update({
+          status: "skipped",
+          skip_reason: `path_a_${pathAGate.reason}`.slice(0, 120),
+          updated_at: now.toISOString(),
+        }).eq("id", due.id);
+        return {
+          campaign: c.id,
+          action: "skipped_path_a",
+          reason: pathAGate.reason,
+          lead: due.id,
+          remaining: gate.remaining,
+          followups: followupResult,
+        };
+      }
+    }
+  }
 
   // SEND-BOUNDARY recheck (defense-in-depth): o lead AINDA está aprovado?
   // O gate de enqueue já filtra approved_at, mas esta linha pode predatar o gate
@@ -1196,9 +1264,29 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
   const plan = planInbound(String(text), (rows ?? []) as any[], { product_id, conversation_id, telefone, handle });
   const productId = plan.optOut?.product_id ?? product_id ?? rows?.[0]?.product_id;
 
-  // 1) supressão Art.18 (opt-out)
+  // 1) supressão Art.18 (opt-out) + marca remarketing (WHEN TBD)
   if (plan.optOut) {
     await sb.from("platform_crm_lead_optout").upsert(plan.optOut, { onConflict: "product_id,telefone" });
+  }
+  if (plan.remarketing && conversation_id) {
+    try {
+      const { data: convRow } = await sb.from("platform_crm_conversations")
+        .select("metadata").eq("id", conversation_id).maybeSingle();
+      const prev = (convRow?.metadata && typeof convRow.metadata === "object")
+        ? convRow.metadata as Record<string, unknown>
+        : {};
+      await sb.from("platform_crm_conversations").update({
+        metadata: {
+          ...prev,
+          remarketing: true,
+          remarketing_reason: plan.optOut?.reason ?? "runtime_opt_out_remarketing",
+          remarketing_at: new Date().toISOString(),
+          do_not_contact: true,
+          do_not_contact_reason: "opt_out_remarketing",
+        },
+        updated_at: new Date().toISOString(),
+      }).eq("id", conversation_id);
+    } catch (_e) { /* best-effort */ }
   }
   // 2) status da fila (para cadência)
   if (plan.queueStatus) {
@@ -1239,8 +1327,30 @@ async function actionOnInbound(sb: SupabaseClient, body: any) {
  * Valores válidos do enum platform_crm_conversation_status: bot_active|closed|human_active|waiting_human. */
 async function silenceConversation(sb: SupabaseClient, conversationId: string) {
   try {
-    await sb.from("platform_crm_conversations").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", conversationId);
-  } catch (_e) { /* best-effort */ }
+    const { data: convRow } = await sb.from("platform_crm_conversations")
+      .select("metadata").eq("id", conversationId).maybeSingle();
+    const prev = (convRow?.metadata && typeof convRow.metadata === "object")
+      ? convRow.metadata as Record<string, unknown>
+      : {};
+    const { error } = await sb.from("platform_crm_conversations").update({
+      status: "closed",
+      metadata: {
+        ...prev,
+        do_not_contact: true,
+        do_not_contact_reason: prev.do_not_contact_reason ?? "silence_opt_out",
+      },
+      updated_at: new Date().toISOString(),
+    }).eq("id", conversationId);
+    if (error) {
+      console.error(
+        `[cold-outreach] silenceConversation FALHOU conversation_id=${conversationId} reason=${error.message}`,
+      );
+    }
+  } catch (e) {
+    console.error(
+      `[cold-outreach] silenceConversation exception conversation_id=${conversationId} reason=${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

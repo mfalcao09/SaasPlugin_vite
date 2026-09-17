@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "job": "camila-d3-canary-1",
+  "when": "2026-09-15T20:57:42.636730+00:00",
+  "canary": {
+    "order": 1,
+    "slug": "renatanaildesingner",
+    "handle": "renatanaildesingner",
+    "extracted_lead_id": "c8aa9727-b19a-4e59-9cf2-f161a8fa7978",
+    "greeting": "Renata",
+    "telefone": "5581993552037"
+  },
+  "max_approach_span_s": 180,
+  "cases": [
+    {
+      "id": "clear_suppress",
+      "status": "PASS",
+      "detail": {
+        "handle": "renatanaildesingner"
+      }
+    },
+    {
+      "id": "approve",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "handle": "renatanaildesingner",
+            "id": "c8aa9727-b19a-4e59-9cf2-f161a8fa7978",
+            "not_excluded": true,
+            "ok": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "campaign",
+      "status": "PASS",
+      "detail": {
+        "campaign_id": "ed3a0ceb-8779-464d-b1dc-51faaa6448c2"
+      }
+    },
+    {
+      "id": "enqueue",
+      "status": "PASS",
+      "detail": {
+        "queue_id": "e9325e29-5125-4fd6-b4fb-8d1ef44ee774"
+      }
+    },
+    {
+      "id": "arm_test",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": false,
+            "release_state": "TEST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opening_found",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "conversation_id": "2b85d4d1-2a7c-453a-80ae-6e10d639ec74",
+            "lead_id": "eec13506-d040-4229-a745-e239558cb7ca",
+            "opening_at": "2026-09-15 20:58:12.5096+00",
+            "preview": "Oi, Renata! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️"
+          }
+        ]
+      }
+    },
+    {
+      "id": "approach_complete_within_span",
+      "status": "FAIL",
+      "detail": {
+        "outs": 1,
+        "span_s": 9999,
+        "ap": {
+          "outs": 1,
+          "span_s": 0
+        }
+      }
+    },
+    {
+      "id": "restore_off_kill",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": true,
+            "release_state": "OFF"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reblock",
+      "status": "PASS",
+      "detail": {
+        "handle": "renatanaildesingner",
+        "conversation_id": "2b85d4d1-2a7c-453a-80ae-6e10d639ec74"
+      }
+    }
+  ],
+  "campaign_id": "ed3a0ceb-8779-464d-b1dc-51faaa6448c2",
+  "conversation_id": "2b85d4d1-2a7c-453a-80ae-6e10d639ec74",
+  "lead_id": "eec13506-d040-4229-a745-e239558cb7ca",
+  "opening_at": "2026-09-15 20:58:12.5096+00",
+  "messages": [
+    {
+      "origem": "cold_outreach_abertura",
+      "preview": "Oi, Renata! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️",
+      "when_brt": "2026-09-15 17:58:12.5096"
+    }
+  ]
+}

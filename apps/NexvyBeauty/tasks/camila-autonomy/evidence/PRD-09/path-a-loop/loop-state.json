@@ -1,0 +1,61 @@
+{
+  "program": "path-a-reopen",
+  "status": "running",
+  "current_phase": "F7_GATE",
+  "phases": {
+    "F0": {
+      "status": "pass",
+      "at": "2026-09-16T06:35:49.624611+00:00"
+    },
+    "F1": {
+      "status": "pass",
+      "at": "2026-09-16T06:41:09.225291+00:00"
+    },
+    "F2": {
+      "status": "pass",
+      "at": "2026-09-16T06:43:10.483526+00:00",
+      "note": "migration file + policy tests; SQL apply before F3 enforce"
+    },
+    "F3": {
+      "status": "pass",
+      "at": "2026-09-16T06:52:35.294275+00:00",
+      "note": "shadow wiring+B1-B7 replay; REOPEN_INTENT_V1_MODE still off in prod until F4"
+    },
+    "F4": {
+      "status": "pass",
+      "live": "pass_live",
+      "at": "2026-09-17T00:09:15.763268+00:00",
+      "note": "Plan B live canary green; allowlist only"
+    },
+    "F5": {
+      "status": "pass",
+      "at": "2026-09-16T07:02:07.938539+00:00",
+      "note": "R2 planner shadow; default R2_AUTO still off; no sender"
+    },
+    "F6": {
+      "status": "blocked",
+      "at": "2026-09-16T07:03:27.174722+00:00",
+      "note": "needs_F4_live_and_PATH_A_F6_LIVE",
+      "gate": "F7_GATE"
+    },
+    "F7": {
+      "status": "pass_tier1_gated",
+      "tier": 1,
+      "at": "2026-09-17T00:15:33.438247+00:00",
+      "note": "GO recorded; F6 R2 live still blocked \u2014 no widen beyond canary"
+    }
+  },
+  "updated_at": "2026-09-17T00:15:33.438247+00:00",
+  "gate": "F6_BLOCKED",
+  "stop": "F7 tier1 GO archived; commercial ramp blocked until F6 pass_live",
+  "plan_b": {
+    "status": "delivered",
+    "at": "2026-09-17T00:09:15.763274+00:00",
+    "evidence": "PLAN-B-DELIVERED.json"
+  },
+  "f7_approval": {
+    "approve": "APROVO F7 PATH-A",
+    "tier": 1,
+    "at": "2026-09-17T00:12:00-03:00"
+  }
+}

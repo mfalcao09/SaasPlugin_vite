@@ -1,0 +1,13 @@
+{
+  "when": "2026-09-15T19:35:10.191444+00:00",
+  "fix": "auto_reply false negative agradece o seu contato",
+  "pattern": "agradece\\\\s+(o\\\\s+seu|seu|o)\\\\s+contato",
+  "fixture": "LETICIA_ESPACO_LEH",
+  "tests": "auto-reply.test.ts + inbound-plan.test.ts \u2192 12 passed",
+  "deployed": [
+    "platform-cold-outreach",
+    "platform-whatsapp-qr-webhook",
+    "platform-camila-conductor"
+  ],
+  "db_repair": "espaco.leh queue replied\u2192sent; conv auto_reply_seen=true"
+}

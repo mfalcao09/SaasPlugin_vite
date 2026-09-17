@@ -1,0 +1,8 @@
+{
+  "farewell_vs_emergency": "agree_hold",
+  "reopen_vs_emergency": "path_a_would_reopen_shadow_no_mutate",
+  "hard_opt_out": "agree_hold",
+  "critical_unexplained": 0,
+  "path_a_sends": 0,
+  "note": "Replay synthetic B1\u2013B7 via deno tests; no provider deploy in F3 verify"
+}

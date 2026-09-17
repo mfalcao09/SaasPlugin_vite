@@ -1,0 +1,28 @@
+{
+  "status": "pass",
+  "harness": "pass",
+  "live": "pass_live",
+  "canary_phone": "5511945760964",
+  "r2_auto_mode": "off",
+  "farewell_outbound": 0,
+  "clarify_bubbles": 0,
+  "reopen_bubbles": 0,
+  "queue_queued": false,
+  "cold_tick_openings": 0,
+  "r2_sends": 0,
+  "live_proof": {
+    "farewell": {
+      "class": "farewell_ack",
+      "apply_mutation": false,
+      "stayed_closed": true
+    },
+    "reopen": {
+      "class": "reopen_intent",
+      "apply_mutation": true,
+      "bot_active": true
+    },
+    "evidence": "F4-live-result-latest.json"
+  },
+  "finally_note": "release OFF + kill_switch true restored",
+  "at": "2026-09-17T00:09:15.762342+00:00"
+}

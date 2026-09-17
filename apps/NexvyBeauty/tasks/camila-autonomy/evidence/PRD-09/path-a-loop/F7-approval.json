@@ -1,0 +1,9 @@
+{
+  "approve": "APROVO F7 PATH-A",
+  "tier": 1,
+  "approved_by": "Marcelo",
+  "approved_at": "2026-09-17T00:12:00-03:00",
+  "scope": "tier1_canary_only",
+  "canary_phone_e164": "5511945760964",
+  "notes": "Commercial expansion beyond canary requires F6 pass_live + new GO with tier>=2"
+}

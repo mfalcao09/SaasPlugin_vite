@@ -1,0 +1,20 @@
+{
+  "when": "2026-09-15T23:44:43.524196+00:00",
+  "diagnosis": "Z-API notifySentByMe was not confirmed on Camila instance; inbound worked, device outbound missing since Z-API cutover",
+  "fix": "PUT /update-every-webhooks with notifySentByMe=true",
+  "put_status": 200,
+  "put_body": "{\"value\":true}",
+  "probe_http": 200,
+  "probe_body": "{\"ok\":true,\"stored\":\"external_outbound\"}",
+  "probe_rows": [
+    {
+      "brt": "2026-09-15 20:44:40.030452",
+      "content": "[crm-sync-probe] fromMe device sync check 234439",
+      "direction": "outbound",
+      "from_device": "true",
+      "mid": "PROBE20260915234439",
+      "source": "external_device"
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "prd": "PRD-06",
+  "result": "PASS_CODE",
+  "branch": "feat/camila-autonomy-04-safety-ledger",
+  "base_commit": "db96195",
+  "working_tree": "dirty",
+  "checks": {
+    "entrypoints_checked": 4,
+    "camila_suite_tests": 304,
+    "test_failures": 0,
+    "code_review": "approve_after_fix",
+    "typescript_review": "approve"
+  },
+  "binary_check": {
+    "ficha_required_camila_qr": true,
+    "ficha_versioned_even_when_empty": true,
+    "zero_invented_price": true,
+    "zero_invented_checkout_url": true,
+    "trusted_raiox_host_only": true,
+    "opaque_clarify_skips_llm": true,
+    "max_two_bubbles_no_truncated": true
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "real_leads_allowed": false,
+    "edges_deployed": false,
+    "conductor_enabled": false
+  },
+  "remaining_for_master_gate": [
+    "adversarial live rubric on controlled number",
+    "persist fact re-read E2E across turns",
+    "deploy edges on same SHA"
+  ]
+}

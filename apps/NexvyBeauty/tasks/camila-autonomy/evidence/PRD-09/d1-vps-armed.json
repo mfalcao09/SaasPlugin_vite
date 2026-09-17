@@ -1,0 +1,10 @@
+{
+  "when": "2026-09-14T04:11:38.203694+00:00",
+  "host": "vps-hostinger (145.223.29.96)",
+  "path": "/opt/scripts/camila/d1_run.py",
+  "env": "/opt/scripts/camila/.env.d1 (chmod 600)",
+  "schedule": "2026-09-14 12:00 UTC = 09:00 BRT",
+  "scope": "wa:eval only; restore OFF after",
+  "local_mac_wake": "killed",
+  "validate_tomorrow": "ssh vps-hostinger cat /opt/scripts/camila/evidence/d1-vps-latest.json"
+}

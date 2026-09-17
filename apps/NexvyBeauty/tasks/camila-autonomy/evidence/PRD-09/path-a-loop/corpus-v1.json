@@ -1,0 +1,122 @@
+{
+  "version": "corpus-v1",
+  "classifier_target": "reopen-intent@1.0.0",
+  "farewell_window_hours": 48,
+  "critical": true,
+  "cases": [
+    {
+      "id": "joice-pode-deixar",
+      "text": "Pode deixar",
+      "hours_since_r2": 2,
+      "expected": "farewell_ack",
+      "critical": true,
+      "source": "joice"
+    },
+    {
+      "id": "joice-obrigada",
+      "text": "Obrigada",
+      "hours_since_r2": 2,
+      "expected": "farewell_ack",
+      "critical": true,
+      "source": "joice"
+    },
+    {
+      "id": "reopen-mudei",
+      "text": "Obrigada, mudei de ideia, quero ver como funciona",
+      "hours_since_r2": 2,
+      "expected": "reopen_intent",
+      "critical": true
+    },
+    {
+      "id": "reopen-quero-ver",
+      "text": "quero ver",
+      "hours_since_r2": 3,
+      "expected": "reopen_intent",
+      "critical": true
+    },
+    {
+      "id": "opt-pare",
+      "text": "pare de me mandar mensagem",
+      "hours_since_r2": 1,
+      "expected": "opt_out_again",
+      "critical": true,
+      "hard": true
+    },
+    {
+      "id": "opt-sair",
+      "text": "SAIR",
+      "hours_since_r2": 1,
+      "expected": "opt_out_again",
+      "critical": true,
+      "hard": true
+    },
+    {
+      "id": "opt-obrigada-pare",
+      "text": "obrigada, mas pare",
+      "hours_since_r2": 1,
+      "expected": "opt_out_again",
+      "critical": true,
+      "hard": true
+    },
+    {
+      "id": "amb-oi",
+      "text": "oi",
+      "hours_since_r2": 2,
+      "expected": "ambiguous",
+      "critical": false
+    },
+    {
+      "id": "amb-tudo-bem",
+      "text": "tudo bem?",
+      "hours_since_r2": 2,
+      "expected": "ambiguous",
+      "critical": false
+    },
+    {
+      "id": "farewell-valeu",
+      "text": "valeu",
+      "hours_since_r2": 5,
+      "expected": "farewell_ack",
+      "critical": false
+    },
+    {
+      "id": "farewell-outside-window",
+      "text": "obrigada",
+      "hours_since_r2": 72,
+      "expected": "ambiguous",
+      "critical": true,
+      "note": "fora de 48h perde bias farewell"
+    },
+    {
+      "id": "meta-farewell-to-reopen",
+      "text": "obrigada quero ver",
+      "hours_since_r2": 2,
+      "expected": "reopen_intent",
+      "critical": true,
+      "metamorphic": true
+    },
+    {
+      "id": "soft-nao-interesse",
+      "text": "No momento não tenho interesse",
+      "hours_since_r2": null,
+      "expected": "opt_out_again",
+      "critical": true,
+      "soft": true,
+      "context": "active_not_closed"
+    },
+    {
+      "id": "empty",
+      "text": "",
+      "hours_since_r2": 2,
+      "expected": "ambiguous",
+      "critical": false
+    },
+    {
+      "id": "emoji-ack",
+      "text": "👍",
+      "hours_since_r2": 2,
+      "expected": "farewell_ack",
+      "critical": false
+    }
+  ]
+}

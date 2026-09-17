@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "phase": "B-harness",
+  "when": "2026-09-14T02:47:39.513255+00:00",
+  "check_binary": "Full Phase B PASS iff E5.3a+E5.3b+E5.2 delivered; tonight: acertou+kernel deny proven",
+  "cases": [
+    {
+      "id": "E5.3a",
+      "status": "PASS",
+      "detail": {
+        "message_id": "8d86d40d-2269-4089-b63f-139ec9879d7a",
+        "content_preview": "Acertou",
+        "created_at": "2026-09-14 02:16:18.271424+00",
+        "local_label": "affirmative",
+        "conversation_id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21"
+      }
+    },
+    {
+      "id": "E5.3b",
+      "status": "FAIL",
+      "detail": {
+        "persisted_label_on_message": false,
+        "gap": "classifyAssertivenessReply not wired on webhook; no assertiveness field on message metadata"
+      }
+    },
+    {
+      "id": "E5.pre",
+      "status": "PASS",
+      "detail": {
+        "release_state": "OFF",
+        "kill_switch": false
+      }
+    },
+    {
+      "id": "E5.2a",
+      "status": "PASS",
+      "detail": {
+        "conversation_id": "130624e9-e2a5-4880-831d-aee882b1937d",
+        "visitor_id": "wa:eval-e2e-b-20260914T024200Z",
+        "lead_id": "84f142a0-8e57-433e-b235-723b58178d7a",
+        "phone_masked": "***0964"
+      }
+    },
+    {
+      "id": "E5.2b",
+      "status": "FAIL",
+      "detail": {
+        "http": 401,
+        "error": "Unauthorized",
+        "note": "CLI legacy JWT service_role and sb_secret both rejected by platform-sales-brain; need BRAIN_INTERNAL_SECRET or edge-matching service role"
+      }
+    },
+    {
+      "id": "E5.2c",
+      "status": "PASS",
+      "detail": {
+        "path": "pcrm_authorize_and_reserve_agent_action",
+        "conversation_id": "130624e9-e2a5-4880-831d-aee882b1937d",
+        "action_id": "c7e9d3b6-25a2-4eda-bb75-08440e0c88d1",
+        "allowed": false,
+        "status": "denied",
+        "reason": "release_off",
+        "note": "Kernel gate proven on wa:eval; provider not called"
+      }
+    }
+  ],
+  "summary": {
+    "pass": 4,
+    "fail": 2
+  },
+  "result": "NO-GO",
+  "partial_proofs": {
+    "acertou_inbound": true,
+    "local_assertiveness_affirmative": true,
+    "wa_eval_conversation_created": true,
+    "kernel_denies_under_OFF": true,
+    "brain_http_turn": false,
+    "ledger_delivered": false,
+    "assertiveness_label_persisted": false
+  },
+  "next": [
+    "Provide BRAIN_INTERNAL_SECRET (or matching edge service role) to invoke brain turn",
+    "Wire classifyAssertivenessReply on inbound webhook and persist label (E5.3b)",
+    "Separate GO: temporary TEST + weekday 09-18 BRT (or eval window bypass) for reserved→delivered"
+  ]
+}

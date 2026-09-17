@@ -1,0 +1,68 @@
+{
+  "when": "2026-09-15T21:50:24.052488+00:00",
+  "stop": "no further dispatch tonight (past hours)",
+  "release": {
+    "release_state": "OFF",
+    "kill_switch": true
+  },
+  "d2_complete": [
+    {
+      "handle": "joicefbeltramini",
+      "outs": 4,
+      "ins": "opt-out+remarketing (+ talvez em outra oportunidade)"
+    },
+    {
+      "handle": "alinemachadostudiodebeleza",
+      "outs": 4,
+      "ins": 0
+    },
+    {
+      "handle": "beatrizsouza_af",
+      "outs": 4,
+      "ins": 0
+    },
+    {
+      "handle": "beautycompany.af",
+      "outs": 4,
+      "ins": 0
+    },
+    {
+      "handle": "espaco.leh",
+      "outs": 4,
+      "ins": "1 auto-reply away"
+    }
+  ],
+  "d3_planned_10": true,
+  "d3_fired": [
+    {
+      "handle": "renatanaildesingner",
+      "outs": 1,
+      "pending_bubbles": 3,
+      "ins": 2,
+      "note": "opening only; incomplete approach"
+    }
+  ],
+  "d3_attempted_no_delivery": [
+    {
+      "handle": "alinyjaciaraesmalteria",
+      "queue": "failed",
+      "outs": 0
+    }
+  ],
+  "d3_not_started": [
+    "studio_victoriamendes",
+    "lidiacastro_lashnail",
+    "rafaeleandradestudio",
+    "leticiacosta.studiolc",
+    "jamires_unhasdegel2",
+    "geovanabrasil.nails",
+    "rafaellatrindadebeauty",
+    "espaco_andressamanoel"
+  ],
+  "rules_saved": "tasks/camila-autonomy/RULE-OPT-OUT-REMARKETING.md",
+  "next_session": [
+    "Complete Renata bubbles 2-4 then attendance under TEST",
+    "Resume D3 remaining 8 (+ retry Aliny) in window hours, pairs + 60s",
+    "Remarketing WHEN rule still TBD"
+  ]
+}

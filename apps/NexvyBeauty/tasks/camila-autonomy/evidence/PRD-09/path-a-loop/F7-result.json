@@ -1,0 +1,27 @@
+{
+  "status": "pass_tier1_gated",
+  "approve": "APROVO F7 PATH-A",
+  "tier": 1,
+  "ramp": {
+    "tier": 1,
+    "allowlist": [
+      "5511945760964"
+    ],
+    "commercial_expansion": false,
+    "note": "GO recorded; F6 R2 live still blocked \u2014 no widen beyond canary"
+  },
+  "release": {
+    "kill_switch": true,
+    "release_state": "OFF"
+  },
+  "f6": {
+    "status": "blocked",
+    "live": null,
+    "ok": false
+  },
+  "zero_metrics": {
+    "outbound_outside_allowlist": 0,
+    "r2_auto_outside_allowlist": 0
+  },
+  "at": "2026-09-17T00:15:33.438247+00:00"
+}

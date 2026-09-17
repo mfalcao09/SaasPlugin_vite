@@ -1,0 +1,61 @@
+{
+  "when": "2026-09-14T02:53:36.387211+00:00",
+  "question": "Ready for TEST in business hours?",
+  "verdict": "NOT_YET_FULL — narrow wa:eval TEST possible Mon 09-18 BRT after checklist",
+  "must_stay_off_until_go": true,
+  "blockers_for_TEST_window": [
+    {
+      "id": "GO_TEST",
+      "status": "PENDING",
+      "note": "Explicit GO to set release_state=TEST (not LIVE)"
+    },
+    {
+      "id": "WEEKDAY_WINDOW",
+      "status": "PENDING",
+      "note": "Kernel enforces Mon-Fri 09-18 America/Sao_Paulo"
+    },
+    {
+      "id": "SCOPE_WA_EVAL_ONLY",
+      "status": "READY",
+      "note": "wa:eval conv exists; incident cohort active=false"
+    },
+    {
+      "id": "CHIP",
+      "status": "READY_IF_CONNECTED",
+      "note": "Re-check Z-API connected+smartphone at T0"
+    },
+    {
+      "id": "AUTH",
+      "status": "READY",
+      "note": "BRAIN_INTERNAL_SECRET rotated; brain HTTP 200"
+    },
+    {
+      "id": "ASSERTIVENESS_WIRE",
+      "status": "READY_CODE",
+      "note": "Deployed webhook; live inbound still needs one real reply after deploy"
+    },
+    {
+      "id": "E5.2_DELIVERED",
+      "status": "BLOCKED_BY_OFF",
+      "note": "Proven deny under OFF; delivery needs TEST"
+    },
+    {
+      "id": "E5.4_KILLSWITCH",
+      "status": "PENDING",
+      "note": "Must prove 0 provider calls after kill during/after TEST"
+    },
+    {
+      "id": "MASTER_GATE",
+      "status": "NO-GO",
+      "note": "Many Master Gate items still open — TEST ≠ LIVE canary"
+    }
+  ],
+  "safe_protocol_if_GO": [
+    "1. Confirm chip connected live",
+    "2. release_state OFF→TEST for Camila only (not LIVE)",
+    "3. One wa:eval turn → expect reserved→accepted→delivered",
+    "4. Optional: you reply acertou again → label on NEW inbound (not backfill)",
+    "5. Flip kill_switch or back to OFF; prove no new provider call",
+    "6. Leave incident cohort active=false; no real leads"
+  ]
+}

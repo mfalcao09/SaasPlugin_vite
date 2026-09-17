@@ -28,10 +28,13 @@ Deno.test("neutral: texto sem sinal", () => {
   assertEquals(classifyReply("dá para remover uma cliente da agenda?").intent, "neutral");
 });
 
-Deno.test("want puro classifica como want", () => {
-  assertEquals(classifyReply("quero ver o raio-x").intent, "want");
-  assertEquals(classifyReply("pode mandar").intent, "want");
+Deno.test("soft vs hard opt-out kind", () => {
+  assertEquals(classifyReply("SAIR").optOutKind, "hard");
+  assertEquals(classifyReply("pare").optOutKind, "hard");
+  assertEquals(classifyReply("não tenho interesse").optOutKind, "soft");
+  assertEquals(classifyReply("sem interesse").optOutKind, "soft");
 });
+
 
 Deno.test("normalize: remove acento e pontuação, colapsa espaço", () => {
   assertEquals(normalize("Não   quero!!!"), "nao quero");

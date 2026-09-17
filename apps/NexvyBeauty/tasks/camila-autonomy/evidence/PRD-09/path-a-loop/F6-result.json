@@ -1,0 +1,14 @@
+{
+  "status": "blocked",
+  "reason": "needs_F4_live_and_PATH_A_F6_LIVE",
+  "f4": {
+    "status": "pass_harness",
+    "live": "blocked_needs_PATH_A_F4_LIVE",
+    "at": "2026-09-16T06:56:28.566950+00:00",
+    "note": "synthetic B2-B7 green; live blocked until PATH_A_F4_LIVE+deploy"
+  },
+  "f5": "pass",
+  "gate": "F7_GATE",
+  "at": "2026-09-16T07:03:27.135149+00:00",
+  "note": "Camila left OFF+kill; no R2 canary send in this session"
+}
