@@ -5,5 +5,6 @@
   "approved_at": "2026-09-17T00:12:00-03:00",
   "scope": "tier1_canary_only",
   "canary_phone_e164": "5511945760964",
-  "notes": "Commercial expansion beyond canary requires F6 pass_live + new GO with tier>=2"
+  "notes": "Tier1 canary only. F6 pass_live achieved 2026-09-17. Commercial expansion still requires new GO with tier>=2.",
+  "f6_gate": "satisfied_pass_live"
 }

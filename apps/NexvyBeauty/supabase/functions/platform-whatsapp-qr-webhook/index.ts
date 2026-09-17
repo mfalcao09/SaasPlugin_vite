@@ -625,7 +625,13 @@ type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean; suppressBrain:
 // silêncio: todo caminho de erro sai em console.error com o conversation_id.
 async function notifyColdOutreachInbound(
   supabase: any,
-  a: { productId: string | null; conversationId: string; telefone: string; text: string },
+  a: {
+    productId: string | null;
+    conversationId: string;
+    telefone: string;
+    text: string;
+    inboundEventId: string;
+  },
 ): Promise<ColdOutreachInboundVerdict> {
   try {
     const { data, error } = await supabase.functions.invoke("platform-cold-outreach", {
@@ -635,6 +641,7 @@ async function notifyColdOutreachInbound(
         conversation_id: a.conversationId,
         telefone: a.telefone,
         text: a.text,
+        inbound_event_id: a.inboundEventId,
       },
     });
     if (error) {
@@ -1287,6 +1294,7 @@ async function handleMessage(
     productId: (conversation.product_id as string | null) ?? productId,
     conversationId: String(conversation.id),
     telefone: fromDigits,
+    inboundEventId: String(inserted.id),
     // PR-BDR-11: com a transcrição, um "pare"/"me tira" FALADO em áudio também
     // chega ao detector de opt-out — antes o áudio era um "[áudio]" opaco que
     // nunca casava padrão nenhum.

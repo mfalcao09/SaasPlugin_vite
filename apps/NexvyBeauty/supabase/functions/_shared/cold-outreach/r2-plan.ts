@@ -4,14 +4,47 @@
 import { classifyOptOutKind, type OptOutKind } from "./opt-out.ts";
 import { getR2AutoMode, type PathAMode } from "./path-a-flags.ts";
 
-export const R2_PLAN_VERSION = "r2-close@1";
+export const R2_PLAN_VERSION = "r2-close@2";
 
-/** Allowlisted site URLs for R2 bubble 2. */
+/** Allowlisted site URLs for R2 bubble 2 (URL alone → WA OG preview). */
 export const R2_URL_ALLOWLIST = [
   "https://nexvybeauty.com.br",
   "https://www.nexvybeauty.com.br",
   "https://nexvy.tech",
 ] as const;
+
+/** OG card for Z-API /send-link (phone-app preview equivalent). */
+export const R2_LINK_PREVIEW = {
+  linkUrl: "https://nexvybeauty.com.br",
+  title: "Não contrate atendente. Tenha uma 24/7.",
+  linkDescription:
+    "Equipe de agentes de IA no seu WhatsApp. Atenda, agende, confirme presença, busque clientes que sumiram, tudo de forma inteligente e sem contratar gente nova!",
+  image: "https://nexvybeauty.com.br/og-nexvybeauty-hero.png",
+  linkType: "LARGE" as const,
+};
+
+export function isR2SiteUrl(text: string): boolean {
+  const t = String(text ?? "").trim().replace(/\/$/, "");
+  return (R2_URL_ALLOWLIST as readonly string[]).some(
+    (u) => u.replace(/\/$/, "") === t,
+  );
+}
+
+
+/** Gold copy from RULE-OPT-OUT-REMARKETING / Joice case (Marcelo 2026-09-15). */
+export function r2CloseBubbles(input: {
+  greetingName?: string | null;
+  siteUrl?: string;
+}): string[] {
+  const raw = String(input.greetingName ?? "").trim();
+  const first = raw.split(/\s+/)[0] || "";
+  const name = first && !/^(tudo|oi|ola|olá)$/i.test(first) ? first : "tudo bem";
+  const site = input.siteUrl ?? R2_URL_ALLOWLIST[0];
+  return [
+    `Sem problemas, ${name}! Vou deixar aqui o nosso site para você dar uma olhada com calma, e se tiver interesse é só nos chamar no whatsapp novamente. Combinado?`,
+    site,
+  ];
+}
 
 export type R2PlanInput = {
   conversationId: string;
@@ -22,6 +55,8 @@ export type R2PlanInput = {
   lastR2AtIso?: string | null;
   nowIso?: string;
   siteUrl?: string;
+  /** First name / greeting for bubble 1 (Joice pattern). */
+  greetingName?: string | null;
   version?: number;
 };
 
@@ -85,16 +120,13 @@ export function planR2Close(input: R2PlanInput): R2Plan {
 
   if (!urlAllowed(site)) return base("url_not_allowlisted", false);
 
-  // Soft: exactly one R2 plan, ≤2 bubbles, sends always 0 in planner (shadow).
+  // Soft: Joice pattern — 1 polite bubble + 1 URL-only bubble (OG preview).
   return {
     mode,
     optOutKind: "soft",
     shouldPlan: true,
     idempotencyKey: key,
-    bubbles: [
-      "Combinado — se mudar de ideia, estou por aqui.",
-      `Se quiser conhecer depois: ${site}`,
-    ],
+    bubbles: r2CloseBubbles({ greetingName: input.greetingName, siteUrl: site }),
     sends: 0,
     skipReason: null,
   };

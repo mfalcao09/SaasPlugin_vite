@@ -5,18 +5,23 @@ import {
   r2IdempotencyKey,
 } from "./r2-plan.ts";
 
-Deno.test("B1 soft → exactly 1 R2 plan, sends=0, ≤2 bubbles", () => {
+Deno.test("B1 soft → Joice gold: polite + URL-only, sends=0", () => {
   const p = planR2Close({
     conversationId: "c1",
     eventId: "e1",
     optOutText: "No momento não tenho interesse",
     mode: "shadow",
+    greetingName: "Joice",
   });
   assertEquals(p.shouldPlan, true);
   assertEquals(p.optOutKind, "soft");
   assertEquals(p.sends, 0);
-  assertEquals(p.bubbles.length <= 2, true);
-  assertEquals(p.bubbles.length >= 1, true);
+  assertEquals(p.bubbles.length, 2);
+  assertEquals(
+    p.bubbles[0],
+    "Sem problemas, Joice! Vou deixar aqui o nosso site para você dar uma olhada com calma, e se tiver interesse é só nos chamar no whatsapp novamente. Combinado?",
+  );
+  assertEquals(p.bubbles[1], "https://nexvybeauty.com.br");
   assertEquals(p.idempotencyKey, r2IdempotencyKey("c1", "e1", 1));
 });
 

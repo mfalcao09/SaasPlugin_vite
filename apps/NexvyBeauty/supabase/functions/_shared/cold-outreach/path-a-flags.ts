@@ -57,3 +57,35 @@ export function isPathAAllowlisted(input: {
   if (cid && list.has(cid)) return true;
   return false;
 }
+
+function readEnvAllowlist(key: string): Set<string> {
+  try {
+    return parseAllowlist(
+      typeof Deno !== "undefined" ? Deno.env.get(key) : undefined,
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+/** R2 canary: union of R2_AUTO_V1_ALLOWLIST and REOPEN_INTENT_V1_ALLOWLIST. Empty → fail-closed. */
+export function isR2Allowlisted(input: {
+  phoneDigits?: string | null;
+  conversationId?: string | null;
+  r2AllowlistRaw?: string | null;
+  reopenAllowlistRaw?: string | null;
+}): boolean {
+  const r2List = input.r2AllowlistRaw !== undefined
+    ? parseAllowlist(input.r2AllowlistRaw)
+    : readEnvAllowlist("R2_AUTO_V1_ALLOWLIST");
+  const reopenList = input.reopenAllowlistRaw !== undefined
+    ? parseAllowlist(input.reopenAllowlistRaw)
+    : readEnvAllowlist("REOPEN_INTENT_V1_ALLOWLIST");
+  if (r2List.size === 0 && reopenList.size === 0) return false;
+  const phone = String(input.phoneDigits ?? "").replace(/\D/g, "");
+  if (phone && (r2List.has(phone) || reopenList.has(phone))) return true;
+  const cid = String(input.conversationId ?? "").trim();
+  if (cid && (r2List.has(cid) || reopenList.has(cid))) return true;
+  return false;
+}
+

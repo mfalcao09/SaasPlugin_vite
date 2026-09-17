@@ -33,21 +33,42 @@
       "note": "R2 planner shadow; default R2_AUTO still off; no sender"
     },
     "F6": {
-      "status": "blocked",
-      "at": "2026-09-16T07:03:27.174722+00:00",
-      "note": "needs_F4_live_and_PATH_A_F6_LIVE",
-      "gate": "F7_GATE"
+      "status": "pass",
+      "live": "pass_live",
+      "at": "2026-09-17T01:09:16.893815+00:00",
+      "checks": {
+        "soft_r2_delivered": 2,
+        "hard_r2": 0,
+        "farewell_after_r2_outbound": 0,
+        "replay_extra_r2": 0
+      },
+      "delivery_proof": {
+        "outbound_message_ids": [
+          "fcc312fa-7bc1-4a38-a015-84061282614c",
+          "f538e7e3-ebd7-4a28-bcb5-93f28101e527"
+        ],
+        "wamids": [
+          "9476ADBAEDFC92574867",
+          "3EB0C695796DF9032ABC80"
+        ],
+        "action_ids": [
+          "9ca59044-a4bb-4b83-b27c-426fe7dcdcdd",
+          "0416ae63-fe65-47e0-8549-3e52a4897348"
+        ],
+        "origem": "path_a_r2_close",
+        "lei1_note": "DB rows verified; post-pass re-run at 01:13 failed because R2_AUTO already off — ignored"
+      }
     },
     "F7": {
       "status": "pass_tier1_gated",
       "tier": 1,
-      "at": "2026-09-17T00:15:33.438247+00:00",
-      "note": "GO recorded; F6 R2 live still blocked \u2014 no widen beyond canary"
+      "at": "2026-09-17T02:12:51.554955+00:00",
+      "note": "F7 evidence aligned: F6 pass_live + link preview; still no commercial widen"
     }
   },
-  "updated_at": "2026-09-17T00:15:33.438247+00:00",
-  "gate": "F6_BLOCKED",
-  "stop": "F7 tier1 GO archived; commercial ramp blocked until F6 pass_live",
+  "updated_at": "2026-09-17T02:12:51.554955+00:00",
+  "gate": "F7_TIER1_CANARY",
+  "stop": "Path A canary complete; Camila OFF+kill; F7 tier>=2 needs new GO; git PR pending",
   "plan_b": {
     "status": "delivered",
     "at": "2026-09-17T00:09:15.763274+00:00",
