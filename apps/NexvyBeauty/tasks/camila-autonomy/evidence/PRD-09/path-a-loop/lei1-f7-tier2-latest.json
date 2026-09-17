@@ -1,0 +1,44 @@
+{
+  "at": "2026-09-17T13:48:35.566746+00:00",
+  "checks": {
+    "C1_status_pass_tier2": "PASS",
+    "C2_tier_is_2": "PASS",
+    "C3_allowlist_len_5": "PASS",
+    "C4_packet_matches_result": "PASS",
+    "C5_approval_matches_packet": "PASS",
+    "C6_canary_in_list": "PASS",
+    "C7_go_text_present": "PASS",
+    "C8_f6_ok": "PASS",
+    "C9_OFF_kill": "PASS",
+    "C10_secret_REOPEN_INTENT_V1_ALLOWLIST": "PASS",
+    "C10_secret_R2_AUTO_V1_ALLOWLIST": "PASS",
+    "C10_secret_REOPEN_INTENT_V1_MODE": "PASS",
+    "C10_secret_R2_AUTO_V1_MODE": "PASS",
+    "C11_loop_gate_OBSERVE_TIER2": "PASS",
+    "C12_verify_rerun": "PASS"
+  },
+  "detail": {
+    "release": [
+      {
+        "kill_switch": true,
+        "release_state": "OFF"
+      }
+    ],
+    "secret_updated": {
+      "REOPEN_INTENT_V1_ALLOWLIST": "2026-09-17T13:47:23.119Z",
+      "R2_AUTO_V1_ALLOWLIST": "2026-09-17T13:47:23.119Z",
+      "R2_AUTO_V1_MODE": "2026-09-17T13:47:23.119Z"
+    },
+    "C10_note": "values are digests \u2014 contents set this session but not re-readable",
+    "verify_out": "0964\", \"5547996650702\", \"5585997315603\", \"5566992054841\", \"5549988309265\"], \"commercial_expansion\": true, \"degrau\": \"5_leads\", \"packet\": \"F7-allowlist-tier2.json\", \"note\": \"tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor\"}, \"release\": {\"kill_switch\": true, \"release_state\": \"OFF\"}, \"f6\": {\"status\": \"pass\", \"live\": \"pass_live\", \"ok\": true}, \"zero_metrics\": {\"outbound_outside_allowlist\": 0, \"r2_auto_outside_allowlist\": 0}, \"at\": \"2026-09-17T13:48:35.561392+00:00\"}\n"
+  },
+  "allowlist": [
+    "5511945760964",
+    "5547996650702",
+    "5585997315603",
+    "5566992054841",
+    "5549988309265"
+  ],
+  "status": "implementado e verificado",
+  "claim": "F7 tier2 Path A allowlist=5; Camila OFF+kill; not LIVE"
+}

@@ -5,7 +5,8 @@ Requires explicit GO in evidence/F7-approval.json:
   {"approve": "APROVO F7 PATH-A", "tier": 1, ...}
 
 Tier 1 = canary allowlist only (5511945760964). Does NOT widen allowlist.
-Commercial tiers 2+ require F6 pass_live + separate GO string with tier.
+Tier 2 = exactly 5 phones in F7-allowlist-tier2.json + matching F7-approval.
+Commercial tiers 3+ require F6 pass_live + new GO + packet.
 """
 from __future__ import annotations
 
@@ -119,10 +120,36 @@ def main() -> int:
             "note": "tier1 canary only after F6; next degrau needs new GO",
         }
         status = "pass_tier1"
+    elif tier == 2:
+        if not f6_ok:
+            fail("tier>=2 requires F6 pass_live")
+        packet_path = EVID / "F7-allowlist-tier2.json"
+        if not packet_path.exists():
+            fail(f"missing allowlist packet {packet_path}")
+        packet = json.loads(packet_path.read_text())
+        allow = [str(x).replace("+", "").replace(" ", "") for x in (packet.get("allowlist_e164") or [])]
+        if len(allow) != 5:
+            fail(f"tier2 allowlist must have exactly 5 e164, got {len(allow)}")
+        if CANARY not in allow:
+            fail("tier2 allowlist must include canary phone")
+        ap_list = [str(x).replace("+", "").replace(" ", "") for x in (ap.get("allowlist_e164") or [])]
+        if sorted(ap_list) != sorted(allow):
+            fail("F7-approval allowlist_e164 must match F7-allowlist-tier2.json")
+        if int(packet.get("tier") or 0) != 2:
+            fail("packet tier must be 2")
+        ramp = {
+            "tier": 2,
+            "allowlist": allow,
+            "commercial_expansion": True,
+            "degrau": "5_leads",
+            "packet": "F7-allowlist-tier2.json",
+            "note": "tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor",
+        }
+        status = "pass_tier2"
     else:
         if not f6_ok:
             fail("tier>=2 requires F6 pass_live")
-        fail("tier>=2 not implemented in this verify — need explicit allowlist packet")
+        fail(f"tier={tier} not implemented — need allowlist packet + verify support")
 
     out = {
         "status": status,
@@ -139,24 +166,33 @@ def main() -> int:
     }
     EVID.mkdir(parents=True, exist_ok=True)
     (EVID / "F7-result.json").write_text(json.dumps(out, indent=2) + "\n")
+    (EVID / "F7-result-latest.json").write_text(json.dumps(out, indent=2) + "\n")
 
     state["phases"]["F7"] = {
         "status": status,
         "tier": tier,
         "at": out["at"],
         "note": ramp["note"],
+        "allowlist": ramp.get("allowlist"),
     }
     state["f7_approval"] = {
         "approve": phrase,
         "tier": tier,
         "at": ap.get("approved_at") or out["at"],
+        "go_text": ap.get("go_text"),
     }
-    state["gate"] = "F6_BLOCKED" if not f6_ok else "OBSERVE_TIER1"
-    state["stop"] = (
-        "F7 tier1 GO archived; commercial ramp blocked until F6 pass_live"
-        if not f6_ok
-        else "F7 tier1 active — observe canary; next degrau needs new GO"
-    )
+    if not f6_ok:
+        state["gate"] = "F6_BLOCKED"
+        state["stop"] = "F7 GO archived; commercial ramp blocked until F6 pass_live"
+    elif tier == 1:
+        state["gate"] = "OBSERVE_TIER1"
+        state["stop"] = "F7 tier1 active — observe canary; next degrau needs new GO"
+    elif tier == 2:
+        state["gate"] = "OBSERVE_TIER2"
+        state["stop"] = "F7 tier2 allowlist=5 active (Path A); Camila OFF+kill; tier3/20 needs new GO"
+    else:
+        state["gate"] = f"OBSERVE_TIER{tier}"
+        state["stop"] = f"F7 tier{tier} recorded"
     state["updated_at"] = out["at"]
     STATE.write_text(json.dumps(state, indent=2) + "\n")
 

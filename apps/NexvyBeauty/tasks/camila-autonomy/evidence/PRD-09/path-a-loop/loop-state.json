@@ -56,19 +56,26 @@
           "0416ae63-fe65-47e0-8549-3e52a4897348"
         ],
         "origem": "path_a_r2_close",
-        "lei1_note": "DB rows verified; post-pass re-run at 01:13 failed because R2_AUTO already off — ignored"
+        "lei1_note": "DB rows verified; post-pass re-run at 01:13 failed because R2_AUTO already off \u2014 ignored"
       }
     },
     "F7": {
-      "status": "pass_tier1_gated",
-      "tier": 1,
-      "at": "2026-09-17T02:12:51.554955+00:00",
-      "note": "F7 evidence aligned: F6 pass_live + link preview; still no commercial widen"
+      "status": "pass_tier2",
+      "tier": 2,
+      "at": "2026-09-17T13:48:35.561392+00:00",
+      "note": "tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor",
+      "allowlist": [
+        "5511945760964",
+        "5547996650702",
+        "5585997315603",
+        "5566992054841",
+        "5549988309265"
+      ]
     }
   },
-  "updated_at": "2026-09-17T02:12:51.554955+00:00",
-  "gate": "F7_TIER1_CANARY",
-  "stop": "Path A canary complete; Camila OFF+kill; F7 tier>=2 needs new GO; git PR pending",
+  "updated_at": "2026-09-17T13:48:35.561392+00:00",
+  "gate": "OBSERVE_TIER2",
+  "stop": "F7 tier2 allowlist=5 active (Path A); Camila OFF+kill; tier3/20 needs new GO",
   "plan_b": {
     "status": "delivered",
     "at": "2026-09-17T00:09:15.763274+00:00",
@@ -76,7 +83,8 @@
   },
   "f7_approval": {
     "approve": "APROVO F7 PATH-A",
-    "tier": 1,
-    "at": "2026-09-17T00:12:00-03:00"
+    "tier": 2,
+    "at": "2026-09-17T13:45:35.906833+00:00",
+    "go_text": "GO para F7 tier 2"
   }
 }

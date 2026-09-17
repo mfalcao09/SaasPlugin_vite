@@ -1,40 +1,33 @@
 {
-  "status": "pass_tier1_gated",
+  "status": "pass_tier2",
   "approve": "APROVO F7 PATH-A",
-  "tier": 1,
+  "tier": 2,
   "ramp": {
-    "tier": 1,
+    "tier": 2,
     "allowlist": [
-      "5511945760964"
+      "5511945760964",
+      "5547996650702",
+      "5585997315603",
+      "5566992054841",
+      "5549988309265"
     ],
-    "commercial_expansion": false,
-    "note": "Tier1 canary only; commercial widen needs separate GO tier>=2"
+    "commercial_expansion": true,
+    "degrau": "5_leads",
+    "packet": "F7-allowlist-tier2.json",
+    "note": "tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor"
   },
   "release": {
-    "release_state": "OFF",
-    "kill_switch": true
+    "kill_switch": true,
+    "release_state": "OFF"
   },
   "f6": {
-    "status": "pass_live",
+    "status": "pass",
     "live": "pass_live",
-    "ok": true,
-    "checks": {
-      "soft_r2_delivered": 2,
-      "hard_r2": 0,
-      "farewell_after_r2_outbound": 0,
-      "replay_extra_r2": 0
-    },
-    "when": "2026-09-17T01:09:16.893815+00:00",
-    "link_preview": {
-      "validated": true,
-      "evidence": "R2-LINK-PREVIEW-REDISPARO.json",
-      "when": "2026-09-17T01:57:48.682890+00:00"
-    }
+    "ok": true
   },
   "zero_metrics": {
     "outbound_outside_allowlist": 0,
     "r2_auto_outside_allowlist": 0
   },
-  "at": "2026-09-17T02:12:51.554955+00:00",
-  "aligned_from": "lei1 F6 pass_live + link preview pass; supersedes F7-result that still said f6 blocked"
+  "at": "2026-09-17T13:48:35.561392+00:00"
 }

@@ -1,10 +1,18 @@
 {
   "approve": "APROVO F7 PATH-A",
-  "tier": 1,
+  "tier": 2,
   "approved_by": "Marcelo",
-  "approved_at": "2026-09-17T00:12:00-03:00",
-  "scope": "tier1_canary_only",
-  "canary_phone_e164": "5511945760964",
-  "notes": "Tier1 canary only. F6 pass_live achieved 2026-09-17. Commercial expansion still requires new GO with tier>=2.",
+  "approved_at": "2026-09-17T13:45:35.906833+00:00",
+  "go_text": "GO para F7 tier 2",
+  "scope": "tier2_five_leads_path_a_allowlist",
+  "allowlist_packet": "F7-allowlist-tier2.json",
+  "allowlist_e164": [
+    "5511945760964",
+    "5547996650702",
+    "5585997315603",
+    "5566992054841",
+    "5549988309265"
+  ],
+  "notes": "Widen REOPEN+R2 allowlist to 5. Do NOT enable release TEST/LIVE or conductor ALLOW_LIVE. Next degrau (20) needs new GO.",
   "f6_gate": "satisfied_pass_live"
 }
