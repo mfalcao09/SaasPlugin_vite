@@ -69,6 +69,10 @@ def main() -> int:
         "no_reply_stub": "Recebi sua mensagem" not in reactive
         and "enqueued_reply_stub" not in reactive
         and "wake_brain" in reactive,
+        "gold_how_are_you": "Estou bem, também. Obrigada por perguntar" in
+        (ROOT / "supabase/functions/_shared/inbound-cite.ts").read_text(encoding="utf-8")
+        and "goldReplyFromHistory" in
+        (ROOT / "supabase/functions/platform-sales-brain/index.ts").read_text(encoding="utf-8"),
         "wire_transport_type": "export type WireTransport" in transport,
         "no_PilotTransport": "PilotTransport" not in transport
         and "PilotTransport" not in (SHARED / "pilot-deliver.ts").read_text(encoding="utf-8"),

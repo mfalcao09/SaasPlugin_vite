@@ -1,12 +1,16 @@
-// Escolhe qual inbound citar: a pergunta feita à Camila, não a última bolha.
-// Caso Andressa (ouro Marcelo): "Oiii" / "Bom dia" / "Tudo bem" / "E vc?"
-// → cita "E vc?" e responde "Estou bem, também. Obrigada por perguntar 🥰".
+// Escolhe qual inbound citar e quando usar a resposta-ouro.
+// Andressa: "Oiii" / "Bom dia" / "Tudo bem" / "E vc?" (ou "E vc" sem ?)
+// → cita o “e você” e responde o ouro do Marcelo.
 
 export type CiteCandidate = {
   content?: string | null;
   direction?: string;
   sender_type?: string;
 };
+
+/** Texto fixo quando a lead pergunta como a Camila está. */
+export const GOLD_HOW_ARE_YOU_REPLY =
+  "Estou bem, também. Obrigada por perguntar 🥰";
 
 function fold(text: string): string {
   return String(text ?? "")
@@ -15,22 +19,50 @@ function fold(text: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Pergunta dirigida à Camila (“e você?”). Ouro Andressa. */
-const ASK_CAMILA = [
-  /\be\s+(voce|vc|tu)\b/,
-  /\bcomo\s+(voce|vc)\s+esta\b/,
-  /\bcomo\s+vai\b/,
+/** Sem pontuação/emoji — “E vc?” e “E você 🥰” viram “e vc” / “e voce”. */
+export function normalizeCiteText(text: string): string {
+  return fold(text)
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const ASK_CAMILA_EXACT = [
+  /^e\s+(voce|vc|tu)$/,
+  /^como\s+(voce|vc)\s+esta$/,
+  /^como\s+vai$/,
+  // Mesma bolha: “E você, tudo bem?” / “E vc tb” — reciprocidade, não outra pergunta.
+  /^e\s+(voce|vc|tu)\s+(tb|tbm|tambem|tudo\s+bem|como\s+vai|como\s+esta|beleza|tranquila?)$/,
 ];
 
-/** “Tudo bem?” perguntando. Sem interrogação pode ser só afirmação. */
-const HOW_ARE_YOU_QUESTION = [
-  /\btudo\s+bem(\s+contigo)?\s*\?/,
-];
+/** Palavras que transformam “e você …” em outra pergunta (não ouro). */
+const ASK_CAMILA_NOT_OTHER_Q =
+  /\b(tem|faz|vende|usa|trabalha|pode|consegue|sabe|aceita|cobra|atende)\b/;
 
-const HOW_ARE_YOU_STATEMENT = [
-  /\btudo\s+bem(\s+contigo)?\b/,
-];
+/**
+ * “E você” / “E vc” sozinho, com ou sem interrogação.
+ * “Tudo bem e vc” curto também conta. “E você tem agenda?” não.
+ */
+export function isStandaloneAskCamila(text: string): boolean {
+  const t = normalizeCiteText(text);
+  if (!t) return false;
+  if (ASK_CAMILA_EXACT.some((re) => re.test(t))) return true;
+  if (t.length <= 40 && /(^|\s)e\s+(voce|vc|tu)$/.test(t)) {
+    return !ASK_CAMILA_NOT_OTHER_Q.test(t);
+  }
+  return false;
+}
 
+export function burstAsksCamilaHowSheIs(texts: readonly string[]): boolean {
+  return texts.some((t) => isStandaloneAskCamila(t));
+}
+
+export function goldHowAreYouReply(texts: readonly string[]): string | null {
+  return burstAsksCamilaHowSheIs(texts) ? GOLD_HOW_ARE_YOU_REPLY : null;
+}
+
+const HOW_ARE_YOU_QUESTION = [/\btudo\s+bem(\s+contigo)?\s*\?/];
+const HOW_ARE_YOU_STATEMENT = [/\btudo\s+bem(\s+contigo)?\b/];
 const GREETING = [
   /^(oi+|ola|opa|eai|e ai)[\s!.]*$/,
   /^(bom\s+dia|boa\s+tarde|boa\s+noite)[\s!.]*$/,
@@ -42,7 +74,7 @@ export function scoreInboundCite(text: string): number {
   if (!raw) return 0;
   const n = fold(raw);
   let score = 5;
-  if (ASK_CAMILA.some((re) => re.test(n))) score = 110;
+  if (isStandaloneAskCamila(raw)) score = 110;
   else if (HOW_ARE_YOU_QUESTION.some((re) => re.test(n) || re.test(raw))) {
     score = 100;
   } else if (HOW_ARE_YOU_STATEMENT.some((re) => re.test(n))) score = 55;
@@ -101,4 +133,13 @@ export function pickAssertiveInbound<T extends CiteCandidate>(
     }
   }
   return best;
+}
+
+export function goldReplyFromHistory<T extends CiteCandidate>(
+  historyDesc: readonly T[],
+): string | null {
+  const texts = burstInboundVisitor(historyDesc).map((m) =>
+    String(m.content ?? "")
+  );
+  return goldHowAreYouReply(texts);
 }

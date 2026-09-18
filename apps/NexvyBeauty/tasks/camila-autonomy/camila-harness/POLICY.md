@@ -25,9 +25,9 @@
 Obrigatória antes de Camila assumir.  
 Ordem: hard → goodbye(só pós-exit) → soft → ruído → interesse.
 
-**Citação:** se a lead mandar várias bolhas seguidas, Camila cita a **pergunta feita a ela** (Andressa: “E vc?”), não cumprimento nem “Tudo bem” afirmativo.  
-**Resposta-ouro (Marcelo, Andressa):** “Estou bem, também. Obrigada por perguntar 🥰”. O cérebro gera o texto; o quote nativo aponta a pergunta.  
-**Sem stub:** proibido “Recebi sua mensagem / em breve te respondo”. Resposta real + cérebro ligado para a próxima.  
+**Citação:** se a lead mandar várias bolhas seguidas, Camila cita a **pergunta feita a ela** (“E vc” / “E você”, com ou sem ?). “Tudo bem” sozinho pode ser afirmação; no contexto da rajada + “e vc”, é reciprocidade.  
+**Resposta-ouro (fixa):** “Estou bem, também. Obrigada por perguntar 🥰” — sem o cérebro improvisar. “E você tem agenda?” **não** é ouro (outra pergunta).  
+**Sem stub:** proibido “Recebi sua mensagem / em breve te respondo”. Depois do ouro, o cérebro segue ligado.  
 **Meio das 4:** texto claro (não ruído) **para o script** e Camila assume; ruído deixa o pacote seguir.
 
 ## 5. Retomada

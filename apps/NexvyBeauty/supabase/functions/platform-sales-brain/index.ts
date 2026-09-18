@@ -87,6 +87,7 @@ import {
   stripRaioxArtifacts,
 } from '../_shared/raiox-preflight.ts';
 import { inboundForQuote, quotedFromInbound, remoteJidForQuote } from '../_shared/evolution-quoted.ts';
+import { goldReplyFromHistory } from '../_shared/inbound-cite.ts';
 import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { splitIntoBubbles } from '../_shared/bubble-split.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
@@ -2427,45 +2428,56 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
 
     const maxOutputTokens = resolveBrainMaxOutputTokens(personaIsProspector);
 
-    const response = await fetch(`${gatewayBase}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
-        stream: false,
-        max_tokens: maxOutputTokens,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('[platform-sales-brain] AI gateway error:', response.status, errorText.slice(0, 200));
-      return json({
-        error: `Erro do provedor de IA: ${response.status}`,
-        key_source: keySource,
-        persona_id: persona?.id ?? null,
-        persona_name: persona?.name ?? null,
-      }, 502);
-    }
-
-    const completion = await response.json().catch(() => null);
-    const finishReason = completion?.choices?.[0]?.finish_reason ?? null;
-    if (finishReason === 'length') {
-      console.warn('[platform-sales-brain] completion truncada (finish_reason=length)', {
+    let reply = '';
+    const goldHowAreYou = goldReplyFromHistory(historyDesc);
+    if (goldHowAreYou) {
+      // Ouro Marcelo: “e você?” / “e vc” (com ou sem ?) na rajada → texto fixo.
+      reply = goldHowAreYou;
+      console.log('[platform-sales-brain] gold how-are-you', {
         conversation_id: conversation.id,
-        max_output_tokens: maxOutputTokens,
-        persona: personaIsProspector ? 'prospector' : 'other',
-        model,
+        cite: String(triggerInbound?.content ?? ''),
       });
-    }
-    let reply = extractChatCompletionContent(completion);
-    if (!reply) {
-      console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 500));
-      return json({ error: 'O modelo não retornou resposta.' }, 502);
+    } else {
+      const response = await fetch(`${gatewayBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
+          stream: false,
+          max_tokens: maxOutputTokens,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.error('[platform-sales-brain] AI gateway error:', response.status, errorText.slice(0, 200));
+        return json({
+          error: `Erro do provedor de IA: ${response.status}`,
+          key_source: keySource,
+          persona_id: persona?.id ?? null,
+          persona_name: persona?.name ?? null,
+        }, 502);
+      }
+
+      const completion = await response.json().catch(() => null);
+      const finishReason = completion?.choices?.[0]?.finish_reason ?? null;
+      if (finishReason === 'length') {
+        console.warn('[platform-sales-brain] completion truncada (finish_reason=length)', {
+          conversation_id: conversation.id,
+          max_output_tokens: maxOutputTokens,
+          persona: personaIsProspector ? 'prospector' : 'other',
+          model,
+        });
+      }
+      reply = extractChatCompletionContent(completion);
+      if (!reply) {
+        console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 500));
+        return json({ error: 'O modelo não retornou resposta.' }, 502);
+      }
     }
 
     // 11a) PASSAGEM DUDA→BIA (interna, NÃO humana): só a Duda (SDR) emite a tag.
