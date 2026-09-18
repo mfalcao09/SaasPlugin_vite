@@ -279,7 +279,16 @@ export function matchDispatchText(
   ) {
     expected = apresentarBubbles234(lead.handle)[envelope.bubbleIndex - 2] ?? null;
   } else if (envelope.kind === "exit_message") {
-    expected = mensagemDeSaidaBubbles(lead.greeting)[0] ?? null;
+    const exit = mensagemDeSaidaBubbles(lead.greeting);
+    expected = envelope.bubbleIndex === 2
+      ? (exit[1] ?? null)
+      : (exit[0] ?? null);
+    if (
+      envelope.bubbleIndex === 2 &&
+      (envelope.sendAs !== "link" || !envelope.linkPreview?.linkUrl)
+    ) {
+      return { ok: false, reason: "exit_link_requires_preview" };
+    }
   }
   if (!expected || envelope.text !== expected) {
     return { ok: false, reason: "text_mismatch" };

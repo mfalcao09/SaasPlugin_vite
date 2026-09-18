@@ -7,7 +7,7 @@ import {
   type OutboundQueueState,
   type OutboundEnvelope,
 } from "./outbound-queue.ts";
-import { mensagemDeSaidaBubbles } from "./exit-message.ts";
+import { makeMensagemDeSaidaEnvelopes } from "./exit-message.ts";
 
 export type ReactiveEnqueueResult = {
   queue: OutboundQueueState;
@@ -93,21 +93,19 @@ export function enqueueReactiveFromInbound(input: {
   }
 
   if (isExit) {
-    const bubbles = mensagemDeSaidaBubbles(input.greetingName);
-    const text = bubbles[0] ?? "Ok, sem problemas. Se mudar de ideia: nexvybeauty.com.br";
-    const env: OutboundEnvelope = {
-      id: `pilot:${phone}:exit:${now.getTime()}`,
-      leadId: phone,
+    const [textEnv, linkEnv] = makeMensagemDeSaidaEnvelopes({
+      phone,
       conversationId: input.conversationId,
-      kind: "exit_message",
-      bubbleIndex: null,
-      text,
-      notBeforeIso: now.toISOString(),
-      idempotencyKey: `pilot:${phone}:exit:${triage.class}`,
-    };
+      greetingName: input.greetingName,
+      now,
+      triage: triage.class,
+    });
+    let q = pauseOpenPackage(input.queue, phone);
+    q = enqueue(q, textEnv);
+    q = enqueue(q, linkEnv);
     return {
-      queue: enqueue(pauseOpenPackage(input.queue, phone), env),
-      enqueued: env,
+      queue: q,
+      enqueued: textEnv,
       reason: `enqueued_exit_${triage.class}`,
       triage: triage.class,
       cite: null,

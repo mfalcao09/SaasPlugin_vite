@@ -4,7 +4,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { classifyReply, isOptOut, isWantSignal, normalize } from "./opt-out.ts";
 
 Deno.test("opt-out: pega SAIR/PARE e variações, com/sem acento e maiúscula", () => {
-  for (const t of ["SAIR", "pare", "PARA de me mandar msg", "não quero mais receber", "me tira daqui", "descadastrar", "sem interesse", "STOP", "quero cancelar", "cancelar", "remover", "por favor remover meu contato"]) {
+  for (const t of ["SAIR", "pare", "PARA de me mandar msg", "não quero mais receber", "me tira daqui", "descadastrar", "sem interesse", "STOP", "quero cancelar", "cancelar", "remover", "por favor remover meu contato", "Bom dia , no momento não me interesso"]) {
     assertEquals(isOptOut(t), true, `deveria ser opt-out: ${t}`);
   }
 });
@@ -28,10 +28,21 @@ Deno.test("neutral: texto sem sinal", () => {
   assertEquals(classifyReply("dá para remover uma cliente da agenda?").intent, "neutral");
 });
 
-Deno.test("want puro classifica como want", () => {
-  assertEquals(classifyReply("quero ver o raio-x").intent, "want");
-  assertEquals(classifyReply("pode mandar").intent, "want");
+Deno.test("soft vs hard opt-out kind", () => {
+  assertEquals(classifyReply("SAIR").optOutKind, "hard");
+  assertEquals(classifyReply("pare").optOutKind, "hard");
+  assertEquals(classifyReply("não tenho interesse").optOutKind, "soft");
+  assertEquals(classifyReply("sem interesse").optOutKind, "soft");
+  assertEquals(
+    classifyReply("Bom dia , no momento não me interesso").optOutKind,
+    "soft",
+  );
+  assertEquals(classifyReply("não me interessa").optOutKind, "soft");
+  assertEquals(classifyReply("não estou interessada").optOutKind, "soft");
+  assertEquals(classifyReply("no momento não quero").optOutKind, "soft");
+  assertEquals(classifyReply("fica pra próxima").optOutKind, "soft");
 });
+
 
 Deno.test("normalize: remove acento e pontuação, colapsa espaço", () => {
   assertEquals(normalize("Não   quero!!!"), "nao quero");

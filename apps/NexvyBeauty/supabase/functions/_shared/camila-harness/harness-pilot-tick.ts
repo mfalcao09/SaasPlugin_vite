@@ -50,6 +50,14 @@ export type HarnessPilotTickInput = {
     text: string;
     idempotencyKey: string;
     conversationId: string;
+    sendAs?: "text" | "link";
+    linkPreview?: {
+      linkUrl: string;
+      title: string;
+      linkDescription: string;
+      image: string;
+      linkType: "SMALL" | "MEDIUM" | "LARGE";
+    };
   }) => Promise<{ ok: boolean; error?: string }>;
   previewWindow?: boolean;
   holidayDates?: ReadonlySet<string> | null;

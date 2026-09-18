@@ -151,6 +151,51 @@ Deno.test("reply de quem escreveu sai antes de continuar o script", () => {
   assertEquals(pick.envelope?.id, "a3");
 });
 
+Deno.test("saída: texto antes do link mesmo se id do site vier primeiro", () => {
+  let q = emptyOutboundQueue();
+  const phone = "5585996074889";
+  const linkFirst = {
+    id: "pilot:5585996074889:exit:site",
+    leadId: phone,
+    conversationId: "c1",
+    kind: "exit_message" as const,
+    bubbleIndex: 2,
+    text: "https://nexvybeauty.com.br",
+    notBeforeIso: T0.toISOString(),
+    idempotencyKey: "exit:link",
+    sendAs: "link" as const,
+    linkPreview: {
+      linkUrl: "https://nexvybeauty.com.br",
+      title: "t",
+      linkDescription: "d",
+      image: "https://nexvybeauty.com.br/og.png",
+      linkType: "LARGE" as const,
+    },
+  };
+  const textSecond = {
+    id: "pilot:5585996074889:exit:soft",
+    leadId: phone,
+    conversationId: "c1",
+    kind: "exit_message" as const,
+    bubbleIndex: 1,
+    text: "Sem problemas, Victória!",
+    notBeforeIso: T0.toISOString(),
+    idempotencyKey: "exit:text",
+    sendAs: "text" as const,
+  };
+  q = enqueue(q, linkFirst);
+  q = enqueue(q, textSecond);
+  const first = pickNext(q, T0);
+  assertEquals(first.envelope?.bubbleIndex, 1);
+  assertEquals(first.envelope?.sendAs ?? "text", "text");
+  assertEquals(first.envelope?.text.startsWith("Sem problemas"), true);
+  q = deliverPicked(q, first.envelope!, T0);
+  const second = pickNext(q, T0);
+  assertEquals(second.envelope?.bubbleIndex, 2);
+  assertEquals(second.envelope?.sendAs, "link");
+  assertEquals(Boolean(second.envelope?.linkPreview?.linkUrl), true);
+});
+
 Deno.test("idempotência: mesmo idempotencyKey não duplica", () => {
   let q = emptyOutboundQueue();
   const e = makeOpenBubble1Envelope({

@@ -48,6 +48,10 @@ export function deserializePilotQueue(
     if (typeof e.id !== "string" || typeof e.leadId !== "string") continue;
     if (typeof e.text !== "string" || typeof e.notBeforeIso !== "string") continue;
     if (typeof e.idempotencyKey !== "string") continue;
+    const sendAs = e.sendAs === "link" ? "link" as const : e.sendAs === "text" ? "text" as const : undefined;
+    const preview = e.linkPreview && typeof e.linkPreview === "object"
+      ? e.linkPreview as Record<string, unknown>
+      : null;
     pending.push({
       id: e.id,
       leadId: e.leadId,
@@ -58,6 +62,20 @@ export function deserializePilotQueue(
       text: e.text,
       notBeforeIso: e.notBeforeIso,
       idempotencyKey: e.idempotencyKey,
+      ...(sendAs ? { sendAs } : {}),
+      ...(preview && typeof preview.linkUrl === "string"
+        ? {
+          linkPreview: {
+            linkUrl: String(preview.linkUrl),
+            title: String(preview.title ?? ""),
+            linkDescription: String(preview.linkDescription ?? ""),
+            image: String(preview.image ?? ""),
+            linkType: preview.linkType === "SMALL" || preview.linkType === "MEDIUM"
+              ? preview.linkType
+              : "LARGE" as const,
+          },
+        }
+        : {}),
     });
   }
   const spacingRaw = o.spacing && typeof o.spacing === "object"

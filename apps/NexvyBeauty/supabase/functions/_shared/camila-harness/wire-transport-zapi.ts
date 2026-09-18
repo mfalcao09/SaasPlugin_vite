@@ -5,14 +5,18 @@ import type { WireTransport } from "./wire-transport.ts";
 import { createDryWireTransport } from "./wire-transport.ts";
 import { harnessAllowsRealWhatsapp } from "./runtime-bridge.ts";
 
+export type WireSendInput = {
+  to: string;
+  text: string;
+  idempotencyKey: string;
+  conversationId: string;
+  sendAs?: "text" | "link";
+  linkPreview?: OutboundEnvelope["linkPreview"];
+};
+
 export type WireTransportZapiDeps = {
-  /** Invoke platform-whatsapp-qr-send (or equivalent). */
-  sendText: (input: {
-    to: string;
-    text: string;
-    idempotencyKey: string;
-    conversationId: string;
-  }) => Promise<{ ok: boolean; error?: string }>;
+  /** Invoke platform-whatsapp-qr-send (text ou link com preview). */
+  sendText: (input: WireSendInput) => Promise<{ ok: boolean; error?: string }>;
   envGet?: (k: string) => string | undefined;
 };
 
@@ -39,6 +43,8 @@ export function createZapiWireTransport(
         text: env.text,
         idempotencyKey: env.idempotencyKey,
         conversationId: env.conversationId,
+        sendAs: env.sendAs,
+        linkPreview: env.linkPreview,
       });
       if (!res.ok) return { ok: false, realSend: false };
       return { ok: true, realSend: true };
