@@ -129,6 +129,29 @@ export async function zapiSendText(
   });
 }
 
+/** Link com preview (OG). Docs: /message/send-message-link — path /send-link. */
+export async function zapiSendLink(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  body: {
+    phone: string;
+    message: string;
+    image: string;
+    linkUrl: string;
+    title: string;
+    linkDescription: string;
+    linkType?: "SMALL" | "MEDIUM" | "LARGE";
+    messageId?: string;
+    delayTyping?: number;
+    delayMessage?: number;
+  },
+) {
+  return zapiFetch(config, creds, "/send-link", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function zapiSendImage(
   config: ZapiConfig,
   creds: ZapiInstanceCreds,
@@ -172,6 +195,84 @@ export async function zapiGetChat(
   return zapiFetch(config, creds, `/chats/${encodeURIComponent(digits)}`, {
     method: "GET",
   });
+}
+
+/** Listas / etiquetas do WhatsApp Business. */
+export async function zapiGetTags(config: ZapiConfig, creds: ZapiInstanceCreds) {
+  return zapiFetch(config, creds, "/tags", { method: "GET" });
+}
+
+function zapiWriteLooksMissing(res: ZapiFetchResult): boolean {
+  const body = res.body;
+  if (body && typeof body === "object") {
+    const o = body as Record<string, unknown>;
+    if (o.error === "NOT_FOUND") return true;
+    if (String(o.message ?? "").includes("matching target resource")) return true;
+  }
+  return false;
+}
+
+/** Path comprovado nesta instância: PUT /chats/{phone}/tags/{id}/add|remove */
+export function zapiChatTagWritePath(
+  phone: string,
+  tagId: string,
+  op: "add" | "remove",
+): string {
+  const digits = phone.replace(/\D/g, "");
+  return `/chats/${encodeURIComponent(digits)}/tags/${encodeURIComponent(tagId)}/${op}`;
+}
+
+/** Pinta uma lista num chat. Não envia mensagem. */
+export async function zapiAddChatTag(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  phone: string,
+  tagId: string,
+): Promise<ZapiFetchResult> {
+  const last = await zapiFetch(
+    config,
+    creds,
+    zapiChatTagWritePath(phone, tagId, "add"),
+    { method: "PUT", body: "{}" },
+  );
+  if (last.ok && !zapiWriteLooksMissing(last)) return last;
+  return { ...last, ok: false, message: last.message ?? "tag_write_failed" };
+}
+
+export async function zapiRemoveChatTag(
+  config: ZapiConfig,
+  creds: ZapiInstanceCreds,
+  phone: string,
+  tagId: string,
+): Promise<ZapiFetchResult> {
+  const last = await zapiFetch(
+    config,
+    creds,
+    zapiChatTagWritePath(phone, tagId, "remove"),
+    { method: "PUT", body: "{}" },
+  );
+  if (last.ok && !zapiWriteLooksMissing(last)) return last;
+  return { ...last, ok: false, message: last.message ?? "tag_write_failed" };
+}
+
+export function parseZapiTagCatalog(body: unknown): { id: string; name: string }[] {
+  if (!Array.isArray(body)) return [];
+  const out: { id: string; name: string }[] = [];
+  for (const row of body) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+    const id = o.id != null ? String(o.id) : "";
+    const name = o.name != null ? String(o.name) : "";
+    if (id) out.push({ id, name });
+  }
+  return out;
+}
+
+export function parseZapiChatTagIds(body: unknown): string[] {
+  if (!body || typeof body !== "object") return [];
+  const tags = (body as Record<string, unknown>).tags;
+  if (!Array.isArray(tags)) return [];
+  return tags.map((t) => String(t)).filter(Boolean);
 }
 
 /** Perfil WhatsApp Business (descrição, endereço, horário). Não envia mensagem. */

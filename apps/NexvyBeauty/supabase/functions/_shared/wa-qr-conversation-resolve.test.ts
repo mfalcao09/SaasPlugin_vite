@@ -1,9 +1,23 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { visitorDigitsFromWaQrId } from "./platform-wa-qr-identity.ts";
 import {
   pickCanonicalWaQrConversation,
   waQrCanonicalVisitorPhone,
   waQrVisitorIdsForPhoneVariants,
 } from "./wa-qr-conversation-resolve.ts";
+
+Deno.test("fromMe do aparelho tem de usar as MESMAS variantes do inbound", () => {
+  // 2026-09-18: inbound já chamava waQrVisitorIdsForPhoneVariants;
+  // fromMe usava só waQrVisitorIdsForLookup (exato) → thread errada ou drop.
+  const inbound = waQrVisitorIdsForPhoneVariants("551992020426");
+  assertEquals(inbound.some((x) => x === "wa_qr:5519992020426"), true);
+});
+
+Deno.test("visitorDigitsFromWaQrId lê wa_qr e wa_evo", () => {
+  assertEquals(visitorDigitsFromWaQrId("wa_qr:5519992020426"), "5519992020426");
+  assertEquals(visitorDigitsFromWaQrId("wa_evo:5519992020426"), "5519992020426");
+  assertEquals(visitorDigitsFromWaQrId("wa:5519992020426"), "");
+});
 
 Deno.test("visitor ids incluem variante com e sem 9º dígito", () => {
   const ids = waQrVisitorIdsForPhoneVariants("556899576171"); // sem 9

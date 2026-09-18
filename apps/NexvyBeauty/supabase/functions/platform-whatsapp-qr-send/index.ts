@@ -63,21 +63,7 @@ Deno.serve(async (req) => {
   const bearer = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
   const apikeyHeader = (req.headers.get("apikey") ?? "").trim();
   if (!serviceKey || (bearer !== serviceKey && apikeyHeader !== serviceKey)) {
-    // INSTRUMENTO: recusa MUDA foi o que fez esta função rejeitar todos os
-    // chamadores sem ninguém descobrir por quê. O corpo abaixo é lido pelo
-    // platform-sales-brain e gravado em platform_crm_messages.metadata — só
-    // TAMANHOS e resultados de comparação, NUNCA o valor de nenhuma chave.
-    return json({
-      error: "unauthorized (internal only)",
-      diag: {
-        service_key_len: serviceKey.length,
-        bearer_len: bearer.length,
-        apikey_len: apikeyHeader.length,
-        bearer_matches: bearer === serviceKey,
-        apikey_matches: apikeyHeader === serviceKey,
-        bearer_eq_apikey: bearer === apikeyHeader,
-      },
-    }, 401);
+    return json({ error: "unauthorized" }, 401);
   }
 
   try {
@@ -190,7 +176,6 @@ Deno.serve(async (req) => {
       res = await zapiSendAudio(qrCfg.zapi, creds, {
         phone,
         audio: String(payload.url ?? payload.audio ?? ""),
-        messageId: typeof quotedId === "string" ? quotedId : undefined,
       });
     } else {
       return json({ error: `Unknown type: ${type}` }, 400);

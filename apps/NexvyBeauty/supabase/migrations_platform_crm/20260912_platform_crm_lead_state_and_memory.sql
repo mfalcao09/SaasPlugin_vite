@@ -81,7 +81,7 @@ CREATE POLICY platform_crm_lead_state_super_admin_only
   USING ((SELECT public.has_role(auth.uid(), 'super_admin'::app_role)))
   WITH CHECK ((SELECT public.has_role(auth.uid(), 'super_admin'::app_role)));
 
-GRANT SELECT ON public.platform_crm_lead_state TO authenticated;
+REVOKE SELECT ON public.platform_crm_lead_state FROM authenticated;
 GRANT ALL ON public.platform_crm_lead_state TO service_role;
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -165,7 +165,7 @@ CREATE POLICY platform_crm_lead_memory_super_admin_only
   USING ((SELECT public.has_role(auth.uid(), 'super_admin'::app_role)))
   WITH CHECK ((SELECT public.has_role(auth.uid(), 'super_admin'::app_role)));
 
-GRANT SELECT ON public.platform_crm_lead_memory TO authenticated;
+REVOKE SELECT ON public.platform_crm_lead_memory FROM authenticated;
 GRANT ALL ON public.platform_crm_lead_memory TO service_role;
 
 -- ════════════════════════════════════════════════════════════════════════════
