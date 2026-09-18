@@ -187,6 +187,28 @@ export function deliverPicked(
   };
 }
 
+/** Tira envelopes (e in-flight) de um lead que saiu do funil ativo. */
+export function dropLeadPending(
+  state: OutboundQueueState,
+  leadRef: string,
+): OutboundQueueState {
+  const ref = String(leadRef ?? "");
+  const digits = ref.replace(/\D/g, "");
+  const hit = (id: string | undefined) => {
+    if (!id) return false;
+    if (id === ref) return true;
+    const d = id.replace(/\D/g, "");
+    return Boolean(digits && d && d === digits);
+  };
+  const pending = state.pending.filter((e) => !hit(e.leadId) && !hit(e.crmLeadId));
+  const inFlightHit = hit(state.inFlightLeadId ?? undefined);
+  return {
+    ...state,
+    pending,
+    inFlightLeadId: inFlightHit ? null : state.inFlightLeadId,
+  };
+}
+
 /** Helper: monta envelope de abertura com not_before = agora (ou spacing). */
 export function makeOpenBubble1Envelope(input: {
   id: string;
