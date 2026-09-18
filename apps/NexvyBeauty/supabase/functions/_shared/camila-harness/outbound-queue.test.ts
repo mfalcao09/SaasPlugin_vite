@@ -5,6 +5,7 @@ import {
   enqueue,
   pickNext,
   deliverPicked,
+  dropLeadPending,
   makeOpenBubble1Envelope,
   makeContinueEnvelope,
   makeReplyEnvelope,
@@ -194,6 +195,24 @@ Deno.test("saída: texto antes do link mesmo se id do site vier primeiro", () =>
   assertEquals(second.envelope?.bubbleIndex, 2);
   assertEquals(second.envelope?.sendAs, "link");
   assertEquals(Boolean(second.envelope?.linkPreview?.linkUrl), true);
+});
+
+Deno.test("dropLeadPending tira fila e in-flight do lead", () => {
+  let q = emptyOutboundQueue();
+  q = enqueue(
+    q,
+    makeOpenBubble1Envelope({
+      id: "a1",
+      leadId: "5511999999999",
+      conversationId: "cA",
+      text: "A",
+      notBefore: T0,
+    }),
+  );
+  q = { ...q, inFlightLeadId: "5511999999999" };
+  q = dropLeadPending(q, "+5511999999999");
+  assertEquals(q.pending.length, 0);
+  assertEquals(q.inFlightLeadId, null);
 });
 
 Deno.test("idempotência: mesmo idempotencyKey não duplica", () => {

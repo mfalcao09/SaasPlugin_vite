@@ -127,3 +127,23 @@ export async function markLeadAfterExitMessage(
     nextAction: input.kind === "hard" ? "do_not_contact" : "remarketing_pool_idle",
   });
 }
+
+export async function markLeadFunnelStage(
+  sb: SbRpc,
+  input: {
+    leadId: string;
+    productId: string;
+    stage: "do_not_contact" | "remarketing_pool";
+    expectedVersion?: number;
+  },
+): Promise<{ ok: boolean; stage?: string; error?: string }> {
+  return casStage(sb, {
+    leadId: input.leadId,
+    productId: input.productId,
+    expectedVersion: input.expectedVersion,
+    stage: input.stage,
+    nextAction: input.stage === "do_not_contact"
+      ? "do_not_contact"
+      : "remarketing_pool_idle",
+  });
+}

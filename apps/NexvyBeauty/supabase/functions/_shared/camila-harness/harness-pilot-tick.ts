@@ -29,6 +29,7 @@ import {
 } from "./harness-roster-db.ts";
 import { outboundAlreadySent } from "./harness-preflight.ts";
 import { markLeadContactedAfterFirstBubble, markLeadAfterExitMessage } from "./harness-stage-db.ts";
+import { runHarnessHousekeep } from "./harness-funnel-sync.ts";
 import type { PilotLead } from "./pilot-roster.ts";
 
 export type PilotQueueStore = {
@@ -67,6 +68,8 @@ export type HarnessPilotTickInput = {
   /** Injeta supabase client (edge). Testes podem passar roster via overrideRoster. */
   sb?: unknown;
   overrideRoster?: readonly PilotLead[];
+  /** UUID platform_crm_wa_qr_instances — sync de listas + close conv. */
+  instanceId?: string | null;
 };
 
 export type HarnessPilotTickResult = {
@@ -303,6 +306,33 @@ export async function runHarnessPilotTick(
     }
   }
 
+  queue = tick.queue;
+  if (input.sb && typeof (input.sb as { from?: unknown }).from === "function") {
+    const instanceId = String(
+      input.instanceId ?? envGet("HARNESS_PILOT_INSTANCE_ID") ?? "",
+    ).trim();
+    if (instanceId) {
+      try {
+        const hk = await runHarnessHousekeep({
+          sb: input.sb as any,
+          productId: input.productId,
+          instanceId,
+          now,
+          queue,
+        });
+        stageUpdates.push(...hk.updates);
+        if (hk.changed) {
+          queue = hk.queue;
+          await store.save(queue, goId);
+        }
+      } catch (err) {
+        stageUpdates.push(
+          `housekeep_fail:${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
   return {
     ok: true,
     action: "harness-pilot-tick",
@@ -316,17 +346,17 @@ export async function runHarnessPilotTick(
       }
       : null,
     real_whatsapp_sends: tick.realSends,
-    pending: tick.queue.pending.length,
+    pending: queue.pending.length,
     go_id: goId,
     dry: forceDry || !transport.allowReal,
     live_flags: live,
     preselected_count: preselectedCount,
     stage_updates: stageUpdates,
     snapshot: {
-      pending: tick.queue.pending,
-      inFlightLeadId: tick.queue.inFlightLeadId,
-      spacing: tick.queue.spacing,
-      lastDeliveredId: tick.queue.lastDeliveredId,
+      pending: queue.pending,
+      inFlightLeadId: queue.inFlightLeadId,
+      spacing: queue.spacing,
+      lastDeliveredId: queue.lastDeliveredId,
       goId,
       updated_at: now.toISOString(),
     },

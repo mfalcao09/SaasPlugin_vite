@@ -23,6 +23,8 @@ DENO_TESTS = [
     "lead-spacing.test.ts",
     "outbound-queue.test.ts",
     "wire-sim.test.ts",
+    "harness-funnel-tag.test.ts",
+    "harness-silence-24h.test.ts",
 ]
 
 
@@ -80,6 +82,11 @@ def main() -> int:
         "gate_pilot_live": "pilotLive" in gates
         and "l2_real_whatsapp_forbidden" in gates,
         "harness_pilot_tick_module": "runHarnessPilotTick" in tick,
+        "silence24h_in_tick": "runHarnessHousekeep" in tick
+        and "isSilence24hDue" in
+        (SHARED / "harness-silence-24h.ts").read_text(encoding="utf-8"),
+        "funnel_tag_sync": "planFunnelTagSync" in
+        (SHARED / "harness-funnel-tag.ts").read_text(encoding="utf-8"),
         "roster_from_db": "loadPreselectedPilotLeads" in tick
         and "loadPreselectedPilotLeads" in cold
         and "PILOT_ROSTER" not in cold
