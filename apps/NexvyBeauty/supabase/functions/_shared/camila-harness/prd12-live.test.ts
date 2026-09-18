@@ -17,6 +17,7 @@ import { authorizeWireSend } from "./wire-gates.ts";
 import { FIXTURE } from "./attendance-window.ts";
 import { RENATA_PHONE } from "./pilot-roster.ts";
 import { seedPilotRosterFixture } from "./harness-roster-db.ts";
+import { makeMensagemDeSaidaEnvelopes } from "./exit-message.ts";
 
 Deno.test("queue serialize round-trip", () => {
   let q = emptyOutboundQueue();
@@ -36,6 +37,27 @@ Deno.test("queue serialize round-trip", () => {
   assertEquals(back.goId, "GO-1");
   assertEquals(back.queue.pending.length, 1);
   assertEquals(back.queue.pending[0].text, "oi");
+});
+
+Deno.test("queue serialize preserva sendAs+linkPreview da saída", () => {
+  let q = emptyOutboundQueue();
+  for (const env of makeMensagemDeSaidaEnvelopes({
+    phone: "5585996074889",
+    conversationId: "c1",
+    greetingName: "Victória",
+    now: new Date("2026-09-18T15:00:00.000Z"),
+    triage: "soft",
+  })) {
+    q = enqueue(q, env);
+  }
+  const back = deserializePilotQueue(serializePilotQueue(q, "GO-1"));
+  assertExists(back);
+  assertEquals(back.queue.pending[0].bubbleIndex, 1);
+  assertEquals(back.queue.pending[1].sendAs, "link");
+  assertEquals(
+    back.queue.pending[1].linkPreview?.linkUrl.includes("nexvybeauty.com.br"),
+    true,
+  );
 });
 
 Deno.test("legacy cutover default off", () => {
@@ -132,7 +154,7 @@ Deno.test("reactive: soft → exit; interest → wake_brain (sem stub)", () => {
   const defer = enqueueReactiveFromInbound({
     queue: q,
     phone,
-    text: "não tenho interesse",
+    text: "Bom dia , no momento não me interesso",
     conversationId: "c1",
     now: FIXTURE.tue1000,
     manualList,
@@ -143,12 +165,20 @@ Deno.test("reactive: soft → exit; interest → wake_brain (sem stub)", () => {
   const exit = enqueueReactiveFromInbound({
     queue: q,
     phone,
-    text: "não tenho interesse",
+    text: "Bom dia , no momento não me interesso",
     conversationId: "c1",
     now: FIXTURE.tue1000,
     manualList,
+    greetingName: "Renata",
   });
   assertEquals(exit.enqueued?.kind, "exit_message");
+  assertEquals(exit.enqueued?.bubbleIndex, 1);
+  assertEquals(exit.queue.pending.length, 2);
+  assertEquals(exit.queue.pending[0].bubbleIndex, 1);
+  assertEquals(exit.queue.pending[0].text.includes("Sem problemas"), true);
+  assertEquals(exit.queue.pending[1].bubbleIndex, 2);
+  assertEquals(exit.queue.pending[1].sendAs, "link");
+  assertEquals(Boolean(exit.queue.pending[1].linkPreview?.linkUrl), true);
 
   const reply = enqueueReactiveFromInbound({
     queue: emptyOutboundQueue(),

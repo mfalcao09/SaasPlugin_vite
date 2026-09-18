@@ -17,6 +17,14 @@ export type OutboundKind =
   | "reply"
   | "exit_message";
 
+export type OutboundLinkPreview = {
+  linkUrl: string;
+  title: string;
+  linkDescription: string;
+  image: string;
+  linkType: "SMALL" | "MEDIUM" | "LARGE";
+};
+
 export type OutboundEnvelope = {
   id: string;
   leadId: string;
@@ -25,12 +33,15 @@ export type OutboundEnvelope = {
   /** UUID platform_crm_leads — para transição de estágio. */
   crmLeadId?: string;
   kind: OutboundKind;
-  /** 1..4 para pacote; null para reply/exit. */
+  /** 1..4 para pacote; 1=texto / 2=link na Mensagem de Saída. */
   bubbleIndex: number | null;
   text: string;
   /** Não enviar antes deste instante (ISO). */
   notBeforeIso: string;
   idempotencyKey: string;
+  /** Bolha 2 da saída: card OG, não URL crua. */
+  sendAs?: "text" | "link";
+  linkPreview?: OutboundLinkPreview;
 };
 
 export type OutboundQueueState = {
@@ -107,6 +118,16 @@ export function pickNext(
       if (!space.allowed) {
         continue; // espera spacing; tenta outros due
       }
+    }
+    // Mensagem de Saída: texto (1) antes do link (2). Id "exit:site" < "exit:soft"
+    // no localeCompare — sem esta guarda o card sai primeiro e sem preview.
+    if (
+      e.kind === "exit_message" && e.bubbleIndex === 2 &&
+      state.pending.some((p) =>
+        p.leadId === e.leadId && p.kind === "exit_message" && p.bubbleIndex === 1
+      )
+    ) {
+      continue;
     }
     return { envelope: e, reason: "picked" };
   }
