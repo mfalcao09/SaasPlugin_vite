@@ -28,7 +28,7 @@ Deno.test('remoteJidForQuote prefere LID', () => {
   );
 });
 
-Deno.test('inboundForQuote: rajada DESC de 4 msgs → fonte é a última (E4), não a primeira', () => {
+Deno.test('inboundForQuote: sem pergunta clara, empate fica com a mais nova', () => {
   const historyDesc = [
     { direction: 'inbound', sender_type: 'visitor', content: 'E4' },
     { direction: 'inbound', sender_type: 'visitor', content: 'E3' },
@@ -37,4 +37,16 @@ Deno.test('inboundForQuote: rajada DESC de 4 msgs → fonte é a última (E4), n
   ];
   const src = inboundForQuote(historyDesc);
   assertEquals(src?.content, 'E4');
+});
+
+Deno.test('inboundForQuote: Andressa → E vc?, não Tudo bem', () => {
+  const historyDesc = [
+    { direction: 'outbound', sender_type: 'agent', content: 'bolha 4' },
+    { direction: 'inbound', sender_type: 'visitor', content: 'E vc?' },
+    { direction: 'inbound', sender_type: 'visitor', content: 'Tudo bem' },
+    { direction: 'inbound', sender_type: 'visitor', content: 'Bom dia' },
+    { direction: 'inbound', sender_type: 'visitor', content: 'Oiii' },
+  ];
+  const src = inboundForQuote(historyDesc);
+  assertEquals(src?.content, 'E vc?');
 });

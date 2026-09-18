@@ -3,6 +3,7 @@
  *
  *   deno test --no-check supabase/functions/_shared/evolution-quoted.test.ts
  */
+import { pickAssertiveInbound } from "./inbound-cite.ts";
 
 export interface EvolutionQuoted {
   key: { id: string; fromMe: boolean; remoteJid?: string };
@@ -44,7 +45,7 @@ export type QuoteInboundMsg = {
   [key: string]: unknown;
 };
 
-/** Última inbound da visitante em histórico newest-first (mesmo critério de lastInboundOf). */
+/** Rajada inbound: cita a pergunta mais clara, não a última bolha. */
 export function inboundForQuote<T extends QuoteInboundMsg>(historyDesc: T[]): T | null {
-  return historyDesc.find((m) => m.direction === 'inbound' && m.sender_type === 'visitor') ?? null;
+  return pickAssertiveInbound(historyDesc);
 }
