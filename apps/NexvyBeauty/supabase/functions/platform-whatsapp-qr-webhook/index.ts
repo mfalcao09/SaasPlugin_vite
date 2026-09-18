@@ -33,6 +33,7 @@ import {
   WA_QR_INSTANCES_TABLE,
   waQrVisitorId,
   waQrVisitorIdsForLookup,
+  visitorDigitsFromWaQrId,
 } from "../_shared/platform-wa-qr-identity.ts";
 import {
   createPlatformEvolutionWebhookHandler,
@@ -988,9 +989,44 @@ async function handleMessage(
   // Grupos ficam fora do inbox de vendas (igual V5).
   if (norm.remoteJid.endsWith("@g.us")) return ok({ skipped: "group" });
 
-  // JID @lid sem telefone real resolvido (Alt) → sem identidade utilizável.
-  const fromDigits = phoneDigitsFromJid(norm.remoteJid);
-  if (!fromDigits) return ok({ skipped: "no_phone" });
+  // JID @lid sem telefone real resolvido (Alt) → tenta casar conversa pelo wa_lid
+  // já gravado no inbound. Sem isso, fromMe digitado no aparelho (MD) cai em
+  // skipped:no_phone em silêncio e o painel fica mudo.
+  const lidDigits = lidDigitsFromWaLid(
+    norm.lidJid || (norm.remoteJid.includes("@lid") ? norm.remoteJid : ""),
+  );
+  let fromDigits = phoneDigitsFromJid(norm.remoteJid);
+  if (!fromDigits && lidDigits) {
+    const { data: byLid } = await supabase
+      .from("platform_crm_conversations")
+      .select("id, visitor_id")
+      .eq("wa_qr_instance_id", instance.id)
+      .in("channel", [...WA_QR_CHANNELS])
+      .filter("metadata->>wa_lid", "eq", lidDigits)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const lidConv = byLid?.[0];
+    const recovered = visitorDigitsFromWaQrId(lidConv?.visitor_id);
+    if (recovered) {
+      fromDigits = recovered;
+      console.log("[platform-whatsapp-qr-webhook] lid-resolved", {
+        fromMe: norm.fromMe,
+        lid: lidDigits,
+        digits: fromDigits,
+        conversation_id: lidConv?.id,
+        messageId: norm.messageId || null,
+      });
+    }
+  }
+  if (!fromDigits) {
+    console.warn("[platform-whatsapp-qr-webhook] skip no_phone", {
+      fromMe: norm.fromMe,
+      remoteJid: norm.remoteJid,
+      lid: lidDigits || null,
+      messageId: norm.messageId || null,
+    });
+    return ok({ skipped: "no_phone" });
+  }
 
   // Webhook Baileys pode entregar ambos JIDs como PN (addressingMode=lid).
   // O store findMessages ainda tem remoteJid=@lid — recupera e persiste wa_lid.
@@ -1017,7 +1053,14 @@ async function handleMessage(
   const media = norm.media;
   const contentType = media ? media.type : "text";
   const content = norm.content || (media ? `[${media.type}]` : "");
-  if (!content && !media) return ok({ skipped: "empty" });
+  if (!content && !media) {
+    console.warn("[platform-whatsapp-qr-webhook] skip empty", {
+      fromMe: norm.fromMe,
+      remoteJid: norm.remoteJid,
+      messageId: norm.messageId || null,
+    });
+    return ok({ skipped: "empty" });
+  }
 
   // Shape metadata.media espelhado do inbox (kind/mime/url/caption); a URL é
   // a que a Evolution der (pode ser CDN .enc do WhatsApp — o pipeline de
@@ -1036,11 +1079,11 @@ async function handleMessage(
   // fromMe = enviada pelo APARELHO conectado (fora do CRM) → outbound de
   // agente com metadata.source='external_device' (V5; o front já reconhece).
   if (norm.fromMe) {
-    const visitorIds = waQrVisitorIdsForLookup(fromDigits);
+    const visitorIds = waQrVisitorIdsForPhoneVariants(fromDigits);
     const { data: rows } = await supabase
       .from("platform_crm_conversations")
       .select("id, status")
-      .in("visitor_id", visitorIds)
+      .in("visitor_id", visitorIds.length ? visitorIds : waQrVisitorIdsForLookup(fromDigits))
       .in("channel", [...WA_QR_CHANNELS])
       .eq("wa_qr_instance_id", instance.id)
       .order("created_at", { ascending: false })
@@ -1050,6 +1093,10 @@ async function handleMessage(
     // Demais instâncias mantêm o skip A1.3 (inbox nasce no inbound).
     if (!conv) {
       if (!allowsDeviceOutboundCreateConversation(instance)) {
+        console.warn("[platform-whatsapp-qr-webhook] skip device_outbound_no_conversation", {
+          digits: fromDigits,
+          messageId: norm.messageId || null,
+        });
         return ok({ skipped: "device_outbound_no_conversation" });
       }
       conv = await ensureConversation(
