@@ -52,7 +52,6 @@ import {
   type ApresentarSequenceState,
 } from "../_shared/cold-outreach/apresentar-sequence.ts";
 import { validateRealSend, validateWindowForRealSend } from "../_shared/cold-outreach/go-live-gates.ts";
-import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import { ensureLeadForColdOpening } from "../_shared/platform-crm-find-create-lead.ts";
 import {
   buildLeadName,
@@ -62,9 +61,13 @@ import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.t
 import {
   WA_QR_CHANNEL_CANONICAL,
   WA_QR_CHANNELS,
-  waQrVisitorId,
-  waQrVisitorIdsForLookup,
 } from '../_shared/platform-wa-qr-identity.ts';
+import {
+  buildWaQrConversationIdentity,
+  outboundConversationInsertAllowed,
+  planWaQrOutboundBind,
+  type WaQrConversationRow,
+} from "../_shared/wa-qr-conversation-resolve.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -655,6 +658,34 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
       .eq("id", due.id);
   }
 
+  // Conversa com lead_id + identidade canônica ANTES do provider.
+  // Senão o fromMe do webhook nasce órfã (visitor_id com 9º) e o persist
+  // posterior abre uma segunda row (visitor_id sem 9º). Edna 2026-08-18.
+  let openingConversationId: string | null = null;
+  if (!dryRun && channel === "whatsapp" && crmLeadId) {
+    openingConversationId = await ensureColdOpeningConversation(sb, {
+      productId,
+      instanceId,
+      telefone: String(due.telefone ?? ""),
+      nome: nomeReal,
+      leadId: crmLeadId,
+      agentId: c.agent_id ?? null,
+    });
+    if (!openingConversationId) {
+      await sb.from("platform_crm_cold_outreach_queue").update({
+        status: "failed",
+        last_error: "canonical_conversation_unavailable",
+        updated_at: now.toISOString(),
+      }).eq("id", due.id);
+      return {
+        campaign: c.id,
+        action: "canonical_conversation_unavailable",
+        lead: due.id,
+        followups: followupResult,
+      };
+    }
+  }
+
   const sendRes = await deliver(sb, {
     channel,
     dryRun,
@@ -666,7 +697,7 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
     ledger: crmLeadId
       ? {
         leadId: crmLeadId,
-        conversationId: due.conversation_id ?? null,
+        conversationId: openingConversationId ?? due.conversation_id ?? null,
         agentId,
         actionType: "opening",
         proactive: true,
@@ -678,28 +709,19 @@ async function tickCampaign(sb: SupabaseClient, c: any, now: Date, envEnabled: b
 
   if (sendRes.ok) {
     const followupDelayH = 48; // D+2
-    // PR-BDR-9: registra a abertura no inbox ANTES de fechar a linha da fila, pra
-    // o conversation_id nascer preenchido. Só no envio REAL e só no canal WA:
-    // dry-run não inventa conversa, e o IG tem outra identidade de thread.
-    // `tokens.nome` cai em "tudo bem?" quando o lead não tem primeiro_nome — isso
-    // é saudação, não nome, e não pode virar visitor_name no inbox.
-    const inboxConversationId = (!dryRun && channel === "whatsapp" && crmLeadId)
-      ? await persistOpeningInInbox(sb, {
-        productId,
+    // Mensagem da abertura só depois do send (wamid). A conversa já existe.
+    const inboxConversationId = (!dryRun && channel === "whatsapp" && openingConversationId)
+      ? await persistOpeningMessage(sb, {
+        conversationId: openingConversationId,
         instanceId,
-        telefone: due.telefone,
         text,
-        nome: nomeReal,
-        leadId: crmLeadId,
         agentId: c.agent_id ?? null,
         campaignId: c.id,
         variant: due.variant ?? null,
         actionId: sendRes.actionId ?? null,
-        // Fecha a cadeia: envio → wamid → metadata da mensagem → ACK do webhook
-        // acha esta linha e sabe de qual campanha incrementar delivered_count.
         wamid: sendRes.wamid ?? null,
       })
-      : null;
+      : openingConversationId;
     await sb.from("platform_crm_cold_outreach_queue").update({
       status: "sent", sent_at: now.toISOString(), last_outreach_at: now.toISOString(),
       next_followup_at: new Date(now.getTime() + followupDelayH * 3_600_000).toISOString(),
@@ -913,177 +935,186 @@ async function deliver(
 }
 
 /**
- * PR-BDR-9 — a abertura do cold passa a EXISTIR no inbox.
- *
- * MEDIDO no primeiro disparo real (2026-08-05): o envio não gravava conversa nem
- * mensagem (0 e 0) e `queue.conversation_id` ficava null. Quando a lead respondia,
- * o platform-sales-brain via um inbound SEM histórico — não sabia a que ela se
- * referia ("É o que?" → "Oi Marcelo, tudo bem?") e se apresentava DE NOVO, 17
- * minutos depois de já ter se apresentado. Do lado da lead isso lê como golpe.
- *
- * A IDENTIDADE aqui é a MESMA tripla que o platform-whatsapp-qr-webhook usa para
- * REENCONTRAR a conversa (visitor_id='wa_evo:<dígitos>' + channel + instância —
- * webhook:403-411). Divergir dela abriria uma SEGUNDA conversa quando a lead
- * respondesse — pior que o defeito que esta função fecha.
- *
- * Devolve o id da conversa, ou null em falha — e nesse caso GRITA: o envio já
- * saiu, então engolir o erro aqui recria o buraco original em silêncio.
+ * PR-BDR-9 + Edna 2026-08-18 — conversa do disparo nasce ANTES do send,
+ * com lead_id e identidade canônica (55+DDD+9+8). O fromMe/inbound reencontra
+ * a MESMA row; visitor_id cru (sem 9º) + unique (visitor_id, channel, instance)
+ * era o que partia a thread em duas.
  */
-async function persistOpeningInInbox(
+async function loadWaQrConversationCandidates(
+  sb: SupabaseClient,
+  identity: ReturnType<typeof buildWaQrConversationIdentity>,
+  instanceId: string,
+): Promise<WaQrConversationRow[]> {
+  const select =
+    "id, status, lead_id, visitor_phone, current_agent_id, created_at, metadata";
+  const { data: byVisitor } = await sb
+    .from("platform_crm_conversations")
+    .select(select)
+    .in("visitor_id", identity.visitorIds.length ? identity.visitorIds : [identity.visitorId])
+    .in("channel", [...WA_QR_CHANNELS])
+    .eq("wa_qr_instance_id", instanceId)
+    .order("created_at", { ascending: true })
+    .limit(20);
+  let candidates = (byVisitor ?? []) as WaQrConversationRow[];
+  if (candidates.length === 0 && identity.phoneVariants.length > 0) {
+    const { data: byPhone } = await sb
+      .from("platform_crm_conversations")
+      .select(select)
+      .in("visitor_phone", identity.phoneVariants)
+      .in("channel", [...WA_QR_CHANNELS])
+      .eq("wa_qr_instance_id", instanceId)
+      .order("created_at", { ascending: true })
+      .limit(20);
+    candidates = (byPhone ?? []) as WaQrConversationRow[];
+  }
+  return candidates;
+}
+
+/** Cria/reusa a conversa do disparo ANTES do send — lead_id + identidade canônica. */
+async function ensureColdOpeningConversation(
   sb: SupabaseClient,
   o: {
     productId: string;
     instanceId: string | null;
     telefone: string;
-    text: string;
     nome: string | null;
     leadId: string;
     agentId: string | null;
-    campaignId: string;
-    actionId?: string | null;
-    /** wamid da mensagem enviada — chave pro ACK de entrega casar (pode ser null). */
-    wamid?: string | null;
-    variant: unknown;
   },
 ): Promise<string | null> {
   try {
-    const digits = String(o.telefone ?? "").replace(/\D/g, "");
-    if (!digits || !o.instanceId) {
+    if (!o.instanceId || !outboundConversationInsertAllowed(o.leadId)) {
       console.error(
-        `[platform-cold-outreach] abertura NAO persistida: digits=${digits.length} instance=${o.instanceId ?? "null"} — a lead recebeu e o CRM nao registrou`,
+        `[platform-cold-outreach] conversa da abertura recusada: instance=${o.instanceId ?? "null"} lead_id=${o.leadId || "null"}`,
       );
       return null;
     }
-    const visitorId = waQrVisitorId(digits);
-    const visitorIds = waQrVisitorIdsForLookup(digits);
-    const phonePlus = `+${digits}`;
-    const resolvedVisitorName = buildLeadName(o.nome, phonePlus);
+    const identity = buildWaQrConversationIdentity(o.telefone);
+    if (!identity.visitorId || !identity.visitorPhone) {
+      console.error(
+        `[platform-cold-outreach] conversa da abertura recusada: telefone inválido '${o.telefone}'`,
+      );
+      return null;
+    }
+
+    const candidates = await loadWaQrConversationCandidates(sb, identity, o.instanceId);
+    const plan = planWaQrOutboundBind({ identity, leadId: o.leadId, candidates });
+    if (plan.action === "refuse") {
+      console.error(
+        `[platform-cold-outreach] conversa da abertura recusada: ${plan.reason}`,
+      );
+      return null;
+    }
+
+    const resolvedVisitorName = buildLeadName(o.nome, identity.visitorPhone);
     const safeVisitorName = resolvedVisitorName.startsWith("WhatsApp ")
       ? null
       : resolvedVisitorName;
 
-    const phoneVariants = phoneVariantsWithPlusBR(digits);
-    let found: { id: string; status: string; lead_id?: string | null } | null = null;
-    const { data: byVisitor } = await sb
-      .from("platform_crm_conversations")
-      .select("id, status, lead_id")
-      .in("visitor_id", visitorIds)
-      .in("channel", [...WA_QR_CHANNELS])
-      .eq("wa_qr_instance_id", o.instanceId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    found = byVisitor as { id: string; status: string; lead_id?: string | null } | null;
-    if (!found?.id && phoneVariants.length > 0) {
-      const { data: byPhone } = await sb
-        .from("platform_crm_conversations")
-        .select("id, status, lead_id")
-        .in("visitor_phone", phoneVariants)
-        .in("channel", [...WA_QR_CHANNELS])
-        .eq("wa_qr_instance_id", o.instanceId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      found = byPhone as { id: string; status: string; lead_id?: string | null } | null;
-    }
-
-    let conversationId: string | null = found?.id ?? null;
-
-    if (conversationId) {
+    if (plan.action === "reuse") {
+      const found = candidates.find((c) => c.id === plan.conversationId);
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (found?.status === "closed") {
         patch.status = "bot_active";
         patch.needs_human = false;
       }
       if (o.agentId) patch.current_agent_id = o.agentId;
-      if (!found?.lead_id) patch.lead_id = o.leadId;
-      await sb.from("platform_crm_conversations").update(patch).eq("id", conversationId);
-    } else {
-      const { data: created, error } = await sb
-        .from("platform_crm_conversations")
-        .insert({
-          visitor_id: visitorId,
-          visitor_name: safeVisitorName,
-          visitor_phone: phonePlus,
-          visitor_whatsapp: phonePlus,
-          channel: WA_QR_CHANNEL_CANONICAL,
-          status: "bot_active",
-          needs_human: false,
-          wa_qr_instance_id: o.instanceId,
-          product_id: o.productId,
-          lead_id: o.leadId,
-          // ⚠️ PIN DA PERSONA — sem isto, a prospecção ativa é atendida pela DUDA.
-          //
-          // Medido em produção 2026-08-06: a campanha DECLARA agent_id = "Camila ·
-          // Prospecção" (agent_type 'prospector', ativa), mas esse id só era gravado
-          // no metadata da MENSAGEM (autoria, :614) — nunca em current_agent_id. A
-          // conversa nascia com pin NULL.
-          //
-          // E o roteador (_shared/agent-routing.ts) NÃO conhece 'prospector': tem
-          // pickSdrPersona/Closer/Retention e mais nada. Sem pin, cai em 'sdr_open'
-          // → DUDA. Ou seja: a agente de ABORDAGEM FRIA era substituída pela de
-          // INBOUND, com o prompt errado, no canal errado — e nada acusava, porque
-          // tecnicamente "um agente respondeu".
-          //
-          // Foi assim que um golden de eval capturou a resposta
-          // "Sem problema, DUDA te espera" numa conversa whatsapp_evolution.
-          //
-          // Pin explícito é a correção certa: a campanha JÁ declara quem fala; o
-          // motor é que descartava a declaração. Ensinar 'prospector' ao roteador
-          // (alternativa B) mexeria no caminho da Duda, que não é meu território.
-          current_agent_id: o.agentId ?? null,
-        })
-        .select("id")
-        .single();
-      if (error) {
-        console.error(
-          `[platform-cold-outreach] criar conversa da abertura FALHOU visitor=${visitorId}: ${error.message}`,
-        );
-        return null;
-      }
-      conversationId = (created?.id as string) ?? null;
+      if (plan.patchLeadId) patch.lead_id = o.leadId;
+      await sb.from("platform_crm_conversations").update(patch).eq("id", plan.conversationId);
+      return plan.conversationId;
     }
-    if (!conversationId) return null;
 
-    const { error: msgErr } = await sb.from("platform_crm_messages").insert({
-      conversation_id: conversationId,
-      direction: "outbound",
-      sender_type: "bot",
-      content: o.text,
-      content_type: "text",
-      message_type: "text",
-      metadata: {
+    const { data: created, error } = await sb
+      .from("platform_crm_conversations")
+      .insert({
+        visitor_id: plan.identity.visitorId,
+        visitor_name: safeVisitorName,
+        visitor_phone: plan.identity.visitorPhone,
+        visitor_whatsapp: plan.identity.visitorWhatsapp,
         channel: WA_QR_CHANNEL_CANONICAL,
-        connection_id: o.instanceId,
-        agent_id: o.agentId,
-        delivery_status: "sent",
-        origem: "cold_outreach_abertura",
-        campaign_id: o.campaignId,
-        action_id: o.actionId ?? null,
-        variant: o.variant ?? null,
-        step: 0,
-        // Elo da cadeia de ENTREGA: o webhook recebe MESSAGES_UPDATE com key.id e
-        // precisa achar ESTA linha pra saber de qual campanha incrementar o
-        // delivered_count. `campaign_id` acima já está aqui; faltava a chave.
-        // null é aceitável (shape variou / dry-run) — o ACK simplesmente não casa
-        // e o contador não sobe. Melhor não contar que contar na campanha errada.
-        wamid: o.wamid ?? null,
-      },
-    });
-    if (msgErr) {
+        status: "bot_active",
+        needs_human: false,
+        wa_qr_instance_id: o.instanceId,
+        product_id: o.productId,
+        lead_id: plan.leadId,
+        // ⚠️ PIN DA PERSONA — sem isto, a prospecção ativa é atendida pela DUDA.
+        //
+        // Medido em produção 2026-08-06: a campanha DECLARA agent_id = "Camila ·
+        // Prospecção" (agent_type 'prospector', ativa), mas esse id só era gravado
+        // no metadata da MENSAGEM (autoria, :614) — nunca em current_agent_id. A
+        // conversa nascia com pin NULL.
+        //
+        // E o roteador (_shared/agent-routing.ts) NÃO conhece 'prospector': tem
+        // pickSdrPersona/Closer/Retention e mais nada. Sem pin, cai em 'sdr_open'
+        // → DUDA. Ou seja: a agente de ABORDAGEM FRIA era substituída pela de
+        // INBOUND, com o prompt errado, no canal errado — e nada acusava, porque
+        // tecnicamente "um agente respondeu".
+        //
+        // Foi assim que um golden de eval capturou a resposta
+        // "Sem problema, DUDA te espera" numa conversa whatsapp_evolution.
+        //
+        // Pin explícito é a correção certa: a campanha JÁ declara quem fala; o
+        // motor é que descartava a declaração. Ensinar 'prospector' ao roteador
+        // (alternativa B) mexeria no caminho da Duda, que não é meu território.
+        current_agent_id: o.agentId ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) {
       console.error(
-        `[platform-cold-outreach] gravar a bolha da abertura FALHOU conversation_id=${conversationId}: ${msgErr.message}`,
+        `[platform-cold-outreach] criar conversa da abertura FALHOU visitor=${plan.identity.visitorId}: ${error.message}`,
       );
-      return conversationId;
+      return null;
     }
-    return conversationId;
+    return (created?.id as string) ?? null;
   } catch (e) {
     console.error(
-      "[platform-cold-outreach] persistOpeningInInbox exception (a lead recebeu, o CRM nao registrou):",
+      "[platform-cold-outreach] ensureColdOpeningConversation exception:",
       e,
     );
     return null;
   }
+}
+
+async function persistOpeningMessage(
+  sb: SupabaseClient,
+  o: {
+    conversationId: string;
+    instanceId: string | null;
+    text: string;
+    agentId: string | null;
+    campaignId: string;
+    actionId?: string | null;
+    wamid?: string | null;
+    variant: unknown;
+  },
+): Promise<string | null> {
+  const { error: msgErr } = await sb.from("platform_crm_messages").insert({
+    conversation_id: o.conversationId,
+    direction: "outbound",
+    sender_type: "bot",
+    content: o.text,
+    content_type: "text",
+    message_type: "text",
+    metadata: {
+      channel: WA_QR_CHANNEL_CANONICAL,
+      connection_id: o.instanceId,
+      agent_id: o.agentId,
+      delivery_status: "sent",
+      origem: "cold_outreach_abertura",
+      campaign_id: o.campaignId,
+      action_id: o.actionId ?? null,
+      variant: o.variant ?? null,
+      step: 0,
+      wamid: o.wamid ?? null,
+    },
+  });
+  if (msgErr) {
+    console.error(
+      `[platform-cold-outreach] gravar a bolha da abertura FALHOU conversation_id=${o.conversationId}: ${msgErr.message}`,
+    );
+  }
+  return o.conversationId;
 }
 
 async function buildTokens(sb: SupabaseClient, campaign: any, row: any): Promise<ScriptTokens> {

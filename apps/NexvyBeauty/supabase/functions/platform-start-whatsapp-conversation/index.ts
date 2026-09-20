@@ -50,8 +50,6 @@ import {
 import {
   WA_QR_CHANNEL_CANONICAL,
   WA_QR_CHANNELS,
-  waQrVisitorId,
-  waQrVisitorIdsForLookup,
 } from '../_shared/platform-wa-qr-identity.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE } from '../_shared/meta-graph.ts';
@@ -60,6 +58,10 @@ import { findOrCreateLeadByPhone } from '../_shared/platform-crm-find-create-lea
 import { ensureCanonicalLeadState } from '../_shared/platform-crm-lead-context.ts';
 import { ensurePlatformLeadInPipeline } from '../_shared/platform-crm-pipeline.ts';
 import { broadcastPlatformNewMessage } from '../_shared/platform-crm-webchat.ts';
+import {
+  buildWaQrConversationIdentity,
+  outboundConversationInsertAllowed,
+} from '../_shared/wa-qr-conversation-resolve.ts';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -270,8 +272,9 @@ async function ensureEvolutionConversation(
   leadId: string | null,
   userId: string,
 ): Promise<{ conversation: Record<string, unknown> | null; isNew: boolean }> {
-  const visitorId = waQrVisitorId(digits);
-  const visitorIds = waQrVisitorIdsForLookup(digits);
+  const identity = buildWaQrConversationIdentity(digits);
+  const visitorId = identity.visitorId;
+  const visitorIds = identity.visitorIds.length ? identity.visitorIds : [visitorId];
   const { data: rows, error: selectError } = await supabase
     .from('platform_crm_conversations')
     .select('*')
@@ -288,6 +291,17 @@ async function ensureEvolutionConversation(
     return { conversation: null, isNew: false };
   }
   let conversation = (rows?.[0] as Record<string, unknown>) ?? null;
+  if (!conversation && identity.phoneVariants.length > 0) {
+    const { data: byPhone } = await supabase
+      .from('platform_crm_conversations')
+      .select('*')
+      .in('visitor_phone', identity.phoneVariants)
+      .in('channel', [...WA_QR_CHANNELS])
+      .eq('wa_qr_instance_id', instanceId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    conversation = (byPhone?.[0] as Record<string, unknown>) ?? null;
+  }
 
   if (conversation) {
     const patch: Record<string, unknown> = {};
@@ -327,8 +341,8 @@ async function ensureEvolutionConversation(
     .from('platform_crm_conversations')
     .insert({
       visitor_id: visitorId,
-      visitor_phone: `+${digits}`,
-      visitor_whatsapp: `+${digits}`,
+      visitor_phone: identity.visitorPhone || `+${digits}`,
+      visitor_whatsapp: identity.visitorWhatsapp || `+${digits}`,
       channel: WA_QR_CHANNEL_CANONICAL,
       // Quem inicia ASSUME (cabeçalho :17, ramo Meta :243-244) — diverge do
       // webhook de propósito; ver docblock desta função.
@@ -337,7 +351,7 @@ async function ensureEvolutionConversation(
       needs_human: false,
       wa_qr_instance_id: instanceId,
       ...(productId ? { product_id: productId } : {}),
-      ...(leadId ? { lead_id: leadId } : {}),
+      ...(outboundConversationInsertAllowed(leadId) ? { lead_id: leadId } : {}),
     })
     .select('*')
     .single();

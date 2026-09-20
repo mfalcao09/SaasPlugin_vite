@@ -66,12 +66,10 @@ import {
 } from "../_shared/platform-crm-lead-context.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
-import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
+  buildWaQrConversationIdentity,
   pickCanonicalWaQrConversation,
   mergedIntoTargetId,
-  waQrCanonicalVisitorPhone,
-  waQrVisitorIdsForPhoneVariants,
   type WaQrConversationRow,
 } from "../_shared/wa-qr-conversation-resolve.ts";
 import {
@@ -434,11 +432,10 @@ async function ensureConversation(
 ): Promise<any | null> {
   // Lookup por TODAS as variantes BR (com/sem 9º) — senão inbound sem 9 cria
   // thread nova e o interesse da lead some da canônica (Jeissiane 2026-09-03).
-  const visitorIds = waQrVisitorIdsForPhoneVariants(fromDigits);
-  const visitorId = waQrVisitorId(
-    (waQrCanonicalVisitorPhone(fromDigits).replace(/\D/g, "") || fromDigits),
-  );
-  const phoneCanon = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
+  const identity = buildWaQrConversationIdentity(fromDigits);
+  const visitorIds = identity.visitorIds;
+  const visitorId = identity.visitorId || waQrVisitorId(fromDigits);
+  const phoneCanon = identity.visitorPhone || `+${fromDigits}`;
 
   const { data: byVisitor } = await supabase
     .from("platform_crm_conversations")
@@ -452,7 +449,7 @@ async function ensureConversation(
   let candidates = (byVisitor ?? []) as WaQrConversationRow[];
 
   if (candidates.length === 0) {
-    const phoneVariants = phoneVariantsWithPlusBR(fromDigits);
+    const phoneVariants = identity.phoneVariants;
     if (phoneVariants.length > 0) {
       const { data: byPhone } = await supabase
         .from("platform_crm_conversations")
@@ -513,6 +510,12 @@ async function ensureConversation(
     }
   }
 
+  // Lead ANTES do INSERT: disparo/fromMe não pode nascer órfã e o inbound
+  // não pode abrir a 2ª row só porque o lead ainda não existia no PATCH.
+  const boundLeadId = conversation?.lead_id
+    ? String(conversation.lead_id)
+    : await ensureLead(supabase, fromDigits, pushName, productId);
+
   if (!conversation) {
     const resolvedVisitorName = buildLeadName(pushName, phoneCanon);
     const { data: created, error } = await supabase
@@ -527,6 +530,7 @@ async function ensureConversation(
         needs_human: false,
         wa_qr_instance_id: instance.id,
         ...(productId ? { product_id: productId } : {}),
+        ...(boundLeadId ? { lead_id: boundLeadId } : {}),
       })
       .select()
       .single();
@@ -547,36 +551,25 @@ async function ensureConversation(
     if (!patchError) conversation.product_id = productId;
   }
 
-  if (!conversation.lead_id) {
-    const leadId = await ensureLead(supabase, fromDigits, pushName, productId);
-    if (leadId) {
-      await supabase
-        .from("platform_crm_conversations")
-        .update({ lead_id: leadId })
-        .eq("id", conversation.id);
-      conversation.lead_id = leadId;
-      await ensurePlatformLeadInPipeline(supabase, leadId);
-    } else {
-      // PR-BDR-3 — antes daqui se saía em SILÊNCIO: a conversa seguia sem
-      // lead_id e ficava invisível no CRM. Não é hipótese — o mesmo padrão no
-      // canal oficial produziu 4 conversas órfãs, TODAS com telefone
-      // preenchido, uma com 56 mensagens, degradando por semanas sem ninguém
-      // notar.
-      //
-      // Saída escolhida: ALERTA inequívoco. Não pode ser fatal (a mensagem da
-      // lead ainda precisa ser persistida — quem chama segue adiante), e não há
-      // no schema de platform_crm_conversations coluna de "precisa de vínculo"
-      // — inventar uma aqui exigiria migration e não é o escopo desta PR. O
-      // alerta carrega tudo que é preciso pra achar a conversa e vincular
-      // depois, no mesmo formato greppável de notifyColdOutreachInbound.
-      console.error(
-        `[platform-whatsapp-qr-webhook] ORPHAN CONVERSATION — sem lead_id ` +
-          `conversation_id=${conversation.id} visitor_id=${visitorId} ` +
-          `phone=+${fromDigits} wa_qr_instance_id=${instance.id} ` +
-          `product_id=${productId ?? "null"} — a conversa NÃO aparece no CRM ` +
-          `enquanto não for vinculada a um lead`,
-      );
-    }
+  if (!conversation.lead_id && boundLeadId) {
+    await supabase
+      .from("platform_crm_conversations")
+      .update({ lead_id: boundLeadId })
+      .eq("id", conversation.id);
+    conversation.lead_id = boundLeadId;
+  }
+
+  if (conversation.lead_id) {
+    await ensurePlatformLeadInPipeline(supabase, String(conversation.lead_id));
+  } else {
+    // PR-BDR-3 — conversa sem lead_id some do CRM. Alerta greppável.
+    console.error(
+      `[platform-whatsapp-qr-webhook] ORPHAN CONVERSATION — sem lead_id ` +
+        `conversation_id=${conversation.id} visitor_id=${visitorId} ` +
+        `phone=+${fromDigits} wa_qr_instance_id=${instance.id} ` +
+        `product_id=${productId ?? "null"} — a conversa NÃO aparece no CRM ` +
+        `enquanto não for vinculada a um lead`,
+    );
   }
 
   const canonicalProductId = String(conversation.product_id ?? productId ?? "");
@@ -1079,16 +1072,28 @@ async function handleMessage(
   // fromMe = enviada pelo APARELHO conectado (fora do CRM) → outbound de
   // agente com metadata.source='external_device' (V5; o front já reconhece).
   if (norm.fromMe) {
-    const visitorIds = waQrVisitorIdsForPhoneVariants(fromDigits);
-    const { data: rows } = await supabase
+    const identity = buildWaQrConversationIdentity(fromDigits);
+    const { data: byVisitor } = await supabase
       .from("platform_crm_conversations")
-      .select("id, status")
-      .in("visitor_id", visitorIds.length ? visitorIds : waQrVisitorIdsForLookup(fromDigits))
+      .select("id, status, lead_id, visitor_phone, current_agent_id, created_at, metadata")
+      .in("visitor_id", identity.visitorIds.length ? identity.visitorIds : waQrVisitorIdsForLookup(fromDigits))
       .in("channel", [...WA_QR_CHANNELS])
       .eq("wa_qr_instance_id", instance.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    let conv = rows?.[0] ?? null;
+      .order("created_at", { ascending: true })
+      .limit(20);
+    let fromMeCandidates = (byVisitor ?? []) as WaQrConversationRow[];
+    if (fromMeCandidates.length === 0 && identity.phoneVariants.length > 0) {
+      const { data: byPhone } = await supabase
+        .from("platform_crm_conversations")
+        .select("id, status, lead_id, visitor_phone, current_agent_id, created_at, metadata")
+        .in("visitor_phone", identity.phoneVariants)
+        .in("channel", [...WA_QR_CHANNELS])
+        .eq("wa_qr_instance_id", instance.id)
+        .order("created_at", { ascending: true })
+        .limit(20);
+      fromMeCandidates = (byPhone ?? []) as WaQrConversationRow[];
+    }
+    let conv = pickCanonicalWaQrConversation(fromMeCandidates);
     // BDR Camila: 1º toque no aparelho pode NASCER conversa (gate por nome/flag).
     // Demais instâncias mantêm o skip A1.3 (inbox nasce no inbound).
     if (!conv) {
@@ -1103,7 +1108,13 @@ async function handleMessage(
         supabase, instance, fromDigits, null, productId,
       );
       if (!conv) return ok({ stored: false, skipped: "device_outbound_create_failed" });
+    } else if (!conv.lead_id) {
+      conv = await ensureConversation(
+        supabase, instance, fromDigits, null, productId,
+      ) ?? conv;
     }
+    if (!conv?.id) return ok({ stored: false, skipped: "device_outbound_no_conversation" });
+    const fromMeConversationId = String(conv.id);
 
     // Dedupe extra do V5: mesmo conteúdo outbound nos últimos 60s na mesma
     // conversa (eco do envio feito pelo próprio CRM via Evolution).
@@ -1112,7 +1123,7 @@ async function handleMessage(
       const { data: recent } = await supabase
         .from("platform_crm_messages")
         .select("id")
-        .eq("conversation_id", conv.id)
+        .eq("conversation_id", fromMeConversationId)
         .eq("direction", "outbound")
         .eq("content", content)
         .gte("created_at", since)
@@ -1124,7 +1135,7 @@ async function handleMessage(
     const { data: inserted, error } = await supabase
       .from("platform_crm_messages")
       .insert({
-        conversation_id: conv.id,
+        conversation_id: fromMeConversationId,
         direction: "outbound",
         sender_type: "agent",
         content: content || "[mídia]",
@@ -1152,9 +1163,9 @@ async function handleMessage(
     await supabase
       .from("platform_crm_conversations")
       .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conv.id);
-    await persistConversationWaLid(supabase, String(conv.id), norm.lidJid);
-    await broadcastPlatformNewMessage(supabase, String(conv.id), inserted);
+      .eq("id", fromMeConversationId);
+    await persistConversationWaLid(supabase, fromMeConversationId, norm.lidJid);
+    await broadcastPlatformNewMessage(supabase, fromMeConversationId, inserted);
     return ok({ stored: "external_outbound" });
   }
 
