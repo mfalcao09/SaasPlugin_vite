@@ -19,9 +19,12 @@ import {
   type ZapiInstanceCreds,
 } from "../zapi-client.ts";
 
+// `rpc` é obrigatório: runHarnessHousekeep repassa este client para as funções de
+// harness-stage-db.ts, que exigem SbRpc (rpc não-opcional). Com `rpc?` o repasse
+// era TS2345. O SupabaseClient real sempre expõe rpc.
 type Sb = {
   from: (t: string) => any;
-  rpc?: (
+  rpc: (
     name: string,
     args: Record<string, unknown>,
   ) => PromiseLike<{ data: unknown; error: { message?: string } | null }>;

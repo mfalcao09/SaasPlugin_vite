@@ -254,7 +254,12 @@ export function absorbPreselectedIntoQueue(
  */
 export function matchDispatchText(
   lead: PilotLead | null,
-  envelope: Pick<OutboundEnvelope, "kind" | "bubbleIndex" | "text">,
+  // `sendAs` e `linkPreview` entram no Pick porque o ramo exit_message os lê
+  // (~L288) para exigir preview no link. Sem eles o acesso era TS2339.
+  envelope: Pick<
+    OutboundEnvelope,
+    "kind" | "bubbleIndex" | "text" | "sendAs" | "linkPreview"
+  >,
 ): { ok: boolean; reason: string } {
   if (!lead) return { ok: false, reason: "text_unverified" };
   if (envelope.kind === "reply") {

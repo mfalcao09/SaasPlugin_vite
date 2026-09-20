@@ -1170,7 +1170,11 @@ async function handleMessage(
   }
 
   // ---- INBOUND ----
-  const conversation = await ensureConversation(
+  // `let` (não `const`): o Path A reopen (~L1315) e o patch de triagem do harness
+  // (~L1424) reatribuem esta referência com a row recém-atualizada. Com `const`,
+  // esses dois caminhos lançavam `TypeError: Assignment to constant variable`
+  // em runtime — o typecheck acusava (TS2588) e o erro passou despercebido.
+  let conversation = await ensureConversation(
     supabase, instance, fromDigits, norm.pushName || null, productId,
   );
   if (!conversation) return ok({ stored: false });
@@ -1728,12 +1732,10 @@ async function handleAuthorizedWebhook(
   // sem error e READ/SENT são ignored (não inflar contador).
   if (norm.kind === "delivery") {
     try {
-      if (
-        norm.outcome === "delivered" ||
-        norm.outcome === "failed" ||
-        norm.outcome === "sent" ||
-        norm.outcome === "read"
-      ) {
+      // `outcome` é "delivered" | "failed" | "ignored" (zapi-webhook-normalize.ts:37).
+      // READ/SENT já chegam aqui como "ignored" — as comparações com "sent"/"read"
+      // eram código morto (TS2367) e contradiziam o comentário acima.
+      if (norm.outcome === "delivered" || norm.outcome === "failed") {
         for (const wamid of norm.messageIds) {
           if (!wamid) continue;
           const { data: msg } = await supabase

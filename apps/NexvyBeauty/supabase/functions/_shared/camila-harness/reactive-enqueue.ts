@@ -81,8 +81,12 @@ export function enqueueReactiveFromInbound(input: {
   }
 
   const now = input.now ?? new Date();
-  const isExit = triage.class === "soft" || triage.class === "hard";
-  const action = isExit ? "exit_message" as const : "reply" as const;
+  // `exitClass` no lugar de um booleano solto: carrega a classe já estreitada para
+  // "soft" | "hard", que é o que makeMensagemDeSaidaEnvelopes aceita. Com um
+  // `isExit: boolean` o TS não estreitava `triage.class` dentro do if (TS2322).
+  const exitClass: "soft" | "hard" | null =
+    triage.class === "soft" || triage.class === "hard" ? triage.class : null;
+  const action = exitClass ? "exit_message" as const : "reply" as const;
   const win = authorizeHarnessReply({
     now,
     action,
@@ -92,13 +96,13 @@ export function enqueueReactiveFromInbound(input: {
     return { ...empty, reason: win.reason };
   }
 
-  if (isExit) {
+  if (exitClass) {
     const [textEnv, linkEnv] = makeMensagemDeSaidaEnvelopes({
       phone,
       conversationId: input.conversationId,
       greetingName: input.greetingName,
       now,
-      triage: triage.class,
+      triage: exitClass,
     });
     let q = pauseOpenPackage(input.queue, phone);
     q = enqueue(q, textEnv);
