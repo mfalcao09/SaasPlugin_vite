@@ -1350,7 +1350,13 @@ async function handleMessage(
             pilotProduct,
             fromDigits,
           );
-          if (known) pilotPhones = [...pilotPhones, known.phone];
+          // `fromDigits` entra junto com `known.phone`: o cadastro pode estar sem
+          // o 9º dígito do celular e o JID do WhatsApp vem com ele. Incluir os dois
+          // evita que o lead caia fora da lista do piloto por divergência de formato.
+          // (paridade com o que já está em produção — não regredir aqui)
+          if (known) {
+            pilotPhones = [...pilotPhones, known.phone, fromDigits];
+          }
         }
         if (!pilotPhones.includes(fromDigits)) {
           nextMeta = {
