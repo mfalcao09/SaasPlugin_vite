@@ -3,8 +3,9 @@
 **Programa:** Camila Harness Engineering  
 **Produto cadeado:** `806b5975-e268-402e-a65c-9e9503271041`  
 **Contrato que vence:** `MODEL-PORTA-JUIZ.md`  
-**Pré-requisito:** PRD-12 no ar (piloto, tick VPS, Path A morto) + núcleo `porta-juiz.ts` / `harness-package-tick.ts` **no disco** (51 testes locais).  
-**Este PRD não autoriza:** deploy, commit/push, DDL, WhatsApp à Andressa fora da janela, mexer CRM tenant, dropar `current_stage_id`.
+**Pré-requisito:** PRD-12 no ar (piloto, tick VPS, Path A morto) + núcleo `porta-juiz.ts` / `harness-package-tick.ts`.  
+**Estado 21/09:** A–D no disco + `cb8d0e0`; deploy cold 106 / webhook 55 / brain 175. Check E wamid = após 08h BRT.  
+**Ainda não autoriza:** DDL, WhatsApp à Andressa para testar, mexer CRM tenant, dropar `current_stage_id`.
 
 **Por que existe:** compactação perdeu viradas de decisão. Fonte das leis = falas do Marcelo em ordem (sessões `15bc4fcf` 16–18/09 e `ec4e5488` 18–21/09). **Decisão posterior vence.** Este arquivo é o roteiro para não perder de novo.
 
@@ -12,29 +13,25 @@
 
 ## 0. DNC — lei (ler antes de qualquer corte)
 
-**Você entendeu o relatório ao contrário. Corrigido aqui.**
-
 | Camada | O que vale | Fonte |
 |---|---|---|
-| **Lei (decisão)** | DNC/hard **não** impede a Camila para sempre. Sobe flag `needs_new_consent` e **segue** a tabela G5. O cérebro, no primeiro ato, **só** pergunta se ela confirma retomar. Sim → atende. Não / vazio claro → cala. | 20/09 22:38 (`ec4e5488` U166). Mais recente. |
-| **Disco (débito)** | `nextStageAfterInboundWake` ainda devolve `do_not_contact` e não sai do lugar (`harness-stage.ts`). Isso é código de **quinta 17**, **não** a lei. | Bug relativo à lei de domingo. |
+| **Lei** | DNC/hard **não** impede a Camila para sempre. Sobe `needs_new_consent` e **segue** G5. No primeiro ato o cérebro **só** pergunta se ela confirma retomar. Sim → atende. Não / recusa clara → cala. | 20/09 22:38 (`ec4e5488` U166) |
+| **Disco (corte D, 21/09)** | `nextStageAfterInboundWake` → `service` (onboarding/closing ficam). Flag vive no job. **Não** prende em `do_not_contact`. | `harness-stage.ts` |
 
-**Frase única:** a Camila **pode** voltar a falar com quem pediu para parar — **depois** de pedir consentimento de novo. Quem “ganhou” no produto é domingo. Quem ainda “ganhou” no arquivo é quinta. O corte D deste PRD alinha o arquivo à lei.
+**Frase única:** a Camila **pode** voltar a falar com quem pediu para parar — **depois** de pedir consentimento de novo.
 
 Não confundir com:
 
-- Hard **durante as 4** → termina as 4, **depois** o cérebro manda Mensagem de Saída + site, funil vermelho (G3). Isso não é “nunca mais atende se ela voltar daqui a um mês”.
+- Hard **durante as 4** → termina as 4, **depois** o cérebro manda Mensagem de Saída + site, funil vermelho (G3).
 - Humano no loop → cérebro off (isso não é DNC).
 
-Rascunho da pergunta (elaborar copy depois, não bloquear construção):
-
-> Você havia pedido para parar o atendimento. Confirma que deseja retomar e saber mais do nosso software?
+**Copy da pergunta:** só existe **rascunho**. Histórico 20/09 22:38 (Marcelo): *“Algo do tipo: você havia pedido para parar o atendimento, confirma que deseja retomar e saber mais do nosso software? (isso é apenas uma sugestão, depois elaboramos melhor).”* Nenhuma fala posterior fechou o texto. Código = essa sugestão pontuada em `CONSENT_QUESTION_DRAFT`. Copy final = GO seu.
 
 ---
 
-## 1. Problema
+## 1. Problema (histórico — resolvido no disco/edge 21/09)
 
-O núcleo Porta/Juiz **escreve o bilhete** (`harness_job` no metadata) e **não puxa**. O webhook **ainda empurra** o cérebro sem id. O cérebro **aceita** POST solto. Housekeep/cold **ainda julgam texto**. Stage de DNC **ainda é o de quinta**. Produção **não** tem o corte de domingo.
+O núcleo Porta/Juiz **escrevia** o bilhete (`harness_job` no metadata) e **não puxava**. O webhook **ainda empurra** o cérebro sem id. O cérebro **aceita** POST solto. Housekeep/cold **ainda julgam texto**. Stage de DNC **ainda é o de quinta**. Produção **não** tem o corte de domingo.
 
 Sintoma já vivido: Andressa em Em Atendimento, inbound “Como funciona?”, cérebro mudo; segunda 08h ninguém puxa.
 
