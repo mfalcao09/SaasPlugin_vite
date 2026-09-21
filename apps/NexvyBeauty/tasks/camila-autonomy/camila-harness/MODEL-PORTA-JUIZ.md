@@ -1,7 +1,8 @@
 # Modelo Porta + Juiz — contrato executável
 
-Atualizado: 2026-09-21. Código: `_shared/camila-harness/porta-juiz.ts`.
-Construção restante: **PRD-13-PORTA-JUIZ-COMPLETO.md** (puxador → fechar bocas → débitos → deploy).
+Atualizado: 2026-09-21. Código: `_shared/camila-harness/porta-juiz.ts` + puxador/gates.
+PRD-13 A–D: no disco, commit `cb8d0e0`, edge (cold 106 / webhook 55 / brain 175).
+Aberto: Check E wamid (após 08h BRT); copy final de consentimento (rascunho só).
 Check núcleo: `deno test --no-check supabase/functions/_shared/camila-harness/porta-juiz.test.ts`
 
 Este arquivo é o contrato. Em conflito com PLAN-v1.2 / Codex “cancelar se falou” / `pauseOpenPackage`, **este vence**.
@@ -64,10 +65,10 @@ Ficha do job (não é juiz): `pending_inbound_id`, `needs_new_consent`, `spoke_d
 
 ## Plano de fio (produção)
 
-1. **Núcleo:** `porta-juiz.ts` + testes; reactive **não** cancela 4 nem manda saída pelo tick.
-2. **Tick G4+G5:** `harness-package-tick.ts` — revisor wamid (só bolha tentada), fecha 4 wamids **ou** 180s, cria `harness_job` no metadata. Sem DDL. Sem deploy.
-3. Webhook só grava inbound; despacho segue `decideActivation`.
-4. Cérebro: primeiro ato = `juizPrimeiroAto` (consentimento / tríade). Sem job neste produto = recusa (depois do puller existir).
-5. Desligar juízes velhos neste produto: `suppressBrain` cold, housekeep que classifica texto, `exit_message` no tick.
+1. **Núcleo:** `porta-juiz.ts` + testes; reactive **não** cancela 4 nem manda saída pelo tick. **Feito.**
+2. **Tick G4+G5 + puxador:** `harness-package-tick.ts` + `runPullerPass`. Job no metadata. Sem DDL. **Feito** (disco + edge).
+3. Webhook deste produto só grava; `shouldDispatchSalesBrainFromWebhook` = 0 dispatch. **Feito.**
+4. Cérebro: `juizPrimeiroAto`; sem `harness_job_id` neste produto = recusa. **Feito.**
+5. Juízes velhos desligados neste produto (housekeep/cold/tick). DNC = flag, não cadeado. **Feito.**
 
-Sem DDL neste corte (job/veredito cabem em metadata até tabela própria).
+Sem DDL até GO de tabela. Check E (wamid Andressa) não substitui o fio — é prova de janela.
