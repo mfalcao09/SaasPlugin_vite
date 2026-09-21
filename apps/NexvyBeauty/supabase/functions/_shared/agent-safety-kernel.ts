@@ -9,7 +9,7 @@ export const IMMUTABLE_CONTACT_LIMITS = {
 } as const;
 
 export type AgentReleaseState = "OFF" | "SHADOW" | "TEST" | "CANARY" | "LIVE";
-export type AgentActionType = "opening" | "followup" | "resume" | "reply";
+export type AgentActionType = "opening" | "opening_part" | "followup" | "resume" | "reply";
 
 export interface AgentSafetyInput {
   releaseState: AgentReleaseState;
@@ -71,26 +71,41 @@ export function evaluateAgentSafety(
   ) {
     return { allowed: false, reason: "followup_cap" };
   }
+  // opening_part = bolhas 2–4 do script de abordagem (após opening).
+  // followupCount no input = quantas opening_part já enviadas (0–3).
+  if (input.actionType === "opening_part") {
+    if (input.openingCount < 1) {
+      return { allowed: false, reason: "opening_part_without_opening" };
+    }
+    if (input.followupCount >= 3) {
+      return { allowed: false, reason: "opening_part_cap" };
+    }
+  }
   if (
-    (input.actionType === "opening" || input.actionType === "followup") &&
+    (input.actionType === "opening" ||
+      input.actionType === "followup" ||
+      input.actionType === "opening_part") &&
     input.humanInboundAfterLastOutbound
   ) {
     return { allowed: false, reason: "human_replied" };
   }
-  if (
-    input.proactive &&
-    input.proactiveLast24h >=
-      IMMUTABLE_CONTACT_LIMITS.maxProactivePerLeadPerDay
-  ) {
-    return { allowed: false, reason: "proactive_daily_cap" };
-  }
-  if (
-    input.proactive &&
-    input.msSinceLastProactive != null &&
-    input.msSinceLastProactive <
-      IMMUTABLE_CONTACT_LIMITS.minProactiveIntervalMs
-  ) {
-    return { allowed: false, reason: "proactive_interval" };
+  // same-session approach: opening_part ignora caps diários/intervalo
+  if (input.actionType !== "opening_part") {
+    if (
+      input.proactive &&
+      input.proactiveLast24h >=
+        IMMUTABLE_CONTACT_LIMITS.maxProactivePerLeadPerDay
+    ) {
+      return { allowed: false, reason: "proactive_daily_cap" };
+    }
+    if (
+      input.proactive &&
+      input.msSinceLastProactive != null &&
+      input.msSinceLastProactive <
+        IMMUTABLE_CONTACT_LIMITS.minProactiveIntervalMs
+    ) {
+      return { allowed: false, reason: "proactive_interval" };
+    }
   }
   return { allowed: true, reason: null };
 }

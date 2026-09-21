@@ -42,6 +42,13 @@ export interface InboundPlan {
   bumpApresentar: boolean;
   /** aborta sequência APRESENTAR (resposta humana real) */
   abortApresentar: boolean;
+  /**
+   * Opt-out com elegibilidade a remarketing futuro (ex.: "não tenho interesse").
+   * Hard opt-out → false. Soft → true.
+   */
+  remarketing: boolean;
+  /** soft | hard quando intent=opt_out */
+  optOutKind?: "soft" | "hard";
   /** evento de instrumentação */
   journey: { type: string; category: string; title: string; matched: string | null };
 }
@@ -59,10 +66,21 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
   const telefone = ctx.telefone ? String(ctx.telefone).replace(/\D/g, "") : null;
 
   if (verdict.intent === "opt_out") {
+    const kind = verdict.optOutKind ?? "hard";
+    const isSoft = kind === "soft";
     return {
       intent: "opt_out",
       inboundKind,
-      optOut: productId ? { product_id: productId, telefone, handle, reason: "runtime_opt_out" } : null,
+      optOut: productId
+        ? {
+          product_id: productId,
+          telefone,
+          handle,
+          reason: isSoft
+            ? "runtime_opt_out_remarketing"
+            : "runtime_opt_out_hard",
+        }
+        : null,
       queueStatus: "opted_out",
       clearFollowups: true,
       handoff: false,
@@ -70,7 +88,17 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
       suppressBrain: true,
       bumpApresentar: false,
       abortApresentar: true,
-      journey: { type: "customer_lost", category: "contact", title: "Cold: opt-out (SAIR/PARE)", matched: verdict.matched },
+      // Soft: remarketing eligible. Hard: never.
+      remarketing: isSoft,
+      optOutKind: kind,
+      journey: {
+        type: "customer_lost",
+        category: "contact",
+        title: isSoft
+          ? "Cold: soft opt-out → remarketing eligible"
+          : "Cold: hard opt-out → dnc (sem R2)",
+        matched: verdict.matched,
+      },
     };
   }
 
@@ -87,6 +115,7 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
       suppressBrain: true,
       bumpApresentar: true,
       abortApresentar: false,
+      remarketing: false,
       journey: { type: "auto_reply_seen", category: "contact", title: "Cold: auto-resposta ignorada", matched: "auto_reply_heuristic" },
     };
   }
@@ -103,11 +132,14 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
       suppressBrain: false,
       bumpApresentar: false,
       abortApresentar: true,
+      remarketing: false,
       journey: { type: "conversation_accepted", category: "attendance", title: "Cold: 'quero' -> handoff Duda", matched: verdict.matched },
     };
   }
 
-  // Resposta humana real: para follow-ups, brain pode responder, aborta APRESENTAR.
+  // Resposta humana real: para follow-ups; brain pode responder DEPOIS.
+  // abortApresentar=true é o default, mas o motor NÃO aborta se ainda houver
+  // bolhas pendentes da abordagem (completa o script 1–4 primeiro).
   return {
     intent: verdict.intent,
     inboundKind,
@@ -119,6 +151,7 @@ export function planInbound(text: string, rows: QueueRowRef[], ctx: InboundConte
     suppressBrain: false,
     bumpApresentar: false,
     abortApresentar: true,
+    remarketing: false,
     journey: { type: "first_message_in", category: "contact", title: "Cold: resposta do lead", matched: verdict.matched },
   };
 }

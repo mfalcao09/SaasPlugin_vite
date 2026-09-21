@@ -9,17 +9,28 @@ const rows: QueueRowRef[] = [
 ];
 const ctx = { product_id: "prod-1", conversation_id: "conv-1", telefone: "55 (41) 98503-6800", handle: "salao_x" };
 
-Deno.test("opt-out: grava supressão, para cadência, silencia conversa, NÃO faz handoff", () => {
+Deno.test("opt-out HARD: grava dnc, para cadência, silencia, NÃO remarketing/R2", () => {
   const p = planInbound("quero SAIR dessa lista", rows, ctx);
   assertEquals(p.intent, "opt_out");
+  assertEquals(p.optOutKind, "hard");
   assertEquals(p.optOut?.product_id, "prod-1");
   assertEquals(p.optOut?.telefone, "5541985036800"); // dígitos normalizados
+  assertEquals(p.optOut?.reason, "runtime_opt_out_hard");
   assertEquals(p.queueStatus, "opted_out");
   assertEquals(p.clearFollowups, true);
   assertEquals(p.handoff, false);
   assertEquals(p.silenceConversation, true);
   assertEquals(p.suppressBrain, true);
   assertEquals(p.abortApresentar, true);
+  assertEquals(p.remarketing, false);
+});
+
+Deno.test("opt-out soft sem interesse → remarketing", () => {
+  const p = planInbound("No momento não tenho interesse", rows, ctx);
+  assertEquals(p.intent, "opt_out");
+  assertEquals(p.optOutKind, "soft");
+  assertEquals(p.remarketing, true);
+  assertEquals(p.optOut?.reason, "runtime_opt_out_remarketing");
 });
 
 Deno.test("auto-resposta: não marca replied, suprime brain, bump apresentar", () => {

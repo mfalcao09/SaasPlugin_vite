@@ -31,6 +31,19 @@ import { outboundAlreadySent } from "./harness-preflight.ts";
 import { markLeadContactedAfterFirstBubble, markLeadAfterExitMessage } from "./harness-stage-db.ts";
 import { runHarnessHousekeep } from "./harness-funnel-sync.ts";
 import type { PilotLead } from "./pilot-roster.ts";
+import {
+  runPackageTickPass,
+  type HarnessJobRecord,
+  type PackageLeadSnapshot,
+} from "./harness-package-tick.ts";
+import {
+  dropMouth1ExitEnvelopes,
+  loadHarnessJobsFromSb,
+  mergeJobsById,
+  persistHarnessJob,
+  runPullerPass,
+  type PullerInvoke,
+} from "./harness-puller.ts";
 
 export type PilotQueueStore = {
   load: () => Promise<{ queue: OutboundQueueState; goId: string }>;
@@ -70,6 +83,12 @@ export type HarnessPilotTickInput = {
   overrideRoster?: readonly PilotLead[];
   /** UUID platform_crm_wa_qr_instances — sync de listas + close conv. */
   instanceId?: string | null;
+  /** Testes / dry: snapshots G4+G5 sem CRM. */
+  overridePackageSnapshots?: PackageLeadSnapshot[];
+  /** Morto no caminho de produto (PRD-13). Só testes de regressão. */
+  onHarnessJob?: (job: HarnessJobRecord) => Promise<void>;
+  /** Teste: puxador chama isto em vez do fetch. */
+  onPullerInvoke?: (payload: PullerInvoke) => Promise<void>;
 };
 
 export type HarnessPilotTickResult = {
@@ -84,6 +103,9 @@ export type HarnessPilotTickResult = {
   live_flags: boolean;
   preselected_count: number;
   stage_updates: string[];
+  package_reviews: string[];
+  jobs_created: string[];
+  puller_invokes: number;
   snapshot: PersistedPilotQueue | null;
 };
 
@@ -101,8 +123,12 @@ export async function runHarnessPilotTick(
       forceDry,
     });
   const store = input.store ?? createMemoryPilotQueueStore();
+  // previewWindow congela o relógio do DISPARO (janela comercial). Housekeep
+  // do funil (24h) precisa do relógio de parede — senão FORCE_DRY/preview
+  // no cron de sábado nunca move contacted → remarketing_pool.
+  const wallNow = input.now ?? new Date();
   const now = input.now ??
-    (input.previewWindow ? FIXTURE.tue1000 : new Date());
+    (input.previewWindow ? FIXTURE.tue1000 : wallNow);
 
   let roster: PilotLead[] = input.overrideRoster
     ? [...input.overrideRoster]
@@ -123,6 +149,9 @@ export async function runHarnessPilotTick(
         live_flags: live,
         preselected_count: 0,
         stage_updates: [],
+        package_reviews: [],
+        jobs_created: [],
+        puller_invokes: 0,
         snapshot: null,
       };
     }
@@ -143,6 +172,9 @@ export async function runHarnessPilotTick(
         live_flags: live,
         preselected_count: 0,
         stage_updates: [],
+        package_reviews: [],
+        jobs_created: [],
+        puller_invokes: 0,
         snapshot: null,
       };
     }
@@ -171,6 +203,38 @@ export async function runHarnessPilotTick(
       queue = plan.queue;
       await store.save(queue, goId);
     } else if (queue.pending.length === 0) {
+      const blockedPkg = await runPackageTickPass({
+        sb: input.sb as Parameters<typeof runPackageTickPass>[0]["sb"],
+        productId: input.productId,
+        queue,
+        now: wallNow,
+        holidayDates: input.holidayDates,
+        roster,
+        snapshots: input.overridePackageSnapshots,
+      });
+      queue = dropMouth1ExitEnvelopes(blockedPkg.queue);
+      await store.save(queue, goId);
+      const blockedPuller = await runTickPuller({
+        sb: input.sb,
+        productId: input.productId,
+        now: wallNow,
+        holidayDates: input.holidayDates,
+        createdJobs: blockedPkg.jobs,
+        snapshots: input.overridePackageSnapshots,
+        forceDry,
+        envGet,
+        onPullerInvoke: input.onPullerInvoke,
+      });
+      const blockedHk = await maybeHousekeep({
+        sb: input.sb,
+        productId: input.productId,
+        instanceId: input.instanceId,
+        envGet,
+        now: wallNow,
+        queue,
+        store,
+        goId,
+      });
       return {
         ok: true,
         action: "harness-pilot-tick",
@@ -182,7 +246,10 @@ export async function runHarnessPilotTick(
         dry: true,
         live_flags: live,
         preselected_count: preselectedCount,
-        stage_updates: [],
+        stage_updates: blockedHk.updates,
+        package_reviews: blockedPkg.updates,
+        jobs_created: blockedPkg.jobs.map((j) => j.id),
+        puller_invokes: blockedPuller.invokes,
         snapshot: null,
       };
     }
@@ -207,6 +274,9 @@ export async function runHarnessPilotTick(
         live_flags: live,
         preselected_count: 0,
         stage_updates: [],
+        package_reviews: [],
+        jobs_created: [],
+        puller_invokes: 0,
         snapshot: null,
       };
     }
@@ -216,7 +286,44 @@ export async function runHarnessPilotTick(
   const absorbed = absorbPreselectedIntoQueue(queue, roster, now);
   queue = absorbed.queue;
 
+  const pkgPass = await runPackageTickPass({
+    sb: input.sb as Parameters<typeof runPackageTickPass>[0]["sb"],
+    productId: input.productId,
+    queue,
+    now: wallNow,
+    holidayDates: input.holidayDates,
+    roster,
+    snapshots: input.overridePackageSnapshots,
+  });
+  queue = dropMouth1ExitEnvelopes(pkgPass.queue);
+  await store.save(queue, goId);
+  const package_reviews = pkgPass.updates;
+  const jobs_created = pkgPass.jobs.map((j) => j.id);
+  const tickPuller = await runTickPuller({
+    sb: input.sb,
+    productId: input.productId,
+    now: wallNow,
+    holidayDates: input.holidayDates,
+    createdJobs: pkgPass.jobs,
+    snapshots: input.overridePackageSnapshots,
+    forceDry,
+    envGet,
+    onPullerInvoke: input.onPullerInvoke,
+  });
+
   if (queue.pending.length === 0) {
+    const emptyHk = await maybeHousekeep({
+      sb: input.sb,
+      productId: input.productId,
+      instanceId: input.instanceId,
+      envGet,
+      now: wallNow,
+      queue,
+      store,
+      goId,
+    });
+    queue = emptyHk.queue;
+    const emptyUpdates = emptyHk.updates;
     return {
       ok: true,
       action: "harness-pilot-tick",
@@ -228,7 +335,10 @@ export async function runHarnessPilotTick(
       dry: forceDry || !transport.allowReal,
       live_flags: live,
       preselected_count: preselectedCount,
-      stage_updates: [],
+      stage_updates: emptyUpdates,
+      package_reviews,
+      jobs_created,
+      puller_invokes: tickPuller.invokes,
       snapshot: null,
     };
   }
@@ -258,9 +368,13 @@ export async function runHarnessPilotTick(
           text: env.text,
         });
         const chipConnected = input.probeChip ? await input.probeChip() : false;
+        const mouth1 = env.kind === "open_bubble1" ||
+          env.kind === "continue_bubble" || env.kind === "resume";
         return {
           chipConnected,
-          alreadySent: dup.error ? false : dup.sent,
+          alreadySent: dup.error
+            ? false
+            : (mouth1 ? Boolean(dup.wamid) : dup.sent),
           scriptLead,
           lookupFailed: Boolean(dup.error),
         };
@@ -307,31 +421,18 @@ export async function runHarnessPilotTick(
   }
 
   queue = tick.queue;
-  if (input.sb && typeof (input.sb as { from?: unknown }).from === "function") {
-    const instanceId = String(
-      input.instanceId ?? envGet("HARNESS_PILOT_INSTANCE_ID") ?? "",
-    ).trim();
-    if (instanceId) {
-      try {
-        const hk = await runHarnessHousekeep({
-          sb: input.sb as any,
-          productId: input.productId,
-          instanceId,
-          now,
-          queue,
-        });
-        stageUpdates.push(...hk.updates);
-        if (hk.changed) {
-          queue = hk.queue;
-          await store.save(queue, goId);
-        }
-      } catch (err) {
-        stageUpdates.push(
-          `housekeep_fail:${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    }
-  }
+  const afterHk = await maybeHousekeep({
+    sb: input.sb,
+    productId: input.productId,
+    instanceId: input.instanceId,
+    envGet,
+    now: wallNow,
+    queue,
+    store,
+    goId,
+  });
+  queue = afterHk.queue;
+  stageUpdates.push(...afterHk.updates);
 
   return {
     ok: true,
@@ -352,6 +453,9 @@ export async function runHarnessPilotTick(
     live_flags: live,
     preselected_count: preselectedCount,
     stage_updates: stageUpdates,
+    package_reviews,
+    jobs_created,
+    puller_invokes: tickPuller.invokes,
     snapshot: {
       pending: queue.pending,
       inFlightLeadId: queue.inFlightLeadId,
@@ -361,6 +465,120 @@ export async function runHarnessPilotTick(
       updated_at: now.toISOString(),
     },
   };
+}
+
+async function runTickPuller(input: {
+  sb: unknown;
+  productId: string;
+  now: Date;
+  holidayDates?: ReadonlySet<string> | null;
+  createdJobs: HarnessJobRecord[];
+  snapshots?: PackageLeadSnapshot[];
+  forceDry: boolean;
+  envGet: (k: string) => string | undefined;
+  onPullerInvoke?: (p: PullerInvoke) => Promise<void>;
+}): Promise<{ invokes: number; updates: string[] }> {
+  let stored: HarnessJobRecord[] = [];
+  let conversationStatusById: Record<string, string> = {};
+  let prevMetaByConv: Record<string, Record<string, unknown>> = {};
+  if (input.sb && typeof (input.sb as { from?: unknown }).from === "function") {
+    const loaded = await loadHarnessJobsFromSb(
+      input.sb as Parameters<typeof loadHarnessJobsFromSb>[0],
+      input.productId,
+    );
+    stored = loaded.jobs;
+    conversationStatusById = loaded.conversationStatusById;
+    prevMetaByConv = loaded.prevMetaByConv;
+  }
+  for (const snap of input.snapshots ?? []) {
+    conversationStatusById[snap.conversationId] = snap.conversationStatus;
+  }
+  const jobs = mergeJobsById(stored, input.createdJobs);
+  const brainWamidByJobId: Record<string, boolean> = {};
+  for (const snap of input.snapshots ?? []) {
+    if (snap.existingJobId && snap.brainAlreadyRepliedWamid) {
+      brainWamidByJobId[snap.existingJobId] = true;
+    }
+  }
+  const onInvoke = input.forceDry
+    ? undefined
+    : input.onPullerInvoke ?? (async (payload: PullerInvoke) => {
+      const base = input.envGet("SUPABASE_URL") ?? "";
+      const secret = input.envGet("BRAIN_INTERNAL_SECRET") ?? "";
+      const key = input.envGet("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      if (!base || (!secret && !key)) return;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (secret) headers["x-brain-secret"] = secret;
+      else headers["Authorization"] = `Bearer ${key}`;
+      await fetch(`${base}/functions/v1/platform-sales-brain`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      }).catch(() => undefined);
+    });
+  const pass = await runPullerPass({
+    now: input.now,
+    holidayDates: input.holidayDates,
+    jobs,
+    conversationStatusById,
+    brainWamidByJobId,
+    forceDry: input.forceDry,
+    onInvoke,
+  });
+  if (input.sb && typeof (input.sb as { from?: unknown }).from === "function") {
+    for (const job of pass.jobs) {
+      await persistHarnessJob(
+        input.sb as Parameters<typeof persistHarnessJob>[0],
+        job,
+        prevMetaByConv[job.conversationId] ?? {},
+      );
+    }
+  }
+  return { invokes: pass.invoked.length, updates: pass.updates };
+}
+
+async function maybeHousekeep(input: {
+  sb: unknown;
+  productId: string;
+  instanceId?: string | null;
+  envGet: (k: string) => string | undefined;
+  now: Date;
+  queue: OutboundQueueState;
+  store: PilotQueueStore;
+  goId: string;
+}): Promise<{ queue: OutboundQueueState; updates: string[] }> {
+  const updates: string[] = [];
+  let queue = input.queue;
+  if (!input.sb || typeof (input.sb as { from?: unknown }).from !== "function") {
+    return { queue, updates: ["housekeep_skipped:no_sb"] };
+  }
+  const instanceId = String(
+    input.instanceId ?? input.envGet("HARNESS_PILOT_INSTANCE_ID") ?? "",
+  ).trim();
+  if (!instanceId) {
+    return { queue, updates: ["housekeep_skipped:no_instance_id"] };
+  }
+  try {
+    const hk = await runHarnessHousekeep({
+      sb: input.sb as any,
+      productId: input.productId,
+      instanceId,
+      now: input.now,
+      queue,
+    });
+    updates.push(`housekeep:${hk.updates.length}`, ...hk.updates);
+    if (hk.changed) {
+      queue = hk.queue;
+      await input.store.save(queue, input.goId);
+    }
+  } catch (err) {
+    updates.push(
+      `housekeep_fail:${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  return { queue, updates };
 }
 
 export { emptyOutboundQueue, createMemoryPilotQueueStore };

@@ -48,6 +48,16 @@ function digits(phone: string): string {
   return String(phone ?? "").replace(/\D/g, "");
 }
 
+export function samePilotPhone(a: string, b: string): boolean {
+  const da = digits(a);
+  const db = digits(b);
+  if (!da || !db) return false;
+  if (da === db) return true;
+  const n = Math.min(11, da.length, db.length);
+  if (n >= 10 && da.slice(-n) === db.slice(-n)) return true;
+  return da.length >= 10 && db.length >= 10 && da.slice(-10) === db.slice(-10);
+}
+
 function stateOf(row: LeadJoinRow) {
   const s = row.platform_crm_lead_state;
   if (Array.isArray(s)) return s[0] ?? null;
@@ -126,32 +136,35 @@ export async function loadHarnessLeadByPhone(
   productId: string,
   phone: string,
 ): Promise<PilotLead | null> {
-  const variants = [digits(phone), `+${digits(phone)}`].filter(Boolean);
   const { data, error } = await (sb as any)
     .from("platform_crm_leads")
     .select(
       "id, phone, name, product_id, platform_crm_lead_state(derived_stage, version, facts)",
     )
     .eq("product_id", productId)
-    .in("phone", variants)
-    .limit(1);
+    .limit(80);
   if (error || !data?.length) return null;
-  const row = data[0] as LeadJoinRow;
-  const st = stateOf(row);
-  const facts = parseHarnessFacts(
-    st?.facts && typeof st.facts === "object"
-      ? st.facts as Record<string, unknown>
-      : {},
-  );
-  if (!facts) return null;
-  return {
-    order: facts.pilot_order,
-    phone: digits(row.phone ?? phone),
-    greeting: facts.greeting,
-    handle: facts.instagram_handle,
-    resumeException: facts.resume_exception,
-    leadId: row.id,
-  };
+  const want = digits(phone);
+  for (const raw of data) {
+    const row = raw as LeadJoinRow;
+    if (!samePilotPhone(row.phone ?? "", want)) continue;
+    const st = stateOf(row);
+    const facts = parseHarnessFacts(
+      st?.facts && typeof st.facts === "object"
+        ? st.facts as Record<string, unknown>
+        : {},
+    );
+    if (!facts) continue;
+    return {
+      order: facts.pilot_order,
+      phone: digits(row.phone ?? phone),
+      greeting: facts.greeting,
+      handle: facts.instagram_handle,
+      resumeException: facts.resume_exception,
+      leadId: row.id,
+    };
+  }
+  return null;
 }
 
 /** Spec usada APENAS para seed SQL / testes — não é runtime do tick. */

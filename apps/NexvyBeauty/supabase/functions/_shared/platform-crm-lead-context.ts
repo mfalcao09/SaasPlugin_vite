@@ -308,11 +308,16 @@ export function formatCanonicalLeadContext(input: {
       `Memória (${memory.memory_type}, confiança ${memory.confidence}): ${memory.content}`
     ),
   ].filter(Boolean);
-  if (!lines.length) return "";
+  // Estado válido sempre rende ficha versionada — mesmo vazia (lead nova).
   return [
     "FICHA CANÔNICA DESTA LEAD",
+    `lead_id=${input.leadId}`,
+    `product_id=${input.productId}`,
+    `version=${input.state.version}`,
     "Use somente nesta conversa. Nunca generalize para outra lead.",
-    ...lines,
+    ...(lines.length
+      ? lines
+      : ["(ficha ainda sem fatos — conduza descoberta; não invente dados da lead)"]),
   ].join("\n");
 }
 

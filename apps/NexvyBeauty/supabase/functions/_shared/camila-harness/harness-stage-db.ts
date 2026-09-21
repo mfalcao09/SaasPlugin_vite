@@ -3,7 +3,10 @@ import {
   nextStageAfterFirstOutbound,
   nextStageAfterSoftExit,
   nextStageAfterHardExit,
+  nextStageAfterInboundWake,
+  type HarnessState,
 } from "./harness-stage.ts";
+import { paintLeadCurrentStage } from "./harness-ui-stage.ts";
 
 type SbRpc = {
   from: (t: string) => any;
@@ -36,6 +39,11 @@ async function casStage(
       .maybeSingle();
     expected = typeof data?.version === "number" ? data.version : 0;
     if (data?.derived_stage === input.stage) {
+      await paintLeadCurrentStage(sb, {
+        leadId: input.leadId,
+        productId: input.productId,
+        derivedStage: input.stage,
+      });
       return { ok: true, stage: input.stage };
     }
   }
@@ -50,7 +58,14 @@ async function casStage(
   });
   if (error) return { ok: false, error: error.message ?? "cas_failed" };
   const rec = data && typeof data === "object" ? data as Record<string, unknown> : {};
-  if (rec.ok === true) return { ok: true, stage: input.stage };
+  if (rec.ok === true) {
+    await paintLeadCurrentStage(sb, {
+      leadId: input.leadId,
+      productId: input.productId,
+      derivedStage: input.stage,
+    });
+    return { ok: true, stage: input.stage };
+  }
   if (rec.conflict === true) {
     const { data: again } = await sb
       .from("platform_crm_lead_state")
@@ -59,6 +74,11 @@ async function casStage(
       .eq("product_id", input.productId)
       .maybeSingle();
     if (again?.derived_stage === input.stage) {
+      await paintLeadCurrentStage(sb, {
+        leadId: input.leadId,
+        productId: input.productId,
+        derivedStage: input.stage,
+      });
       return { ok: true, stage: input.stage };
     }
     const v = typeof again?.version === "number" ? again.version : 0;
@@ -70,9 +90,15 @@ async function casStage(
     });
     if (e2) return { ok: false, error: e2.message ?? "cas_retry_failed" };
     const r2 = d2 && typeof d2 === "object" ? d2 as Record<string, unknown> : {};
-    return r2.ok === true
-      ? { ok: true, stage: input.stage }
-      : { ok: false, error: "cas_conflict" };
+    if (r2.ok === true) {
+      await paintLeadCurrentStage(sb, {
+        leadId: input.leadId,
+        productId: input.productId,
+        derivedStage: input.stage,
+      });
+      return { ok: true, stage: input.stage };
+    }
+    return { ok: false, error: "cas_conflict" };
   }
   return { ok: false, error: String(rec.error ?? "cas_rejected") };
 }
@@ -125,6 +151,37 @@ export async function markLeadAfterExitMessage(
     expectedVersion: input.expectedVersion,
     stage,
     nextAction: input.kind === "hard" ? "do_not_contact" : "remarketing_pool_idle",
+  });
+}
+
+export async function markLeadInService(
+  sb: SbRpc,
+  input: {
+    leadId: string;
+    productId: string;
+    expectedVersion?: number;
+    currentStage?: string | null;
+  },
+): Promise<{ ok: boolean; stage?: string; error?: string }> {
+  const stage = nextStageAfterInboundWake(
+    (input.currentStage ?? null) as
+      | "do_not_contact"
+      | "remarketing_pool"
+      | "contacted"
+      | "service"
+      | "preselected"
+      | "db"
+      | null,
+  );
+  if (stage === "do_not_contact") {
+    return { ok: true, stage };
+  }
+  return casStage(sb, {
+    leadId: input.leadId,
+    productId: input.productId,
+    expectedVersion: input.expectedVersion,
+    stage,
+    nextAction: "attend",
   });
 }
 

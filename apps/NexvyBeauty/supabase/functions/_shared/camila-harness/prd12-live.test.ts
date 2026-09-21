@@ -146,39 +146,24 @@ Deno.test("harness-pilot-tick forceDry seeds Renata, 0 real", async () => {
   }
 });
 
-Deno.test("reactive: soft → exit; interest → wake_brain (sem stub)", () => {
+Deno.test("reactive: fala NÃO cancela fila nem manda saída (juiz = cérebro)", () => {
   const phone = RENATA_PHONE;
   const manualList = [phone];
-  let q = emptyOutboundQueue();
-  q = { ...q, inFlightLeadId: phone };
-  const defer = enqueueReactiveFromInbound({
-    queue: q,
-    phone,
-    text: "Bom dia , no momento não me interesso",
-    conversationId: "c1",
-    now: FIXTURE.tue1000,
-    manualList,
-  });
-  assertEquals(defer.enqueued?.kind, "exit_message");
+  const pending = emptyOutboundQueue();
+  const inFlight = { ...pending, inFlightLeadId: phone };
 
-  q = emptyOutboundQueue();
-  const exit = enqueueReactiveFromInbound({
-    queue: q,
+  const soft = enqueueReactiveFromInbound({
+    queue: inFlight,
     phone,
     text: "Bom dia , no momento não me interesso",
     conversationId: "c1",
     now: FIXTURE.tue1000,
     manualList,
-    greetingName: "Renata",
   });
-  assertEquals(exit.enqueued?.kind, "exit_message");
-  assertEquals(exit.enqueued?.bubbleIndex, 1);
-  assertEquals(exit.queue.pending.length, 2);
-  assertEquals(exit.queue.pending[0].bubbleIndex, 1);
-  assertEquals(exit.queue.pending[0].text.includes("Sem problemas"), true);
-  assertEquals(exit.queue.pending[1].bubbleIndex, 2);
-  assertEquals(exit.queue.pending[1].sendAs, "link");
-  assertEquals(Boolean(exit.queue.pending[1].linkPreview?.linkUrl), true);
+  assertEquals(soft.enqueued, null);
+  assertEquals(soft.reason, "inbound_recorded");
+  assertEquals(soft.queue.inFlightLeadId, phone);
+  assertEquals(soft.queueMutated, false);
 
   const reply = enqueueReactiveFromInbound({
     queue: emptyOutboundQueue(),
@@ -189,7 +174,7 @@ Deno.test("reactive: soft → exit; interest → wake_brain (sem stub)", () => {
     manualList,
   });
   assertEquals(reply.enqueued, null);
-  assertEquals(reply.reason, "wake_brain");
+  assertEquals(reply.reason, "inbound_recorded");
   assertEquals(reply.cite, "quero saber como funciona");
 });
 
@@ -204,7 +189,7 @@ Deno.test("reactive: rajada Andressa cita E vc? e não enfileira stub", () => {
     now: FIXTURE.tue1000,
     manualList: [phone],
   });
-  assertEquals(r.reason, "wake_brain");
+  assertEquals(r.reason, "inbound_recorded");
   assertEquals(r.cite, "E vc?");
   assertEquals(r.enqueued, null);
 });

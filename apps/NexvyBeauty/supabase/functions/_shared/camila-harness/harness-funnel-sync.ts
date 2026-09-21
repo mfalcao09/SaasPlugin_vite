@@ -1,12 +1,14 @@
 // Housekeep do piloto: silêncio 24h → pool + sync lista Z-API ↔ funil.
 import type { OutboundQueueState } from "./outbound-queue.ts";
 import { dropLeadPending } from "./outbound-queue.ts";
-import { isSilence24hDue } from "./harness-silence-24h.ts";
+import { lastHumanInboundAt, isSilence24hDue } from "./harness-silence-24h.ts";
+import { housekeepMayMoveToPool, parseHarnessJob } from "./harness-puller.ts";
 import {
   planFunnelTagSync,
   type FunnelPaintStage,
 } from "./harness-funnel-tag.ts";
 import { markLeadFunnelStage } from "./harness-stage-db.ts";
+import { paintLeadCurrentStage } from "./harness-ui-stage.ts";
 import { phoneVariantsWithPlusBR } from "../phone-e164-variants.ts";
 import {
   parseZapiChatTagIds,
@@ -83,17 +85,25 @@ async function closeConversationToFunnel(
 async function loadMessageBounds(
   sb: Sb,
   conversationId: string,
-): Promise<{ firstOut: Date | null; lastOut: Date | null; lastIn: Date | null }> {
+): Promise<{
+  firstOut: Date | null;
+  lastOut: Date | null;
+  lastIn: Date | null;
+  lastHumanIn: Date | null;
+}> {
   const { data } = await sb
     .from("platform_crm_messages")
-    .select("direction, created_at")
+    .select("direction, created_at, content")
     .eq("conversation_id", conversationId);
   const rows = Array.isArray(data) ? data : [];
   let firstOut: Date | null = null;
   let lastOut: Date | null = null;
   let lastIn: Date | null = null;
+  const classified: { direction?: string; createdAt: Date | null; content?: string }[] = [];
   for (const row of rows) {
     const t = asDate(row.created_at);
+    const content = String(row.content ?? "");
+    classified.push({ direction: String(row.direction ?? ""), createdAt: t, content });
     if (!t) continue;
     if (row.direction === "outbound") {
       if (!firstOut || t < firstOut) firstOut = t;
@@ -102,7 +112,12 @@ async function loadMessageBounds(
       if (!lastIn || t > lastIn) lastIn = t;
     }
   }
-  return { firstOut, lastOut, lastIn };
+  return {
+    firstOut,
+    lastOut,
+    lastIn,
+    lastHumanIn: lastHumanInboundAt(classified),
+  };
 }
 
 async function loadZapiCreds(
@@ -167,7 +182,12 @@ export async function runHarnessHousekeep(input: {
       "lead_id, version, derived_stage, platform_crm_leads!inner(id, phone)",
     )
     .eq("product_id", input.productId)
-    .in("derived_stage", ["contacted", "remarketing_pool", "do_not_contact"]);
+    .in("derived_stage", [
+      "contacted",
+      "service",
+      "remarketing_pool",
+      "do_not_contact",
+    ]);
   const rows = Array.isArray(states) ? states : [];
 
   const z = input.instanceId
@@ -184,11 +204,11 @@ export async function runHarnessHousekeep(input: {
     if (!leadId || !phone) continue;
     const stage = String(row.derived_stage ?? "");
 
-    const convId = await (async () => {
+    const convHit = await (async () => {
       const variants = phoneVariantsWithPlusBR(phone);
       const { data: convs } = await input.sb
         .from("platform_crm_conversations")
-        .select("id, visitor_phone, visitor_id")
+        .select("id, visitor_phone, visitor_id, metadata")
         .eq("wa_qr_instance_id", input.instanceId);
       const suffix = digitsOf(phone).slice(-10);
       const found = (Array.isArray(convs) ? convs : []).find((c) => {
@@ -197,18 +217,39 @@ export async function runHarnessHousekeep(input: {
         return (suffix && (a.endsWith(suffix) || b.endsWith(suffix))) ||
           variants.includes(String(c.visitor_phone ?? ""));
       });
-      return found?.id ? String(found.id) : null;
+      return found?.id
+        ? {
+          id: String(found.id),
+          metadata: found.metadata && typeof found.metadata === "object"
+            ? found.metadata as Record<string, unknown>
+            : {},
+        }
+        : null;
     })();
+    const convId = convHit?.id ?? null;
 
     if (stage === "contacted" && convId) {
       const bounds = await loadMessageBounds(input.sb, convId);
+      const job = parseHarnessJob(convHit?.metadata?.harness_job);
+      const pendingInbound = Boolean(
+        job &&
+          (job.status === "held" || job.status === "ready" ||
+            job.status === "in_flight"),
+      ) || Boolean(
+        convHit?.metadata &&
+          typeof (convHit.metadata as { harness_wake_flags?: { pending_inbound_id?: string } })
+              .harness_wake_flags?.pending_inbound_id === "string",
+      );
       if (
-        isSilence24hDue({
-          stage,
-          firstOutboundAt: bounds.firstOut,
-          lastOutboundAt: bounds.lastOut,
-          lastInboundAt: bounds.lastIn,
-          now: input.now,
+        housekeepMayMoveToPool({
+          pendingInbound,
+          jobStatus: job?.status ?? null,
+          silence24hDue: isSilence24hDue({
+            stage,
+            lastOutboundAt: bounds.lastOut,
+            lastHumanInboundAt: bounds.lastHumanIn,
+            now: input.now,
+          }),
         })
       ) {
         const marked = await markLeadFunnelStage(input.sb, {
@@ -233,9 +274,6 @@ export async function runHarnessHousekeep(input: {
       }
     }
 
-    if (!z || catalog.length === 0) continue;
-    const chat = await zapiGetChat(z.config, z.creds, phone);
-    const chatTags = parseZapiChatTagIds(chat.body);
     const { data: again } = await input.sb
       .from("platform_crm_lead_state")
       .select("version, derived_stage")
@@ -243,6 +281,16 @@ export async function runHarnessHousekeep(input: {
       .eq("product_id", input.productId)
       .maybeSingle();
     const crmStage = String(again?.derived_stage ?? stage);
+    const painted = await paintLeadCurrentStage(input.sb, {
+      leadId,
+      productId: input.productId,
+      derivedStage: crmStage,
+    });
+    if (!painted.ok) updates.push(`${leadId}:ui_paint:${painted.error}`);
+
+    if (!z || catalog.length === 0) continue;
+    const chat = await zapiGetChat(z.config, z.creds, phone);
+    const chatTags = parseZapiChatTagIds(chat.body);
     const plan = planFunnelTagSync({
       crmStage,
       chatTagIds: chatTags,

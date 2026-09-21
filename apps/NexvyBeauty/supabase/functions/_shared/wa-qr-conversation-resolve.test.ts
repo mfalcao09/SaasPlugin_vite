@@ -1,7 +1,11 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { visitorDigitsFromWaQrId } from "./platform-wa-qr-identity.ts";
+import { visitorDigitsFromWaQrId, waQrVisitorId, waQrVisitorIdsForLookup } from "./platform-wa-qr-identity.ts";
 import {
+  buildWaQrConversationIdentity,
+  outboundConversationInsertAllowed,
   pickCanonicalWaQrConversation,
+  planWaQrOutboundBind,
+  waQrCanonicalVisitorId,
   waQrCanonicalVisitorPhone,
   waQrVisitorIdsForPhoneVariants,
 } from "./wa-qr-conversation-resolve.ts";
@@ -71,4 +75,73 @@ Deno.test("só duplicata com merged_into → segue ponteiro se alvo no batch", (
     metadata: { merged_into: "aaaa" },
   };
   assertEquals(pickCanonicalWaQrConversation([dup, canon])?.id, "aaaa");
+});
+
+// ── Edna Nails Designer (2026-08-18) — 9º dígito parte a thread ─────────────
+// Lead gravado +554884472819; WhatsApp entregou 5548984472819.
+// persistOpeningInInbox usava waQrVisitorId(dígitos crus) + waQrVisitorIdsForLookup
+// (sem variantes). O unique (visitor_id, channel, instance) aceitava as DUAS rows.
+
+const EDNA_QUEUE_PHONE = "+554884472819"; // sem 9º — como na fila / lead
+const EDNA_INBOUND_PHONE = "5548984472819"; // com 9º — como o JID do WhatsApp
+
+Deno.test("Edna: identidade de INSERT do disparo = identidade do inbound", () => {
+  const outbound = buildWaQrConversationIdentity(EDNA_QUEUE_PHONE);
+  const inbound = buildWaQrConversationIdentity(EDNA_INBOUND_PHONE);
+  assertEquals(outbound.visitorPhone, "+5548984472819");
+  assertEquals(outbound.visitorId, inbound.visitorId);
+  assertEquals(outbound.visitorPhone, inbound.visitorPhone);
+  assertEquals(outbound.visitorId, waQrCanonicalVisitorId(EDNA_INBOUND_PHONE));
+});
+
+Deno.test("Edna: lookup do inbound ACHA a row gravada pelo disparo", () => {
+  const outbound = buildWaQrConversationIdentity(EDNA_QUEUE_PHONE);
+  const inbound = buildWaQrConversationIdentity(EDNA_INBOUND_PHONE);
+  assertEquals(inbound.visitorIds.includes(outbound.visitorId), true);
+  assertEquals(inbound.phoneVariants.includes(outbound.visitorPhone), true);
+});
+
+Deno.test("Edna: o lookup EXATO (bug antigo) NÃO acha a conversa do fromMe", () => {
+  // Reproduz o furo de persistOpeningInInbox: ForLookup(fila sem 9) vs
+  // visitor_id canônico do webhook (com 9). Unique index deixa nascer 2 rows.
+  const fromMeVisitorId = waQrCanonicalVisitorId(EDNA_INBOUND_PHONE);
+  const oldLookup = waQrVisitorIdsForLookup(EDNA_QUEUE_PHONE.replace(/\D/g, ""));
+  assertEquals(fromMeVisitorId, "wa_qr:5548984472819");
+  assertEquals(oldLookup.includes(fromMeVisitorId), false);
+  assertEquals(waQrVisitorId("554884472819"), "wa_qr:554884472819");
+});
+
+Deno.test("disparo outbound recusa INSERT sem lead_id", () => {
+  assertEquals(outboundConversationInsertAllowed(""), false);
+  assertEquals(outboundConversationInsertAllowed(null), false);
+  assertEquals(outboundConversationInsertAllowed("   "), false);
+  assertEquals(outboundConversationInsertAllowed("lead-edna"), true);
+});
+
+Deno.test("Edna: bind reusa a fromMe canônica em vez de inserir segunda row", () => {
+  const plan = planWaQrOutboundBind({
+    identity: buildWaQrConversationIdentity(EDNA_QUEUE_PHONE),
+    leadId: "lead-edna",
+    candidates: [{
+      id: "43975405-01ff-4c70-8f6f-9e8e5fe32683",
+      status: "bot_active",
+      visitor_phone: "+5548984472819",
+      lead_id: null,
+      created_at: "2026-08-18T15:43:21Z",
+    }],
+  });
+  assertEquals(plan.action, "reuse");
+  if (plan.action === "reuse") {
+    assertEquals(plan.conversationId, "43975405-01ff-4c70-8f6f-9e8e5fe32683");
+    assertEquals(plan.patchLeadId, true);
+  }
+});
+
+Deno.test("bind recusa inserir conversa de disparo sem lead_id", () => {
+  const plan = planWaQrOutboundBind({
+    identity: buildWaQrConversationIdentity(EDNA_QUEUE_PHONE),
+    leadId: null,
+    candidates: [],
+  });
+  assertEquals(plan.action, "refuse");
 });

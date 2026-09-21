@@ -9,51 +9,50 @@ import { zapiChatTagWritePath } from "../zapi-client.ts";
 
 const CATALOG = [
   { id: "1", name: "Não lidas" },
+  { id: "3", name: "Contatado" },
   { id: "4", name: "Remarketing" },
   { id: "5", name: "Não Contatar - HARD OPT-OUT" },
+  { id: "6", name: "Em Atendimento" },
 ];
 
 Deno.test("resolve tag ids by stable name, not by color", () => {
   const ids = resolveFunnelTagIds(CATALOG);
   assertEquals(ids.remarketingId, "4");
   assertEquals(ids.hardId, "5");
+  assertEquals(ids.contactedId, "3");
+  assertEquals(ids.serviceId, "6");
 });
 
 Deno.test("HARD tag wins over remarketing on the same chat", () => {
   const ids = resolveFunnelTagIds(CATALOG);
   assertEquals(impliedStageFromChatTags(["4", "5"], ids), "do_not_contact");
   assertEquals(impliedStageFromChatTags(["4"], ids), "remarketing_pool");
+  assertEquals(impliedStageFromChatTags(["6"], ids), "service");
+  assertEquals(impliedStageFromChatTags(["3"], ids), "contacted");
   assertEquals(impliedStageFromChatTags([], ids), null);
 });
 
-Deno.test("lista no celular NÃO escreve funil: contacted + HARD → sem CAS", () => {
-  const p = planFunnelTagSync({
-    crmStage: "contacted",
-    chatTagIds: ["5"],
-    catalog: CATALOG,
-  });
-  assertEquals(p.casStage, null);
-  assertEquals(p.paintAdd, []);
-  assertEquals(p.paintRemove, []);
-});
-
-Deno.test("lista no celular NÃO escreve funil: contacted + REMARKETING → sem CAS", () => {
+Deno.test("contacted pinta Contatado e tira Remarketing", () => {
   const p = planFunnelTagSync({
     crmStage: "contacted",
     chatTagIds: ["4"],
     catalog: CATALOG,
   });
   assertEquals(p.casStage, null);
+  assertEquals(p.paintAdd, ["3"]);
+  assertEquals(p.paintRemove, ["4"]);
 });
 
-Deno.test("service + tag REMARKETING no celular → sem CAS (conversa ao vivo)", () => {
+Deno.test("service pinta Em Atendimento e tira Remarketing+Contatado", () => {
   const p = planFunnelTagSync({
     crmStage: "service",
-    chatTagIds: ["4"],
+    chatTagIds: ["3", "4"],
     catalog: CATALOG,
   });
   assertEquals(p.casStage, null);
-  assertEquals(p.paintAdd, []);
+  assertEquals(p.paintAdd, ["6"]);
+  assertEquals(p.paintRemove.includes("4"), true);
+  assertEquals(p.paintRemove.includes("3"), true);
 });
 
 Deno.test("CAS DNC paints HARD and removes remarketing", () => {
@@ -78,14 +77,14 @@ Deno.test("removing tags on the phone does not un-DNC (CRM re-paints)", () => {
   assertEquals(p.paintRemove, []);
 });
 
-Deno.test("contacted without funnel tags does not wipe the phone", () => {
+Deno.test("contacted sem tag ganha Contatado", () => {
   const p = planFunnelTagSync({
     crmStage: "contacted",
     chatTagIds: [],
     catalog: CATALOG,
   });
   assertEquals(p.casStage, null);
-  assertEquals(p.paintAdd, []);
+  assertEquals(p.paintAdd, ["3"]);
   assertEquals(p.paintRemove, []);
 });
 
