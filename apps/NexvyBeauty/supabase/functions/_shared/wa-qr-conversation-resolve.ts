@@ -7,9 +7,11 @@
  */
 
 import { normalizePhoneBR, phoneVariantsBR } from "./phone.ts";
+import { phoneVariantsWithPlusBR } from "./phone-e164-variants.ts";
 import {
   WA_QR_VISITOR_PREFIX_CANONICAL,
   WA_QR_VISITOR_PREFIX_LEGACY,
+  waQrVisitorId,
 } from "./platform-wa-qr-identity.ts";
 
 export type WaQrConversationRow = {
@@ -18,6 +20,7 @@ export type WaQrConversationRow = {
   visitor_phone?: string | null;
   current_agent_id?: string | null;
   created_at?: string | null;
+  lead_id?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -39,6 +42,80 @@ export function waQrCanonicalVisitorPhone(input: unknown): string {
   if (canon) return `+${canon}`;
   const digits = String(input ?? "").replace(/\D/g, "");
   return digits ? `+${digits}` : "";
+}
+
+/** visitor_id canônico (wa_qr:<55+DDD+9+8>). Mesma régua do telefone de INSERT. */
+export function waQrCanonicalVisitorId(input: unknown): string {
+  const phone = waQrCanonicalVisitorPhone(input);
+  const digits = phone.replace(/\D/g, "");
+  return digits ? waQrVisitorId(digits) : "";
+}
+
+export type WaQrConversationIdentity = {
+  visitorId: string;
+  visitorPhone: string;
+  visitorWhatsapp: string;
+  visitorIds: string[];
+  phoneVariants: string[];
+};
+
+/**
+ * Identidade ÚNICA de conversa QR — disparo e inbound DEVEM gravar/buscar isto.
+ * Sem isto, fila sem 9º (`+554884472819`) e JID com 9º (`5548984472819`) geram
+ * dois visitor_id e o unique (visitor_id, channel, instance) aceita 2 rows.
+ */
+export function buildWaQrConversationIdentity(input: unknown): WaQrConversationIdentity {
+  const visitorPhone = waQrCanonicalVisitorPhone(input);
+  const visitorId = waQrCanonicalVisitorId(input);
+  return {
+    visitorId,
+    visitorPhone,
+    visitorWhatsapp: visitorPhone,
+    visitorIds: waQrVisitorIdsForPhoneVariants(input),
+    phoneVariants: phoneVariantsWithPlusBR(input),
+  };
+}
+
+/** Disparo outbound: lead SEMPRE existe. NULL no INSERT é bug, não caso de uso. */
+export function outboundConversationInsertAllowed(
+  leadId: string | null | undefined,
+): boolean {
+  return typeof leadId === "string" && leadId.trim().length > 0;
+}
+
+export type WaQrOutboundBindPlan =
+  | { action: "refuse"; reason: "missing_lead_id" | "missing_identity" }
+  | { action: "reuse"; conversationId: string; patchLeadId: boolean }
+  | { action: "insert"; identity: WaQrConversationIdentity; leadId: string };
+
+/**
+ * Decisão de bind do disparo: reusa a canônica (variantes + 9º) ou insere
+ * COM lead_id. Nunca abre row órfã.
+ */
+export function planWaQrOutboundBind(input: {
+  identity: WaQrConversationIdentity;
+  leadId: string | null | undefined;
+  candidates: WaQrConversationRow[];
+}): WaQrOutboundBindPlan {
+  if (!outboundConversationInsertAllowed(input.leadId)) {
+    return { action: "refuse", reason: "missing_lead_id" };
+  }
+  if (!input.identity.visitorId || !input.identity.visitorPhone) {
+    return { action: "refuse", reason: "missing_identity" };
+  }
+  const picked = pickCanonicalWaQrConversation(input.candidates);
+  if (picked) {
+    return {
+      action: "reuse",
+      conversationId: picked.id,
+      patchLeadId: !picked.lead_id,
+    };
+  }
+  return {
+    action: "insert",
+    identity: input.identity,
+    leadId: String(input.leadId).trim(),
+  };
 }
 
 function phoneDigitLen(phone: string | null | undefined): number {

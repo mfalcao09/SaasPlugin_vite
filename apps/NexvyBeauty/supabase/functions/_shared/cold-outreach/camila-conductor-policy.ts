@@ -14,6 +14,9 @@ import {
 import { normalize } from "./opt-out.ts";
 import { isAutoReply } from "./auto-reply.ts";
 import { isNationalHoliday } from "./br-national-holidays.ts";
+import {
+  INCIDENT_COHORT_SEED_IDS,
+} from "./camila-cohort.ts";
 
 /**
  * Auto-reply de loja (away) — NÃO usar isAutoReply cru: o padrão pix+agendamento
@@ -32,14 +35,10 @@ export function isAwayAutoReplyInbound(text: string): boolean {
   return false;
 }
 
-/** v1: só as 5 do incidente. Depois do dry-run verde, expandir (ver REGRAS §6). */
-export const INCIDENT_ALLOWLIST: ReadonlySet<string> = new Set([
-  "7e427cd4-5181-445d-9eb1-f05906b8f42d", // Deise
-  "e882518f-5ebd-457d-8c3c-dc33f400a7a1", // Expert
-  "01385b74-29ab-4044-bf10-3a2bcc26928c", // Ellas
-  "db870f09-54d1-4e1b-a221-6af8fb24788f", // Jeissiane
-  "db7991a9-df6c-4665-8d9b-481b1cc48d53", // Emilly
-]);
+/** @deprecated seed da coorte incident-v1 — não usar como gate; use evaluateConductorScope. */
+export const INCIDENT_ALLOWLIST: ReadonlySet<string> = new Set(
+  INCIDENT_COHORT_SEED_IDS,
+);
 
 export const CAMILA_WINDOW: WindowConfig = { ...DEFAULT_WINDOW };
 
@@ -68,7 +67,12 @@ export interface CamilaWakeInput {
   lastWakeAtMs?: number | null;
   wakesInLastHour?: number;
   now: Date;
-  /** default: INCIDENT_ALLOWLIST.has(id) */
+  /**
+   * Membro da coorte ativa? Preferir evaluateConductorScope no caller.
+   * default legado: INCIDENT_ALLOWLIST.has(id) — só para testes de replay.
+   */
+  inCohort?: boolean;
+  /** @deprecated use inCohort */
   inAllowlist?: boolean;
   window?: WindowConfig;
   /**
@@ -137,12 +141,13 @@ const CONDUCT_ACTIONS: ReadonlySet<TrailNextAction> = new Set([
 export function decideCamilaWake(input: CamilaWakeInput): CamilaWakeDecision {
   const nowMs = input.now.getTime();
   const window = input.window ?? CAMILA_WINDOW;
-  const inAllowlist = input.inAllowlist ?? INCIDENT_ALLOWLIST.has(input.conversationId);
+  // Fail-closed: omitido = fora da coorte. Caller deve passar inCohort após evaluateConductorScope.
+  const inCohort = input.inCohort ?? input.inAllowlist ?? false;
   const lastWake = input.lastWakeAtMs ?? null;
   const wakesHour = input.wakesInLastHour ?? 0;
 
-  if (!inAllowlist) {
-    return { kind: "noop", due: false, reason: "scope_v1", nextAction: null };
+  if (!inCohort) {
+    return { kind: "noop", due: false, reason: "outside_cohort", nextAction: null };
   }
   if (lastWake != null && nowMs - lastWake < WAKE_COOLDOWN_MS) {
     return { kind: "noop", due: false, reason: "cooldown_2h", nextAction: null };

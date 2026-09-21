@@ -4,6 +4,7 @@ import {
   nextStageAfterFirstOutbound,
   nextStageAfterSoftExit,
   nextStageAfterHardExit,
+  nextStageAfterInboundWake,
   parseHarnessFacts,
   buildHarnessFactsPatch,
   PILOT_COHORT_ID,
@@ -24,6 +25,13 @@ Deno.test("transitions: soft → remarketing_pool; hard → do_not_contact", () 
   assertEquals(nextStageAfterSoftExit("contacted"), "remarketing_pool");
   assertEquals(nextStageAfterSoftExit("service"), "remarketing_pool");
   assertEquals(nextStageAfterHardExit("contacted"), "do_not_contact");
+});
+
+Deno.test("inbound wake: pool/contacted/DNC → service (lei domingo)", () => {
+  assertEquals(nextStageAfterInboundWake("remarketing_pool"), "service");
+  assertEquals(nextStageAfterInboundWake("contacted"), "service");
+  assertEquals(nextStageAfterInboundWake("service"), "service");
+  assertEquals(nextStageAfterInboundWake("do_not_contact"), "service");
 });
 
 Deno.test("facts round-trip + seed fixture = 10 phones Renata first", () => {

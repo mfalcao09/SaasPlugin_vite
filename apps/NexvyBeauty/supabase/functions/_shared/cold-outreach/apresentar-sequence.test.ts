@@ -6,7 +6,19 @@ import {
   bumpApresentarAfterAutoReply,
   isApresentarDue,
   nextBubbleText,
+  APRESENTAR_SEQUENCE_ENABLED,
+  APRESENTAR_STEP_DELAY_MS,
+  MAX_APPROACH_SPAN_MS,
 } from "./apresentar-sequence.ts";
+
+Deno.test("APRESENTAR_SEQUENCE_ENABLED ON (script abordagem 1–4)", () => {
+  assertEquals(APRESENTAR_SEQUENCE_ENABLED, true);
+});
+
+Deno.test("approach span: 3 steps × delay ≤ 3 min", () => {
+  assertEquals(APRESENTAR_STEP_DELAY_MS * 3 <= MAX_APPROACH_SPAN_MS, true);
+  assertEquals(MAX_APPROACH_SPAN_MS, 180_000);
+});
 
 Deno.test("build + advance 3 bolhas pendentes", () => {
   const t0 = new Date("2026-09-02T12:00:00Z");
@@ -19,17 +31,17 @@ Deno.test("build + advance 3 bolhas pendentes", () => {
   });
   assertEquals(nextBubbleText(s), "b2");
   assertEquals(isApresentarDue(s, t0), false);
-  assertEquals(isApresentarDue(s, new Date(t0.getTime() + 16_000)), true);
+  assertEquals(isApresentarDue(s, new Date(t0.getTime() + 31_000)), true);
 
-  s = advanceApresentarState(s, new Date(t0.getTime() + 16_000));
+  s = advanceApresentarState(s, new Date(t0.getTime() + 31_000));
   assertEquals(s.last_sent, 2);
   assertEquals(nextBubbleText(s), "b3");
 
-  s = advanceApresentarState(s, new Date(t0.getTime() + 32_000));
+  s = advanceApresentarState(s, new Date(t0.getTime() + 62_000));
   assertEquals(s.last_sent, 3);
   assertEquals(nextBubbleText(s), "b4");
 
-  s = advanceApresentarState(s, new Date(t0.getTime() + 48_000));
+  s = advanceApresentarState(s, new Date(t0.getTime() + 93_000));
   assertEquals(s.status, "done");
   assertEquals(s.pending.length, 0);
 });
@@ -58,5 +70,5 @@ Deno.test("auto-reply bump reinicia timer", () => {
   });
   const bumped = bumpApresentarAfterAutoReply(s, new Date(t0.getTime() + 5_000));
   assertEquals(isApresentarDue(bumped, new Date(t0.getTime() + 10_000)), false);
-  assertEquals(isApresentarDue(bumped, new Date(t0.getTime() + 20_000)), true);
+  assertEquals(isApresentarDue(bumped, new Date(t0.getTime() + 35_000)), true);
 });

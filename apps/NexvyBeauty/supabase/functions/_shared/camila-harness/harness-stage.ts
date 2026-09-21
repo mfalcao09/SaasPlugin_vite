@@ -1,5 +1,6 @@
 // Harness funnel stages — fonte de verdade = platform_crm_lead_state.derived_stage
 import type { HarnessState } from "./states.ts";
+export type { HarnessState };
 
 export const HARNESS_STAGES: readonly HarnessState[] = [
   "db",
@@ -74,4 +75,14 @@ export function nextStageAfterSoftExit(current: HarnessState | null): HarnessSta
 
 export function nextStageAfterHardExit(_current: HarnessState | null): HarnessState {
   return "do_not_contact";
+}
+
+/** Inbound acorda atendimento. DNC não prende — flag de consentimento vive no job. */
+export function nextStageAfterInboundWake(
+  current: HarnessState | null,
+): HarnessState {
+  if (current === "onboarding" || current === "closing") {
+    return current;
+  }
+  return "service";
 }

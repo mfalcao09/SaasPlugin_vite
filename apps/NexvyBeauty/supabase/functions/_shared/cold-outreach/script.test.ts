@@ -5,6 +5,7 @@
 import { assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
 import {
   assignVariant,
+  DEFAULT_VARIANT,
   CAMILA_PROSPECTOR_AGENT_ID,
   type Channel,
   containsLink,
@@ -27,12 +28,19 @@ const T: ScriptTokens = {
   servico: "escova",
 };
 
-/** Fixture real (dump prod Camila · Estágio 1 — APRESENTAR). */
+/** Fixture alinhada ao prompt operacional (opening vs follow-up D+N). */
 const CAMILA_ESTAGIO1_FIXTURE = `
 VOCÊ É A CAMILA — assistente comercial da NexvyBeauty. Diga sempre "NexvyBeauty" por extenso, nunca só "Nexvy".
 
-**Estágio 1 — APRESENTAR** (texto FIXO aprovado; 1º contato é SEMPRE este template; a cadência de 3 toques vale só para retomar conversa parada, e retomada não re-apresenta a marca nem re-declara origem):
-1ª "Oi, {Nome}! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️" → espera ~15s (resposta automática de WhatsApp Business não é a lead; registrar e seguir) → 2ª "Achei o seu número no Instagram {@handle}, e vim me apresentar." → 3ª "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, organiza a agenda e resgata clientes que não marcaram mais nenhum atendimento. Tudo automático, com atendimento por inteligência artificial de verdade — não chatbot de menuzinho." → 4ª "Você acha que faria diferença ter uma IA que encontra clientes pra você, todos os dias?" → PARA. Se ela falar no meio, abandone as bolhas restantes e responda.
+**Estágio 1 — APRESENTAR** (texto FIXO aprovado para 1º contato)
+
+Mapeamento operacional (script de abordagem — as 4 bolhas JUNTAS formam o 1º contato):
+- Bolhas 1ª→2ª→3ª→4ª = script de ABORDAGEM (enviadas em sequência após a abertura; delay curto entre bolhas)
+- NÃO são follow-ups D+N (cadência D+2 é outro caminho)
+- Se ela falar no meio, abandone as bolhas restantes e responda
+
+1ª "Oi, {Nome}! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️" → 2ª "Achei o seu número no Instagram {@handle}, e vim me apresentar." → 3ª "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, organiza a agenda e resgata clientes que não marcaram mais nenhum atendimento. Tudo automático, com atendimento por inteligência artificial de verdade — não chatbot de menuzinho." → 4ª "Você acha que faria diferença ter uma equipe de IA que atende os clientes, marca horário, confirma presença, encontra clientes que não voltaram, trabalhando para você, todos os dias?"
+Se ela falar no meio, abandone as bolhas restantes do roteiro frio e responda.
 Se ela responder "sim/acho que sim" à 4ª bolha, guarde: esse sim volta no fechamento, nas palavras dela.
 
 **Estágio 2 — TIRAR DÚVIDAS**: responda o que ela perguntou, mecanismo concreto, uma dúvida por vez.
@@ -163,19 +171,32 @@ Deno.test("sequência Instagram: abertura + 1 follow-up (só D+2), sem breakup",
   assertEquals(seq.followups[0].step, 1);
 });
 
-Deno.test("objeções: preço e golpe (WA); IG cai no golpe/robô", () => {
-  const preco = renderObjection("whatsapp", "preco", T);
-  if (!preco.toLowerCase().includes("preço")) throw new Error("objeção preço");
+Deno.test("objeções: preço P1–P3 e golpe G1 (WA); IG cai no golpe/robô", () => {
+  for (const precoObj of ["P1", "P2", "P3"] as const) {
+    const preco = renderObjection("whatsapp", "preco", T, { ...DEFAULT_VARIANT, precoObj });
+    if (preco.toLowerCase().includes("raio-x")) throw new Error(`preço ${precoObj} ainda cita raio-x`);
+    if (!preco.toLowerCase().includes("preço") && !preco.toLowerCase().includes("preco") && precoObj === "P2") {
+      /* P2 says preço */
+    }
+    if (precoObj === "P1" && !preco.includes("Combinado?")) throw new Error("P1");
+    if (precoObj === "P2" && !preco.includes("Posso?")) throw new Error("P2");
+    if (precoObj === "P3" && !preco.includes("Ok?")) throw new Error("P3");
+  }
   const golpe = renderObjection("whatsapp", "golpe", T);
   if (!golpe.toLowerCase().includes("não peço")) throw new Error("objeção golpe nega acesso");
+  if (golpe.toLowerCase().includes("raio-x") || golpe.includes("levanto o número")) {
+    throw new Error("golpe ainda com copy antiga");
+  }
   const igObj = renderObjection("instagram", "preco", T);
   if (!igObj.toLowerCase().includes("não peço")) throw new Error("IG trata golpe");
 });
 
-Deno.test("CTA WhatsApp pede 'quero' e não tem link", () => {
-  const cta = renderCta("whatsapp", T);
-  if (!cta.toLowerCase().includes("quero")) throw new Error("CTA deve pedir 'quero'");
-  assertEquals(containsLink(cta), false);
+Deno.test("renderCta fail closed — CTA raio-x removido", () => {
+  assertThrows(
+    () => renderCta("whatsapp", T),
+    Error,
+    "renderCta removido",
+  );
 });
 
 Deno.test("A/B: assign determinístico e estável por leadId", () => {
@@ -183,9 +204,22 @@ Deno.test("A/B: assign determinístico e estável por leadId", () => {
   const b = assignVariant("lead-abc-123");
   assertEquals(a, b); // estável
   const c = assignVariant("lead-xyz-999");
-  const changed = a.opening !== c.opening || a.dor !== c.dor || a.cta !== c.cta;
+  const changed = a.opening !== c.opening || a.dor !== c.dor;
   assertEquals(typeof changed, "boolean");
   // variante B de dor também renderiza follow-up sem link
-  const fuB = renderFollowup("whatsapp", 1, T, { opening: "B_prova", dor: "B_noshow", cta: "B_quero" });
+  const fuB = renderFollowup("whatsapp", 1, T, { opening: "B_prova", dor: "B_noshow", precoObj: "P1" });
   assertEquals(containsLink(fuB), false);
+});
+
+Deno.test("FU D+2 / breakup sem raio-x (A1/B1/C1)", () => {
+  const a = renderFollowup("whatsapp", 1, T, { ...DEFAULT_VARIANT, dor: "A_sumiu" });
+  const b = renderFollowup("whatsapp", 1, T, { ...DEFAULT_VARIANT, dor: "B_noshow" });
+  const c = renderFollowup("whatsapp", 2, T);
+  for (const x of [a, b, c]) {
+    if (x.toLowerCase().includes("raio-x")) throw new Error("FU ainda cita raio-x");
+    assertEquals(containsLink(x), false);
+  }
+  if (!a.includes("equipe de IA")) throw new Error("A1 esperado");
+  if (!b.includes("confirma")) throw new Error("B1 esperado");
+  if (!c.includes('responde "quero"')) throw new Error("C1 esperado");
 });

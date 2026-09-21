@@ -7,7 +7,8 @@ import { normalize } from "./opt-out.ts";
 export type InboundKind = "auto_reply" | "human";
 
 const AUTO_REPLY_PATTERNS: RegExp[] = [
-  /\bagradece\s+(seu|o)\s+contato\b/,
+  // "agradece seu/o contato" e "agradece o seu contato" (falso negativo D2 Letícia)
+  /\bagradece\s+(o\s+seu|seu|o)\s+contato\b/,
   /\bfora\s+do\s+horario\s+de\s+atendimento\b/,
   /\bhorario\s+de\s+atendimento\b/,
   /\batendemos\s+de\s+(segunda|terca|quarta|quinta|sexta|sabado|domingo)/,
@@ -22,6 +23,12 @@ const AUTO_REPLY_PATTERNS: RegExp[] = [
   /\bautomatica?\s+(mensagem|resposta)\b/,
   /\bauto\s*reply\b/,
   /\bfora\s+do\s+expediente\b/,
+  /\bentrou em contato\b/,
+  /\bem breve retorno\b/,
+  /\bretorno sua mensagem\b/,
+  /\bcaso\s+n[aã]o\s+te\s+responda\b/,
+  /\bagendamento\s+online\b/,
+  /\blink de agendamento\b/,
 ];
 
 /** Auto-resposta típica de WhatsApp Business: longa, horário, catálogo, Pix. */

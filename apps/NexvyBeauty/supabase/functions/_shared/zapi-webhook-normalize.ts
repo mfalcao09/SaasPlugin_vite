@@ -23,18 +23,20 @@ export type ZapiNormalized =
   }
   /**
    * ACK de status/entrega. outcome:
-   * - delivered = mensagem chegou no aparelho (MessageStatusCallback RECEIVED)
-   * - failed = DeliveryCallback com error (falha de envio)
-   * - ignored = sinal que NÃO alimenta delivered_count (SENT/READ/Delivery ok)
+   * - sent = aceito no servidor WA (DeliveryCallback ok / SENT)
+   * - delivered = chegou no aparelho (MessageStatusCallback RECEIVED)
+   * - read = lida/played — implica delivered, sem double-count de campanha
+   * - failed = DeliveryCallback com error
+   * - ignored = sinal que não move mensagem nem ledger
    *
-   * DeliveryCallback sem error = só "aceitou no servidor WA" — NÃO é entrega
-   * no aparelho. Contar isso como delivered inflaria a taxa e mascararia queima.
+   * DeliveryCallback sem error ≠ entrega no aparelho. Contar isso como
+   * delivered inflaria a taxa e mascararia queima.
    */
   | {
     kind: "delivery";
     instance: string;
     messageIds: string[];
-    outcome: "delivered" | "failed" | "ignored";
+    outcome: "sent" | "delivered" | "read" | "failed" | "ignored";
     statusRaw: string;
   }
   | { kind: "unknown"; instance: string; event: string };
@@ -112,7 +114,7 @@ export function normalizeZapiWebhook(
       kind: "delivery",
       instance,
       messageIds: [...new Set(ids)],
-      outcome: "ignored",
+      outcome: "sent",
       statusRaw: "DeliveryCallback",
     };
   }
@@ -130,8 +132,10 @@ export function normalizeZapiWebhook(
     const st = String(payload.status ?? "").toUpperCase();
     const outcome = st === "RECEIVED"
       ? "delivered" as const
-      : st === "SENT" || st === "READ" || st === "READ_BY_ME" || st === "PLAYED"
-      ? "ignored" as const
+      : st === "SENT"
+      ? "sent" as const
+      : st === "READ" || st === "READ_BY_ME" || st === "PLAYED"
+      ? "read" as const
       : "ignored" as const;
     return {
       kind: "delivery",

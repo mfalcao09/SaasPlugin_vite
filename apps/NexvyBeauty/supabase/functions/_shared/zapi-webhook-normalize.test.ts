@@ -41,6 +41,25 @@ Deno.test("normalizeZapiWebhook maps inbound text", () => {
   }
 });
 
+/** fromMe=true (notifySentByMe): outbound digitado no aparelho — CRM precisa captar. */
+Deno.test("normalizeZapiWebhook maps fromMe device outbound text", () => {
+  const norm = normalizeZapiWebhook({
+    type: "ReceivedCallback",
+    phone: "5547996650702",
+    fromMe: true,
+    messageId: "FROM_ME_1",
+    text: { message: "Sem problemas, Joice! Vou deixar o site." },
+    chatName: "Joice",
+  }, "camila-zapi-test");
+  assertEquals(norm.kind, "message");
+  if (norm.kind === "message") {
+    assertEquals(norm.fromMe, true);
+    assertEquals(norm.remoteJid, "5547996650702@s.whatsapp.net");
+    assertEquals(norm.content.includes("Sem problemas"), true);
+    assertEquals(norm.messageId, "FROM_ME_1");
+  }
+});
+
 Deno.test("normalizeZapiWebhook lid-only keeps @lid remoteJid", () => {
   const norm = normalizeZapiWebhook({
     type: "ReceivedCallback",
@@ -84,7 +103,7 @@ Deno.test("normalizeZapiWebhook MessageStatusCallback RECEIVED → delivery", ()
   }
 });
 
-Deno.test("normalizeZapiWebhook MessageStatusCallback READ → ignored (não double-count)", () => {
+Deno.test("normalizeZapiWebhook MessageStatusCallback READ → read (sem double-count de campanha)", () => {
   const norm = normalizeZapiWebhook({
     type: "MessageStatusCallback",
     status: "READ",
@@ -92,11 +111,11 @@ Deno.test("normalizeZapiWebhook MessageStatusCallback READ → ignored (não dou
   }, "INST");
   assertEquals(norm.kind, "delivery");
   if (norm.kind === "delivery") {
-    assertEquals(norm.outcome, "ignored");
+    assertEquals(norm.outcome, "read");
   }
 });
 
-Deno.test("normalizeZapiWebhook DeliveryCallback ok → ignored (não é entrega no aparelho)", () => {
+Deno.test("normalizeZapiWebhook DeliveryCallback ok → sent (não é entrega no aparelho)", () => {
   // CONTROLE NEGATIVO: contar DeliveryCallback como delivered mascara queima.
   const norm = normalizeZapiWebhook({
     type: "DeliveryCallback",
@@ -106,7 +125,7 @@ Deno.test("normalizeZapiWebhook DeliveryCallback ok → ignored (não é entrega
   }, "INST");
   assertEquals(norm.kind, "delivery");
   if (norm.kind === "delivery") {
-    assertEquals(norm.outcome, "ignored");
+    assertEquals(norm.outcome, "sent");
     assertEquals(norm.messageIds.includes("MID1"), true);
   }
 });

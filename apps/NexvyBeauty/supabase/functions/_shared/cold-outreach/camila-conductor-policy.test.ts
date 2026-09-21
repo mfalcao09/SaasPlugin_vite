@@ -113,6 +113,8 @@ function decide(partial: Partial<CamilaWakeInput> & Pick<CamilaWakeInput, "conve
   return decideCamilaWake({
     lastWakeAtMs: null,
     wakesInLastHour: 0,
+    // Explicit cohort membership for replay fixtures (no implicit allowlist).
+    inCohort: INCIDENT_ALLOWLIST.has(partial.conversationId),
     ...partial,
   });
 }
@@ -163,14 +165,14 @@ Deno.test("Expert 03h BRT → outside_window", () => {
   assertEquals(d.reason, "outside_window");
 });
 
-Deno.test("uuid fora da allowlist → scope_v1", () => {
+Deno.test("uuid fora da allowlist → outside_cohort", () => {
   const d = decide({
     conversationId: "00000000-0000-0000-0000-000000000000",
     messages: expertMsgs(),
     now: NOW_16BRT,
   });
   assertEquals(d.kind, "noop");
-  assertEquals(d.reason, "scope_v1");
+  assertEquals(d.reason, "outside_cohort");
 });
 
 Deno.test("cooldown 2h bloqueia debt", () => {
@@ -380,4 +382,27 @@ Deno.test("auto-reply inbound após OUT → noop (não acorda brain)", () => {
   });
   assertEquals(d.due, false);
   assertEquals(d.reason, "auto_reply_inbound");
+});
+
+Deno.test("PRD-07: inCohort false → outside_cohort noop", () => {
+  const d = decide({
+    conversationId: DEISE_ID,
+    messages: deiseMsgs(),
+    now: NOW_16BRT,
+    inCohort: false,
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.reason, "outside_cohort");
+  assertEquals(d.due, false);
+});
+
+Deno.test("PRD-07: wakesInLastHour at hard cap → cap_hour", () => {
+  const d = decide({
+    conversationId: EXPERT_ID,
+    messages: expertMsgs(),
+    now: NOW_16BRT,
+    wakesInLastHour: 8,
+  });
+  assertEquals(d.kind, "noop");
+  assertEquals(d.reason, "cap_hour");
 });

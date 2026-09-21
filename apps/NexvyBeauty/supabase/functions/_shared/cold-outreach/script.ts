@@ -72,6 +72,7 @@ export function fillAgentTemplate(tpl: string, t: ScriptTokens): string {
 /**
  * Extrai bolhas citadas do Estágio 1 / APRESENTAR:
  * `1ª "..." → 2ª "..." → 3ª "..." → 4ª "..."`.
+ * Operacional: 1ª=opening; 2ª/3ª=follow-ups D+N; cascata 15s desligada (APRESENTAR_SEQUENCE_ENABLED).
  * Fail closed se <1 bolha.
  */
 export function extractApresentarBubbles(additionalPrompt: string): string[] {
@@ -164,18 +165,19 @@ export function containsLink(text: string): boolean {
 // ── A/B (§5.1) — 1 variável por vez ──────────────────────────────────────────
 export type OpeningVariant = "A_pergunta" | "B_prova"; // A/B 1
 export type DorVariant = "A_sumiu" | "B_noshow"; // A/B 2
-export type CtaVariant = "A_hoje_amanha" | "B_quero"; // A/B 5
+export type PrecoObjectionVariant = "P1" | "P2" | "P3"; // banco fechado obj preço
+// CtaVariant A/B (raio-x) removido 2026-09-15 — oferta descontinuada.
 
 export interface Variant {
   opening: OpeningVariant;
   dor: DorVariant;
-  cta: CtaVariant;
+  precoObj: PrecoObjectionVariant;
 }
 
 export const DEFAULT_VARIANT: Variant = {
   opening: "A_pergunta",
   dor: "A_sumiu",
-  cta: "A_hoje_amanha",
+  precoObj: "P1",
 };
 
 /** Hash determinístico (FNV-1a 32-bit) — assign A/B estável por leadId, sem RNG. */
@@ -191,35 +193,39 @@ export function stableHash(s: string): number {
 /** Atribui A/B determinístico por leadId (50/50 por eixo). */
 export function assignVariant(leadId: string): Variant {
   const h = stableHash(leadId);
+  const precoObjs: PrecoObjectionVariant[] = ["P1", "P2", "P3"];
   return {
     opening: (h & 1) ? "A_pergunta" : "B_prova",
     dor: (h & 2) ? "A_sumiu" : "B_noshow",
-    cta: (h & 4) ? "A_hoje_amanha" : "B_quero",
+    precoObj: precoObjs[h % 3],
   };
 }
 
-// ── WhatsApp (follow-ups / objeções / CTA — abertura = DB via renderOpeningFromDb) ─
-const WA_FOLLOWUP_2_SUMIU = `Oi [Nome], só voltando aqui 🙂 pra você ter uma ideia: nos salões que já olhei, 3 a 4 de cada 10 clientes somem no prazo que deveriam voltar. Multiplica isso pelo que cada uma gasta num [serviço]… é dinheiro que já era seu, parado.
+// ── WhatsApp (follow-ups / objeções — abertura = DB via renderOpeningFromDb) ─
+// Copy aprovada 2026-09-15 (sem raio-x): FU A1/B1, breakup C1, obj preço P1–P3, golpe G1.
+const WA_FOLLOWUP_2_SUMIU = `Oi [Nome], só voltando aqui 🙂 nos salões que já olhei, 3 a 4 de cada 10 clientes somem no prazo em que deveriam voltar — e quase ninguém tem alguém chamando de volta todo dia.
 
-Eu monto esse raio-x com os números do [salão] — sem custo e sem acesso nenhum ao seu WhatsApp. Quer que eu puxe?`;
+Eu mostro como a NexvyBeauty coloca uma equipe de IA pra atender no WhatsApp e resgatar quem sumiu, no tom do [salão]. Quer que eu te conte em 1 minuto?`;
 
-const WA_FOLLOWUP_2_NOSHOW = `Oi [Nome], só voltando aqui 🙂 uma dor que quase todo salão tem e ninguém mede: as faltas e os no-shows. Cada horário furado num [serviço] é uma cadeira parada que não volta.
+const WA_FOLLOWUP_2_NOSHOW = `Oi [Nome], só voltando 🙂 faltas e no-shows deixam cadeira parada — e quase ninguém confirma presença de verdade, todo dia.
 
-Eu monto um raio-x disso com os números do [salão] — sem custo e sem acesso nenhum ao seu WhatsApp. Quer que eu puxe?`;
+A NexvyBeauty coloca IA pra confirmar horário e atender no WhatsApp do [salão]. Quer que eu te mostre como funciona?`;
 
 const WA_FOLLOWUP_3_BREAKUP = `[Nome], não quero te encher 🙏 esse é meu último toque por aqui.
 
-As clientes que sumiram continuam sumidas hoje só porque ninguém chamou de volta — não porque não voltariam. Se quiser ver o número do [salão], responde "quero". Se não for o momento, tranquilo, deixo a porta aberta.`;
+Se fizer sentido ter IA atendendo, confirmando presença e buscando quem não voltou no [salão], responde "quero". Se não for o momento, tranquilo — deixo a porta aberta.`;
 
-const WA_OBJ_PRECO = `Boa 🙂 mas deixa eu inverter: antes de preço, faz mais sentido eu te mostrar quanto tem parado aí — porque recuperar R$8, R$10 mil muda toda a conta. Te mostro o raio-x do [salão] de graça; você vê o número e decide se compensa. Se não compensar, fica com o raio-x de brinde. Combinado?`;
+const WA_OBJ_PRECO: Record<PrecoObjectionVariant, string> = {
+  P1: `Boa 🙂 antes de falar só o número: o que muda a conta é ter alguém (IA) atendendo, confirmando presença e buscando quem sumiu — todo dia, sem você virar refém do WhatsApp. Te mostro como funciona no dia a dia do [salão]; aí você vê se o preço faz sentido. Combinado?`,
+  P2: `Entendi a pergunta de preço 🙂 eu te falo o valor com clareza — e junto te mostro o que a equipe de IA faz de concreto (atender, marcar, confirmar, resgatar). Assim a conta fica justa. Posso?`,
+  P3: `Preço sem contexto assusta mesmo 🙂 deixa eu te mostrar o que a NexvyBeauty faz no WhatsApp do salão; você decide se vale. Sem pressão — e o valor eu te passo na sequência. Ok?`,
+};
 
-const WA_OBJ_GOLPE = `Entendo total, é o seu WhatsApp e as suas clientes 🙌 então deixa claro: eu não peço código, senha, nem acesso ao seu WhatsApp — nada disso. Eu levanto o número do meu lado e te mostro pronto.
+const WA_OBJ_GOLPE = `Entendo total, é o seu WhatsApp e as suas clientes 🙌 deixa claro: eu não peço código, senha, nem acesso ao seu WhatsApp — nada disso.
 
-E quando a gente ativa de verdade, nada sai sem você aprovar cada mensagem — no seu tom, com o nome da cliente. Você aprova antes, sempre. Quer ver como fica?`;
+Quando ativa de verdade, nada sai sem você aprovar cada mensagem — no seu tom, com o nome da cliente. Você aprova antes, sempre. Quer que eu te explique como fica?`;
 
-const WA_CTA_A = `Então bora: me responde "quero" que eu monto o raio-x do [salão] — quantas clientes sumiram, há quanto tempo e quanto vale em R$. Você olha e decide. Sem custo, sem compromisso, sem acesso ao seu Whats. Que dia te pega melhor, hoje ou amanhã?`;
-
-const WA_CTA_B = `Então bora: me responde "quero" que eu monto o raio-x do [salão] — quantas clientes sumiram, há quanto tempo e quanto vale em R$. Você olha e decide. Sem custo, sem compromisso, sem acesso ao seu Whats.`;
+// WA_CTA_A / WA_CTA_B removidos 2026-09-15 — oferta raio-x descontinuada.
 
 // ── Instagram DM ──────────────────────────────────────────────────────────────
 const IG_OPENING = `Oii [Nome]! Aqui é a [SeuNome], da Nexvy 🌿
@@ -232,7 +238,7 @@ const IG_FOLLOWUP_2 = `[Nome], só pra não passar batido 👀 nos salões que j
 
 const IG_OBJ_GOLPE = `Entendo total 🙌 não peço acesso a nada seu — nem senha, nem seu Direct. Eu levanto o número do meu lado e te mostro. E nada é enviado pra cliente sem você aprovar antes. Quer ver?`;
 
-const IG_CTA = `Me responde só "quero" aqui que a gente combina o melhor jeito de eu te mostrar o raio-x do seu salão — sem custo e sem acesso a nada seu. 🙌`;
+// IG_CTA (raio-x) removido 2026-09-15 — mesma descontinuação do CTA WA.
 
 // ── API pública de render ────────────────────────────────────────────────────
 export type ObjectionKind = "preco" | "golpe";
@@ -260,16 +266,33 @@ export function renderFollowup(
   return fill(WA_FOLLOWUP_3_BREAKUP, tokens);
 }
 
-/** Resposta de objeção. IG só trata golpe/robô (preço raro no DM). */
-export function renderObjection(channel: Channel, kind: ObjectionKind, tokens: ScriptTokens): string {
+/** Resposta de objeção. IG só trata golpe/robô (preço raro no DM).
+ *  Preço WA: só P1|P2|P3 do banco fechado (via variant.precoObj). */
+export function renderObjection(
+  channel: Channel,
+  kind: ObjectionKind,
+  tokens: ScriptTokens,
+  variant: Variant = DEFAULT_VARIANT,
+): string {
   if (channel === "instagram") return fill(IG_OBJ_GOLPE, tokens);
-  return fill(kind === "preco" ? WA_OBJ_PRECO : WA_OBJ_GOLPE, tokens);
+  if (kind === "preco") {
+    return fill(WA_OBJ_PRECO[variant.precoObj], tokens);
+  }
+  return fill(WA_OBJ_GOLPE, tokens);
 }
 
-/** CTA pra demo/raio-x. WhatsApp respeita A/B de CTA; IG é fixo. */
-export function renderCta(channel: Channel, tokens: ScriptTokens, variant: Variant = DEFAULT_VARIANT): string {
-  if (channel === "instagram") return fill(IG_CTA, tokens);
-  return fill(variant.cta === "A_hoje_amanha" ? WA_CTA_A : WA_CTA_B, tokens);
+/**
+ * CTA raio-x removido (oferta descontinuada 2026-09-15).
+ * Fail closed: nenhum caller deve pedir CTA A/B.
+ */
+export function renderCta(
+  _channel: Channel,
+  _tokens: ScriptTokens,
+  _variant: Variant = DEFAULT_VARIANT,
+): never {
+  throw new Error(
+    "renderCta removido: oferta raio-x / CTA A|B descontinuada — não usar",
+  );
 }
 
 /**

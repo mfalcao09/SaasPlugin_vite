@@ -133,3 +133,41 @@ Deno.test("safety kernel: human reply cancels cold and bubbles are capped", () =
 Deno.test("safety kernel: healthy reply is allowed", () => {
   assertEquals(evaluateAgentSafety(base), { allowed: true, reason: null });
 });
+
+Deno.test("safety kernel: opening_part after opening skips proactive caps", () => {
+  assertEquals(
+    evaluateAgentSafety({
+      ...base,
+      actionType: "opening_part",
+      openingCount: 1,
+      followupCount: 0,
+      proactive: true,
+      proactiveLast24h: 1,
+      msSinceLastProactive: 15_000,
+      humanInboundAfterLastOutbound: false,
+    }).allowed,
+    true,
+  );
+  assertEquals(
+    evaluateAgentSafety({
+      ...base,
+      actionType: "opening_part",
+      openingCount: 0,
+      followupCount: 0,
+      proactive: true,
+      humanInboundAfterLastOutbound: false,
+    }).reason,
+    "opening_part_without_opening",
+  );
+  assertEquals(
+    evaluateAgentSafety({
+      ...base,
+      actionType: "opening_part",
+      openingCount: 1,
+      followupCount: 3,
+      proactive: true,
+      humanInboundAfterLastOutbound: false,
+    }).reason,
+    "opening_part_cap",
+  );
+});

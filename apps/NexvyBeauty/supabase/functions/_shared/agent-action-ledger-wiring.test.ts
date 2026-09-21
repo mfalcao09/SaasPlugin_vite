@@ -33,6 +33,16 @@ Deno.test("Action Ledger wiring: every real cold WhatsApp delivery uses wrapper"
   assertEquals(cold.includes("safety_reservation_input_missing"), true);
 });
 
+Deno.test("Action Ledger wiring: bound Camila chip does not fall back to Duda", () => {
+  assertEquals(brain.includes("evaluateChannelOwnership"), true);
+  assertEquals(brain.includes("channel_owner_denied"), true);
+  assertEquals(
+    brain.includes("amarração de canal aponta agente") &&
+      brain.includes("a SDR abre"),
+    false,
+  );
+});
+
 Deno.test("Action Ledger wiring: inbound cancellation precedes memory and brain", () => {
   const cancel = webhook.indexOf("pcrm_cancel_pending_agent_actions");
   const memory = webhook.indexOf("appendCanonicalLeadMemory", cancel);
