@@ -336,6 +336,28 @@ Deno.test("formatCanonicalLeadContext: includes state and only active same-lead 
   assertEquals(block.includes("Fato supersedido"), false);
 });
 
+Deno.test("formatCanonicalLeadContext: Instagram e interno do piloto não entram no prompt", () => {
+  const block = formatCanonicalLeadContext({
+    state: makeState({
+      facts: {
+        harness: {
+          greeting: "Andressa",
+          instagram_handle: "espaco_andressamanoel",
+          cohort: "pilot-v1-shortlist-d3",
+          pilot_order: 10,
+          resume_exception: false,
+        },
+      },
+    }),
+    leadId: LEAD_ID,
+    productId: PRODUCT_A,
+    memories: [],
+  });
+  assertEquals(block.includes("espaco_andressamanoel"), false);
+  assertEquals(block.includes("pilot-v1"), false);
+  assertEquals(block.includes("Andressa"), true);
+});
+
 Deno.test("ensureCanonicalLeadState: accepts create and existing-state conflict", async () => {
   const calls: Array<Record<string, unknown>> = [];
   const created = await ensureCanonicalLeadState(

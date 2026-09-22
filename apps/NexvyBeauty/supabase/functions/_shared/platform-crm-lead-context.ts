@@ -262,6 +262,28 @@ function renderJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** Campos de operação do piloto — não são fatos da lead. Instagram convida biografia inventada. */
+const HARNESS_OPS_FACT_KEYS = new Set([
+  "instagram_handle",
+  "cohort",
+  "pilot_order",
+  "resume_exception",
+]);
+
+/** Ficha no prompt: só o que ela disse ou o que o funil autorizou. Sem IG, sem interno. */
+export function factsForPrompt(facts: unknown): unknown {
+  if (!facts || typeof facts !== "object" || Array.isArray(facts)) return facts;
+  const copy: Record<string, unknown> = { ...facts as Record<string, unknown> };
+  const harness = copy.harness;
+  if (harness && typeof harness === "object" && !Array.isArray(harness)) {
+    const h: Record<string, unknown> = { ...harness as Record<string, unknown> };
+    for (const k of HARNESS_OPS_FACT_KEYS) delete h[k];
+    if (Object.keys(h).length) copy.harness = h;
+    else delete copy.harness;
+  }
+  return copy;
+}
+
 /**
  * Ficha canônica pronta para prompt. Memórias inativas, de outra lead ou de
  * outro produto são eliminadas antes da renderização.
@@ -292,8 +314,8 @@ export function formatCanonicalLeadContext(input: {
     input.state.next_action
       ? `Próxima ação autorizada: ${input.state.next_action}`
       : "",
-    renderJson(input.state.facts)
-      ? `Fatos: ${renderJson(input.state.facts)}`
+    renderJson(factsForPrompt(input.state.facts))
+      ? `Fatos: ${renderJson(factsForPrompt(input.state.facts))}`
       : "",
     renderJson(input.state.objections)
       ? `Objeções: ${renderJson(input.state.objections)}`
