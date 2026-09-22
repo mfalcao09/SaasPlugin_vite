@@ -320,8 +320,14 @@ Deno.serve(async (req: Request) => {
   // 2) Dedup GLOBAL por handle contra a base do produto (leads + opt-out + lixeira).
   const candidates = handles.slice(0, 500); // teto de segurança p/ o .in()
   const known = new Set<string>();
-  for (const table of ['platform_crm_extracted_leads', 'platform_crm_lead_optout', 'platform_crm_lead_excluded']) {
-    const { data } = await sb.from(table).select('handle').eq('product_id', productId).in('handle', candidates);
+  // Universo multi-fase: cobre staging + opt-out + lixeira E TAMBÉM os leads que
+  // já avançaram no funil (contatado/remarketing), que antes escapavam daqui.
+  {
+    const { data } = await sb
+      .from('platform_crm_lead_universe')
+      .select('handle')
+      .eq('product_id', productId)
+      .in('handle', candidates);
     for (const r of (data ?? [])) {
       const h = r?.handle ? String(r.handle).replace(/^@/, '').toLowerCase() : null;
       if (h) known.add(h);
