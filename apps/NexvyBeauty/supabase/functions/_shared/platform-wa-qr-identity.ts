@@ -31,6 +31,13 @@ export function waQrVisitorIdsForLookup(digits: string): string[] {
   ];
 }
 
+/** Dígitos do visitor_id wa_qr:/wa_evo:. Vazio se não for QR. */
+export function visitorDigitsFromWaQrId(visitorId: string | null | undefined): string {
+  const raw = String(visitorId ?? "");
+  const m = raw.match(/^wa_(?:qr|evo):(\d+)$/i);
+  return m?.[1] ?? "";
+}
+
 export function isWaQrChannel(channel: string | null | undefined): boolean {
   return WA_QR_CHANNELS.includes(String(channel ?? ""));
 }

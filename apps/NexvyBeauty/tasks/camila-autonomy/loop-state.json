@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "program": "camila-autonomy-recovery",
+  "release_state": "OFF",
+  "current_prd": "PRD-05",
+  "state": "QUEUED",
+  "retry_count": 0,
+  "completed_prds": [
+    "PRD-01",
+    "PRD-02",
+    "PRD-03",
+    "PRD-04"
+  ],
+  "master_gate_green": false,
+  "real_leads_allowed": false,
+  "last_checkpoint": "evidence/PRD-04/safety-ledger-2026-09-13.json"
+}

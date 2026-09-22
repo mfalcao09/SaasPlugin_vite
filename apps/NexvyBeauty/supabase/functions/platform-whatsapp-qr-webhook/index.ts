@@ -33,18 +33,55 @@ import {
   WA_QR_INSTANCES_TABLE,
   waQrVisitorId,
   waQrVisitorIdsForLookup,
+  visitorDigitsFromWaQrId,
 } from "../_shared/platform-wa-qr-identity.ts";
 import {
   createPlatformEvolutionWebhookHandler,
 } from "../_shared/platform-evolution-webhook-handler.ts";
+import { findOrCreateLeadByPhone } from "../_shared/platform-crm-find-create-lead.ts";
+import { shouldReopenClosedWaQrConversation } from "../_shared/wa-qr-conversation-reopen.ts";
+import {
+  decidePathAClosedInbound,
+  hoursSinceR2FromMeta,
+  isPathAProtectedClosed,
+} from "../_shared/cold-outreach/path-a-reopen-decision.ts";
+import { getReopenIntentMode } from "../_shared/cold-outreach/path-a-flags.ts";
+import { harnessInboundMetaPatch } from "../_shared/camila-harness/runtime-bridge.ts";
+import { loadHarnessHolidayDates } from "../_shared/camila-harness/holidays.ts";
+import { pathARuntimeAllowed } from "../_shared/camila-harness/legacy-cutover.ts";
+import { enqueueReactiveFromInbound } from "../_shared/camila-harness/reactive-enqueue.ts";
+import {
+  harnessWakeConversationPatch,
+  shouldApplyHarnessWakeBrain,
+} from "../_shared/camila-harness/harness-wake-brain.ts";
+import { markLeadInService } from "../_shared/camila-harness/harness-stage-db.ts";
+import { harnessAllowsInboundBrain } from "../_shared/camila-harness/harness-brain-gate.ts";
+import { decideActivation } from "../_shared/camila-harness/porta-juiz.ts";
+import { buildHarnessJob } from "../_shared/camila-harness/harness-puller.ts";
+import {
+  coldShouldClassifyText,
+  shouldDispatchSalesBrainFromWebhook,
+} from "../_shared/camila-harness/harness-job-gate.ts";
+import {
+  queueFromMeta,
+  metaWithQueue,
+} from "../_shared/camila-harness/pilot-queue-store.ts";
+import {
+  loadHarnessLeadByPhone,
+  loadPreselectedPilotLeads,
+  manualListFromPreselected,
+} from "../_shared/camila-harness/harness-roster-db.ts";
+import {
+  appendCanonicalLeadMemory,
+  buildLeadName,
+  ensureCanonicalLeadState,
+} from "../_shared/platform-crm-lead-context.ts";
 import { ensurePlatformLeadInPipeline } from "../_shared/platform-crm-pipeline.ts";
 import { broadcastPlatformNewMessage } from "../_shared/platform-crm-webchat.ts";
-import { phoneVariantsWithPlusBR } from "../_shared/phone-e164-variants.ts";
 import {
+  buildWaQrConversationIdentity,
   pickCanonicalWaQrConversation,
   mergedIntoTargetId,
-  waQrCanonicalVisitorPhone,
-  waQrVisitorIdsForPhoneVariants,
   type WaQrConversationRow,
 } from "../_shared/wa-qr-conversation-resolve.ts";
 import {
@@ -59,12 +96,16 @@ import {
   isZapiWebhookPayload,
   normalizeZapiWebhook,
 } from "../_shared/zapi-webhook-normalize.ts";
+import { applyQrDeliveryAck } from "../_shared/agent-delivery-ack.ts";
+import { buildAssertivenessInboundMeta } from "../_shared/cold-outreach/camila-learning.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+type DeliveryOutcome = "sent" | "delivered" | "read" | "failed";
 
 /** Mídia básica extraída de uma mensagem whatsmeow/Baileys (cópia do V5, sem
  *  rawMessage/base64: não portamos o pipeline de download — persistimos só a
@@ -381,64 +422,19 @@ async function ensureLead(
   pushName: string | null,
   productId: string | null,
 ): Promise<string | null> {
-  try {
-    const phonePlus = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
-    // `.in()` e não `.or()`: o array é passado COMO VALOR ao client, que serializa
-    // e cita cada item. No `.or()` os valores viram uma string de filtro PostgREST
-    // onde `,`/`(`/`)` são delimitadores e o escape seria manual. As variantes só
-    // contêm dígitos e "+", mas a construção segura não fica dependendo disso.
-    const variants = phoneVariantsWithPlusBR(fromDigits);
-    // Fallback defensivo: telefone que o helper não consegue variar (<8 dígitos)
-    // preserva exatamente o casamento anterior em vez de virar `.in(…, [])`,
-    // que casaria ZERO e criaria lead novo sempre.
-    const phoneMatches = variants.length > 0 ? variants : [fromDigits, phonePlus];
-    const { data: existing, error: lookupError } = await supabase
-      .from("platform_crm_leads")
-      .select("id")
-      .in("phone", phoneMatches)
-      // Com N variantes o SELECT pode casar mais de um lead; o mais antigo é o
-      // canônico. Torna determinístico o que antes era ordem arbitrária do banco.
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (lookupError) {
-      // O erro do SELECT era DESCARTADO aqui. O fluxo segue caindo no INSERT
-      // (comportamento preservado), mas o caminho que gera lead duplicado deixa
-      // de ser invisível.
-      console.error(
-        `[platform-whatsapp-qr-webhook] lead lookup by phone FAILED phone=${phonePlus} ` +
-          `reason=${lookupError?.message ?? JSON.stringify(lookupError)}`,
-      );
-    }
-    if (existing?.id) return existing.id as string;
-
-    const { data: created, error } = await supabase
-      .from("platform_crm_leads")
-      .insert({
-        name: pushName || `WhatsApp ${phonePlus}`,
-        phone: phonePlus,
-        source: WA_QR_CHANNEL_CANONICAL,
-        lead_channel: WA_QR_CHANNEL_CANONICAL,
-        // Só no INSERT: lead existente nunca tem product_id sobrescrito.
-        ...(productId ? { product_id: productId } : {}),
-      })
-      .select("id")
-      .single();
-    if (error) {
-      console.error("[platform-whatsapp-qr-webhook] auto-create lead failed (non-fatal):", error);
-      return null;
-    }
-    return (created?.id as string) ?? null;
-  } catch (e) {
-    console.error("[platform-whatsapp-qr-webhook] ensureLead error (non-fatal):", e);
-    return null;
-  }
+  return await findOrCreateLeadByPhone(supabase, {
+    phone: fromDigits,
+    pushName,
+    productId,
+    source: WA_QR_CHANNEL_CANONICAL,
+    leadChannel: WA_QR_CHANNEL_CANONICAL,
+  });
 }
 
 /** Conversa da caixa Evolution (isolada por instância, V5-style) ou cria
  *  (channel='whatsapp_evolution'). visitor_id usa prefixo 'wa_evo:' pra nunca
  *  colidir com a conversa 'wa:' do canal Meta Cloud do mesmo telefone.
- *  Reabre fechada como bot_active — padrão do inbox de plataforma. */
+ *  Reabre fechada como bot_active — EXCETO do_not_contact/opt-out/remarketing. */
 async function ensureConversation(
   supabase: any,
   instance: any,
@@ -448,11 +444,10 @@ async function ensureConversation(
 ): Promise<any | null> {
   // Lookup por TODAS as variantes BR (com/sem 9º) — senão inbound sem 9 cria
   // thread nova e o interesse da lead some da canônica (Jeissiane 2026-09-03).
-  const visitorIds = waQrVisitorIdsForPhoneVariants(fromDigits);
-  const visitorId = waQrVisitorId(
-    (waQrCanonicalVisitorPhone(fromDigits).replace(/\D/g, "") || fromDigits),
-  );
-  const phoneCanon = waQrCanonicalVisitorPhone(fromDigits) || `+${fromDigits}`;
+  const identity = buildWaQrConversationIdentity(fromDigits);
+  const visitorIds = identity.visitorIds;
+  const visitorId = identity.visitorId || waQrVisitorId(fromDigits);
+  const phoneCanon = identity.visitorPhone || `+${fromDigits}`;
 
   const { data: byVisitor } = await supabase
     .from("platform_crm_conversations")
@@ -466,7 +461,7 @@ async function ensureConversation(
   let candidates = (byVisitor ?? []) as WaQrConversationRow[];
 
   if (candidates.length === 0) {
-    const phoneVariants = phoneVariantsWithPlusBR(fromDigits);
+    const phoneVariants = identity.phoneVariants;
     if (phoneVariants.length > 0) {
       const { data: byPhone } = await supabase
         .from("platform_crm_conversations")
@@ -501,8 +496,12 @@ async function ensureConversation(
   }
 
   if (conversation && conversation.status === "closed") {
-    // Só reabre se NÃO for perdedora de merge (sem merged_into ou alvo inválido).
-    if (!mergedIntoTargetId(conversation)) {
+    // Só reabre se NÃO for perdedora de merge (sem merged_into ou alvo inválido)
+    // E se NÃO for DNC/opt-out (Joice 2026-09-15: "Pode deixar" reabria bot_active).
+    if (
+      !mergedIntoTargetId(conversation) &&
+      shouldReopenClosedWaQrConversation(conversation)
+    ) {
       const { data: reopened, error } = await supabase
         .from("platform_crm_conversations")
         .update({
@@ -516,15 +515,26 @@ async function ensureConversation(
         .select()
         .single();
       if (!error && reopened) conversation = reopened;
+    } else if (!shouldReopenClosedWaQrConversation(conversation)) {
+      console.warn(
+        `[platform-whatsapp-qr-webhook] NÃO reabriu closed (DNC/opt-out) conversation_id=${conversation.id}`,
+      );
     }
   }
 
+  // Lead ANTES do INSERT: disparo/fromMe não pode nascer órfã e o inbound
+  // não pode abrir a 2ª row só porque o lead ainda não existia no PATCH.
+  const boundLeadId = conversation?.lead_id
+    ? String(conversation.lead_id)
+    : await ensureLead(supabase, fromDigits, pushName, productId);
+
   if (!conversation) {
+    const resolvedVisitorName = buildLeadName(pushName, phoneCanon);
     const { data: created, error } = await supabase
       .from("platform_crm_conversations")
       .insert({
         visitor_id: visitorId,
-        visitor_name: pushName || null,
+        visitor_name: resolvedVisitorName.startsWith("WhatsApp ") ? null : resolvedVisitorName,
         visitor_phone: phoneCanon,
         visitor_whatsapp: phoneCanon,
         channel: WA_QR_CHANNEL_CANONICAL,
@@ -532,6 +542,7 @@ async function ensureConversation(
         needs_human: false,
         wa_qr_instance_id: instance.id,
         ...(productId ? { product_id: productId } : {}),
+        ...(boundLeadId ? { lead_id: boundLeadId } : {}),
       })
       .select()
       .single();
@@ -552,36 +563,36 @@ async function ensureConversation(
     if (!patchError) conversation.product_id = productId;
   }
 
-  if (!conversation.lead_id) {
-    const leadId = await ensureLead(supabase, fromDigits, pushName, productId);
-    if (leadId) {
-      await supabase
-        .from("platform_crm_conversations")
-        .update({ lead_id: leadId })
-        .eq("id", conversation.id);
-      conversation.lead_id = leadId;
-      await ensurePlatformLeadInPipeline(supabase, leadId);
-    } else {
-      // PR-BDR-3 — antes daqui se saía em SILÊNCIO: a conversa seguia sem
-      // lead_id e ficava invisível no CRM. Não é hipótese — o mesmo padrão no
-      // canal oficial produziu 4 conversas órfãs, TODAS com telefone
-      // preenchido, uma com 56 mensagens, degradando por semanas sem ninguém
-      // notar.
-      //
-      // Saída escolhida: ALERTA inequívoco. Não pode ser fatal (a mensagem da
-      // lead ainda precisa ser persistida — quem chama segue adiante), e não há
-      // no schema de platform_crm_conversations coluna de "precisa de vínculo"
-      // — inventar uma aqui exigiria migration e não é o escopo desta PR. O
-      // alerta carrega tudo que é preciso pra achar a conversa e vincular
-      // depois, no mesmo formato greppável de notifyColdOutreachInbound.
-      console.error(
-        `[platform-whatsapp-qr-webhook] ORPHAN CONVERSATION — sem lead_id ` +
-          `conversation_id=${conversation.id} visitor_id=${visitorId} ` +
-          `phone=+${fromDigits} wa_qr_instance_id=${instance.id} ` +
-          `product_id=${productId ?? "null"} — a conversa NÃO aparece no CRM ` +
-          `enquanto não for vinculada a um lead`,
-      );
-    }
+  if (!conversation.lead_id && boundLeadId) {
+    await supabase
+      .from("platform_crm_conversations")
+      .update({ lead_id: boundLeadId })
+      .eq("id", conversation.id);
+    conversation.lead_id = boundLeadId;
+  }
+
+  if (conversation.lead_id) {
+    await ensurePlatformLeadInPipeline(supabase, String(conversation.lead_id));
+  } else {
+    // PR-BDR-3 — conversa sem lead_id some do CRM. Alerta greppável.
+    console.error(
+      `[platform-whatsapp-qr-webhook] ORPHAN CONVERSATION — sem lead_id ` +
+        `conversation_id=${conversation.id} visitor_id=${visitorId} ` +
+        `phone=+${fromDigits} wa_qr_instance_id=${instance.id} ` +
+        `product_id=${productId ?? "null"} — a conversa NÃO aparece no CRM ` +
+        `enquanto não for vinculada a um lead`,
+    );
+  }
+
+  const canonicalProductId = String(conversation.product_id ?? productId ?? "");
+  if (conversation.lead_id && canonicalProductId) {
+    conversation.canonical_state_ready = await ensureCanonicalLeadState(
+      supabase,
+      String(conversation.lead_id),
+      canonicalProductId,
+    );
+  } else {
+    conversation.canonical_state_ready = false;
   }
 
   return conversation;
@@ -633,8 +644,17 @@ type ColdOutreachInboundVerdict = { ok: boolean; optOut: boolean; suppressBrain:
 // silêncio: todo caminho de erro sai em console.error com o conversation_id.
 async function notifyColdOutreachInbound(
   supabase: any,
-  a: { productId: string | null; conversationId: string; telefone: string; text: string },
+  a: {
+    productId: string | null;
+    conversationId: string;
+    telefone: string;
+    text: string;
+    inboundEventId: string;
+  },
 ): Promise<ColdOutreachInboundVerdict> {
+  if (!coldShouldClassifyText(a.productId)) {
+    return { ok: true, optOut: false, suppressBrain: false };
+  }
   try {
     const { data, error } = await supabase.functions.invoke("platform-cold-outreach", {
       body: {
@@ -643,6 +663,7 @@ async function notifyColdOutreachInbound(
         conversation_id: a.conversationId,
         telefone: a.telefone,
         text: a.text,
+        inbound_event_id: a.inboundEventId,
       },
     });
     if (error) {
@@ -976,9 +997,44 @@ async function handleMessage(
   // Grupos ficam fora do inbox de vendas (igual V5).
   if (norm.remoteJid.endsWith("@g.us")) return ok({ skipped: "group" });
 
-  // JID @lid sem telefone real resolvido (Alt) → sem identidade utilizável.
-  const fromDigits = phoneDigitsFromJid(norm.remoteJid);
-  if (!fromDigits) return ok({ skipped: "no_phone" });
+  // JID @lid sem telefone real resolvido (Alt) → tenta casar conversa pelo wa_lid
+  // já gravado no inbound. Sem isso, fromMe digitado no aparelho (MD) cai em
+  // skipped:no_phone em silêncio e o painel fica mudo.
+  const lidDigits = lidDigitsFromWaLid(
+    norm.lidJid || (norm.remoteJid.includes("@lid") ? norm.remoteJid : ""),
+  );
+  let fromDigits = phoneDigitsFromJid(norm.remoteJid);
+  if (!fromDigits && lidDigits) {
+    const { data: byLid } = await supabase
+      .from("platform_crm_conversations")
+      .select("id, visitor_id")
+      .eq("wa_qr_instance_id", instance.id)
+      .in("channel", [...WA_QR_CHANNELS])
+      .filter("metadata->>wa_lid", "eq", lidDigits)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const lidConv = byLid?.[0];
+    const recovered = visitorDigitsFromWaQrId(lidConv?.visitor_id);
+    if (recovered) {
+      fromDigits = recovered;
+      console.log("[platform-whatsapp-qr-webhook] lid-resolved", {
+        fromMe: norm.fromMe,
+        lid: lidDigits,
+        digits: fromDigits,
+        conversation_id: lidConv?.id,
+        messageId: norm.messageId || null,
+      });
+    }
+  }
+  if (!fromDigits) {
+    console.warn("[platform-whatsapp-qr-webhook] skip no_phone", {
+      fromMe: norm.fromMe,
+      remoteJid: norm.remoteJid,
+      lid: lidDigits || null,
+      messageId: norm.messageId || null,
+    });
+    return ok({ skipped: "no_phone" });
+  }
 
   // Webhook Baileys pode entregar ambos JIDs como PN (addressingMode=lid).
   // O store findMessages ainda tem remoteJid=@lid — recupera e persiste wa_lid.
@@ -1005,7 +1061,14 @@ async function handleMessage(
   const media = norm.media;
   const contentType = media ? media.type : "text";
   const content = norm.content || (media ? `[${media.type}]` : "");
-  if (!content && !media) return ok({ skipped: "empty" });
+  if (!content && !media) {
+    console.warn("[platform-whatsapp-qr-webhook] skip empty", {
+      fromMe: norm.fromMe,
+      remoteJid: norm.remoteJid,
+      messageId: norm.messageId || null,
+    });
+    return ok({ skipped: "empty" });
+  }
 
   // Shape metadata.media espelhado do inbox (kind/mime/url/caption); a URL é
   // a que a Evolution der (pode ser CDN .enc do WhatsApp — o pipeline de
@@ -1024,27 +1087,49 @@ async function handleMessage(
   // fromMe = enviada pelo APARELHO conectado (fora do CRM) → outbound de
   // agente com metadata.source='external_device' (V5; o front já reconhece).
   if (norm.fromMe) {
-    const visitorIds = waQrVisitorIdsForLookup(fromDigits);
-    const { data: rows } = await supabase
+    const identity = buildWaQrConversationIdentity(fromDigits);
+    const { data: byVisitor } = await supabase
       .from("platform_crm_conversations")
-      .select("id, status")
-      .in("visitor_id", visitorIds)
+      .select("id, status, lead_id, visitor_phone, current_agent_id, created_at, metadata")
+      .in("visitor_id", identity.visitorIds.length ? identity.visitorIds : waQrVisitorIdsForLookup(fromDigits))
       .in("channel", [...WA_QR_CHANNELS])
       .eq("wa_qr_instance_id", instance.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    let conv = rows?.[0] ?? null;
+      .order("created_at", { ascending: true })
+      .limit(20);
+    let fromMeCandidates = (byVisitor ?? []) as WaQrConversationRow[];
+    if (fromMeCandidates.length === 0 && identity.phoneVariants.length > 0) {
+      const { data: byPhone } = await supabase
+        .from("platform_crm_conversations")
+        .select("id, status, lead_id, visitor_phone, current_agent_id, created_at, metadata")
+        .in("visitor_phone", identity.phoneVariants)
+        .in("channel", [...WA_QR_CHANNELS])
+        .eq("wa_qr_instance_id", instance.id)
+        .order("created_at", { ascending: true })
+        .limit(20);
+      fromMeCandidates = (byPhone ?? []) as WaQrConversationRow[];
+    }
+    let conv = pickCanonicalWaQrConversation(fromMeCandidates);
     // BDR Camila: 1º toque no aparelho pode NASCER conversa (gate por nome/flag).
     // Demais instâncias mantêm o skip A1.3 (inbox nasce no inbound).
     if (!conv) {
       if (!allowsDeviceOutboundCreateConversation(instance)) {
+        console.warn("[platform-whatsapp-qr-webhook] skip device_outbound_no_conversation", {
+          digits: fromDigits,
+          messageId: norm.messageId || null,
+        });
         return ok({ skipped: "device_outbound_no_conversation" });
       }
       conv = await ensureConversation(
         supabase, instance, fromDigits, null, productId,
       );
       if (!conv) return ok({ stored: false, skipped: "device_outbound_create_failed" });
+    } else if (!conv.lead_id) {
+      conv = await ensureConversation(
+        supabase, instance, fromDigits, null, productId,
+      ) ?? conv;
     }
+    if (!conv?.id) return ok({ stored: false, skipped: "device_outbound_no_conversation" });
+    const fromMeConversationId = String(conv.id);
 
     // Dedupe extra do V5: mesmo conteúdo outbound nos últimos 60s na mesma
     // conversa (eco do envio feito pelo próprio CRM via Evolution).
@@ -1053,7 +1138,7 @@ async function handleMessage(
       const { data: recent } = await supabase
         .from("platform_crm_messages")
         .select("id")
-        .eq("conversation_id", conv.id)
+        .eq("conversation_id", fromMeConversationId)
         .eq("direction", "outbound")
         .eq("content", content)
         .gte("created_at", since)
@@ -1065,7 +1150,7 @@ async function handleMessage(
     const { data: inserted, error } = await supabase
       .from("platform_crm_messages")
       .insert({
-        conversation_id: conv.id,
+        conversation_id: fromMeConversationId,
         direction: "outbound",
         sender_type: "agent",
         content: content || "[mídia]",
@@ -1093,14 +1178,14 @@ async function handleMessage(
     await supabase
       .from("platform_crm_conversations")
       .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conv.id);
-    await persistConversationWaLid(supabase, String(conv.id), norm.lidJid);
-    await broadcastPlatformNewMessage(supabase, String(conv.id), inserted);
+      .eq("id", fromMeConversationId);
+    await persistConversationWaLid(supabase, fromMeConversationId, norm.lidJid);
+    await broadcastPlatformNewMessage(supabase, fromMeConversationId, inserted);
     return ok({ stored: "external_outbound" });
   }
 
   // ---- INBOUND ----
-  const conversation = await ensureConversation(
+  let conversation = await ensureConversation(
     supabase, instance, fromDigits, norm.pushName || null, productId,
   );
   if (!conversation) return ok({ stored: false });
@@ -1145,6 +1230,8 @@ async function handleMessage(
         push_name: norm.pushName || null,
         ...(audioTranscript ? { transcription: audioTranscript } : {}),
         ...(inboundMediaMeta ? { media: inboundMediaMeta } : {}),
+        // PRD-08 / E5.3b — label de assertividade no fio (affirmative|corrective|neutral)
+        ...buildAssertivenessInboundMeta(inboundContent),
       },
     })
     .select()
@@ -1157,11 +1244,327 @@ async function handleMessage(
     return ok({ stored: false });
   }
 
+  // Path A (PRD-10 / F3) — PRD-12 cutover: dead unless LEGACY_CAMILA_SENDERS=1 + PATH_A_RUNTIME=on
+  const pathAMode = getReopenIntentMode();
+  if (
+    pathARuntimeAllowed() &&
+    pathAMode !== "off" &&
+    isPathAProtectedClosed(conversation)
+  ) {
+    const decision = decidePathAClosedInbound({
+      text: inboundContent,
+      conversation,
+      hoursSinceR2: hoursSinceR2FromMeta(conversation.metadata),
+      inboundMessageId: String(inserted.id),
+      mode: pathAMode,
+      phoneDigits: fromDigits,
+    });
+    console.log(
+      `[platform-whatsapp-qr-webhook] path_a_decision ${JSON.stringify({
+        conversation_id: conversation.id,
+        inbound_message_id: decision.inbound_message_id,
+        mode: decision.mode,
+        class: decision.class,
+        reason_code: decision.reason_code,
+        desired: decision.path_a_desired,
+        apply_mutation: decision.apply_mutation,
+        path_a_sends: decision.path_a_sends,
+        divergence: decision.divergence,
+        classifier_version: decision.classifier_version,
+      })}`,
+    );
+    const prevMeta =
+      inserted.metadata && typeof inserted.metadata === "object"
+        ? inserted.metadata as Record<string, unknown>
+        : {};
+    const { error: pathAMetaErr } = await supabase
+      .from("platform_crm_messages")
+      .update({
+        metadata: {
+          ...prevMeta,
+          path_a_decision: {
+            mode: decision.mode,
+            class: decision.class,
+            reason_code: decision.reason_code,
+            classifier_version: decision.classifier_version,
+            path_a_desired: decision.path_a_desired,
+            apply_mutation: decision.apply_mutation,
+            path_a_sends: decision.path_a_sends,
+            divergence: decision.divergence,
+            farewell_window_active: decision.farewell_window_active,
+          },
+        },
+      })
+      .eq("id", inserted.id);
+    if (pathAMetaErr) {
+      // Fail-closed para Path A enforce: sem decisão persistida, não mutar.
+      console.error(
+        `[platform-whatsapp-qr-webhook] path_a_decision persist failed conversation_id=${conversation.id}: ${pathAMetaErr.message}`,
+      );
+    } else if (decision.apply_mutation && decision.path_a_desired === "reopen_soft") {
+      // F4+ enforce allowlist — F3 shadow nunca entra aqui.
+      const effects = decision.effects;
+      const { data: reopened, error: reopenErr } = await supabase
+        .from("platform_crm_conversations")
+        .update({
+          status: "bot_active",
+          needs_human: false,
+          accepted_at: null,
+          accepted_by: null,
+          assigned_to: null,
+          metadata: {
+            ...(typeof conversation.metadata === "object" && conversation.metadata
+              ? conversation.metadata as Record<string, unknown>
+              : {}),
+            do_not_contact: false,
+            cold_suppressed: false,
+            soft_opt_out_active: false,
+            cold_not_before: effects?.coldNotBeforeIso ?? null,
+            path_a_reopened_at: new Date().toISOString(),
+            path_a_reopen_from_message_id: inserted.id,
+          },
+        })
+        .eq("id", conversation.id)
+        .select()
+        .single();
+      if (!reopenErr && reopened) conversation = reopened;
+    }
+  }
+
+  // Camila Harness v1.2 — triage → metadata; PRD-12: enqueue reply/exit na fila piloto (sem WA aqui).
+  let harnessReplyAllowed = false;
+  let harnessReplyReason = "harness_triage_unavailable";
+  try {
+    const prevConvMeta =
+      conversation.metadata && typeof conversation.metadata === "object"
+        ? conversation.metadata as Record<string, unknown>
+        : {};
+    const holidayDates = await loadHarnessHolidayDates(supabase);
+    const patch = harnessInboundMetaPatch(prevConvMeta, inboundContent, {
+      now: new Date(),
+      holidayDates,
+    });
+    harnessReplyAllowed = patch.replyAllowed;
+    harnessReplyReason = patch.replyReason;
+    let nextMeta = patch.metadata;
+    let wakeReopen = false;
+    // Fila global do piloto mora em product settings; aqui só enfileira se product
+    // tiver HARNESS_PILOT_PRODUCT_ID matching — senão anota intent na conversa.
+    const pilotProduct = (Deno.env.get("HARNESS_PILOT_PRODUCT_ID") ?? "").trim();
+    const convProduct = String(conversation.product_id ?? "");
+    if (pilotProduct && convProduct === pilotProduct && fromDigits) {
+      // Load queue from product; enqueue reactive; save back (best-effort).
+      // Lista = derived_stage=preselected no DB (não constante).
+      try {
+        const loaded = await loadPreselectedPilotLeads(supabase as any, pilotProduct);
+        let pilotPhones = loaded.error
+          ? []
+          : manualListFromPreselected(loaded.leads);
+        if (!pilotPhones.includes(fromDigits)) {
+          const known = await loadHarnessLeadByPhone(
+            supabase as any,
+            pilotProduct,
+            fromDigits,
+          );
+          if (known) {
+            pilotPhones = [...pilotPhones, known.phone, fromDigits];
+          }
+        }
+        if (!pilotPhones.includes(fromDigits)) {
+          nextMeta = {
+            ...nextMeta,
+            harness_reactive_reason: "not_on_pilot_list",
+          };
+        } else {
+          const { data: prod } = await supabase
+            .from("platform_crm_products")
+            .select("id, settings")
+            .eq("id", pilotProduct)
+            .maybeSingle();
+          const prodMeta = prod?.settings && typeof prod.settings === "object"
+            ? prod.settings as Record<string, unknown>
+            : {};
+          const { queue, goId } = queueFromMeta(prodMeta);
+          const { data: recentIn } = await supabase
+            .from("platform_crm_messages")
+            .select("content")
+            .eq("conversation_id", conversation.id)
+            .eq("direction", "inbound")
+            .eq("sender_type", "visitor")
+            .eq("is_deleted", false)
+            .order("created_at", { ascending: true })
+            .limit(8);
+          const recentTexts = (recentIn ?? []).map((r: { content?: string }) =>
+            String(r.content ?? "")
+          );
+          const reactive = enqueueReactiveFromInbound({
+            queue,
+            phone: fromDigits,
+            text: inboundContent,
+            conversationId: String(conversation.id),
+            now: new Date(),
+            holidayDates,
+            manualList: pilotPhones,
+            greetingName: String(conversation.visitor_name ?? "").trim() || null,
+            recentTexts,
+          });
+          const phoneKey = fromDigits;
+          const packageInFlight =
+            reactive.queue.inFlightLeadId === phoneKey ||
+            reactive.queue.pending.some((e) =>
+              e.leadId === phoneKey &&
+              (e.kind === "open_bubble1" || e.kind === "continue_bubble" ||
+                e.kind === "resume")
+            );
+          const dncFlag = nextMeta.do_not_contact === true ||
+            nextMeta.do_not_contact === "true";
+          const act = decideActivation({
+            harnessProduct: true,
+            status: String(conversation.status ?? ""),
+            dncOrHard: dncFlag,
+            packageInFlight,
+            pendingInboundId: String(inserted.id),
+            spokeDuringPackage: packageInFlight,
+            brainAlreadyRepliedWamid: false,
+            windowAllowsReply: harnessReplyAllowed,
+          });
+          nextMeta = {
+            ...nextMeta,
+            harness_reactive_reason: reactive.reason,
+            harness_reactive_triage: reactive.triage,
+            harness_cite_text: reactive.cite,
+            harness_activation: act.reason,
+            harness_wake_flags: act.flags,
+            ...(act.action === "job"
+              ? {
+                harness_job: buildHarnessJob({
+                  conversationId: String(conversation.id),
+                  inboundId: String(inserted.id),
+                  reason: act.reason,
+                  flags: act.flags,
+                  createdAt: new Date().toISOString(),
+                }),
+              }
+              : {}),
+          };
+          if (
+            shouldApplyHarnessWakeBrain({
+              reason: reactive.reason,
+              doNotContact: nextMeta.do_not_contact as boolean | string | null | undefined,
+              needsNewConsent: act.flags.needs_new_consent,
+            })
+          ) {
+            const wake = harnessWakeConversationPatch(
+              { status: conversation.status, metadata: nextMeta },
+              new Date().toISOString(),
+            );
+            nextMeta = wake.metadata;
+            wakeReopen = true;
+          }
+          if (reactive.enqueued || reactive.queueMutated) {
+            await supabase
+              .from("platform_crm_products")
+              .update({
+                settings: metaWithQueue(prodMeta, reactive.queue, goId),
+              })
+              .eq("id", pilotProduct);
+          }
+        }
+      } catch (rxErr) {
+        console.error(
+          `[platform-whatsapp-qr-webhook] harness_reactive failed: ${String((rxErr as Error)?.message ?? rxErr)}`,
+        );
+      }
+    }
+    const { data: harnessUpdated, error: harnessErr } = await supabase
+      .from("platform_crm_conversations")
+      .update({
+        metadata: nextMeta,
+        ...(wakeReopen
+          ? {
+            status: "bot_active",
+            needs_human: false,
+            accepted_at: null,
+            accepted_by: null,
+            assigned_to: null,
+          }
+          : {}),
+      })
+      .eq("id", conversation.id)
+      .select()
+      .maybeSingle();
+    if (wakeReopen && conversation.lead_id && conversation.product_id) {
+      const marked = await markLeadInService(supabase as any, {
+        leadId: String(conversation.lead_id),
+        productId: String(conversation.product_id),
+      });
+      if (!marked.ok) {
+        console.error(
+          `[platform-whatsapp-qr-webhook] harness_wake stage failed conversation_id=${conversation.id}: ${marked.error}`,
+        );
+      }
+    }
+    if (harnessErr) {
+      console.error(
+        `[platform-whatsapp-qr-webhook] harness_meta failed conversation_id=${conversation.id}: ${harnessErr.message}`,
+      );
+    } else {
+      if (harnessUpdated) conversation = harnessUpdated;
+      console.log(
+        `[platform-whatsapp-qr-webhook] harness_triage ${JSON.stringify({
+          conversation_id: conversation.id,
+          triage: patch.triage,
+          cite: patch.cite,
+          reply_allowed: patch.replyAllowed,
+          reply_reason: patch.replyReason,
+          holidays_loaded: holidayDates.size,
+          harness_state: nextMeta.harness_state,
+          real_whatsapp: false,
+        })}`,
+      );
+    }
+  } catch (harnessEx) {
+    console.error(
+      `[platform-whatsapp-qr-webhook] harness_triage exception: ${String((harnessEx as Error)?.message ?? harnessEx)}`,
+    );
+  }
+
+  // Cancela qualquer ação proativa reservada antes de fazer trabalho adicional.
+  const { error: cancelError } = await supabase.rpc(
+    "pcrm_cancel_pending_agent_actions",
+    {
+      p_conversation_id: conversation.id,
+      p_inbound_message_id: inserted.id,
+    },
+  );
+  if (cancelError) {
+    console.error(
+      `[platform-whatsapp-qr-webhook] pending action cancellation failed conversation_id=${conversation.id}: ${cancelError.message}`,
+    );
+  }
+
+  const memoryReady = await appendCanonicalLeadMemory(supabase, {
+    leadId: String(conversation.lead_id ?? ""),
+    productId: String(conversation.product_id ?? productId ?? ""),
+    conversationId: String(conversation.id),
+    messageId: String(inserted.id),
+    content: inboundContent,
+  });
+  if (!memoryReady) {
+    conversation.canonical_state_ready = false;
+    console.error(
+      `[platform-whatsapp-qr-webhook] canonical memory unavailable conversation_id=${conversation.id} message_id=${inserted.id}`,
+    );
+  }
+
   await supabase
     .from("platform_crm_conversations")
     .update({
       last_message_at: new Date().toISOString(),
-      ...(norm.pushName && !conversation.visitor_name ? { visitor_name: norm.pushName } : {}),
+      ...(norm.pushName && !conversation.visitor_name &&
+          !buildLeadName(norm.pushName, "").startsWith("WhatsApp ")
+        ? { visitor_name: norm.pushName }
+        : {}),
     })
     .eq("id", conversation.id);
 
@@ -1176,6 +1579,7 @@ async function handleMessage(
     productId: (conversation.product_id as string | null) ?? productId,
     conversationId: String(conversation.id),
     telefone: fromDigits,
+    inboundEventId: String(inserted.id),
     // PR-BDR-11: com a transcrição, um "pare"/"me tira" FALADO em áudio também
     // chega ao detector de opt-out — antes o áudio era um "[áudio]" opaco que
     // nunca casava padrão nenhum.
@@ -1191,15 +1595,49 @@ async function handleMessage(
   // presumir "pediu PARE" a cada falha de infra transformaria indisponibilidade
   // em silêncio para toda lead — que é a troca cara (silêncio perde venda).
   // Fica registrado alto para não ser uma decisão invisível.
-  if (opts.skipBrain) {
+  if (opts.skipBrain || conversation.canonical_state_ready === false) {
+    const reason = opts.skipBrain ? "skip_brain" : "canonical_state_not_ready";
     console.log(
-      `[platform-whatsapp-qr-webhook] brain NÃO despachado (skip_brain) conversation_id=${conversation.id} telefone=${fromDigits}`,
+      `[platform-whatsapp-qr-webhook] brain NÃO despachado (${reason}) conversation_id=${conversation.id} telefone=${fromDigits}`,
     );
-    return ok({ stored: "inbound", brain: "skipped" });
+    return ok({ stored: "inbound", brain: "skipped", reason });
   }
 
-  if (coldVerdict.optOut || coldVerdict.suppressBrain) {
-    const reason = coldVerdict.optOut ? "opt-out" : "suppress_brain";
+  const metaDnc = (() => {
+    const m = conversation.metadata;
+    if (!m || typeof m !== "object") return false;
+    const v = (m as Record<string, unknown>).do_not_contact;
+    return v === true || v === "true";
+  })();
+
+  const wakeFlags = (() => {
+    const m = conversation.metadata;
+    if (!m || typeof m !== "object") return null;
+    return (m as Record<string, unknown>).harness_wake_flags;
+  })();
+  const actReason = (() => {
+    const m = conversation.metadata;
+    if (!m || typeof m !== "object") return "";
+    return String((m as Record<string, unknown>).harness_activation ?? "");
+  })();
+  const needsConsent = Boolean(
+    wakeFlags && typeof wakeFlags === "object" &&
+      (wakeFlags as { needs_new_consent?: boolean }).needs_new_consent,
+  );
+  const brainGate = harnessAllowsInboundBrain({
+    replyAllowed: harnessReplyAllowed,
+    replyReason: harnessReplyReason,
+    optOut: coldVerdict.optOut,
+    doNotContact: metaDnc,
+    needsNewConsent: needsConsent,
+    waitPackage: actReason === "mouth1_in_flight",
+    skipBrain: Boolean(opts.skipBrain),
+    canonicalReady: conversation.canonical_state_ready !== false,
+  });
+  if (!brainGate.allowed || coldVerdict.suppressBrain) {
+    const reason = !brainGate.allowed
+      ? brainGate.reason
+      : "suppress_brain";
     console.warn(
       `[platform-whatsapp-qr-webhook] brain NÃO despachado (${reason}) conversation_id=${conversation.id} telefone=${fromDigits}`,
     );
@@ -1209,7 +1647,16 @@ async function handleMessage(
         `[platform-whatsapp-qr-webhook] brain despachado SEM confirmação de opt-out conversation_id=${conversation.id} — o on-inbound do cold outreach não respondeu; se a lead pediu PARE, a supressão não foi aplicada`,
       );
     }
-    await dispatchSalesBrain(String(conversation.id));
+    const dispatchGate = shouldDispatchSalesBrainFromWebhook({
+      productId: String(conversation.product_id ?? productId ?? ""),
+    });
+    if (dispatchGate.dispatch) {
+      await dispatchSalesBrain(String(conversation.id));
+    } else {
+      console.log(
+        `[platform-whatsapp-qr-webhook] brain NÃO despachado (${dispatchGate.reason}) conversation_id=${conversation.id}`,
+      );
+    }
   }
 
   return ok({ stored: "inbound" });
@@ -1296,47 +1743,65 @@ async function handleAuthorizedWebhook(
       const arr = Array.isArray(d?.messages) ? d.messages : [d];
       for (const m of arr) {
         const wamid: string | null = m?.key?.id ?? m?.keyId ?? null;
-        // Só ACK de ENTREGA conta. 'sent' já foi contado no envio, e 'read' vem
-        // DEPOIS de entregue — contar os dois somaria em dobro.
+        // Campanha só incrementa delivered. sent/read atualizam mensagem/ledger
+        // sem double-count.
         const st = String(m?.status ?? m?.update?.status ?? "").toUpperCase();
         const entregue = st.includes("DELIVERY") || st === "DELIVERED" ||
           st === "2";
-        if (!wamid || !entregue) continue;
+        const lida = st.includes("READ") || st === "3" || st === "PLAYED";
+        const enviada = st === "SENT" || st === "1";
+        const outcome: DeliveryOutcome | null = entregue
+          ? "delivered"
+          : lida
+          ? "read"
+          : enviada
+          ? "sent"
+          : null;
+        if (!wamid || !outcome) continue;
 
         const { data: msg } = await supabase
           .from("platform_crm_messages")
-          .select("metadata, created_at")
+          .select("id, metadata, created_at")
           .eq("metadata->>wamid", wamid)
           .eq("metadata->>connection_id", instance.id)
           .maybeSingle();
-        const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+        const ack = await applyQrDeliveryAck(supabase, {
+          message: msg,
+          instanceId: String(instance.id),
+          wamid,
+          outcome,
+        });
+        const meta = ack.meta;
         if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
         const campaignId = meta.campaign_id as string | undefined;
-        if (!campaignId) continue; // não é mensagem de campanha — nada a contar
+        if (campaignId && ack.applied && ack.countsDelivered) {
+          // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
+          // seguinte, e a taxa sent/delivered só significa alguma coisa se as
+          // duas pernas caírem no MESMO balde.
+          const day = String(msg?.created_at ?? "").slice(0, 10);
+          if (!day) continue;
 
-        // ⚠️ O dia é o do ENVIO, não o do ACK. O ACK pode chegar no dia
-        // seguinte, e a taxa sent/delivered só significa alguma coisa se as
-        // duas pernas caírem no MESMO balde. Contar no dia do ACK inflaria a
-        // não-entrega de ontem e a entrega de hoje — e não-entrega inflada
-        // PAUSA CAMPANHA SAUDÁVEL, o modo de falha caro deste mecanismo.
-        const day = String(msg?.created_at ?? "").slice(0, 10);
-        if (!day) continue;
-
-        await supabase.rpc("pcrm_cold_bump_counter", {
-          p_campaign: campaignId,
-          p_instance: instance.id,
-          p_day: day,
-          p_sent: 0,
-          p_delivered: 1,
-          p_blocked: 0,
-          p_reported: 0,
-          p_failed: 0,
-        });
-        console.log("[platform-whatsapp-qr-webhook] delivered+1", {
-          campaignId,
-          day,
-          wamid,
-        });
+          await supabase.rpc("pcrm_cold_bump_counter", {
+            p_campaign: campaignId,
+            p_instance: instance.id,
+            p_day: day,
+            p_sent: 0,
+            p_delivered: 1,
+            p_blocked: 0,
+            p_reported: 0,
+            p_failed: 0,
+          });
+          console.log("[platform-whatsapp-qr-webhook] delivered+1", {
+            campaignId,
+            day,
+            wamid,
+          });
+        } else {
+          console.log("[platform-whatsapp-qr-webhook] delivered ack sem campanha", {
+            wamid,
+            outcome,
+          });
+        }
       }
     } catch (e) {
       // NUNCA derrubar o webhook por causa de métrica: perder um ACK degrada a
@@ -1382,35 +1847,51 @@ async function handleAuthorizedWebhook(
   // sem error e READ/SENT são ignored (não inflar contador).
   if (norm.kind === "delivery") {
     try {
-      if (norm.outcome === "delivered" || norm.outcome === "failed") {
+      if (
+        norm.outcome === "delivered" ||
+        norm.outcome === "failed" ||
+        norm.outcome === "sent" ||
+        norm.outcome === "read"
+      ) {
         for (const wamid of norm.messageIds) {
           if (!wamid) continue;
           const { data: msg } = await supabase
             .from("platform_crm_messages")
-            .select("metadata, created_at")
+            .select("id, metadata, created_at")
             .eq("metadata->>wamid", wamid)
             .eq("metadata->>connection_id", instance.id)
             .maybeSingle();
-          const meta = (msg?.metadata ?? {}) as Record<string, unknown>;
+          const ack = await applyQrDeliveryAck(supabase, {
+            message: msg,
+            instanceId: String(instance.id),
+            wamid,
+            outcome: norm.outcome,
+          });
+          const meta = ack.meta;
           if (String(meta.connection_id ?? "") !== String(instance.id)) continue;
           const campaignId = meta.campaign_id as string | undefined;
-          if (!campaignId) continue;
-          const day = String(msg?.created_at ?? "").slice(0, 10);
-          if (!day) continue;
+          if (
+            campaignId &&
+            ack.applied &&
+            (ack.countsDelivered || ack.countsFailed)
+          ) {
+            const day = String(msg?.created_at ?? "").slice(0, 10);
+            if (!day) continue;
 
-          await supabase.rpc("pcrm_cold_bump_counter", {
-            p_campaign: campaignId,
-            p_instance: instance.id,
-            p_day: day,
-            p_sent: 0,
-            p_delivered: norm.outcome === "delivered" ? 1 : 0,
-            p_blocked: 0,
-            p_reported: 0,
-            p_failed: norm.outcome === "failed" ? 1 : 0,
-          });
+            await supabase.rpc("pcrm_cold_bump_counter", {
+              p_campaign: campaignId,
+              p_instance: instance.id,
+              p_day: day,
+              p_sent: 0,
+              p_delivered: norm.outcome === "delivered" ? 1 : 0,
+              p_blocked: 0,
+              p_reported: 0,
+              p_failed: norm.outcome === "failed" ? 1 : 0,
+            });
+          }
           console.log("[platform-whatsapp-qr-webhook] zapi delivery ack", {
-            campaignId,
-            day,
+            campaignId: campaignId ?? null,
+            day: String(msg?.created_at ?? "").slice(0, 10) || null,
             wamid,
             outcome: norm.outcome,
           });

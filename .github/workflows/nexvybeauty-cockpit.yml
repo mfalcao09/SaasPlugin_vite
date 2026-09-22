@@ -37,6 +37,33 @@ jobs:
         with:
           deno-version: v2.x
 
+      # Static paths only: no event-controlled values enter shell commands.
+      - name: Deno check Camila entrypoints
+        run: >
+          deno check --config deno.json --lock deno.lock --frozen
+          supabase/functions/platform-sales-brain/index.ts
+          supabase/functions/platform-cold-outreach/index.ts
+          supabase/functions/platform-whatsapp-qr-webhook/index.ts
+          supabase/functions/platform-whatsapp-qr-send/index.ts
+          supabase/functions/platform-camila-conductor/index.ts
+          supabase/functions/platform-start-whatsapp-conversation/index.ts
+
+      - name: Deno tests Camila safety and cold outreach
+        run: >
+          deno test --config deno.json --lock deno.lock --frozen --allow-read --allow-env
+          supabase/functions/_shared/cold-outreach
+          supabase/functions/_shared/platform-crm-find-create-lead.test.ts
+          supabase/functions/_shared/platform-crm-lead-context.test.ts
+          supabase/functions/_shared/platform-crm-lead-memory-migration.test.ts
+          supabase/functions/_shared/agent-safety-kernel.test.ts
+          supabase/functions/_shared/agent-action-ledger.test.ts
+          supabase/functions/_shared/agent-action-ledger-migration.test.ts
+          supabase/functions/_shared/agent-action-ledger-wiring.test.ts
+          supabase/functions/_shared/platform-whatsapp-qr-send-security.test.ts
+          supabase/functions/_shared/agent-routing.test.ts
+          supabase/functions/_shared/zapi-webhook-normalize.test.ts
+          supabase/functions/_shared/qr-send-message-id.test.ts
+
       - name: Deno tests (Evolution shared + cakto)
         run: >
           deno test --frozen --allow-read --allow-env

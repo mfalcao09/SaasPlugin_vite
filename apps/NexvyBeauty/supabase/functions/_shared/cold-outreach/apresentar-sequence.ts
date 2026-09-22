@@ -1,8 +1,18 @@
 // Sequência Estágio 1 APRESENTAR — bolhas 2–4 após bolha 1 (cold outreach).
 // Estado em conversation.metadata.apresentar_sequence.
 //   deno test --allow-env supabase/functions/_shared/cold-outreach/apresentar-sequence.test.ts
+//
+// ON (2026-09-15): bolhas 1→4 = script de ABORDAGEM completo.
+// Bolha 1 = opening; bolhas 2–4 = opening_part (delay curto).
+// Caps FU/24h não se aplicam a opening_part (kernel+SQL).
 
-export const APRESENTAR_STEP_DELAY_MS = 15_000;
+/** Gate de orquestração. true = agenda e envia bolhas 2–4 após opening. */
+export const APRESENTAR_SEQUENCE_ENABLED = true;
+
+/** Delay entre bolhas 2–4. Total abertura→última deve ficar ≤ MAX_APPROACH_SPAN_MS. */
+export const APRESENTAR_STEP_DELAY_MS = 30_000;
+/** Teto operacional: da 1ª à última bolha da abordagem (exigência produto). */
+export const MAX_APPROACH_SPAN_MS = 180_000;
 
 export type ApresentarSequenceStatus = "in_progress" | "done" | "aborted_human" | "paused";
 

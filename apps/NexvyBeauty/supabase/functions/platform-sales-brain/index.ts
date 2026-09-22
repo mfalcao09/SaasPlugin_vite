@@ -47,6 +47,10 @@
 //      lead (bant_*, temperature, name) e grava o estado em leads.metadata.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  reserveAgentAction,
+  transitionAgentAction,
+} from '../_shared/agent-action-ledger.ts';
 import { decryptSecret } from '../_shared/meta-crypto.ts';
 import { GRAPH_BASE, timingSafeEqual } from '../_shared/meta-graph.ts';
 import {
@@ -62,10 +66,25 @@ import {
   pickSdrPersona,
   resolvePersonaForConversation,
 } from '../_shared/agent-routing.ts';
+import { evaluateChannelOwnership } from '../_shared/agent-channel-ownership.ts';
 import { type CtwaReferral, ctwaAdSummary, parseCtwaReferral } from '../_shared/ctwa-attribution.ts';
 import { debounceWaitMs, inboundEpochMs, slidingDebounceExtraMs } from '../_shared/inbound-clock.ts';
 import { sanitizeReply } from '../_shared/reply-sanitizer.ts';
 import { buildCheckoutContext } from '../_shared/checkout-context.ts';
+import { loadCanonicalLeadContext } from '../_shared/platform-crm-lead-context.ts';
+import {
+  CAMILA_AGENT_ID,
+  evaluateConductorScope,
+  normalizeReleaseState,
+  type CohortSnapshot,
+} from '../_shared/cold-outreach/camila-cohort.ts';
+import {
+  OPAQUE_CLARIFY,
+  allowlistFromPlans,
+  bubblesAfterCommercialTruth,
+  isOpaqueInbound,
+  validateCommercialTruth,
+} from '../_shared/commercial-truth.ts';
 import {
   type ConversationState,
   politica,
@@ -83,6 +102,19 @@ import {
   stripRaioxArtifacts,
 } from '../_shared/raiox-preflight.ts';
 import { inboundForQuote, quotedFromInbound, remoteJidForQuote } from '../_shared/evolution-quoted.ts';
+import { goldReplyFromHistory } from '../_shared/inbound-cite.ts';
+import {
+  harnessAllowsBrainSend,
+  harnessLedgerAllowsReserve,
+} from '../_shared/camila-harness/harness-brain-gate.ts';
+import { harnessBrainJobGate } from '../_shared/camila-harness/harness-job-gate.ts';
+import { bubblesWithinLedgerCap, parseHarnessJob } from '../_shared/camila-harness/harness-puller.ts';
+import { loadHarnessHolidayDates } from '../_shared/camila-harness/holidays.ts';
+import {
+  juizPrimeiroAto,
+  renderConsentQuestion,
+  staleRedeliveryApplies,
+} from '../_shared/camila-harness/porta-juiz.ts';
 import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { splitIntoBubbles } from '../_shared/bubble-split.ts';
 import { sendTelegramAlert, sendTelegramAlertThrottled } from '../_shared/platform-alerts.ts';
@@ -1391,6 +1423,7 @@ Deno.serve(async (req) => {
   let orphanWakeConversationId: string | null = null;
   let orphanWakeHandbackDepth = 0;
   let orphanWakeReqUrl = '';
+  let harnessJobIdForContinuation: string | null = null;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -1462,6 +1495,23 @@ Deno.serve(async (req) => {
     if (!BRAIN_CHANNELS.includes(String(conversation.channel))) {
       return json({ skipped: 'not_whatsapp', channel: conversation.channel });
     }
+    const storedHarnessJob = parseHarnessJob(
+      conversation.metadata && typeof conversation.metadata === 'object'
+        ? (conversation.metadata as Record<string, unknown>).harness_job
+        : null,
+    );
+    const jobGate = harnessBrainJobGate({
+      productId: conversation.product_id,
+      bodyJobId: body?.harness_job_id,
+      storedJob: storedHarnessJob,
+      continuation: handbackDepth > 0 || ensureReply,
+    });
+    if (!jobGate.allowed) {
+      return json({ skipped: 'harness_job_required', reason: jobGate.reason });
+    }
+    harnessJobIdForContinuation = String(
+      body?.harness_job_id ?? storedHarnessJob?.id ?? '',
+    ) || null;
     // ─── GATE DO CANARY: só conversa de eval, e a trava mora AQUI ─────────────
     // Achado da revisão adversarial pré-deploy: NÃO existia nenhum guard de entrega
     // dentro desta função. O que impedia o canary de mandar WhatsApp de verdade era
@@ -1504,6 +1554,93 @@ Deno.serve(async (req) => {
     if (conversation.status !== 'bot_active') {
       return json({ skipped: 'bot_not_active', status: conversation.status });
     }
+
+    // Harness é o único relógio. Sem isto o ledger/cérebro falavam fora da janela.
+    {
+      const holidayDates = await loadHarnessHolidayDates(supabase);
+      const att = harnessAllowsBrainSend({
+        now: new Date(),
+        action: conductorWake ? 'resume_package' : 'reply',
+        holidayDates,
+      });
+      if (!att.canOut) {
+        return json({
+          skipped: 'harness_window_closed',
+          reason: att.reason,
+          window: att.window,
+        });
+      }
+    }
+
+    // PRD-07: conductor_wake só para membro de coorte ativa + release classifica.
+    // Defesa em profundidade — o edge já filtra, o brain não confia só no caller.
+    if (conductorWake) {
+      const { data: releaseRow } = await supabase
+        .from('platform_crm_agent_release_controls')
+        .select('release_state, kill_switch')
+        .eq('agent_id', CAMILA_AGENT_ID)
+        .maybeSingle();
+      const releaseState = normalizeReleaseState(
+        (releaseRow as { release_state?: string } | null)?.release_state,
+      );
+      if ((releaseRow as { kill_switch?: boolean } | null)?.kill_switch) {
+        return json({ skipped: 'kill_switch', conductor_wake: true });
+      }
+      const { data: cohortRows, error: cohortErr } = await supabase.rpc(
+        'pcrm_list_active_conductor_cohort_members',
+        { p_agent_id: CAMILA_AGENT_ID },
+      );
+      if (cohortErr) {
+        console.warn(
+          '[platform-sales-brain] conductor cohort rpc unavailable',
+          String((cohortErr as { message?: string }).message ?? cohortErr).slice(0, 160),
+        );
+        return json({ skipped: 'cohort_rpc_unavailable', conductor_wake: true });
+      }
+      const rows = Array.isArray(cohortRows) ? cohortRows : [];
+      const memberIds = rows
+        .map((r) => String((r as { conversation_id?: string }).conversation_id ?? ''))
+        .filter(Boolean);
+      const cohort: CohortSnapshot | null = memberIds.length
+        ? {
+          slug: String((rows[0] as { cohort_slug?: string }).cohort_slug ?? 'active'),
+          version: Number((rows[0] as { cohort_version?: number }).cohort_version ?? 1),
+          active: true,
+          memberConversationIds: new Set(memberIds),
+        }
+        : null;
+      const fichaLeadId = conversation.lead_id ? String(conversation.lead_id) : null;
+      const fichaProductId = conversation.product_id
+        ? String(conversation.product_id)
+        : null;
+      let hasFicha = false;
+      if (fichaLeadId && fichaProductId) {
+        const ficha = await loadCanonicalLeadContext(
+          supabase,
+          fichaLeadId,
+          fichaProductId,
+        );
+        hasFicha = Boolean(ficha.isReady && ficha.prompt.trim().length > 0);
+      }
+      const scope = evaluateConductorScope({
+        conversationId: String(conversation.id),
+        status: String(conversation.status ?? ''),
+        currentAgentId: conversation.current_agent_id
+          ? String(conversation.current_agent_id)
+          : null,
+        leadId: fichaLeadId,
+        hasFicha,
+        releaseState,
+        cohort,
+      });
+      if (!scope.allowed) {
+        return json({
+          skipped: scope.reason ?? 'outside_cohort',
+          conductor_wake: true,
+        });
+      }
+    }
+
 
     // 1b) CLAIM DA CONVERSA — INCONDICIONAL, e é o ponto todo desta correção.
     //     Não existe `if` de idade, de canal, de latência ou de modo antes daqui:
@@ -1551,7 +1688,11 @@ Deno.serve(async (req) => {
               const r = await fetch(`${base}/functions/v1/${selfFn}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
-                body: JSON.stringify({ conversation_id: conversationId, ensure_reply: true }),
+                body: JSON.stringify({
+                  conversation_id: conversationId,
+                  ensure_reply: true,
+                  harness_job_id: harnessJobIdForContinuation,
+                }),
               });
               if (!r.ok) console.error('[platform-sales-brain] ensure_reply wake', r.status, (await r.text()).slice(0, 200));
             } catch (e) {
@@ -1587,7 +1728,7 @@ Deno.serve(async (req) => {
         // d'água da rajada. A ORDENAÇÃO do histórico segue por created_at de
         // propósito: mudar o critério de ordem das 30 msgs é outro assunto e
         // outro risco — aqui a régua é não mexer no que já fatura.
-        .select('seq, content, sender_type, direction, is_deleted, created_at, metadata')
+        .select('id, seq, content, sender_type, direction, is_deleted, created_at, metadata')
         .eq('conversation_id', conversationId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -1603,6 +1744,25 @@ Deno.serve(async (req) => {
 
     let historyDesc = await loadMessages();
     let triggerInbound = inboundForQuote(historyDesc);
+
+    const wakeFlags = conversation.metadata &&
+        typeof conversation.metadata === "object"
+      ? (conversation.metadata as Record<string, unknown>).harness_wake_flags
+      : null;
+    const needsConsent = Boolean(
+      wakeFlags && typeof wakeFlags === "object" &&
+        (wakeFlags as { needs_new_consent?: boolean }).needs_new_consent,
+    );
+    const consentAto = juizPrimeiroAto({
+      needsNewConsent: needsConsent,
+      text: String(triggerInbound?.content ?? ""),
+    });
+    if (needsConsent && consentAto.speak === "silence") {
+      return json({
+        skipped: "consent_blocked",
+        reason: consentAto.reason,
+      });
+    }
 
     // Marca d'água da rajada JÁ COBERTA por esta execução — base do hand-back.
     // Usa `seq` (identity, atribuído pelo banco no INSERT) e NUNCA created_at ou
@@ -1684,7 +1844,11 @@ Deno.serve(async (req) => {
       const call = fetch(`${base}/functions/v1/${selfFn}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-brain-secret': secret },
-        body: JSON.stringify({ conversation_id: conversationId, handback_depth: handbackDepth + 1 }),
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          handback_depth: handbackDepth + 1,
+          harness_job_id: harnessJobIdForContinuation,
+        }),
       }).then(async (r) => {
         if (!r.ok) console.error('[platform-sales-brain] hand-back retornou', r.status, (await r.text()).slice(0, 200));
       }).catch((e) => console.error('[platform-sales-brain] hand-back fetch error:', e));
@@ -1719,7 +1883,11 @@ Deno.serve(async (req) => {
     //    NÃO se aplica ao modo inatividade: ali a inbound é VELHA por definição
     //    (o silêncio É o gatilho). Tampouco ao conductor_wake da Camila (dívida
     //    de resposta / condução de trilha — inbound pode ter horas).
-    if (triggerInbound && !inactivityMode && !conductorWake) {
+    if (triggerInbound && staleRedeliveryApplies({
+      inactivityMode,
+      conductorWake,
+      harnessJobId: harnessJobIdForContinuation,
+    })) {
       const meta = (triggerInbound.metadata && typeof triggerInbound.metadata === 'object')
         ? triggerInbound.metadata as Record<string, any> : {};
       const tsSecs = typeof meta.wa_timestamp === 'number' ? meta.wa_timestamp
@@ -1886,20 +2054,35 @@ Deno.serve(async (req) => {
       // carimbadas com um dono velho que só uma migration desfaria.
       if (routeReason === 'sdr_open') {
         const boundAgentId = await resolveConnectionBoundAgentId(supabase, conversation);
-        const bound = boundAgentId ? agentList.find((a) => a.id === boundAgentId) : null;
-        if (bound) {
+        if (boundAgentId) {
+          const bound = agentList.find((a) => a.id === boundAgentId) ?? null;
+          const instanceId = typeof conversation.wa_qr_instance_id === 'string'
+            ? conversation.wa_qr_instance_id
+            : null;
+          const ownership = evaluateChannelOwnership({
+            instanceId,
+            conversationInstanceId: instanceId,
+            boundAgentId,
+            speakingAgentId: bound?.id ?? boundAgentId,
+            agentActive: Boolean(bound),
+            agentActiveInWhatsapp: Boolean(bound),
+            stampWriteOk: true,
+          });
+          if (!ownership.allowed || !bound) {
+            console.error(
+              `[platform-sales-brain] canal dedicado recusou fala type=${ownership.reason} ` +
+                `bound=${boundAgentId} conversation_id=${conversationId}`,
+            );
+            return json({
+              skipped: 'channel_owner_denied',
+              reason: ownership.reason ?? 'agent_inactive',
+            });
+          }
           persona = bound;
           routeReason = 'connection_bound';
           console.log(
             `[platform-sales-brain] agente por amarração de canal: ${bound.name ?? bound.id} ` +
               `(${bound.id}) conversation_id=${conversationId}`,
-          );
-        } else if (boundAgentId) {
-          // Vínculo aponta agente que o cérebro não pode usar. Antes de cair na
-          // SDR, GRITA — senão o número dedicado "não funciona" sem explicação.
-          console.warn(
-            `[platform-sales-brain] amarração de canal aponta agente ${boundAgentId} que NÃO está ` +
-              `is_active + active_in_whatsapp no product_id ${conversation.product_id ?? 'null'} — a SDR abre`,
           );
         }
       }
@@ -1954,6 +2137,45 @@ Deno.serve(async (req) => {
     // implantação/venda (a persona pinada é quem manda). Só vira true quando a
     // persona escolhida é a Nina (por pin do nina-health-scan).
     const retentionActive = isRetentionAgent(persona);
+
+    // PRD-06: Camila no QR exige ficha canônica versionada antes do turno.
+    let canonicalFichaPrompt = '';
+    if (personaIsProspector && isWaQrChannel(conversation.channel)) {
+      const fichaLeadId = typeof conversation.lead_id === 'string' ? conversation.lead_id : '';
+      const fichaProductId = typeof conversation.product_id === 'string' ? conversation.product_id : '';
+      if (!fichaLeadId || !fichaProductId) {
+        return json({ skipped: 'ficha_missing', reason: 'lead_or_product_missing' });
+      }
+      const ficha = await loadCanonicalLeadContext(supabase, fichaLeadId, fichaProductId);
+      if (!ficha.isReady) {
+        console.warn('[platform-sales-brain] ficha canônica ausente', {
+          conversation_id: conversationId,
+          reason: ficha.error,
+        });
+        return json({ skipped: 'ficha_missing', reason: ficha.error ?? 'canonical_state_not_ready' });
+      }
+      canonicalFichaPrompt = ficha.prompt.trim();
+      if (!canonicalFichaPrompt) {
+        return json({ skipped: 'ficha_missing', reason: 'canonical_prompt_empty' });
+      }
+    }
+
+    // PRD-06: input opaco → clarificação determinística (sem LLM inventar).
+    const inboundForOpaque = String(triggerInbound?.content ?? '').trim();
+    const forceOpaqueClarify = Boolean(
+      personaIsProspector &&
+      isWaQrChannel(conversation.channel) &&
+      inboundForOpaque &&
+      isOpaqueInbound(inboundForOpaque) &&
+      !conductorWake &&
+      !inactivityMode
+    );
+    if (forceOpaqueClarify) {
+      console.log('[platform-sales-brain] opaque inbound → clarify', {
+        conversation_id: conversationId,
+        inbound: inboundForOpaque.slice(0, 80),
+      });
+    }
 
     // MODO INATIVIDADE: a régua SÓ corre com persona SDR (Duda). Prospector
     // (Camila) é excluída de propósito — loop próprio = platform-camila-conductor.
@@ -2396,6 +2618,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // — a contenção é aplicada por CÓDIGO, com este mesmo estado, no turno seguinte.
     const systemPromptComEstado = [
       systemPrompt,
+      canonicalFichaPrompt ? `\n\n═══ FICHA CANÔNICA DO LEAD (obrigatória — use e não invente fora dela) ═══\n${canonicalFichaPrompt}` : '',
       pol.fatos.length ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}${closeGuardFato}` : (closeGuardFato ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${closeGuardFato}` : ''),
       journeyBlock,
       reactivationBlock,
@@ -2423,45 +2646,62 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
 
     const maxOutputTokens = resolveBrainMaxOutputTokens(personaIsProspector);
 
-    const response = await fetch(`${gatewayBase}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
-        stream: false,
-        max_tokens: maxOutputTokens,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('[platform-sales-brain] AI gateway error:', response.status, errorText.slice(0, 200));
-      return json({
-        error: `Erro do provedor de IA: ${response.status}`,
-        key_source: keySource,
-        persona_id: persona?.id ?? null,
-        persona_name: persona?.name ?? null,
-      }, 502);
-    }
-
-    const completion = await response.json().catch(() => null);
-    const finishReason = completion?.choices?.[0]?.finish_reason ?? null;
-    if (finishReason === 'length') {
-      console.warn('[platform-sales-brain] completion truncada (finish_reason=length)', {
+    let reply = '';
+    const goldHowAreYou = goldReplyFromHistory(historyDesc);
+    if (needsConsent && consentAto.speak === "consent_question") {
+      reply = renderConsentQuestion(
+        firstNameOnly(visitorName) ?? firstNameOnly(lead?.name),
+      );
+    } else if (goldHowAreYou) {
+      // Ouro Marcelo: “e você?” / “e vc” (com ou sem ?) na rajada → texto fixo.
+      reply = goldHowAreYou;
+      console.log('[platform-sales-brain] gold how-are-you', {
         conversation_id: conversation.id,
-        max_output_tokens: maxOutputTokens,
-        persona: personaIsProspector ? 'prospector' : 'other',
-        model,
+        cite: String(triggerInbound?.content ?? ''),
       });
-    }
-    let reply = extractChatCompletionContent(completion);
-    if (!reply) {
-      console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 500));
-      return json({ error: 'O modelo não retornou resposta.' }, 502);
+    } else if (forceOpaqueClarify) {
+      reply = OPAQUE_CLARIFY;
+    } else {
+      const response = await fetch(`${gatewayBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: systemPromptComEstado }, ...messages],
+          stream: false,
+          max_tokens: maxOutputTokens,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.error('[platform-sales-brain] AI gateway error:', response.status, errorText.slice(0, 200));
+        return json({
+          error: `Erro do provedor de IA: ${response.status}`,
+          key_source: keySource,
+          persona_id: persona?.id ?? null,
+          persona_name: persona?.name ?? null,
+        }, 502);
+      }
+
+      const completion = await response.json().catch(() => null);
+      const finishReason = completion?.choices?.[0]?.finish_reason ?? null;
+      if (finishReason === 'length') {
+        console.warn('[platform-sales-brain] completion truncada (finish_reason=length)', {
+          conversation_id: conversation.id,
+          max_output_tokens: maxOutputTokens,
+          persona: personaIsProspector ? 'prospector' : 'other',
+          model,
+        });
+      }
+      reply = extractChatCompletionContent(completion);
+      if (!reply) {
+        console.error('[platform-sales-brain] completion vazia:', JSON.stringify(completion)?.slice(0, 500));
+        return json({ error: 'O modelo não retornou resposta.' }, 502);
+      }
     }
 
     // 11a) PASSAGEM DUDA→BIA (interna, NÃO humana): só a Duda (SDR) emite a tag.
@@ -2807,9 +3047,89 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       bubbles = g.bubbles;
     }
 
+    // PRD-06: preço/link só do conjunto carregado do banco neste turno.
+    if (personaIsProspector && isWaQrChannel(conversation.channel) && isRealB2bFunnel && !onboardingActive && !retentionActive) {
+      const allow = allowlistFromPlans(plans, persona.name ?? 'Camila');
+      const truth = validateCommercialTruth(bubbles, allow);
+      if (!truth.ok) {
+        console.warn('[platform-sales-brain] commercial truth blocked', {
+          conversation_id: conversation.id,
+          reason: truth.reason,
+          invented_prices: truth.inventedPrices,
+          invented_urls: truth.inventedUrls,
+        });
+      }
+      bubbles = bubblesAfterCommercialTruth(truth);
+      if (bubbles.length === 0) {
+        return json({ skipped: 'commercial_truth_empty' });
+      }
+    }
+
+    if (personaIsProspector && isWaQrChannel(conversation.channel)) {
+      bubbles = bubblesWithinLedgerCap(bubbles);
+    }
     const total = bubbles.length;
+    let safetyActionId: string | null = null;
+    if (personaIsProspector && !isWaQrChannel(conversation.channel)) {
+      return json({
+        skipped: 'prospector_requires_qr_channel',
+        channel: conversation.channel,
+      });
+    }
+    if (personaIsProspector && isWaQrChannel(conversation.channel)) {
+      const safetyProductId = typeof conversation.product_id === 'string'
+        ? conversation.product_id
+        : '';
+      const safetyLeadId = typeof conversation.lead_id === 'string'
+        ? conversation.lead_id
+        : '';
+      const safetyInstanceId = typeof conversation.wa_qr_instance_id === 'string'
+        ? conversation.wa_qr_instance_id
+        : '';
+      const safetyAgentId = typeof persona.id === 'string' ? persona.id : '';
+      if (!safetyProductId || !safetyLeadId || !safetyInstanceId || !safetyAgentId) {
+        return json({ skipped: 'safety_input_missing' });
+      }
+      const ledgerWin = harnessLedgerAllowsReserve({
+        productId: safetyProductId,
+      });
+      if (!ledgerWin.allowed) {
+        return json({
+          skipped: 'harness_window_closed',
+          reason: ledgerWin.reason,
+        });
+      }
+      const reservation = await reserveAgentAction(supabase, {
+        productId: safetyProductId,
+        leadId: safetyLeadId,
+        conversationId: String(conversation.id),
+        agentId: safetyAgentId,
+        instanceId: safetyInstanceId,
+        channel: String(conversation.channel),
+        actionType: conductorWake ? 'resume' : 'reply',
+        proactive: conductorWake,
+        bubbleCount: total,
+        content: bubbles.join('\n\n'),
+        sourceEventId: String(
+          triggerInbound?.id ??
+            `${conversation.id}:${seqAtual}:${conductorWake ? 'conductor' : 'turn'}`,
+        ),
+      });
+      if (!reservation.allowed || !reservation.actionId) {
+        console.warn('[platform-sales-brain] Safety Kernel negou ação', {
+          conversation_id: conversation.id,
+          reason: reservation.reason,
+        });
+        return json({
+          skipped: 'safety_kernel_denied',
+          reason: reservation.reason,
+        });
+      }
+      safetyActionId = reservation.actionId;
+    }
     let anyDelivered = false;
     let lastDeliveryError: string | null = null;
+    let lastProviderMessageId: string | null = null;
     // Score/rota do turno ANTERIOR (o que a Duda USOU para conduzir esta resposta).
     // O score deste turno é computado depois, no bloco 13, sobre os fatos novos.
     const currentQual = (lead?.metadata as any)?.qualificacao ?? {};
@@ -2951,6 +3271,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         bubble_n: i + 1,
         bubble_total: total,
         delivery_status: 'sent',
+        ...(safetyActionId ? { action_id: safetyActionId } : {}),
         // Trilha de auditoria da régua de inatividade (quando foi ela que acionou).
         ...(inactivityMode ? { cadence_stage: inactivityStage, cadence_occurrence: inactivityOccurrence } : {}),
       };
@@ -2980,7 +3301,10 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         bubbleText,
         i === 0 ? quoteInbound : null,
       );
-      if (delivered) anyDelivered = true; else lastDeliveryError = deliveryError;
+      if (delivered) {
+        anyDelivered = true;
+        lastProviderMessageId = wamid;
+      } else lastDeliveryError = deliveryError;
 
       const deliveryMeta = delivered
         ? {
@@ -3024,6 +3348,22 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       `[platform-sales-brain] entrega: ${entregues}/${total} bolha(s) em ${Date.now() - tDeliveryStart}ms` +
         (entregues < total ? ' — lote abortado, a lead falou no meio' : ''),
     );
+    if (safetyActionId) {
+      const transitioned = await transitionAgentAction(
+        supabase,
+        safetyActionId,
+        'reserved',
+        anyDelivered ? 'accepted' : 'failed',
+        lastProviderMessageId,
+        anyDelivered ? null : lastDeliveryError ?? 'no_bubble_delivered',
+      );
+      if (!transitioned) {
+        console.error('[platform-sales-brain] Action Ledger transition failed', {
+          conversation_id: conversation.id,
+          action_id: safetyActionId,
+        });
+      }
+    }
 
     // Status da conversa: handoff/escalada → fila humana; senão mantém bot ativo.
     // PASSAGEM DUDA→BIA: fixa current_agent_id na Bia (a próxima msg da lead a
@@ -3257,6 +3597,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       score: newScore,
       qualification_persisted: qualPersisted,
       ...(inactivityMode ? { inactivity: { occurrence: inactivityOccurrence, stage: inactivityStage } } : {}),
+      ...(anyDelivered && lastProviderMessageId ? { wamid: lastProviderMessageId } : {}),
       ...(anyDelivered ? {} : { delivery_warning: lastDeliveryError ?? 'entrega falhou' }),
     });
   } catch (error) {
@@ -3301,6 +3642,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
               conversation_id: orphanWakeConversationId,
               handback_depth: orphanWakeHandbackDepth + 1,
               ensure_reply: true,
+              harness_job_id: harnessJobIdForContinuation,
             }),
           });
           if (!r.ok) console.error('[platform-sales-brain] orphan wake', r.status, (await r.text()).slice(0, 200));

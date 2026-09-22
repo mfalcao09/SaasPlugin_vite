@@ -1,0 +1,67 @@
+{
+  "program": "camila-harness",
+  "prd": "PRD-11",
+  "contract": "v1.2",
+  "go_build": "GO BUILD HARNESS",
+  "go_l2": "GO LOOP 2 WIRE",
+  "go_integration": "build missing runtime wiring — no real WhatsApp",
+  "go_pilot_deliver_build": "GO BUILD PILOT DELIVER",
+  "go_prd12": "GO BUILD PRD-12",
+  "loops": [
+    {
+      "id": 1,
+      "name": "SHADOW",
+      "verify": "verify_harness_shadow.py",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "name": "WIRE",
+      "verify": "verify_harness_wire.py",
+      "status": "PASS"
+    },
+    {
+      "id": "2b",
+      "name": "INTEGRATION",
+      "verify": "verify_harness_integration.py",
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "name": "PILOT",
+      "verify": "verify_harness_pilot.py",
+      "requires_go": "GO PILOT HARNESS v1",
+      "status": "BUILD_PASS_AWAITING_GO",
+      "note": "pilot-deliver dry-run ready; 0 real WhatsApp until GO PILOT"
+    },
+    {
+      "id": "12",
+      "name": "PILOT_LIVE_WIRE",
+      "prd": "PRD-12",
+      "verify": "verify_harness_pilot_live.py",
+      "requires_go_build": "GO BUILD PRD-12",
+      "requires_go_pilot": "GO PILOT HARNESS v1",
+      "status": "BUILD_PASS_AWAITING_GO",
+      "note": "PRD-12 BUILD PASS; 0 WA until GO PILOT; VPS cron disarmed"
+    }
+  ],
+  "current": "PRD12_BUILD_PASS_AWAITING_GO_PILOT",
+  "status": "AWAITING_GO_PILOT",
+  "prd12": "PRD-12-PILOT-LIVE-WIRE.md",
+  "prd12_includes": [
+    "legacy_cutover_path_a_reopen",
+    "legacy_cutover_r2_auto",
+    "legacy_cutover_cold_tick_apresentar",
+    "legacy_cutover_conductor",
+    "vps_cron_owner_harness_pilot_tick",
+    "unschedule_pg_cron_legacy"
+  ],
+  "verify_l1": "PASS",
+  "verify_l2": "PASS",
+  "verify_integration": "PASS",
+  "verify_pilot_deliver_build": "PASS",
+  "real_whatsapp_sends": 0,
+  "pilot_roster": "shortlist-10-d3 + Renata resume exception",
+  "cadence": "42s-197s between first bubbles; outbound queue one-at-a-time",
+  "verify_prd12_live_build": "PASS"
+}
