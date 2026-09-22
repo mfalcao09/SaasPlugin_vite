@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "phase": "B-harness",
+  "when": "2026-09-14T02:39:55.237904+00:00",
+  "check_binary": "PASS iff E5.3a PASS and E5.2b reserved→delivered; E5.3b label persisted",
+  "cases": [
+    {
+      "id": "E5.3a",
+      "status": "PASS",
+      "detail": {
+        "message_id": "8d86d40d-2269-4089-b63f-139ec9879d7a",
+        "content_preview": "Acertou",
+        "created_at": "2026-09-14 02:16:18.271424+00",
+        "local_label": "affirmative",
+        "conversation_id": "f0746176-4f2b-4ccb-9f27-6574f68e6c21",
+        "note": "inbound on existing wa_qr conv (webhook persisted)"
+      }
+    },
+    {
+      "id": "E5.3b",
+      "status": "FAIL",
+      "detail": {
+        "persisted_label_on_message": false,
+        "metadata_keys": [
+          "channel",
+          "evolution_message_id",
+          "push_name",
+          "remote_jid",
+          "wa_lid",
+          "wa_qr_instance_id"
+        ],
+        "learning_tables": [],
+        "note": "classifier exists in shared code; wiring to webhook may be missing"
+      }
+    },
+    {
+      "id": "E5.pre",
+      "status": "PASS",
+      "detail": {
+        "kill_switch": false,
+        "release_state": "OFF"
+      }
+    },
+    {
+      "id": "E5.2a",
+      "status": "FAIL",
+      "detail": {
+        "error": "'rows'"
+      }
+    },
+    {
+      "id": "E5.2b",
+      "status": "FAIL",
+      "detail": {
+        "error": "no_conversation"
+      }
+    }
+  ],
+  "summary": {
+    "pass": 2,
+    "fail": 3,
+    "warn": 0
+  },
+  "result": "NO-GO"
+}

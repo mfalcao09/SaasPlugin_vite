@@ -14,6 +14,11 @@
 8. Holdout, separação de autoridade e fail-closed são bloqueantes.
 9. Cinco leads nunca são amostra suficiente para auto-promoção.
 
+10. Canário invertido: **15%** recebem a estratégia nova; **85%** ficam na estável
+   (Marcelo, 2026-09-13). Promoção só se a nova for mais efetiva: maior assertividade
+   (confirmações tipo "acertou"/"é isso" vs correções "não é isso") **e** maior
+   % de fechamento/assinatura.
+
 ## Alternativas descartadas
 
 - Camila V2 paralela: maior tempo e duplicação.
@@ -29,3 +34,5 @@
 - Safety Kernel: alteração apenas por PR e aprovação humana.
 - Learning Controller: geração e promoção dentro do kernel.
 - Evaluador independente: veto técnico aos gates.
+
+11. E2E path **A→B** (Marcelo 2026-09-13): Fase A sintética primeiro; Fase B número controlado só com GO explícito.

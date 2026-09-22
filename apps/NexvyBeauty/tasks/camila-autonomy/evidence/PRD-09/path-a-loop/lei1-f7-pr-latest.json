@@ -1,0 +1,40 @@
+{
+  "at": "2026-09-17T02:15:45.975157+00:00",
+  "checks": {
+    "C1_F7_f6_ok_true": "PASS",
+    "C2_F7_f6_matches_F6_pass": "PASS",
+    "C3_F7_still_tier1_no_commercial": "PASS",
+    "C4_PR_204_open": "PASS",
+    "C5_remote_branch_exists": "PASS",
+    "C6_HEAD_has_zapiSendLink": "PASS"
+  },
+  "detail": {
+    "F7_f6": {
+      "status": "pass_live",
+      "live": "pass_live",
+      "ok": true,
+      "checks": {
+        "soft_r2_delivered": 2,
+        "hard_r2": 0,
+        "farewell_after_r2_outbound": 0,
+        "replay_extra_r2": 0
+      },
+      "when": "2026-09-17T01:09:16.893815+00:00",
+      "link_preview": {
+        "validated": true,
+        "evidence": "R2-LINK-PREVIEW-REDISPARO.json",
+        "when": "2026-09-17T01:57:48.682890+00:00"
+      }
+    },
+    "F7_tier": 1,
+    "pr": {
+      "baseRefName": "feat/camila-autonomy-04-safety-ledger",
+      "headRefName": "feat/camila-path-a-reopen",
+      "state": "OPEN",
+      "title": "feat(camila): Path A reopen + F6 R2 canary (Joice + link preview)",
+      "url": "https://github.com/mfalcao09/SaasPlugin_vite/pull/204"
+    },
+    "remote": "b8e2840a82e317106c8732b5f22247e04dba99cb\trefs/heads/feat/camila-path-a-reopen"
+  },
+  "delivery": "implementado e verificado"
+}

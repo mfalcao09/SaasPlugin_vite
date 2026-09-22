@@ -1,0 +1,33 @@
+{
+  "status": "pass_tier2",
+  "approve": "APROVO F7 PATH-A",
+  "tier": 2,
+  "ramp": {
+    "tier": 2,
+    "allowlist": [
+      "5511945760964",
+      "5547996650702",
+      "5585997315603",
+      "5566992054841",
+      "5549988309265"
+    ],
+    "commercial_expansion": true,
+    "degrau": "5_leads",
+    "packet": "F7-allowlist-tier2.json",
+    "note": "tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor"
+  },
+  "release": {
+    "kill_switch": true,
+    "release_state": "OFF"
+  },
+  "f6": {
+    "status": "pass",
+    "live": "pass_live",
+    "ok": true
+  },
+  "zero_metrics": {
+    "outbound_outside_allowlist": 0,
+    "r2_auto_outside_allowlist": 0
+  },
+  "at": "2026-09-17T13:50:38.823002+00:00"
+}

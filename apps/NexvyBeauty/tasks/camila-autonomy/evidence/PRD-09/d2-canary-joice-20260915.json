@@ -1,0 +1,31 @@
+{
+  "when": "2026-09-15T13:21:23.362913+00:00",
+  "canary": {
+    "handle": "@joicefbeltramini",
+    "greeting": "Joice",
+    "conversation_id": "b23200a2-be5f-4a1e-9810-553ed43276dd"
+  },
+  "outs": [
+    {
+      "origem": "cold_outreach_abertura",
+      "preview": "Oi, Joice! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️",
+      "when_brt": "2026-09-15 10:02:01.743611"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "Achei o seu número no Instagram @joicefbeltramini, e vim me apresentar.",
+      "when_brt": "2026-09-15 10:19:01.255191"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, organiza a a",
+      "when_brt": "2026-09-15 10:19:31.099137"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "Você acha que faria diferença ter uma equipe de IA que atende os clientes, marca horário, confirma presença, e",
+      "when_brt": "2026-09-15 10:20:00.161188"
+    }
+  ],
+  "check": "4 outbound messages persisted; release restored OFF+kill"
+}

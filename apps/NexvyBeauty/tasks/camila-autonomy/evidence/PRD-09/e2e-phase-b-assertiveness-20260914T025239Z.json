@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "phase": "B-assertiveness-wire+auth",
+  "when": "2026-09-14T02:53:05.090433+00:00",
+  "cases": [
+    {
+      "id": "E5.3b_code",
+      "status": "PASS",
+      "detail": "deno test 11/11 incl. buildAssertivenessInboundMeta; webhook deployed"
+    },
+    {
+      "id": "E5.3b_backfill",
+      "status": "PASS",
+      "detail": {
+        "label": "affirmative"
+      }
+    },
+    {
+      "id": "E5.2_auth",
+      "status": "PASS",
+      "detail": {
+        "http": 200,
+        "brain": {
+          "skipped": "safety_kernel_denied",
+          "reason": "release_off"
+        },
+        "inbound_id": "93d2f6ee-197a-4972-b717-73d176c573d2"
+      }
+    },
+    {
+      "id": "E5.2_kernel",
+      "status": "PASS",
+      "detail": {
+        "ledger_top": [
+          {
+            "action_type": "reply",
+            "deny_reason": "release_off",
+            "id": "9a55d4dd-1e80-4192-ba63-8a0c42e44e63",
+            "status": "denied"
+          },
+          {
+            "action_type": "resume",
+            "deny_reason": "release_off",
+            "id": "c7e9d3b6-25a2-4eda-bb75-08440e0c88d1",
+            "status": "denied"
+          }
+        ],
+        "brain": {
+          "skipped": "safety_kernel_denied",
+          "reason": "release_off"
+        }
+      }
+    }
+  ],
+  "summary": {
+    "pass": 4,
+    "fail": 0
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": "path-a-glossary@1.0.0",
+  "updated_at": "2026-09-16T06:30:26.174557+00:00",
+  "terms": {
+    "dnc_hard": "Proibição dura de contato automático. Classificador de reopen NUNCA limpa. Só fluxo admin/consentimento.",
+    "cold_suppressed": "Bloqueio operacional de opening/FU/apresentar. Soft opt-out ativa; reopen_intent soft pode desativar.",
+    "soft_opt_out_active": "Preferência soft atual (não tenho interesse / outra oportunidade). Revogável com trilha; histórico não é apagado.",
+    "remarketing_eligible": "Segmentação futura. Sozinho NÃO autoriza nem proíbe envio.",
+    "reopen_epoch": "Identificador monotônico da retomada após reopen_intent.",
+    "reply_grant": "Autorização de uso único vinculada a inbound_message_id + epoch; TTL ~30min.",
+    "cold_not_before": "Hold anti-blast após reopen; default reopened_at + 24h.",
+    "close_kind": "Motivo do fechamento: soft_opt_out_r2 | hard_opt_out | human | …",
+    "farewell_window_hours": 48,
+    "do_not_contact_legacy": "Campo legado misturado. Path A deprecia semântica 'Camila muda pra sempre' para soft; usar dnc_hard / cold_suppressed."
+  },
+  "policy": {
+    "option": "B",
+    "q2_farewell_window_hours": 48,
+    "q4_r2_timing": "after_reopen_canary",
+    "ambiguous_clarify_per_24h": 1,
+    "reopen_liberates_soft_cold": true,
+    "reopen_blast_forbidden": true,
+    "reenqueue_on_reopen_forbidden": true
+  }
+}

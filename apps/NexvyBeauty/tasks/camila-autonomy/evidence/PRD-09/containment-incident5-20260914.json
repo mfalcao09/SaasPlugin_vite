@@ -1,0 +1,13 @@
+{
+  "when": "2026-09-15T00:03:46.539758+00:00",
+  "actions": [
+    "5 incident conversations → status=human_active, needs_human=true, metadata.lost=true",
+    "kill_switch=true on Camila release controls (release_state remains OFF)"
+  ],
+  "facts": {
+    "out_48h_to_incident5": 0,
+    "last_delivered_cascade": "2026-09-09 to 2026-09-11 Emilly+Expert (dozens of outs)",
+    "yesterday_2026_09_13": "100 ledger denials release_off — tried, did NOT deliver"
+  },
+  "d2_roteiro_note": "NOT the old 4-bubble opening blast; kernel max 2 bubbles/action, max 1 opening + 2 followups, 1 proactive/day; D2 = 1 canary first"
+}

@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "result": "NO_GO_IN_PROGRESS",
+  "master_gate": "NO-GO",
+  "same_sha_deployment": false,
+  "items": [
+    {
+      "id": "conductor_flag_off",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "release OFF / dry-run defaults"
+    },
+    {
+      "id": "campaigns_paused_dry_run",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "deno_check_four_edges",
+      "code_proven": "partial",
+      "live_proven": false,
+      "note": "conductor+brain green this session; run full 4 before GO"
+    },
+    {
+      "id": "camila_suite_ci",
+      "code_proven": "partial",
+      "live_proven": false
+    },
+    {
+      "id": "migrations_idempotent",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "PRD-07/08 SQL not applied"
+    },
+    {
+      "id": "deployed_equals_sha",
+      "code_proven": false,
+      "live_proven": false
+    },
+    {
+      "id": "zapi_smartphone_connected",
+      "code_proven": false,
+      "live_proven": false
+    },
+    {
+      "id": "cohort_lead_owner_ficha",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "ficha_concurrency",
+      "code_proven": "prior_prd03",
+      "live_proven": false
+    },
+    {
+      "id": "provider_needs_reservation",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "incident_replay_caps",
+      "code_proven": "partial",
+      "live_proven": false
+    },
+    {
+      "id": "optout_window_dedupe_caps",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "ack_ledger",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "PRD-05"
+    },
+    {
+      "id": "price_link_validator",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "PRD-06"
+    },
+    {
+      "id": "brain_rubric_adversarial",
+      "code_proven": false,
+      "live_proven": false
+    },
+    {
+      "id": "conductor_cohort_cancel_inbound",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "PRD-07"
+    },
+    {
+      "id": "learning_no_kernel",
+      "code_proven": true,
+      "live_proven": false,
+      "note": "PRD-08 PASS_CODE"
+    },
+    {
+      "id": "holdout_itt",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "promote_rollback_atomic",
+      "code_proven": true,
+      "live_proven": false
+    },
+    {
+      "id": "e2e_payment_onboarding",
+      "code_proven": false,
+      "live_proven": false
+    },
+    {
+      "id": "kill_switch_zero_provider",
+      "code_proven": "partial",
+      "live_proven": false
+    },
+    {
+      "id": "release_owner_canary_approval",
+      "code_proven": false,
+      "live_proven": false
+    }
+  ],
+  "blockers_for_go": [
+    "deploy edges on same SHA",
+    "apply PRD-07/08 migrations with approval",
+    "controlled-number E2E + adversarial rubric",
+    "prove kill-switch zeros provider calls live",
+    "explicit release-owner approval"
+  ]
+}

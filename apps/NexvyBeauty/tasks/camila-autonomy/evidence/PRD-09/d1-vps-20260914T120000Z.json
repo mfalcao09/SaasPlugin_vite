@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "job": "camila-d1",
+  "when": "2026-09-14T12:00:00.104580+00:00",
+  "cases": [
+    {
+      "id": "pre_release",
+      "status": "PASS",
+      "detail": {
+        "http": 200,
+        "rel": {
+          "release_state": "OFF",
+          "kill_switch": false
+        }
+      }
+    },
+    {
+      "id": "flip_test",
+      "status": "PASS",
+      "detail": {
+        "patch_http": 200,
+        "now": [
+          {
+            "release_state": "TEST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inject_inbound",
+      "status": "PASS",
+      "detail": {
+        "http": 201,
+        "inbound_id": "bba72e75-91e7-4c7f-9ebb-a8942c08d6da"
+      }
+    },
+    {
+      "id": "brain_invoke",
+      "status": "PASS",
+      "detail": {
+        "http": 200,
+        "brain": {}
+      }
+    },
+    {
+      "id": "ledger_path",
+      "status": "PASS",
+      "detail": {
+        "delivered": false,
+        "ledger": [
+          {
+            "id": "7154283e-d3af-4d81-a497-854daba77a5e",
+            "status": "accepted",
+            "deny_reason": null,
+            "action_type": "reply",
+            "created_at": "2026-09-14T12:00:15.251362+00:00"
+          },
+          {
+            "id": "9a55d4dd-1e80-4192-ba63-8a0c42e44e63",
+            "status": "denied",
+            "deny_reason": "release_off",
+            "action_type": "reply",
+            "created_at": "2026-09-14T02:52:57.676059+00:00"
+          },
+          {
+            "id": "c7e9d3b6-25a2-4eda-bb75-08440e0c88d1",
+            "status": "denied",
+            "deny_reason": "release_off",
+            "action_type": "resume",
+            "created_at": "2026-09-14T02:46:55.045495+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outbound_persisted",
+      "status": "PASS",
+      "detail": {
+        "outbound_n": 1,
+        "preview": "Oi Marcelo! Aqui é sobre organizar agenda e trazer de volta cliente que sumiu no"
+      }
+    },
+    {
+      "id": "restore_off",
+      "status": "PASS",
+      "detail": {
+        "rel": {
+          "release_state": "OFF",
+          "kill_switch": false
+        }
+      }
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "fail": 0
+  },
+  "result": "PASS",
+  "human_receipt": {
+    "confirmed_by": "marcelo",
+    "confirmed_at": "2026-09-14T23:54:50.940045+00:00",
+    "note": "User confirmed received exactly at 09:00 BRT"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "tier": 2,
+  "degrau": "5_leads",
+  "approve_required": "APROVO F7 PATH-A",
+  "go_text": "GO para F7 tier 2",
+  "allowlist_e164": [
+    "5511945760964",
+    "5547996650702",
+    "5585997315603",
+    "5566992054841",
+    "5549988309265"
+  ],
+  "members": [
+    {
+      "e164": "5511945760964",
+      "label": "wa:eval canary (Marcelo)",
+      "role": "ops_canary"
+    },
+    {
+      "e164": "5547996650702",
+      "label": "Joice",
+      "role": "soft_optout_gold",
+      "handle": "joicefbeltramini"
+    },
+    {
+      "e164": "5585997315603",
+      "label": "Aline",
+      "role": "d2_canary",
+      "handle": "alinemachadostudiodebeleza"
+    },
+    {
+      "e164": "5566992054841",
+      "label": "Beatriz",
+      "role": "d2_canary",
+      "handle": "beatrizsouza_af"
+    },
+    {
+      "e164": "5549988309265",
+      "label": "Adriana",
+      "role": "d2_canary",
+      "handle": "beautycompany.af"
+    }
+  ],
+  "excluded_this_tier": [
+    {
+      "e164": "5511942602733",
+      "label": "Leticia",
+      "reason": "shared_phone_suppress_with_lu.heleno — defer"
+    }
+  ],
+  "runtime_policy": {
+    "REOPEN_INTENT_V1_MODE": "enforce",
+    "R2_AUTO_V1_MODE": "enforce",
+    "release_state": "OFF",
+    "kill_switch": true,
+    "note": "Allowlist widened; Camila stays OFF+kill. R2/ledger send still needs explicit TEST window — not enabled by this GO."
+  },
+  "source": [
+    "shortlist-5-salao-greeting.json validated_by_marcelo",
+    "D2 canary e2e phones",
+    "Joice learning case visitor_phone"
+  ],
+  "at": "2026-09-17T13:45:35.906833+00:00"
+}

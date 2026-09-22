@@ -1,0 +1,26 @@
+{
+  "loop": 1,
+  "name": "SHADOW",
+  "go": "GO BUILD HARNESS",
+  "at": "2026-09-18T03:06:53.299876+00:00",
+  "check_binary": "deno test camila-harness/shadow-sim.test.ts",
+  "exit_code": 0,
+  "pass": true,
+  "real_whatsapp_sends": 0,
+  "stdout_tail": "\u001b[0m\u001b[38;5;245mrunning 3 tests from ./supabase/functions/_shared/camila-harness/shadow-sim.test.ts\u001b[0m\nL1 shadow: all PRD §7 scenarios PASS + realSends=0 ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(5ms)\u001b[0m\nMensagem de Saída: 2 bubbles (text + site) ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\ngoodbye only after exit ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\n\n\u001b[0m\u001b[32mok\u001b[0m | 3 passed | 0 failed \u001b[0m\u001b[38;5;245m(11ms)\u001b[0m\n\n",
+  "stderr_tail": "",
+  "scenarios": [
+    "S1_soft_to_pool",
+    "S2_hard_mid4",
+    "S3_interest_service",
+    "S4_noise_then_human",
+    "S5_silence_to_pool",
+    "S6_goodbye_noop",
+    "S7_resume_48h",
+    "S8_idempotent_replay",
+    "S9_no_go_no_send",
+    "S10_auto_blocked_by_kill"
+  ],
+  "contract": "camila-harness v1.2",
+  "prd": "PRD-11"
+}

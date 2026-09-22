@@ -1,0 +1,38 @@
+{
+  "status": "delivered",
+  "at": "2026-09-17T00:09:15.763453+00:00",
+  "project_ref": "fzhlbwhdejumkyqosuvq",
+  "project_status": "ACTIVE_HEALTHY",
+  "checks": {
+    "C1_migrations_path_a_cols": "PASS",
+    "C2_deploy_webhook_cold": "PASS",
+    "C3_secrets_reopen_enforce_allowlist": "PASS",
+    "C4_f4_live_canary": "PASS",
+    "C5_release_off_kill_true": "PASS",
+    "C6_harness_40": "PASS"
+  },
+  "secrets_set": [
+    "REOPEN_INTENT_V1_MODE=enforce",
+    "REOPEN_INTENT_V1_ALLOWLIST=5511945760964",
+    "R2_AUTO_V1_MODE=off"
+  ],
+  "deployed": [
+    "platform-whatsapp-qr-webhook",
+    "platform-cold-outreach"
+  ],
+  "migrations_applied": [
+    "20260916_path_a_soft_hard_optout.sql",
+    "20260916_authorize_do_not_contact.sql"
+  ],
+  "f4_live": "pass_live",
+  "camila_release": {
+    "release_state": "OFF",
+    "kill_switch": true
+  },
+  "remaining": [
+    "F6 canary R2 (PATH_A_F6_LIVE) \u2014 not in Plan B scope",
+    "F7 expansion \u2014 needs APROVO F7 PATH-A",
+    "Commit/PR Path A untracked code when ready"
+  ],
+  "delivery_claim": "Plan B delivered and verified: migration+deploy+secrets+F4 live+OFF/kill"
+}

@@ -2,7 +2,7 @@
 
 Atualizado: 2026-09-21. Código: `_shared/camila-harness/porta-juiz.ts` + puxador/gates.
 PRD-13 A–D: no disco, commit `cb8d0e0`, edge (cold 106 / webhook 55 / brain 175).
-Aberto: Check E wamid (após 08h BRT); copy final de consentimento (rascunho só).
+Aberto: Check E wamid (após 08h BRT). Copy de consentimento: `CONSENT_QUESTION_TEMPLATE` (21/09).
 Check núcleo: `deno test --no-check supabase/functions/_shared/camila-harness/porta-juiz.test.ts`
 
 Este arquivo é o contrato. Em conflito com PLAN-v1.2 / Codex “cancelar se falou” / `pauseOpenPackage`, **este vence**.

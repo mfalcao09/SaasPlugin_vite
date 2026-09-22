@@ -1,0 +1,25 @@
+{
+  "loop": 2,
+  "name": "WIRE",
+  "go": "GO LOOP 2 WIRE",
+  "at": "2026-09-18T07:28:32.674875+00:00",
+  "check_binary": "deno test wire-sim.test.ts (+ shadow still green)",
+  "exit_code_shadow": 0,
+  "exit_code_wire": 0,
+  "pass": true,
+  "real_whatsapp_sends": 0,
+  "checks": {
+    "no_go_blocked": true,
+    "supervised_dry_run_ok": true,
+    "kill_blocks_automatic": true,
+    "kill_allows_supervised_dry": true,
+    "outside_list_blocked": true,
+    "l2_real_forbidden": true,
+    "idempotent_replay": true,
+    "voice_off_blocks_real": true
+  },
+  "stdout_wire_tail": "\u001b[0m\u001b[38;5;245mrunning 1 test from ./supabase/functions/_shared/camila-harness/wire-sim.test.ts\u001b[0m\nL2 WIRE: all scenarios PASS + realSends=0 ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(32ms)\u001b[0m\n\n\u001b[0m\u001b[32mok\u001b[0m | 1 passed | 0 failed \u001b[0m\u001b[38;5;245m(63ms)\u001b[0m\n\n",
+  "stderr_wire_tail": "",
+  "contract": "camila-harness v1.2",
+  "prd": "PRD-11"
+}

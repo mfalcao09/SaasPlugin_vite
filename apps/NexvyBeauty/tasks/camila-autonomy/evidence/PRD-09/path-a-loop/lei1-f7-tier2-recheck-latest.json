@@ -1,0 +1,61 @@
+{
+  "at": "2026-09-17T13:50:44.531429+00:00",
+  "check_binary": "verify_f7_ramp.py \u2192 pass_tier2 + allowlist=5 expected + OFF/kill",
+  "checks": {
+    "C0_verify_f7_exit0": "PASS",
+    "C0b_verify_prints_pass_tier2": "PASS",
+    "C1_F7_status_pass_tier2": "PASS",
+    "C2_tier_2": "PASS",
+    "C3_allowlist_exactly_5": "PASS",
+    "C4_allowlist_expected_set": "PASS",
+    "C5_packet_match": "PASS",
+    "C6_approval_match": "PASS",
+    "C7_canary_included": "PASS",
+    "C8_approve_phrase": "PASS",
+    "C9_go_text_tier2": "PASS",
+    "C10_f6_ok": "PASS",
+    "C11_commercial_flag_true": "PASS",
+    "C12_loop_OBSERVE_TIER2": "PASS",
+    "C13_release_OFF_kill_true": "PASS",
+    "C14_REOPEN_INTENT_V1_MODE_present": "PASS",
+    "C14_REOPEN_INTENT_V1_ALLOWLIST_present": "PASS",
+    "C14_R2_AUTO_V1_MODE_present": "PASS",
+    "C14_R2_AUTO_V1_ALLOWLIST_present": "PASS",
+    "C15_PR204_open": "PASS",
+    "C16_PR_has_tier2_commit": "PASS"
+  },
+  "detail": {
+    "verify_stdout_tail": "true, \"degrau\": \"5_leads\", \"packet\": \"F7-allowlist-tier2.json\", \"note\": \"tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor\"}, \"release\": {\"kill_switch\": true, \"release_state\": \"OFF\"}, \"f6\": {\"status\": \"pass\", \"live\": \"pass_live\", \"ok\": true}, \"zero_metrics\": {\"outbound_outside_allowlist\": 0, \"r2_auto_outside_allowlist\": 0}, \"at\": \"2026-09-17T13:50:38.823002+00:00\"}\n",
+    "verify_stderr_tail": "",
+    "release": {
+      "kill_switch": true,
+      "release_state": "OFF"
+    },
+    "db_rc": 0,
+    "secret_updated_at": {
+      "REOPEN_INTENT_V1_ALLOWLIST": "2026-09-17T13:47:23.119Z",
+      "R2_AUTO_V1_ALLOWLIST": "2026-09-17T13:47:23.119Z",
+      "R2_AUTO_V1_MODE": "2026-09-17T13:47:23.119Z",
+      "REOPEN_INTENT_V1_MODE": "2026-09-17T13:47:23.119Z"
+    },
+    "C14_note": "secret VALUES are digests only \u2014 contents claimed set earlier, not re-read",
+    "pr": {
+      "url": "https://github.com/mfalcao09/SaasPlugin_vite/pull/204",
+      "state": "OPEN",
+      "commit_headlines": [
+        "feat(camila): Path A reopen (opt-out) through F4 live + F7 tier1 gate",
+        "feat(camila): Path A F6 R2 canary with Joice copy and link preview",
+        "feat(camila): F7 tier2 Path A allowlist (5 leads)"
+      ]
+    }
+  },
+  "allowlist": [
+    "5511945760964",
+    "5547996650702",
+    "5585997315603",
+    "5566992054841",
+    "5549988309265"
+  ],
+  "delivery_claim_allowed": true,
+  "status": "implementado e verificado"
+}

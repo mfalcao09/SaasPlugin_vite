@@ -1,0 +1,18 @@
+{
+  "when": "2026-09-15T17:45:29.992632+00:00",
+  "gap_s": 60,
+  "adriana": {
+    "ok": true,
+    "outs": 4,
+    "conversation_id": "bb643583-7549-4815-8be6-93714b696091",
+    "evidence": "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tasks/camila-autonomy/evidence/PRD-09/d2-canary-adriana-20260915T173624Z.json",
+    "fails": []
+  },
+  "leticia": {
+    "ok": true,
+    "outs": 4,
+    "conversation_id": "3eebb8e8-125e-474a-abd7-ff7a5d0c70bf",
+    "evidence": "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tasks/camila-autonomy/evidence/PRD-09/d2-canary-leticia-20260915T174124Z.json",
+    "fails": []
+  }
+}
