@@ -110,10 +110,31 @@ Deno.serve(async (req: Request) => {
 
     const keywords: string[] = Array.isArray(job.keywords) ? job.keywords : [];
 
+    // Universo multi-fase (anti-reinjeção): contato já visto em QUALQUER fase do
+    // funil — inclusive `contatado`/`remarketing`, que antes escapavam do dedup.
+    // Ignora a extração corrente p/ preservar idempotência de reenvio.
+    const seenPhones = new Set<string>();
+    const seenHandles = new Set<string>();
+    {
+      const { data: universeRows, error: uErr } = await sb
+        .from('platform_crm_lead_universe')
+        .select('telefone_digits, handle, extraction_id')
+        .eq('product_id', job.product_id);
+      if (uErr) throw new Error(`lead_universe: ${uErr.message}`);
+      for (const r of (universeRows ?? []) as Array<Record<string, unknown>>) {
+        if (r.extraction_id && String(r.extraction_id) === String(job.id)) continue;
+        const t = String(r.telefone_digits ?? '').replace(/\D/g, '');
+        if (t) seenPhones.add(t);
+        const h = String(r.handle ?? '').replace(/^@/, '').toLowerCase();
+        if (h) seenHandles.add(h);
+      }
+    }
+
     // Normaliza + dedup por handle dentro do batch.
     const byHandle = new Map<string, Record<string, unknown>>();
     let optedOut = 0;
     let noHandle = 0;
+    let jaNoFunil = 0;
     for (const item of items) {
       const card = buildLeadCard(item);
       if (!card.handle) {
@@ -126,6 +147,12 @@ Deno.serve(async (req: Request) => {
         (card.telefone && optoutPhones.has(card.telefone))
       ) {
         optedOut++;
+        continue;
+      }
+      // Já existe em alguma fase? (telefone = chave forte; handle = secundária)
+      const telDigits = String(card.telefone ?? '').replace(/\D/g, '');
+      if (seenHandles.has(card.handle.toLowerCase()) || (telDigits && seenPhones.has(telDigits))) {
+        jaNoFunil++;
         continue;
       }
       // Qualificação por camadas (ICP · idioma · GEO · telefone). Estagia TODOS
@@ -191,7 +218,7 @@ Deno.serve(async (req: Request) => {
 
     // Só contagens no log (nunca PII).
     console.log(
-      `[leads-extraction-webhook] extraction=${job.id} dataset_items=${items.length} staged=${rows.length} qualified=${qualified} cliente=${seg.salao_cliente} afiliado=${seg.afiliado_infoproduto} revisao=${seg.revisao} descarte=${seg.descarte} with_phone=${withPhone} opted_out=${optedOut} no_handle=${noHandle}`,
+      `[leads-extraction-webhook] extraction=${job.id} dataset_items=${items.length} staged=${rows.length} qualified=${qualified} cliente=${seg.salao_cliente} afiliado=${seg.afiliado_infoproduto} revisao=${seg.revisao} descarte=${seg.descarte} with_phone=${withPhone} opted_out=${optedOut} ja_no_funil=${jaNoFunil} no_handle=${noHandle}`,
     );
     return json({
       ok: true,
