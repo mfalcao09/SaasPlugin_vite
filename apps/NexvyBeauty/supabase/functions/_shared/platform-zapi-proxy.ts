@@ -164,9 +164,10 @@ export async function handlePlatformZapiProxyAction(opts: {
     }
 
     const webhookUrl = buildZapiWebhookUrl(supabaseUrl, creds);
+    // notifySentByMe=true: sem isso, outbound digitado no celular NÃO chega ao CRM.
     const wh = await zapiUpdateEveryWebhooks(zapi, creds, webhookUrl, true);
     console.log(
-      `[zapi create] webhook ok=${wh.ok} status=${wh.status} iid=${maskSecret(creds.instanceId)}`,
+      `[zapi create] webhook ok=${wh.ok} status=${wh.status} notifySentByMe=true iid=${maskSecret(creds.instanceId)}`,
     );
 
     const row = {
@@ -182,6 +183,7 @@ export async function handlePlatformZapiProxyAction(opts: {
       metadata: {
         provider: "zapi",
         zapi_instance_id: creds.instanceId,
+        notify_sent_by_me: wh.ok ? true : false,
         webhook_error: wh.ok ? null : (wh.message || `status ${wh.status}`),
         webhook_last_attempt_at: new Date().toISOString(),
       },
@@ -230,11 +232,22 @@ export async function handlePlatformZapiProxyAction(opts: {
         const me = await zapiMe(zapi, creds);
         phone = extractConnectedPhone(me.body);
       }
+      // Reafirma notifySentByMe em toda reconexão — senão outbound do celular some.
+      const webhookUrl = buildZapiWebhookUrl(supabaseUrl, creds);
+      const wh = await zapiUpdateEveryWebhooks(zapi, creds, webhookUrl, true);
       await supabase.from("platform_crm_wa_qr_instances").update({
         status: "connected",
         qr_code: null,
         qr_code_updated_at: null,
         last_connected_at: new Date().toISOString(),
+        webhook_subscribed: wh.ok,
+        metadata: {
+          ...(inst.metadata || {}),
+          provider: "zapi",
+          notify_sent_by_me: wh.ok ? true : false,
+          webhook_error: wh.ok ? null : (wh.message || null),
+          webhook_last_attempt_at: new Date().toISOString(),
+        },
         ...(phone ? { phone_number: phone } : {}),
       }).eq("id", inst.id);
       return json({
@@ -243,6 +256,7 @@ export async function handlePlatformZapiProxyAction(opts: {
         already_connected: true,
         phone_number: phone,
         provider: "zapi",
+        notify_sent_by_me: wh.ok,
       }, 200, corsHeaders);
     }
 
@@ -255,11 +269,13 @@ export async function handlePlatformZapiProxyAction(opts: {
     const qrRes = await zapiQrImage(zapi, creds);
     const qrString = extractZapiQr(qrRes.body);
     if (qrString) {
+      // NÃO marque webhook_subscribed=true aqui: QR ≠ webhook. fromMe do
+      // aparelho só chega com notifySentByMe via update-every-webhooks
+      // (subscribe_webhook / create). Sem isso o CRM fica mudo no outbound do celular.
       await supabase.from("platform_crm_wa_qr_instances").update({
         status: "qr_pending",
         qr_code: qrString,
         qr_code_updated_at: new Date().toISOString(),
-        webhook_subscribed: true,
       }).eq("id", inst.id);
     }
     return json({
@@ -279,17 +295,25 @@ export async function handlePlatformZapiProxyAction(opts: {
     const creds = credsOf(loaded.inst);
     if (!creds) return json({ error: "Sem credenciais Z-API" }, 400, corsHeaders);
     const webhookUrl = buildZapiWebhookUrl(supabaseUrl, creds);
+    // notifySentByMe=true é obrigatório: sem ele a Z-API não dispara
+    // ReceivedCallback para mensagens digitadas no aparelho (fromMe).
     const wh = await zapiUpdateEveryWebhooks(zapi, creds, webhookUrl, true);
     await supabase.from("platform_crm_wa_qr_instances").update({
       webhook_subscribed: wh.ok,
       metadata: {
         ...(loaded.inst.metadata || {}),
         provider: "zapi",
+        notify_sent_by_me: wh.ok ? true : false,
         webhook_error: wh.ok ? null : (wh.message || null),
         webhook_last_attempt_at: new Date().toISOString(),
       },
     }).eq("id", loaded.inst.id);
-    return json({ ok: wh.ok, error: wh.message, provider: "zapi" }, 200, corsHeaders);
+    return json({
+      ok: wh.ok,
+      error: wh.message,
+      provider: "zapi",
+      notify_sent_by_me: wh.ok,
+    }, 200, corsHeaders);
   }
 
   if (action === "disconnect_instance" || action === "logout_instance") {
