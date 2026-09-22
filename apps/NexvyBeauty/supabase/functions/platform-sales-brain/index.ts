@@ -141,6 +141,12 @@ import { WA_QR_CHANNELS, isWaQrChannel } from '../_shared/platform-wa-qr-identit
 import { firstNameOnly } from '../_shared/affiliate-onda2.ts';
 import { resolveBrainMaxOutputTokens } from '../_shared/brain-max-tokens.ts';
 import { extractChatCompletionContent } from '../_shared/ai-completion-text.ts';
+import { assembleCamilaSystemPrompt } from '../_shared/camila-brain-prompt.ts';
+import {
+  GEMINI_FLASH_MODEL,
+  generateGeminiText,
+  type GeminiTurn,
+} from '../_shared/gemini-generate.ts';
 import { extractQrSendMessageId } from '../_shared/qr-send-message-id.ts';
 
 const DEFAULT_MODEL = 'google/gemini-2.5-flash';
@@ -1042,9 +1048,27 @@ async function extractLeadFacts(
   apiKey: string,
   model: string,
   transcript: string,
+  nativeGemini = false,
 ): Promise<Record<string, any>> {
   try {
     const sys = 'Você extrai FATOS de uma conversa de qualificação de vendas (profissional da beleza) e responde SOMENTE com um objeto JSON válido, sem texto ao redor, sem markdown. NÃO calcule score — apenas extraia o que a lead DISSE. Campos (use null quando desconhecido, exceto dor_flags que é sempre um array — vazio se nada): {"sub_vertical": string|null, "tempo_atendimento_meses": number|null, "num_clientes": number|null, "ticket_medio": number|null, "recorrencia": string|null, "nome_lead": string|null, "dor_flags": string[]}. Em dor_flags liste sinais de DOR/urgência que a lead expressou, um por item, texto curto (ex.: "agenda vazia", "clientes sumindo", "faturamento caindo", "depende de indicação", "quer previsibilidade"). Se a lead não expressou dor, retorne dor_flags: []. num_clientes = tamanho da carteira/base histórica de clientes. ticket_medio = valor médio em R$ por atendimento. tempo_atendimento_meses = há quantos meses atende (converta anos para meses).';
+    if (nativeGemini) {
+      const generated = await generateGeminiText({
+        apiKey,
+        system: sys,
+        messages: [{ role: "user", content: `Conversa:\n${transcript}\n\nRetorne o JSON dos fatos.` }],
+        maxOutputTokens: 300,
+        temperature: 0,
+      });
+      if (!generated.ok) {
+        console.warn('[platform-sales-brain] extração de fatos: gemini', generated.status);
+        return {};
+      }
+      const matched = generated.text.match(/\{[\s\S]*\}/);
+      if (!matched) return {};
+      const parsed = JSON.parse(matched[0]);
+      return (parsed && typeof parsed === 'object') ? parsed : {};
+    }
     const res = await fetch(`${gatewayBase}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -2616,15 +2640,31 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     // e estes são fatos DESTE turno — não fazem parte da persona.
     // O bloco de tags pede OBSERVAÇÃO (rotular o que a lead disse), nunca contenção
     // — a contenção é aplicada por CÓDIGO, com este mesmo estado, no turno seguinte.
-    const systemPromptComEstado = [
+    const fatosBloco = pol.fatos.length
+      ? `═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}${closeGuardFato}`
+      : closeGuardFato;
+    let systemPromptComEstado = [
       systemPrompt,
       canonicalFichaPrompt ? `\n\n═══ FICHA CANÔNICA DO LEAD (obrigatória — use e não invente fora dela) ═══\n${canonicalFichaPrompt}` : '',
-      pol.fatos.length ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${pol.fatos.join('\n')}${closeGuardFato}` : (closeGuardFato ? `\n\n═══ FATOS DESTA CONVERSA (obedeça acima de qualquer outra instrução) ═══\n${closeGuardFato}` : ''),
+      fatosBloco ? `\n\n${fatosBloco}` : '',
       journeyBlock,
       reactivationBlock,
       trailConductorBlock,
       `\n\n${BLOCO_TAGS_CLASSIFICADORAS}`,
     ].join('');
+    if (personaIsProspector) {
+      const checkout = (!onboardingActive && !retentionActive && isRealB2bFunnel)
+        ? buildCheckoutContext(plans, persona.name ?? 'Camila') + (plans.length ? PRICE_RULE_BLOCK : '')
+        : '';
+      systemPromptComEstado = assembleCamilaSystemPrompt({
+        now: buildNowContext(),
+        checkout,
+        ficha: canonicalFichaPrompt,
+        fatos: fatosBloco,
+        journey: journeyBlock,
+        reactivation: reactivationBlock,
+      });
+    }
 
     if (pol.fatos.length || reactivationBlock || trailConductorBlock || conductorWake || journeyBlock || closeGuardFato) {
       console.log('[platform-sales-brain] estado→política', {
@@ -2661,6 +2701,34 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       });
     } else if (forceOpaqueClarify) {
       reply = OPAQUE_CLARIFY;
+    } else if (personaIsProspector) {
+      const geminiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
+      if (!geminiKey) {
+        console.error('[platform-sales-brain] GEMINI_API_KEY ausente');
+        return json({
+          error: 'GEMINI_API_KEY não configurada na plataforma.',
+          key_source: 'gemini_env',
+          persona_id: persona?.id ?? null,
+          persona_name: persona?.name ?? null,
+        }, 500);
+      }
+      console.info(`[platform-sales-brain] modelo=${GEMINI_FLASH_MODEL} persona=prospector/Camila key_source=gemini_env`);
+      const generated = await generateGeminiText({
+        apiKey: geminiKey,
+        system: systemPromptComEstado,
+        messages: messages as GeminiTurn[],
+        maxOutputTokens,
+      });
+      if (!generated.ok) {
+        console.error('[platform-sales-brain] gemini error:', generated.status, generated.error.slice(0, 200));
+        return json({
+          error: `Erro do provedor de IA: ${generated.status || 'gemini'}`,
+          key_source: 'gemini_env',
+          persona_id: persona?.id ?? null,
+          persona_name: persona?.name ?? null,
+        }, 502);
+      }
+      reply = generated.text;
     } else {
       const response = await fetch(`${gatewayBase}/chat/completions`, {
         method: 'POST',
@@ -3393,7 +3461,13 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
           .map((m: any) => `${m.sender_type === 'visitor' ? 'Lead' : 'Duda'}: ${m.content}`)
           .join('\n')
           .slice(-6000);
-        const facts = await extractLeadFacts(gatewayBase, apiKey, model, transcript);
+        const facts = await extractLeadFacts(
+          gatewayBase,
+          personaIsProspector ? (Deno.env.get('GEMINI_API_KEY') ?? '') : apiKey,
+          personaIsProspector ? GEMINI_FLASH_MODEL : model,
+          transcript,
+          personaIsProspector,
+        );
 
         const subVertical = typeof facts.sub_vertical === 'string' ? facts.sub_vertical.trim() || null : null;
         const tempoMeses = toNum(facts.tempo_atendimento_meses);
