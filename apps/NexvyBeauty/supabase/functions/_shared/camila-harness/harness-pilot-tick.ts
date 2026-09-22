@@ -41,6 +41,7 @@ import {
   loadHarnessJobsFromSb,
   mergeJobsById,
   persistHarnessJob,
+  persistInboundVerdict,
   runPullerPass,
   type PullerInvoke,
 } from "./harness-puller.ts";
@@ -500,23 +501,43 @@ async function runTickPuller(input: {
       brainWamidByJobId[snap.existingJobId] = true;
     }
   }
+  const sb = input.sb && typeof (input.sb as { from?: unknown }).from === "function"
+    ? input.sb as Parameters<typeof persistHarnessJob>[0]
+    : null;
   const onInvoke = input.forceDry
     ? undefined
     : input.onPullerInvoke ?? (async (payload: PullerInvoke) => {
       const base = input.envGet("SUPABASE_URL") ?? "";
       const secret = input.envGet("BRAIN_INTERNAL_SECRET") ?? "";
       const key = input.envGet("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-      if (!base || (!secret && !key)) return;
+      if (!base || (!secret && !key)) {
+        return {
+          httpStatus: 0,
+          body: { skipped: "missing_brain_auth", reason: "missing_brain_auth" },
+        };
+      }
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
       if (secret) headers["x-brain-secret"] = secret;
       else headers["Authorization"] = `Bearer ${key}`;
-      await fetch(`${base}/functions/v1/platform-sales-brain`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      }).catch(() => undefined);
+      try {
+        const res = await fetch(`${base}/functions/v1/platform-sales-brain`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        const text = await res.text();
+        let body: unknown = { skipped: "unreadable", reason: "unreadable" };
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = { skipped: "unreadable", reason: "unreadable" };
+        }
+        return { httpStatus: res.status, body };
+      } catch {
+        return { httpStatus: 0, body: { skipped: "fetch_failed", reason: "fetch_failed" } };
+      }
     });
   const pass = await runPullerPass({
     now: input.now,
@@ -525,15 +546,23 @@ async function runTickPuller(input: {
     conversationStatusById,
     brainWamidByJobId,
     forceDry: input.forceDry,
+    onClaimed: sb
+      ? async (job) => {
+        await persistHarnessJob(sb, job, prevMetaByConv[job.conversationId] ?? {});
+      }
+      : undefined,
     onInvoke,
   });
-  if (input.sb && typeof (input.sb as { from?: unknown }).from === "function") {
+  if (sb) {
     for (const job of pass.jobs) {
       await persistHarnessJob(
-        input.sb as Parameters<typeof persistHarnessJob>[0],
+        sb,
         job,
         prevMetaByConv[job.conversationId] ?? {},
       );
+    }
+    for (const verdict of pass.verdicts) {
+      await persistInboundVerdict(sb, verdict.inboundId, verdict.verdict);
     }
   }
   return { invokes: pass.invoked.length, updates: pass.updates };

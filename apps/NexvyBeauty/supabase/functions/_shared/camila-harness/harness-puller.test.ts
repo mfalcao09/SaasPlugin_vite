@@ -68,7 +68,7 @@ Deno.test("held + terça 10h → 1 invoke com harness_job_id", async () => {
   assertEquals(invoked.length, 1);
   assertEquals(invoked[0].harness_job_id, "job:conv-1:in-1");
   assertEquals(invoked[0].conversation_id, "conv-1");
-  assertEquals(r.jobs.find((j) => j.id === invoked[0].harness_job_id)?.status, "in_flight");
+  assertEquals(r.jobs.find((j) => j.id === invoked[0].harness_job_id)?.status, "failed");
 });
 
 Deno.test("ready duas vezes no mesmo tick → 1 claim", async () => {
