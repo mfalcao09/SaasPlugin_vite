@@ -323,7 +323,69 @@ export async function runPullerPass(
   return { jobs: [...live.values()], invoked, updates, verdicts };
 }
 
+/** Dono a gravar: só com a conversa vazia e um agente amarrado ao canal. */
+export function agentIdToStamp(input: {
+  currentAgentId: string | null | undefined;
+  boundAgentId: string | null | undefined;
+}): string | null {
+  if (String(input.currentAgentId ?? "").trim()) return null;
+  const bound = String(input.boundAgentId ?? "").trim();
+  return bound || null;
+}
+
 type Sb = { from: (table: string) => any };
+
+/**
+ * O puxador carimba o agente do canal antes de chamar o cérebro.
+ * Não sobrescreve um dono que já existe.
+ */
+export async function stampChannelAgentIfUnset(
+  sb: Sb,
+  conversationId: string,
+): Promise<{ stamped: boolean; agentId: string | null; reason: string }> {
+  const { data, error } = await sb
+    .from("platform_crm_conversations")
+    .select("id, current_agent_id, wa_qr_instance_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (error || !data?.id) {
+    return { stamped: false, agentId: null, reason: "conversation_unread" };
+  }
+  const instanceId = String(data.wa_qr_instance_id ?? "").trim();
+  if (!instanceId) {
+    return { stamped: false, agentId: null, reason: "no_instance" };
+  }
+  const { data: bind, error: bindError } = await sb
+    .from("platform_crm_agent_connections")
+    .select("product_agent_id")
+    .eq("connection_type", "evolution")
+    .eq("connection_id", instanceId)
+    .limit(1)
+    .maybeSingle();
+  if (bindError) {
+    return { stamped: false, agentId: null, reason: "bind_unread" };
+  }
+  const agentId = agentIdToStamp({
+    currentAgentId: typeof data.current_agent_id === "string" ? data.current_agent_id : null,
+    boundAgentId: typeof bind?.product_agent_id === "string" ? bind.product_agent_id : null,
+  });
+  if (!agentId) {
+    return {
+      stamped: false,
+      agentId: null,
+      reason: String(data.current_agent_id ?? "").trim() ? "already_set" : "unbound",
+    };
+  }
+  const { error: updateError } = await sb
+    .from("platform_crm_conversations")
+    .update({ current_agent_id: agentId })
+    .eq("id", conversationId)
+    .is("current_agent_id", null);
+  if (updateError) {
+    return { stamped: false, agentId, reason: "stamp_fail" };
+  }
+  return { stamped: true, agentId, reason: "stamped" };
+}
 
 export async function loadHarnessJobsFromSb(
   sb: Sb,

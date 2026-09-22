@@ -43,6 +43,7 @@ import {
   persistHarnessJob,
   persistInboundVerdict,
   runPullerPass,
+  stampChannelAgentIfUnset,
   type PullerInvoke,
 } from "./harness-puller.ts";
 
@@ -504,7 +505,7 @@ async function runTickPuller(input: {
   const sb = input.sb && typeof (input.sb as { from?: unknown }).from === "function"
     ? input.sb as Parameters<typeof persistHarnessJob>[0]
     : null;
-  const onInvoke = input.forceDry
+  const callBrain = input.forceDry
     ? undefined
     : input.onPullerInvoke ?? (async (payload: PullerInvoke) => {
       const base = input.envGet("SUPABASE_URL") ?? "";
@@ -539,6 +540,12 @@ async function runTickPuller(input: {
         return { httpStatus: 0, body: { skipped: "fetch_failed", reason: "fetch_failed" } };
       }
     });
+  const onInvoke = callBrain
+    ? async (payload: PullerInvoke) => {
+      if (sb) await stampChannelAgentIfUnset(sb, payload.conversation_id);
+      return callBrain(payload);
+    }
+    : undefined;
   const pass = await runPullerPass({
     now: input.now,
     holidayDates: input.holidayDates,

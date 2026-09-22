@@ -12,6 +12,8 @@ import {
   pickNextReadyJob,
   promoteHeldJobs,
   runPullerPass,
+  agentIdToStamp,
+  stampChannelAgentIfUnset,
   type HarnessJobRecord,
   type PullerInvoke,
 } from "./harness-puller.ts";
@@ -225,4 +227,74 @@ Deno.test("C: tick sem exit_message boca 1 + G7 wamid + housekeep pending", () =
   assertEquals(meta.harness_mouth, 1);
   assertEquals(meta.wamid, "w1");
   assertEquals(PACKAGE_LIMIT_MS, 180_000);
+});
+
+Deno.test("carimbo só quando a conversa não tem dono e o canal tem agente", () => {
+  assertEquals(agentIdToStamp({ currentAgentId: null, boundAgentId: "camila" }), "camila");
+  assertEquals(agentIdToStamp({ currentAgentId: "  ", boundAgentId: "camila" }), "camila");
+  assertEquals(agentIdToStamp({ currentAgentId: "duda", boundAgentId: "camila" }), null);
+  assertEquals(agentIdToStamp({ currentAgentId: null, boundAgentId: null }), null);
+  assertEquals(agentIdToStamp({ currentAgentId: null, boundAgentId: "  " }), null);
+});
+
+Deno.test("stampChannelAgentIfUnset grava o agente do canal e não sobrescreve", async () => {
+  const updates: Array<Record<string, unknown>> = [];
+  const sb = {
+    from(table: string) {
+      if (table === "platform_crm_conversations") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: async () => ({
+                    data: {
+                      id: "conv-1",
+                      current_agent_id: null,
+                      wa_qr_instance_id: "inst-1",
+                    },
+                    error: null,
+                  }),
+                };
+              },
+            };
+          },
+          update(patch: Record<string, unknown>) {
+            updates.push(patch);
+            return {
+              eq() {
+                return { is: async () => ({ error: null }) };
+              },
+            };
+          },
+        };
+      }
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    limit() {
+                      return {
+                        maybeSingle: async () => ({
+                          data: { product_agent_id: "camila" },
+                          error: null,
+                        }),
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const stamped = await stampChannelAgentIfUnset(sb, "conv-1");
+  assertEquals(stamped.stamped, true);
+  assertEquals(stamped.agentId, "camila");
+  assertEquals(updates[0]?.current_agent_id, "camila");
 });
