@@ -6,6 +6,7 @@ import {
   bubblesAfterCommercialTruth,
   enforceBubbleBudget,
   isOpaqueInbound,
+  isPriceAsk,
   looksTruncated,
   validateCommercialTruth,
 } from "./commercial-truth.ts";
@@ -60,20 +61,28 @@ Deno.test("PRD-06: opaque inbound detection", () => {
   assertEquals(isOpaqueInbound("[áudio]"), true);
   assertEquals(isOpaqueInbound("quero contratar"), false);
   assertEquals(isOpaqueInbound("quanto custa?"), false);
+  assertEquals(isOpaqueInbound("Valorv"), false);
+  assertEquals(isOpaqueInbound("é de graça?"), false);
+  assertEquals(isPriceAsk("Valorv"), true);
+  assertEquals(isPriceAsk("Quanto ?"), true);
+  assertEquals(isPriceAsk("Pra isso precisa pagar né ou é de Graça?"), true);
+  assertEquals(isPriceAsk("Como funciona?"), false);
   assertEquals(isOpaqueInbound("é robô?"), false);
 });
 
-Deno.test("PRD-06: bubble budget max 2 and drops truncated", () => {
+Deno.test("PRD-06: bubble budget max 4 and drops truncated", () => {
   assertEquals(looksTruncated("quero ver o produto..."), true);
   const capped = enforceBubbleBudget([
     "Primeira bolha ok.",
     "Segunda bolha ok.",
-    "Terceira sobra.",
+    "Terceira cabe.",
+    "Quarta cabe.",
+    "Quinta sobra.",
     "Texto truncado...",
   ]);
-  assertEquals(capped.length, 2);
+  assertEquals(capped.length, 4);
   assertEquals(capped[0], "Primeira bolha ok.");
-  assertEquals(capped[1], "Segunda bolha ok.");
+  assertEquals(capped[3], "Quarta cabe.");
 });
 
 Deno.test("PRD-06: raiox /implantacao URL is allowed without being a checkout", () => {

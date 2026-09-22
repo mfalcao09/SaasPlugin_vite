@@ -83,6 +83,7 @@ import {
   allowlistFromPlans,
   bubblesAfterCommercialTruth,
   isOpaqueInbound,
+  isPriceAsk,
   validateCommercialTruth,
 } from '../_shared/commercial-truth.ts';
 import {
@@ -102,7 +103,7 @@ import {
   stripRaioxArtifacts,
 } from '../_shared/raiox-preflight.ts';
 import { inboundForQuote, quotedFromInbound, remoteJidForQuote } from '../_shared/evolution-quoted.ts';
-import { goldReplyFromHistory } from '../_shared/inbound-cite.ts';
+import { burstInboundVisitor, goldReplyFromHistory, pendingTicketText } from '../_shared/inbound-cite.ts';
 import {
   harnessAllowsBrainSend,
   harnessLedgerAllowsReserve,
@@ -2184,12 +2185,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const ticketSpeech = pendingTicketText({
+      messages: historyDesc,
+      pendingInboundId: storedHarnessJob?.flags?.pending_inbound_id
+        || storedHarnessJob?.inbound_id,
+      fallback: String(triggerInbound?.content ?? ''),
+    });
+    const unansweredBurst = burstInboundVisitor(historyDesc)
+      .map((m) => String(m.content ?? '').trim())
+      .filter(Boolean);
+    const priceThisTurn = [ticketSpeech, ...unansweredBurst].some((s) => isPriceAsk(s));
     // PRD-06: input opaco → clarificação determinística (sem LLM inventar).
-    const inboundForOpaque = String(triggerInbound?.content ?? '').trim();
+    // Pedido de preço, mesmo truncado ("Valorv"), não é opaco.
+    const inboundForOpaque = ticketSpeech || String(triggerInbound?.content ?? '').trim();
     const forceOpaqueClarify = Boolean(
       personaIsProspector &&
       isWaQrChannel(conversation.channel) &&
       inboundForOpaque &&
+      !priceThisTurn &&
       isOpaqueInbound(inboundForOpaque) &&
       !conductorWake &&
       !inactivityMode
@@ -2663,6 +2676,8 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
         fatos: fatosBloco,
         journey: journeyBlock,
         reactivation: reactivationBlock,
+        ticketSpeech,
+        unanswered: unansweredBurst,
       });
     }
 
@@ -2687,7 +2702,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     const maxOutputTokens = resolveBrainMaxOutputTokens(personaIsProspector);
 
     let reply = '';
-    const goldHowAreYou = goldReplyFromHistory(historyDesc);
+    const goldHowAreYou = goldReplyFromHistory(historyDesc, ticketSpeech);
     if (needsConsent && consentAto.speak === "consent_question") {
       reply = renderConsentQuestion(
         firstNameOnly(visitorName) ?? firstNameOnly(lead?.name),

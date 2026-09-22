@@ -30,7 +30,7 @@ Deno.test("safety kernel: immutable limits match approved baseline", () => {
     maxFollowups: 2,
     minProactiveIntervalMs: 24 * 60 * 60 * 1000,
     maxProactivePerLeadPerDay: 1,
-    maxBubblesPerAction: 2,
+    maxBubblesPerAction: 4,
   });
 });
 
@@ -125,7 +125,11 @@ Deno.test("safety kernel: human reply cancels cold and bubbles are capped", () =
     "human_replied",
   );
   assertEquals(
-    evaluateAgentSafety({ ...base, bubbleCount: 3 }).reason,
+    evaluateAgentSafety({ ...base, bubbleCount: 4 }).reason,
+    null,
+  );
+  assertEquals(
+    evaluateAgentSafety({ ...base, bubbleCount: 5 }).reason,
     "bubble_cap",
   );
 });

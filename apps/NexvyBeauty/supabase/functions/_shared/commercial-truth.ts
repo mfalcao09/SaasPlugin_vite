@@ -73,13 +73,23 @@ export function extractUrls(text: string): string[] {
   return [...new Set(found.map(normalizeUrl))];
 }
 
+/** Pedido de preço, inclusive typo curto como "Valorv". */
+export function isPriceAsk(text: string): boolean {
+  const t = String(text ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return /\b(quanto|preco|valor\w*|gratis|graca|pagar|pago|mensalidade)\b/.test(t);
+}
+
 /**
  * Input opaco: curto demais, só emoji/pontuação, truncado, ou fragmento
- * sem verbo/interrogativa clara. Não classifica "quero" / preço / humano.
+ * sem verbo/interrogativa clara. Pedido de preço não é opaco.
  */
 export function isOpaqueInbound(text: string): boolean {
   const t = String(text ?? "").trim();
   if (!t) return true;
+  if (isPriceAsk(t)) return false;
   if (t === OPAQUE_CLARIFY) return false;
   if (/^\[(áudio|audio|imagem|vídeo|video|documento|sticker)\]$/i.test(t)) {
     return true;
@@ -88,7 +98,7 @@ export function isOpaqueInbound(text: string): boolean {
   const letters = t.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
   if (letters.length < 3) return true;
   const clear =
-    /\b(quero|como|quanto|preço|preco|pago|pagar|contratar|humano|atendente|rob[oô]|sair|parar|manda|mostra|funciona|adiantamento|cancel|agenda)\b/i
+    /\b(quero|como|quanto|preço|preco|valor\w*|pago|pagar|gratis|grátis|graça|graca|contratar|humano|atendente|rob[oô]|sair|parar|manda|mostra|funciona|adiantamento|cancel|agenda)\b/i
       .test(t) ||
     /[?]/.test(t) ||
     letters.split(/\s+/).length >= 4;
@@ -105,12 +115,12 @@ export function looksTruncated(text: string): boolean {
   return false;
 }
 
-/** No máximo 2 bolhas; descarta truncadas; nunca devolve lista vazia se havia texto. */
+/** No máximo 4 bolhas; descarta truncadas; nunca devolve lista vazia se havia texto. */
 export function enforceBubbleBudget(bubbles: string[]): string[] {
   const cleaned = bubbles
     .map((b) => b.trim())
     .filter((b) => b.length > 0 && !looksTruncated(b));
-  const capped = cleaned.slice(0, 2);
+  const capped = cleaned.slice(0, 4);
   if (capped.length > 0) return capped;
   return bubbles.map((b) => b.trim()).filter(Boolean).slice(0, 1);
 }

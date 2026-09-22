@@ -14,6 +14,10 @@ Deno.test("prompt da Camila não oferece raio-x e recomenda o segundo plano", ()
   assertStringIncludes(CAMILA_BRAIN_PROMPT, "segundo plano da seção");
   assertStringIncludes(CAMILA_BRAIN_PROMPT, "Se essa seção não vier, não invente preço nem URL");
   assertStringIncludes(CAMILA_BRAIN_PROMPT, "Oi, {nome}!");
+  assertStringIncludes(CAMILA_BRAIN_PROMPT, "No máximo 4 mensagens");
+  assertEquals(CAMILA_BRAIN_PROMPT.includes("P2:"), false);
+  assertStringIncludes(CAMILA_BRAIN_PROMPT, "Uma pergunta antiga no histórico não muda o assunto");
+  assertStringIncludes(CAMILA_BRAIN_PROMPT, "Vou te explicar");
 });
 
 Deno.test("pacote da Camila não herda base com raio-x", () => {
@@ -28,6 +32,31 @@ Deno.test("pacote da Camila não herda base com raio-x", () => {
   assertEquals(/raio-x/i.test(packed), false);
   assertStringIncludes(packed, "LINKS DE PAGAMENTO");
   assertStringIncludes(packed, "Nome: Ana");
+  const priced = assembleCamilaSystemPrompt({
+    now: "Hoje é terça.",
+    checkout: "LINKS DE PAGAMENTO\nPremium hoje sai por R$ 427",
+    ficha: "",
+    fatos: "",
+    journey: "",
+    reactivation: "",
+    ticketSpeech: "Valorv",
+    unanswered: ["Quanto ?", "Instala um app?"],
+  });
+  assertStringIncludes(priced, "═══ FALA DESTE BILHETE ═══");
+  assertStringIncludes(priced, "Valorv");
+  assertStringIncludes(priced, "═══ PREÇO NESTE TURNO ═══");
+  assertStringIncludes(priced, "Quanto ?");
+  const how = assembleCamilaSystemPrompt({
+    now: "Hoje é terça.",
+    checkout: "",
+    ficha: "",
+    fatos: "",
+    journey: "",
+    reactivation: "",
+    ticketSpeech: "Como funciona?",
+  });
+  assertEquals(how.includes("═══ PREÇO NESTE TURNO ═══"), false);
+  assertStringIncludes(how, "Como funciona?");
 });
 
 Deno.test("corpo Gemini usa 3.6 flash e pensamento mínimo", () => {

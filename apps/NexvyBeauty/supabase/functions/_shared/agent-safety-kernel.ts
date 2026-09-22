@@ -5,7 +5,7 @@ export const IMMUTABLE_CONTACT_LIMITS = {
   maxFollowups: 2,
   minProactiveIntervalMs: 24 * 60 * 60 * 1000,
   maxProactivePerLeadPerDay: 1,
-  maxBubblesPerAction: 2,
+  maxBubblesPerAction: 4,
 } as const;
 
 export type AgentReleaseState = "OFF" | "SHADOW" | "TEST" | "CANARY" | "LIVE";
