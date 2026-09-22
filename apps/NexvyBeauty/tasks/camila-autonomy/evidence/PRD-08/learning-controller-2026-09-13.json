@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "prd": "PRD-08",
+  "result": "PASS_CODE",
+  "branch": "feat/camila-autonomy-04-safety-ledger",
+  "base_commit": "db96195",
+  "working_tree": "dirty",
+  "checks": {
+    "prd08_focused_tests": 13,
+    "test_failures": 0,
+    "code_review": "approve_with_nits_after_hardening",
+    "database_review": "approve",
+    "security_review": "approve_pending_wiring_deferred_D1_D2"
+  },
+  "binary_check": {
+    "reward_hacking_rejected": true,
+    "kernel_edit_rejected": true,
+    "nested_constitution_smuggling_rejected": true,
+    "holdout_stable_assignment": true,
+    "itt_denominator_intact": true,
+    "attribution_paid_subseteq_admitted": true,
+    "promote_rollback_idempotent": true,
+    "one_active_strategy_index": true,
+    "payload_db_guard": true
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "real_leads_allowed": false,
+    "migration_applied": false,
+    "learning_wired_to_send": false,
+    "promote_rpc_wired": false
+  },
+  "deferred_to_master_gate": [
+    "dedicated learning DB role vs monolithic service_role (D1)",
+    "promote RPC must require evaluator attestation / floors (D2)",
+    "wire assignment + exposure to Action Ledger path",
+    "confirm DEFAULT_HOLDOUT_BPS with product owner"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "result": "MIGRATIONS_AND_DEPLOY_DONE_STILL_NO_GO",
+  "when": "2026-09-13T23:58:31.876105+00:00",
+  "project_ref": "fzhlbwhdejumkyqosuvq",
+  "git_head_commit": "db96195",
+  "deploy_source": "local_working_tree_dirty_on_db96195",
+  "sha_parity_complete": false,
+  "note": "Edges/migrations applied from uncommitted Camila WT; Master Gate same-SHA requires commit+redeploy or commit first.",
+  "migrations": {
+    "prd07": {
+      "file": "20260913_camila_conductor_cohorts.sql",
+      "sha256": "1b9797dda75104f71073c926b0ad9b09fe99fff7681d511348b0b8b4e3790a18",
+      "applied": true,
+      "idempotent_reapply": true,
+      "cohort_slug": "incident-piloto-20260901",
+      "cohort_active": false,
+      "members_seeded": 5,
+      "active_rpc_members": 0
+    },
+    "prd08": {
+      "file": "20260913_camila_learning_controller.sql",
+      "sha256": "6c6c47bdc540868a7b07599a3ce8eddb44f92a9c50bc3c147f30f77cf1b4c183",
+      "applied": true,
+      "idempotent_reapply": true
+    }
+  },
+  "edge_functions_deployed": {
+    "platform-camila-conductor": {
+      "version": 14,
+      "status": "ACTIVE"
+    },
+    "platform-sales-brain": {
+      "version": 148,
+      "status": "ACTIVE"
+    },
+    "platform-cold-outreach": {
+      "version": 57,
+      "status": "ACTIVE"
+    },
+    "platform-whatsapp-qr-webhook": {
+      "version": 13,
+      "status": "ACTIVE"
+    },
+    "platform-whatsapp-qr-send": {
+      "version": 11,
+      "status": "ACTIVE"
+    }
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "kill_switch": false,
+    "cohort_active": false,
+    "real_leads_allowed": false
+  },
+  "awaiting_product_approval": {
+    "holdout_bps_default": 1000,
+    "holdout_percent": 10,
+    "remaining_split_after_holdout": "50/50 control vs treatment",
+    "promotion_floors": {
+      "min_deliveries": 100,
+      "min_payments": 5,
+      "min_days": 14,
+      "min_bayes_prob_gain": 0.95
+    }
+  },
+  "binary_check": {
+    "migrations_applied_and_verified": true,
+    "edges_deployed": true,
+    "release_still_off": true,
+    "master_gate_go": false,
+    "lei1_reverify_pass": true
+  },
+  "lei1_reverify": {
+    "when": "2026-09-14T00:01:15.378205+00:00",
+    "result": "PASS",
+    "checks": {
+      "db_tables_present": true,
+      "cohort_active": false,
+      "cohort_members": 5,
+      "active_rpc_members": 0,
+      "rpcs_present": [
+        "pcrm_list_active_conductor_cohort_members",
+        "pcrm_promote_agent_strategy",
+        "pcrm_assert_learnable_strategy_payload"
+      ],
+      "release_state": "OFF",
+      "kill_switch": false,
+      "edges_active": {
+        "platform-camila-conductor": 14,
+        "platform-sales-brain": 148,
+        "platform-cold-outreach": 57,
+        "platform-whatsapp-qr-webhook": 13,
+        "platform-whatsapp-qr-send": 11
+      },
+      "deno_check_exit": 0,
+      "focused_tests": {
+        "passed": 52,
+        "failed": 0,
+        "exit": 0
+      }
+    },
+    "not_verified_this_run": [
+      "HTTP smoke platform-camila-conductor (no SERVICE_ROLE_KEY in local env)",
+      "deployed bundle == committed SHA (working tree still dirty on db96195)"
+    ]
+  }
+}

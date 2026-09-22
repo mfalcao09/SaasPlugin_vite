@@ -25,7 +25,7 @@ Não confundir com:
 - Hard **durante as 4** → termina as 4, **depois** o cérebro manda Mensagem de Saída + site, funil vermelho (G3).
 - Humano no loop → cérebro off (isso não é DNC).
 
-**Copy da pergunta:** só existe **rascunho**. Histórico 20/09 22:38 (Marcelo): *“Algo do tipo: você havia pedido para parar o atendimento, confirma que deseja retomar e saber mais do nosso software? (isso é apenas uma sugestão, depois elaboramos melhor).”* Nenhuma fala posterior fechou o texto. Código = essa sugestão pontuada em `CONSENT_QUESTION_DRAFT`. Copy final = GO seu.
+**Copy da pergunta (canônica, 21/09):** `CONSENT_QUESTION_TEMPLATE` + `renderConsentQuestion(nome)`. Sem nome (ou nome=telefone) → começa com "Olá." `{nome}` = primeiro nome.
 
 ---
 
@@ -305,7 +305,7 @@ Proibido no meio do caminho:
 | Kanban arrasta → `derived_stage` + tag | Front + schema | Decidido 19/09; não construir aqui |
 | Ingestão 9747 / Prospectagram | Outra sessão | Fora |
 | Campanha remarketing t1–t3 | TBD | Fora |
-| Copy final do consentimento | Marcelo | Rascunho no código ok |
+| Copy final do consentimento | Marcelo 21/09 | `CONSENT_QUESTION_TEMPLATE` — no disco; edge espera GO DEPLOY do brain |
 
 ---
 

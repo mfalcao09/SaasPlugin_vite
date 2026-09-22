@@ -1,0 +1,6 @@
+{
+  "status": "pass",
+  "migration": "supabase/migrations_platform_crm/20260916_path_a_soft_hard_optout.sql",
+  "deno_exit": 0,
+  "note": "SQL not auto-applied to linked prod in this verify; apply before F3 enforce"
+}

@@ -1,0 +1,235 @@
+{
+  "when": "2026-09-15T20:51:40.983648+00:00",
+  "criteria": "salao_cliente, 2k-5k, not seed, person-first IG name → greeting, unique phone, exclude D2+incident+optout",
+  "status": "PROPOSED — awaiting Marcelo review before any dispatch",
+  "dispatch_note": "NÃO disparar sem GO. Sugerido: 1 canário primeiro, gap ≥60s, OFF+kill entre lotes.",
+  "candidates": [
+    {
+      "order": 1,
+      "extracted_lead_id": "c8aa9727-b19a-4e59-9cf2-f161a8fa7978",
+      "handle": "@renatanaildesingner",
+      "handle_raw": "renatanaildesingner",
+      "name": "Renata Martins | Nails Designer • Caruaru",
+      "greeting": "Renata",
+      "seguidores": 2010,
+      "telefone": "5581993552037",
+      "telefone_masked": "5581***2037",
+      "categoria": "Health/beauty",
+      "band": 1,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 2,
+      "extracted_lead_id": "c28092f6-fbf1-456c-861b-5e90420745d5",
+      "handle": "@alinyjaciaraesmalteria",
+      "handle_raw": "alinyjaciaraesmalteria",
+      "name": "Aliny Jaciara Esmalteria | Petrolina PE",
+      "greeting": "Aliny",
+      "seguidores": 2018,
+      "telefone": "5587981172023",
+      "telefone_masked": "5587***2023",
+      "categoria": null,
+      "band": 1,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 3,
+      "extracted_lead_id": "04eaf388-a4b4-4eec-b3c1-c5b024c7d3a5",
+      "handle": "@studio_victoriamendes",
+      "handle_raw": "studio_victoriamendes",
+      "name": "Victória | Lash e Brow Designer | Fortaleza",
+      "greeting": "Victória",
+      "seguidores": 2003,
+      "telefone": "5585996074889",
+      "telefone_masked": "5585***4889",
+      "categoria": null,
+      "band": 1,
+      "source": "ig_name_person_first",
+      "note": "substituído Erica (fotografia) — Lash/Brow Fortaleza"
+    },
+    {
+      "order": 4,
+      "extracted_lead_id": "e39e7f9d-42dd-424f-b06c-644ec22ae2b1",
+      "handle": "@lidiacastro_lashnail",
+      "handle_raw": "lidiacastro_lashnail",
+      "name": "Lídia Castro | Lash -Nails | Cursos",
+      "greeting": "Lídia",
+      "seguidores": 2752,
+      "telefone": "5562981345228",
+      "telefone_masked": "5562***5228",
+      "categoria": null,
+      "band": 2,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 5,
+      "extracted_lead_id": "dfb8becd-eece-4558-99a5-3ae68c72bec8",
+      "handle": "@rafaeleandradestudio",
+      "handle_raw": "rafaeleandradestudio",
+      "name": "Rafaele Andrade | SOBRANCELHAS E CÍLIOS MOGI 🤎",
+      "greeting": "Rafaele",
+      "seguidores": 2755,
+      "telefone": "5511986621610",
+      "telefone_masked": "5511***1610",
+      "categoria": "Entrepreneur",
+      "band": 2,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 6,
+      "extracted_lead_id": "5d4f31ec-a211-4ace-b910-afccc1b24e45",
+      "handle": "@leticiacosta.studiolc",
+      "handle_raw": "leticiacosta.studiolc",
+      "name": "Leticia Costa/cabeleireira",
+      "greeting": "Leticia",
+      "seguidores": 4271,
+      "telefone": "5521964623139",
+      "telefone_masked": "5521***3139",
+      "categoria": null,
+      "band": 4,
+      "source": "ig_name_person_first",
+      "note": "substitui #6 @vitoria_studio.beauty (marca Estúdio)"
+    },
+    {
+      "order": 7,
+      "extracted_lead_id": "92dceeeb-da84-4f54-b159-da75a39abe21",
+      "handle": "@jamires_unhasdegel2",
+      "handle_raw": "jamires_unhasdegel2",
+      "name": "Jamires Torres | Unhas em Gel | Surubim",
+      "greeting": "Jamires",
+      "seguidores": 3501,
+      "telefone": "5581998436311",
+      "telefone_masked": "5581***6311",
+      "categoria": null,
+      "band": 3,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 8,
+      "extracted_lead_id": "92eedaf2-8eef-4899-8574-9d758721c6fd",
+      "handle": "@geovanabrasil.nails",
+      "handle_raw": "geovanabrasil.nails",
+      "name": "Geovana Brasil | Nail Designer",
+      "greeting": "Geovana",
+      "seguidores": 3511,
+      "telefone": "5541988180457",
+      "telefone_masked": "5541***0457",
+      "categoria": null,
+      "band": 3,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 9,
+      "extracted_lead_id": "8329a002-f51c-4e5f-aeda-10d83d716603",
+      "handle": "@rafaellatrindadebeauty",
+      "handle_raw": "rafaellatrindadebeauty",
+      "name": "Rafaella Trindade | Nanopigmentação e Limpeza de pele",
+      "greeting": "Rafaella",
+      "seguidores": 4261,
+      "telefone": "5581984963119",
+      "telefone_masked": "5581***3119",
+      "categoria": null,
+      "band": 4,
+      "source": "ig_name_person_first",
+      "note": null
+    },
+    {
+      "order": 10,
+      "extracted_lead_id": "cc4abcf4-2c6d-43bd-a67b-68db5a21f709",
+      "handle": "@espaco_andressamanoel",
+      "handle_raw": "espaco_andressamanoel",
+      "name": "Andressa Manoel | Manicure",
+      "greeting": "Andressa",
+      "seguidores": 4268,
+      "telefone": "5519992020426",
+      "telefone_masked": "5519***0426",
+      "categoria": "Entrepreneur",
+      "band": 4,
+      "source": "ig_name_person_first",
+      "note": null
+    }
+  ],
+  "alternates": [
+    {
+      "handle": "@kellykrausenails",
+      "extracted_lead_id": "ffbbd906-cc8c-4700-835a-976f224ae2ee",
+      "greeting": "Kelly",
+      "name": "Kelly Krause |  𝐌𝐚𝐧𝐢𝐜𝐮𝐫𝐞 𝐄𝐬𝐩𝐞𝐜𝐢𝐚𝐥𝐢𝐬𝐭𝐚 𝐞𝐦 𝐀𝐥𝐨𝐧𝐠𝐚𝐦𝐞𝐧𝐭𝐨 𝐝𝐞 𝐔𝐧𝐡𝐚𝐬",
+      "seguidores": 4275,
+      "telefone_masked": "5527***2357"
+    },
+    {
+      "handle": "@kathleenaildesigner",
+      "extracted_lead_id": "30d1c52c-3367-48ec-9c02-30685ef479cb",
+      "greeting": "Kathleen",
+      "name": "Kathleen Silva | Especialista em alongamento de unhas",
+      "seguidores": 4279,
+      "telefone_masked": "5531***7080"
+    },
+    {
+      "handle": "@nataliamesquita_naildesigner",
+      "extracted_lead_id": "6bf25aee-eadb-480a-b88f-3ad881bf547b",
+      "greeting": "Natalia",
+      "name": "Natalia Mesquita | Manicure especialista em Unhas em gel✨",
+      "seguidores": 4284,
+      "telefone_masked": "5532***8447"
+    },
+    {
+      "handle": "@fabianalira.nails",
+      "extracted_lead_id": "273b2b2a-21ef-4ab0-a45d-1d160d225ea8",
+      "greeting": "Fabiana",
+      "name": "Fabiana Lira | Alongamentos Belém PA",
+      "seguidores": 4294,
+      "telefone_masked": "5591***1206"
+    },
+    {
+      "handle": "@julialmartinsbeauty",
+      "extracted_lead_id": "3a04e912-186f-4e1b-a3eb-afedc7d62a36",
+      "greeting": "Júlia",
+      "name": "Júlia Martins | Maquiadora - BH/MG",
+      "seguidores": 4298,
+      "telefone_masked": "5531***0308"
+    }
+  ],
+  "rejected_in_selection": [
+    {
+      "handle": "@ericacccunha",
+      "reason": "Diretora de Fotografia — fora do perfil salão"
+    },
+    {
+      "handle": "@santaesmalteriasorocaba",
+      "reason": "marca Santa Esmalteria"
+    },
+    {
+      "handle": "@bronzoniprofessional",
+      "reason": "marca Professional"
+    },
+    {
+      "handle": "@reywone.cosmeticos",
+      "reason": "cosméticos, não salão pessoa"
+    },
+    {
+      "handle": "@vitoria_studio.beauty",
+      "reason": "removido por Marcelo — marca Estúdio; trocado por Leticia Costa"
+    }
+  ],
+  "validated_by_marcelo": false,
+  "replaced": {
+    "when": "2026-09-15T20:51:40.983202+00:00",
+    "removed": {
+      "handle": "@vitoria_studio.beauty",
+      "greeting": "Vitória",
+      "reason": "perfil mais marca (Estúdio)"
+    },
+    "added": {
+      "handle": "@leticiacosta.studiolc",
+      "greeting": "Leticia"
+    }
+  }
+}

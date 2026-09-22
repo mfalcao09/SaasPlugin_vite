@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "phase": "A",
+  "path": "A→B",
+  "result": "FAIL",
+  "when": "2026-09-14T01:46:59.820289+00:00",
+  "git_sha": "db96195",
+  "git_dirty_files": 55,
+  "project_ref": "fzhlbwhdejumkyqosuvq",
+  "release_gate": "OFF",
+  "phase_b": "blocked_until_explicit_go",
+  "summary": {
+    "pass": 7,
+    "fail": 1,
+    "skip": 0
+  },
+  "cases": [
+    {
+      "id": "E0.2",
+      "status": "PASS",
+      "detail": {
+        "active": false,
+        "active_rpc": 0,
+        "members": 5
+      }
+    },
+    {
+      "id": "E0.release",
+      "status": "PASS",
+      "detail": {
+        "kill_switch": false,
+        "release_state": "OFF"
+      }
+    },
+    {
+      "id": "E0.1",
+      "status": "FAIL",
+      "detail": "http_error=HTTP Error 401: Unauthorized body={\"error\":\"Unauthorized\"}"
+    },
+    {
+      "id": "E0.3",
+      "status": "PASS",
+      "detail": "deno check 5 edges"
+    },
+    {
+      "id": "E0.4",
+      "status": "PASS",
+      "detail": "71 passed | 0 failed"
+    },
+    {
+      "id": "E1.synthetic",
+      "status": "PASS",
+      "detail": "ack+commercial-truth suite"
+    },
+    {
+      "id": "E2.synthetic",
+      "status": "PASS",
+      "detail": "cohort+policy+wiring+phase-a cases"
+    },
+    {
+      "id": "E3.synthetic",
+      "status": "PASS",
+      "detail": "learning canary15+assertiveness+promote"
+    }
+  ]
+}

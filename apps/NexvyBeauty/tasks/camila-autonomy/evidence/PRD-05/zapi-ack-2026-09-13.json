@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "prd": "PRD-05",
+  "result": "PASS_CODE",
+  "branch": "feat/camila-autonomy-04-safety-ledger",
+  "base_commit": "db96195",
+  "working_tree": "dirty",
+  "checks": {
+    "entrypoints_checked": 6,
+    "camila_suite_tests": 288,
+    "prd05_targeted_after_fix": 31,
+    "test_failures": 0,
+    "code_review": "approve_after_fix",
+    "typescript_review": "approve",
+    "security_review": "approve"
+  },
+  "binary_check": {
+    "reserved_accepted_delivered": true,
+    "duplicate_ack_no_second_bump": true,
+    "late_failure_does_not_downgrade": true,
+    "persist_failure_not_counted": true,
+    "kill_switch_zero_provider": true,
+    "live_zapi_roundtrip": false
+  },
+  "behavior": {
+    "zapi_preflight_required": true,
+    "ack_independent_of_campaign": true,
+    "sent_is_not_delivered": true,
+    "experiment_exposure_on_first_device_ack": true,
+    "bound_chip_no_duda_fallback": true,
+    "missing_ack_marks_pending_not_auto_fail": true
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "real_leads_allowed": false,
+    "edges_deployed": false,
+    "conductor_enabled": false
+  },
+  "remaining_for_master_gate": [
+    "deploy edges on same SHA",
+    "live Z-API connected+smartphoneConnected on controlled number",
+    "reconciler cron for pending ACK",
+    "wire stampWriteOk to a real conversation stamp write"
+  ]
+}

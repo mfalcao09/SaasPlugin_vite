@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "program": "camila-harness",
+  "contract_version": "1.2",
+  "updated_at": "2026-09-17",
+  "aliases": {
+    "R2": "Mensagem de Saída (soft_exit)",
+    "mensagem Joice": "Mensagem de Saída",
+    "Mensagem de encerramento soft (board)": "Mensagem de Saída",
+    "Path A / F0-F7": "camila-harness / M0-M4",
+    "kill_switch": "emergency_stop — blocks AUTOMATIC only; supervised GO exempt (v1.2)",
+    "release_state": "voice_gate",
+    "rmkt_t*": "TBD_out_of_scope",
+    "kill_mature_split": "TBD_stop_new_abort_inflight"
+  },
+  "out_of_scope_v1": [
+    "remarketing_campaign",
+    "kill_semantics_post_maturity"
+  ]
+}

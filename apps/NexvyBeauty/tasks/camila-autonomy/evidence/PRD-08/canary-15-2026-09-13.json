@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "prd": "PRD-08",
+  "result": "CANARY_15_PASS_CODE",
+  "when": "2026-09-14T01:29:20.676387+00:00",
+  "decision": {
+    "canary_percent": 15,
+    "stable_percent": 85,
+    "promote_when": "treatment more assertive AND higher close rate than control"
+  },
+  "checks": {
+    "learning_tests_passed": 14,
+    "learning_tests_failed": 0,
+    "db_holdout_bps_default": "1500"
+  },
+  "binary_check": {
+    "canary_15_assignment": true,
+    "assertiveness_classifier": true,
+    "promote_requires_assertiveness_and_close": true,
+    "db_default_1500": true
+  },
+  "not_wired_yet": [
+    "inbound classifyAssertivenessReply into brain/webhook persistence",
+    "experiment assignment at lead admission"
+  ]
+}

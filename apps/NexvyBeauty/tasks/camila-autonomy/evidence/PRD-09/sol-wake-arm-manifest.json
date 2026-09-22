@@ -1,0 +1,39 @@
+{
+  "purpose": "Sol/Codex second opinion Path A reopen harness",
+  "armed_at_utc": "2026-09-16T02:10:20.088044+00:00",
+  "session": "26ffcdd9-a97e-4ff0-932d-5317033ca7c2",
+  "request_file": "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tasks/camila-autonomy/evidence/PRD-09/sol-request-path-A.md",
+  "output_file": "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tasks/camila-autonomy/evidence/PRD-09/sol-plan-reopen-path-A.md",
+  "lock_file": "/Users/marcelosilva/Projects/GitHub/SaasPlugin_vite/apps/NexvyBeauty/tasks/camila-autonomy/evidence/PRD-09/sol-wake-lock.json",
+  "prior_agent_wakes_found": false,
+  "search_note": "Searched local terminals/ps/atq/LaunchAgents, VPS atq, Cursor+Claude transcripts last 24h — no live dual Path-A Sol wakes found.",
+  "wakes": [
+    {
+      "label": "UTC",
+      "liberation": "2026-09-16T02:28:00+00:00",
+      "fire_at": "2026-09-16T02:38:00+00:00",
+      "fire_brt": "2026-09-15T23:38:00-03:00",
+      "sleep_secs": 1659,
+      "sentinel": "AGENT_LOOP_WAKE_path_a_sol_utc"
+    },
+    {
+      "label": "BRT",
+      "liberation": "2026-09-16T02:28:00-03:00",
+      "fire_at": "2026-09-16T02:38:00-03:00",
+      "fire_brt": "2026-09-16T02:38:00-03:00",
+      "sleep_secs": 12459,
+      "sentinel": "AGENT_LOOP_WAKE_path_a_sol_brt"
+    }
+  ],
+  "shells": {
+    "UTC": {
+      "shell_id": "694017",
+      "pid": 22289
+    },
+    "BRT": {
+      "shell_id": "694018",
+      "pid": 22292
+    }
+  },
+  "armed_verified": true
+}

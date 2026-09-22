@@ -1,0 +1,153 @@
+{
+  "program": "path-a-reopen",
+  "version": 1,
+  "option": "B",
+  "policy": {
+    "q2_farewell_window_hours": 48,
+    "q4_r2_timing": "after_reopen_canary",
+    "ambiguous_clarify_per_24h": 1,
+    "reopen_liberates_soft_cold": true,
+    "reopen_blast_forbidden": true,
+    "reenqueue_on_reopen_forbidden": true
+  },
+  "ids": {
+    "product_id": "806b5975-e268-402e-a65c-9e9503271041",
+    "agent_id": "68aeece9-26f2-4f7b-a595-a6ea5e8acfa7",
+    "instance_id": "80268751-958e-4750-8550-eeae942b3c4d",
+    "canary_phone_e164": "5511945760964",
+    "canary_channel": "wa:eval"
+  },
+  "flags": {
+    "REOPEN_INTENT_V1_MODE": "off|shadow|enforce",
+    "R2_AUTO_V1_MODE": "off|shadow|enforce",
+    "defaults": {
+      "REOPEN_INTENT_V1_MODE": "off",
+      "R2_AUTO_V1_MODE": "off"
+    }
+  },
+  "loop": {
+    "entry": "F0",
+    "autonomous_until": "F6",
+    "human_gate": "F7",
+    "max_attempts_per_phase": 2,
+    "on_phase_fail": "rollback_then_escalate",
+    "evidence_root": "tasks/camila-autonomy/evidence/PRD-09/path-a-loop",
+    "state_file": "tasks/camila-autonomy/evidence/PRD-09/path-a-loop/loop-state.json"
+  },
+  "phases": [
+    {
+      "id": "F0",
+      "prd": "path-a-reopen-loop/prds/F0-CONTRACT.md",
+      "mode": "docs",
+      "sends_allowed": false,
+      "verify": [
+        "verify_f0_contract.py"
+      ],
+      "rollback": [
+        "git checkout -- tasks/camila-autonomy/RULE-OPT-OUT-REMARKETING.md || true"
+      ]
+    },
+    {
+      "id": "F1",
+      "prd": "path-a-reopen-loop/prds/F1-CLASSIFIER.md",
+      "mode": "code_test_only",
+      "sends_allowed": false,
+      "verify": [
+        "deno test supabase/functions/_shared/cold-outreach/reopen-intent.test.ts"
+      ],
+      "rollback": [
+        "revert reopen-intent module if unreleased"
+      ]
+    },
+    {
+      "id": "F2",
+      "prd": "path-a-reopen-loop/prds/F2-KERNEL-STATE.md",
+      "mode": "migration_kernel_test",
+      "sends_allowed": false,
+      "verify": [
+        "verify_f2_kernel.py"
+      ],
+      "rollback": [
+        "flags_off",
+        "no_destructive_schema_rollback"
+      ]
+    },
+    {
+      "id": "F3",
+      "prd": "path-a-reopen-loop/prds/F3-WEBHOOK-SHADOW.md",
+      "mode": "shadow",
+      "sends_allowed": false,
+      "verify": [
+        "verify_f3_shadow.py"
+      ],
+      "rollback": [
+        "REOPEN_INTENT_V1_MODE=off"
+      ]
+    },
+    {
+      "id": "F4",
+      "prd": "path-a-reopen-loop/prds/F4-CANARY-REOPEN.md",
+      "mode": "canary_allowlist",
+      "sends_allowed": "canary_phone_only",
+      "r2_mode": "off",
+      "verify": [
+        "verify_f4_canary_reopen.py"
+      ],
+      "rollback": [
+        "kill_switch",
+        "REOPEN_INTENT_V1_MODE=off",
+        "cancel_grants"
+      ]
+    },
+    {
+      "id": "F5",
+      "prd": "path-a-reopen-loop/prds/F5-R2-SHADOW.md",
+      "mode": "shadow",
+      "sends_allowed": false,
+      "verify": [
+        "verify_f5_r2_shadow.py"
+      ],
+      "rollback": [
+        "R2_AUTO_V1_MODE=off"
+      ]
+    },
+    {
+      "id": "F6",
+      "prd": "path-a-reopen-loop/prds/F6-CANARY-R2.md",
+      "mode": "canary_allowlist",
+      "sends_allowed": "canary_phone_only",
+      "verify": [
+        "verify_f6_canary_r2.py"
+      ],
+      "rollback": [
+        "R2_AUTO_V1_MODE=off",
+        "kill_switch_if_needed"
+      ]
+    },
+    {
+      "id": "F7",
+      "prd": "path-a-reopen-loop/prds/F7-EXPANSION.md",
+      "mode": "human_gate",
+      "requires": "APROVO F7 PATH-A",
+      "sends_allowed": "ramp_after_go",
+      "verify": [
+        "verify_f7_ramp.py"
+      ]
+    }
+  ],
+  "binary_checks_program": [
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6",
+    "B7"
+  ],
+  "approval": {
+    "status": "approved",
+    "execute_f0_f6_without_supervision": true,
+    "notes": "Set true only after Marcelo approves PRD-10 packet",
+    "approved_at": "2026-09-16T06:29:03.888250+00:00"
+  }
+}

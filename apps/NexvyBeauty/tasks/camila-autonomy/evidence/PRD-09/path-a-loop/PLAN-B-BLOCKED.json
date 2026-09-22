@@ -1,0 +1,29 @@
+{
+  "status": "blocked",
+  "phase": "plan_b_preflight",
+  "at": "2026-09-16T14:02:06.123785+00:00",
+  "project_ref": "fzhlbwhdejumkyqosuvq",
+  "project_status": "INACTIVE",
+  "restore_http": 402,
+  "restore_error": "This organization has unpaid invoices. Settle outstanding payments before trying to restore project.",
+  "deploy_attempt": "platform-whatsapp-qr-webhook \u2192 404 Cannot retrieve service ... status INACTIVE",
+  "db_query": "LegacyDbConfigLoginRoleStatusError connection timeout",
+  "api_keys": "empty while INACTIVE",
+  "next": [
+    "Pagar invoice(s) da org mfalcao09 / tnqsxpwsdwaewufhkyfp no Dashboard Supabase",
+    "Resume/restore project fzhlbwhdejumkyqosuvq",
+    "Retomar Plano B: deploy webhook+cold \u2192 secrets enforce allowlist \u2192 F4 live \u2192 OFF+kill"
+  ],
+  "camila": "left untouched (could not reach release_controls)",
+  "lei1_reverify": {
+    "at": "2026-09-16T14:04:08.375956+00:00",
+    "checks": {
+      "C1_project_INACTIVE": "PASS",
+      "C2_restore_402_unpaid": "PASS",
+      "C3_deploy_blocked_INACTIVE": "PASS",
+      "C4_harness_F0_F2_F3_F4_F5": "PASS",
+      "C5_plan_b_not_delivered": "PASS"
+    },
+    "delivery_claim": "none \u2014 Plan B blocked; harness only"
+  }
+}

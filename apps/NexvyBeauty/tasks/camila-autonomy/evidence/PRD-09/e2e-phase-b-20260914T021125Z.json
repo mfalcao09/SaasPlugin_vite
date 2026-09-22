@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "prd": "PRD-09",
+  "phase": "B",
+  "when": "2026-09-14T02:11:25.885768+00:00",
+  "to_masked": "***0964",
+  "instance": "camila-zapi-test",
+  "cases": [
+    {
+      "id": "E5.1",
+      "status": "PASS",
+      "detail": {
+        "http_status": 200,
+        "connected": true,
+        "smartphoneConnected": true,
+        "db_status_before": "disconnected",
+        "sender_masked": "***6926"
+      }
+    },
+    {
+      "id": "E5.1b",
+      "status": "PASS",
+      "detail": {
+        "db_status": "connected"
+      }
+    },
+    {
+      "id": "E5.2",
+      "status": "PASS",
+      "detail": {
+        "http_status": 200,
+        "message_id_present": true,
+        "to_masked": "***0964",
+        "provider_keys": [
+          "id",
+          "messageId",
+          "zaapId"
+        ]
+      }
+    }
+  ],
+  "result": "PASS",
+  "summary": {
+    "pass": 3,
+    "fail": 0
+  },
+  "next": [
+    "Await inbound assertiveness reply on the test phone",
+    "Then run kill-switch proof (E5.4) if requested"
+  ]
+}

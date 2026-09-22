@@ -1,0 +1,44 @@
+{
+  "when": "2026-09-15T15:07:21.057628+00:00",
+  "deadline": {
+    "MAX_APPROACH_SPAN_MS": 180000,
+    "tests": "5 passed"
+  },
+  "next_canaries": [
+    {
+      "order": 4,
+      "handle": "beautycompany.af",
+      "greeting": "Adriana",
+      "extracted_lead_id": "aa624eba-da2b-453e-9cba-6d752ca5a92b",
+      "telefone": "5549988309265",
+      "note": "On GO: clear excluded_at + delete lead_excluded/optout row for this handle/phone, then approve"
+    },
+    {
+      "order": 5,
+      "handle": "espaco.leh",
+      "greeting": "Leticia",
+      "extracted_lead_id": "543f3938-f648-4c91-adb9-98a55cae8558",
+      "telefone": "5511942602733",
+      "note": "Shares phone with lu.heleno.nails (already suppressed). On GO clear only espaco.leh gates."
+    }
+  ],
+  "suppress_layers": [
+    "approved_at=NULL",
+    "excluded_at set",
+    "platform_crm_lead_excluded",
+    "platform_crm_lead_optout",
+    "conv do_not_contact+human_active for incident"
+  ],
+  "done_d2": [
+    "joicefbeltramini",
+    "alinemachadostudiodebeleza",
+    "beatrizsouza_af"
+  ],
+  "incident": [
+    "deisesantos_naildesigner",
+    "ellastudiodebeleza_",
+    "emillylopes_beauty",
+    "lancilashesbeauty",
+    "jeissiane_phone_only"
+  ]
+}

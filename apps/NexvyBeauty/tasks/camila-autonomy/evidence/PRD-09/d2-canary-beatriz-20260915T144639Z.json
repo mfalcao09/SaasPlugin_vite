@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "job": "camila-d2-canary-3",
+  "when": "2026-09-15T14:46:39.269751+00:00",
+  "canary": {
+    "handle": "beatrizsouza_af",
+    "extracted_lead_id": "eaf32fc4-eb78-4bab-8a0c-2a1b3dce5399",
+    "greeting": "Beatriz",
+    "telefone": "5566992054841"
+  },
+  "max_approach_span_s": 120,
+  "cases": [
+    {
+      "id": "approve",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "handle": "beatrizsouza_af",
+            "id": "eaf32fc4-eb78-4bab-8a0c-2a1b3dce5399",
+            "ok": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "campaign",
+      "status": "PASS",
+      "detail": {
+        "campaign_id": "51219f43-1099-49e1-8955-3fe484dafeeb"
+      }
+    },
+    {
+      "id": "enqueue",
+      "status": "PASS",
+      "detail": {
+        "queue_id": "54412cdf-26f5-4718-8da3-39cdd7f01638"
+      }
+    },
+    {
+      "id": "arm_test",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": false,
+            "release_state": "TEST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opening_found",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "conversation_id": "6a46dba0-d0a3-4021-8bb8-1cb384580218",
+            "lead_id": "26ede3ab-ca8a-42f9-b326-2b71df570f59",
+            "opening_at": "2026-09-15 14:46:59.523909+00",
+            "preview": "Oi, Beatriz! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️"
+          }
+        ]
+      }
+    },
+    {
+      "id": "approach_complete_within_2min",
+      "status": "FAIL",
+      "detail": {
+        "outs": 3,
+        "span_s": 100,
+        "ap": {
+          "ap_status": "in_progress",
+          "outs": 3,
+          "span_s": 100
+        }
+      }
+    },
+    {
+      "id": "restore_off_kill",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": true,
+            "release_state": "OFF"
+          }
+        ]
+      }
+    }
+  ],
+  "campaign_id": "51219f43-1099-49e1-8955-3fe484dafeeb",
+  "conversation_id": "6a46dba0-d0a3-4021-8bb8-1cb384580218",
+  "lead_id": "26ede3ab-ca8a-42f9-b326-2b71df570f59",
+  "opening_at": "2026-09-15 14:46:59.523909+00",
+  "messages": [
+    {
+      "origem": "cold_outreach_abertura",
+      "preview": "Oi, Beatriz! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️",
+      "when_brt": "2026-09-15 11:46:59.523909"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "Achei o seu número no Instagram @beatrizsouza_af, e vim me apresentar.",
+      "when_brt": "2026-09-15 11:47:58.177592"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, or",
+      "when_brt": "2026-09-15 11:48:39.875612"
+    }
+  ]
+}

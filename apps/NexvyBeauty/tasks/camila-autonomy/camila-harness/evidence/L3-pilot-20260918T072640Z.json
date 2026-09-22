@@ -1,0 +1,31 @@
+{
+  "loop": 3,
+  "name": "PILOT_DELIVER_BUILD",
+  "go_build": "GO BUILD PILOT DELIVER",
+  "awaiting": "GO PILOT HARNESS v1",
+  "at": "2026-09-18T07:26:40.442424+00:00",
+  "pass": true,
+  "real_whatsapp_sends": 0,
+  "checks": {
+    "deno_pilot_deliver": "PASS",
+    "deno_lead_spacing": "PASS",
+    "deno_outbound_queue": "PASS",
+    "deno_wire": "PASS",
+    "pilot_no_zapi": "PASS",
+    "pilot_dry_transport": "PASS",
+    "renata_resume_text": "PASS",
+    "renata_phone": "PASS",
+    "roster_10": "PASS",
+    "cold_has_harness_pilot_plan": "PASS",
+    "cold_pilot_zero_sends": "PASS"
+  },
+  "deno_exits": {
+    "pilot-deliver.test.ts": 0,
+    "lead-spacing.test.ts": 0,
+    "outbound-queue.test.ts": 0,
+    "wire-sim.test.ts": 0
+  },
+  "note": "Dry-run only. Real WhatsApp requires GO PILOT HARNESS v1 + flags.",
+  "contract": "camila-harness v1.2 + cadence + pilot-deliver",
+  "prd": "PRD-11"
+}

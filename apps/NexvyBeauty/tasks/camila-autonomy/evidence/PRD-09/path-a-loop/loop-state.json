@@ -1,0 +1,90 @@
+{
+  "program": "path-a-reopen",
+  "status": "running",
+  "current_phase": "F7_GATE",
+  "phases": {
+    "F0": {
+      "status": "pass",
+      "at": "2026-09-16T06:35:49.624611+00:00"
+    },
+    "F1": {
+      "status": "pass",
+      "at": "2026-09-16T06:41:09.225291+00:00"
+    },
+    "F2": {
+      "status": "pass",
+      "at": "2026-09-16T06:43:10.483526+00:00",
+      "note": "migration file + policy tests; SQL apply before F3 enforce"
+    },
+    "F3": {
+      "status": "pass",
+      "at": "2026-09-16T06:52:35.294275+00:00",
+      "note": "shadow wiring+B1-B7 replay; REOPEN_INTENT_V1_MODE still off in prod until F4"
+    },
+    "F4": {
+      "status": "pass",
+      "live": "pass_live",
+      "at": "2026-09-17T00:09:15.763268+00:00",
+      "note": "Plan B live canary green; allowlist only"
+    },
+    "F5": {
+      "status": "pass",
+      "at": "2026-09-16T07:02:07.938539+00:00",
+      "note": "R2 planner shadow; default R2_AUTO still off; no sender"
+    },
+    "F6": {
+      "status": "pass",
+      "live": "pass_live",
+      "at": "2026-09-17T01:09:16.893815+00:00",
+      "checks": {
+        "soft_r2_delivered": 2,
+        "hard_r2": 0,
+        "farewell_after_r2_outbound": 0,
+        "replay_extra_r2": 0
+      },
+      "delivery_proof": {
+        "outbound_message_ids": [
+          "fcc312fa-7bc1-4a38-a015-84061282614c",
+          "f538e7e3-ebd7-4a28-bcb5-93f28101e527"
+        ],
+        "wamids": [
+          "9476ADBAEDFC92574867",
+          "3EB0C695796DF9032ABC80"
+        ],
+        "action_ids": [
+          "9ca59044-a4bb-4b83-b27c-426fe7dcdcdd",
+          "0416ae63-fe65-47e0-8549-3e52a4897348"
+        ],
+        "origem": "path_a_r2_close",
+        "lei1_note": "DB rows verified; post-pass re-run at 01:13 failed because R2_AUTO already off \u2014 ignored"
+      }
+    },
+    "F7": {
+      "status": "pass_tier2",
+      "tier": 2,
+      "at": "2026-09-17T13:50:38.823002+00:00",
+      "note": "tier2 Path A allowlist (reopen+R2) = 5; release stays OFF+kill; no LIVE/conductor",
+      "allowlist": [
+        "5511945760964",
+        "5547996650702",
+        "5585997315603",
+        "5566992054841",
+        "5549988309265"
+      ]
+    }
+  },
+  "updated_at": "2026-09-17T13:50:38.823002+00:00",
+  "gate": "OBSERVE_TIER2",
+  "stop": "F7 tier2 allowlist=5 active (Path A); Camila OFF+kill; tier3/20 needs new GO",
+  "plan_b": {
+    "status": "delivered",
+    "at": "2026-09-17T00:09:15.763274+00:00",
+    "evidence": "PLAN-B-DELIVERED.json"
+  },
+  "f7_approval": {
+    "approve": "APROVO F7 PATH-A",
+    "tier": 2,
+    "at": "2026-09-17T13:45:35.906833+00:00",
+    "go_text": "GO para F7 tier 2"
+  }
+}

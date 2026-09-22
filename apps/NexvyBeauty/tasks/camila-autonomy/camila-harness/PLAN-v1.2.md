@@ -1,6 +1,6 @@
 # Plano consolidado v1.2 — Camila Harness Engineering
 
-Atualizado: 2026-09-21 — contrato: **MODEL-PORTA-JUIZ.md**. PRD-13 A–D no git/edge; aberto = Check E wamid + copy de consentimento.
+Atualizado: 2026-09-21 — contrato: **MODEL-PORTA-JUIZ.md**. PRD-13 A–D no git/edge; copy de consentimento canônica no disco; aberto = Check E wamid.
 
 > A explicação curta no chat foi um resumo. **Este plano + STATE-MACHINE + POLICY + GLOSSARY** juntos são o contrato. Abaixo: cobertura explícita do board v2.
 

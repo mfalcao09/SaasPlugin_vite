@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "job": "camila-d2-canary-5",
+  "when": "2026-09-15T17:41:24.964572+00:00",
+  "canary": {
+    "slug": "leticia",
+    "handle": "espaco.leh",
+    "extracted_lead_id": "543f3938-f648-4c91-adb9-98a55cae8558",
+    "greeting": "Leticia",
+    "telefone": "5511942602733"
+  },
+  "max_approach_span_s": 180,
+  "cases": [
+    {
+      "id": "clear_suppress",
+      "status": "PASS",
+      "detail": {
+        "handle": "espaco.leh"
+      }
+    },
+    {
+      "id": "approve",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "handle": "espaco.leh",
+            "id": "543f3938-f648-4c91-adb9-98a55cae8558",
+            "not_excluded": true,
+            "ok": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "campaign",
+      "status": "PASS",
+      "detail": {
+        "campaign_id": "32d73c7f-fc31-412b-979e-f7cc29d423b6"
+      }
+    },
+    {
+      "id": "enqueue",
+      "status": "PASS",
+      "detail": {
+        "queue_id": "28701b20-b1af-40b5-bfda-a6aaf2ecfa5f"
+      }
+    },
+    {
+      "id": "arm_test",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": false,
+            "release_state": "TEST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opening_found",
+      "status": "PASS",
+      "detail": {
+        "row": [
+          {
+            "conversation_id": "3eebb8e8-125e-474a-abd7-ff7a5d0c70bf",
+            "lead_id": "6d027ffd-f52f-479b-b69a-49e006dd5314",
+            "opening_at": "2026-09-15 17:41:50.6673+00",
+            "preview": "Oi, Leticia! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️"
+          }
+        ]
+      }
+    },
+    {
+      "id": "approach_complete_within_span",
+      "status": "PASS",
+      "detail": {
+        "outs": 4,
+        "span_s": 149,
+        "ap": {
+          "ap_status": null,
+          "outs": 4,
+          "span_s": 149
+        }
+      }
+    },
+    {
+      "id": "restore_off_kill",
+      "status": "PASS",
+      "detail": {
+        "rel": [
+          {
+            "kill_switch": true,
+            "release_state": "OFF"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reblock",
+      "status": "PASS",
+      "detail": {
+        "handle": "espaco.leh",
+        "conversation_id": "3eebb8e8-125e-474a-abd7-ff7a5d0c70bf"
+      }
+    }
+  ],
+  "campaign_id": "32d73c7f-fc31-412b-979e-f7cc29d423b6",
+  "conversation_id": "3eebb8e8-125e-474a-abd7-ff7a5d0c70bf",
+  "lead_id": "6d027ffd-f52f-479b-b69a-49e006dd5314",
+  "opening_at": "2026-09-15 17:41:50.6673+00",
+  "messages": [
+    {
+      "origem": "cold_outreach_abertura",
+      "preview": "Oi, Leticia! Tudo bem contigo? Aqui é a Camila, da NexvyBeauty 💅🏻💆‍♀️",
+      "when_brt": "2026-09-15 14:41:50.6673"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "Achei o seu número no Instagram @espaco.leh, e vim me apresentar.",
+      "when_brt": "2026-09-15 14:42:54.434458"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "A NexvyBeauty é um sistema pra espaços de beleza feminina que responde suas clientes no WhatsApp, or",
+      "when_brt": "2026-09-15 14:43:35.958229"
+    },
+    {
+      "origem": "cold_outreach_apresentar",
+      "preview": "Você acha que faria diferença ter uma equipe de IA que atende os clientes, marca horário, confirma p",
+      "when_brt": "2026-09-15 14:44:19.922021"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "at": "2026-09-17T02:17:30.219004+00:00",
+  "check_binary": "F7 aligned + PR#204 on remote with Path A/F6 code; Camila remains OFF+kill",
+  "checks": {
+    "C1_main_F7_f6_ok": "PASS",
+    "C2_main_F7_matches_F6_pass_live": "PASS",
+    "C3_main_F7_tier1_no_commercial": "PASS",
+    "C4_worktree_F7_f6_ok": "PASS",
+    "C5_PR_204_OPEN": "PASS",
+    "C6_remote_equals_local_HEAD": "PASS",
+    "C7_HEAD_has_zapiSendLink": "PASS",
+    "C8_HEAD_has_joice_copy": "PASS",
+    "C9_camila_still_OFF_kill": "PASS",
+    "C10_deno_r2_plan": "PASS"
+  },
+  "detail": {
+    "main_F7_f6": {
+      "status": "pass_live",
+      "live": "pass_live",
+      "ok": true,
+      "checks": {
+        "soft_r2_delivered": 2,
+        "hard_r2": 0,
+        "farewell_after_r2_outbound": 0,
+        "replay_extra_r2": 0
+      },
+      "when": "2026-09-17T01:09:16.893815+00:00",
+      "link_preview": {
+        "validated": true,
+        "evidence": "R2-LINK-PREVIEW-REDISPARO.json",
+        "when": "2026-09-17T01:57:48.682890+00:00"
+      }
+    },
+    "main_F7_tier": 1,
+    "pr": {
+      "url": "https://github.com/mfalcao09/SaasPlugin_vite/pull/204",
+      "state": "OPEN",
+      "title": "feat(camila): Path A reopen + F6 R2 canary (Joice + link preview)",
+      "baseRefName": "feat/camila-autonomy-04-safety-ledger",
+      "headRefName": "feat/camila-path-a-reopen"
+    },
+    "pr_commits": 2,
+    "local_HEAD": "b8e2840a82e317106c8732b5f22247e04dba99cb",
+    "remote_sha": "b8e2840a82e317106c8732b5f22247e04dba99cb",
+    "release": {
+      "kill_switch": true,
+      "release_state": "OFF"
+    },
+    "deno_tail": "\u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\nreplay same key \u2192 no duplicate plan ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\n30d repeat blocked ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\nmode off \u2192 no plan ... \u001b[0m\u001b[32mok\u001b[0m \u001b[0m\u001b[38;5;245m(0ms)\u001b[0m\n\n\u001b[0m\u001b[32mok\u001b[0m | 5 passed | 0 failed \u001b[0m\u001b[38;5;245m(19ms)\u001b[0m\n\n"
+  },
+  "delivery_claim_allowed": true,
+  "status": "implementado e verificado"
+}

@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "prd": "PRD-07",
+  "result": "PASS_CODE",
+  "branch": "feat/camila-autonomy-04-safety-ledger",
+  "base_commit": "db96195",
+  "working_tree": "dirty",
+  "checks": {
+    "entrypoints_checked": [
+      "platform-camila-conductor",
+      "platform-sales-brain",
+      "camila-cohort"
+    ],
+    "prd07_focused_tests": 39,
+    "cold_outreach_suite_tests": 174,
+    "test_failures": 0,
+    "deno_check": "green",
+    "code_review": "approve_after_fail_closed_fixes",
+    "typescript_review": "approve_after_release_normalize",
+    "database_review": "approve_after_anon_revoke_and_limit1",
+    "security_review": "approve_after_brain_cohort_recheck"
+  },
+  "binary_check": {
+    "no_proposal_outside_active_cohort": true,
+    "human_inbound_cancels_cold": true,
+    "hard_cap_replays": true,
+    "no_wake_provider_without_reservation": true,
+    "brain_rechecks_cohort_on_conductor_wake": true,
+    "blank_release_fail_closed": true,
+    "seed_cohort_inactive_until_gate": true
+  },
+  "production_off_gate": {
+    "release_state": "OFF",
+    "real_leads_allowed": false,
+    "edges_deployed": false,
+    "conductor_enabled": false,
+    "migration_applied": false,
+    "cohort_active": false
+  },
+  "remaining_for_master_gate": [
+    "apply migration after approval",
+    "activate cohort only after Master Gate staging",
+    "adversarial live rubric on controlled number",
+    "deploy edges on same SHA"
+  ]
+}

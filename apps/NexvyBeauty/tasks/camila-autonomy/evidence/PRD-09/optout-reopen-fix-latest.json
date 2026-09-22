@@ -1,0 +1,16 @@
+{
+  "when": "2026-09-16T01:03:49.765761+00:00",
+  "root_cause": "ensureConversation reopened status=closed\u2192bot_active on any inbound, undoing silenceConversation after opt-out (Joice Pode deixar/Obrigada)",
+  "fixes": [
+    "shouldReopenClosedWaQrConversation: never reopen DNC/opt-out/remarketing",
+    "webhook: suppress brain when metadata.do_not_contact",
+    "silenceConversation: set closed+DNC and log failures",
+    "kernel RPC: deny reason do_not_contact",
+    "heal: closed all Camila bot_active+DNC rows"
+  ],
+  "checks": {
+    "unit_reopen": true,
+    "joice_closed": true,
+    "dnc_bot_active_zero": true
+  }
+}

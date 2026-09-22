@@ -1,0 +1,18 @@
+{
+  "job": "r2-joice-redisparo",
+  "when": "2026-09-17T01:39:58.810618+00:00",
+  "status": "pass",
+  "canary": "5511945760964",
+  "outbound": [
+    "Sem problemas, Marcelo! Vou deixar aqui o nosso site para você dar uma olhada com calma, e se tiver interesse é só nos chamar no whatsapp novamente. Combinado?",
+    "https://nexvybeauty.com.br"
+  ],
+  "matches_joice_gold": true,
+  "source": "RULE-OPT-OUT-REMARKETING / learning-joice gold_agent_reply",
+  "finally": {
+    "release_state": "OFF",
+    "kill_switch": true,
+    "R2_AUTO_V1_MODE": "off"
+  },
+  "note": "e2e assert failed on ambiguous SQL; DB Lei1 proves bubbles; teardown OK"
+}

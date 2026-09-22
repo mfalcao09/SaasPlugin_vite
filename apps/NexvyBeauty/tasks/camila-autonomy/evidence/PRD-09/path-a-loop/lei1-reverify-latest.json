@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-16T23:27:09.299469+00:00",
+  "checks": {
+    "C1_loop_off_kill_path_a": "PASS",
+    "C3_harness_deno": "PASS",
+    "C3_detail": "\u001b[0m\u001b[32mok\u001b[0m | 40 passed | 0 failed \u001b[0m\u001b[38;5;245m(295ms)\u001b[0m",
+    "C4_project_INACTIVE": "PASS",
+    "C4_detail": {
+      "ref": "fzhlbwhdejumkyqosuvq",
+      "name": "NexvyBeauty",
+      "status": "INACTIVE"
+    },
+    "C4_proof": "ref_then_status + projects list object name=NexvyBeauty status=INACTIVE",
+    "C5_deploy_blocked_INACTIVE": "PASS",
+    "C5_detail": "FunctionsApiStatusError 404 Cannot retrieve service ... status 'INACTIVE'"
+  },
+  "delivery_claim": "none \u2014 Plan B / F4 live not delivered",
+  "all": "PASS"
+}

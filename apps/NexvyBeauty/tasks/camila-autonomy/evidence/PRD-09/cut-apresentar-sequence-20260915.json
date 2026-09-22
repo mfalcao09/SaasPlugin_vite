@@ -1,0 +1,17 @@
+{
+  "when": "2026-09-15T03:17:23.272065+00:00",
+  "tipo": "A",
+  "check_binario": {
+    "deno_tests": "16 passed (apresentar-sequence + script)",
+    "APRESENTAR_SEQUENCE_ENABLED": false,
+    "in_progress_apresentar_sequence": 0,
+    "prompt_has_opening_map": true,
+    "prompt_extracts_4_bubbles": true,
+    "edge_deployed": "platform-cold-outreach"
+  },
+  "code": [
+    "apresentar-sequence.ts: APRESENTAR_SEQUENCE_ENABLED=false",
+    "platform-cold-outreach: start no-op; process drains/aborts without provider"
+  ],
+  "prompt": "Camila additional_prompt: Estágio 1 restored + bolha1=OPENING; 2/3=FU D+N; 4=CTA"
+}

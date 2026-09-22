@@ -1,0 +1,24 @@
+{
+  "loop": "integration",
+  "name": "RUNTIME_WIRE_NO_REAL_WA",
+  "at": "2026-09-18T03:06:53.747544+00:00",
+  "pass": true,
+  "real_whatsapp_sends": 0,
+  "checks": {
+    "deno_shadow": "PASS",
+    "deno_wire": "PASS",
+    "deno_runtime_bridge": "PASS",
+    "cold_imports_runtime_bridge": "PASS",
+    "cold_has_harness_plan_action": "PASS",
+    "cold_harness_plan_zero_sends": "PASS",
+    "webhook_imports_harness": "PASS",
+    "bridge_forces_allow_real_false": "PASS",
+    "bridge_never_invokes_zapi": "PASS"
+  },
+  "deno_exits": {
+    "shadow-sim.test.ts": 0,
+    "wire-sim.test.ts": 0,
+    "runtime-bridge.test.ts": 0
+  },
+  "note": "harness-plan never calls deliver(); webhook only patches metadata"
+}

@@ -1,0 +1,53 @@
+{
+  "criteria": {
+    "source": "platform_crm_extracted_leads",
+    "seguidores": "2000-5000",
+    "segment": "salao_cliente",
+    "is_seed": false,
+    "is_infoproduto": false,
+    "has_phone": true,
+    "name_or_categoria": "salão / Hair Salon / Beauty Salon"
+  },
+  "d1_now": {
+    "possible": false,
+    "sp_local": "2026-09-14 ~00:15",
+    "reason": "kernel outside_window (needs Mon-Fri 09:00-18:00 America/Sao_Paulo)"
+  },
+  "candidates": [
+    {
+      "handle": "beautybreezeba",
+      "name": "BEAUTY BREEZE | Salão de Beleza",
+      "seguidores": 2001,
+      "categoria": "None",
+      "why": "banda baixa ~2k; nome salão"
+    },
+    {
+      "handle": "angeelhair",
+      "name": "ANGEL HAIR - SALÃO DE BELEZA",
+      "seguidores": 2455,
+      "categoria": null,
+      "why": "~2.5k; salão explícito"
+    },
+    {
+      "handle": "alinemachadostudiodebeleza",
+      "name": "Aline Machado | Studio De Beleza",
+      "seguidores": 3251,
+      "categoria": "Hair Salon",
+      "why": "~3.2k; categoria Hair Salon"
+    },
+    {
+      "handle": "beautyfast.belem",
+      "name": "BEAUTY FAST • SALÃO DE BELEZA",
+      "seguidores": 3691,
+      "categoria": "Beauty Salon",
+      "why": "~3.7k; Beauty Salon"
+    },
+    {
+      "handle": "arrazusstudio",
+      "name": "Salão de Beleza Recife",
+      "seguidores": 4440,
+      "categoria": null,
+      "why": "~4.4k; salão explícito"
+    }
+  ]
+}
