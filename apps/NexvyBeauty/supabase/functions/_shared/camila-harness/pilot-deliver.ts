@@ -254,7 +254,7 @@ export function absorbPreselectedIntoQueue(
  */
 export function matchDispatchText(
   lead: PilotLead | null,
-  envelope: Pick<OutboundEnvelope, "kind" | "bubbleIndex" | "text">,
+  envelope: Pick<OutboundEnvelope, "kind" | "bubbleIndex" | "text" | "sendAs" | "linkPreview">,
 ): { ok: boolean; reason: string } {
   if (!lead) return { ok: false, reason: "text_unverified" };
   if (envelope.kind === "reply") {

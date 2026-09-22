@@ -1185,7 +1185,7 @@ async function handleMessage(
   }
 
   // ---- INBOUND ----
-  const conversation = await ensureConversation(
+  let conversation = await ensureConversation(
     supabase, instance, fromDigits, norm.pushName || null, productId,
   );
   if (!conversation) return ok({ stored: false });
@@ -1450,7 +1450,7 @@ async function handleMessage(
           if (
             shouldApplyHarnessWakeBrain({
               reason: reactive.reason,
-              doNotContact: nextMeta.do_not_contact,
+              doNotContact: nextMeta.do_not_contact as boolean | string | null | undefined,
               needsNewConsent: act.flags.needs_new_consent,
             })
           ) {
