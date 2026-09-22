@@ -3,7 +3,9 @@ import {
   GOLD_HOW_ARE_YOU_REPLY,
   burstAsksCamilaHowSheIs,
   goldHowAreYouReply,
+  goldReplyFromHistory,
   isStandaloneAskCamila,
+  pendingTicketText,
   pickAssertiveInbound,
   scoreInboundCite,
   selectAssertiveCite,
@@ -60,6 +62,21 @@ Deno.test("pergunta à Camila vence 'tudo bem' sem interrogação", () => {
 
 Deno.test("sem pergunta clara, fica a última", () => {
   assertEquals(selectAssertiveCite(["Certo", "Beleza"]), "Beleza");
+});
+
+Deno.test("ouro olha a fala deste bilhete, não o e vc antigo", () => {
+  const historyDesc = [
+    { id: "now", direction: "inbound", sender_type: "visitor", content: "Como funciona?" },
+    { direction: "outbound", sender_type: "agent", content: "Oi" },
+    { id: "old", direction: "inbound", sender_type: "visitor", content: "E vc?" },
+  ];
+  assertEquals(pendingTicketText({
+    messages: historyDesc,
+    pendingInboundId: "now",
+    fallback: "E vc?",
+  }), "Como funciona?");
+  assertEquals(goldReplyFromHistory(historyDesc, "Como funciona?"), null);
+  assertEquals(goldReplyFromHistory(historyDesc, "E vc?"), GOLD_HOW_ARE_YOU_REPLY);
 });
 
 Deno.test("pickAssertiveInbound ignora outbound depois da rajada", () => {

@@ -43,8 +43,8 @@ export type InboundVerdictWrite = {
   verdict: string;
 };
 
-/** Livro aceita 1 ou 2 bolhas por reserva. O resto fica para outra tentativa. */
-export const LEDGER_REPLY_BUBBLE_CAP = 2;
+/** Livro aceita 1 a 4 bolhas por reserva. O resto fica para outra tentativa. */
+export const LEDGER_REPLY_BUBBLE_CAP = 4;
 
 export function bubblesWithinLedgerCap<T>(bubbles: readonly T[]): T[] {
   return bubbles.slice(0, LEDGER_REPLY_BUBBLE_CAP);

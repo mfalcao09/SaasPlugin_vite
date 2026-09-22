@@ -135,9 +135,26 @@ export function pickAssertiveInbound<T extends CiteCandidate>(
   return best;
 }
 
+export function pendingTicketText(input: {
+  messages: readonly { id?: string | null; content?: string | null }[];
+  pendingInboundId: string | null | undefined;
+  fallback: string;
+}): string {
+  const id = String(input.pendingInboundId ?? "").trim();
+  if (id) {
+    const hit = input.messages.find((m) => String(m.id ?? "") === id);
+    const text = String(hit?.content ?? "").trim();
+    if (text) return text;
+  }
+  return String(input.fallback ?? "").trim();
+}
+
+/** Texto da fala deste bilhete. Não usa uma pergunta mais antiga do histórico. */
 export function goldReplyFromHistory<T extends CiteCandidate>(
   historyDesc: readonly T[],
+  ticketText?: string,
 ): string | null {
+  if (typeof ticketText === "string") return goldHowAreYouReply([ticketText]);
   const texts = burstInboundVisitor(historyDesc).map((m) =>
     String(m.content ?? "")
   );

@@ -163,10 +163,11 @@ Deno.test("sucesso com comprovante encerra e o minuto seguinte não chama", asyn
   assertEquals(invoked, ["job:conv-1:in-1"]);
 });
 
-Deno.test("3 bolhas não viram um pedido de 3", () => {
-  const capped = bubblesWithinLedgerCap(["a", "b", "c"]);
-  assertEquals(capped, ["a", "b"]);
-  assertEquals(capped.length <= 2, true);
+Deno.test("5 bolhas não viram um pedido de 5", () => {
+  const capped = bubblesWithinLedgerCap(["a", "b", "c", "d", "e"]);
+  assertEquals(capped, ["a", "b", "c", "d"]);
+  assertEquals(capped.length <= 4, true);
+  assertEquals(bubblesWithinLedgerCap(["a", "b", "c"]), ["a", "b", "c"]);
   assertEquals(bubblesWithinLedgerCap(["só uma"]), ["só uma"]);
 });
 
