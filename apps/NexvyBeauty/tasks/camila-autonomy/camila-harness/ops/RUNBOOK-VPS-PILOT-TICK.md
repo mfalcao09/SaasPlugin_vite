@@ -32,6 +32,19 @@ FORCE_DRY=1 /opt/scripts/camila/harness_pilot_tick.py
 
 3. Confirm no pg_cron: `platform-cold-outreach-tick` / `platform-camila-conductor` absent.
 
+## Chip — conferência no minuto 59
+
+Só GET de status. Não envia WhatsApp. O minuto 59 é o mesmo em UTC e em São Paulo: 7h59 antes das 8h, 8h59 antes das 9h. Cada envio real continua recusando sozinho se o chip cair (`chip_not_connected`).
+
+```bash
+sudo cp tasks/.../ops/chip_status_check.py /opt/scripts/camila/chip_status_check.py
+sudo chmod 700 /opt/scripts/camila/chip_status_check.py
+```
+
+```cron
+59 * * * * /usr/bin/python3 /opt/scripts/camila/chip_status_check.py >> /opt/scripts/camila/evidence/chip-status.log 2>&1
+```
+
 ## HARD_STOP
 
 - `FORCE_DRY=1` + comment crontab line
