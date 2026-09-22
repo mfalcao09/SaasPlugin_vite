@@ -2,12 +2,14 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   CONSENT_QUESTION_DRAFT,
+  CONSENT_QUESTION_TEMPLATE,
   PACKAGE_LIMIT_MS,
   decideActivation,
   extractWamid,
   isBrainDebt,
   isBrainOutboundWamid,
   juizPrimeiroAto,
+  renderConsentQuestion,
   reviewFirstContactPackage,
   type ActivationInput,
   type PackageBubble,
@@ -159,7 +161,16 @@ Deno.test("G5#2 consentimento: como funciona? após DNC → pergunta, não demo"
   });
   assertEquals(a.speak, "consent_question");
   assertEquals(a.verdict, "consent_asked");
-  assertEquals(CONSENT_QUESTION_DRAFT.includes("parar"), true);
+  assertEquals(CONSENT_QUESTION_TEMPLATE.includes("parar o atendimento"), true);
+  assertEquals(CONSENT_QUESTION_TEMPLATE.includes("{nome}"), true);
+  assertEquals(CONSENT_QUESTION_TEMPLATE.includes('"Sim"'), true);
+  assertEquals(CONSENT_QUESTION_DRAFT, CONSENT_QUESTION_TEMPLATE);
+  assertEquals(
+    renderConsentQuestion("Andressa Silva"),
+    CONSENT_QUESTION_TEMPLATE.replace("{nome}", "Andressa"),
+  );
+  assertEquals(renderConsentQuestion(null).startsWith("Olá."), true);
+  assertEquals(renderConsentQuestion("+5511999").startsWith("Olá."), true);
 });
 
 Deno.test("consentimento sim → attend; não → silence + consent_no", () => {

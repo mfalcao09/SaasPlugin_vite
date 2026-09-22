@@ -290,5 +290,26 @@ export function juizPrimeiroAto(input: {
   };
 }
 
-export const CONSENT_QUESTION_DRAFT =
-  "Você havia pedido para parar o atendimento. Confirma que deseja retomar e saber mais do nosso software?";
+/** Puxador segurou a fala até a janela. Idade de 10 min não descarta essa chamada. */
+export function staleRedeliveryApplies(input: {
+  inactivityMode: boolean;
+  conductorWake: boolean;
+  harnessJobId: string | null;
+}): boolean {
+  if (input.inactivityMode || input.conductorWake) return false;
+  return !(input.harnessJobId && input.harnessJobId.trim());
+}
+
+/** Template canônico (Marcelo 21/09). `{nome}` = primeiro nome; sem nome → "Olá." */
+export const CONSENT_QUESTION_TEMPLATE =
+  'Olá, {nome}. Obrigado pela sua mensagem! Antes, registrei aqui que você havia pedido para parar o atendimento. Por uma questão de regra do WhatsApp, preciso confirmar: você deseja retomar a conversa e saber mais do nosso software? Pode me responder só com "Sim" ou "Não", que já registro aqui!';
+
+export function renderConsentQuestion(nome?: string | null): string {
+  const first = String(nome ?? "").trim().split(/\s+/)[0] ?? "";
+  const usable = first.length >= 2 && !/^\+?\d/.test(first) && !/@/.test(first);
+  if (usable) return CONSENT_QUESTION_TEMPLATE.replace("{nome}", first);
+  return CONSENT_QUESTION_TEMPLATE.replace("Olá, {nome}.", "Olá.");
+}
+
+/** Alias: o rascunho de 20/09 morreu; o canônico é o template. */
+export const CONSENT_QUESTION_DRAFT = CONSENT_QUESTION_TEMPLATE;

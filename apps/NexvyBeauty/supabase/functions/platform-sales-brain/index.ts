@@ -81,6 +81,7 @@ import {
 import {
   OPAQUE_CLARIFY,
   allowlistFromPlans,
+  bubblesAfterCommercialTruth,
   isOpaqueInbound,
   validateCommercialTruth,
 } from '../_shared/commercial-truth.ts';
@@ -107,11 +108,12 @@ import {
   harnessLedgerAllowsReserve,
 } from '../_shared/camila-harness/harness-brain-gate.ts';
 import { harnessBrainJobGate } from '../_shared/camila-harness/harness-job-gate.ts';
-import { parseHarnessJob } from '../_shared/camila-harness/harness-puller.ts';
+import { bubblesWithinLedgerCap, parseHarnessJob } from '../_shared/camila-harness/harness-puller.ts';
 import { loadHarnessHolidayDates } from '../_shared/camila-harness/holidays.ts';
 import {
-  CONSENT_QUESTION_DRAFT,
   juizPrimeiroAto,
+  renderConsentQuestion,
+  staleRedeliveryApplies,
 } from '../_shared/camila-harness/porta-juiz.ts';
 import { aplicarGateBolha } from '../_shared/bubble-gate.ts';
 import { splitIntoBubbles } from '../_shared/bubble-split.ts';
@@ -1881,7 +1883,11 @@ Deno.serve(async (req) => {
     //    NÃO se aplica ao modo inatividade: ali a inbound é VELHA por definição
     //    (o silêncio É o gatilho). Tampouco ao conductor_wake da Camila (dívida
     //    de resposta / condução de trilha — inbound pode ter horas).
-    if (triggerInbound && !inactivityMode && !conductorWake) {
+    if (triggerInbound && staleRedeliveryApplies({
+      inactivityMode,
+      conductorWake,
+      harnessJobId: harnessJobIdForContinuation,
+    })) {
       const meta = (triggerInbound.metadata && typeof triggerInbound.metadata === 'object')
         ? triggerInbound.metadata as Record<string, any> : {};
       const tsSecs = typeof meta.wa_timestamp === 'number' ? meta.wa_timestamp
@@ -2643,7 +2649,9 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
     let reply = '';
     const goldHowAreYou = goldReplyFromHistory(historyDesc);
     if (needsConsent && consentAto.speak === "consent_question") {
-      reply = CONSENT_QUESTION_DRAFT;
+      reply = renderConsentQuestion(
+        firstNameOnly(visitorName) ?? firstNameOnly(lead?.name),
+      );
     } else if (goldHowAreYou) {
       // Ouro Marcelo: “e você?” / “e vc” (com ou sem ?) na rajada → texto fixo.
       reply = goldHowAreYou;
@@ -3051,12 +3059,15 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
           invented_urls: truth.inventedUrls,
         });
       }
-      bubbles = truth.bubbles;
+      bubbles = bubblesAfterCommercialTruth(truth);
       if (bubbles.length === 0) {
         return json({ skipped: 'commercial_truth_empty' });
       }
     }
 
+    if (personaIsProspector && isWaQrChannel(conversation.channel)) {
+      bubbles = bubblesWithinLedgerCap(bubbles);
+    }
     const total = bubbles.length;
     let safetyActionId: string | null = null;
     if (personaIsProspector && !isWaQrChannel(conversation.channel)) {
@@ -3586,6 +3597,7 @@ Prefere terça pra ela, ou deixa às 16h de hoje mesmo?"`}`;
       score: newScore,
       qualification_persisted: qualPersisted,
       ...(inactivityMode ? { inactivity: { occurrence: inactivityOccurrence, stage: inactivityStage } } : {}),
+      ...(anyDelivered && lastProviderMessageId ? { wamid: lastProviderMessageId } : {}),
       ...(anyDelivered ? {} : { delivery_warning: lastDeliveryError ?? 'entrega falhou' }),
     });
   } catch (error) {

@@ -381,6 +381,7 @@ export function snapshotFromRows(input: {
       const verdict = String(rowMeta.harness_verdict ?? "");
       if (!verdict || verdict === "pending") {
         pendingInboundId = row.id;
+        brainAlreadyRepliedWamid = false;
       }
       if (
         firstBubbleAtMs != null &&
