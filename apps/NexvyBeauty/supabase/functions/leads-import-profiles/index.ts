@@ -124,9 +124,31 @@ Deno.serve(async (req: Request) => {
       (excludedRows ?? []).map((r: any) => String(r.handle ?? '').replace(/^@/, '')).filter(Boolean),
     );
 
+    // Universo multi-fase (anti-reinjeção): todo contato já visto em QUALQUER
+    // fase do funil — inclusive `contatado`/`remarketing`, que antes escapavam
+    // do dedup e voltavam como lead novo a cada extração.
+    // A extração corrente é ignorada para preservar a idempotência de
+    // reenvio/paginação do mesmo lote.
+    const seenPhones = new Set<string>();
+    const seenHandles = new Set<string>();
+    {
+      const { data: universeRows, error: uErr } = await sb
+        .from('platform_crm_lead_universe')
+        .select('telefone_digits, handle, extraction_id')
+        .eq('product_id', productId);
+      if (uErr) throw new Error(`lead_universe: ${uErr.message}`);
+      for (const r of (universeRows ?? []) as Array<Record<string, unknown>>) {
+        if (r.extraction_id && String(r.extraction_id) === String(extractionId)) continue;
+        const t = String(r.telefone_digits ?? '').replace(/\D/g, '');
+        if (t) seenPhones.add(t);
+        const h = String(r.handle ?? '').replace(/^@/, '').toLowerCase();
+        if (h) seenHandles.add(h);
+      }
+    }
+
     // Normaliza + dedup por handle dentro do batch (mesma lógica do webhook).
     const byHandle = new Map<string, Record<string, unknown>>();
-    let optedOut = 0, noHandle = 0;
+    let optedOut = 0, noHandle = 0, jaNoFunil = 0;
     for (const item of profiles) {
       const card = buildLeadCard(item);
       if (!card.handle) { noHandle++; continue; }
@@ -136,6 +158,12 @@ Deno.serve(async (req: Request) => {
         (card.telefone && optoutPhones.has(card.telefone))
       ) {
         optedOut++;
+        continue;
+      }
+      // Já existe em alguma fase? (telefone = chave forte; handle = secundária)
+      const telDigits = String(card.telefone ?? '').replace(/\D/g, '');
+      if (seenHandles.has(card.handle.toLowerCase()) || (telDigits && seenPhones.has(telDigits))) {
+        jaNoFunil++;
         continue;
       }
       const q = qualifyLead(item, card);
@@ -204,7 +232,7 @@ Deno.serve(async (req: Request) => {
       .eq('id', extractionId);
 
     console.log(
-      `[leads-import-profiles] extraction=${extractionId} received=${profiles.length} staged=${rows.length} qualified=${qualified} seeds=${seeds} cliente=${seg.salao_cliente} afiliado=${seg.afiliado_infoproduto} revisao=${seg.revisao} descarte=${seg.descarte} with_phone=${withPhone} opted_out=${optedOut} no_handle=${noHandle} total_now=${count}`,
+      `[leads-import-profiles] extraction=${extractionId} received=${profiles.length} staged=${rows.length} qualified=${qualified} seeds=${seeds} cliente=${seg.salao_cliente} afiliado=${seg.afiliado_infoproduto} revisao=${seg.revisao} descarte=${seg.descarte} with_phone=${withPhone} opted_out=${optedOut} ja_no_funil=${jaNoFunil} no_handle=${noHandle} total_now=${count}`,
     );
     return json({
       ok: true,
@@ -216,6 +244,7 @@ Deno.serve(async (req: Request) => {
       segments: seg,
       with_phone: withPhone,
       opted_out: optedOut,
+      ja_no_funil: jaNoFunil,
       no_handle: noHandle,
       total_now: count,
     });
