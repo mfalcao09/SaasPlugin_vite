@@ -17,6 +17,10 @@ export type PlatformCrmLeadUpdate = TablesUpdate<'platform_crm_leads'>;
 /** Lead com a etapa (stage) embutida via join FK current_stage_id. */
 export type PlatformCrmLeadWithStage = PlatformCrmLead & {
   stage: PlatformCrmStage | null;
+  platform_crm_lead_state?:
+    | { derived_stage?: string | null; product_id?: string | null }
+    | Array<{ derived_stage?: string | null; product_id?: string | null }>
+    | null;
   /**
    * Perfil do vendedor responsável (assigned_to), resolvido client-side contra
    * `profiles` — não há FK declarada de assigned_to → profiles. Espelha o campo
@@ -72,7 +76,8 @@ export function usePlatformCrmLeads(filters?: PlatformCrmLeadFilters) {
         .select(
           `
           *,
-          stage:platform_crm_pipeline_stages!platform_crm_leads_current_stage_id_fkey (*)
+          stage:platform_crm_pipeline_stages!platform_crm_leads_current_stage_id_fkey (*),
+          platform_crm_lead_state(derived_stage, product_id)
         `,
         )
         .order(sortBy, { ascending });
@@ -154,7 +159,8 @@ export function usePlatformCrmLead(id: string | undefined) {
         .select(
           `
           *,
-          stage:platform_crm_pipeline_stages!platform_crm_leads_current_stage_id_fkey (*)
+          stage:platform_crm_pipeline_stages!platform_crm_leads_current_stage_id_fkey (*),
+          platform_crm_lead_state(derived_stage, product_id)
         `,
         )
         .eq('id', id!)
