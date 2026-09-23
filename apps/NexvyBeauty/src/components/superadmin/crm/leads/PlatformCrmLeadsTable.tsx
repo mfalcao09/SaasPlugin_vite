@@ -45,6 +45,7 @@ import {
   visitorInitials,
 } from '@/components/superadmin/crm/inbox/platformCrmIdentity';
 import type { PlatformCrmLead, PlatformCrmLeadSort } from '../data/usePlatformCrmLeadsManager';
+import { derivedStageFromLead, uiStageNameForDerived } from '@/lib/harness-derived-ui';
 
 /**
  * Tabela da GESTÃO DE LEADS do CRM de PLATAFORMA (super_admin) — família F5 (Tabela de
@@ -382,19 +383,24 @@ export function PlatformCrmLeadsTable({
                   </div>
                 </TableCell>
 
-                {/* Estágio — dot com a cor do banco (único literal permitido, é dado) */}
+                {/* Estágio — harness derived_stage quando existir; senão current_stage */}
                 <TableCell className="py-2.5">
-                  {lead.stage ? (
+                  {(() => {
+                    const derived = derivedStageFromLead(lead);
+                    const name = derived ? uiStageNameForDerived(derived) : lead.stage?.name;
+                    if (!name) {
+                      return <span className="text-[13px] text-muted-foreground/60">—</span>;
+                    }
+                    return (
                     <Badge variant="outline" className="gap-1.5 font-normal text-xs max-w-[130px]">
                       <span
                         className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: lead.stage.color || undefined }}
+                        style={{ backgroundColor: lead.stage?.color || undefined }}
                       />
-                      <span className="truncate">{lead.stage.name}</span>
+                      <span className="truncate">{name}</span>
                     </Badge>
-                  ) : (
-                    <span className="text-[13px] text-muted-foreground/60">—</span>
-                  )}
+                    );
+                  })()}
                 </TableCell>
 
                 {/* Valor (deal_value) — DOURADO via .text-value (§Lux valores R$) */}

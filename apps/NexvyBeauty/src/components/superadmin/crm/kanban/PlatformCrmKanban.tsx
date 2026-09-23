@@ -22,6 +22,7 @@ import {
 import { usePlatformCrmKanbanFilters } from '../data/usePlatformCrmKanbanFilters';
 import { usePlatformCrmSellersMap } from '../data/usePlatformCrmSellers';
 import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
+import { kanbanStageKeyForLead } from '@/lib/harness-derived-ui';
 
 const UNASSIGNED_ID = 'unassigned';
 
@@ -97,7 +98,7 @@ export function PlatformCrmKanban() {
 
     const byStage = new Map<string, typeof leadList>();
     for (const lead of leadList) {
-      const key = lead.current_stage_id ?? UNASSIGNED_ID;
+      const key = kanbanStageKeyForLead(lead, stageList) ?? UNASSIGNED_ID;
       const bucket = byStage.get(key);
       if (bucket) bucket.push(lead);
       else byStage.set(key, [lead]);
