@@ -1,6 +1,6 @@
 // platform-camila-conductor — loop da vendedora Camila (harness próprio).
 //
-// NÃO é o sweeper da Duda (8/20/25/35). Varre a allowlist v1, classifica com
+// NÃO é o sweeper da Duda (8/20/25/35). Varre a coorte ativa versionada, classifica com
 // decideCamilaWake e — só se flags liberarem — acorda o brain com conductor_wake.
 //
 // ┌─ GATES (default seguro) ─────────────────────────────────────────────────┐
@@ -13,7 +13,7 @@
 // │ Anti-rajada:                                                              │
 // │   MAX_WAKES_PER_TICK=1  → no máximo UMA conversa acordada por minuto      │
 // │   cooldown 2h via metadata.camila_last_wake_at (lido de verdade)          │
-// │   allowlist fixa de 5 (INCIDENT_ALLOWLIST)                                │
+// │   coorte ativa versionada (platform_crm_agent_cohorts)                     │
 // │   auto-reply inbound → noop (não responde away-message)                   │
 // │   lead_closed (horário WA da loja) → noop no cold/conduct; dívida fica    │
 // │   national_holiday (BrasilAPI → platform_crm_business_holidays) → noop    │
@@ -25,10 +25,19 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { timingSafeEqual } from '../_shared/meta-graph.ts';
 import {
   decideCamilaWake,
-  INCIDENT_ALLOWLIST,
   WAKE_COOLDOWN_MS,
   MAX_WAKES_PER_HOUR,
 } from '../_shared/cold-outreach/camila-conductor-policy.ts';
+import {
+  CAMILA_AGENT_ID,
+  buildConductorWakeIdempotencyKey,
+  buildIncidentCohortV1,
+  evaluateConductorScope,
+  normalizeReleaseState,
+  releaseAllowsClassification,
+  type CohortSnapshot,
+} from '../_shared/cold-outreach/camila-cohort.ts';
+import { loadCanonicalLeadContext } from '../_shared/platform-crm-lead-context.ts';
 import type { TrailMessage } from '../_shared/cold-outreach/conversation-trail.ts';
 import {
   asWaLeadProfile,
@@ -55,7 +64,7 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-brain-secret',
 };
 
-/** Teto duro: 1 wake WhatsApp por tick do cron (1/min). Nunca rajada nas 5. */
+/** Teto duro: 1 wake WhatsApp por tick do cron (1/min). Nunca rajada. */
 const MAX_WAKES_PER_TICK = 1;
 
 function json(body: unknown, status = 200): Response {
@@ -178,6 +187,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
   if (!isAuthorized(req)) return json({ error: 'Unauthorized' }, 401);
 
+  if ((Deno.env.get('LEGACY_CAMILA_SENDERS') ?? '') !== '1') {
+    return json({ skipped: 'legacy_conductor_retired', real_whatsapp_sends: 0 });
+  }
   if ((Deno.env.get('CAMILA_CONDUCTOR_ENABLED') ?? 'false').toLowerCase() !== 'true') {
     return json({ skipped: 'flag_off' });
   }
@@ -197,17 +209,94 @@ Deno.serve(async (req) => {
   const now = new Date();
   const nowMs = now.getTime();
   const holidayDates = await loadCamilaHolidayDates(supabase, now);
-  const allowlist = [...INCIDENT_ALLOWLIST];
+  // PRD-07: coorte ativa versionada — sem membros ativos = zero propostas.
+  const { data: releaseRow } = await supabase
+    .from('platform_crm_agent_release_controls')
+    .select('release_state, kill_switch')
+    .eq('agent_id', CAMILA_AGENT_ID)
+    .maybeSingle();
+  const releaseState = normalizeReleaseState(
+    (releaseRow as { release_state?: string } | null)?.release_state,
+  );
+  const killSwitch = Boolean(
+    (releaseRow as { kill_switch?: boolean } | null)?.kill_switch,
+  );
+
+  const { data: cohortRows, error: cohortErr } = await supabase.rpc(
+    'pcrm_list_active_conductor_cohort_members',
+    { p_agent_id: CAMILA_AGENT_ID },
+  );
+  if (cohortErr) {
+    console.warn(
+      '[platform-camila-conductor] cohort rpc unavailable',
+      String((cohortErr as { message?: string }).message ?? cohortErr).slice(0, 160),
+    );
+  }
+  const memberIds: string[] = [];
+  let cohort: CohortSnapshot | null = null;
+  const rows = Array.isArray(cohortRows) ? cohortRows : [];
+  if (rows.length) {
+    const slug = String((rows[0] as { cohort_slug?: string }).cohort_slug ?? 'active');
+    const version = Number((rows[0] as { cohort_version?: number }).cohort_version ?? 1);
+    for (const row of rows) {
+      const id = String((row as { conversation_id?: string }).conversation_id ?? '');
+      if (id) memberIds.push(id);
+    }
+    cohort = {
+      slug,
+      version,
+      active: true,
+      memberConversationIds: new Set(memberIds),
+    };
+  } else {
+    cohort = buildIncidentCohortV1([], false);
+  }
+
   const classified: Array<Record<string, unknown>> = [];
   const woken: string[] = [];
   const skippedCap: string[] = [];
   const errors: string[] = [];
   const enriched: string[] = [];
+  const deniedScope: Array<Record<string, unknown>> = [];
+
+  if (!memberIds.length || killSwitch || !releaseAllowsClassification(releaseState)) {
+    return json({
+      ok: true,
+      dry,
+      allow_live: allowLive,
+      release_state: releaseState,
+      kill_switch: killSwitch,
+      cohort: cohort
+        ? {
+          slug: cohort.slug,
+          version: cohort.version,
+          active: cohort.active,
+          members: memberIds.length,
+        }
+        : null,
+      classified: [],
+      woken: [],
+      skipped_cap: [],
+      denied_scope: [],
+      reason: killSwitch
+        ? 'kill_switch'
+        : !releaseAllowsClassification(releaseState)
+        ? 'release_off'
+        : 'cohort_empty',
+      now: now.toISOString(),
+      errors: [],
+    });
+  }
 
   const { data: convRows } = await supabase
     .from('platform_crm_conversations')
-    .select('id, metadata, visitor_phone, visitor_whatsapp, visitor_name, wa_qr_instance_id')
-    .in('id', allowlist);
+    .select(
+      'id, metadata, visitor_phone, visitor_whatsapp, visitor_name, wa_qr_instance_id, status, current_agent_id, lead_id, product_id',
+    )
+    .in('id', memberIds)
+    .eq('status', 'bot_active')
+    .eq('current_agent_id', CAMILA_AGENT_ID)
+    .not('lead_id', 'is', null);
   const metaById = new Map<string, Record<string, unknown>>();
   const convById = new Map<string, Record<string, unknown>>();
   const wakeTimes: number[] = [];
@@ -226,7 +315,7 @@ Deno.serve(async (req) => {
   const { data: queueRows } = await supabase
     .from('platform_crm_cold_outreach_queue')
     .select('conversation_id, extracted_lead_id')
-    .in('conversation_id', allowlist);
+    .in('conversation_id', memberIds);
   const extractedByConv = new Map<string, string>();
   const extractedIds: string[] = [];
   for (const q of queueRows ?? []) {
@@ -276,7 +365,9 @@ Deno.serve(async (req) => {
   }
   const qrCfg = await loadPlatformQrProviderConfig(supabase);
 
-  for (const conversationId of allowlist) {
+  const scopedIds = [...convById.keys()];
+  for (const conversationId of scopedIds) {
+
     try {
       const { data: msgs, error } = await supabase
         .from('platform_crm_messages')
@@ -362,6 +453,35 @@ Deno.serve(async (req) => {
       const lastWakeAtMs = parseWakeAt(meta);
       const waProfile = asWaLeadProfile(meta.wa_profile);
       const leadOpen = isLeadAcceptingOutbound(waProfile, now);
+      const leadId = typeof conv.lead_id === 'string' ? conv.lead_id : null;
+      const productId = typeof conv.product_id === 'string' ? conv.product_id : null;
+      let hasFicha = false;
+      if (leadId && productId) {
+        const ficha = await loadCanonicalLeadContext(supabase, leadId, productId);
+        hasFicha = ficha.isReady && ficha.prompt.trim().length > 0;
+      }
+      const scope = evaluateConductorScope({
+        conversationId,
+        status: typeof conv.status === 'string' ? conv.status : null,
+        currentAgentId: typeof conv.current_agent_id === 'string'
+          ? conv.current_agent_id
+          : null,
+        leadId,
+        hasFicha,
+        releaseState,
+        cohort,
+      });
+      if (!scope.allowed) {
+        deniedScope.push({ conversation_id: conversationId, reason: scope.reason });
+        classified.push({
+          conversation_id: conversationId,
+          kind: 'noop',
+          due: false,
+          reason: scope.reason,
+          nextAction: null,
+        });
+        continue;
+      }
       const decision = decideCamilaWake({
         conversationId,
         messages,
@@ -370,6 +490,7 @@ Deno.serve(async (req) => {
         wakesInLastHour,
         leadAcceptingOutbound: leadOpen,
         holidayDates,
+        inCohort: true,
       });
       classified.push({
         conversation_id: conversationId,
@@ -380,6 +501,7 @@ Deno.serve(async (req) => {
         last_wake_at: typeof meta.camila_last_wake_at === 'string' ? meta.camila_last_wake_at : null,
         hours_mode: waProfile?.hours_mode ?? null,
         lead_open: leadOpen,
+        cohort: cohort?.slug ?? null,
       });
 
       if (!dry && decision.due) {
@@ -387,6 +509,23 @@ Deno.serve(async (req) => {
           skippedCap.push(conversationId);
           continue;
         }
+        const wakeKey = buildConductorWakeIdempotencyKey(
+          conversationId,
+          decision.kind,
+          now,
+        );
+        const priorKeys = Array.isArray(meta.camila_wake_keys)
+          ? (meta.camila_wake_keys as unknown[]).map(String)
+          : [];
+        if (priorKeys.includes(wakeKey)) {
+          classified[classified.length - 1] = {
+            ...classified[classified.length - 1],
+            reason: 'wake_idempotent',
+            due: false,
+          };
+          continue;
+        }
+        // Conductor propõe; o brain/kernel reserva antes de qualquer provider call.
         const brain = await invokeBrain(
           conversationId,
           formatWaLeadBrainContext(waProfile, now, String(conv.visitor_name ?? '')),
@@ -396,13 +535,16 @@ Deno.serve(async (req) => {
         } else {
           woken.push(conversationId);
           const wakeIso = now.toISOString();
-          const nextMeta = { ...meta, camila_last_wake_at: wakeIso };
+          const nextMeta = {
+            ...meta,
+            camila_last_wake_at: wakeIso,
+            camila_wake_keys: [...priorKeys, wakeKey].slice(-20),
+          };
           metaById.set(conversationId, nextMeta);
           await supabase
             .from('platform_crm_conversations')
             .update({ metadata: nextMeta })
             .eq('id', conversationId);
-          // Evita rate-limit OpenRouter se no futuro o teto subir.
           await sleep(8000);
         }
       }
@@ -415,6 +557,16 @@ Deno.serve(async (req) => {
     ok: true,
     dry,
     allow_live: allowLive,
+    release_state: releaseState,
+    kill_switch: killSwitch,
+    cohort: cohort
+      ? {
+        slug: cohort.slug,
+        version: cohort.version,
+        active: cohort.active,
+        members: memberIds.length,
+      }
+      : null,
     max_wakes_per_tick: MAX_WAKES_PER_TICK,
     wake_cooldown_ms: WAKE_COOLDOWN_MS,
     max_wakes_per_hour: MAX_WAKES_PER_HOUR,
@@ -423,6 +575,7 @@ Deno.serve(async (req) => {
     classified,
     woken,
     skipped_cap: skippedCap,
+    denied_scope: deniedScope,
     enriched,
     holidays_loaded: holidayDates.size,
     errors,
