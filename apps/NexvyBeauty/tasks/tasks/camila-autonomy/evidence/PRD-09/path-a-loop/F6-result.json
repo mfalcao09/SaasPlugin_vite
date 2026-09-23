@@ -1,8 +1,0 @@
-{
-  "status": "blocked",
-  "reason": "needs_F4_live_F5_pass_and_PATH_A_F6_LIVE",
-  "f4": {},
-  "f5": null,
-  "gate": "F7_GATE",
-  "at": "2026-09-17T01:11:53.143147+00:00"
-}
