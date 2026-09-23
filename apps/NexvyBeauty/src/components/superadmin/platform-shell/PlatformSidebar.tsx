@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
+  ArrowLeft,
   LogOut,
   Moon,
   Sun,
@@ -16,7 +17,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { PlatformModuleSwitcher } from './PlatformModuleSwitcher';
 import { PlatformProductSwitcher } from './PlatformProductSwitcher';
@@ -112,8 +113,25 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      {/* Footer: só Sair. O link legado para "/" (pré-split gestao/app) foi removido. */}
+      {/* Footer */}
       <div className="space-y-2 border-t border-border p-3">
+        <Link
+          to="/"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('skip_super_admin_redirect', '1');
+            } catch {
+              // sessionStorage indisponível
+            }
+            onNavigate?.();
+          }}
+        >
+          <Button variant="ghost" className="w-full justify-start gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao App
+          </Button>
+        </Link>
+
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
