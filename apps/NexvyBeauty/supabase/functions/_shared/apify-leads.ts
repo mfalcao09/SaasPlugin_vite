@@ -284,13 +284,17 @@ export interface LeadCard {
  * + website + campos de contato de negócio quando presentes.
  */
 export function buildLeadCard(item: any): LeadCard {
+  // O mesmo normalizador atende Apify e o envelope legado do Prospectagram.
+  // No segundo caso, os nomes já vêm em português (handle, bio, telefone,
+  // seguidores...), portanto não podemos depender apenas do schema do actor.
   const handleRaw = firstString(item?.username, item?.ownerUsername, item?.handle);
   const handle = handleRaw ? handleRaw.replace(/^@/, '') : null;
 
   const name = firstString(item?.fullName, item?.full_name, item?.name);
   const primeiro_nome = name ? name.split(/\s+/)[0] : null;
 
-  const bio = firstString(item?.biography, item?.bio, item?.description);
+  const rawBio = firstString(item?.biography, item?.bio, item?.description);
+  const bio = rawBio ? rawBio.normalize('NFKC') : null;
 
   // TODOS os links externos (varredura de telefone/wa.me — não só o [0]).
   const externalUrlsArr: string[] = Array.isArray(item?.externalUrls)
@@ -302,7 +306,9 @@ export function buildLeadCard(item: any): LeadCard {
     item?.externalUrl,
     item?.external_url,
     item?.website,
+    item?.whatsapp_link,
     item?.externalUrlShimmed,
+    ...(Array.isArray(item?.links) ? item.links : []),
     ...externalUrlsArr,
   ].filter((x: unknown): x is string => typeof x === 'string' && x.length > 0);
 
@@ -320,6 +326,7 @@ export function buildLeadCard(item: any): LeadCard {
     item?.businessCategoryName,
     item?.categoryName,
     item?.category,
+    item?.categoria,
   );
 
   const is_verified = firstBool(item?.verified, item?.isVerified, item?.is_verified);
@@ -334,9 +341,10 @@ export function buildLeadCard(item: any): LeadCard {
     item?.public_phone_number,
     item?.contactPhoneNumber,
     item?.phone,
+    item?.telefone,
   );
   const phone = extractBestPhone([bizPhone, bio, ...allLinks]);
-  const telefone = phone.telefone;
+  const telefone = phone.telefone || firstString(item?.telefone);
 
   // Email: campo de negócio, senão do BIO.
   const bizEmail = firstString(item?.businessEmail, item?.public_email, item?.email);
@@ -352,20 +360,20 @@ export function buildLeadCard(item: any): LeadCard {
     handle,
     name,
     primeiro_nome,
-    seguidores: num(item?.followersCount ?? item?.followers ?? item?.followersCountNum),
-    seguindo: num(item?.followsCount ?? item?.following ?? item?.followingCount),
-    posts: num(item?.postsCount ?? item?.mediaCount ?? item?.igtvVideoCount),
-    telefone,
+    seguidores: num(item?.followersCount ?? item?.followers ?? item?.followersCountNum ?? item?.seguidores),
+    seguindo: num(item?.followsCount ?? item?.following ?? item?.followingCount ?? item?.seguindo),
+    posts: num(item?.postsCount ?? item?.mediaCount ?? item?.igtvVideoCount ?? item?.posts),
+    telefone: telefone || firstString(item?.telefone),
     // Número discável → wa.me/<num>; senão, link de WhatsApp em código (wa.me/message/…)
     // quando o perfil só expõe o link-código (contato real, sem número recuperável).
-    whatsapp_link: telefone ? `https://wa.me/${telefone}` : (phone.wa_link ?? null),
-    email,
-    instagram_url,
-    website,
+    whatsapp_link: telefone ? `https://wa.me/${telefone}` : (firstString(item?.whatsapp_link) || phone.wa_link || null),
+    email: email || firstString(item?.email),
+    instagram_url: instagram_url || firstString(item?.instagram_url),
+    website: website || firstString(item?.website),
     categoria,
     cnpj,
-    is_verified,
-    is_private,
+    is_verified: is_verified ?? firstBool(item?.is_verified),
+    is_private: is_private ?? firstBool(item?.is_private),
     bio,
     is_business,
     phone_is_br: phone.is_br,
