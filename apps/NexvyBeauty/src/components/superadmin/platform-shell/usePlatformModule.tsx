@@ -61,6 +61,7 @@ import {
   Package,
   Instagram,
   Video,
+  Upload,
 } from 'lucide-react';
 
 // ─── Module IDs ─────────────────────────────────────────────
@@ -287,6 +288,7 @@ export const PlatformIcons = {
   Send,
   Webhook,
   Instagram,
+  Upload,
   // vendas — prospecção ativa
   Video,
   // vendas — captação
