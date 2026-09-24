@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export type CanonicalTriage = 'principal' | 'semente' | 'nao_classificado' | 'remocao_confirmada';
+export function triagemFromSegment(segment: LeadSegment | null | undefined): CanonicalTriage {
+  if (segment === 'salao_cliente') return 'principal';
+  if (segment === 'afiliado_infoproduto') return 'semente';
+  return 'nao_classificado';
+}
+
 /**
  * Prospecção (C9 — motor de extração de leads, super_admin, PRODUCT-scoped).
  *
@@ -53,6 +60,7 @@ export interface ExtractedLead {
   categoria: string | null;
   bio: string | null;
   segment: LeadSegment | null;
+  triagem: CanonicalTriage | null;
   qualified: boolean | null;
   is_seed: boolean | null;
   is_infoproduto: boolean | null;
@@ -234,7 +242,7 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
       let q = supabase
         .from('platform_crm_extracted_leads' as never)
         .select(
-          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, excluded_at, created_at, approved_at',
+          'id, extraction_id, handle, name, seguidores, seguindo, posts, telefone, whatsapp_link, email, instagram_url, website, categoria, bio, segment, triagem, qualified, is_seed, is_infoproduto, is_verified, is_private, geo_country, bio_lang, filter_verdicts, excluded_at, created_at, approved_at',
         )
         .eq('extraction_id', extractionId as string);
       // Lixeira: por padrão esconde os excluídos; excludedOnly mostra SÓ eles.
@@ -256,24 +264,25 @@ export function usePlatformExtractedLeads(extractionId: string | null, filters: 
 
 /**
  * Reclassificação MANUAL de um lead (override humano do classificador automático).
- * Muda o segmento e/ou marca semente. Ao mover para/de salao_cliente, o `qualified`
- * segue o segmento (só salao_cliente é "qualificado de venda"). RLS super_admin.
+ * A UI não escreve a classificação diretamente. O estado canônico é alterado
+ * pela Edge Function `leads-triage`; `segment` permanece apenas compatibilidade.
  */
 export function useReclassifyLead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { id: string; segment?: LeadSegment; is_seed?: boolean }) => {
-      const patch: Record<string, unknown> = {};
-      if (args.segment !== undefined) {
-        patch.segment = args.segment;
-        patch.qualified = args.segment === 'salao_cliente';
-      }
-      if (args.is_seed !== undefined) patch.is_seed = args.is_seed;
-      const { error } = await supabase
-        .from('platform_crm_extracted_leads' as never)
-        .update(patch as never)
-        .eq('id', args.id);
+    mutationFn: async (args: { id: string; productId: string; segment?: LeadSegment; triagem?: CanonicalTriage; is_seed?: boolean }) => {
+      let triagem = args.triagem;
+      if (!triagem && args.segment !== undefined) triagem = triagemFromSegment(args.segment);
+      const { data, error } = await supabase.functions.invoke('leads-triage', {
+        body: {
+          product_id: args.productId,
+          extracted_lead_ids: [args.id],
+          ...(triagem ? { triagem } : {}),
+          ...(args.is_seed !== undefined ? { is_seed: args.is_seed } : {}),
+        },
+      });
       if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
       return args;
     },
     onSuccess: () => {
@@ -402,13 +411,13 @@ export function useRestoreLead() {
 
 /**
  * Preenche o WhatsApp MANUALMENTE (ex.: o telefone estava numa imagem do perfil).
- * Normaliza pra E.164 BR, monta o wa.me, e promove o lead a salao_cliente/qualified
+ * Normaliza pra E.164 BR, monta o wa.me, e promove o lead a principal/qualified
  * (override humano — o Marcelo confirmou que é um lead de venda).
  */
 export function useSetLeadPhone() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { id: string; telefone: string }) => {
+    mutationFn: async (args: { id: string; productId: string; telefone: string }) => {
       let digits = args.telefone.replace(/\D/g, '');
       if (!digits) throw new Error('Telefone vazio');
       if (!digits.startsWith('55') && digits.length >= 10 && digits.length <= 11) digits = '55' + digits;
@@ -418,11 +427,15 @@ export function useSetLeadPhone() {
           telefone: digits,
           whatsapp_link: `https://wa.me/${digits}`,
           phone_is_br: true,
-          segment: 'salao_cliente',
           qualified: true,
         } as never)
         .eq('id', args.id);
       if (error) throw error;
+      const { data: triageData, error: triageError } = await supabase.functions.invoke('leads-triage', {
+        body: { product_id: args.productId, extracted_lead_ids: [args.id], triagem: 'principal' },
+      });
+      if (triageError) throw triageError;
+      if ((triageData as any)?.error) throw new Error((triageData as any).error);
       return args;
     },
     onSuccess: () => {
@@ -513,19 +526,19 @@ function invalidateBothLeadViews(qc: ReturnType<typeof useQueryClient>) {
 export function useReclassifyLeadByHandle() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { productId: string; handle: string; segment?: LeadSegment; is_seed?: boolean }) => {
-      const patch: Record<string, unknown> = {};
-      if (args.segment !== undefined) {
-        patch.segment = args.segment;
-        patch.qualified = args.segment === 'salao_cliente';
-      }
-      if (args.is_seed !== undefined) patch.is_seed = args.is_seed;
-      const { error } = await supabase
-        .from('platform_crm_extracted_leads' as never)
-        .update(patch as never)
-        .eq('product_id', args.productId)
-        .eq('handle', args.handle);
+    mutationFn: async (args: { productId: string; handle: string; segment?: LeadSegment; triagem?: CanonicalTriage; is_seed?: boolean }) => {
+      let triagem = args.triagem;
+      if (!triagem && args.segment !== undefined) triagem = triagemFromSegment(args.segment);
+      const { data, error } = await supabase.functions.invoke('leads-triage', {
+        body: {
+          product_id: args.productId,
+          handles: [args.handle],
+          ...(triagem ? { triagem } : {}),
+          ...(args.is_seed !== undefined ? { is_seed: args.is_seed } : {}),
+        },
+      });
       if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
       return args;
     },
     onSuccess: () => invalidateBothLeadViews(qc),
@@ -547,12 +560,16 @@ export function useSetLeadPhoneByHandle() {
           telefone: digits,
           whatsapp_link: `https://wa.me/${digits}`,
           phone_is_br: true,
-          segment: 'salao_cliente',
           qualified: true,
         } as never)
         .eq('product_id', args.productId)
         .eq('handle', args.handle);
       if (error) throw error;
+      const { data: triageData, error: triageError } = await supabase.functions.invoke('leads-triage', {
+        body: { product_id: args.productId, handles: [args.handle], triagem: 'principal' },
+      });
+      if (triageError) throw triageError;
+      if ((triageData as any)?.error) throw new Error((triageData as any).error);
       return args;
     },
     onSuccess: () => {

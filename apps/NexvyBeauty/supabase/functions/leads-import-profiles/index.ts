@@ -1,4 +1,5 @@
-// leads-import-profiles — importa perfis JÁ COLETADOS (raw Apify items) direto no
+// leads-import-profiles — importa perfis JÁ COLETADOS (raw Apify items ou cards
+// normalizados do Prospectagram) direto no
 // staging do C9, sem passar pelo run do Apify. Irmão do leads-extraction-webhook:
 // o webhook BAIXA o dataset (token do projeto); este RECEBE os perfis no corpo do
 // POST. Serve dois consumidores:
@@ -20,6 +21,11 @@ import {
   authenticatePlatformAgent,
 } from '../_shared/platform-crm-auth.ts';
 import { buildLeadCard, qualifyLead } from '../_shared/apify-leads.ts';
+import {
+  resolveExtractedLeadIdentity,
+  type ExtractedLeadForResolution,
+} from '../_shared/platform-crm-extracted-lead-resolver.ts';
+import { triageFromLegacySegment } from '../_shared/platform-crm-triage.ts';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -64,7 +70,12 @@ Deno.serve(async (req: Request) => {
   const productId = String(body?.product_id ?? '').trim();
   if (!UUID_RE.test(productId)) return json({ error: 'product_id invalido (UUID)' }, 400);
 
-  const profiles: unknown[] = Array.isArray(body?.profiles) ? body.profiles : [];
+  // Compatibilidade de entrada: Apify/Gemini usa profiles[]; o extrator
+  // Prospectagram entrega o envelope legado como cards[]. Ambos passam pelo
+  // mesmo normalizador e pela mesma triagem no backend.
+  const profiles: unknown[] = Array.isArray(body?.profiles)
+    ? body.profiles
+    : (Array.isArray(body?.cards) ? body.cards : []);
   if (profiles.length === 0) return json({ error: 'profiles[] obrigatorio' }, 400);
   if (profiles.length > MAX_PROFILES) {
     return json({ error: `profiles[] excede ${MAX_PROFILES} — pagine o envio` }, 413);
@@ -98,7 +109,13 @@ Deno.serve(async (req: Request) => {
         source,
         status: 'running',
         requested_by: requestedBy,
-        params: { imported: true, via: 'leads-import-profiles' },
+        params: {
+          imported: true,
+          via: 'leads-import-profiles',
+          contract_version: String(body?.contract_version ?? 'legacy'),
+          external_run_id: body?.external_run_id ?? null,
+          source_file_name: body?.source_file_name ?? null,
+        },
       })
       .select('id').single();
     if (insErr || !job) {
@@ -148,22 +165,31 @@ Deno.serve(async (req: Request) => {
 
     // Normaliza + dedup por handle dentro do batch (mesma lógica do webhook).
     const byHandle = new Map<string, Record<string, unknown>>();
+    const rowResults: Array<{ index: number; status: 'accepted' | 'error' | 'skipped'; reason?: string }> = [];
     let optedOut = 0, noHandle = 0, jaNoFunil = 0;
-    for (const item of profiles) {
-      const card = buildLeadCard(item);
-      if (!card.handle) { noHandle++; continue; }
+    for (const [index, item] of profiles.entries()) {
+      let card: ReturnType<typeof buildLeadCard>;
+      try {
+        card = buildLeadCard(item);
+      } catch (_) {
+        rowResults.push({ index, status: 'error', reason: 'invalid_record' });
+        continue;
+      }
+      if (!card.handle) { noHandle++; rowResults.push({ index, status: 'error', reason: 'missing_handle' }); continue; }
       if (
         optoutHandles.has(card.handle) ||
         excludedHandles.has(card.handle) ||
         (card.telefone && optoutPhones.has(card.telefone))
       ) {
         optedOut++;
+        rowResults.push({ index, status: 'skipped', reason: 'suppressed_or_excluded' });
         continue;
       }
       // Já existe em alguma fase? (telefone = chave forte; handle = secundária)
       const telDigits = String(card.telefone ?? '').replace(/\D/g, '');
       if (seenHandles.has(card.handle.toLowerCase()) || (telDigits && seenPhones.has(telDigits))) {
         jaNoFunil++;
+        rowResults.push({ index, status: 'skipped', reason: 'already_in_universe' });
         continue;
       }
       const q = qualifyLead(item, card);
@@ -192,6 +218,9 @@ Deno.serve(async (req: Request) => {
         finalidade: 'audiencia_ads',
         qualified: q.qualified,
         segment: q.segment,
+        triagem: triageFromLegacySegment(q.segment),
+        triagem_source: 'classifier',
+        triagem_at: new Date().toISOString(),
         is_seed: q.is_seed,
         is_infoproduto: q.is_infoproduto,
         phone_is_br: q.phone_is_br,
@@ -200,6 +229,7 @@ Deno.serve(async (req: Request) => {
         filter_verdicts: q.filter_verdicts,
         raw: item,
       });
+      rowResults.push({ index, status: 'accepted' });
     }
 
     const rows = Array.from(byHandle.values());
@@ -218,6 +248,26 @@ Deno.serve(async (req: Request) => {
         .from('platform_crm_extracted_leads')
         .upsert(rows, { onConflict: 'extraction_id,handle' });
       if (upErr) throw new Error(`upsert staging: ${upErr.message}`);
+    }
+
+    // Promoção canônica: a linha continua no inventário, mas ganha o card que
+    // será usado pelo CRM. Não promovemos revisão/remoção; elas permanecem
+    // nas filas de triagem/enriquecimento.
+    const { data: stagedRows, error: stagedError } = await sb
+      .from('platform_crm_extracted_leads')
+      .select('id, product_id, handle, name, telefone, segment, triagem, imported_to_lead_id')
+      .eq('extraction_id', extractionId)
+      .in('handle', rows.map((r) => r.handle));
+    if (stagedError) throw new Error(`read staged rows: ${stagedError.message}`);
+
+    let linked = 0;
+    let createdCards = 0;
+    let groupedByPhone = 0;
+    for (const staged of (stagedRows ?? []) as ExtractedLeadForResolution[]) {
+      const result = await resolveExtractedLeadIdentity(sb, staged);
+      if (result.status === 'linked_existing' || result.status === 'skipped') linked++;
+      if (result.status === 'created') createdCards++;
+      if (result.groupedByPhone) groupedByPhone++;
     }
 
     // total_found = contagem REAL na extração (idempotente sob reenvio/paginação).
@@ -243,6 +293,10 @@ Deno.serve(async (req: Request) => {
       seeds,
       segments: seg,
       with_phone: withPhone,
+      linked,
+      created_cards: createdCards,
+      grouped_by_phone: groupedByPhone,
+      row_results: rowResults,
       opted_out: optedOut,
       ja_no_funil: jaNoFunil,
       no_handle: noHandle,

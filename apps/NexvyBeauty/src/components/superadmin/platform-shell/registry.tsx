@@ -63,6 +63,7 @@ import { ProspeccaoCampanhas } from '@/components/superadmin/crm/prospeccao/Pros
 import { ProspeccaoDashboard } from '@/components/superadmin/crm/prospeccao/ProspeccaoDashboard';
 import { ProspeccaoEnriquecimento } from '@/components/superadmin/crm/prospeccao/ProspeccaoEnriquecimento';
 import { ProspeccaoVideoImport } from '@/components/superadmin/crm/prospeccao/ProspeccaoVideoImport';
+import { NovaProspeccaoWorkspace } from '@/components/superadmin/crm/prospeccao/NovaProspeccaoWorkspace';
 import { PlatformCrmCaptureWidgetsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWidgetsTab';
 import { PlatformCrmCaptureAnalyticsTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureAnalyticsTab';
 import { PlatformCrmCaptureWhatsAppTab } from '@/components/superadmin/crm/capture/PlatformCrmCaptureWhatsAppTab';
@@ -427,6 +428,17 @@ const VENDAS_NAV: PlatformNavGroup[] = [
         icon: I.Video,
         render: () => <ProspeccaoVideoImport />,
       },
+    ],
+  },
+  {
+    id: 'vendas-nova-prospeccao-ativa',
+    label: 'Nova Prospecção Ativa',
+    items: [
+      { id: 'v-nova-prospeccao-dashboard', label: 'Dashboard', icon: I.BarChart3, render: () => <NovaProspeccaoWorkspace mode="dashboard" /> },
+      { id: 'v-nova-prospeccao-ingestao', label: 'Ingestão de leads', icon: I.Upload, render: () => <NovaProspeccaoWorkspace mode="ingestao" /> },
+      { id: 'v-nova-prospeccao-base', label: 'Base de leads', icon: I.Users, render: () => <NovaProspeccaoWorkspace mode="base" /> },
+      { id: 'v-nova-prospeccao-enriquecimento', label: 'Enriquecimento', icon: I.Sparkles, render: () => <NovaProspeccaoWorkspace mode="enriquecimento" /> },
+      { id: 'v-nova-prospeccao-campanhas', label: 'Campanhas & disparos', icon: I.Send, render: () => <NovaProspeccaoWorkspace mode="campanhas" /> },
     ],
   },
   {

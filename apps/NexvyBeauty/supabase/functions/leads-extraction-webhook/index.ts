@@ -26,6 +26,20 @@ function json(body: unknown, status = 200) {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FAIL_EVENTS = new Set(['ACTOR.RUN.FAILED', 'ACTOR.RUN.TIMED_OUT', 'ACTOR.RUN.ABORTED']);
 
+async function closeLinkedEnrichmentOperations(
+  sb: any,
+  extractionId: string,
+  patch: Record<string, unknown>,
+) {
+  const { error } = await sb
+    .from('platform_crm_lead_operations')
+    .update(patch)
+    .eq('operation_type', 'enrichment')
+    .eq('status', 'running')
+    .contains('result', { extraction_id: extractionId });
+  if (error) console.error('[leads-extraction-webhook] operation close error:', error.message);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
@@ -69,6 +83,11 @@ Deno.serve(async (req: Request) => {
       .from('platform_crm_lead_extractions')
       .update({ status: 'error', last_error: eventType })
       .eq('id', job.id);
+    await closeLinkedEnrichmentOperations(sb, job.id, {
+      status: 'failed',
+      finished_at: new Date().toISOString(),
+      error: eventType,
+    });
     return json({ ok: true, status: 'error', event: eventType });
   }
 
@@ -215,6 +234,12 @@ Deno.serve(async (req: Request) => {
       .from('platform_crm_lead_extractions')
       .update({ status: 'done', total_found: rows.length, last_error: null })
       .eq('id', job.id);
+    await closeLinkedEnrichmentOperations(sb, job.id, {
+      status: 'succeeded',
+      finished_at: new Date().toISOString(),
+      result: { extraction_id: job.id, staged: rows.length, with_phone: withPhone, qualified },
+      error: null,
+    });
 
     // Só contagens no log (nunca PII).
     console.log(
@@ -236,6 +261,11 @@ Deno.serve(async (req: Request) => {
       .from('platform_crm_lead_extractions')
       .update({ status: 'error', last_error: msg })
       .eq('id', job.id);
+    await closeLinkedEnrichmentOperations(sb, job.id, {
+      status: 'failed',
+      finished_at: new Date().toISOString(),
+      error: msg,
+    });
     console.error('[leads-extraction-webhook] error:', msg);
     // 200 p/ o Apify não entrar em loop de retry (o error fica registrado no job).
     return json({ ok: false, error: msg }, 200);

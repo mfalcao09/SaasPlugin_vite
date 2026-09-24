@@ -191,7 +191,8 @@ export function PlatformProspeccaoManager() {
 
   const savePhone = () => {
     if (!editingPhone || !editingPhone.value.trim()) return;
-    setPhone.mutate({ id: editingPhone.id, telefone: editingPhone.value }, { onSuccess: () => setEditingPhone(null) });
+    if (!productId) return;
+    setPhone.mutate({ productId, id: editingPhone.id, telefone: editingPhone.value }, { onSuccess: () => setEditingPhone(null) });
   };
 
   // Portão por-LEAD — ações de aprovação/reabertura.
@@ -550,7 +551,7 @@ export function PlatformProspeccaoManager() {
                       <select
                         className={`text-xs rounded border px-1 py-0.5 bg-transparent ${l.segment ? SEG_META[l.segment]?.cls ?? '' : ''}`}
                         value={l.segment ?? 'revisao'}
-                        onChange={(e) => reclassify.mutate({ id: l.id, segment: e.target.value as LeadSegment })}
+                        onChange={(e) => productId && reclassify.mutate({ productId, id: l.id, segment: e.target.value as LeadSegment })}
                         disabled={showExcluded}
                       >
                         {SEG_KEYS.map((k) => <option key={k} value={k}>{SEG_META[k].dot} {SEG_META[k].label}</option>)}
@@ -558,7 +559,7 @@ export function PlatformProspeccaoManager() {
                       <button
                         title={l.is_seed ? 'Desmarcar semente' : 'Marcar semente'}
                         className={`text-sm ${l.is_seed ? '' : 'opacity-30'}`}
-                        onClick={() => reclassify.mutate({ id: l.id, is_seed: !l.is_seed })}
+                        onClick={() => productId && reclassify.mutate({ productId, id: l.id, is_seed: !l.is_seed })}
                       >🌱</button>
                       {showExcluded ? (
                         <button
