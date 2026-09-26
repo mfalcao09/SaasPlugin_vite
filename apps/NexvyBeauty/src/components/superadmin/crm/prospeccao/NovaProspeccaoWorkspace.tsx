@@ -2,11 +2,14 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArchiveX,
   ArrowRight,
   CheckCircle2,
+  CircleHelp,
   FileUp,
   Layers3,
   Loader2,
+  Sprout,
   RefreshCw,
   Send,
   Sparkles,
@@ -229,11 +232,35 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
     ["closing", "Fechamento"],
     ["onboarding", "Onboarding"],
   ];
-  const categoryCards: Array<[string, string]> = [
-    ["principal", "Principal"],
-    ["semente", "Semente"],
-    ["nao_classificado", "Não classificados"],
-    ["remocao_confirmada", "Remoção confirmada"],
+  const categoryCards = [
+    {
+      key: "principal",
+      label: "Principal",
+      icon: Users,
+      tone: "border-primary/20 bg-primary/[0.04] text-primary",
+      iconTone: "bg-primary/10 text-primary",
+    },
+    {
+      key: "semente",
+      label: "Semente",
+      icon: Sprout,
+      tone: "border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-700 dark:text-emerald-400",
+      iconTone: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    },
+    {
+      key: "nao_classificado",
+      label: "Não classificados",
+      icon: CircleHelp,
+      tone: "border-amber-500/25 bg-amber-500/[0.05] text-amber-700 dark:text-amber-400",
+      iconTone: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    },
+    {
+      key: "remocao_confirmada",
+      label: "Remoção confirmada",
+      icon: ArchiveX,
+      tone: "border-rose-500/20 bg-rose-500/[0.04] text-rose-700 dark:text-rose-400",
+      iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
+    },
   ];
   const actionCards = [
     [
@@ -264,28 +291,39 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
   return (
     <div className="space-y-5">
       <section>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Base de leads
-          </h2>
-          <span className="text-sm font-semibold">
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Base de leads
+            </h2>
+          </div>
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
             {summary.total_cards ?? 0} cards
           </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {categoryCards.map(([key, label]) => {
+          {categoryCards.map(({ key, label, icon: CategoryIcon, tone, iconTone }) => {
             const value = summary.by_triagem?.[key] ?? 0;
             const withPhone = summary.by_triagem_with_phone?.[key] ?? 0;
             const withoutPhone = summary.by_triagem_without_phone?.[key] ?? 0;
             return (
               <div
                 key={key}
-                className="rounded-xl border border-border bg-card p-4"
+                className={`group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
               >
-                <div className="text-sm text-muted-foreground">{label}</div>
-                <div className="mt-1 text-2xl font-semibold">{value}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground">{label}</div>
+                    <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                      {value}
+                    </div>
+                  </div>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
+                    <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  </span>
+                </div>
                 {key === "principal" && (
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                     {withPhone} com telefone · {withoutPhone} sem telefone
                   </div>
                 )}
