@@ -461,7 +461,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             </div>
             <div className="relative px-5 pb-5 pt-4">
               <div className="mb-4 grid grid-cols-8 gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-                <div className="col-span-2 flex items-center gap-2 border-b border-primary/20 pb-2 text-primary">
+                <div className="col-span-1 flex items-center gap-2 border-b border-primary/20 pb-2 text-primary">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   Entrada
                 </div>
@@ -469,7 +469,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                   Qualificação
                 </div>
-                <div className="col-span-2 flex items-center gap-2 border-b border-sky-500/30 pb-2 text-sky-600 dark:text-sky-400">
+                <div className="col-span-3 flex items-center gap-2 border-b border-sky-500/30 pb-2 text-sky-600 dark:text-sky-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
                   Relacionamento
                 </div>
