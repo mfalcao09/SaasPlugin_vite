@@ -237,8 +237,8 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
       key: "principal",
       label: "Principal",
       icon: Users,
-      tone: "border-primary/20 bg-primary/[0.04] text-primary",
-      iconTone: "bg-primary/10 text-primary",
+      tone: "border-primary/35 bg-primary/[0.06] text-primary hover:border-brand/50 hover:bg-primary/[0.09] hover:ring-2 hover:ring-brand/20 hover:shadow-premium-xl",
+      iconTone: "bg-brand text-brand-foreground shadow-md shadow-brand/20 ring-2 ring-brand/20 transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg",
     },
     {
       key: "semente",
