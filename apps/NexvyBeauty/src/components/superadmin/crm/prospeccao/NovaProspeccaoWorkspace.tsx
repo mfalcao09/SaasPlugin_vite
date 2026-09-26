@@ -322,6 +322,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
     (current, stage) => (stage.value > current.value ? stage : current),
     stageValues[0],
   );
+  const maxStageValue = Math.max(...stageValues.map(({ value }) => value), 1);
   const actionCards = [
     {
       label: "Não classificados",
@@ -458,15 +459,34 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                 Maior concentração: <b className="font-semibold text-foreground">{dominantStage.label}</b>
               </div>
             </div>
-            <div className="relative px-5 py-5">
-              <div className="pointer-events-none absolute left-[8%] right-[8%] top-[52px] h-px bg-gradient-to-r from-primary/20 via-border to-primary/20" />
+            <div className="relative px-5 pb-5 pt-4">
+              <div className="mb-4 grid grid-cols-8 gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                <div className="col-span-2 flex items-center gap-2 border-b border-primary/20 pb-2 text-primary">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Entrada
+                </div>
+                <div className="col-span-2 flex items-center gap-2 border-b border-brand/30 pb-2 text-brand">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                  Qualificação
+                </div>
+                <div className="col-span-2 flex items-center gap-2 border-b border-sky-500/30 pb-2 text-sky-600 dark:text-sky-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  Relacionamento
+                </div>
+                <div className="col-span-2 flex items-center gap-2 border-b border-emerald-500/30 pb-2 text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Conversão
+                </div>
+              </div>
+              <div className="pointer-events-none absolute left-[8%] right-[8%] top-[83px] h-1 rounded-full bg-gradient-to-r from-primary/25 via-brand/20 to-emerald-500/25" />
               <div className="relative grid grid-cols-8 gap-1">
                 {stageValues.map(({ key, label, icon: StageIcon, iconTone, value }, index) => {
                   const isDominant = key === dominantStage.key && value > 0;
+                  const volume = Math.max(8, Math.round((value / maxStageValue) * 100));
                   return (
                     <div
                       key={key}
-                      className={`group relative z-10 flex min-h-[148px] flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-background/80 hover:shadow-premium-sm ${isDominant ? "border-primary/25 bg-primary/[0.045]" : "border-transparent"}`}
+                      className={`group relative z-10 flex min-h-[164px] flex-col items-center rounded-2xl border-x border-transparent px-2 py-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-background/80 hover:shadow-premium-sm ${isDominant ? "border-primary/25 bg-primary/[0.045] shadow-premium-sm" : ""}`}
                     >
                       {index < stageValues.length - 1 && (
                         <ArrowRight className="pointer-events-none absolute -right-3 top-[45px] z-20 h-5 w-5 rounded-full bg-card p-1 text-muted-foreground/60" aria-hidden="true" />
@@ -490,7 +510,15 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                       <b className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
                         {value}
                       </b>
-                      <span className="text-[10px] text-muted-foreground">leads nesta etapa</span>
+                      <div className="mt-2 w-full max-w-[7rem]">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${isDominant ? "bg-brand" : "bg-primary/45"}`}
+                            style={{ width: `${volume}%` }}
+                          />
+                        </div>
+                        <span className="mt-1 block text-[10px] text-muted-foreground">volume relativo</span>
+                      </div>
                     </div>
                   );
                 })}
