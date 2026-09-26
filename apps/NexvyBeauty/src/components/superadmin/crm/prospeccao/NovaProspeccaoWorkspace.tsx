@@ -361,21 +361,21 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             return (
               <div
                 key={key}
-                className={`group relative overflow-hidden rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+                className={`group relative overflow-hidden rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-foreground">{label}</div>
-                    <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                    <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-foreground">
                       {value}
                     </div>
                   </div>
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
                     <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
                   </span>
                 </div>
                 {key === "principal" && (
-                  <div className="mt-2 border-t border-border/60 pt-2 text-xs text-muted-foreground">
+                  <div className="mt-1.5 border-t border-border/60 pt-1.5 text-xs text-muted-foreground">
                     {withPhone} com telefone · {withoutPhone} sem telefone
                   </div>
                 )}
@@ -392,7 +392,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
           {stageLabels.map(({ key, label, icon: StageIcon, tone, iconTone }) => (
             <div
               key={key}
-              className={`group flex min-h-[72px] flex-col justify-between rounded-2xl border bg-card p-3.5 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+              className={`group flex min-h-[65px] flex-col justify-between rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="text-sm font-medium text-foreground">{label}</span>
