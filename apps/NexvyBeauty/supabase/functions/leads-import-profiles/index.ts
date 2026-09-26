@@ -269,7 +269,7 @@ Deno.serve(async (req: Request) => {
       .select('id, product_id, handle, name, telefone, segment, triagem, imported_to_lead_id')
       .eq('extraction_id', extractionId)
       .is('imported_to_lead_id', null)
-      .limit(500);
+      .limit(100);
     if (stagedError) throw new Error(`read staged rows: ${stagedError.message}`);
 
     let linked = 0;
