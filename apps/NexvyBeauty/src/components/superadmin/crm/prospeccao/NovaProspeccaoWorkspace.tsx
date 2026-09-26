@@ -363,7 +363,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             {summary.total_cards ?? 0} cards
           </span>
         </div>
-        <div className="grid gap-3 lg:grid-cols-[1.2fr_2fr]">
+        <div className="grid gap-3 lg:grid-cols-[0.95fr_2.25fr]">
           {(() => {
             const principal = summary.by_triagem?.principal ?? 0;
             const withPhone = summary.by_triagem_with_phone?.principal ?? 0;
@@ -371,30 +371,28 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             return (
               <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
                 <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[18px] border-brand/20" />
-                <div className="relative flex h-full min-h-[108px] flex-col justify-between">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
+                <div className="relative grid min-h-[108px] grid-cols-[minmax(0,1fr)_auto] items-center gap-5">
+                  <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/70">
                         Principal
                       </div>
                       <div className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
                         {principal}
                       </div>
-                    </div>
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
-                      <Users className="h-5 w-5" aria-hidden="true" />
-                    </span>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-2 text-sm">
+                  <div className="flex min-w-[112px] flex-col gap-2 border-l border-primary-foreground/15 pl-4 pr-1">
                     <div>
-                      <div className="font-semibold tabular-nums">{withPhone}</div>
+                      <div className="text-lg font-semibold tabular-nums">{withPhone}</div>
                       <div className="text-xs text-primary-foreground/60">com telefone</div>
                     </div>
                     <div>
-                      <div className="font-semibold tabular-nums">{withoutPhone}</div>
+                      <div className="text-lg font-semibold tabular-nums">{withoutPhone}</div>
                       <div className="text-xs text-primary-foreground/60">sem telefone</div>
                     </div>
                   </div>
+                  <span className="absolute right-0 top-0 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
+                      <Users className="h-5 w-5" aria-hidden="true" />
+                  </span>
                 </div>
               </div>
             );
