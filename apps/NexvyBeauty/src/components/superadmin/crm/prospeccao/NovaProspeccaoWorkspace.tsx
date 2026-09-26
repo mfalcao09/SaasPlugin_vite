@@ -296,21 +296,21 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
       key: "semente",
       label: "Semente",
       icon: Sprout,
-      tone: "border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-700 dark:text-emerald-400",
+      tone: "border-border border-t-2 border-t-emerald-500 bg-card text-emerald-700 dark:text-emerald-400",
       iconTone: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     },
     {
       key: "nao_classificado",
       label: "Não classificados",
       icon: CircleHelp,
-      tone: "border-amber-500/25 bg-amber-500/[0.05] text-amber-700 dark:text-amber-400",
+      tone: "border-border border-t-2 border-t-amber-500 bg-card text-amber-700 dark:text-amber-400",
       iconTone: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
     },
     {
       key: "remocao_confirmada",
       label: "Remoção confirmada",
       icon: ArchiveX,
-      tone: "border-rose-500/20 bg-rose-500/[0.04] text-rose-700 dark:text-rose-400",
+      tone: "border-border border-t-2 border-t-rose-500 bg-card text-rose-700 dark:text-rose-400",
       iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
     },
   ];
@@ -369,26 +369,23 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             const withPhone = summary.by_triagem_with_phone?.principal ?? 0;
             const withoutPhone = summary.by_triagem_without_phone?.principal ?? 0;
             return (
-              <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-4 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
+              <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
                 <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[18px] border-brand/20" />
-                <div className="relative flex h-full min-h-[124px] flex-col justify-between">
+                <div className="relative flex h-full min-h-[108px] flex-col justify-between">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/70">
                         Principal
                       </div>
-                      <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+                      <div className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
                         {principal}
-                      </div>
-                      <div className="mt-1 text-sm text-primary-foreground/70">
-                        leads na categoria principal
                       </div>
                     </div>
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
                       <Users className="h-5 w-5" aria-hidden="true" />
                     </span>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-2 text-sm">
+                  <div className="mt-2 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-2 text-sm">
                     <div>
                       <div className="font-semibold tabular-nums">{withPhone}</div>
                       <div className="text-xs text-primary-foreground/60">com telefone</div>
@@ -410,17 +407,17 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                 return (
                   <div
                     key={key}
-                    className={`group relative flex min-h-[124px] flex-col justify-between overflow-hidden rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+                    className={`group relative flex min-h-[108px] flex-col justify-between overflow-hidden rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="max-w-[10rem] text-sm font-medium leading-snug text-foreground">
                         {label}
                       </span>
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
-                        <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
+                        <CategoryIcon className="h-[19px] w-[19px]" aria-hidden="true" />
                       </span>
                     </div>
-                    <div className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
                       {value}
                     </div>
                   </div>
