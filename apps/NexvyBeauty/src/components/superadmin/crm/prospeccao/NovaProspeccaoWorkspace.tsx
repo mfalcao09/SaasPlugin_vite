@@ -315,30 +315,42 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
     },
   ];
   const actionCards = [
-    [
-      "Não classificados",
-      summary.by_triagem?.nao_classificado ?? 0,
-      "Revisar leads",
-      "v-nova-prospeccao-base",
-    ],
-    [
-      "Para enriquecimento",
-      summary.enrichment_pending ?? 0,
-      "Enriquecer leads",
-      "v-nova-prospeccao-enriquecimento",
-    ],
-    [
-      "Leads pré-selecionados",
-      summary.by_stage?.preselected ?? 0,
-      "Programar disparo",
-      "v-nova-prospeccao-campanhas",
-    ],
-    [
-      "Campanhas com problema",
-      summary.campaign_problems ?? 0,
-      "Ver campanhas",
-      "v-nova-prospeccao-campanhas",
-    ],
+    {
+      label: "Não classificados",
+      value: summary.by_triagem?.nao_classificado ?? 0,
+      cta: "Revisar leads",
+      section: "v-nova-prospeccao-base",
+      icon: CircleHelp,
+      tone: "border-amber-500/25 bg-amber-500/[0.04] hover:border-amber-500/45 hover:bg-amber-500/[0.07]",
+      iconTone: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    },
+    {
+      label: "Para enriquecimento",
+      value: summary.enrichment_pending ?? 0,
+      cta: "Enriquecer leads",
+      section: "v-nova-prospeccao-enriquecimento",
+      icon: Sparkles,
+      tone: "border-violet-500/20 bg-violet-500/[0.04] hover:border-violet-500/40 hover:bg-violet-500/[0.07]",
+      iconTone: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    },
+    {
+      label: "Leads pré-selecionados",
+      value: summary.by_stage?.preselected ?? 0,
+      cta: "Programar disparo",
+      section: "v-nova-prospeccao-campanhas",
+      icon: Target,
+      tone: "border-brand/25 bg-brand/[0.04] hover:border-brand/45 hover:bg-brand/[0.08]",
+      iconTone: "bg-brand/10 text-brand",
+    },
+    {
+      label: "Campanhas com problema",
+      value: summary.campaign_problems ?? 0,
+      cta: "Ver campanhas",
+      section: "v-nova-prospeccao-campanhas",
+      icon: AlertTriangle,
+      tone: "border-rose-500/20 bg-rose-500/[0.04] hover:border-rose-500/40 hover:bg-rose-500/[0.07]",
+      iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    },
   ] as const;
   return (
     <div className="space-y-5">
@@ -412,15 +424,22 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
           Ações pendentes
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {actionCards.map(([label, value, cta, section]) => (
+          {actionCards.map(({ label, value, cta, section, icon: ActionIcon, tone, iconTone }) => (
             <div
               key={label}
-              className="rounded-xl border border-border bg-card p-4"
+              className={`group flex min-h-[142px] flex-col rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
             >
-              <div className="text-sm text-muted-foreground">{label}</div>
-              <div className="mt-1 text-2xl font-semibold">{value}</div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm font-medium text-foreground">{label}</div>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
+                  <ActionIcon className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                {value}
+              </div>
               <Button
-                className="mt-3 w-full"
+                className="mt-auto w-full"
                 variant="outline"
                 size="sm"
                 onClick={() => setActiveSection(section)}
