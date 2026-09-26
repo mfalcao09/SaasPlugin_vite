@@ -429,23 +429,33 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Estágio operacional
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stageLabels.map(({ key, label, icon: StageIcon, tone, iconTone }) => (
-            <div
-              key={key}
-              className={`group flex min-h-[65px] flex-col justify-between rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-sm font-medium text-foreground">{label}</span>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
-                  <StageIcon className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </div>
-              <b className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-                {summary.by_stage?.[key] ?? 0}
-              </b>
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-premium-sm">
+          <div className="relative min-w-[1080px] px-4 py-5">
+            <div className="pointer-events-none absolute left-[6%] right-[6%] top-[38px] border-t border-border" />
+            <div className="relative grid grid-cols-8 gap-1">
+              {stageLabels.map(({ key, label, icon: StageIcon, iconTone }, index) => (
+                <div
+                  key={key}
+                  className="group relative z-10 flex min-h-[112px] flex-col items-center rounded-xl px-2 py-1 text-center transition-colors duration-200 hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-semibold tabular-nums text-muted-foreground/70">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-xl ring-4 ring-card ${iconTone}`}>
+                      <StageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <span className="mt-3 min-h-[2.5rem] max-w-[8rem] text-xs font-medium leading-tight text-foreground">
+                    {label}
+                  </span>
+                  <b className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                    {summary.by_stage?.[key] ?? 0}
+                  </b>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </section>
       <section>
