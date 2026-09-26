@@ -345,7 +345,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
       <section>
         <div className="mb-3 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Base de leads
             </h2>
           </div>
@@ -361,7 +361,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             return (
               <div
                 key={key}
-                className={`group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+                className={`group relative overflow-hidden rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -370,12 +370,12 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                       {value}
                     </div>
                   </div>
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
                     <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
                   </span>
                 </div>
                 {key === "principal" && (
-                  <div className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                  <div className="mt-2 border-t border-border/60 pt-2 text-xs text-muted-foreground">
                     {withPhone} com telefone · {withoutPhone} sem telefone
                   </div>
                 )}
@@ -385,22 +385,22 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
         </div>
       </section>
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Estágio operacional
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stageLabels.map(({ key, label, icon: StageIcon, tone, iconTone }) => (
             <div
               key={key}
-              className={`group flex min-h-[82px] flex-col justify-between rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+              className={`group flex min-h-[72px] flex-col justify-between rounded-2xl border bg-card p-3.5 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <span className="text-sm font-medium text-foreground">{label}</span>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
                   <StageIcon className="h-4 w-4" aria-hidden="true" />
                 </span>
               </div>
-              <b className="mt-3 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+              <b className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
                 {summary.by_stage?.[key] ?? 0}
               </b>
             </div>
@@ -408,7 +408,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
         </div>
       </section>
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Ações pendentes
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
