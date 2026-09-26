@@ -2,11 +2,16 @@
 //
 // A tabela extracted_leads é 1 linha por perfil/extração; o CRM é 1 card por
 // identidade comercial. A rotina abaixo faz a ponte sem usar handle como
-// identidade exclusiva e sem criar card para revisão/remoção.
+// identidade exclusiva. Todos os estados canônicos têm card na Base; apenas
+// Principal/Semente são promovíveis para pré-seleção/campanha.
 
 import { findOrCreateLeadByPhone } from "./platform-crm-find-create-lead.ts";
 import { phoneVariantsWithPlusBR } from "./phone-e164-variants.ts";
-import { isPromotableTriage, triageFromLegacySegment } from "./platform-crm-triage.ts";
+import {
+  isCanonicalTriage,
+  isPromotableTriage,
+  triageFromLegacySegment,
+} from "./platform-crm-triage.ts";
 
 export type ExtractedLeadForResolution = {
   id: string;
@@ -91,7 +96,7 @@ export async function resolveExtractedLeadIdentity(
     };
   }
   const triagem = row.triagem ?? triageFromLegacySegment(row.segment);
-  if (!isPromotableTriage(triagem) || !row.handle) {
+  if (!isCanonicalTriage(triagem) || !row.handle) {
     return { status: "not_promotable", leadId: null, groupedByPhone: false };
   }
 

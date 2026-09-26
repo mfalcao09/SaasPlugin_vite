@@ -98,6 +98,7 @@ function useSnapshot(productId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["nova-prospeccao-snapshot", productId],
     enabled: !!productId && enabled,
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(
         "leads-operational-snapshot",
@@ -1168,20 +1169,46 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
   const {
     data: snapshot,
     isLoading,
+    isFetching,
     error,
     refetch,
+    dataUpdatedAt,
   } = useSnapshot(productId, mode !== "ingestao");
   const rows = snapshot?.rows ?? [];
   const summary = snapshot?.summary ?? ({} as SnapshotSummary);
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2">
-          <Icon className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">{meta.title}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Icon className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">{meta.title}</h1>
+          </div>
+          {meta.subtitle && (
+            <p className="mt-1 text-muted-foreground">{meta.subtitle}</p>
+          )}
         </div>
-        {meta.subtitle && (
-          <p className="mt-1 text-muted-foreground">{meta.subtitle}</p>
+        {productId && mode !== "ingestao" && (
+          <div className="flex shrink-0 items-center gap-3">
+            {dataUpdatedAt > 0 && (
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                Atualizado às {new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+              aria-label="Atualizar dados do dashboard"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              {isFetching ? "Atualizando…" : "Atualizar"}
+            </Button>
+          </div>
         )}
       </div>
       {!productId ? (
@@ -1214,12 +1241,6 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
               <CampaignHistory productId={productId} />
             </>
           )}
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar
-            </Button>
-          </div>
         </>
       )}
     </div>

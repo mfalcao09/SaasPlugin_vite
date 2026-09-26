@@ -25,7 +25,10 @@ import {
   resolveExtractedLeadIdentity,
   type ExtractedLeadForResolution,
 } from '../_shared/platform-crm-extracted-lead-resolver.ts';
-import { triageFromLegacySegment } from '../_shared/platform-crm-triage.ts';
+import {
+  isCanonicalTriage,
+  triageFromLegacySegment,
+} from '../_shared/platform-crm-triage.ts';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -82,6 +85,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const source = String(body?.source ?? 'instagram').trim() || 'instagram';
+  const preserveTriagem = body?.preserve_triagem === true;
   const keywords: string[] = Array.isArray(body?.keywords)
     ? body.keywords.map((k: unknown) => String(k ?? '').trim()).filter((k: string) => k.length > 0 && k.length <= 80).slice(0, 20)
     : [];
@@ -146,7 +150,6 @@ Deno.serve(async (req: Request) => {
     // do dedup e voltavam como lead novo a cada extração.
     // A extração corrente é ignorada para preservar a idempotência de
     // reenvio/paginação do mesmo lote.
-    const seenPhones = new Set<string>();
     const seenHandles = new Set<string>();
     {
       const { data: universeRows, error: uErr } = await sb
@@ -156,8 +159,6 @@ Deno.serve(async (req: Request) => {
       if (uErr) throw new Error(`lead_universe: ${uErr.message}`);
       for (const r of (universeRows ?? []) as Array<Record<string, unknown>>) {
         if (r.extraction_id && String(r.extraction_id) === String(extractionId)) continue;
-        const t = String(r.telefone_digits ?? '').replace(/\D/g, '');
-        if (t) seenPhones.add(t);
         const h = String(r.handle ?? '').replace(/^@/, '').toLowerCase();
         if (h) seenHandles.add(h);
       }
@@ -185,14 +186,25 @@ Deno.serve(async (req: Request) => {
         rowResults.push({ index, status: 'skipped', reason: 'suppressed_or_excluded' });
         continue;
       }
-      // Já existe em alguma fase? (telefone = chave forte; handle = secundária)
-      const telDigits = String(card.telefone ?? '').replace(/\D/g, '');
-      if (seenHandles.has(card.handle.toLowerCase()) || (telDigits && seenPhones.has(telDigits))) {
+      const requestedTriagem = isCanonicalTriage((item as any)?.triagem)
+        ? String((item as any).triagem)
+        : null;
+      if (preserveTriagem && !requestedTriagem) {
+        rowResults.push({ index, status: 'error', reason: 'invalid_triagem' });
+        continue;
+      }
+
+      // Handle repetido é idempotência. Telefone repetido com handle novo é
+      // permitido: o resolver liga o novo perfil ao mesmo card canônico.
+      if (seenHandles.has(card.handle.toLowerCase())) {
         jaNoFunil++;
         rowResults.push({ index, status: 'skipped', reason: 'already_in_universe' });
         continue;
       }
       const q = qualifyLead(item, card);
+      const triagem = preserveTriagem && requestedTriagem
+        ? requestedTriagem
+        : triageFromLegacySegment(q.segment);
       byHandle.set(card.handle, {
         extraction_id: extractionId,
         product_id: productId,
@@ -218,8 +230,8 @@ Deno.serve(async (req: Request) => {
         finalidade: 'audiencia_ads',
         qualified: q.qualified,
         segment: q.segment,
-        triagem: triageFromLegacySegment(q.segment),
-        triagem_source: 'classifier',
+        triagem,
+        triagem_source: preserveTriagem ? 'imported_classifier' : 'classifier',
         triagem_at: new Date().toISOString(),
         is_seed: q.is_seed,
         is_infoproduto: q.is_infoproduto,
@@ -250,14 +262,14 @@ Deno.serve(async (req: Request) => {
       if (upErr) throw new Error(`upsert staging: ${upErr.message}`);
     }
 
-    // Promoção canônica: a linha continua no inventário, mas ganha o card que
-    // será usado pelo CRM. Não promovemos revisão/remoção; elas permanecem
-    // nas filas de triagem/enriquecimento.
+    // Persistência canônica: todo estado de triagem tem card na Base. A
+    // elegibilidade para pré-seleção/campanha é uma regra separada do CRM.
     const { data: stagedRows, error: stagedError } = await sb
       .from('platform_crm_extracted_leads')
       .select('id, product_id, handle, name, telefone, segment, triagem, imported_to_lead_id')
       .eq('extraction_id', extractionId)
-      .in('handle', rows.map((r) => r.handle));
+      .is('imported_to_lead_id', null)
+      .limit(100);
     if (stagedError) throw new Error(`read staged rows: ${stagedError.message}`);
 
     let linked = 0;
