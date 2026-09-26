@@ -371,16 +371,16 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             return (
               <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
                 <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[18px] border-brand/20" />
-                <div className="relative grid min-h-[108px] grid-cols-[minmax(0,1fr)_auto] items-center gap-5">
+                <div className="relative grid min-h-[108px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                   <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/70">
                         Principal
                       </div>
-                      <div className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+                      <div className="mt-1 text-4xl font-semibold tracking-tight tabular-nums">
                         {principal}
                       </div>
                   </div>
-                  <div className="flex min-w-[112px] flex-col gap-2 border-l border-primary-foreground/15 pl-4 pr-1">
+                  <div className="flex min-w-[112px] flex-col gap-2 border-l-2 border-primary-foreground/25 pl-3 pr-1">
                     <div>
                       <div className="text-lg font-semibold tabular-nums">{withPhone}</div>
                       <div className="text-xs text-primary-foreground/60">com telefone</div>
@@ -407,6 +407,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                     key={key}
                     className={`group relative flex min-h-[108px] flex-col justify-between overflow-hidden rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
                   >
+                    <span className="pointer-events-none absolute -bottom-8 -right-8 h-20 w-20 rounded-full border-[10px] border-current opacity-[0.08]" />
                     <div className="flex items-start justify-between gap-3">
                       <span className="max-w-[10rem] text-sm font-medium leading-snug text-foreground">
                         {label}
@@ -415,7 +416,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
                         <CategoryIcon className="h-[19px] w-[19px]" aria-hidden="true" />
                       </span>
                     </div>
-                    <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                    <div className="relative mt-3 text-3xl font-semibold tracking-tight tabular-nums text-foreground">
                       {value}
                     </div>
                   </div>
