@@ -3,16 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArchiveX,
+  Ban,
   ArrowRight,
   CheckCircle2,
   CircleHelp,
+  Headphones,
   FileUp,
+  Repeat2,
   Layers3,
   Loader2,
   Sprout,
   RefreshCw,
   Send,
   Sparkles,
+  Target,
   Upload,
   Users,
 } from "lucide-react";
@@ -222,15 +226,63 @@ function Stat({
 
 function Dashboard({ summary }: { summary: SnapshotSummary }) {
   const { setActiveSection } = usePlatformModule();
-  const stageLabels: Array<[string, string]> = [
-    ["db", "Na Base"],
-    ["preselected", "Pré-selecionados"],
-    ["contacted", "Contatados"],
-    ["service", "Em atendimento"],
-    ["remarketing_pool", "Remarketing"],
-    ["do_not_contact", "Não Contatar"],
-    ["closing", "Fechamento"],
-    ["onboarding", "Onboarding"],
+  const stageLabels = [
+    {
+      key: "db",
+      label: "Na Base",
+      icon: Layers3,
+      tone: "border-primary/25 bg-primary/[0.04] hover:border-primary/45 hover:bg-primary/[0.07]",
+      iconTone: "bg-primary/10 text-primary",
+    },
+    {
+      key: "preselected",
+      label: "Pré-selecionados",
+      icon: Target,
+      tone: "border-brand/25 bg-brand/[0.04] hover:border-brand/45 hover:bg-brand/[0.08]",
+      iconTone: "bg-brand/10 text-brand",
+    },
+    {
+      key: "contacted",
+      label: "Contatados",
+      icon: Send,
+      tone: "border-sky-500/20 bg-sky-500/[0.04] hover:border-sky-500/40 hover:bg-sky-500/[0.07]",
+      iconTone: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    },
+    {
+      key: "service",
+      label: "Em atendimento",
+      icon: Headphones,
+      tone: "border-violet-500/20 bg-violet-500/[0.04] hover:border-violet-500/40 hover:bg-violet-500/[0.07]",
+      iconTone: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    },
+    {
+      key: "remarketing_pool",
+      label: "Remarketing",
+      icon: Repeat2,
+      tone: "border-orange-500/20 bg-orange-500/[0.04] hover:border-orange-500/40 hover:bg-orange-500/[0.07]",
+      iconTone: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    },
+    {
+      key: "do_not_contact",
+      label: "Não Contatar",
+      icon: Ban,
+      tone: "border-rose-500/20 bg-rose-500/[0.04] hover:border-rose-500/40 hover:bg-rose-500/[0.07]",
+      iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    },
+    {
+      key: "closing",
+      label: "Fechamento",
+      icon: CheckCircle2,
+      tone: "border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/40 hover:bg-emerald-500/[0.07]",
+      iconTone: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "onboarding",
+      label: "Onboarding",
+      icon: Sparkles,
+      tone: "border-cyan-500/20 bg-cyan-500/[0.04] hover:border-cyan-500/40 hover:bg-cyan-500/[0.07]",
+      iconTone: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    },
   ];
   const categoryCards = [
     {
@@ -337,13 +389,20 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
           Estágio operacional
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stageLabels.map(([key, label]) => (
+          {stageLabels.map(({ key, label, icon: StageIcon, tone, iconTone }) => (
             <div
               key={key}
-              className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+              className={`group flex min-h-[82px] flex-col justify-between rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
             >
-              <span className="text-sm">{label}</span>
-              <b>{summary.by_stage?.[key] ?? 0}</b>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-sm font-medium text-foreground">{label}</span>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
+                  <StageIcon className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <b className="mt-3 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                {summary.by_stage?.[key] ?? 0}
+              </b>
             </div>
           ))}
         </div>
