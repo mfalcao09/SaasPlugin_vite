@@ -314,6 +314,14 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
       iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
     },
   ];
+  const stageValues = stageLabels.map((stage) => ({
+    ...stage,
+    value: summary.by_stage?.[stage.key] ?? 0,
+  }));
+  const dominantStage = stageValues.reduce(
+    (current, stage) => (stage.value > current.value ? stage : current),
+    stageValues[0],
+  );
   const actionCards = [
     {
       label: "Não classificados",
@@ -426,34 +434,67 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
         </div>
       </section>
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Estágio operacional
-        </h2>
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-premium-sm">
-          <div className="relative min-w-[1080px] px-4 py-5">
-            <div className="pointer-events-none absolute left-[6%] right-[6%] top-[38px] border-t border-border" />
-            <div className="relative grid grid-cols-8 gap-1">
-              {stageLabels.map(({ key, label, icon: StageIcon, iconTone }, index) => (
-                <div
-                  key={key}
-                  className="group relative z-10 flex min-h-[112px] flex-col items-center rounded-xl px-2 py-1 text-center transition-colors duration-200 hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-semibold tabular-nums text-muted-foreground/70">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-xl ring-4 ring-card ${iconTone}`}>
-                      <StageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <span className="mt-3 min-h-[2.5rem] max-w-[8rem] text-xs font-medium leading-tight text-foreground">
-                    {label}
-                  </span>
-                  <b className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-                    {summary.by_stage?.[key] ?? 0}
-                  </b>
-                </div>
-              ))}
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Estágio operacional
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Jornada dos leads da entrada ao fechamento
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
+            8 etapas
+          </span>
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/40 shadow-premium-sm">
+          <div className="min-w-[1120px]">
+            <div className="flex items-center justify-between border-b border-border/70 px-5 py-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_hsl(var(--success)/0.12)]" />
+                Fluxo de operação
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Maior concentração: <b className="font-semibold text-foreground">{dominantStage.label}</b>
+              </div>
+            </div>
+            <div className="relative px-5 py-5">
+              <div className="pointer-events-none absolute left-[8%] right-[8%] top-[52px] h-px bg-gradient-to-r from-primary/20 via-border to-primary/20" />
+              <div className="relative grid grid-cols-8 gap-1">
+                {stageValues.map(({ key, label, icon: StageIcon, iconTone, value }, index) => {
+                  const isDominant = key === dominantStage.key && value > 0;
+                  return (
+                    <div
+                      key={key}
+                      className={`group relative z-10 flex min-h-[148px] flex-col items-center rounded-2xl border px-2 py-3 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-background/80 hover:shadow-premium-sm ${isDominant ? "border-primary/25 bg-primary/[0.045]" : "border-transparent"}`}
+                    >
+                      {index < stageValues.length - 1 && (
+                        <ArrowRight className="pointer-events-none absolute -right-3 top-[45px] z-20 h-5 w-5 rounded-full bg-card p-1 text-muted-foreground/60" aria-hidden="true" />
+                      )}
+                      <div className="flex w-full items-center justify-between px-1">
+                        <span className="text-[10px] font-semibold tabular-nums tracking-[0.12em] text-muted-foreground/70">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        {isDominant && (
+                          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                            foco
+                          </span>
+                        )}
+                      </div>
+                      <span className={`mt-1 flex h-11 w-11 items-center justify-center rounded-2xl ring-4 ring-card shadow-sm transition-transform duration-200 group-hover:scale-105 ${iconTone}`}>
+                        <StageIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="mt-3 min-h-[2.25rem] max-w-[8rem] text-xs font-semibold leading-tight text-foreground">
+                        {label}
+                      </span>
+                      <b className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                        {value}
+                      </b>
+                      <span className="text-[10px] text-muted-foreground">leads nesta etapa</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
