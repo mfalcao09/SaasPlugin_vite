@@ -224,8 +224,20 @@ function Stat({
   );
 }
 
-function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefreshing: boolean }) {
+function Dashboard({ summary, rows, isRefreshing }: {
+  summary: SnapshotSummary;
+  rows: SnapshotRow[];
+  isRefreshing: boolean;
+}) {
   const { setActiveSection } = usePlatformModule();
+  // Match the candidates displayed by OperationView for this same snapshot.
+  // summary.enrichment_pending counts profile contact gaps across the entire base,
+  // so it cannot represent the leads available in the destination's loaded sample.
+  const enrichmentCandidates = rows.filter((row) => !row.phone).length;
+  const campaignCandidates = rows.filter(
+    (row) => row.derived_stage === "preselected" && !!row.phone,
+  ).length;
+  const sampleScope = `Amostra de ${rows.length.toLocaleString("pt-BR")} leads`;
   const categoryCards = [
     {
       key: "principal",
@@ -260,6 +272,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
     {
       label: "Não classificados",
       value: summary.by_triagem?.nao_classificado ?? 0,
+      scope: "Total na base",
       cta: "Revisar leads",
       eyebrow: "Agora",
       description: "Libere leads para a próxima etapa da operação.",
@@ -270,21 +283,23 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
     },
     {
       label: "Para enriquecimento",
-      value: summary.enrichment_pending ?? 0,
+      value: enrichmentCandidates,
+      scope: sampleScope,
       cta: "Enriquecer leads",
       eyebrow: "Próximo",
-      description: "Complete os dados antes da abordagem comercial.",
+      description: "Leads sem telefone nesta amostra.",
       section: "v-nova-prospeccao-enriquecimento",
       icon: Sparkles,
       tone: "border-violet-500/20 bg-violet-500/[0.04] hover:border-violet-500/40 hover:bg-violet-500/[0.07]",
       iconTone: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
     },
     {
-      label: "Leads pré-selecionados",
-      value: summary.by_stage?.preselected ?? 0,
+      label: "Pré-selecionados com telefone",
+      value: campaignCandidates,
+      scope: sampleScope,
       cta: "Programar disparo",
       eyebrow: "Preparar",
-      description: "Organize os leads prontos para contato.",
+      description: "Pré-selecionados com telefone nesta amostra.",
       section: "v-nova-prospeccao-campanhas",
       icon: Target,
       tone: "border-brand/25 bg-brand/[0.04] hover:border-brand/45 hover:bg-brand/[0.08]",
@@ -293,6 +308,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
     {
       label: "Campanhas com problema",
       value: summary.campaign_problems ?? 0,
+      scope: "Total informado para o produto",
       cta: "Ver campanhas",
       eyebrow: "Atenção",
       description: "Resolva bloqueios antes do próximo disparo.",
@@ -385,7 +401,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
               <ListChecks className="h-4 w-4 text-brand" aria-hidden="true" />
               Próximas ações
             </h2>
-            <p className="mt-1 text-xs text-muted-foreground">O que merece atenção na operação agora</p>
+            <p className="mt-1 text-xs text-muted-foreground">Cada frente indica se o volume é total ou da amostra carregada.</p>
           </div>
           <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold tabular-nums text-muted-foreground">
             {activeActions} de {actionCards.length} frentes ativas
@@ -396,8 +412,9 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
             <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full border-[22px] border-brand/20 transition-transform duration-300 group-hover:scale-110" />
             <div className="relative flex items-start justify-between gap-4">
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">Foco recomendado</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">Em destaque</span>
                 <h3 className="mt-2 max-w-[16rem] text-xl font-semibold leading-tight">{focusAction.label}</h3>
+                <p className="mt-1 text-xs text-primary-foreground/75">{focusAction.scope}</p>
               </div>
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
                 <focusAction.icon className="h-5 w-5" aria-hidden="true" />
@@ -405,7 +422,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
             </div>
             <div className="relative mt-auto flex items-end justify-between gap-4 border-t border-primary-foreground/15 pt-4">
               <div>
-                <div className="text-4xl font-semibold tracking-tight tabular-nums">{focusAction.value}</div>
+                <div className="text-4xl font-semibold tracking-tight tabular-nums">{focusAction.value.toLocaleString("pt-BR")}</div>
                 <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-primary-foreground/65">{focusAction.description}</p>
               </div>
               <Button
@@ -419,7 +436,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {actionCards.filter(({ label }) => label !== focusAction.label).map(({ label, value, cta, description, eyebrow, section, icon: ActionIcon, tone, iconTone }) => (
+            {actionCards.filter(({ label }) => label !== focusAction.label).map(({ label, value, scope, cta, description, eyebrow, section, icon: ActionIcon, tone, iconTone }) => (
               <div
                 key={label}
                 className={`group flex min-h-[104px] flex-col rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
@@ -428,6 +445,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
                   <div>
                     <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</span>
                     <h3 className="mt-1 text-sm font-semibold text-foreground">{label}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">{scope}</p>
                   </div>
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
                     <ActionIcon className="h-4 w-4" aria-hidden="true" />
@@ -435,7 +453,7 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
                 </div>
                 <div className="mt-auto flex items-end justify-between gap-3 pt-3">
                   <div>
-                    <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{value}</div>
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{value.toLocaleString("pt-BR")}</div>
                     <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{description}</p>
                   </div>
                   <Button className="shrink-0 px-2.5" variant="ghost" size="sm" onClick={() => setActiveSection(section)}>
@@ -1351,7 +1369,7 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
         </div>
       ) : (
         <>
-          {mode === "dashboard" && <Dashboard summary={summary} isRefreshing={isFetching} />}
+          {mode === "dashboard" && <Dashboard summary={summary} rows={rows} isRefreshing={isFetching} />}
           {mode === "base" && <Base productId={productId} rows={rows} />}
           {mode === "enriquecimento" && (
             <OperationView
