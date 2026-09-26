@@ -355,45 +355,78 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
   return (
     <div className="space-y-5">
       <section>
-        <div className="mb-3 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Base de leads
-            </h2>
-          </div>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Base de leads
+          </h2>
           <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
             {summary.total_cards ?? 0} cards
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {categoryCards.map(({ key, label, icon: CategoryIcon, tone, iconTone }) => {
-            const value = summary.by_triagem?.[key] ?? 0;
-            const withPhone = summary.by_triagem_with_phone?.[key] ?? 0;
-            const withoutPhone = summary.by_triagem_without_phone?.[key] ?? 0;
+        <div className="grid gap-3 lg:grid-cols-[1.2fr_2fr]">
+          {(() => {
+            const principal = summary.by_triagem?.principal ?? 0;
+            const withPhone = summary.by_triagem_with_phone?.principal ?? 0;
+            const withoutPhone = summary.by_triagem_without_phone?.principal ?? 0;
             return (
-              <div
-                key={key}
-                className={`group relative overflow-hidden rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-foreground">{label}</div>
-                    <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-foreground">
+              <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-5 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
+                <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[18px] border-brand/20" />
+                <div className="relative flex h-full min-h-[156px] flex-col justify-between">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/70">
+                        Principal
+                      </div>
+                      <div className="mt-3 text-4xl font-semibold tracking-tight tabular-nums">
+                        {principal}
+                      </div>
+                      <div className="mt-1 text-sm text-primary-foreground/70">
+                        leads na categoria principal
+                      </div>
+                    </div>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
+                      <Users className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <div className="mt-6 grid grid-cols-2 gap-3 border-t border-primary-foreground/15 pt-3 text-sm">
+                    <div>
+                      <div className="font-semibold tabular-nums">{withPhone}</div>
+                      <div className="text-xs text-primary-foreground/60">com telefone</div>
+                    </div>
+                    <div>
+                      <div className="font-semibold tabular-nums">{withoutPhone}</div>
+                      <div className="text-xs text-primary-foreground/60">sem telefone</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          <div className="grid gap-3 sm:grid-cols-3">
+            {categoryCards
+              .filter(({ key }) => key !== "principal")
+              .map(({ key, label, icon: CategoryIcon, tone, iconTone }) => {
+                const value = summary.by_triagem?.[key] ?? 0;
+                return (
+                  <div
+                    key={key}
+                    className={`group relative flex min-h-[156px] flex-col justify-between overflow-hidden rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="max-w-[10rem] text-sm font-medium leading-snug text-foreground">
+                        {label}
+                      </span>
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
+                        <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </span>
+                    </div>
+                    <div className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
                       {value}
                     </div>
                   </div>
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${iconTone}`}>
-                    <CategoryIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-                  </span>
-                </div>
-                {key === "principal" && (
-                  <div className="mt-1.5 border-t border-border/60 pt-1.5 text-xs text-muted-foreground">
-                    {withPhone} com telefone · {withoutPhone} sem telefone
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+          </div>
         </div>
       </section>
       <section>
