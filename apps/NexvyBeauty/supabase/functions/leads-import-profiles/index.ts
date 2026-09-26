@@ -268,7 +268,7 @@ Deno.serve(async (req: Request) => {
       .from('platform_crm_extracted_leads')
       .select('id, product_id, handle, name, telefone, segment, triagem, imported_to_lead_id')
       .eq('extraction_id', extractionId)
-      .in('handle', rows.map((r) => r.handle));
+      .is('imported_to_lead_id', null);
     if (stagedError) throw new Error(`read staged rows: ${stagedError.message}`);
 
     let linked = 0;
