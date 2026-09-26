@@ -4,11 +4,13 @@ import {
   AlertTriangle,
   ArchiveX,
   ArrowRight,
+  ArrowUpRight,
   CheckCircle2,
   CircleHelp,
   FileUp,
   Layers3,
   Loader2,
+  ListChecks,
   Sprout,
   RefreshCw,
   Send,
@@ -259,6 +261,8 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
       label: "Não classificados",
       value: summary.by_triagem?.nao_classificado ?? 0,
       cta: "Revisar leads",
+      eyebrow: "Agora",
+      description: "Libere leads para a próxima etapa da operação.",
       section: "v-nova-prospeccao-base",
       icon: CircleHelp,
       tone: "border-amber-500/25 bg-amber-500/[0.04] hover:border-amber-500/45 hover:bg-amber-500/[0.07]",
@@ -268,6 +272,8 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
       label: "Para enriquecimento",
       value: summary.enrichment_pending ?? 0,
       cta: "Enriquecer leads",
+      eyebrow: "Próximo",
+      description: "Complete os dados antes da abordagem comercial.",
       section: "v-nova-prospeccao-enriquecimento",
       icon: Sparkles,
       tone: "border-violet-500/20 bg-violet-500/[0.04] hover:border-violet-500/40 hover:bg-violet-500/[0.07]",
@@ -277,6 +283,8 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
       label: "Leads pré-selecionados",
       value: summary.by_stage?.preselected ?? 0,
       cta: "Programar disparo",
+      eyebrow: "Preparar",
+      description: "Organize os leads prontos para contato.",
       section: "v-nova-prospeccao-campanhas",
       icon: Target,
       tone: "border-brand/25 bg-brand/[0.04] hover:border-brand/45 hover:bg-brand/[0.08]",
@@ -286,12 +294,16 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
       label: "Campanhas com problema",
       value: summary.campaign_problems ?? 0,
       cta: "Ver campanhas",
+      eyebrow: "Atenção",
+      description: "Resolva bloqueios antes do próximo disparo.",
       section: "v-nova-prospeccao-campanhas",
       icon: AlertTriangle,
       tone: "border-rose-500/20 bg-rose-500/[0.04] hover:border-rose-500/40 hover:bg-rose-500/[0.07]",
       iconTone: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
     },
   ] as const;
+  const activeActions = actionCards.filter(({ value }) => value > 0).length;
+  const focusAction = actionCards.find(({ value }) => value > 0) ?? actionCards[0];
   return (
     <div className="space-y-5">
       <section>
@@ -367,34 +379,72 @@ function Dashboard({ summary, isRefreshing }: { summary: SnapshotSummary; isRefr
       </section>
       <OperationalFunnel byStage={summary.by_stage} isRefreshing={isRefreshing} />
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Ações pendentes
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {actionCards.map(({ label, value, cta, section, icon: ActionIcon, tone, iconTone }) => (
-            <div
-              key={label}
-              className={`group flex min-h-[142px] flex-col rounded-2xl border bg-card p-3 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="text-sm font-medium text-foreground">{label}</div>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
-                  <ActionIcon className="h-4 w-4" aria-hidden="true" />
-                </span>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <ListChecks className="h-4 w-4 text-brand" aria-hidden="true" />
+              Próximas ações
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">O que merece atenção na operação agora</p>
+          </div>
+          <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold tabular-nums text-muted-foreground">
+            {activeActions} de {actionCards.length} frentes ativas
+          </span>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[1.05fr_1.95fr]">
+          <div className="group relative flex min-h-[220px] flex-col overflow-hidden rounded-2xl border border-primary/35 bg-primary p-5 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
+            <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full border-[22px] border-brand/20 transition-transform duration-300 group-hover:scale-110" />
+            <div className="relative flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">Foco recomendado</span>
+                <h3 className="mt-2 max-w-[16rem] text-xl font-semibold leading-tight">{focusAction.label}</h3>
               </div>
-              <div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-                {value}
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-lg shadow-black/10 ring-1 ring-white/20">
+                <focusAction.icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+            </div>
+            <div className="relative mt-auto flex items-end justify-between gap-4 border-t border-primary-foreground/15 pt-4">
+              <div>
+                <div className="text-4xl font-semibold tracking-tight tabular-nums">{focusAction.value}</div>
+                <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-primary-foreground/65">{focusAction.description}</p>
               </div>
               <Button
-                className="mt-auto w-full"
+                className="shrink-0 border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
                 variant="outline"
                 size="sm"
-                onClick={() => setActiveSection(section)}
+                onClick={() => setActiveSection(focusAction.section)}
               >
-                {cta} <ArrowRight className="ml-1 h-4 w-4" />
+                {focusAction.cta} <ArrowUpRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
-          ))}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {actionCards.filter(({ label }) => label !== focusAction.label).map(({ label, value, cta, description, eyebrow, section, icon: ActionIcon, tone, iconTone }) => (
+              <div
+                key={label}
+                className={`group flex min-h-[104px] flex-col rounded-2xl border bg-card p-4 shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium ${tone}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</span>
+                    <h3 className="mt-1 text-sm font-semibold text-foreground">{label}</h3>
+                  </div>
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconTone}`}>
+                    <ActionIcon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+                  <div>
+                    <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{value}</div>
+                    <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{description}</p>
+                  </div>
+                  <Button className="shrink-0 px-2.5" variant="ghost" size="sm" onClick={() => setActiveSection(section)}>
+                    {cta} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>
