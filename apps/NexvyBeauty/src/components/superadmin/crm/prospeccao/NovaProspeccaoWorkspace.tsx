@@ -57,6 +57,14 @@ type SnapshotSummary = {
   enrichment_pending?: number;
   campaign_problems?: number;
 };
+type SnapshotRefreshAudit = {
+  function_name: string;
+  product_id: string;
+  requested_at: string;
+  completed_at: string;
+  status: "success";
+  snapshot_version: string;
+};
 type LeadFilters = {
   triagem?: string;
   derived_stage?: string;
@@ -108,6 +116,7 @@ function useSnapshot(productId: string | null, enabled = true) {
       return {
         rows: (data?.data ?? []) as SnapshotRow[],
         summary: (data?.summary ?? {}) as SnapshotSummary,
+        audit: (data?.audit ?? null) as SnapshotRefreshAudit | null,
       };
     },
   });
@@ -1176,6 +1185,7 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
   } = useSnapshot(productId, mode !== "ingestao");
   const rows = snapshot?.rows ?? [];
   const summary = snapshot?.summary ?? ({} as SnapshotSummary);
+  const persistedRefreshAt = snapshot?.audit?.completed_at;
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -1190,9 +1200,11 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
         </div>
         {productId && mode !== "ingestao" && (
           <div className="flex shrink-0 items-center gap-3">
-            {dataUpdatedAt > 0 && (
+            {(persistedRefreshAt || dataUpdatedAt > 0) && (
               <span className="hidden text-xs text-muted-foreground sm:inline">
-                Atualizado às {new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", {
+                Atualizado às {new Date(
+                  persistedRefreshAt ?? dataUpdatedAt,
+                ).toLocaleTimeString("pt-BR", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
