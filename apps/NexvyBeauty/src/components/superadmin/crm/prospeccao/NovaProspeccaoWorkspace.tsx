@@ -371,7 +371,7 @@ function Dashboard({ summary }: { summary: SnapshotSummary }) {
             return (
               <div className="group relative overflow-hidden rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-premium-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-premium-xl">
                 <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border-[18px] border-brand/20" />
-                <div className="relative grid min-h-[108px] grid-cols-[minmax(0,180px)_104px] items-center justify-start gap-2">
+                <div className="relative grid min-h-[108px] grid-cols-[140px_104px] items-center justify-start gap-2">
                   <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/70">
                         Principal
