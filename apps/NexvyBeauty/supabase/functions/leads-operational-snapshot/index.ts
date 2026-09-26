@@ -30,6 +30,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  const requestedAt = new Date().toISOString();
   const body = await req.json().catch(() => ({}));
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
@@ -255,6 +256,24 @@ Deno.serve(async (req: Request) => {
       return json({ error: "falha ao calcular atividade de campanhas" }, 500);
     }
   }
+  const completedAt = new Date().toISOString();
+  const { data: refreshAudit, error: refreshAuditError } = await sb
+    .from("platform_crm_snapshot_refresh_audit")
+    .insert({
+      function_name: "leads-operational-snapshot",
+      product_id: productId,
+      requested_at: requestedAt,
+      completed_at: completedAt,
+      status: "success",
+    })
+    .select(
+      "function_name, product_id, requested_at, completed_at, status, snapshot_version",
+    )
+    .single();
+  if (refreshAuditError || !refreshAudit) {
+    console.error("snapshot refresh audit failed", refreshAuditError);
+    return json({ error: "falha ao registrar auditoria do snapshot" }, 500);
+  }
   return json({
     ok: true,
     data: data ?? [],
@@ -274,5 +293,6 @@ Deno.serve(async (req: Request) => {
       campaign_problems: campaignProblems,
       with_phone: phoneCount.count ?? 0,
     },
+    audit: refreshAudit,
   });
 });
