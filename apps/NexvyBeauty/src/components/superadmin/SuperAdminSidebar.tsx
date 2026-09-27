@@ -9,7 +9,6 @@ import {
   Mail,
   ScrollText,
   Activity,
-  ArrowLeft,
   LogOut,
   Moon,
   Sun,
@@ -31,7 +30,7 @@ import {
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/Logo';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -153,19 +152,6 @@ function SidebarContent({ activeSection, onSectionChange, onNavigate }: SidebarC
 
       {/* Footer */}
       <div className="p-3 border-t border-border space-y-2">
-        <Link
-          to="/"
-          onClick={() => {
-            try { sessionStorage.setItem('skip_super_admin_redirect', '1'); } catch {}
-            onNavigate?.();
-          }}
-        >
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao App
-          </Button>
-        </Link>
-
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
