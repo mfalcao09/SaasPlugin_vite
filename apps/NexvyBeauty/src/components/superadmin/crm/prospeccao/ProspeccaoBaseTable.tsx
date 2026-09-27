@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Filter, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Copy, Eye, Filter, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PlatformCrmLeadDetail } from "../leads/PlatformCrmLeadDetail";
+import { toast } from "sonner";
 
 type Triage = "principal" | "semente" | "nao_classificado" | "remocao_confirmada";
 type Stage = "db" | "preselected" | "contacted" | "remarketing_pool" | "service" | "closing" | "onboarding" | "do_not_contact";
@@ -77,6 +82,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const [allFilteredSelected, setAllFilteredSelected] = useState(false);
   const [targetTriage, setTargetTriage] = useState<Triage>("principal");
   const [actionBusy, setActionBusy] = useState(false);
+  const [leadDetailId, setLeadDetailId] = useState<string | null>(null);
   const filters = useMemo<Filters>(() => ({
     ...(triagem.length ? { triagem } : {}),
     ...(stage.length ? { derived_stage: stage } : {}),
@@ -105,7 +111,31 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const total = base.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectedCount = allFilteredSelected ? total : selected.length;
+  const selectedRows = rows.filter((row) => selected.includes(row.lead_id));
   const pageSelected = rows.length > 0 && rows.every((row) => selected.includes(row.lead_id));
+  const copyValue = async (value: string | null | undefined, label: string) => {
+    if (!value) return toast.error(`${label} indisponível para este lead.`);
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copiado.`);
+    } catch {
+      toast.error(`Não foi possível copiar ${label.toLowerCase()}.`);
+    }
+  };
+  const copySelectedContacts = async () => {
+    if (allFilteredSelected) return toast.error("Selecione leads desta página para copiar contatos.");
+    const payload = selectedRows.map((row) => {
+      const handle = row.profiles.find((profile) => profile.handle)?.handle;
+      return [row.name || "Sem nome", handle ? `@${handle.replace(/^@/, "")}` : "", formatPhone(row.phone_normalized) ?? row.phone ?? ""].join("\t");
+    }).filter((line) => line.split("\t").some(Boolean)).join("\n");
+    if (!payload) return toast.error("Os leads selecionados não têm dados de contato.");
+    try {
+      await navigator.clipboard.writeText(payload);
+      toast.success(`${numberFormat.format(selectedRows.length)} contato(s) copiado(s).`);
+    } catch {
+      toast.error("Não foi possível copiar os contatos.");
+    }
+  };
 
   const resetPageAndSelection = () => { setPage(0); setSelected([]); setAllFilteredSelected(false); };
   const changeSort = (value: string) => { setSortBy(value); setPage(0); };
@@ -137,70 +167,80 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const end = Math.min((page + 1) * pageSize, total);
   const activeFilterCount = triagem.length + stage.length + Number(phone !== "all") + Number(suppression !== "all") + Number(operation !== "all") + Number(Boolean(query.trim()));
   return (
-    <section className="space-y-4">
+    <section className="space-y-3.5">
       {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{(base.error as Error).message}</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-primary"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Base consolidada</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.total_cards ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads disponíveis para consulta</div></div><span className="rounded-lg bg-primary/10 p-2 text-primary"><ContactRound className="h-4 w-4" /></span></div></div>
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-emerald-500"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Contato disponível</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.with_phone ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads com telefone informado</div></div><span className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600"><Phone className="h-4 w-4" /></span></div></div>
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-amber-500"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Em operação</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.active_operations ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads em ações ativas</div></div><span className="rounded-lg bg-amber-500/10 p-2 text-amber-700"><Workflow className="h-4 w-4" /></span></div></div>
-      </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-sm font-semibold">Localizar leads</div><div className="mt-0.5 text-xs text-muted-foreground">Combine critérios para chegar ao segmento desejado.</div></div><span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} ativos` : "Sem filtros"}</span></div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Nome, @perfil ou telefone" className={controlClass + " w-full pl-9"} /></label>
+      <div className="rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><ContactRound className="h-5 w-5" /></span><div><h2 className="text-base font-semibold tracking-tight">Explorar a base</h2><p className="mt-0.5 text-sm text-muted-foreground">Combine filtros para encontrar o segmento certo.</p></div></div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} critérios ativos` : "Todos os leads"}</span>
+        </div>
+        <div className="space-y-3 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-56 flex-[1_1_280px]"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Buscar por nome, @perfil ou telefone" className={controlClass + " w-full pl-9 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"} /></label>
           <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
           <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
           <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Telefone · Todos</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
           <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Supressão · Todas</option><option value="yes">Suprimidos</option><option value="no">Não suprimidos</option></select>
           <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Operação · Todas</option><option value="yes">Com operação ativa</option><option value="no">Sem operação ativa</option></select>
-          <Button variant="outline" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Atualizar</Button>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Ordenar por</span>
-            <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)} className={controlClass}>
+          <Button variant="outline" className="shrink-0" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />{base.isFetching ? "Atualizando" : "Atualizar"}</Button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Ordenação</span>
+            <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)} className={controlClass + " min-w-44"}>
               <option value="name">Nome</option><option value="handle">@handle</option><option value="followers">Seguidores</option><option value="phone">Telefone normalizado</option><option value="stage">Etapa</option><option value="updated_at">Atualização</option>
             </select>
             <Button variant="ghost" size="icon" aria-label={descending ? "Ordem decrescente" : "Ordem crescente"} onClick={() => { setDescending((value) => !value); setPage(0); }}>{descending ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</Button>
           </div>
           {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}><X className="mr-1.5 h-3.5 w-3.5" />Limpar filtros</Button>}
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+      {selectedCount > 0 ? <div className="sticky bottom-3 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} />Selecionar esta página</label>
-          {selectedCount > 0 && !allFilteredSelected && total > selected.length && <Button size="sm" variant="link" onClick={() => { setAllFilteredSelected(true); setSelected([]); }}>Selecionar todos os {numberFormat.format(total)} resultados</Button>}
-          {allFilteredSelected && <span className="text-sm font-medium text-primary">Todos os {numberFormat.format(total)} resultados filtrados selecionados</span>}
-          {(selected.length > 0 || allFilteredSelected) && <Button size="sm" variant="ghost" onClick={() => { setSelected([]); setAllFilteredSelected(false); }}>Limpar seleção</Button>}
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-primary px-2 text-sm font-semibold text-primary-foreground">{numberFormat.format(selectedCount)}</span>
+          <span className="text-sm font-semibold">{allFilteredSelected ? "Leads filtrados selecionados" : selectedCount === 1 ? "lead selecionado" : "leads selecionados"}</span>
+          {!allFilteredSelected && total > selected.length && <Button size="sm" variant="link" onClick={() => { setAllFilteredSelected(true); setSelected([]); }}>Selecionar os {numberFormat.format(total)} resultados</Button>}
+          {allFilteredSelected && <Button size="sm" variant="link" onClick={() => { setAllFilteredSelected(false); setSelected([]); }}>Desfazer seleção total</Button>}
+          <Button size="sm" variant="ghost" onClick={() => { setSelected([]); setAllFilteredSelected(false); }}>Limpar</Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="Triagem de destino" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass}>{triages.map((value) => <option key={value} value={value}>Mover para: {triageLabels[value]}</option>)}</select>
-          <Button onClick={() => void reclassify()} disabled={!selectedCount || actionBusy}>{actionBusy ? "Aplicando…" : `Aplicar triagem${selectedCount ? ` (${numberFormat.format(selectedCount)})` : ""}`}</Button>
+          <Button variant="outline" onClick={() => void copySelectedContacts()} disabled={allFilteredSelected || !selectedRows.length} title={allFilteredSelected ? "Disponível ao selecionar leads da página atual" : "Copia nome, @perfil e telefone dos selecionados"}><Copy className="mr-2 h-4 w-4" />Copiar contatos</Button>
+          <select aria-label="Triagem de destino" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass}>{triages.map((value) => <option key={value} value={value}>Triagem: {triageLabels[value]}</option>)}</select>
+          <Button onClick={() => void reclassify()} disabled={actionBusy}><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Aplicar triagem"}</Button>
         </div>
-      </div>
+      </div> : null}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-5 py-3.5">
+          <div><h2 className="text-sm font-semibold">Leads</h2><p className="mt-0.5 text-xs text-muted-foreground">Selecione registros para aplicar ações individuais ou em lote.</p></div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className={`h-2 w-2 rounded-full ${base.isFetching ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />{base.isFetching ? "Sincronizando" : "Consulta pronta"}</div>
+        </div>
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="w-max min-w-full text-left text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground"><tr>
-              <th className="w-12 px-4 py-3"><span className="sr-only">Selecionar</span></th><th className="px-4 py-3">Lead / perfil</th><th className="px-4 py-3">Triagem</th><th className="px-4 py-3">Etapa</th><th className="px-4 py-3">Telefone</th><th className="px-4 py-3 text-right">Seguidores</th><th className="px-4 py-3">Operação</th>
+              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[260px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Operação</th><th className="sticky right-0 z-20 w-16 border-l border-border bg-muted px-3 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
             </tr></thead>
             <tbody className="divide-y divide-border">
-              {base.isLoading ? <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Carregando os leads…</td></tr> : base.error ? <tr><td colSpan={7} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
+              {base.isLoading ? <tr><td colSpan={8} className="p-12 text-center text-muted-foreground">Carregando os leads…</td></tr> : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
                 const phoneLabel = formatPhone(row.phone_normalized);
-                return <tr key={row.lead_id} className="transition-colors hover:bg-muted/30">
-                  <td className="px-4 py-3"><input aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
-                  <td className="max-w-[360px] px-4 py-3"><div className="truncate font-medium text-foreground">{row.name || "Sem nome"}</div><div className="mt-0.5 truncate text-xs text-muted-foreground">{row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean).join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></td>
-                  <td className="px-4 py-3"><span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{triageLabels[row.triagem_summary]}</span></td>
-                  <td className="px-4 py-3 text-muted-foreground">{stageLabels[row.derived_stage ?? "db"]}</td>
-                  <td className="px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
-                  <td className="px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Suprimido</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ativa(s)</span> : <span className="text-xs text-muted-foreground">Sem operação</span>}</td>
+                const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
+                return <tr key={row.lead_id} className="group transition-colors hover:bg-muted/30">
+                  <td className="sticky left-0 z-10 border-r border-border bg-card px-4 py-3 group-hover:bg-muted/30"><input className="accent-primary" aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
+                  <td className="max-w-[360px] whitespace-nowrap px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-xs font-semibold text-primary">{(row.name || "?").trim().slice(0, 2).toLocaleUpperCase("pt-BR")}</span><div className="min-w-0"><div className="truncate font-semibold text-foreground">{row.name || "Sem nome"}</div><div className="mt-0.5 truncate text-xs text-muted-foreground">{handles.join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></div></div></td>
+                  <td className="whitespace-nowrap px-4 py-3"><span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{triageLabels[row.triagem_summary]}</span></td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{stageLabels[row.derived_stage ?? "db"]}</td>
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Suprimido</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ativa(s)</span> : <span className="text-xs text-muted-foreground">Sem operação</span>}</td>
+                  <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/30">
+                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" aria-label={`Abrir ações de ${row.name}`} className="h-8 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-sm hover:border-primary/30 hover:bg-primary/5 hover:text-primary"><MoreHorizontal className="h-4 w-4" /><span className="hidden xl:inline">Abrir</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-52"><DropdownMenuItem onClick={() => setLeadDetailId(row.lead_id)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                  </td>
                 </tr>;
               })}
-              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={7} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
+              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={8} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
             </tbody>
           </table>
         </div>
@@ -209,6 +249,12 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
           <div className="flex flex-wrap items-center gap-2"><label htmlFor="base-page-size" className="text-sm text-muted-foreground">Por página</label><select id="base-page-size" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); resetPageAndSelection(); }} className={controlClass}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><span className="min-w-24 text-center text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span><Button variant="outline" size="icon" aria-label="Página anterior" disabled={page === 0 || base.isFetching} onClick={() => { setPage((value) => Math.max(0, value - 1)); setSelected([]); setAllFilteredSelected(false); }}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" aria-label="Próxima página" disabled={page + 1 >= totalPages || base.isFetching} onClick={() => { setPage((value) => value + 1); setSelected([]); setAllFilteredSelected(false); }}><ChevronRight className="h-4 w-4" /></Button></div>
         </footer>
       </div>
+      <Dialog open={Boolean(leadDetailId)} onOpenChange={(open) => !open && setLeadDetailId(null)}>
+        <DialogContent className="flex h-[90vh] max-w-4xl flex-col overflow-hidden p-0">
+          <VisuallyHidden><DialogTitle>Detalhes do lead</DialogTitle></VisuallyHidden>
+          {leadDetailId && <PlatformCrmLeadDetail leadId={leadDetailId} onBack={() => setLeadDetailId(null)} onOpenLead={setLeadDetailId} />}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
