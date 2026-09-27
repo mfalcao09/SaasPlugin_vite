@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Copy, Eye, Filter, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ChevronDown, Copy, Eye, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PlatformCrmLeadDetail } from "../leads/PlatformCrmLeadDetail";
 import { toast } from "sonner";
+import "./ProspeccaoBaseTable.css";
 
 type Triage = "principal" | "semente" | "nao_classificado" | "remocao_confirmada";
 type Stage = "db" | "preselected" | "contacted" | "remarketing_pool" | "service" | "closing" | "onboarding" | "do_not_contact";
@@ -49,20 +50,24 @@ function MultiFilter<T extends string>({ title, values, selected, labels, onChan
   title: string; values: T[]; selected: T[]; labels: Record<T, string>; onChange: (values: T[]) => void;
 }) {
   return (
-    <details className="group relative">
-      <summary className={controlClass + " flex cursor-pointer list-none items-center gap-2"}>
-        {title}{selected.length ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{selected.length}</span> : null}
-      </summary>
-      <div className="absolute left-0 z-20 mt-2 w-60 space-y-1 rounded-xl border border-border bg-card p-3 shadow-xl">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="lead-filter-trigger">
+          {title}{selected.length > 0 && <span className="lead-filter-count">{selected.length}</span>}
+          <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60 p-2">
         {values.map((value) => (
-          <label key={value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-            <input type="checkbox" checked={selected.includes(value)} onChange={(event) => onChange(event.target.checked ? [...selected, value] : selected.filter((entry) => entry !== value))} />
+          <DropdownMenuCheckboxItem key={value} checked={selected.includes(value)}
+            onSelect={(event) => event.preventDefault()}
+            onCheckedChange={(checked) => onChange(checked ? [...selected, value] : selected.filter((entry) => entry !== value))}>
             {labels[value]}
-          </label>
+          </DropdownMenuCheckboxItem>
         ))}
-        {selected.length > 0 && <button className="mt-1 w-full border-t border-border pt-2 text-left text-xs text-muted-foreground" onClick={() => onChange([])}>Limpar {title.toLowerCase()}</button>}
-      </div>
-    </details>
+        {selected.length > 0 && <DropdownMenuItem onSelect={() => onChange([])}>Limpar seleção</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -138,7 +143,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   };
 
   const resetPageAndSelection = () => { setPage(0); setSelected([]); setAllFilteredSelected(false); };
-  const changeSort = (value: string) => { setSortBy(value); setPage(0); };
+  const changeSort = (value: string) => { setSortBy(value); resetPageAndSelection(); };
   const togglePage = (checked: boolean) => {
     setAllFilteredSelected(false);
     setSelected(checked ? [...new Set([...selected, ...rows.map((row) => row.lead_id)])] : selected.filter((id) => !rows.some((row) => row.lead_id === id)));
@@ -167,43 +172,70 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const end = Math.min((page + 1) * pageSize, total);
   const activeFilterCount = triagem.length + stage.length + Number(phone !== "all") + Number(suppression !== "all") + Number(operation !== "all") + Number(Boolean(query.trim()));
   return (
-    <section className="space-y-3.5">
-      {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{(base.error as Error).message}</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
+    <section className="leads-executive space-y-3.5">
+      {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />Não foi possível atualizar os leads. Tente novamente.</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
 
-      <div className="overflow-visible rounded-2xl border border-border bg-card shadow-[0_8px_28px_-22px_rgba(15,23,42,0.45)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-gradient-to-r from-primary/[0.045] via-card to-card px-5 py-4">
-          <div className="flex items-center gap-3"><span className="rounded-xl border border-primary/10 bg-primary/10 p-2.5 text-primary"><ContactRound className="h-5 w-5" /></span><div><h2 className="text-base font-semibold tracking-tight">Localizar leads</h2><p className="mt-0.5 text-sm text-muted-foreground">Combine critérios para encontrar o segmento certo.</p></div></div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} critérios ativos` : "Sem filtros"}</span>
+
+      <div className="lead-workbench">
+        <div className="lead-command-bar">
+          <label className="lead-search"><Search className="h-4 w-4 shrink-0" />
+            <input aria-label="Buscar leads" value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Buscar nome, @perfil ou telefone" />
+            {query && <button aria-label="Limpar busca" onClick={() => { setQuery(""); resetPageAndSelection(); }}><X className="h-4 w-4" /></button>}
+          </label>
+          <div className="lead-sync" role="status"><span className={base.isFetching ? "is-loading" : base.error ? "is-error" : ""} />{base.isFetching ? "Atualizando" : base.error ? "Indisponível" : "Atualizado"}</div>
+          <Button variant="ghost" size="icon" aria-label="Atualizar leads" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} /></Button>
         </div>
-        <div className="space-y-3 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-56 flex-[1_1_280px]"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Nome, @perfil ou telefone" className={controlClass + " w-full pl-9 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"} /></label>
-          <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
-          <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
-          <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Telefone · Todos</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
-          <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Supressão · Todas</option><option value="yes">Suprimidos</option><option value="no">Não suprimidos</option></select>
-          <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Operação · Todas</option><option value="yes">Com operação ativa</option><option value="no">Sem operação ativa</option></select>
-          <Button variant="outline" className="shrink-0" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />{base.isFetching ? "Atualizando" : "Atualizar"}</Button>
+        <div className="lead-facets">
+          <div className="lead-filter-group">
+            <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
+            <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
+            <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Telefone</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
+            <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Supressão</option><option value="yes">Suprimidos</option><option value="no">Não suprimidos</option></select>
+            <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Operação</option><option value="yes">Com operação ativa</option><option value="no">Sem operação ativa</option></select>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Ordenação</span>
-            <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)} className={controlClass + " min-w-44"}>
-              <option value="name">Nome</option><option value="handle">@handle</option><option value="followers">Seguidores</option><option value="phone">Telefone normalizado</option><option value="stage">Etapa</option><option value="updated_at">Atualização</option>
+          <div className="lead-sort">
+            <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)}>
+              <option value="name">Nome</option><option value="handle">@perfil</option><option value="followers">Seguidores</option><option value="phone">Telefone</option><option value="stage">Etapa</option><option value="updated_at">Atualização</option>
             </select>
-            <Button variant="ghost" size="icon" aria-label={descending ? "Ordem decrescente" : "Ordem crescente"} onClick={() => { setDescending((value) => !value); setPage(0); }}>{descending ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</Button>
-          </div>
-          {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}><X className="mr-1.5 h-3.5 w-3.5" />Limpar filtros</Button>}
+            <Button variant="ghost" size="icon" aria-label={descending ? "Ordem decrescente" : "Ordem crescente"} onClick={() => { setDescending((value) => !value); resetPageAndSelection(); }}>{descending ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</Button>
           </div>
         </div>
-      </div>
+        {activeFilterCount > 0 && <div className="lead-active-filters">
+          {triagem.map((value) => <button key={value} className={`lead-chip triage-${value}`} onClick={() => { setTriagem(triagem.filter((item) => item !== value)); resetPageAndSelection(); }}>{triageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
+          {stage.map((value) => <button key={value} className="lead-chip" onClick={() => { setStage(stage.filter((item) => item !== value)); resetPageAndSelection(); }}>{stageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
+          {phone !== "all" && <button className="lead-chip" onClick={() => { setPhone("all"); resetPageAndSelection(); }}>{phone === "with" ? "Com telefone" : "Sem telefone"}<X className="h-3 w-3" /></button>}
+          {suppression !== "all" && <button className="lead-chip" onClick={() => { setSuppression("all"); resetPageAndSelection(); }}>{suppression === "yes" ? "Suprimidos" : "Não suprimidos"}<X className="h-3 w-3" /></button>}
+          {operation !== "all" && <button className="lead-chip" onClick={() => { setOperation("all"); resetPageAndSelection(); }}>{operation === "yes" ? "Com operação ativa" : "Sem operação ativa"}<X className="h-3 w-3" /></button>}
+          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}>Limpar filtros</Button>
+        </div>}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_34px_-26px_rgba(15,23,42,0.55)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-5 py-3.5">
-          <div><h2 className="text-sm font-semibold">Base de leads</h2><p className="mt-0.5 text-xs text-muted-foreground">Ações individuais ficam no menu ⋯ à direita de cada linha.</p></div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className={`h-2 w-2 rounded-full ${base.isFetching ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />{base.isFetching ? "Sincronizando" : "Dados atualizados"}</div>
+        <div className="lead-table-viewport" tabIndex={0} aria-label="Tabela de leads" role="region">
+          <table className="lead-data-table">
+            <thead><tr>
+              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Operação</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
+            </tr></thead>
+            <tbody className="divide-y divide-border">
+              {base.isLoading ? Array.from({ length: 6 }, (_, index) => <tr key={index} aria-label="Carregando leads">{Array.from({ length: 8 }, (_, cell) => <td key={cell} className="p-4"><div className="lead-skeleton" /></td>)}</tr>) : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
+                const phoneLabel = formatPhone(row.phone_normalized);
+                const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
+                return <tr key={row.lead_id} aria-selected={selected.includes(row.lead_id) || allFilteredSelected} className={`group border-l-2 transition-colors hover:bg-primary/[0.025] ${selected.includes(row.lead_id) || allFilteredSelected ? "border-l-primary bg-primary/[0.035]" : "border-l-transparent"}`}>
+                  <td className="sticky left-0 z-10 border-r border-border bg-card px-4 py-3 group-hover:bg-muted/30"><input className="accent-primary" aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
+                  <td className="max-w-[360px] whitespace-nowrap px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-xs font-semibold text-primary">{(row.name.match(/[\p{L}\p{N}]+/gu) ?? ["?"]).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("pt-BR")}</span><div className="min-w-0"><div className="truncate font-semibold text-foreground"><button className="lead-name" onClick={() => setLeadDetailId(row.lead_id)}>{row.name || "Sem nome"}</button></div><div className="mt-0.5 truncate text-xs text-muted-foreground">{handles.join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></div></div></td>
+                  <td className="whitespace-nowrap px-4 py-3"><span className={`lead-triage triage-${row.triagem_summary}`}>{triageLabels[row.triagem_summary]}</span></td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><span className={`lead-stage stage-${row.derived_stage ?? "db"}`}><i />{stageLabels[row.derived_stage ?? "db"]}</span></td>
+                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Suprimido</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ativa(s)</span> : <span className="text-xs text-muted-foreground">Sem operação</span>}</td>
+                  <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
+                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetailId(row.lead_id)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                  </td>
+                </tr>;
+              })}
+              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={8} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
+            </tbody>
+          </table>
         </div>
-        {selectedCount > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/15 bg-primary/[0.045] px-4 py-3">
+        {selectedCount > 0 ? <div className="lead-selection-dock">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-primary px-2 text-sm font-semibold text-primary-foreground">{numberFormat.format(selectedCount)}</span>
             <span className="text-sm font-semibold">Ações em lote</span>
@@ -219,34 +251,8 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
             <Button size="sm" onClick={() => void reclassify()} disabled={actionBusy}><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Aplicar triagem"}</Button>
           </div>
         </div> : null}
-        <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-max min-w-full text-left text-sm">
-            <thead className="bg-muted/70 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><tr>
-              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Operação</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
-            </tr></thead>
-            <tbody className="divide-y divide-border">
-              {base.isLoading ? <tr><td colSpan={8} className="p-12 text-center text-muted-foreground">Carregando os leads…</td></tr> : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
-                const phoneLabel = formatPhone(row.phone_normalized);
-                const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
-                return <tr key={row.lead_id} aria-selected={selected.includes(row.lead_id) || allFilteredSelected} className={`group border-l-2 transition-colors hover:bg-primary/[0.025] ${selected.includes(row.lead_id) || allFilteredSelected ? "border-l-primary bg-primary/[0.035]" : "border-l-transparent"}`}>
-                  <td className="sticky left-0 z-10 border-r border-border bg-card px-4 py-3 group-hover:bg-muted/30"><input className="accent-primary" aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
-                  <td className="max-w-[360px] whitespace-nowrap px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-xs font-semibold text-primary">{(row.name || "?").trim().slice(0, 2).toLocaleUpperCase("pt-BR")}</span><div className="min-w-0"><div className="truncate font-semibold text-foreground">{row.name || "Sem nome"}</div><div className="mt-0.5 truncate text-xs text-muted-foreground">{handles.join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></div></div></td>
-                  <td className="whitespace-nowrap px-4 py-3"><span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{triageLabels[row.triagem_summary]}</span></td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{stageLabels[row.derived_stage ?? "db"]}</td>
-                  <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Suprimido</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ativa(s)</span> : <span className="text-xs text-muted-foreground">Sem operação</span>}</td>
-                  <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
-                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetailId(row.lead_id)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-                  </td>
-                </tr>;
-              })}
-              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={8} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
-            </tbody>
-          </table>
-        </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/20 px-4 py-3">
-          <div className="text-sm text-muted-foreground">Exibindo <span className="font-medium text-foreground">{numberFormat.format(start)}–{numberFormat.format(end)}</span> · <span className="font-medium text-foreground">{numberFormat.format(total)} leads filtrados</span></div>
+          <div className="text-sm text-muted-foreground">Exibindo <span className="font-medium text-foreground">{numberFormat.format(start)}–{numberFormat.format(end)}</span> · <span className="font-medium text-foreground">{base.error || base.isLoading ? "—" : numberFormat.format(total)} leads filtrados</span></div>
           <div className="flex flex-wrap items-center gap-2"><label htmlFor="base-page-size" className="text-sm text-muted-foreground">Por página</label><select id="base-page-size" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); resetPageAndSelection(); }} className={controlClass}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><span className="min-w-24 text-center text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span><Button variant="outline" size="icon" aria-label="Página anterior" disabled={page === 0 || base.isFetching} onClick={() => { setPage((value) => Math.max(0, value - 1)); setSelected([]); setAllFilteredSelected(false); }}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" aria-label="Próxima página" disabled={page + 1 >= totalPages || base.isFetching} onClick={() => { setPage((value) => value + 1); setSelected([]); setAllFilteredSelected(false); }}><ChevronRight className="h-4 w-4" /></Button></div>
         </footer>
       </div>
