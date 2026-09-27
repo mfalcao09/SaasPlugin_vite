@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Copy, Eye, Filter, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Copy, Eye, Filter, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -112,7 +112,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const selectedCount = allFilteredSelected ? total : selected.length;
   const selectedRows = rows.filter((row) => selected.includes(row.lead_id));
-  const pageSelected = rows.length > 0 && rows.every((row) => selected.includes(row.lead_id));
+  const pageSelected = rows.length > 0 && (allFilteredSelected || rows.every((row) => selected.includes(row.lead_id)));
   const copyValue = async (value: string | null | undefined, label: string) => {
     if (!value) return toast.error(`${label} indisponível para este lead.`);
     try {
@@ -170,14 +170,14 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
     <section className="space-y-3.5">
       {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{(base.error as Error).message}</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
 
-      <div className="rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="flex items-center gap-3"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><ContactRound className="h-5 w-5" /></span><div><h2 className="text-base font-semibold tracking-tight">Explorar a base</h2><p className="mt-0.5 text-sm text-muted-foreground">Combine filtros para encontrar o segmento certo.</p></div></div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} critérios ativos` : "Todos os leads"}</span>
+      <div className="overflow-visible rounded-2xl border border-border bg-card shadow-[0_8px_28px_-22px_rgba(15,23,42,0.45)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-gradient-to-r from-primary/[0.045] via-card to-card px-5 py-4">
+          <div className="flex items-center gap-3"><span className="rounded-xl border border-primary/10 bg-primary/10 p-2.5 text-primary"><ContactRound className="h-5 w-5" /></span><div><h2 className="text-base font-semibold tracking-tight">Localizar leads</h2><p className="mt-0.5 text-sm text-muted-foreground">Combine critérios para encontrar o segmento certo.</p></div></div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} critérios ativos` : "Sem filtros"}</span>
         </div>
         <div className="space-y-3 px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-56 flex-[1_1_280px]"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Buscar por nome, @perfil ou telefone" className={controlClass + " w-full pl-9 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"} /></label>
+          <label className="relative min-w-56 flex-[1_1_280px]"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Nome, @perfil ou telefone" className={controlClass + " w-full pl-9 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"} /></label>
           <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
           <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
           <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Telefone · Todos</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
@@ -198,36 +198,37 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
         </div>
       </div>
 
-      {selectedCount > 0 ? <div className="sticky bottom-3 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-primary px-2 text-sm font-semibold text-primary-foreground">{numberFormat.format(selectedCount)}</span>
-          <span className="text-sm font-semibold">{allFilteredSelected ? "Leads filtrados selecionados" : selectedCount === 1 ? "lead selecionado" : "leads selecionados"}</span>
-          {!allFilteredSelected && total > selected.length && <Button size="sm" variant="link" onClick={() => { setAllFilteredSelected(true); setSelected([]); }}>Selecionar os {numberFormat.format(total)} resultados</Button>}
-          {allFilteredSelected && <Button size="sm" variant="link" onClick={() => { setAllFilteredSelected(false); setSelected([]); }}>Desfazer seleção total</Button>}
-          <Button size="sm" variant="ghost" onClick={() => { setSelected([]); setAllFilteredSelected(false); }}>Limpar</Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => void copySelectedContacts()} disabled={allFilteredSelected || !selectedRows.length} title={allFilteredSelected ? "Disponível ao selecionar leads da página atual" : "Copia nome, @perfil e telefone dos selecionados"}><Copy className="mr-2 h-4 w-4" />Copiar contatos</Button>
-          <select aria-label="Triagem de destino" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass}>{triages.map((value) => <option key={value} value={value}>Triagem: {triageLabels[value]}</option>)}</select>
-          <Button onClick={() => void reclassify()} disabled={actionBusy}><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Aplicar triagem"}</Button>
-        </div>
-      </div> : null}
-
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_34px_-26px_rgba(15,23,42,0.55)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-5 py-3.5">
-          <div><h2 className="text-sm font-semibold">Leads</h2><p className="mt-0.5 text-xs text-muted-foreground">Selecione registros para aplicar ações individuais ou em lote.</p></div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className={`h-2 w-2 rounded-full ${base.isFetching ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />{base.isFetching ? "Sincronizando" : "Consulta pronta"}</div>
+          <div><h2 className="text-sm font-semibold">Base de leads</h2><p className="mt-0.5 text-xs text-muted-foreground">Ações individuais ficam no menu ⋯ à direita de cada linha.</p></div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className={`h-2 w-2 rounded-full ${base.isFetching ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />{base.isFetching ? "Sincronizando" : "Dados atualizados"}</div>
         </div>
+        {selectedCount > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/15 bg-primary/[0.045] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-primary px-2 text-sm font-semibold text-primary-foreground">{numberFormat.format(selectedCount)}</span>
+            <span className="text-sm font-semibold">Ações em lote</span>
+            <span className="text-xs text-muted-foreground">{allFilteredSelected ? "todos os resultados filtrados" : selectedCount === 1 ? "lead selecionado" : "leads selecionados"}</span>
+            {!allFilteredSelected && total > selected.length && <Button size="sm" variant="link" className="h-8 px-1" onClick={() => { setAllFilteredSelected(true); setSelected([]); }}>Selecionar os {numberFormat.format(total)} resultados</Button>}
+            {allFilteredSelected && <Button size="sm" variant="link" className="h-8 px-1" onClick={() => { setAllFilteredSelected(false); setSelected([]); }}>Desfazer seleção total</Button>}
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => { setSelected([]); setAllFilteredSelected(false); }}><X className="mr-1 h-3.5 w-3.5" />Limpar</Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedCount === 1 && !allFilteredSelected && <Button variant="outline" size="sm" onClick={() => setLeadDetailId(selected[0])}><Eye className="mr-2 h-4 w-4" />Visualizar</Button>}
+            <Button variant="outline" size="sm" onClick={() => void copySelectedContacts()} disabled={allFilteredSelected || !selectedRows.length} title={allFilteredSelected ? "Disponível ao selecionar leads desta página" : "Copia nome, @perfil e telefone dos selecionados"}><Copy className="mr-2 h-4 w-4" />Copiar contatos</Button>
+            <select aria-label="Triagem de destino" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass + " h-9 bg-card"}>{triages.map((value) => <option key={value} value={value}>{triageLabels[value]}</option>)}</select>
+            <Button size="sm" onClick={() => void reclassify()} disabled={actionBusy}><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Aplicar triagem"}</Button>
+          </div>
+        </div> : null}
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
           <table className="w-max min-w-full text-left text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground"><tr>
-              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[260px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Operação</th><th className="sticky right-0 z-20 w-16 border-l border-border bg-muted px-3 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
+            <thead className="bg-muted/70 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"><tr>
+              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Operação</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
             </tr></thead>
             <tbody className="divide-y divide-border">
               {base.isLoading ? <tr><td colSpan={8} className="p-12 text-center text-muted-foreground">Carregando os leads…</td></tr> : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
                 const phoneLabel = formatPhone(row.phone_normalized);
                 const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
-                return <tr key={row.lead_id} className="group transition-colors hover:bg-muted/30">
+                return <tr key={row.lead_id} aria-selected={selected.includes(row.lead_id) || allFilteredSelected} className={`group border-l-2 transition-colors hover:bg-primary/[0.025] ${selected.includes(row.lead_id) || allFilteredSelected ? "border-l-primary bg-primary/[0.035]" : "border-l-transparent"}`}>
                   <td className="sticky left-0 z-10 border-r border-border bg-card px-4 py-3 group-hover:bg-muted/30"><input className="accent-primary" aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
                   <td className="max-w-[360px] whitespace-nowrap px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-xs font-semibold text-primary">{(row.name || "?").trim().slice(0, 2).toLocaleUpperCase("pt-BR")}</span><div className="min-w-0"><div className="truncate font-semibold text-foreground">{row.name || "Sem nome"}</div><div className="mt-0.5 truncate text-xs text-muted-foreground">{handles.join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></div></div></td>
                   <td className="whitespace-nowrap px-4 py-3"><span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{triageLabels[row.triagem_summary]}</span></td>
@@ -235,8 +236,8 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Suprimido</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ativa(s)</span> : <span className="text-xs text-muted-foreground">Sem operação</span>}</td>
-                  <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/30">
-                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" aria-label={`Abrir ações de ${row.name}`} className="h-8 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-foreground shadow-sm hover:border-primary/30 hover:bg-primary/5 hover:text-primary"><MoreHorizontal className="h-4 w-4" /><span className="hidden xl:inline">Abrir</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-52"><DropdownMenuItem onClick={() => setLeadDetailId(row.lead_id)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                  <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
+                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetailId(row.lead_id)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                   </td>
                 </tr>;
               })}
