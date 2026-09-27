@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CircleAlert, ContactRound, Filter, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
@@ -93,7 +93,11 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
       const { data, error } = await supabase.functions.invoke("leads-operational-snapshot", {
         body: { product_id: productId, mode: "base", filters, sort_by: sortBy, sort_direction: descending ? "desc" : "asc", limit: pageSize, offset: page * pageSize },
       });
-      if (error) throw error;
+      if (error) {
+        const context = (error as { context?: Response }).context;
+        const payload = await context?.clone().json().catch(() => null);
+        throw new Error(payload?.error ?? error.message ?? "Não foi possível carregar a base de leads.");
+      }
       return { rows: (data?.data ?? []) as Lead[], total: Number(data?.filtered_total ?? 0), summary: data?.summary ?? {} };
     },
   });
@@ -131,23 +135,25 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
 
   const start = total ? page * pageSize + 1 : 0;
   const end = Math.min((page + 1) * pageSize, total);
+  const activeFilterCount = triagem.length + stage.length + Number(phone !== "all") + Number(suppression !== "all") + Number(operation !== "all") + Number(Boolean(query.trim()));
   return (
-    <section className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4"><div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Leads na base</div><div className="mt-1 text-2xl font-semibold tabular-nums">{numberFormat.format(base.data?.summary.total_cards ?? 0)}</div></div>
-        <div className="rounded-xl border border-border bg-card p-4"><div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Com telefone</div><div className="mt-1 text-2xl font-semibold tabular-nums">{numberFormat.format(base.data?.summary.with_phone ?? 0)}</div></div>
-        <div className="rounded-xl border border-border bg-card p-4"><div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Correspondem aos filtros</div><div className="mt-1 text-2xl font-semibold tabular-nums">{numberFormat.format(total)}</div></div>
-        <div className="rounded-xl border border-border bg-card p-4"><div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Operações ativas</div><div className="mt-1 text-2xl font-semibold tabular-nums">{numberFormat.format(base.data?.summary.active_operations ?? 0)}</div></div>
+    <section className="space-y-4">
+      {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{(base.error as Error).message}</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-primary"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Base consolidada</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.total_cards ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads disponíveis para consulta</div></div><span className="rounded-lg bg-primary/10 p-2 text-primary"><ContactRound className="h-4 w-4" /></span></div></div>
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-emerald-500"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Contato disponível</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.with_phone ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads com telefone informado</div></div><span className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600"><Phone className="h-4 w-4" /></span></div></div>
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"><div className="absolute inset-y-0 left-0 w-1 bg-amber-500"/><div className="flex items-start justify-between pl-1"><div><div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Em operação</div><div className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{base.isError ? "—" : numberFormat.format(base.data?.summary.active_operations ?? 0)}</div><div className="mt-1 text-xs text-muted-foreground">Leads em ações ativas</div></div><span className="rounded-lg bg-amber-500/10 p-2 text-amber-700"><Workflow className="h-4 w-4" /></span></div></div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-sm font-semibold">Localizar leads</div><div className="mt-0.5 text-xs text-muted-foreground">Combine critérios para chegar ao segmento desejado.</div></div><span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"><Filter className="h-3.5 w-3.5" />{activeFilterCount ? `${activeFilterCount} ativos` : "Sem filtros"}</span></div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Buscar nome, @handle ou telefone" className={controlClass + " w-full pl-9"} /></label>
+          <label className="relative min-w-56 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPageAndSelection(); }} placeholder="Nome, @perfil ou telefone" className={controlClass + " w-full pl-9"} /></label>
           <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
           <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
-          <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Telefone: qualquer</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
-          <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Supressão: qualquer</option><option value="yes">Suprimidos</option><option value="no">Não suprimidos</option></select>
-          <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Operação: qualquer</option><option value="yes">Com operação ativa</option><option value="no">Sem operação ativa</option></select>
+          <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Telefone · Todos</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
+          <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Supressão · Todas</option><option value="yes">Suprimidos</option><option value="no">Não suprimidos</option></select>
+          <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className={controlClass}><option value="all">Operação · Todas</option><option value="yes">Com operação ativa</option><option value="no">Sem operação ativa</option></select>
           <Button variant="outline" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Atualizar</Button>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
@@ -158,7 +164,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
             </select>
             <Button variant="ghost" size="icon" aria-label={descending ? "Ordem decrescente" : "Ordem crescente"} onClick={() => { setDescending((value) => !value); setPage(0); }}>{descending ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</Button>
           </div>
-          <span className="text-xs text-muted-foreground">Os filtros se combinam: opções dentro de um grupo somam; grupos diferentes restringem em conjunto.</span>
+          {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}><X className="mr-1.5 h-3.5 w-3.5" />Limpar filtros</Button>}
         </div>
       </div>
 
@@ -199,11 +205,10 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
           </table>
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/20 px-4 py-3">
-          <div className="text-sm text-muted-foreground">Exibindo <span className="font-medium text-foreground">{numberFormat.format(start)}–{numberFormat.format(end)}</span> de <span className="font-medium text-foreground">{numberFormat.format(total)}</span> leads</div>
+          <div className="text-sm text-muted-foreground">Exibindo <span className="font-medium text-foreground">{numberFormat.format(start)}–{numberFormat.format(end)}</span> · <span className="font-medium text-foreground">{numberFormat.format(total)} leads filtrados</span></div>
           <div className="flex flex-wrap items-center gap-2"><label htmlFor="base-page-size" className="text-sm text-muted-foreground">Por página</label><select id="base-page-size" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); resetPageAndSelection(); }} className={controlClass}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select><span className="min-w-24 text-center text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span><Button variant="outline" size="icon" aria-label="Página anterior" disabled={page === 0 || base.isFetching} onClick={() => { setPage((value) => Math.max(0, value - 1)); setSelected([]); setAllFilteredSelected(false); }}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" aria-label="Próxima página" disabled={page + 1 >= totalPages || base.isFetching} onClick={() => { setPage((value) => value + 1); setSelected([]); setAllFilteredSelected(false); }}><ChevronRight className="h-4 w-4" /></Button></div>
         </footer>
       </div>
-      <p className="text-xs text-muted-foreground">Telefones que já atendem ao padrão móvel brasileiro são exibidos como +55 (DDD) 9XXXX-XXXX. Valores fora desse padrão ficam sinalizados para revisão e não são alterados automaticamente.</p>
     </section>
   );
 }
