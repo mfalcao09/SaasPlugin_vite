@@ -90,6 +90,52 @@ Deno.serve(async (req: Request) => {
         ? String(body.sort_by)
         : "updated_at";
     const sortDirection = body?.sort_direction === "desc" ? -1 : 1;
+
+    // A Base de Leads é paginada no Postgres: nunca transferir toda a base
+    // para esta Edge Function para só depois filtrar e cortar a página.
+    if (baseMode) {
+      const { data, error } = await sb.rpc("platform_crm_leads_base_page", {
+        p_product_id: productId,
+        p_filters: baseFilters,
+        p_sort_by: sortBy,
+        p_sort_direction: sortDirection < 0 ? "desc" : "asc",
+        p_limit: limit,
+        p_offset: offset,
+      });
+      if (error) {
+        console.error("leads base database pagination failed", {
+          code: error.code ?? null,
+          message: error.message ?? "unknown database error",
+          details: error.details ?? null,
+        });
+        return json({
+          error: "Falha ao consultar a base de leads. Tente atualizar.",
+          code: error.code ?? null,
+        }, 500);
+      }
+
+      const result = data as {
+        data?: unknown[];
+        filtered_total?: number;
+        summary?: Record<string, number>;
+      } | null;
+      const filteredTotal = Number(result?.filtered_total ?? 0);
+      return json({
+        ok: true,
+        data: Array.isArray(result?.data) ? result.data : [],
+        total: filteredTotal,
+        filtered_total: filteredTotal,
+        limit,
+        offset,
+        summary: result?.summary ?? {
+          total_cards: 0,
+          with_phone: 0,
+          active_operations: 0,
+        },
+        audit: null,
+      });
+    }
+
     let snapshotData: any[] = [];
     if (!baseMode) {
       let query = sb
