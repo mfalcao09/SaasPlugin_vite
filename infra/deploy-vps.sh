@@ -20,6 +20,8 @@
 #   feedback_docker_phantom_deploy_no_cache -> --no-cache + prova de hash do bundle servido
 #   feedback_nexvyoficinas_deploy_topologia -> template hardcoda app.; --no-cache obrigatorio
 set -euo pipefail
+exec 9>/run/lock/saasplugin-vite-deploy.lock
+flock -n 9 || { echo "GATE FAILED: another Vite deploy is already running." >&2; exit 1; }
 
 APP_DIR="${1:?APP_DIR obrigatorio (ex: NexvyBeauty)}"
 CONTAINER="${2:?CONTAINER obrigatorio (ex: nexvy-beauty)}"
@@ -27,6 +29,7 @@ DOMAIN="${3:?DOMAIN obrigatorio (ex: beauty.exemplo.com.br)}"
 
 REPO=/opt/stacks/saasplugin-vite
 TRAEFIK_DYNAMIC=/opt/stacks/traefik/dynamic
+MANIFEST_DIR=/var/lib/saasplugin-vite/deployments
 
 TPL="$REPO/infra/traefik/${APP_DIR}.yml.template"
 OUT="$TRAEFIK_DYNAMIC/${CONTAINER}.yml"
@@ -35,9 +38,7 @@ OUT="$TRAEFIK_DYNAMIC/${CONTAINER}.yml"
 BUILD_NO_CACHE="${BUILD_NO_CACHE:-1}"                  # 1 = --no-cache (default; lição phantom-deploy)
 READY_TIMEOUT="${READY_TIMEOUT:-90}"                   # s — inclui 1a emissao de cert Let's Encrypt
 # ⚠ padrao do entry bundle Vite. Precisa casar com o nome REAL do entry: se nao
-# casar, os 3 hashes (BEFORE/EXPECTED/SERVED) saem VAZIOS e o gate degrada EM
-# SILENCIO para "OK (parcial)" — deixa de provar que o bundle mudou e passa a
-# provar so que o servidor respondeu 200. Aconteceu em 2026-08-01: com build
+# casar, a ausencia de hash esperado ou servido faz o gate falhar fechado.
 # multi-page (rollupOptions.input) o entry virou `main-<hash>.js` e `index-*`
 # parou de casar; todo DEPLOY-VERDE do beauty ficou verde de "respondeu".
 # Como conferir apos mexer no build:
@@ -50,6 +51,58 @@ if [ ! -f "$TPL" ]; then
   echo "ERRO: template nao encontrado: $TPL" >&2
   exit 1
 fi
+
+# Mandatory container provenance contract.
+if ! git -C "$REPO" rev-parse --verify HEAD >/dev/null 2>&1; then
+  echo "GATE FAILED: repository has no verifiable commit." >&2
+  exit 1
+fi
+GIT_SHA="$(git -C "$REPO" rev-parse HEAD)"
+IMAGE_TAG="${CONTAINER}:${GIT_SHA}"
+DOCKERFILE="$REPO/infra/Dockerfile.app"
+
+UNPINNED_BASES="$(grep -nE '^FROM[[:space:]].+(@sha256:[0-9a-f]{64})?$' "$DOCKERFILE" | grep -v '@sha256:' || true)"
+if [ -n "$UNPINNED_BASES" ]; then
+  echo "GATE FAILED: every FROM must be pinned by digest in $DOCKERFILE" >&2
+  echo "$UNPINNED_BASES" >&2
+  exit 1
+fi
+
+for f in "$REPO"/docker-compose*.yml "$REPO"/docker-compose*.yaml "$REPO"/compose*.yml "$REPO"/compose*.yaml; do
+  [ -f "$f" ] || continue
+  if ! EFFECTIVE="$(docker compose -f "$f" config --no-interpolate 2>/dev/null)"; then
+    echo "GATE FAILED: docker compose could not render $f" >&2
+    exit 1
+  fi
+  PROHIBITED="$(printf '%s\n' "$EFFECTIVE" | grep -nE '^[[:space:]]*(privileged:[[:space:]]*true|network_mode:[[:space:]]*host|pid:[[:space:]]*host|[^#]*[/]var/run/docker[.]sock)' || true)"
+  if [ -n "$PROHIBITED" ]; then
+    echo "GATE FAILED: prohibited effective configuration in $f" >&2
+    echo "$PROHIBITED" >&2
+    exit 1
+  fi
+
+  # cap_add e permitido somente para o conjunto minimo exigido pelo Nginx.
+  # Qualquer capability fora da allowlist falha o gate.
+  CAP_LINES="$(printf '%s\n' "$EFFECTIVE" | awk '
+    /^[[:space:]]*cap_add:[[:space:]]*$/ {
+      match($0, /^[[:space:]]*/); cap_indent=RLENGTH; inside=1; next
+    }
+    inside && /^[[:space:]]*-[[:space:]]*/ { print; next }
+    inside && $0 !~ /^[[:space:]]*$/ {
+      match($0, /^[[:space:]]*/);
+      if (RLENGTH <= cap_indent) inside=0
+    }
+  ')"
+  BAD_CAPS="$(printf '%s\n' "$CAP_LINES" |
+    sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]+$//' |
+    tr '[:lower:]' '[:upper:]' |
+    grep -Ev '^(NET_BIND_SERVICE|CHOWN|SETUID|SETGID)$' || true)"
+  if [ -n "$BAD_CAPS" ]; then
+    echo "GATE FAILED: cap_add fora da allowlist em $f" >&2
+    echo "$BAD_CAPS" >&2
+    exit 1
+  fi
+done
 
 # ── 0a. gate: working tree limpa (este script builda do DISCO, nao de um SHA) ─
 # Escape: ALLOW_DIRTY_DEPLOY=1 (emergencia apenas; documente o motivo no log).
@@ -72,34 +125,118 @@ DOMAIN_URL="https://$DOMAIN/"
 
 # ── 0. snapshot anti-phantom: hash do bundle SERVIDO hoje (antes do deploy) ───
 BEFORE_HASH="$(curl -s -m 8 "$DOMAIN_URL" 2>/dev/null | grep -oE "$BUNDLE_RE" | head -1 || true)"
+if [ -z "$BEFORE_HASH" ]; then
+  echo "GATE FAILED: nao foi possivel provar o hash do bundle atualmente servido." >&2
+  echo "  -> Deploy abortado antes do build; rollback verificavel exige BEFORE_HASH." >&2
+  exit 1
+fi
 
 # ── 1. build (--no-cache por padrao) ─────────────────────────────────────────
 NC=(); [ "$BUILD_NO_CACHE" = "1" ] && NC=(--no-cache)
 docker build \
   "${NC[@]}" \
+  --pull \
   -f "$REPO/infra/Dockerfile.app" \
   --build-arg APP_DIR="$APP_DIR" \
-  -t "${CONTAINER}:latest" \
+  --label "org.opencontainers.image.revision=$GIT_SHA" \
+  --label "org.opencontainers.image.source=$(git -C "$REPO" remote get-url origin 2>/dev/null || echo unknown)" \
+  -t "$IMAGE_TAG" \
   "$REPO"
+
+IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$IMAGE_TAG")"
+IMAGE_DIGEST="$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE_TAG" 2>/dev/null || true)"
+mkdir -p "$MANIFEST_DIR"
+umask 077
+MANIFEST_TMP="$(mktemp "$MANIFEST_DIR/.manifest.XXXXXX")"
+cleanup_manifest() { rm -f "$MANIFEST_TMP"; }
+trap cleanup_manifest EXIT
+cat > "$MANIFEST_TMP" <<EOF
+APP_DIR=$APP_DIR
+CONTAINER=$CONTAINER
+DOMAIN=$DOMAIN
+GIT_SHA=$GIT_SHA
+IMAGE_TAG=$IMAGE_TAG
+IMAGE_ID=$IMAGE_ID
+IMAGE_DIGEST=$IMAGE_DIGEST
+BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
 
 # hash ESPERADO = o que a imagem recem-buildada contem (lido aqui, antes de subir)
 EXPECTED_HASH=""
 for p in $IMAGE_INDEX_PATHS; do
-  EXPECTED_HASH="$(docker run --rm --entrypoint sh "${CONTAINER}:latest" -lc "cat '$p' 2>/dev/null" 2>/dev/null \
+  EXPECTED_HASH="$(docker run --rm --entrypoint sh "$IMAGE_TAG" -lc "cat '$p' 2>/dev/null" 2>/dev/null \
     | grep -oE "$BUNDLE_RE" | head -1 || true)"
   [ -n "$EXPECTED_HASH" ] && break
 done
 
 # ── 2. (re)run na rede traefik-public (idempotente) ──────────────────────────
+run_hardened() {
+  local image="$1"
+  docker run -d \
+    --name "$CONTAINER" \
+    --network traefik-public \
+    --restart unless-stopped \
+    --read-only \
+    --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+    --tmpfs /var/cache/nginx:rw,noexec,nosuid,size=16m \
+    --tmpfs /var/run:rw,noexec,nosuid,size=1m \
+    --cap-drop=ALL \
+    --cap-add=NET_BIND_SERVICE \
+    --cap-add=CHOWN \
+    --cap-add=SETUID \
+    --cap-add=SETGID \
+    --security-opt no-new-privileges:true \
+    --pids-limit 100 \
+    --memory 256m \
+    --cpus 1 \
+    "$image"
+}
+OLD_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$CONTAINER" 2>/dev/null || true)"
+NEW_ATTEMPT=0
+rollback() {
+  local rc="$?"
+  local rollback_ok=1
+  rm -f "$MANIFEST_TMP"
+  trap - EXIT
+  if [ "$rc" -ne 0 ] && [ "$NEW_ATTEMPT" = "1" ]; then
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+    if [ -n "$OLD_IMAGE" ]; then
+      echo "ROLLBACK: restoring previous image" >&2
+      if ! run_hardened "$OLD_IMAGE" >/dev/null 2>&1; then
+        rollback_ok=0
+      else
+        rt=0; restored=0; rhc=000
+        while [ "$rt" -lt 30 ]; do
+          rhc="$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$DOMAIN_URL" 2>/dev/null || echo 000)"
+          [ "$rhc" = "200" ] && { restored=1; break; }
+          sleep 2; rt=$((rt+2))
+        done
+        if [ "$restored" != 1 ]; then
+          echo "ROLLBACK FAILED: previous image did not return HTTP 200 (HTTP $rhc)" >&2
+          rollback_ok=0
+        elif [ -z "$BEFORE_HASH" ]; then
+          echo "ROLLBACK FAILED: pre-deploy bundle hash was unavailable; restoration not provable" >&2
+          rollback_ok=0
+        else
+          RESTORED_HASH="$(curl -s -m 8 "$DOMAIN_URL" 2>/dev/null | grep -oE "$BUNDLE_RE" | head -1 || true)"
+          if [ -z "$RESTORED_HASH" ] || [ "$RESTORED_HASH" != "$BEFORE_HASH" ]; then
+            echo "ROLLBACK FAILED: restored bundle hash does not match pre-deploy hash" >&2
+            echo "  expected=$BEFORE_HASH served=$RESTORED_HASH" >&2
+            rollback_ok=0
+          fi
+        fi
+      fi
+    else
+      echo "ROLLBACK: no previous image recorded; candidate removed, service remains stopped" >&2
+    fi
+    [ "$rollback_ok" = "1" ] || echo "ROLLBACK FAILED: restoration was not proven" >&2
+  fi
+  exit "$rc"
+}
+trap rollback EXIT
+NEW_ATTEMPT=1
 docker rm -f "$CONTAINER" 2>/dev/null || true
-RUN_ENV=()
-[ -f "$REPO/.env" ] && RUN_ENV=(--env-file "$REPO/.env")
-docker run -d \
-  --name "$CONTAINER" \
-  --network traefik-public \
-  --restart unless-stopped \
-  "${RUN_ENV[@]}" \
-  "${CONTAINER}:latest"
+run_hardened "$IMAGE_TAG"
 
 # ── 3. render do template Traefik (substitui DOMAIN_* e __CONTAINER__) ───────
 mkdir -p "$TRAEFIK_DYNAMIC"
@@ -122,20 +259,22 @@ fi
 
 # 4b. prova anti-phantom: bundle servido == bundle recem-buildado?
 SERVED_HASH="$(curl -s -m 8 "$DOMAIN_URL" 2>/dev/null | grep -oE "$BUNDLE_RE" | head -1 || true)"
-if [ -n "$EXPECTED_HASH" ]; then
-  if [ "$SERVED_HASH" = "$EXPECTED_HASH" ]; then
-    echo "  OK anti-phantom: serve o bundle NOVO ($SERVED_HASH)"
-  else
-    echo "GATE FALHOU (PHANTOM): serve '$SERVED_HASH' mas a imagem nova tem '$EXPECTED_HASH'" >&2
-    echo "  -> Traefik servindo container velho, ou build cacheado servindo codigo antigo." >&2
-    exit 1
-  fi
-elif [ -n "$BEFORE_HASH" ] && [ "$SERVED_HASH" = "$BEFORE_HASH" ]; then
-  echo "AVISO anti-phantom: bundle servido ($SERVED_HASH) == o de ANTES do deploy, e nao li o" >&2
-  echo "  hash esperado da imagem (confirme IMAGE_INDEX_PATHS). Pode ser phantom OU front sem mudanca." >&2
-  # nao falha o deploy num aviso — mas grita pra voce conferir.
-else
-  echo "  OK (parcial): 200 + bundle servido = ${SERVED_HASH:-<sem-hash>} (sem hash esperado p/ comparar)"
+if [ -z "$EXPECTED_HASH" ]; then
+  echo "GATE FALHOU (ANTI-PHANTOM): nao foi possivel extrair o hash esperado da imagem nova." >&2
+  echo "  -> Corrija IMAGE_INDEX_PATHS/BUNDLE_RE; sucesso parcial nao e aceito." >&2
+  exit 1
 fi
-
+if [ -z "$SERVED_HASH" ]; then
+  echo "GATE FALHOU (ANTI-PHANTOM): nao foi possivel extrair o hash servido." >&2
+  exit 1
+fi
+if [ "$SERVED_HASH" = "$EXPECTED_HASH" ]; then
+  echo "  OK anti-phantom: serve o bundle NOVO ($SERVED_HASH)"
+else
+  echo "GATE FALHOU (PHANTOM): serve '$SERVED_HASH' mas a imagem nova tem '$EXPECTED_HASH'" >&2
+  echo "  -> Traefik servindo container velho, ou build cacheado servindo codigo antigo." >&2
+  exit 1
+fi
+mv -f "$MANIFEST_TMP" "$MANIFEST_DIR/$CONTAINER-$GIT_SHA.env"
+trap - EXIT
 echo "DEPLOY-VERDE: $APP_DIR servindo provado em $DOMAIN_URL"
