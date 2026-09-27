@@ -22,6 +22,7 @@ import { usePlatformModule } from "@/components/superadmin/platform-shell/usePla
 import { Button } from "@/components/ui/button";
 import { OperationalFunnel } from "./OperationalFunnel";
 import { DashboardActions } from "./DashboardActions";
+import { ProspeccaoBaseTable } from "./ProspeccaoBaseTable";
 
 type Mode = "dashboard" | "ingestao" | "base" | "enriquecimento" | "campanhas";
 type Operation = {
@@ -638,352 +639,8 @@ function OperationHistoryPanel({
   );
 }
 
-function Base({ productId, rows }: { productId: string; rows: SnapshotRow[] }) {
-  const operation = useOperation(productId);
-  const cancelOperation = useCancelOperation(productId);
-  const triage = useTriage(productId);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<LeadFilters | null>(
-    null,
-  );
-  const [query, setQuery] = useState("");
-  const [stage, setStage] = useState("all");
-  const [triagem, setTriagem] = useState("all");
-  const [phone, setPhone] = useState("all");
-  const [suppression, setSuppression] = useState("all");
-  const [targetTriage, setTargetTriage] = useState("principal");
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const filtered = rows.filter((r) => {
-    const haystack =
-      `${r.name} ${r.profiles.map((p) => p.handle).join(" ")}`.toLowerCase();
-    return (
-      haystack.includes(query.toLowerCase()) &&
-      (stage === "all" || (r.derived_stage ?? "db") === stage) &&
-      (triagem === "all" || r.triagem_summary === triagem) &&
-      (phone === "all" || (phone === "with" ? !!r.phone : !r.phone)) &&
-      (suppression === "all" ||
-        (suppression === "yes" ? r.is_suppressed : !r.is_suppressed))
-    );
-  });
-  const toggle = (id: string) => {
-    setSelectedFilter(null);
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-  const currentFilter = (): LeadFilters => ({
-    ...(stage !== "all" ? { derived_stage: stage } : {}),
-    ...(triagem !== "all" ? { triagem } : {}),
-    ...(phone !== "all" ? { phone: phone as "with" | "without" } : {}),
-    ...(suppression !== "all" ? { suppressed: suppression === "yes" } : {}),
-  });
-  const selectCurrentFilter = () => {
-    if (query.trim()) {
-      setSelectedFilter(null);
-      setSelected(filtered.map((r) => r.lead_id));
-      return;
-    }
-    setSelected([]);
-    setSelectedFilter(currentFilter());
-  };
-  const preselect = (ids: string[]) =>
-    ids.forEach((leadId) =>
-      operation.mutate({
-        operation_type: "preselection",
-        lead_id: leadId,
-        idempotency_key: `nova-preselection:${leadId}`,
-      }),
-    );
-  const enrich = (ids: string[]) =>
-    ids.forEach((leadId) =>
-      operation.mutate({
-        operation_type: "enrichment",
-        lead_id: leadId,
-        idempotency_key: `nova-enrichment:${leadId}`,
-      }),
-    );
-  const reclassify = (ids: string[]) => {
-    const extracted = rows
-      .filter((row) => ids.includes(row.lead_id))
-      .flatMap((row) =>
-        row.profiles
-          .map((profile) => profile.id)
-          .filter((id): id is string => !!id),
-      );
-    if (extracted.length)
-      triage.mutate({ extracted_lead_ids: extracted, triagem: targetTriage });
-  };
-  const reclassifySelection = () => {
-    if (selectedFilter) {
-      triage.mutate({ lead_filters: selectedFilter, triagem: targetTriage });
-      return;
-    }
-    reclassify(selected);
-  };
-  const retry = (leadId: string, op: Operation) => {
-    if (!op.id || !op.type) return;
-    operation.mutate({
-      operation_type: op.type,
-      lead_id: leadId,
-      idempotency_key: `nova-retry:${op.id}`,
-      payload: { retry_of: op.id },
-    });
-  };
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar card ou handle"
-          className="h-10 min-w-56 flex-1 rounded-lg border border-input bg-background px-3 text-sm"
-        />
-        <select
-          value={stage}
-          onChange={(e) => setStage(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="all">Todos os estágios</option>
-          {[
-            "db",
-            "preselected",
-            "contacted",
-            "remarketing_pool",
-            "service",
-            "closing",
-            "onboarding",
-            "do_not_contact",
-          ].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-        <select
-          value={triagem}
-          onChange={(e) => setTriagem(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="all">Todas as triagens</option>
-          {[
-            "principal",
-            "semente",
-            "nao_classificado",
-            "remocao_confirmada",
-          ].map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-        <select
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="all">Telefone: todos</option>
-          <option value="with">Com telefone</option>
-          <option value="without">Sem telefone</option>
-        </select>
-        <select
-          value={suppression}
-          onChange={(e) => setSuppression(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="all">Supressão: todas</option>
-          <option value="yes">Suprimidos</option>
-          <option value="no">Não suprimidos</option>
-        </select>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={selectCurrentFilter}>
-          {selectedFilter
-            ? "Filtro selecionado"
-            : `Selecionar filtro (${filtered.length})`}
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            setSelected([]);
-            setSelectedFilter(null);
-          }}
-          disabled={!selected.length && !selectedFilter}
-        >
-          Limpar seleção
-        </Button>
-        <Button
-          onClick={() => preselect(selected)}
-          disabled={!selected.length || operation.isPending}
-        >
-          <ArrowRight className="mr-2 h-4 w-4" />
-          Pré-selecionar {selected.length || ""}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => enrich(selected)}
-          disabled={!selected.length || operation.isPending}
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Enviar ao enriquecimento
-        </Button>
-        <select
-          value={targetTriage}
-          onChange={(e) => setTargetTriage(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="principal">Reclassificar: principal</option>
-          <option value="semente">Reclassificar: semente</option>
-          <option value="nao_classificado">
-            Reclassificar: não classificado
-          </option>
-          <option value="remocao_confirmada">
-            Confirmar remoção (restaurável)
-          </option>
-        </select>
-        <Button
-          variant="outline"
-          onClick={reclassifySelection}
-          disabled={(!selected.length && !selectedFilter) || triage.isPending}
-        >
-          Aplicar triagem
-        </Button>
-        <span className="self-center text-xs text-muted-foreground">
-          {selectedFilter
-            ? "Todos os cards que correspondem ao filtro estão selecionados"
-            : `${filtered.length} cards visíveis · ${selected.length} selecionados`}
-        </span>
-      </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        {filtered.slice(0, 100).map((row) => (
-          <div
-            key={row.lead_id}
-            className="border-b border-border last:border-0"
-          >
-            <div
-              className="flex cursor-pointer items-center gap-3 p-4"
-              onClick={() =>
-                setExpanded(expanded === row.lead_id ? null : row.lead_id)
-              }
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(row.lead_id)}
-                onClick={(e) => e.stopPropagation()}
-                onChange={() => toggle(row.lead_id)}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 font-medium">
-                  <span>{row.name}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                    {row.triagem_summary}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                    {row.derived_stage ?? "sem estágio"}
-                  </span>
-                </div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">
-                  {row.profiles
-                    .map((p) => `@${p.handle ?? "sem handle"}`)
-                    .join(" · ") || "sem perfil vinculado"}{" "}
-                  · {row.phone ?? "sem telefone"}
-                </div>
-              </div>
-              {row.is_suppressed ? (
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-              ) : row.active_operation_count ? (
-                <RefreshCw className="h-4 w-4 text-primary" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              )}
-            </div>
-            {expanded === row.lead_id && (
-              <div className="grid gap-3 bg-muted/20 px-12 pb-4 pt-1 text-sm sm:grid-cols-2">
-                <div>
-                  <div className="font-medium">Perfis e triagem</div>
-                  {row.profiles.map((profile, index) => (
-                    <div
-                      key={`${row.lead_id}-${index}`}
-                      className="mt-2 rounded-lg border border-border bg-card px-3 py-2"
-                    >
-                      @{profile.handle ?? "sem handle"}{" "}
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {profile.triagem ?? "nao_classificado"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="font-medium">Operação</div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      ["principal", "Mover para principal"],
-                      ["semente", "Mover para semente"],
-                      ["nao_classificado", "Mover para não classificados"],
-                      ["remocao_confirmada", "Mover para remoção"],
-                    ].map(([value, label]) => (
-                      <Button
-                        key={value}
-                        size="sm"
-                        variant="outline"
-                        disabled={triage.isPending}
-                        onClick={() =>
-                          triage.mutate({
-                            lead_ids: [row.lead_id],
-                            triagem: value,
-                          })
-                        }
-                      >
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-muted-foreground">
-                    {row.active_operation_count
-                      ? `${row.active_operation_count} operação(ões) ativa(s)`
-                      : "Nenhuma operação ativa"}
-                  </div>
-                  {row.active_operations?.map((op) =>
-                    op.id ? (
-                      <Button
-                        key={op.id}
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => cancelOperation.mutate(op.id!)}
-                      >
-                        Cancelar {op.type ?? "operação"}
-                      </Button>
-                    ) : null,
-                  )}
-                  <OperationHistoryPanel
-                    productId={productId}
-                    leadId={row.lead_id}
-                    retry={retry}
-                  />
-                  <div className="mt-1 text-muted-foreground">
-                    {row.is_suppressed
-                      ? "Bloqueado por supressão"
-                      : "Elegibilidade depende do estágio e da triagem"}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-        {filtered.length > 100 && (
-          <div className="border-t border-border p-3 text-center text-xs text-muted-foreground">
-            Mostrando 100 cards; refine os filtros para operar o restante com
-            segurança.
-          </div>
-        )}
-        {!filtered.length && (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum card nesta amostra.
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function Base({ productId }: { productId: string }) {
+  return <ProspeccaoBaseTable productId={productId} />;
 }
 
 function OperationView({
@@ -1181,7 +838,7 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
     error,
     refetch,
     dataUpdatedAt,
-  } = useSnapshot(productId, mode !== "ingestao");
+  } = useSnapshot(productId, mode !== "ingestao" && mode !== "base");
   const rows = snapshot?.rows ?? [];
   const summary = snapshot?.summary ?? ({} as SnapshotSummary);
   const persistedRefreshAt = snapshot?.audit?.completed_at;
@@ -1197,7 +854,7 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
             <p className="mt-1 text-muted-foreground">{meta.subtitle}</p>
           )}
         </div>
-        {productId && mode !== "ingestao" && (
+        {productId && mode !== "ingestao" && mode !== "base" && (
           <div className="flex shrink-0 items-center gap-3">
             {(persistedRefreshAt || dataUpdatedAt > 0) && (
               <span className="hidden text-xs text-muted-foreground sm:inline">
@@ -1226,6 +883,8 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
         <EmptyProduct />
       ) : mode === "ingestao" ? (
         <Ingestao productId={productId} />
+      ) : mode === "base" ? (
+        <Base productId={productId} />
       ) : isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1238,7 +897,6 @@ export function NovaProspeccaoWorkspace({ mode }: { mode: Mode }) {
       ) : (
         <>
           {mode === "dashboard" && <Dashboard summary={summary} rows={rows} isRefreshing={isFetching} />}
-          {mode === "base" && <Base productId={productId} rows={rows} />}
           {mode === "enriquecimento" && (
             <OperationView
               productId={productId}

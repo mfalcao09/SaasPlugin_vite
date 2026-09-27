@@ -4,6 +4,12 @@ import {
   authenticatePlatformAgent,
   platformCrmCorsHeaders as corsHeaders,
 } from "../_shared/platform-crm-auth.ts";
+import {
+  matchesBaseLeadFilters,
+  normalizeBrazilianMobile,
+  parseBaseLeadFilters,
+  type BaseLeadFilters,
+} from "../_shared/leads-base-filters.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -11,6 +17,13 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+type SnapshotOperation = {
+  id: string;
+  type: string;
+  status: string;
+  requested_at: string;
+};
 
 async function readAll<T>(
   build: (from: number, to: number) => any,
@@ -44,23 +57,40 @@ Deno.serve(async (req: Request) => {
 
   const productId = String(body?.product_id ?? "").trim();
   if (!productId) return json({ error: "product_id obrigatorio" }, 400);
-  const limit = Math.min(Math.max(Number(body?.limit) || 100, 1), 500);
+  const baseMode = body?.mode === "base";
+  const limit = Math.min(Math.max(Number(body?.limit) || (baseMode ? 50 : 100), 1), baseMode ? 100 : 500);
   const offset = Math.max(Number(body?.offset) || 0, 0);
-  let query = sb
-    .from("platform_crm_lead_operational_snapshot")
-    .select("*")
-    .eq("product_id", productId)
-    .range(offset, offset + limit - 1)
-    .order("updated_at", { ascending: false });
-  if (body?.derived_stage)
-    query = query.eq("derived_stage", String(body.derived_stage));
-  if (body?.triagem_summary)
-    query = query.eq("triagem_summary", String(body.triagem_summary));
-  if (body?.suppressed === true) query = query.eq("is_suppressed", true);
-  if (body?.suppressed === false) query = query.eq("is_suppressed", false);
-  const { data, error } = await query;
-  if (error)
-    return json({ error: "falha ao carregar snapshot operacional" }, 500);
+  let baseFilters: BaseLeadFilters = {};
+  if (baseMode) {
+    try {
+      baseFilters = parseBaseLeadFilters(body?.filters ?? {});
+    } catch (error) {
+      return json({ error: error instanceof Error ? error.message : "filtros invalidos" }, 400);
+    }
+  }
+  const sortBy = ["name", "handle", "followers", "phone", "stage", "updated_at"].includes(String(body?.sort_by))
+    ? String(body.sort_by)
+    : "updated_at";
+  const sortDirection = body?.sort_direction === "desc" ? -1 : 1;
+  let snapshotData: any[] = [];
+  if (!baseMode) {
+    let query = sb
+      .from("platform_crm_lead_operational_snapshot")
+      .select("*")
+      .eq("product_id", productId)
+      .range(offset, offset + limit - 1)
+      .order("updated_at", { ascending: false });
+    if (body?.derived_stage)
+      query = query.eq("derived_stage", String(body.derived_stage));
+    if (body?.triagem_summary)
+      query = query.eq("triagem_summary", String(body.triagem_summary));
+    if (body?.suppressed === true) query = query.eq("is_suppressed", true);
+    if (body?.suppressed === false) query = query.eq("is_suppressed", false);
+    const { data, error } = await query;
+    if (error)
+      return json({ error: "falha ao carregar snapshot operacional" }, 500);
+    snapshotData = (data ?? []) as any[];
+  }
 
   const stages = [
     "db",
@@ -104,19 +134,31 @@ Deno.serve(async (req: Request) => {
         .eq("product_id", productId)
         .range(from, to),
     ),
-    readAll<{ lead_id: string | null }>((from, to) =>
+    readAll<{
+      id: string;
+      lead_id: string | null;
+      operation_type: string;
+      status: string;
+      requested_at: string;
+    }>((from, to) =>
       sb
         .from("platform_crm_lead_operations")
-        .select("lead_id")
+        .select("id, lead_id, operation_type, status, requested_at")
         .eq("product_id", productId)
         .in("status", ["queued", "running"])
         .not("lead_id", "is", null)
         .range(from, to),
     ),
-    readAll<{ id: string; phone: string | null }>((from, to) =>
+    readAll<{
+      id: string;
+      name: string;
+      phone: string | null;
+      source: string | null;
+      updated_at: string;
+    }>((from, to) =>
       sb
         .from("platform_crm_leads")
-        .select("id, phone")
+        .select("id, name, phone, source, updated_at")
         .eq("product_id", productId)
         .range(from, to),
     ),
@@ -127,11 +169,13 @@ Deno.serve(async (req: Request) => {
       triagem: string | null;
       telefone: string | null;
       whatsapp_link: string | null;
+      seguidores: number | null;
+      extraction_id: string;
     }>((from, to) =>
       sb
         .from("platform_crm_extracted_leads")
         .select(
-          "id, imported_to_lead_id, handle, triagem, telefone, whatsapp_link",
+          "id, imported_to_lead_id, handle, triagem, telefone, whatsapp_link, seguidores, extraction_id",
         )
         .eq("product_id", productId)
         .not("imported_to_lead_id", "is", null)
@@ -203,6 +247,18 @@ Deno.serve(async (req: Request) => {
   const activeLeadIds = new Set(
     operationRows.map((row) => String(row.lead_id)),
   );
+  const activeOperationsByLead = new Map<string, SnapshotOperation[]>();
+  for (const row of operationRows) {
+    if (!row.lead_id) continue;
+    const operations = activeOperationsByLead.get(row.lead_id) ?? [];
+    operations.push({
+      id: row.id,
+      type: row.operation_type,
+      status: row.status,
+      requested_at: row.requested_at,
+    });
+    activeOperationsByLead.set(row.lead_id, operations);
+  }
   const optoutPhones = new Set(
     optoutRows
       .map((row) => row.telefone)
@@ -225,6 +281,68 @@ Deno.serve(async (req: Request) => {
       optoutHandles.has(String(profile.handle).replace(/^@/, "").toLowerCase())
     )
       suppressedLeadIds.add(String(profile.imported_to_lead_id));
+  }
+  const stagesByLead = new Map(stateRows.map((row) => [String(row.lead_id), row.derived_stage]));
+  const baseRows = baseMode
+    ? leadRows.map((lead) => {
+        const profiles = profilesByLead.get(lead.id) ?? [];
+        const values = triagemByLead.get(lead.id) ?? [];
+        const triagemSummary = values.includes("principal")
+          ? "principal"
+          : values.includes("semente")
+            ? "semente"
+            : values.length > 0 && values.every((value) => value === "remocao_confirmada")
+              ? "remocao_confirmada"
+              : "nao_classificado";
+        return {
+          lead_id: lead.id,
+          name: lead.name,
+          phone: lead.phone,
+          phone_normalized: normalizeBrazilianMobile(lead.phone),
+          source: lead.source,
+          updated_at: lead.updated_at,
+          derived_stage: stagesByLead.get(lead.id) ?? null,
+          triagem_summary: triagemSummary,
+          profile_count: profiles.length,
+          followers_count: profiles.reduce((sum, profile) => sum + Math.max(0, Number(profile.seguidores) || 0), 0),
+          profiles: profiles.map((profile) => ({
+            id: profile.id,
+            handle: profile.handle,
+            triagem: profile.triagem,
+            telefone: profile.telefone,
+            seguidores: profile.seguidores,
+            origem: profile.extraction_id,
+          })),
+          active_operation_count: activeOperationsByLead.get(lead.id)?.length ?? 0,
+          active_operations: activeOperationsByLead.get(lead.id) ?? [],
+          recent_operations: activeOperationsByLead.get(lead.id) ?? [],
+          is_suppressed: suppressedLeadIds.has(lead.id),
+        };
+      })
+    : [];
+  const filteredBaseRows = baseMode
+    ? baseRows.filter((row) => matchesBaseLeadFilters(row, baseFilters))
+    : [];
+  if (baseMode) {
+    const compareText = (left: string, right: string) => left.localeCompare(right, "pt-BR", { sensitivity: "base", numeric: true });
+    filteredBaseRows.sort((left, right) => {
+      if (sortBy === "phone") {
+        const a = left.phone_normalized ?? "";
+        const b = right.phone_normalized ?? "";
+        if (!a && b) return 1;
+        if (a && !b) return -1;
+        return compareText(a, b) * sortDirection || compareText(left.name, right.name);
+      }
+      if (sortBy === "followers")
+        return (left.followers_count - right.followers_count) * sortDirection || compareText(left.name, right.name);
+      if (sortBy === "handle")
+        return compareText(left.profiles[0]?.handle ?? "", right.profiles[0]?.handle ?? "") * sortDirection || compareText(left.name, right.name);
+      if (sortBy === "stage")
+        return compareText(left.derived_stage ?? "db", right.derived_stage ?? "db") * sortDirection || compareText(left.name, right.name);
+      if (sortBy === "updated_at")
+        return compareText(left.updated_at, right.updated_at) * sortDirection || compareText(left.name, right.name);
+      return compareText(left.name, right.name) * sortDirection;
+    });
   }
   const campaignIds = campaignRows.map((row) => String(row.id));
   let campaignProblems = campaignRows.filter((row) =>
@@ -257,27 +375,32 @@ Deno.serve(async (req: Request) => {
     }
   }
   const completedAt = new Date().toISOString();
-  const { data: refreshAudit, error: refreshAuditError } = await sb
-    .from("platform_crm_snapshot_refresh_audit")
-    .insert({
-      function_name: "leads-operational-snapshot",
-      product_id: productId,
-      requested_at: requestedAt,
-      completed_at: completedAt,
-      status: "success",
-    })
-    .select(
-      "function_name, product_id, requested_at, completed_at, status, snapshot_version",
-    )
-    .single();
-  if (refreshAuditError || !refreshAudit) {
-    console.error("snapshot refresh audit failed", refreshAuditError);
-    return json({ error: "falha ao registrar auditoria do snapshot" }, 500);
+  let refreshAudit: unknown = null;
+  if (!baseMode || body?.audit_refresh === true) {
+    const result = await sb
+      .from("platform_crm_snapshot_refresh_audit")
+      .insert({
+        function_name: "leads-operational-snapshot",
+        product_id: productId,
+        requested_at: requestedAt,
+        completed_at: completedAt,
+        status: "success",
+      })
+      .select(
+        "function_name, product_id, requested_at, completed_at, status, snapshot_version",
+      )
+      .single();
+    if (result.error || !result.data) {
+      console.error("snapshot refresh audit failed", result.error);
+      return json({ error: "falha ao registrar auditoria do snapshot" }, 500);
+    }
+    refreshAudit = result.data;
   }
   return json({
     ok: true,
-    data: data ?? [],
-    total: leadCount.count ?? 0,
+    data: baseMode ? filteredBaseRows.slice(offset, offset + limit) : snapshotData,
+    total: baseMode ? filteredBaseRows.length : (leadCount.count ?? 0),
+    filtered_total: baseMode ? filteredBaseRows.length : undefined,
     limit,
     offset,
     summary: {

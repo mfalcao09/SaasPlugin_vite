@@ -11,6 +11,10 @@ import {
   triageFromLegacySegment,
   type CanonicalTriage,
 } from "../_shared/platform-crm-triage.ts";
+import {
+  matchesBaseLeadFilters,
+  parseBaseLeadFilters,
+} from "../_shared/leads-base-filters.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -22,20 +26,6 @@ function json(body: unknown, status = 200) {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ROWS = 5000;
-const TRIAGES = new Set<CanonicalTriage>([
-  "principal",
-  "semente",
-  "nao_classificado",
-  "remocao_confirmada",
-]);
-
-type LeadFilters = {
-  triagem?: CanonicalTriage;
-  derived_stage?: string;
-  phone?: "with" | "without";
-  suppressed?: boolean;
-};
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
@@ -87,51 +77,32 @@ Deno.serve(async (req: Request) => {
       400,
     );
   }
-  const filters = (body?.lead_filters ?? {}) as LeadFilters;
-  const filterTriagem = filters.triagem;
-  if (filterTriagem && !TRIAGES.has(filterTriagem)) {
-    return json({ error: "lead_filters.triagem invalida" }, 400);
-  }
-  if (filters.phone && !["with", "without"].includes(filters.phone)) {
-    return json({ error: "lead_filters.phone invalido" }, 400);
-  }
-  const filterStages = new Set([
-    "db",
-    "preselected",
-    "contacted",
-    "remarketing_pool",
-    "service",
-    "closing",
-    "onboarding",
-    "do_not_contact",
-  ]);
-  if (filters.derived_stage && !filterStages.has(filters.derived_stage)) {
-    return json({ error: "lead_filters.derived_stage invalido" }, 400);
+  let filters;
+  try {
+    filters = parseBaseLeadFilters(body?.lead_filters ?? {});
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : "filtros invalidos" }, 400);
   }
 
   let resolvedLeadIds = leadIds;
   if (!ids.length && !leadIds.length && !handles.length) {
-    let filterQuery = sb
-      .from("platform_crm_lead_operational_snapshot")
-      .select("lead_id")
-      .eq("product_id", productId)
-      .limit(MAX_ROWS);
-    if (filterTriagem)
-      filterQuery = filterQuery.eq("triagem_summary", filterTriagem);
-    if (filters.derived_stage)
-      filterQuery = filterQuery.eq("derived_stage", filters.derived_stage);
-    if (filters.phone === "with")
-      filterQuery = filterQuery.not("phone", "is", null);
-    if (filters.phone === "without")
-      filterQuery = filterQuery.is("phone", null);
-    if (typeof filters.suppressed === "boolean")
-      filterQuery = filterQuery.eq("is_suppressed", filters.suppressed);
-    const { data: matching, error: filterError } = await filterQuery;
-    if (filterError)
-      return json({ error: "falha ao resolver filtro de leads" }, 500);
-    resolvedLeadIds = (matching ?? []).map(
-      (row: { lead_id: string }) => row.lead_id,
-    );
+    const matching: any[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error: filterError } = await sb
+        .from("platform_crm_lead_operational_snapshot")
+        .select("lead_id, name, phone, profiles, triagem_summary, derived_stage, is_suppressed, active_operation_count")
+        .eq("product_id", productId)
+        .range(from, from + pageSize - 1);
+      if (filterError)
+        return json({ error: "falha ao resolver filtro de leads" }, 500);
+      const page = data ?? [];
+      matching.push(...page.filter((row) => matchesBaseLeadFilters(row, filters)));
+      if (matching.length > MAX_ROWS)
+        return json({ error: `filtro corresponde a mais de ${MAX_ROWS} leads; refine-o antes da ação em massa` }, 413);
+      if (page.length < pageSize) break;
+    }
+    resolvedLeadIds = matching.map((row) => String(row.lead_id));
   }
   if (ids.length + handles.length + resolvedLeadIds.length > MAX_ROWS)
     return json({ error: `limite de ${MAX_ROWS} linhas` }, 413);
