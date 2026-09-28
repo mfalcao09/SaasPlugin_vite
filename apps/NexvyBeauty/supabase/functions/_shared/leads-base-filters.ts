@@ -30,12 +30,17 @@ export type BaseLeadFilters = {
   triagem?: BaseTriage[];
   derived_stage?: BaseStage[];
   phone?: "with" | "without";
+  phone_quality?: "valid" | "invalid" | "missing";
+  followers_range?: "under_1k" | "1k_3k" | "3k_10k" | "10k_50k" | "50k_plus";
+  name_identifiability?: "identifiable" | "not_identifiable";
+  instagram?: "with" | "without";
   dnc_reason?: BaseDncReason[];
   query?: string;
 };
 
 export type BaseLeadRow = {
   name: string;
+  followers_count?: number;
   phone: string | null;
   phone_normalized?: string | null;
   profiles: Array<{ handle?: string | null; triagem?: string | null }>;
@@ -77,6 +82,16 @@ export function parseBaseLeadFilters(input: unknown): BaseLeadFilters {
   const triagem = parseList("triagem", BASE_TRIAGES);
   const derived_stage = parseList("derived_stage", BASE_STAGES);
   const dnc_reason = parseList("dnc_reason", BASE_DNC_REASONS);
+  const validValues = <T extends string>(key: string, allowed: readonly T[]) => {
+    if (value[key] !== undefined && !allowed.includes(value[key] as T)) {
+      throw new Error(`lead_filters.${key} invalido`);
+    }
+    return value[key] as T | undefined;
+  };
+  const phone_quality = validValues("phone_quality", ["valid", "invalid", "missing"] as const);
+  const followers_range = validValues("followers_range", ["under_1k", "1k_3k", "3k_10k", "10k_50k", "50k_plus"] as const);
+  const name_identifiability = validValues("name_identifiability", ["identifiable", "not_identifiable"] as const);
+  const instagram = validValues("instagram", ["with", "without"] as const);
   if (
     value.phone !== undefined &&
     !["with", "without"].includes(String(value.phone))
@@ -91,6 +106,10 @@ export function parseBaseLeadFilters(input: unknown): BaseLeadFilters {
     ...(triagem?.length ? { triagem } : {}),
     ...(derived_stage?.length ? { derived_stage } : {}),
     ...(value.phone ? { phone: value.phone as "with" | "without" } : {}),
+    ...(phone_quality ? { phone_quality } : {}),
+    ...(followers_range ? { followers_range } : {}),
+    ...(name_identifiability ? { name_identifiability } : {}),
+    ...(instagram ? { instagram } : {}),
     ...(dnc_reason?.length ? { dnc_reason } : {}),
     ...(typeof value.query === "string" && value.query.trim()
       ? { query: value.query.trim().slice(0, 100) }
@@ -121,6 +140,29 @@ export function matchesBaseLeadFilters(
   ) return false;
   if (filters.phone === "with" && !row.phone) return false;
   if (filters.phone === "without" && !!row.phone) return false;
+  if (filters.phone_quality === "missing" && !!row.phone?.trim()) return false;
+  if (filters.phone_quality === "invalid" && (!row.phone?.trim() || !normalizeBrazilianMobile(row.phone))) return false;
+  if (filters.phone_quality === "valid" && !normalizeBrazilianMobile(row.phone ?? "")) return false;
+  if (filters.instagram === "with" && !row.profiles.some((profile) => profile.handle?.trim())) return false;
+  if (filters.instagram === "without" && row.profiles.some((profile) => profile.handle?.trim())) return false;
+  if (filters.name_identifiability) {
+    const name = row.name.trim().toLocaleLowerCase("pt-BR").replace(/[\s._-]/g, "");
+    const handles = row.profiles.map((profile) =>
+      (profile.handle ?? "").trim().toLocaleLowerCase("pt-BR").replace(/^@/, "").replace(/[\s._-]/g, "")
+    ).filter(Boolean);
+    const identifiable = Boolean(name) && (!handles.length || !handles.includes(name));
+    if (filters.name_identifiability === "identifiable" && !identifiable) return false;
+    if (filters.name_identifiability === "not_identifiable" && identifiable) return false;
+  }
+  if (filters.followers_range) {
+    const followers = row.followers_count ?? 0;
+    const matches = filters.followers_range === "under_1k" ? row.profiles.length > 0 && followers < 1_000
+      : filters.followers_range === "1k_3k" ? followers >= 1_000 && followers < 3_000
+      : filters.followers_range === "3k_10k" ? followers >= 3_000 && followers < 10_000
+      : filters.followers_range === "10k_50k" ? followers >= 10_000 && followers < 50_000
+      : followers >= 50_000;
+    if (!matches) return false;
+  }
   if (
     filters.dnc_reason?.length &&
     !filters.dnc_reason.includes((row.dnc_reason ?? "unknown") as BaseDncReason)

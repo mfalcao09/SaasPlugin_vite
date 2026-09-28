@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ChevronDown, Copy, Eye, ExternalLink, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ChevronDown, Copy, Eye, ExternalLink, MoreHorizontal, Pencil, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ProspeccaoLeadDetail } from "./ProspeccaoLeadDetail";
@@ -13,10 +15,16 @@ import "./ProspeccaoBaseTable.css";
 type Triage = "principal" | "semente" | "nao_classificado" | "remocao_confirmada";
 type Stage = "db" | "preselected" | "contacted" | "remarketing_pool" | "service" | "closing" | "onboarding" | "do_not_contact";
 type DncReason = "hard_stop" | "cadence_exhausted" | "closed_lost" | "unknown";
+type FollowersRange = "under_1k" | "1k_3k" | "3k_10k" | "10k_50k" | "50k_plus";
+type PhoneQuality = "valid" | "invalid" | "missing";
 type Filters = {
   triagem?: Triage[];
   derived_stage?: Stage[];
   phone?: "with" | "without";
+  phone_quality?: PhoneQuality;
+  followers_range?: FollowersRange;
+  name_identifiability?: "identifiable" | "not_identifiable";
+  instagram?: "with" | "without";
   dnc_reason?: DncReason[];
   query?: string;
 };
@@ -37,6 +45,8 @@ const stageLabels: Record<Stage, string> = {
 const dncReasonLabels: Record<DncReason, string> = {
   hard_stop: "Hard stop", cadence_exhausted: "Cadência esgotada", closed_lost: "Closed lost", unknown: "Não informado",
 };
+const followerLabels: Record<FollowersRange, string> = { under_1k: "Menos de 1 mil", "1k_3k": "1 mil a 2.999", "3k_10k": "3 mil a 9.999", "10k_50k": "10 mil a 49.999", "50k_plus": "50 mil ou mais" };
+const phoneQualityLabels: Record<PhoneQuality, string> = { valid: "Telefone válido", invalid: "Revisar telefone", missing: "Sem telefone" };
 const triages = Object.keys(triageLabels) as Triage[];
 const stages = Object.keys(stageLabels) as Stage[];
 const controlClass = "h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground";
@@ -102,6 +112,10 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const [triagem, setTriagem] = useState<Triage[]>([]);
   const [stage, setStage] = useState<Stage[]>([]);
   const [phone, setPhone] = useState<"with" | "without" | null>(null);
+  const [phoneQuality, setPhoneQuality] = useState<PhoneQuality | null>(null);
+  const [followersRange, setFollowersRange] = useState<FollowersRange | null>(null);
+  const [nameIdentifiability, setNameIdentifiability] = useState<"identifiable" | "not_identifiable" | null>(null);
+  const [instagram, setInstagram] = useState<"with" | "without" | null>(null);
   const [dncReason, setDncReason] = useState<DncReason[]>([]);
   const [sortBy, setSortBy] = useState("name");
   const [descending, setDescending] = useState(false);
@@ -112,13 +126,21 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const [targetTriage, setTargetTriage] = useState<Triage>("principal");
   const [actionBusy, setActionBusy] = useState(false);
   const [leadDetail, setLeadDetail] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
   const filters = useMemo<Filters>(() => ({
     ...(triagem.length ? { triagem } : {}),
     ...(stage.length ? { derived_stage: stage } : {}),
     ...(phone ? { phone } : {}),
+    ...(phoneQuality ? { phone_quality: phoneQuality } : {}),
+    ...(followersRange ? { followers_range: followersRange } : {}),
+    ...(nameIdentifiability ? { name_identifiability: nameIdentifiability } : {}),
+    ...(instagram ? { instagram } : {}),
     ...(stage.includes("do_not_contact") && dncReason.length ? { dnc_reason: dncReason } : {}),
     ...(query.trim() ? { query: query.trim() } : {}),
-  }), [triagem, stage, phone, dncReason, query]);
+  }), [triagem, stage, phone, phoneQuality, followersRange, nameIdentifiability, instagram, dncReason, query]);
   const queryKey = ["nova-prospeccao-base", productId, filters, sortBy, descending, pageSize, page];
   const base = useQuery({
     queryKey,
@@ -192,18 +214,38 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
     } finally { setActionBusy(false); }
   };
 
+  const openEdit = (lead: Lead) => {
+    setLeadDetail(null);
+    setEditingLead(lead);
+    setEditName(lead.name ?? "");
+    setEditPhone(lead.phone ?? "");
+  };
+  const saveLead = async () => {
+    if (!editingLead || !editName.trim()) return toast.error("Informe o nome do lead.");
+    setEditBusy(true);
+    try {
+      const { error } = await supabase.from("platform_crm_leads").update({ name: editName.trim(), phone: editPhone.trim() || null }).eq("id", editingLead.lead_id).eq("product_id", productId);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["nova-prospeccao-base", productId] });
+      setEditingLead(null);
+      toast.success("Lead atualizado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o lead.");
+    } finally { setEditBusy(false); }
+  };
+
   const start = total ? page * pageSize + 1 : 0;
   const end = Math.min((page + 1) * pageSize, total);
-  const activeFilterCount = triagem.length + stage.length + Number(Boolean(phone)) + dncReason.length + Number(Boolean(query.trim()));
+  const activeFilterCount = triagem.length + stage.length + Number(Boolean(phone)) + Number(Boolean(phoneQuality)) + Number(Boolean(followersRange)) + Number(Boolean(nameIdentifiability)) + Number(Boolean(instagram)) + dncReason.length + Number(Boolean(query.trim()));
   return (
     <section className="leads-executive space-y-3.5">
       {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />Não foi possível atualizar os leads. Tente novamente.</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
 
 
       <div className="lead-summary-grid" aria-label="Resumo da base">
-        <div className="lead-summary-card lead-summary-primary"><div><span>Base consolidada</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.total_cards ?? total))}</strong><small>Todos os leads disponíveis</small></div><Users /></div>
-        <div className="lead-summary-card lead-summary-green"><div><span>Contato disponível</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.with_phone ?? 0))}</strong><small>Leads com telefone informado</small></div><Phone /></div>
-        <div className="lead-summary-card lead-summary-gold"><div><span>Não contatar</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.do_not_contact ?? 0))}</strong><small>Leads fora de contato</small></div><CircleAlert /></div>
+        <div className="lead-summary-card lead-summary-primary"><div className="lead-summary-heading"><span>Base consolidada</span><i><Users /></i></div><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.total_cards ?? total))}</strong></div>
+        <div className="lead-summary-card lead-summary-green"><div className="lead-summary-heading"><span>Contato disponível</span><i><Phone /></i></div><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.with_phone ?? 0))}</strong></div>
+        <div className="lead-summary-card lead-summary-gold"><div className="lead-summary-heading"><span>Não contatar</span><i><CircleAlert /></i></div><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.do_not_contact ?? 0))}</strong></div>
       </div>
 
       <div className="lead-workbench">
@@ -220,6 +262,10 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
             <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
             <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); if (!value.includes("do_not_contact")) setDncReason([]); resetPageAndSelection(); }} />
             <SingleFilter title="Contato" value={phone} values={["with", "without"]} labels={{ with: "Com telefone", without: "Sem telefone" }} onChange={(value) => { setPhone(value); resetPageAndSelection(); }} />
+            <SingleFilter title="Qualidade do telefone" value={phoneQuality} values={["valid", "invalid", "missing"]} labels={phoneQualityLabels} onChange={(value) => { setPhoneQuality(value); resetPageAndSelection(); }} />
+            <SingleFilter title="Seguidores" value={followersRange} values={["under_1k", "1k_3k", "3k_10k", "10k_50k", "50k_plus"]} labels={followerLabels} onChange={(value) => { setFollowersRange(value); resetPageAndSelection(); }} />
+            <SingleFilter title="Nome" value={nameIdentifiability} values={["identifiable", "not_identifiable"]} labels={{ identifiable: "Nome identificável", not_identifiable: "Nome igual ao @ ou ausente" }} onChange={(value) => { setNameIdentifiability(value); resetPageAndSelection(); }} />
+            <SingleFilter title="Instagram" value={instagram} values={["with", "without"]} labels={{ with: "Com perfil Instagram", without: "Sem perfil Instagram" }} onChange={(value) => { setInstagram(value); resetPageAndSelection(); }} />
             {stage.includes("do_not_contact") && <MultiFilter title="Motivo DNC" values={["hard_stop", "cadence_exhausted", "closed_lost", "unknown"]} selected={dncReason} labels={dncReasonLabels} onChange={(value) => { setDncReason(value); resetPageAndSelection(); }} />}
           </div>
           <div className="lead-sort"><span>Ordenar por</span>
@@ -233,8 +279,12 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
           {triagem.map((value) => <button key={value} className={`lead-chip triage-${value}`} onClick={() => { setTriagem(triagem.filter((item) => item !== value)); resetPageAndSelection(); }}>{triageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
           {stage.map((value) => <button key={value} className="lead-chip" onClick={() => { const next = stage.filter((item) => item !== value); setStage(next); if (!next.includes("do_not_contact")) setDncReason([]); resetPageAndSelection(); }}>{stageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
           {phone && <button className="lead-chip" onClick={() => { setPhone(null); resetPageAndSelection(); }}>{phone === "with" ? "Com telefone" : "Sem telefone"}<X className="h-3 w-3" /></button>}
+          {phoneQuality && <button className="lead-chip" onClick={() => { setPhoneQuality(null); resetPageAndSelection(); }}>{phoneQualityLabels[phoneQuality]}<X className="h-3 w-3" /></button>}
+          {followersRange && <button className="lead-chip" onClick={() => { setFollowersRange(null); resetPageAndSelection(); }}>{followerLabels[followersRange]}<X className="h-3 w-3" /></button>}
+          {nameIdentifiability && <button className="lead-chip" onClick={() => { setNameIdentifiability(null); resetPageAndSelection(); }}>{nameIdentifiability === "identifiable" ? "Nome identificável" : "Nome igual ao @ ou ausente"}<X className="h-3 w-3" /></button>}
+          {instagram && <button className="lead-chip" onClick={() => { setInstagram(null); resetPageAndSelection(); }}>{instagram === "with" ? "Com perfil Instagram" : "Sem perfil Instagram"}<X className="h-3 w-3" /></button>}
           {dncReason.map((value) => <button key={value} className="lead-chip" onClick={() => { setDncReason(dncReason.filter((item) => item !== value)); resetPageAndSelection(); }}>{dncReasonLabels[value]}<X className="h-3 w-3" /></button>)}
-          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone(null); setDncReason([]); resetPageAndSelection(); }}>Limpar filtros</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone(null); setPhoneQuality(null); setFollowersRange(null); setNameIdentifiability(null); setInstagram(null); setDncReason([]); resetPageAndSelection(); }}>Limpar filtros</Button>
         </div>}
 
         <div className="lead-table-viewport" tabIndex={0} aria-label="Tabela de leads" role="region">
@@ -256,7 +306,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
                   <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
-                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetail(row)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetail(row)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem onClick={() => openEdit(row)}><Pencil className="mr-2 h-4 w-4" />Editar Lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                   </td>
                 </tr>;
               })}
@@ -289,7 +339,14 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
       <Dialog open={Boolean(leadDetail)} onOpenChange={(open) => !open && setLeadDetail(null)}>
         <DialogContent className="flex h-[min(90vh,900px)] w-[calc(100vw-32px)] max-w-[1440px] flex-col overflow-hidden p-0">
           <VisuallyHidden><DialogTitle>Detalhes do lead</DialogTitle></VisuallyHidden>
-          {leadDetail && <ProspeccaoLeadDetail lead={leadDetail} />}
+          {leadDetail && <ProspeccaoLeadDetail lead={leadDetail} onEdit={() => openEdit(leadDetail)} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(editingLead)} onOpenChange={(open) => !open && !editBusy && setEditingLead(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Editar Lead</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-3"><div className="space-y-2"><Label htmlFor="base-lead-name">Nome</Label><Input id="base-lead-name" value={editName} onChange={(event) => setEditName(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="base-lead-phone">Telefone</Label><Input id="base-lead-phone" value={editPhone} onChange={(event) => setEditPhone(event.target.value)} placeholder="+55 11 99999-9999" /></div></div>
+          <DialogFooter><Button variant="outline" onClick={() => setEditingLead(null)} disabled={editBusy}>Cancelar</Button><Button onClick={() => void saveLead()} disabled={editBusy}>{editBusy ? "Salvando…" : "Salvar alterações"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </section>

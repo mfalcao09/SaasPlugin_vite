@@ -15,7 +15,7 @@ import { useActivePlatformProduct } from '@/contexts/PlatformProductContext';
  * tratamento de item (hover:bg-muted / ativo bg-primary/5 ring-primary/20).
  * "Todos os produtos" = default (null). Filtra Vendas + ERP via contexto.
  */
-export function PlatformProductSwitcher() {
+export function PlatformProductSwitcher({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const { activeProductId, setActiveProductId, products, activeProduct } =
     useActivePlatformProduct();
@@ -32,21 +32,20 @@ export function PlatformProductSwitcher() {
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors',
-            'hover:bg-muted',
+            'flex h-10 min-w-0 items-center gap-2 rounded-xl border border-border/80 bg-card px-3 text-left text-sm shadow-sm transition-colors',
+            'w-full',
+            'hover:border-primary/25 hover:bg-muted/60',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            open && 'bg-muted',
+            open && 'border-primary/30 bg-primary/[0.04]',
           )}
-          aria-label="Trocar produto"
+          aria-label={`Produto selecionado: ${triggerLabel}. Trocar produto`}
         >
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Package className="h-3.5 w-3.5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Produto
-            </span>
-            <span className="block truncate text-xs font-medium text-foreground">
+            {!compact && <span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Produto</span>}
+            <span className="block truncate text-xs font-semibold text-foreground">
               {triggerLabel}
             </span>
           </span>
@@ -59,7 +58,7 @@ export function PlatformProductSwitcher() {
           reproduzido em iPhone 2026-08-01). `avoidCollisions` já é default no
           Radix; faltava a margem para ele ter onde reposicionar. */}
       <PopoverContent
-        className="w-72 overflow-hidden rounded-xl border border-border p-0 shadow-xl"
+        className="w-80 max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-border/80 bg-card p-0 shadow-2xl shadow-primary/10"
         align="start"
         sideOffset={8}
         collisionPadding={12}
@@ -72,11 +71,9 @@ export function PlatformProductSwitcher() {
         portal={false}
       >
         {/* Header — espelha o ModuleSwitcher */}
-        <div className="border-b border-border px-4 py-3">
-          <h4 className="text-sm font-semibold text-foreground">Produtos</h4>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Filtre Vendas e ERP por produto
-          </p>
+        <div className="border-b border-border/70 px-4 py-3.5">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"><Package className="h-3.5 w-3.5 text-primary" />Escopo da operação</div>
+          <h4 className="mt-1 text-sm font-semibold text-foreground">Selecionar produto</h4>
         </div>
 
         {/* Lista */}
@@ -125,9 +122,9 @@ function ProductRow({ label, thumbnail, active, onSelect }: ProductRowProps) {
     <button
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-all duration-200',
-        'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active && 'bg-primary/5 ring-1 ring-primary/20',
+        'flex w-full items-center gap-2.5 rounded-xl border border-transparent px-3 py-2.5 text-left transition-colors duration-150',
+        'hover:border-border/80 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        active && 'border-primary/20 bg-primary/[0.055] shadow-sm',
       )}
     >
       {thumbnail ? (

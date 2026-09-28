@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown, Layers3 } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -47,9 +48,9 @@ function AppsIcon({ className }: { className?: string }) {
  * Popover em grid com os módulos da plataforma (padrão Intentus).
  * Troca o módulo ativo via Context; tema atual (rosa/claro).
  */
-export function PlatformModuleSwitcher() {
+export function PlatformModuleSwitcher({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  const { activeModule, setActiveModule, allModules } = usePlatformModule();
+  const { activeModule, activeModuleDefinition, setActiveModule, allModules } = usePlatformModule();
 
   const handleClick = (mod: PlatformModuleDefinition) => {
     setActiveModule(mod.id);
@@ -61,18 +62,21 @@ export function PlatformModuleSwitcher() {
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
-            'text-muted-foreground hover:text-foreground hover:bg-muted',
+            'flex h-10 min-w-0 items-center gap-2 rounded-xl border border-border/80 bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition-colors',
+            compact && 'w-full justify-center px-2.5 text-xs',
+            'hover:border-primary/25 hover:bg-muted/60',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            open && 'bg-muted text-foreground',
+            open && 'border-primary/30 bg-primary/[0.04]',
           )}
           aria-label="Trocar módulo"
         >
-          <AppsIcon className="h-5 w-5" />
+          <AppsIcon className="h-5 w-5 shrink-0" />
+          <span className="max-w-28 truncate">{activeModuleDefinition.label}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-72 overflow-hidden rounded-xl border border-border p-0 shadow-xl"
+        className="w-80 max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-border/80 bg-card p-0 shadow-2xl shadow-primary/10"
         align="start"
         sideOffset={8}
         // Mesma correção do PlatformProductSwitcher: sem margem de colisão o
@@ -84,16 +88,14 @@ export function PlatformModuleSwitcher() {
         portal={false}
       >
         {/* Header */}
-        <div className="border-b border-border px-4 py-3">
-          <h4 className="text-sm font-semibold text-foreground">Módulos</h4>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Alterne entre as áreas da plataforma
-          </p>
+        <div className="border-b border-border/70 px-4 py-3.5">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"><Layers3 className="h-3.5 w-3.5 text-primary" />Workspace</div>
+          <h4 className="mt-1 text-sm font-semibold text-foreground">Trocar módulo</h4>
         </div>
 
         {/* Grid */}
         <div className="p-3">
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-2">
             {allModules.map((mod) => {
               const Icon = mod.icon;
               const isActive = activeModule === mod.id;
@@ -102,17 +104,17 @@ export function PlatformModuleSwitcher() {
                   key={mod.id}
                   onClick={() => handleClick(mod)}
                   className={cn(
-                    'flex flex-col items-center gap-2 rounded-lg px-2 py-3 text-center transition-all duration-200',
-                    'hover:bg-muted',
+                    'flex flex-col items-center gap-2.5 rounded-xl border border-transparent px-2 py-3.5 text-center transition-colors duration-150',
+                    'hover:border-border/80 hover:bg-muted/50',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isActive && 'bg-primary/5 ring-1 ring-primary/20',
+                    isActive && 'border-primary/20 bg-primary/[0.055] shadow-sm',
                   )}
                 >
                   <div
                     className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-xl text-white transition-all duration-200',
+                      'flex h-11 w-11 items-center justify-center rounded-xl text-white transition-transform duration-150',
                       mod.color,
-                      isActive ? 'scale-105 shadow-md' : 'shadow-sm',
+                      isActive ? 'shadow-md' : 'shadow-sm',
                     )}
                   >
                     <Icon className="h-5 w-5" />

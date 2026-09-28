@@ -8,8 +8,20 @@
 }
 .leads-executive :is(button,input,select,option) { font-family: inherit; }
 .lead-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-.lead-summary-card { display:flex; align-items:center; justify-content:space-between; min-width:0; min-height:104px; padding:16px 18px; border:1px solid hsl(var(--border)); border-left:3px solid hsl(var(--brand)); border-radius:14px; background:hsl(var(--card)); box-shadow:0 6px 22px -20px hsl(var(--brand) / .4); }
-.lead-summary-card div { min-width:0; }.lead-summary-card span { display:block; overflow:hidden; color:hsl(var(--muted-foreground)); font-size:11px; font-weight:700; letter-spacing:.09em; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }.lead-summary-card strong { display:block; margin-top:7px; color:hsl(var(--foreground)); font-size:26px; line-height:1; letter-spacing:-.03em; }.lead-summary-card small { display:block; overflow:hidden; margin-top:7px; color:hsl(var(--muted-foreground)); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }.lead-summary-card svg { width:20px; height:20px; flex:none; padding:9px; box-sizing:content-box; border-radius:10px; background:hsl(var(--brand) / .08); color:hsl(var(--brand)); }.lead-summary-green { border-left-color:hsl(var(--lead-green)); }.lead-summary-green svg { background:hsl(var(--lead-green) / .1); color:hsl(var(--lead-green)); }.lead-summary-gold { border-left-color:hsl(var(--brand)); }.lead-summary-gold svg { background:hsl(var(--brand) / .1); color:hsl(var(--brand)); }.lead-summary-rose { border-left-color:hsl(var(--lead-rose)); }.lead-summary-rose svg { background:hsl(var(--lead-rose) / .1); color:hsl(var(--lead-rose)); }
+.lead-summary-card { position:relative; display:flex; min-width:0; min-height:112px; flex-direction:column; justify-content:space-between; overflow:hidden; padding:12px; border:1px solid hsl(var(--border)); border-top:2px solid hsl(var(--lead-amber)); border-radius:16px; background:hsl(var(--card)); box-shadow:0 6px 18px -14px hsl(var(--primary) / .25); transition:transform .18s ease, box-shadow .18s ease; }
+.lead-summary-card:hover { transform:translateY(-2px); box-shadow:0 10px 24px -16px hsl(var(--primary) / .3); }
+.lead-summary-card::after { position:absolute; right:-25px; bottom:-38px; width:82px; height:82px; border:10px solid currentColor; border-radius:50%; content:""; opacity:.07; pointer-events:none; }
+.lead-summary-heading { position:relative; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-width:0; }
+.lead-summary-card .lead-summary-heading>span { max-width:11rem; color:hsl(var(--foreground)); font-size:14px; font-weight:500; letter-spacing:normal; line-height:1.3; text-transform:none; white-space:normal; }
+.lead-summary-card .lead-summary-heading>i { display:flex; width:38px; height:38px; flex:none; align-items:center; justify-content:center; border-radius:12px; background:hsl(var(--lead-amber) / .1); color:hsl(var(--lead-amber)); font-style:normal; }
+.lead-summary-heading svg { width:19px; height:19px; }
+.lead-summary-card>strong { position:relative; z-index:1; margin-top:10px; color:hsl(var(--foreground)); font-size:30px; font-weight:600; line-height:1; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.lead-summary-primary { border-color:hsl(var(--brand) / .32); border-top:2px solid hsl(var(--brand)); background:hsl(var(--brand) / .075); color:hsl(var(--brand)); }
+.lead-summary-primary .lead-summary-heading>i { background:hsl(var(--brand) / .16); color:hsl(var(--brand)); }
+.lead-summary-green { border-top-color:hsl(var(--lead-green)); color:hsl(var(--lead-green)); }
+.lead-summary-green .lead-summary-heading>i { background:hsl(var(--lead-green) / .1); color:hsl(var(--lead-green)); }
+.lead-summary-gold { border-top-color:hsl(var(--lead-rose)); color:hsl(var(--lead-rose)); }
+.lead-summary-gold .lead-summary-heading>i { background:hsl(var(--lead-rose) / .1); color:hsl(var(--lead-rose)); }
 .lead-workbench { position: relative; min-width: 0; border: 1px solid hsl(var(--border)); border-top: 3px solid hsl(var(--primary)); border-radius: 18px; background: hsl(var(--card)); box-shadow: 0 8px 28px -20px hsl(var(--primary) / .3); }
 .lead-command-bar { display:flex; align-items:center; gap:16px; padding:18px 22px 12px; }
 .lead-search { display:flex; align-items:center; gap:12px; flex:1; min-width:0; color:hsl(var(--muted-foreground)); }
