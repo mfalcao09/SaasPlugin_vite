@@ -180,8 +180,8 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
       <div className="lead-summary-grid" aria-label="Resumo da base">
         <div className="lead-summary-card lead-summary-primary"><div><span>Base consolidada</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.total_cards ?? total))}</strong><small>Todos os leads disponíveis</small></div><Users /></div>
         <div className="lead-summary-card lead-summary-green"><div><span>Contato disponível</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.with_phone ?? 0))}</strong><small>Leads com telefone informado</small></div><Phone /></div>
-        <div className="lead-summary-card lead-summary-gold"><div><span>Ações em andamento</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.active_operations ?? 0))}</strong><small>Leads com uma ação ativa</small></div><Workflow /></div>
-        <div className="lead-summary-card lead-summary-rose"><div><span>Contato bloqueado</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.suppressed ?? 0))}</strong><small>Não deve receber contato</small></div><CircleAlert /></div>
+        <div className="lead-summary-card lead-summary-gold"><div><span>Operações em andamento</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.active_operations ?? 0))}</strong><small>Fila ou execução ativa</small></div><Workflow /></div>
+        <div className="lead-summary-card lead-summary-rose"><div><span>Opt-out de contato</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.suppressed ?? 0))}</strong><small>Telefone ou perfil com bloqueio</small></div><CircleAlert /></div>
       </div>
 
       <div className="lead-workbench">
@@ -198,8 +198,8 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
             <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
             <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
             <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Contato</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
-            <select aria-label="Filtro de supressão" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Bloqueio de contato</option><option value="yes">Contato bloqueado</option><option value="no">Contato liberado</option></select>
-            <select aria-label="Filtro de operações" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Ação atual</option><option value="yes">Com ação ativa</option><option value="no">Sem ação ativa</option></select>
+            <select aria-label="Filtro de opt-out de contato" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Opt-out de contato</option><option value="yes">Com opt-out</option><option value="no">Sem opt-out</option></select>
+            <select aria-label="Filtro de processamento" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Processamento</option><option value="yes">Em processamento</option><option value="no">Sem processamento</option></select>
           </div>
           <div className="lead-sort"><span>Ordenar por</span>
             <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)}>
@@ -212,11 +212,12 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
           {triagem.map((value) => <button key={value} className={`lead-chip triage-${value}`} onClick={() => { setTriagem(triagem.filter((item) => item !== value)); resetPageAndSelection(); }}>{triageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
           {stage.map((value) => <button key={value} className="lead-chip" onClick={() => { setStage(stage.filter((item) => item !== value)); resetPageAndSelection(); }}>{stageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
           {phone !== "all" && <button className="lead-chip" onClick={() => { setPhone("all"); resetPageAndSelection(); }}>{phone === "with" ? "Com telefone" : "Sem telefone"}<X className="h-3 w-3" /></button>}
-          {suppression !== "all" && <button className="lead-chip" onClick={() => { setSuppression("all"); resetPageAndSelection(); }}>{suppression === "yes" ? "Contato bloqueado" : "Contato liberado"}<X className="h-3 w-3" /></button>}
-          {operation !== "all" && <button className="lead-chip" onClick={() => { setOperation("all"); resetPageAndSelection(); }}>{operation === "yes" ? "Com ação ativa" : "Sem ação ativa"}<X className="h-3 w-3" /></button>}
+          {suppression !== "all" && <button className="lead-chip" onClick={() => { setSuppression("all"); resetPageAndSelection(); }}>{suppression === "yes" ? "Com opt-out" : "Sem opt-out"}<X className="h-3 w-3" /></button>}
+          {operation !== "all" && <button className="lead-chip" onClick={() => { setOperation("all"); resetPageAndSelection(); }}>{operation === "yes" ? "Em processamento" : "Sem processamento"}<X className="h-3 w-3" /></button>}
           <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}>Limpar filtros</Button>
         </div>}
 
+        <div className="lead-filter-guide" role="note"><span><b>Opt-out de contato</b> é um bloqueio operacional por telefone ou @perfil; não é a etapa DNC.</span><span><b>Processamento</b> indica enriquecimento, pré-seleção, encaminhamento ou revisão ainda na fila/em execução. Campanhas são controladas em <b>Campanhas &amp; disparos</b>.</span></div>
         <div className="lead-table-viewport" tabIndex={0} aria-label="Tabela de leads" role="region">
           <table className="lead-data-table">
             <thead><tr>
@@ -233,7 +234,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><span className={`lead-stage stage-${row.derived_stage ?? "db"}`}><i />{stageLabels[row.derived_stage ?? "db"]}</span></td>
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Contato bloqueado</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} ação(ões)</span> : <span className="text-xs text-muted-foreground">Sem ação ativa</span>}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Bloqueado para contato</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} em processamento</span> : <span className="text-xs text-muted-foreground">Sem processamento</span>}</td>
                   <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
                     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetail(row)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                   </td>
@@ -253,11 +254,12 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
             <Button size="sm" variant="ghost" className="h-8" onClick={() => { setSelected([]); setAllFilteredSelected(false); }}><X className="mr-1 h-3.5 w-3.5" />Limpar</Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {selectedCount === 1 && !allFilteredSelected && <Button variant="outline" size="sm" onClick={() => selectedRows[0] && setLeadDetail(selectedRows[0])}><Eye className="mr-2 h-4 w-4" />Visualizar</Button>}
-            <Button variant="outline" size="sm" onClick={() => void copySelectedContacts()} disabled={allFilteredSelected || !selectedRows.length} title={allFilteredSelected ? "Disponível ao selecionar leads desta página" : "Copia nome, @perfil e telefone dos selecionados"}><Copy className="mr-2 h-4 w-4" />Copiar contatos</Button>
-            <select aria-label="Triagem de destino" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass + " h-9 bg-card"}>{triages.map((value) => <option key={value} value={value}>{triageLabels[value]}</option>)}</select>
-            <Button size="sm" onClick={() => void reclassify()} disabled={actionBusy}><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Aplicar triagem"}</Button>
+            {selectedCount === 1 && !allFilteredSelected && <Button variant="outline" size="sm" onClick={() => selectedRows[0] && setLeadDetail(selectedRows[0])} title="Abre a ficha completa do lead"><Eye className="mr-2 h-4 w-4" />Visualizar lead</Button>}
+            <Button variant="outline" size="sm" onClick={() => void copySelectedContacts()} disabled={allFilteredSelected || !selectedRows.length} title={allFilteredSelected ? "Disponível ao selecionar leads desta página" : "Copia nome, @perfil e telefone dos selecionados"}><Copy className="mr-2 h-4 w-4" />Copiar dados</Button>
+            <select aria-label="Classificação de destino" title="Altera a triagem dos leads selecionados; não altera a etapa" value={targetTriage} onChange={(event) => setTargetTriage(event.target.value as Triage)} className={controlClass + " h-9 bg-card"}>{triages.map((value) => <option key={value} value={value}>{triageLabels[value]}</option>)}</select>
+            <Button size="sm" onClick={() => void reclassify()} disabled={actionBusy} title="Altera a triagem dos leads selecionados; não cria campanha nem move a etapa"><Workflow className="mr-2 h-4 w-4" />{actionBusy ? "Aplicando…" : "Classificar leads"}</Button>
           </div>
+          <div className="lead-bulk-help"><span><Eye />Visualizar abre a ficha individual.</span><span><Copy />Copiar dados leva nome, @perfil e telefone.</span><span><Workflow />Classificar altera apenas a triagem.</span></div>
         </div> : null}
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="text-sm text-muted-foreground">Exibindo <span className="font-medium text-foreground">{numberFormat.format(start)}–{numberFormat.format(end)}</span> · <span className="font-medium text-foreground">{base.error || base.isLoading ? "—" : numberFormat.format(total)} leads filtrados</span></div>
@@ -267,7 +269,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
       <Dialog open={Boolean(leadDetail)} onOpenChange={(open) => !open && setLeadDetail(null)}>
         <DialogContent className="flex h-[min(90vh,900px)] w-[calc(100vw-32px)] max-w-[1440px] flex-col overflow-hidden p-0">
           <VisuallyHidden><DialogTitle>Detalhes do lead</DialogTitle></VisuallyHidden>
-          {leadDetail && <ProspeccaoLeadDetail lead={leadDetail} onClose={() => setLeadDetail(null)} />}
+          {leadDetail && <ProspeccaoLeadDetail lead={leadDetail} />}
         </DialogContent>
       </Dialog>
     </section>
