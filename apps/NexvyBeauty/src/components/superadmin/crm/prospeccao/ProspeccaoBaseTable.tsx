@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ChevronDown, Copy, Eye, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, CircleAlert, ChevronDown, Copy, Eye, ExternalLink, MoreHorizontal, Phone, RefreshCw, Search, Users, Workflow, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -47,6 +47,12 @@ function formatPhone(value: string | null) {
   const digits = value.replace(/\D/g, "");
   if (/^55\d{2}9\d{8}$/.test(digits)) return `+55 ${digits.slice(2, 4)} ${digits.slice(4, 5)}${digits.slice(5, 9)}-${digits.slice(9)}`;
   return null;
+}
+
+function instagramUrl(handle: string | null | undefined) {
+  const normalized = String(handle ?? "").trim().replace(/^@/, "");
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(normalized)) return null;
+  return `https://www.instagram.com/${encodeURIComponent(normalized)}/`;
 }
 
 function MultiFilter<T extends string>({ title, values, selected, labels, onChange }: {
@@ -234,15 +240,17 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
         <div className="lead-table-viewport" tabIndex={0} aria-label="Tabela de leads" role="region">
           <table className="lead-data-table">
             <thead><tr>
-              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
+              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="w-[72px] whitespace-nowrap px-3 py-3 text-center">Instagram</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
             </tr></thead>
             <tbody className="divide-y divide-border">
-              {base.isLoading ? Array.from({ length: 6 }, (_, index) => <tr key={index} aria-label="Carregando leads">{Array.from({ length: 7 }, (_, cell) => <td key={cell} className="p-4"><div className="lead-skeleton" /></td>)}</tr>) : base.error ? <tr><td colSpan={7} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
+              {base.isLoading ? Array.from({ length: 6 }, (_, index) => <tr key={index} aria-label="Carregando leads">{Array.from({ length: 8 }, (_, cell) => <td key={cell} className="p-4"><div className="lead-skeleton" /></td>)}</tr>) : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
                 const phoneLabel = formatPhone(row.phone_normalized);
                 const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
+                const profileUrl = instagramUrl(row.profiles.find((profile) => profile.handle)?.handle);
                 return <tr key={row.lead_id} aria-selected={selected.includes(row.lead_id) || allFilteredSelected} className={`group border-l-2 transition-colors hover:bg-primary/[0.025] ${selected.includes(row.lead_id) || allFilteredSelected ? "border-l-primary bg-primary/[0.035]" : "border-l-transparent"}`}>
                   <td className="sticky left-0 z-10 border-r border-border bg-card px-4 py-3 group-hover:bg-muted/30"><input className="accent-primary" aria-label={`Selecionar ${row.name}`} type="checkbox" checked={selected.includes(row.lead_id) || allFilteredSelected} onChange={(event) => { setAllFilteredSelected(false); setSelected((current) => event.target.checked ? [...new Set([...current, row.lead_id])] : current.filter((id) => id !== row.lead_id)); }} /></td>
                   <td className="max-w-[360px] whitespace-nowrap px-4 py-3"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-xs font-semibold text-primary">{(row.name.match(/[\p{L}\p{N}]+/gu) ?? ["?"]).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("pt-BR")}</span><div className="min-w-0"><div className="truncate font-semibold text-foreground"><button className="lead-name" onClick={() => setLeadDetail(row)}>{row.name || "Sem nome"}</button></div><div className="mt-0.5 truncate text-xs text-muted-foreground">{handles.join(" · ") || "Sem perfil vinculado"}{row.profile_count > 1 ? ` · ${row.profile_count} perfis` : ""}</div></div></div></td>
+                  <td className="whitespace-nowrap px-3 py-3 text-center"><a href={profileUrl ?? undefined} target="_blank" rel="noopener noreferrer" aria-label={profileUrl ? `Abrir Instagram de ${row.name || "lead"}` : "Instagram indisponível"} title={profileUrl ? "Abrir perfil no Instagram" : "Perfil do Instagram indisponível"} className={`lead-instagram-link ${profileUrl ? "" : "is-disabled"}`} onClick={(event) => { if (!profileUrl) event.preventDefault(); }}><ExternalLink className="h-4 w-4" aria-hidden="true" /></a></td>
                   <td className="whitespace-nowrap px-4 py-3"><span className={`lead-triage triage-${row.triagem_summary}`}>{triageLabels[row.triagem_summary]}</span></td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><span className={`lead-stage stage-${row.derived_stage ?? "db"}`}><i />{stageLabels[row.derived_stage ?? "db"]}</span></td>
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
@@ -252,7 +260,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
                   </td>
                 </tr>;
               })}
-              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={7} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
+              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={8} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
             </tbody>
           </table>
         </div>
