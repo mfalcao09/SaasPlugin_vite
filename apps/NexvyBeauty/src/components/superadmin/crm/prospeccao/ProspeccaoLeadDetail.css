@@ -1,4 +1,5 @@
-.prospect-detail { display:grid; grid-template-columns: minmax(260px, 31%) 1fr; min-height:680px; height:100%; background:hsl(var(--background)); color:hsl(var(--foreground)); }
+.prospect-detail { display:grid; grid-template-columns: minmax(260px, 31%) 1fr; min-height:680px; height:100%; background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; }
+.prospect-detail :is(button,a) { font-family:inherit; }
 .prospect-detail-aside { position:relative; overflow:hidden; padding:36px 30px; background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); }
 .prospect-detail-aside:after { content:""; position:absolute; width:280px; height:280px; right:-170px; bottom:-120px; border:1px solid hsl(var(--brand) / .18); border-radius:50%; box-shadow:0 0 0 28px hsl(var(--brand) / .06), 0 0 0 58px hsl(var(--brand) / .035); pointer-events:none; }
 .prospect-detail-close { position:absolute; top:16px; right:16px; z-index:2; border-radius:50%; }

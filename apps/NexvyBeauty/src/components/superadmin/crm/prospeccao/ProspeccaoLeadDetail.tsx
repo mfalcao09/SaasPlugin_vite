@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Instagram, MessageCircle, Phone, UserRound, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CalendarDays, Instagram, MessageCircle, UserRound } from "lucide-react";
 import type { Lead } from "./ProspeccaoBaseTable";
 import "./ProspeccaoLeadDetail.css";
 
@@ -14,7 +13,7 @@ function displayPhone(value: string | null) {
     : value;
 }
 
-export function ProspeccaoLeadDetail({ lead, onClose }: { lead: Lead; onClose: () => void }) {
+export function ProspeccaoLeadDetail({ lead }: { lead: Lead }) {
   const [tab, setTab] = useState<"profile" | "found" | "conversations">("profile");
   const firstProfile = lead.profiles[0];
   const handle = firstProfile?.handle ? `@${firstProfile.handle.replace(/^@/, "")}` : "";
@@ -37,7 +36,6 @@ export function ProspeccaoLeadDetail({ lead, onClose }: { lead: Lead; onClose: (
         <div className="prospect-detail-signal"><span>Último sinal</span><strong>{lead.active_operation_count ? "Ação em andamento" : ""}</strong></div>
       </aside>
       <div className="prospect-detail-main">
-        <Button variant="ghost" size="icon" aria-label="Fechar detalhes" onClick={onClose} className="prospect-detail-close prospect-detail-close-light"><X className="h-5 w-5" /></Button>
         <div className="prospect-detail-heading"><span>Ficha completa</span><h1>Informações do lead</h1><p>Dados públicos, qualificação, origem e histórico de contato.</p></div>
         <div className="prospect-detail-tabs" role="tablist">
           <button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}>Perfil</button>
@@ -52,7 +50,7 @@ export function ProspeccaoLeadDetail({ lead, onClose }: { lead: Lead; onClose: (
             <div><small>Adicionado em</small><p>{addedAt && <><CalendarDays />{addedAt}</>}</p></div>
           </div>
           <div className="prospect-detail-bio"><small>Biografia do Instagram</small><div></div></div>
-          <div className="prospect-detail-tags">{handle && <span><Instagram />Instagram</span>}{firstProfile?.origem && <span>{firstProfile.origem}</span>}{lead.is_suppressed && <span className="blocked">Contato bloqueado</span>}</div>
+          <div className="prospect-detail-tags">{handle && <span><Instagram />Instagram</span>}{lead.source && lead.source.toLowerCase() !== "instagram" && <span>{lead.source}</span>}{lead.is_suppressed && <span className="blocked">Opt-out de contato</span>}</div>
           <p className="prospect-detail-footnote">Dados públicos recolhidos nas análises do workspace.</p>
         </div>}
         {tab === "found" && <div className="prospect-detail-empty"><Instagram /><p>Este lead foi encontrado em {lead.profile_count || ""} perfil(is).</p></div>}
