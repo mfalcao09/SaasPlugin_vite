@@ -12,20 +12,20 @@ import "./ProspeccaoBaseTable.css";
 
 type Triage = "principal" | "semente" | "nao_classificado" | "remocao_confirmada";
 type Stage = "db" | "preselected" | "contacted" | "remarketing_pool" | "service" | "closing" | "onboarding" | "do_not_contact";
+type DncReason = "hard_stop" | "cadence_exhausted" | "closed_lost" | "unknown";
 type Filters = {
   triagem?: Triage[];
   derived_stage?: Stage[];
   phone?: "with" | "without";
-  suppressed?: boolean;
-  active_operation?: boolean;
+  dnc_reason?: DncReason[];
   query?: string;
 };
 export type Profile = { id: string; handle: string | null; triagem: Triage | null; telefone: string | null; seguidores: number | null; origem: string };
 export type Lead = {
   lead_id: string; name: string; phone: string | null; phone_normalized: string | null;
-  source: string | null; updated_at: string; derived_stage: Stage | null;
+  source: string | null; updated_at: string; derived_stage: Stage | null; dnc_reason: DncReason | null;
   triagem_summary: Triage; profile_count: number; followers_count: number;
-  profiles: Profile[]; active_operation_count: number; is_suppressed: boolean;
+  profiles: Profile[];
 };
 
 const triageLabels: Record<Triage, string> = {
@@ -33,6 +33,9 @@ const triageLabels: Record<Triage, string> = {
 };
 const stageLabels: Record<Stage, string> = {
   db: "Na base", preselected: "Pré-selecionado", contacted: "Contatado", remarketing_pool: "Remarketing", service: "Em atendimento", closing: "Fechamento", onboarding: "Onboarding", do_not_contact: "Não contatar",
+};
+const dncReasonLabels: Record<DncReason, string> = {
+  hard_stop: "Hard stop", cadence_exhausted: "Cadência esgotada", closed_lost: "Closed lost", unknown: "Não informado",
 };
 const triages = Object.keys(triageLabels) as Triage[];
 const stages = Object.keys(stageLabels) as Stage[];
@@ -71,14 +74,29 @@ function MultiFilter<T extends string>({ title, values, selected, labels, onChan
   );
 }
 
+function SingleFilter<T extends string>({ title, value, values, labels, onChange }: {
+  title: string; value: T | null; values: T[]; labels: Record<T, string>; onChange: (value: T | null) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="lead-filter-trigger">{value ? labels[value] : title}<ChevronDown className="h-3.5 w-3.5 opacity-50" /></Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60 p-2">
+        {values.map((item) => <DropdownMenuCheckboxItem key={item} checked={value === item} onSelect={(event) => event.preventDefault()} onCheckedChange={(checked) => onChange(checked ? item : null)}>{labels[item]}</DropdownMenuCheckboxItem>)}
+        {value && <DropdownMenuItem onSelect={() => onChange(null)}>Limpar seleção</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [triagem, setTriagem] = useState<Triage[]>([]);
   const [stage, setStage] = useState<Stage[]>([]);
-  const [phone, setPhone] = useState("all");
-  const [suppression, setSuppression] = useState("all");
-  const [operation, setOperation] = useState("all");
+  const [phone, setPhone] = useState<"with" | "without" | null>(null);
+  const [dncReason, setDncReason] = useState<DncReason[]>([]);
   const [sortBy, setSortBy] = useState("name");
   const [descending, setDescending] = useState(false);
   const [pageSize, setPageSize] = useState(25);
@@ -91,11 +109,10 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
   const filters = useMemo<Filters>(() => ({
     ...(triagem.length ? { triagem } : {}),
     ...(stage.length ? { derived_stage: stage } : {}),
-    ...(phone !== "all" ? { phone: phone as "with" | "without" } : {}),
-    ...(suppression !== "all" ? { suppressed: suppression === "yes" } : {}),
-    ...(operation !== "all" ? { active_operation: operation === "yes" } : {}),
+    ...(phone ? { phone } : {}),
+    ...(stage.includes("do_not_contact") && dncReason.length ? { dnc_reason: dncReason } : {}),
     ...(query.trim() ? { query: query.trim() } : {}),
-  }), [triagem, stage, phone, suppression, operation, query]);
+  }), [triagem, stage, phone, dncReason, query]);
   const queryKey = ["nova-prospeccao-base", productId, filters, sortBy, descending, pageSize, page];
   const base = useQuery({
     queryKey,
@@ -171,7 +188,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
 
   const start = total ? page * pageSize + 1 : 0;
   const end = Math.min((page + 1) * pageSize, total);
-  const activeFilterCount = triagem.length + stage.length + Number(phone !== "all") + Number(suppression !== "all") + Number(operation !== "all") + Number(Boolean(query.trim()));
+  const activeFilterCount = triagem.length + stage.length + Number(Boolean(phone)) + dncReason.length + Number(Boolean(query.trim()));
   return (
     <section className="leads-executive space-y-3.5">
       {base.error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />Não foi possível atualizar os leads. Tente novamente.</span><Button variant="outline" size="sm" onClick={() => void base.refetch()} disabled={base.isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${base.isFetching ? "animate-spin" : ""}`} />Tentar novamente</Button></div> : null}
@@ -180,8 +197,7 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
       <div className="lead-summary-grid" aria-label="Resumo da base">
         <div className="lead-summary-card lead-summary-primary"><div><span>Base consolidada</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.total_cards ?? total))}</strong><small>Todos os leads disponíveis</small></div><Users /></div>
         <div className="lead-summary-card lead-summary-green"><div><span>Contato disponível</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.with_phone ?? 0))}</strong><small>Leads com telefone informado</small></div><Phone /></div>
-        <div className="lead-summary-card lead-summary-gold"><div><span>Operações em andamento</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.active_operations ?? 0))}</strong><small>Fila ou execução ativa</small></div><Workflow /></div>
-        <div className="lead-summary-card lead-summary-rose"><div><span>Opt-out de contato</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.suppressed ?? 0))}</strong><small>Telefone ou perfil com bloqueio</small></div><CircleAlert /></div>
+        <div className="lead-summary-card lead-summary-gold"><div><span>Não contatar</span><strong>{base.isLoading || base.error ? "—" : numberFormat.format(Number(summary.do_not_contact ?? 0))}</strong><small>Leads fora de contato</small></div><CircleAlert /></div>
       </div>
 
       <div className="lead-workbench">
@@ -196,10 +212,9 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
         <div className="lead-facets">
           <div className="lead-filter-group">
             <MultiFilter title="Triagem" values={triages} selected={triagem} labels={triageLabels} onChange={(value) => { setTriagem(value); resetPageAndSelection(); }} />
-            <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); resetPageAndSelection(); }} />
-            <select aria-label="Filtro de telefone" value={phone} onChange={(event) => { setPhone(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Contato</option><option value="with">Com telefone</option><option value="without">Sem telefone</option></select>
-            <select aria-label="Filtro de opt-out de contato" value={suppression} onChange={(event) => { setSuppression(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Opt-out de contato</option><option value="yes">Com opt-out</option><option value="no">Sem opt-out</option></select>
-            <select aria-label="Filtro de processamento" value={operation} onChange={(event) => { setOperation(event.target.value); resetPageAndSelection(); }} className="lead-filter-select"><option value="all">Processamento</option><option value="yes">Em processamento</option><option value="no">Sem processamento</option></select>
+            <MultiFilter title="Etapa" values={stages} selected={stage} labels={stageLabels} onChange={(value) => { setStage(value); if (!value.includes("do_not_contact")) setDncReason([]); resetPageAndSelection(); }} />
+            <SingleFilter title="Contato" value={phone} values={["with", "without"]} labels={{ with: "Com telefone", without: "Sem telefone" }} onChange={(value) => { setPhone(value); resetPageAndSelection(); }} />
+            {stage.includes("do_not_contact") && <MultiFilter title="Motivo DNC" values={["hard_stop", "cadence_exhausted", "closed_lost", "unknown"]} selected={dncReason} labels={dncReasonLabels} onChange={(value) => { setDncReason(value); resetPageAndSelection(); }} />}
           </div>
           <div className="lead-sort"><span>Ordenar por</span>
             <select aria-label="Ordenação" value={sortBy} onChange={(event) => changeSort(event.target.value)}>
@@ -210,21 +225,19 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
         </div>
         {activeFilterCount > 0 && <div className="lead-active-filters">
           {triagem.map((value) => <button key={value} className={`lead-chip triage-${value}`} onClick={() => { setTriagem(triagem.filter((item) => item !== value)); resetPageAndSelection(); }}>{triageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
-          {stage.map((value) => <button key={value} className="lead-chip" onClick={() => { setStage(stage.filter((item) => item !== value)); resetPageAndSelection(); }}>{stageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
-          {phone !== "all" && <button className="lead-chip" onClick={() => { setPhone("all"); resetPageAndSelection(); }}>{phone === "with" ? "Com telefone" : "Sem telefone"}<X className="h-3 w-3" /></button>}
-          {suppression !== "all" && <button className="lead-chip" onClick={() => { setSuppression("all"); resetPageAndSelection(); }}>{suppression === "yes" ? "Com opt-out" : "Sem opt-out"}<X className="h-3 w-3" /></button>}
-          {operation !== "all" && <button className="lead-chip" onClick={() => { setOperation("all"); resetPageAndSelection(); }}>{operation === "yes" ? "Em processamento" : "Sem processamento"}<X className="h-3 w-3" /></button>}
-          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone("all"); setSuppression("all"); setOperation("all"); resetPageAndSelection(); }}>Limpar filtros</Button>
+          {stage.map((value) => <button key={value} className="lead-chip" onClick={() => { const next = stage.filter((item) => item !== value); setStage(next); if (!next.includes("do_not_contact")) setDncReason([]); resetPageAndSelection(); }}>{stageLabels[value]}<X className="h-3 w-3" /><span className="sr-only">Remover filtro</span></button>)}
+          {phone && <button className="lead-chip" onClick={() => { setPhone(null); resetPageAndSelection(); }}>{phone === "with" ? "Com telefone" : "Sem telefone"}<X className="h-3 w-3" /></button>}
+          {dncReason.map((value) => <button key={value} className="lead-chip" onClick={() => { setDncReason(dncReason.filter((item) => item !== value)); resetPageAndSelection(); }}>{dncReasonLabels[value]}<X className="h-3 w-3" /></button>)}
+          <Button variant="ghost" size="sm" onClick={() => { setQuery(""); setTriagem([]); setStage([]); setPhone(null); setDncReason([]); resetPageAndSelection(); }}>Limpar filtros</Button>
         </div>}
 
-        <div className="lead-filter-guide" role="note"><span><b>Opt-out de contato</b> é um bloqueio operacional por telefone ou @perfil; não é a etapa DNC.</span><span><b>Processamento</b> indica enriquecimento, pré-seleção, encaminhamento ou revisão ainda na fila/em execução. Campanhas são controladas em <b>Campanhas &amp; disparos</b>.</span></div>
         <div className="lead-table-viewport" tabIndex={0} aria-label="Tabela de leads" role="region">
           <table className="lead-data-table">
             <thead><tr>
-              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="whitespace-nowrap px-4 py-3">Ação atual</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
+              <th className="sticky left-0 z-20 w-12 border-r border-border bg-muted px-4 py-3"><input className="h-4 w-4 accent-primary" title="Selecionar todos os leads desta página" aria-label="Selecionar todos os leads desta página" type="checkbox" checked={pageSelected} onChange={(event) => togglePage(event.target.checked)} /></th><th className="min-w-[280px] px-4 py-3">Lead / perfil</th><th className="whitespace-nowrap px-4 py-3">Triagem</th><th className="whitespace-nowrap px-4 py-3">Etapa</th><th className="whitespace-nowrap px-4 py-3">Telefone</th><th className="whitespace-nowrap px-4 py-3 text-right">Seguidores</th><th className="sticky right-0 z-20 w-[68px] border-l border-border bg-muted px-2 py-3 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]"><span>Ações</span></th>
             </tr></thead>
             <tbody className="divide-y divide-border">
-              {base.isLoading ? Array.from({ length: 6 }, (_, index) => <tr key={index} aria-label="Carregando leads">{Array.from({ length: 8 }, (_, cell) => <td key={cell} className="p-4"><div className="lead-skeleton" /></td>)}</tr>) : base.error ? <tr><td colSpan={8} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
+              {base.isLoading ? Array.from({ length: 6 }, (_, index) => <tr key={index} aria-label="Carregando leads">{Array.from({ length: 7 }, (_, cell) => <td key={cell} className="p-4"><div className="lead-skeleton" /></td>)}</tr>) : base.error ? <tr><td colSpan={7} className="p-8 text-center text-destructive">{(base.error as Error).message}</td></tr> : rows.map((row) => {
                 const phoneLabel = formatPhone(row.phone_normalized);
                 const handles = row.profiles.map((profile) => profile.handle ? `@${profile.handle.replace(/^@/, "")}` : null).filter(Boolean);
                 return <tr key={row.lead_id} aria-selected={selected.includes(row.lead_id) || allFilteredSelected} className={`group border-l-2 transition-colors hover:bg-primary/[0.025] ${selected.includes(row.lead_id) || allFilteredSelected ? "border-l-primary bg-primary/[0.035]" : "border-l-transparent"}`}>
@@ -234,13 +247,12 @@ export function ProspeccaoBaseTable({ productId }: { productId: string }) {
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground"><span className={`lead-stage stage-${row.derived_stage ?? "db"}`}><i />{stageLabels[row.derived_stage ?? "db"]}</span></td>
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">{phoneLabel ? <span>{phoneLabel}</span> : row.phone ? <span title={`Valor armazenado: ${row.phone}`} className="text-amber-700">Revisar telefone</span> : <span className="text-muted-foreground">Não informado</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{row.profile_count ? numberFormat.format(row.followers_count) : "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{row.is_suppressed ? <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">Bloqueado para contato</span> : row.active_operation_count ? <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-700">{row.active_operation_count} em processamento</span> : <span className="text-xs text-muted-foreground">Sem processamento</span>}</td>
                   <td className="sticky right-0 z-10 border-l border-border bg-card px-2 py-2 text-center shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] group-hover:bg-muted/50">
                     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label={`Abrir menu de ações de ${row.name || "lead"}`} title="Ações do lead" className="h-9 w-9 border-border bg-card text-foreground shadow-sm hover:border-primary/35 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"><MoreHorizontal className="h-[18px] w-[18px]" /><span className="sr-only">Ações do lead</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ações do lead</div><DropdownMenuItem onClick={() => setLeadDetail(row)}><Eye className="mr-2 h-4 w-4" />Visualizar lead</DropdownMenuItem><DropdownMenuItem disabled={selected.includes(row.lead_id) || allFilteredSelected} onClick={() => { setSelected((current) => [...new Set([...current, row.lead_id])]); setAllFilteredSelected(false); }}><Check className="mr-2 h-4 w-4" />Selecionar para ação em lote</DropdownMenuItem><DropdownMenuItem disabled={!phoneLabel && !row.phone} onClick={() => void copyValue(phoneLabel ?? row.phone, "Telefone")}><Phone className="mr-2 h-4 w-4" />Copiar telefone</DropdownMenuItem><DropdownMenuItem disabled={!handles.length} onClick={() => void copyValue(handles[0], "Perfil")}><Copy className="mr-2 h-4 w-4" />Copiar @perfil</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                   </td>
                 </tr>;
               })}
-              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={8} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
+              {!base.isLoading && !base.error && !rows.length && <tr><td colSpan={7} className="p-12 text-center"><Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" /><div className="font-medium">Nenhum lead encontrado</div><div className="mt-1 text-sm text-muted-foreground">Altere ou limpe alguns filtros para ampliar o resultado.</div></td></tr>}
             </tbody>
           </table>
         </div>

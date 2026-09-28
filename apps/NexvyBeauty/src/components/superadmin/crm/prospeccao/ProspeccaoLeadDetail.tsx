@@ -33,7 +33,6 @@ export function ProspeccaoLeadDetail({ lead }: { lead: Lead }) {
           <div><small>Seguidores</small><strong>{lead.profile_count ? numberFormat.format(lead.followers_count) : ""}</strong></div>
           <div><small>Seguindo</small><strong></strong></div><div><small>Publicações</small><strong></strong></div><div><small>Aparições</small><strong>{lead.profile_count || ""}</strong></div>
         </div></div>
-        <div className="prospect-detail-signal"><span>Último sinal</span><strong>{lead.active_operation_count ? "Ação em andamento" : ""}</strong></div>
       </aside>
       <div className="prospect-detail-main">
         <div className="prospect-detail-heading"><span>Ficha completa</span><h1>Informações do lead</h1><p>Dados públicos, qualificação, origem e histórico de contato.</p></div>
@@ -50,7 +49,7 @@ export function ProspeccaoLeadDetail({ lead }: { lead: Lead }) {
             <div><small>Adicionado em</small><p>{addedAt && <><CalendarDays />{addedAt}</>}</p></div>
           </div>
           <div className="prospect-detail-bio"><small>Biografia do Instagram</small><div></div></div>
-          <div className="prospect-detail-tags">{handle && <span><Instagram />Instagram</span>}{lead.source && lead.source.toLowerCase() !== "instagram" && <span>{lead.source}</span>}{lead.is_suppressed && <span className="blocked">Opt-out de contato</span>}</div>
+          <div className="prospect-detail-tags">{handle && <span><Instagram />Instagram</span>}{lead.source && lead.source.toLowerCase() !== "instagram" && <span>{lead.source}</span>}{lead.derived_stage === "do_not_contact" && <span className="blocked">Não contatar</span>}</div>
           <p className="prospect-detail-footnote">Dados públicos recolhidos nas análises do workspace.</p>
         </div>}
         {tab === "found" && <div className="prospect-detail-empty"><Instagram /><p>Este lead foi encontrado em {lead.profile_count || ""} perfil(is).</p></div>}

@@ -7,6 +7,7 @@ import {
   type HarnessState,
 } from "./harness-stage.ts";
 import { paintLeadCurrentStage } from "./harness-ui-stage.ts";
+import type { DncReason } from "./states.ts";
 
 type SbRpc = {
   from: (t: string) => any;
@@ -24,6 +25,7 @@ async function casStage(
     expectedVersion?: number;
     stage: string;
     nextAction?: string;
+    dncReason?: DncReason | "unknown" | null;
   },
 ): Promise<{ ok: boolean; stage?: string; error?: string }> {
   if (!input.leadId || !input.productId) {
@@ -53,6 +55,7 @@ async function casStage(
     p_expected_version: expected,
     p_patch: {
       derived_stage: input.stage,
+      ...(input.dncReason !== undefined ? { dnc_reason: input.dncReason } : {}),
       ...(input.nextAction ? { next_action: input.nextAction } : {}),
     },
   });
@@ -151,6 +154,7 @@ export async function markLeadAfterExitMessage(
     expectedVersion: input.expectedVersion,
     stage,
     nextAction: input.kind === "hard" ? "do_not_contact" : "remarketing_pool_idle",
+    dncReason: input.kind === "hard" ? "hard_stop" : "closed_lost",
   });
 }
 
