@@ -51,6 +51,8 @@ WITH profile_rollup AS MATERIALIZED (
     l.source,
     l.updated_at,
     coalesce(s.derived_stage, 'db') AS derived_stage,
+    CASE WHEN coalesce(s.derived_stage, 'db') = 'do_not_contact'
+      THEN coalesce(s.dnc_reason, 'unknown') ELSE NULL END AS dnc_reason,
     coalesce(p.triagem_summary, 'nao_classificado') AS triagem_summary,
     coalesce(p.profile_count, 0) AS profile_count,
     coalesce(p.followers_count, 0) AS followers_count,
@@ -144,12 +146,9 @@ WITH profile_rollup AS MATERIALIZED (
       OR (p_filters->>'phone' = 'without' AND nullif(btrim(p.phone), '') IS NULL)
     )
     AND (
-      NOT (coalesce(p_filters, '{}'::jsonb) ? 'suppressed')
-      OR p.is_suppressed = (p_filters->>'suppressed')::boolean
-    )
-    AND (
-      NOT (coalesce(p_filters, '{}'::jsonb) ? 'active_operation')
-      OR p.has_active_operation = (p_filters->>'active_operation')::boolean
+      NOT (coalesce(p_filters, '{}'::jsonb) ? 'dnc_reason')
+      OR coalesce(p.derived_stage, 'db') <> 'do_not_contact'
+      OR coalesce(p_filters->'dnc_reason', '[]'::jsonb) ? coalesce(p.dnc_reason, 'unknown')
     )
     AND (
       nullif(btrim(p_filters->>'query'), '') IS NULL
@@ -228,7 +227,7 @@ SELECT jsonb_build_object(
   'data', coalesce((
     SELECT jsonb_agg(to_jsonb(pp) - 'phone_digits' - 'national_phone' -
       'handle_sort' - 'first_handle' - 'has_principal' - 'has_semente' -
-      'has_nao_classificado' - 'has_remocao_confirmada' - 'has_active_operation')
+      'has_nao_classificado' - 'has_remocao_confirmada' - 'has_active_operation' - 'is_suppressed')
     FROM page_with_profiles pp
   ), '[]'::jsonb),
   'summary', jsonb_build_object(
@@ -236,10 +235,8 @@ SELECT jsonb_build_object(
       WHERE l.product_id = p_product_id),
     'with_phone', (SELECT count(*) FROM public.platform_crm_leads l
       WHERE l.product_id = p_product_id AND nullif(btrim(l.phone), '') IS NOT NULL),
-    'active_operations', (SELECT count(DISTINCT op.lead_id)
-      FROM public.platform_crm_lead_operations op
-      WHERE op.product_id = p_product_id AND op.lead_id IS NOT NULL
-        AND op.status IN ('queued', 'running'))
+    'do_not_contact', (SELECT count(*) FROM public.platform_crm_lead_state s
+      WHERE s.product_id = p_product_id AND s.derived_stage = 'do_not_contact')
   )
 );
 $function$;

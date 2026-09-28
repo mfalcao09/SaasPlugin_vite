@@ -15,16 +15,22 @@ export const BASE_STAGES = [
   "onboarding",
   "do_not_contact",
 ] as const;
+export const BASE_DNC_REASONS = [
+  "hard_stop",
+  "cadence_exhausted",
+  "closed_lost",
+  "unknown",
+] as const;
 
 export type BaseTriage = typeof BASE_TRIAGES[number];
 export type BaseStage = typeof BASE_STAGES[number];
+export type BaseDncReason = typeof BASE_DNC_REASONS[number];
 
 export type BaseLeadFilters = {
   triagem?: BaseTriage[];
   derived_stage?: BaseStage[];
   phone?: "with" | "without";
-  suppressed?: boolean;
-  active_operation?: boolean;
+  dnc_reason?: BaseDncReason[];
   query?: string;
 };
 
@@ -35,7 +41,7 @@ export type BaseLeadRow = {
   profiles: Array<{ handle?: string | null; triagem?: string | null }>;
   triagem_summary: string;
   derived_stage: string | null;
-  is_suppressed: boolean;
+  dnc_reason?: BaseDncReason | null;
   active_operation_count: number;
 };
 
@@ -70,20 +76,12 @@ export function parseBaseLeadFilters(input: unknown): BaseLeadFilters {
 
   const triagem = parseList("triagem", BASE_TRIAGES);
   const derived_stage = parseList("derived_stage", BASE_STAGES);
+  const dnc_reason = parseList("dnc_reason", BASE_DNC_REASONS);
   if (
     value.phone !== undefined &&
     !["with", "without"].includes(String(value.phone))
   ) {
     throw new Error("lead_filters.phone invalido");
-  }
-  if (value.suppressed !== undefined && typeof value.suppressed !== "boolean") {
-    throw new Error("lead_filters.suppressed invalido");
-  }
-  if (
-    value.active_operation !== undefined &&
-    typeof value.active_operation !== "boolean"
-  ) {
-    throw new Error("lead_filters.active_operation invalido");
   }
   if (value.query !== undefined && typeof value.query !== "string") {
     throw new Error("lead_filters.query invalido");
@@ -93,12 +91,7 @@ export function parseBaseLeadFilters(input: unknown): BaseLeadFilters {
     ...(triagem?.length ? { triagem } : {}),
     ...(derived_stage?.length ? { derived_stage } : {}),
     ...(value.phone ? { phone: value.phone as "with" | "without" } : {}),
-    ...(typeof value.suppressed === "boolean"
-      ? { suppressed: value.suppressed }
-      : {}),
-    ...(typeof value.active_operation === "boolean"
-      ? { active_operation: value.active_operation }
-      : {}),
+    ...(dnc_reason?.length ? { dnc_reason } : {}),
     ...(typeof value.query === "string" && value.query.trim()
       ? { query: value.query.trim().slice(0, 100) }
       : {}),
@@ -129,12 +122,8 @@ export function matchesBaseLeadFilters(
   if (filters.phone === "with" && !row.phone) return false;
   if (filters.phone === "without" && !!row.phone) return false;
   if (
-    typeof filters.suppressed === "boolean" &&
-    row.is_suppressed !== filters.suppressed
-  ) return false;
-  if (
-    typeof filters.active_operation === "boolean" &&
-    (row.active_operation_count > 0) !== filters.active_operation
+    filters.dnc_reason?.length &&
+    !filters.dnc_reason.includes((row.dnc_reason ?? "unknown") as BaseDncReason)
   ) return false;
   if (filters.query) {
     const search = filters.query.toLocaleLowerCase("pt-BR");
