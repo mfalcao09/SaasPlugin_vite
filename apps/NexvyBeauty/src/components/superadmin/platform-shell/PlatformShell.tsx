@@ -1,5 +1,4 @@
 import { FirstAccessSuperAdminModal } from '@/components/superadmin/FirstAccessSuperAdminModal';
-import { AppTopBar } from '@/components/layout/AppTopBar';
 import {
   PlatformModuleProvider,
   usePlatformModule,
@@ -8,10 +7,11 @@ import { PlatformSidebar } from './PlatformSidebar';
 import { PLATFORM_MODULES } from './registry';
 import { usePlatformPresenceHeartbeat } from '@/components/superadmin/crm/data/usePlatformPresenceHeartbeat';
 import { PlatformProductProvider } from '@/contexts/PlatformProductContext';
+import { WhatsAppDisconnectedBanner } from '@/components/layout/WhatsAppDisconnectedBanner';
 
 // ─── Conteúdo (consome o Context) ───────────────────────────
 function ShellContent() {
-  const { activeModuleDefinition, activeNavItem } = usePlatformModule();
+  const { activeNavItem } = usePlatformModule();
 
   // Mantém a presença do atendente super_admin viva (motor de distribuição de leads).
   usePlatformPresenceHeartbeat();
@@ -21,13 +21,8 @@ function ShellContent() {
       <FirstAccessSuperAdminModal />
       <PlatformSidebar />
 
-      <main className="min-w-0 flex-1 overflow-y-auto pt-[calc(3.5rem+env(safe-area-inset-top)+1rem)] lg:pt-0">
-        <div className="hidden lg:block">
-          <AppTopBar
-            title={activeNavItem?.label ?? activeModuleDefinition.label}
-            subtitle={activeModuleDefinition.label}
-          />
-        </div>
+      <main className="min-w-0 flex-1 overflow-y-auto pt-[calc(7rem+env(safe-area-inset-top))] lg:pt-[68px]">
+        <WhatsAppDisconnectedBanner />
         <div className="p-4 sm:p-6">
           {activeNavItem ? activeNavItem.render() : null}
         </div>

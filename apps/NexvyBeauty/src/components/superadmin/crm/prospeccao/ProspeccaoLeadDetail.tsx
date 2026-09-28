@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { CalendarDays, Instagram, MessageCircle, UserRound } from "lucide-react";
+import { CalendarDays, Instagram, MessageCircle, Pencil, UserRound } from "lucide-react";
 import type { Lead } from "./ProspeccaoBaseTable";
+import { Button } from "@/components/ui/button";
 import "./ProspeccaoLeadDetail.css";
 
 const numberFormat = new Intl.NumberFormat("pt-BR");
@@ -13,7 +14,7 @@ function displayPhone(value: string | null) {
     : value;
 }
 
-export function ProspeccaoLeadDetail({ lead }: { lead: Lead }) {
+export function ProspeccaoLeadDetail({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
   const [tab, setTab] = useState<"profile" | "found" | "conversations">("profile");
   const firstProfile = lead.profiles[0];
   const handle = firstProfile?.handle ? `@${firstProfile.handle.replace(/^@/, "")}` : "";
@@ -35,7 +36,7 @@ export function ProspeccaoLeadDetail({ lead }: { lead: Lead }) {
         </div></div>
       </aside>
       <div className="prospect-detail-main">
-        <div className="prospect-detail-heading"><span>Ficha completa</span><h1>Informações do lead</h1><p>Dados públicos, qualificação, origem e histórico de contato.</p></div>
+        <div className="prospect-detail-heading"><span>Ficha completa</span><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" />Editar Lead</Button><h1>Informações do lead</h1><p>Dados públicos, qualificação, origem e histórico de contato.</p></div>
         <div className="prospect-detail-tabs" role="tablist">
           <button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}>Perfil</button>
           <button className={tab === "found" ? "active" : ""} onClick={() => setTab("found")}>Encontrado em {lead.profile_count || ""}</button>
