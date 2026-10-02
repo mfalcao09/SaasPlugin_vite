@@ -30,7 +30,7 @@ export function PlatformGlobalBar({ mobileLeading }: { mobileLeading?: ReactNode
           <TopBarActions />
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-[minmax(0,.82fr)_minmax(0,1.18fr)] gap-2 lg:hidden">
+      <div className="mt-2 grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-2 lg:hidden">
         <PlatformModuleSwitcher compact />
         <PlatformProductSwitcher compact />
       </div>
