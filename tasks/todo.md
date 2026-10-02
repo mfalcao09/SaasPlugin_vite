@@ -145,3 +145,14 @@ Aprovações Marcelo: (1) loader roda única ✅ · (2) progresso com roadster d
 - Bug raiz do 'fora de eixo' v6: animateTransform com centro (cx,cy) pós-translate → órbita; fix = rotação na origem local (validado por render PNG comparativo)
 - Verificado: tsc 0 erros nos arquivos tocados · vite build 18.6s OK · screenshot dark+light OK · console sem erros novos
 - Pendente: aprovação p/ commit · hub circular (item 3) no radar
+
+## Sessão 2026-10-02 — Rótulos dos seletores globais
+
+- [x] Exibir “Módulo” e “Produto” como rótulos, destacando os valores ativos.
+- [x] Ampliar o espaço do seletor de módulo sem deslocar o seletor de produto.
+- [x] ESLint dos três componentes e build de produção passam.
+- [ ] Commit, push, PR, checks verdes e merge na `main`.
+- [ ] Deploy canônico NexvyBeauty na VPS termina com `DEPLOY-VERDE`.
+- [ ] Verificar container saudável, checkout limpo, manifest, HTTP 200 e hash novo nos domínios.
+
+Critério binário: lint/build sem erro; após deploy, gate oficial prova o hash novo, container fica saudável e os dois domínios retornam HTTP 200.
