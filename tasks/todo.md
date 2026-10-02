@@ -163,3 +163,13 @@ Critério binário: lint/build sem erro; após deploy, gate oficial prova o hash
 - ESLint e `git diff --check` passaram; build Vite passou (com os avisos conhecidos de variáveis locais `VITE_*` e tamanho do chunk `PlatformShell`).
 - Deploy oficial em 2026-10-02: `DEPLOY-VERDE`, imagem `nexvy-beauty:859d4690eca84c92ec8c00e117aaefaff67e2bc6`, bundle servido `main-CkNIA0G_.js`.
 - Verificação independente: container `healthy`, checkout da VPS limpo, manifesto com o SHA correto, `app.nexvybeauty.com.br` e `gestao.nexvy.tech` em HTTP 200 servindo o mesmo bundle.
+
+## Sessão 2026-10-02 — alinhamento interno do seletor de módulo
+
+- [x] Confirmar que o diff contém somente a correção do seletor e esta trilha de execução.
+- [x] Validar o componente com ESLint, build de produção e `git diff --check`.
+- [ ] Criar branch, commitar e publicar PR; aguardar checks verdes e mesclar em `main`.
+- [ ] Atualizar a VPS pelo fluxo oficial, confirmar checkout limpo e obter `DEPLOY-VERDE`.
+- [ ] Verificar container saudável, HTTP 200 e hash do bundle publicado.
+
+Critério binário: PR aprovado/mesclado e o gate canônico comprova o commit novo servido pela VPS.
