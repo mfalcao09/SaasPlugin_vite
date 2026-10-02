@@ -151,8 +151,15 @@ Aprovações Marcelo: (1) loader roda única ✅ · (2) progresso com roadster d
 - [x] Exibir “Módulo” e “Produto” como rótulos, destacando os valores ativos.
 - [x] Ampliar o espaço do seletor de módulo sem deslocar o seletor de produto.
 - [x] ESLint dos três componentes e build de produção passam.
-- [ ] Commit, push, PR, checks verdes e merge na `main`.
-- [ ] Deploy canônico NexvyBeauty na VPS termina com `DEPLOY-VERDE`.
-- [ ] Verificar container saudável, checkout limpo, manifest, HTTP 200 e hash novo nos domínios.
+- [x] Commit, push, PR, checks verdes e merge na `main`.
+- [x] Deploy canônico NexvyBeauty na VPS termina com `DEPLOY-VERDE`.
+- [x] Verificar container saudável, checkout limpo, manifest, HTTP 200 e hash novo nos domínios.
 
 Critério binário: lint/build sem erro; após deploy, gate oficial prova o hash novo, container fica saudável e os dois domínios retornam HTTP 200.
+
+### Review
+
+- PR [#266](https://github.com/mfalcao09/SaasPlugin_vite/pull/266), CI `cockpit` passou e merge commit `859d4690eca84c92ec8c00e117aaefaff67e2bc6`.
+- ESLint e `git diff --check` passaram; build Vite passou (com os avisos conhecidos de variáveis locais `VITE_*` e tamanho do chunk `PlatformShell`).
+- Deploy oficial em 2026-10-02: `DEPLOY-VERDE`, imagem `nexvy-beauty:859d4690eca84c92ec8c00e117aaefaff67e2bc6`, bundle servido `main-CkNIA0G_.js`.
+- Verificação independente: container `healthy`, checkout da VPS limpo, manifesto com o SHA correto, `app.nexvybeauty.com.br` e `gestao.nexvy.tech` em HTTP 200 servindo o mesmo bundle.
