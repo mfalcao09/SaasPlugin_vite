@@ -62,20 +62,22 @@ export function PlatformModuleSwitcher({ compact = false }: { compact?: boolean 
       <PopoverTrigger asChild>
         <button
           className={cn(
-            'flex h-12 min-w-[200px] items-center gap-2.5 rounded-xl border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm transition-colors',
-            compact && 'h-14 w-full min-w-0 justify-start px-3 text-left',
+            'flex h-12 min-w-[200px] items-center gap-2.5 rounded-xl border border-border/80 bg-card px-3 text-left text-sm text-foreground shadow-sm transition-colors',
+            compact && 'h-14 w-full min-w-0',
             'hover:border-primary/25 hover:bg-muted/60',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             open && 'border-primary/30 bg-primary/[0.04]',
           )}
           aria-label="Trocar módulo"
         >
-          <AppsIcon className="h-5 w-5 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 leading-tight">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center text-primary">
+            <AppsIcon className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1 text-left leading-tight">
             <span className="block text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Módulo</span>
             <span className="block truncate text-sm font-semibold">{activeModuleDefinition.label}</span>
           </span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent
