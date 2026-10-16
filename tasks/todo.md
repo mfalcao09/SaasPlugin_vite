@@ -1,5 +1,23 @@
 # Sprint 1 — Inbox WhatsApp "funcional de verdade" (2 semanas)
 
+## Sessão 2026-10-16 — LP Fornecedores Beauty, revisão visual
+
+Premissas: manter oferta de 36 fornecedores por R$33, checkout e entrega pela Kiwify, e parâmetros de atribuição existentes; não alterar a configuração DNS do Mac. A revisão visual não cria provas de resultado ou depoimentos.
+
+- [x] Substituir capa simulada pela capa real do PDF e melhorar a primeira dobra → capturas desktop/mobile mostram produto, oferta e CTA.
+- [x] Redesenhar ritmo, hierarquia e seções com exemplos visuais fiéis → captura completa revista; prévia interna publicada apenas em versão pixelizada.
+- [x] Preservar checkout e UTMs → Playwright confirmou ambos os parâmetros nos dois CTAs.
+- [x] Executar lint/build e inspeção visual em viewport desktop/mobile → Vite build e ESLint saíram 0; 320/390/768/1440 px sem overflow.
+
+### Review
+
+Prévia isolada: `http://lpfornecedores.localhost:4174/fornecedores.html?utm_source=meta&utm_content=criativo_02`.
+Produção permanece na versão anterior até aprovação visual. DNS público voltou a resolver sem alteração da configuração local (curl HTTPS 200, certificado válido).
+Rastreamento: UTM do CTA verificada; Pixel PageView na Meta ainda não comprovado por chamada de rede no smoke público. Não iniciar tráfego até verificação separada.
+Segunda revisão independente: sem bloqueio crítico no diff, nos CTAs/UTMs ou nas imagens; não equivale a auditoria completa de severidades menores.
+
+---
+
 > **Source:** `tasks/auditoria-inbox/auditoria-sales-spark-vs-nexvyoficinas.md`
 > **Objetivo:** operador troca mídia, atende em mobile, conversa flui sem bugs.
 > **Branch:** `main` (commits diretos; rollback via git revert por commit atômico)

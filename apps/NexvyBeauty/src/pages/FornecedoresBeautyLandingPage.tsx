@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, ClipboardList, ExternalLink, FileText, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, ExternalLink, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { captureTrackingFromUrl, getTracking } from '@/lib/tracking';
 import './fornecedores-beauty.css';
 
 const CHECKOUT = 'https://pay.kiwify.com.br/F8vRJVm';
-const KIWIFY_PARAMS = [
-  'src', 'sck', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-] as const;
+const KIWIFY_PARAMS = ['src', 'sck', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
 
-export function checkoutWithTracking(): string {
+function checkoutWithTracking(): string {
   const url = new URL(CHECKOUT);
   const tracking = getTracking();
   for (const key of KIWIFY_PARAMS) {
@@ -19,84 +17,65 @@ export function checkoutWithTracking(): string {
 }
 
 const faqs = [
-  { q: 'O que eu recebo?', a: 'Um PDF com 36 fornecedores Beauty organizados e seus canais de contato. Você pode abrir a lista, escolher opções relevantes e começar suas próprias cotações.' },
-  { q: 'Preciso ter CNPJ ou comprar no atacado?', a: 'Não. A lista pode ajudar profissionais que compram para uso no negócio e pessoas que querem pesquisar opções para revenda. As condições de venda de cada fornecedor devem ser confirmadas diretamente com ele.' },
-  { q: 'Os preços e estoques estão garantidos?', a: 'Não. Preços, estoques, condições e prazos podem mudar. O guia organiza caminhos para você consultar e comparar; a decisão de compra é sua.' },
-  { q: 'Como recebo a lista?', a: 'Após a confirmação do pagamento, a Kiwify libera o acesso ao PDF na área de membros e envia as instruções ao e-mail informado na compra.' },
-  { q: 'E se eu me arrepender?', a: 'A compra conta com 7 dias de garantia para solicitação de reembolso, pelas condições informadas no checkout da Kiwify.' },
+  { q: 'O que exatamente vem no PDF?', a: 'Uma lista organizada com 36 fornecedores Beauty, endereços quando disponíveis e links para seus canais de contato, como site, catálogo, Instagram ou WhatsApp.' },
+  { q: 'Preciso ter CNPJ ou comprar no atacado?', a: 'Não. A lista também serve para profissionais que compram produtos para usar nos atendimentos. As condições de venda de cada fornecedor devem ser confirmadas diretamente com ele.' },
+  { q: 'Vocês garantem economia ou preços mais baixos?', a: 'Não há garantia de economia: os preços e condições variam. A lista oferece novas opções para você solicitar cotações e comparar antes de comprar.' },
+  { q: 'Quando e onde recebo o material?', a: 'Após a confirmação do pagamento, a Kiwify libera o PDF na área de membros e envia as instruções para o e-mail informado na compra.' },
+  { q: 'O material recebe atualizações?', a: 'Não há atualização periódica incluída. Os links foram conferidos na preparação do material, mas canais, estoques e condições podem mudar.' },
+  { q: 'E se eu me arrepender?', a: 'Você tem 7 dias para solicitar reembolso, conforme as condições informadas no checkout da Kiwify.' },
 ];
 
 export default function FornecedoresBeautyLandingPage() {
   const [checkoutUrl, setCheckoutUrl] = useState(CHECKOUT);
+  useEffect(() => { captureTrackingFromUrl(); setCheckoutUrl(checkoutWithTracking()); }, []);
 
-  useEffect(() => {
-    captureTrackingFromUrl();
-    setCheckoutUrl(checkoutWithTracking());
-  }, []);
-
-  const cta = (label = 'Quero acessar os 36 fornecedores', secondary = false) => (
-    <a className={`fbl-cta${secondary ? ' fbl-cta--secondary' : ''}`} href={checkoutUrl} rel="noopener noreferrer">
-      {label}<ArrowRight size={19} strokeWidth={2.4} aria-hidden="true" />
-    </a>
+  const cta = (label = 'Quero acessar a lista') => (
+    <a className="fbl-cta" href={checkoutUrl} rel="noopener noreferrer"><span>{label}</span><ArrowUpRight size={20} aria-hidden="true" /></a>
   );
 
-  return (
-    <main className="fbl">
-      <div className="fbl-topbar"><span>nexvy<span className="fbl-logo-accent">beauty</span></span><div className="fbl-topbar-actions"><span>GUIA DIGITAL • 36 FORNECEDORES</span><a href={checkoutUrl} rel="noopener noreferrer">Acessar por R$33 <ArrowRight size={15} aria-hidden="true" /></a></div></div>
+  return <main className="fbl">
+    <div className="fbl-announcement">36 fornecedores Beauty em um só lugar <span>✦</span> Acesso imediato por R$33</div>
+    <header className="fbl-header">
+      <a className="fbl-brand" href="#inicio" aria-label="Nexvy Beauty — início"><span className="fbl-monogram">N<span>·</span></span><span>nexvy<em>beauty</em></span></a>
+      <nav aria-label="Navegação principal"><a href="#como-funciona">Como funciona</a><a href="#o-que-recebo">O que recebo</a><a className="fbl-header-cta" href="#oferta">Ver a oferta <ArrowRight size={15} aria-hidden="true" /></a></nav>
+    </header>
 
-      <section className="fbl-hero" aria-labelledby="fbl-title">
-        <div className="fbl-hero-copy">
-          <span className="fbl-kicker"><Sparkles size={15} aria-hidden="true" /> SUA PRÓXIMA COMPRA COMEÇA AQUI</span>
-          <h1 id="fbl-title">Pare de depender sempre dos <em>mesmos fornecedores.</em></h1>
-          <p className="fbl-lead">Encontre novas opções, compare preços e compre melhor. Uma lista organizada de <strong>36 fornecedores Beauty</strong> para você ir direto às cotações — sem começar a pesquisa do zero.</p>
-          <div className="fbl-hero-checks"><span><Check size={16} /> Contatos conferidos</span><span><Check size={16} /> PDF de acesso imediato</span><span><Check size={16} /> R$33, pagamento único</span></div>
-          {cta()}
-          <p className="fbl-micro">Menos de R$1 por fornecedor organizado · Compra segura pela Kiwify</p>
-        </div>
-        <div className="fbl-cover-wrap" aria-label="Representação do guia digital de fornecedores Beauty">
-          <div className="fbl-cover">
-            <span className="fbl-cover-brand">NEXVY BEAUTY</span>
-            <span className="fbl-cover-line"></span>
-            <span className="fbl-cover-number">36</span>
-            <strong>fornecedores<br />Beauty</strong>
-            <span className="fbl-cover-caption">Uma curadoria para encontrar opções, comparar e comprar melhor.</span>
-            <span className="fbl-cover-bottom">GUIA DIGITAL • PDF</span>
-          </div>
-          <div className="fbl-cover-tag">Menos de<br /><strong>R$1</strong><br />por fornecedor</div>
-        </div>
-      </section>
+    <section className="fbl-hero" id="inicio" aria-labelledby="fbl-title">
+      <div className="fbl-hero-copy">
+        <span className="fbl-overline"><span /> O GUIA PARA SUA PRÓXIMA COMPRA</span>
+        <h1 id="fbl-title">Mais opções para <em>comprar melhor.</em></h1>
+        <p className="fbl-hero-subtitle">Pare de depender sempre dos mesmos fornecedores. Encontre <strong>36 opções Beauty</strong>, compare preços e escolha com mais liberdade — sem começar a pesquisa do zero.</p>
+        <div className="fbl-hero-action">{cta('Quero conhecer os 36 fornecedores')}<a className="fbl-text-link" href="#o-que-recebo">Veja o que está incluso <ArrowDown size={15} aria-hidden="true" /></a></div>
+        <div className="fbl-hero-assurance"><span><Check size={15} /> PDF com contatos clicáveis</span><span><Check size={15} /> Pagamento único de R$33</span></div>
+      </div>
+      <div className="fbl-hero-visual">
+        <div className="fbl-hero-image-frame"><img src="/fornecedores-cover.webp" alt="Capa real do PDF Beauty Lista de fornecedores, com produtos de beleza sobre uma bancada" width="708" height="1000" fetchPriority="high" /></div>
+        <div className="fbl-hero-seal"><small>MENOS DE</small><strong>R$1</strong><span>por fornecedor</span></div>
+        <span className="fbl-hero-image-note">O PRODUTO QUE VOCÊ VAI RECEBER ↗</span>
+      </div>
+    </section>
 
-      <section className="fbl-strip" aria-label="Benefícios do guia"><span>36 opções em um só lugar</span><i>✦</i><span>Contatos fáceis de consultar</span><i>✦</i><span>Mais poder de comparação</span></section>
+    <div className="fbl-divider" aria-label="Resumo da oferta"><span>36 fornecedores</span><i>✦</i><span>Contatos reunidos</span><i>✦</i><span>Mais poder de comparação</span></div>
 
-      <section className="fbl-section fbl-pain">
-        <div className="fbl-section-head"><span className="fbl-eyebrow">PARA QUEM COMPRA BEAUTY</span><h2>Comprar no automático pode sair caro.</h2><p>Quando você consulta sempre os mesmos contatos, pode deixar de conhecer opções mais interessantes para o seu negócio.</p></div>
-        <div className="fbl-cards">
-          <article><Search aria-hidden="true" /><h3>Chega de busca sem fim</h3><p>Em vez de perder tempo procurando perfis e links soltos, abra uma lista organizada e comece pelos fornecedores que fazem sentido para você.</p></article>
-          <article><ClipboardList aria-hidden="true" /><h3>Compare antes de fechar</h3><p>Com mais opções à mão, você pode pedir cotações e avaliar preço, atendimento e condições por conta própria.</p></article>
-          <article><Sparkles aria-hidden="true" /><h3>Descubra novos caminhos</h3><p>Encontre alternativas para abastecer seus atendimentos, testar novos produtos ou explorar oportunidades de revenda.</p></article>
-        </div>
-      </section>
+    <section className="fbl-story" id="como-funciona" aria-labelledby="fbl-story-title">
+      <div className="fbl-story-left"><span className="fbl-section-index">01 / O PONTO DE PARTIDA</span><h2 id="fbl-story-title">Comprar sempre no mesmo lugar é fácil. <em>Comparar é mais inteligente.</em></h2><p>Se a busca por novos contatos fica para depois, você pode continuar comprando sem saber quais outras opções existem.</p></div>
+      <div className="fbl-story-right"><div className="fbl-story-lead"><span>O QUE MUDA NA PRÁTICA</span><ArrowUpRight size={19} aria-hidden="true" /></div>
+        <article><b>01</b><div><h3>Você deixa de procurar do zero</h3><p>Os caminhos de contato já estão reunidos para você abrir e avaliar.</p></div></article>
+        <article><b>02</b><div><h3>Você tem opções para cotar</h3><p>Fale com fornecedores diferentes e compare preço, atendimento e condições.</p></div></article>
+        <article><b>03</b><div><h3>Você decide com mais informação</h3><p>Escolha o que faz sentido para o seu negócio, no seu tempo e do seu jeito.</p></div></article>
+      </div>
+    </section>
 
-      <section className="fbl-section fbl-how">
-        <div className="fbl-section-head"><span className="fbl-eyebrow">SIMPLES DE USAR</span><h2>Abra. Escolha. Faça sua cotação.</h2></div>
-        <div className="fbl-steps"><div><b>01</b><h3>Acesse o PDF</h3><p>Receba o guia digital pela área de membros da Kiwify após a confirmação da compra.</p></div><div><b>02</b><h3>Selecione opções</h3><p>Veja os fornecedores e os canais de contato reunidos em um só lugar.</p></div><div><b>03</b><h3>Compare e decida</h3><p>Peça cotações, confira as condições atuais e escolha o que vale a pena para você.</p></div></div>
-      </section>
+    <section className="fbl-preview" id="o-que-recebo" aria-labelledby="fbl-preview-title">
+      <div className="fbl-preview-art"><div className="fbl-preview-page"><img src="/fornecedores-interior-obscured.webp" alt="Prévia protegida de uma página interna do PDF; os contatos foram ocultados nesta imagem" width="660" height="930" /></div><span className="fbl-preview-stamp">PRÉVIA DO INTERIOR<br /><strong>CONTATOS OCULTOS</strong></span></div>
+      <div className="fbl-preview-copy"><span className="fbl-section-index">02 / O QUE VOCÊ RECEBE</span><h2 id="fbl-preview-title">Não é mais uma pasta de links soltos. <em>É sua lista pronta para consultar.</em></h2><p>Um PDF com 36 fornecedores Beauty organizados. Abra, encontre canais de contato e comece suas próprias cotações em poucos minutos.</p><ul><li><Check size={17} /> Fornecedores numerados e fáceis de localizar</li><li><Check size={17} /> Links para vendas, catálogos, lojas ou redes sociais</li><li><Check size={17} /> Endereços quando disponíveis no material</li><li><Check size={17} /> Links conferidos manualmente na preparação da lista</li></ul><div className="fbl-preview-note"><LockKeyhole size={16} aria-hidden="true" /> A imagem ao lado mostra a estrutura do PDF; os contatos ficam visíveis apenas no material adquirido.</div></div>
+    </section>
 
-      <section className="fbl-mid-cta"><p>Uma cotação mais vantajosa <strong>já pode compensar o valor da lista.</strong></p>{cta('Quero comparar novos fornecedores', true)}</section>
+    <section className="fbl-audience" aria-labelledby="fbl-audience-title"><span className="fbl-section-index">03 / PARA QUEM É</span><h2 id="fbl-audience-title">Para quem vive de Beauty. <em>E compra para fazer acontecer.</em></h2><p>Feita principalmente para nail designers, lash designers, manicures, esteticistas e profissionais de salão que compram produtos para trabalhar. Também pode ser útil para quem pesquisa opções de revenda.</p><div className="fbl-audience-tags"><span>NAIL</span><span>LASH</span><span>MANICURE</span><span>ESTÉTICA</span><span>SALÃO</span><span>REVENDA</span></div></section>
 
-      <section className="fbl-section fbl-audience">
-        <div className="fbl-section-head"><span className="fbl-eyebrow">FEITO PARA O SEU DIA A DIA</span><h2>Mais opções para quem vive de Beauty.</h2><p>Especialmente para quem compra produtos para usar nos atendimentos — nail designers, lash designers, manicures, esteticistas e profissionais de salão. Também pode ser útil para quem pesquisa fornecedores para revender.</p></div>
-        <div className="fbl-audience-note"><ShieldCheck size={24} aria-hidden="true" /><span>Os links foram conferidos manualmente. Isso não significa garantia de preço, estoque, entrega ou qualidade de uma compra futura: confirme cada condição com o fornecedor antes de fechar.</span></div>
-      </section>
+    <section className="fbl-offer-section" id="oferta" aria-labelledby="fbl-offer-title"><div className="fbl-offer-copy"><span className="fbl-section-index">A SUA PRÓXIMA COTAÇÃO COMEÇA AQUI</span><h2 id="fbl-offer-title">Uma cotação mais vantajosa <em>já pode compensar o valor da lista.</em></h2><p>Tenha novas opções à mão para comparar antes de fazer a próxima compra.</p><div className="fbl-offer-facts"><span><Check size={16} /> 36 fornecedores Beauty</span><span><Check size={16} /> PDF digital</span><span><Check size={16} /> Acesso após a compra</span></div></div><div className="fbl-offer-price"><span>INVESTIMENTO ÚNICO</span><strong><span>R$</span>33<small>,00</small></strong><p>R$0,92 por fornecedor organizado</p>{cta('Acessar os 36 fornecedores')}<div className="fbl-offer-security"><ShieldCheck size={16} /> Checkout seguro Kiwify · 7 dias de garantia</div></div></section>
 
-      <section className="fbl-section fbl-offer" id="oferta">
-        <div className="fbl-offer-card"><div className="fbl-offer-left"><span className="fbl-eyebrow">SUA LISTA, SEM ENROLAÇÃO</span><h2>36 fornecedores.<br /><em>Uma decisão mais informada.</em></h2><ul><li><Check /> 36 fornecedores Beauty organizados</li><li><Check /> Canais de contato reunidos em PDF</li><li><Check /> Links conferidos manualmente</li><li><Check /> Acesso pela área de membros da Kiwify</li></ul></div><div className="fbl-price"><span>Pagamento único</span><strong>R$33<span>,00</span></strong><small>R$0,92 por fornecedor organizado</small>{cta()}<p><ShieldCheck size={15} /> 7 dias de garantia</p></div></div>
-      </section>
-
-      <section className="fbl-section fbl-faq"><div className="fbl-section-head"><span className="fbl-eyebrow">TIRE SUAS DÚVIDAS</span><h2>Perguntas frequentes</h2></div><div className="fbl-faq-list">{faqs.map(({ q, a }) => <details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div></section>
-
-      <section className="fbl-final"><FileText size={35} aria-hidden="true" /><h2>Pronta para comprar com mais opções?</h2><p>Tenha 36 fornecedores Beauty organizados e comece suas cotações sem partir do zero.</p>{cta()}</section>
-      <footer className="fbl-footer"><span>nexvybeauty</span><span>Guia digital de fornecedores Beauty</span><a href="https://nexvybeauty.com.br/privacidade" target="_blank" rel="noopener noreferrer">Privacidade <ExternalLink size={13} /></a></footer>
-    </main>
-  );
+    <section className="fbl-faq" aria-labelledby="fbl-faq-title"><div className="fbl-faq-heading"><span className="fbl-section-index">AINDA TEM DÚVIDAS?</span><h2 id="fbl-faq-title">Tudo claro antes de comprar.</h2></div><div className="fbl-faq-list">{faqs.map(({ q, a }) => <details key={q}><summary>{q}<span>+</span></summary><p>{a}</p></details>)}</div></section>
+    <footer className="fbl-footer"><div><span className="fbl-footer-brand">nexvy<em>beauty</em></span><p>Encontre opções. Compare. Compre melhor.</p></div><div><span>© {new Date().getFullYear()} Nexvy Beauty</span><a href="https://nexvybeauty.com.br/privacidade" target="_blank" rel="noopener noreferrer">Política de privacidade <ExternalLink size={13} /></a></div></footer>
+  </main>;
 }
