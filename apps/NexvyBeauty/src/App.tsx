@@ -17,7 +17,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { WheelLoader } from "@/components/brand/WheelLoader";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { getLandingFormSlug, isApexDomain, isGestaoHostname } from "@/lib/publicUrl";
+import { getLandingFormSlug, isApexDomain, isFornecedoresLandingHost, isGestaoHostname } from "@/lib/publicUrl";
 
 // Lazy load all pages for code splitting
 const Index = lazyWithRetry(() => import("./pages/Index"));
@@ -107,6 +107,7 @@ const SalesPage = lazyWithRetry(() => import("./pages/SalesPage"));
 // (nexvybeauty.com.br) e /vendas.
 const ClientesDeVoltaLandingPage = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPage"));
 const ClientesDeVoltaLandingPageV2 = lazyWithRetry(() => import("./pages/ClientesDeVoltaLandingPageV2"));
+const FornecedoresBeautyLandingPage = lazyWithRetry(() => import("./pages/FornecedoresBeautyLandingPage"));
 
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -247,7 +248,7 @@ const App = () => (
           <SuperAdminViewChoiceDialog />
           {/* Decoração é da marca NexvyBeauty — não pode vazar em host de
               landing de outro produto (ex.: netb2b.nexvy.tech). */}
-          {!getLandingFormSlug() && <FooterDecoration />}
+          {!getLandingFormSlug() && !isFornecedoresLandingHost() && <FooterDecoration />}
           <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <HostConfinementGuard>
@@ -327,6 +328,9 @@ const App = () => (
               {/* Home: no apex (marketing) mostra a LP de vendas; no app.*
                   mostra o hub autenticado. Visitante anônimo no apex NÃO cai
                   mais no login. */}
+              {isFornecedoresLandingHost() && (
+                <Route path="/fornecedores.html" element={<FornecedoresBeautyLandingPage />} />
+              )}
               <Route
                 path="/"
                 element={
@@ -336,6 +340,8 @@ const App = () => (
                     <SuperAdminRoute>
                       <PlatformShell />
                     </SuperAdminRoute>
+                  ) : isFornecedoresLandingHost() ? (
+                    <FornecedoresBeautyLandingPage />
                   ) : getLandingFormSlug() ? (
                     // Host de landing (ex.: netb2b.nexvy.tech) → o formulário
                     // público do produto renderiza na PRÓPRIA RAIZ, sem path

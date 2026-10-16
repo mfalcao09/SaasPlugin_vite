@@ -8,6 +8,20 @@
 # Tenant e determinado por LOGIN (nao por subdominio) -> sem router wildcard.
 http:
   routers:
+    __CONTAINER__-fornecedores:
+      rule: "Host(`lpfornecedores.nexvy.beauty`)"
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      service: __CONTAINER__-svc
+      middlewares: [security-headers@file, csp-nexvybeauty@file]
+      priority: 120
+    __CONTAINER__-fornecedores-http-redirect:
+      rule: "Host(`lpfornecedores.nexvy.beauty`)"
+      entryPoints: [web]
+      service: __CONTAINER__-svc
+      middlewares: [redirect-to-https]
+      priority: 120
     # NOTA (2026-07-11): gestao.nexvybeauty.com.br REMOVIDO (subdominio fantasma).
     # O gestao CANONICO e gestao.nexvy.tech (CRM do grupo), definido em
     # /opt/stacks/traefik/dynamic/nexvy-gestao-grupo.yml, apontando pro MESMO

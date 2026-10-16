@@ -38,3 +38,16 @@
 
 ## Review
 _(preencher ao fim)_
+# 2026-10-16 — Fornecedor Beauty LT: publicação isolada
+
+Premissas aprovadas: produto entregue pela Kiwify; compradores no produto `Fornecedor Beauty - LT` do `platform_crm_*`; R$33, 36 fornecedores; sem UTMify; sem ativar anúncios nesta etapa.
+
+- [ ] Branch contém somente os arquivos desta frente, baseada em `origin/main` → check: diff contra `origin/main` + worktree limpa antes do deploy.
+- [ ] LP e infraestrutura compilam → check: build com Pixel, lint da página, `nginx -t` e prova de host.
+- [ ] DNS Cloudflare + Traefik servem `lpfornecedores.nexvy.beauty` → check: registro A, TLS e HTTP 200 com HTML da LP.
+- [ ] Webhook Kiwify e DB → check: cadastro API, assinatura rejeita payload inválido, evento oficial/compra real aparece como pedido único.
+- [ ] Atribuição → check: UTMs no checkout e no pedido; PageView/InitiateCheckout/Purchase verificados sem contagem dupla.
+
+## Review (Fornecedor Beauty LT)
+
+_Registrar saídas de verificação e pendências reais._

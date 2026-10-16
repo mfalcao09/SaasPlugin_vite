@@ -127,6 +127,9 @@ export function usePlatformBranding() {
 
   useEffect(() => {
     if (!settings) return;
+    // A LP de fornecedores tem documento/SEO próprios; não aplicar metadados
+    // e tema globais do SaaS após a hidratação.
+    if (['lpfornecedores.nexvy.beauty', 'lpfornecedores.localhost'].includes(window.location.hostname)) return;
     const root = document.documentElement;
 
     // ===== COLORS =====
