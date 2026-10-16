@@ -50,6 +50,12 @@ export function getLandingFormSlug(
   return LANDING_HOSTS[hostname] ?? null;
 }
 
+export function isFornecedoresLandingHost(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  return hostname === 'lpfornecedores.nexvy.beauty' || hostname === 'lpfornecedores.localhost';
+}
+
 // Domínio de MARKETING (apex/www) vs APP. Apex = NÃO é o subdomínio app.*,
 // NÃO é gestao.* e NÃO é dev/preview. Ex.: nexvybeauty.com.br /
 // www.nexvybeauty.com.br → true; app.* e gestao.* → false; localhost → false.

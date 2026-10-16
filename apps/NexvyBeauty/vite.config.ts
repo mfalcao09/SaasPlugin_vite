@@ -28,6 +28,7 @@ export default defineConfig(() => ({
       input: {
         index: path.resolve(__dirname, "index.html"),
         netb2b: path.resolve(__dirname, "netb2b.html"),
+        fornecedores: path.resolve(__dirname, "fornecedores.html"),
       },
     },
     // IMPORTANT: do NOT manually split React / Radix / etc. into separate chunks.
