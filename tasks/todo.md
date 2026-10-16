@@ -13,6 +13,8 @@ Premissas: preservar a capa e a prévia protegida do PDF, oferta 36 fornecedores
 
 V2 preservada no remoto em `feat/fornecedor-lp-visual-v2` (SHA `43cdf488604eebe379937910184d050fc872f96a`, confirmado por `git ls-remote`). V3 na branch separada `feat/fornecedor-lp-editorial-v3`, prévia `http://lpfornecedores.localhost:4174/fornecedores.html?utm_source=meta&utm_content=criativo_02` (HTTP 200). As imagens do PDF carregam, os dois CTAs mantêm Kiwify e UTMs, e a FAQ abre. Produção não alterada. Pixel PageView em produção continua pendente de verificação separada antes de iniciar anúncios.
 
+Revisão independente encontrou compressão da oferta em 721 px e contraste insuficiente em textos pequenos; ambos corrigidos. A oferta passa a uma coluna em até 900 px (721 px: título em 3 linhas, sem overflow); o tom secundário único `#675b5e` mede 6,07:1 no fundo da página e 4,73:1 no fundo da capa. A prévia interna perdeu a moldura duplicada. Reteste pós-correção: 320/390/720/721/768/900/901/1440 px, imagens carregadas, CTAs com `utm_source=meta` e `utm_content=criativo_02`, sem pageerror ou overflow; ESLint e Vite build saíram 0.
+
 ---
 
 ## Sessão 2026-10-16 — LP Fornecedores Beauty, revisão visual
