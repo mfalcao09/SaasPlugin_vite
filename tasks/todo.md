@@ -1,5 +1,20 @@
 # Sprint 1 — Inbox WhatsApp "funcional de verdade" (2 semanas)
 
+## Sessão 2026-10-16 — LP Fornecedores Beauty, direção editorial v3
+
+Premissas: preservar a capa e a prévia protegida do PDF, oferta 36 fornecedores por R$33, checkout/UTMs e entrega Kiwify; retirar clichês visuais e reduzir a copy genérica. Não publicar sem avaliação de Marcelo.
+
+- [x] Salvar a v2 para rollback → `git ls-remote origin refs/heads/feat/fornecedor-lp-visual-v2` == `43cdf488604eebe379937910184d050fc872f96a`.
+- [x] Recriar a página numa direção editorial distinta → capturas desktop/mobile mostram composição sem faixa promocional, selos, chips ou passos numerados.
+- [x] Preservar informações e compra → testes verificaram 36 fornecedores, R$33, 7 dias e URL Kiwify com UTMs.
+- [x] Rodar build, lint e inspeção visual em 320/390/1440 px → Vite build e ESLint saíram 0; 320/390/768/1440 px sem erro de execução ou overflow horizontal.
+
+### Review
+
+V2 preservada no remoto em `feat/fornecedor-lp-visual-v2` (SHA `43cdf488604eebe379937910184d050fc872f96a`, confirmado por `git ls-remote`). V3 na branch separada `feat/fornecedor-lp-editorial-v3`, prévia `http://lpfornecedores.localhost:4174/fornecedores.html?utm_source=meta&utm_content=criativo_02` (HTTP 200). As imagens do PDF carregam, os dois CTAs mantêm Kiwify e UTMs, e a FAQ abre. Produção não alterada. Pixel PageView em produção continua pendente de verificação separada antes de iniciar anúncios.
+
+---
+
 ## Sessão 2026-10-16 — LP Fornecedores Beauty, revisão visual
 
 Premissas: manter oferta de 36 fornecedores por R$33, checkout e entrega pela Kiwify, e parâmetros de atribuição existentes; não alterar a configuração DNS do Mac. A revisão visual não cria provas de resultado ou depoimentos.
