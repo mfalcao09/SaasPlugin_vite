@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+.fbe { --fbe-wine: #8b1730; --fbe-action: #176548; --fbe-gold: #bd8d3c; --fbe-gold-dark: #805816; --fbe-gold-surface: #fff3d8; --fbe-ink: #241c20; --fbe-muted: #65565b; color: var(--fbe-ink); background: #fff; font-family: 'DM Sans', Arial, sans-serif; line-height: 1.55; }
+.fbe *, .fbe *::before, .fbe *::after { box-sizing: border-box; }
+.fbe h1, .fbe h2, .fbe h3, .fbe p, .fbe figure, .fbe ul, .fbe ol { margin: 0; }
+.fbe h1, .fbe h2, .fbe h3 { font-family: inherit; }
+.fbe a { text-decoration: none; }
+.fbe a:focus-visible, .fbe summary:focus-visible { outline: 3px solid #b95165; outline-offset: 4px; }
+.fbe-wrap { width: min(100% - 40px, 1000px); margin-inline: auto; text-align: center; }
+.fbe h2 { font-size: clamp(28px, 3.1vw, 40px); font-weight: 800; line-height: 1.2; letter-spacing: -.035em; }
+.fbe h2 span { color: var(--fbe-wine); }
+.fbe-label { color: var(--fbe-wine); font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.fbe-lead { max-width: 720px; margin: 19px auto 0 !important; font-size: 18px; color: #514449; }
+.fbe-header { padding: 9px 20px 11px; text-align: center; background: #fff; }
+.fbe-cover-brand { display: inline-block; vertical-align: middle; }
+.fbe-cover-brand img { display: block; width: 420px; max-width: 100%; height: auto; }
+.fbe-wordmark { color: var(--fbe-ink); font-size: 29px; font-weight: 800; letter-spacing: -.075em; }
+.fbe-wordmark span { color: var(--fbe-wine); }
+.fbe-header p { margin-top: 1px; color: #59454c; font-size: 11px; font-weight: 700; letter-spacing: .18em; }
+.fbe-pain-strip { padding: 13px 22px; text-align: center; color: #fff; background: var(--fbe-wine); font-size: clamp(17px, 1.9vw, 24px); font-weight: 800; line-height: 1.35; border-bottom: 3px solid #c6934a; }
+.fbe-hero { padding: 30px 0 40px; background: linear-gradient(#f8f0ed, #fff 88%); }
+.fbe-hero h1 { max-width: 1000px; margin-inline: auto; font-size: clamp(30px, 3vw, 38px); font-weight: 800; line-height: 1.16; letter-spacing: -.04em; }
+.fbe-hero h1 span { color: var(--fbe-wine); }
+.fbe-hero h1 em { font-style: normal; background: linear-gradient(transparent 76%, #e5c270 0); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.fbe-hero-description { max-width: 740px; margin: 18px auto 0 !important; font-size: 18px; color: #514449; }
+.fbe-shortcut { display: inline-block; margin-top: 18px !important; border-bottom: 3px solid var(--fbe-gold); padding: 0 7px 7px; font-size: 16px; font-weight: 700; }
+.fbe-hero-action { margin-top: 21px; }
+.fbe-buy { display: inline-flex; min-height: 58px; max-width: 100%; padding: 16px 27px; align-items: center; justify-content: center; gap: 18px; background: var(--fbe-action); border: 1px solid #14523c; border-radius: 6px; box-shadow: 0 4px 0 #10452f, 0 6px 15px #17654818; color: #fff !important; font-size: 17px; font-weight: 800; line-height: 1.3; transition: background .15s ease; }
+.fbe-buy svg { flex: 0 0 19px; }
+.fbe-buy:hover { background: #104f37; }
+.fbe-hero-action > p { margin-top: 12px; color: var(--fbe-muted); font-size: 12px; }
+.fbe-demonstration { max-width: 980px; margin: 34px auto 0; }
+.fbe-pages { display: grid; grid-template-columns: .72fr 1.28fr; align-items: start; gap: 28px; max-width: 920px; margin: 16px auto 0; }
+.fbe-pages figure > span { display: block; padding: 8px 6px; background: #6e1c30; border-bottom: 3px solid var(--fbe-gold); color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+.fbe-pages img { display: block; width: 100%; height: auto; box-shadow: 0 9px 20px #34182118; }
+.fbe-interior-zoom { width: 100%; aspect-ratio: 1.66; background-color: #f7e9e4; background-image: url('/fornecedores-interior-preview.webp'); background-repeat: no-repeat; background-size: 225% auto; background-position: 7% 22%; border: 1px solid #ead8d0; box-shadow: 0 9px 20px #34182118; }
+.fbe-pages figcaption { padding: 12px 4px 0; color: var(--fbe-muted); font-size: 12px; line-height: 1.4; }
+.fbe-demo-note { margin-top: 17px !important; font-size: 12px; color: var(--fbe-muted); }
+.fbe-intro { padding: 65px 0; background: #f7eeeb; border-block: 1px solid #ead9d3; }
+.fbe-intro h2, .fbe-content h2, .fbe-note h2, .fbe-offer h2 { margin-top: 12px; }
+.fbe-intro-contrast { display: grid; grid-template-columns: 1fr 1fr; max-width: 850px; margin: 32px auto 0; border: 1px solid #dcc6bf; background: #fff; text-align: left; }
+.fbe-intro-contrast > div { padding: 27px; }
+.fbe-intro-contrast > div + div { border-left: 1px solid #dcc6bf; background: #f5e2dd; }
+.fbe-intro-contrast h3 { font-size: 19px; font-weight: 800; line-height: 1.3; }
+.fbe-intro-contrast p { margin-top: 10px; font-size: 16px; color: #514449; }
+.fbe-transition { max-width: 730px; margin: 30px auto 0 !important; font-size: 23px; font-weight: 700; line-height: 1.35; }
+.fbe-content { padding: 65px 0; }
+.fbe-deliverables { max-width: 770px; margin: 31px auto 23px !important; padding: 0; list-style: none; text-align: left; }
+.fbe-deliverables li { display: flex; align-items: flex-start; gap: 16px; padding: 19px 0; border-bottom: 1px solid #eaded9; }
+.fbe-deliverables svg { flex: 0 0 24px; margin-top: 1px; color: var(--fbe-wine); }
+.fbe-feature-icon { display: flex; flex: 0 0 44px; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--fbe-gold); border-radius: 11px; background: linear-gradient(135deg, #fff9e8, #f2d898); box-shadow: inset 0 0 0 2px #fff9e6; }
+.fbe-feature-icon svg { width: 23px; height: 23px; margin: 0; color: var(--fbe-gold-dark); }
+.fbe-deliverables h3 { font-size: 20px; line-height: 1.3; font-weight: 800; }
+.fbe-deliverables p { margin-top: 5px; color: #65565b; font-size: 16px; }
+.fbe-curation { max-width: 770px; margin: 25px auto 18px; padding: 20px 23px; border-left: 4px solid var(--fbe-gold); background: #fffaf0; text-align: left; }
+.fbe-curation h3 { font-size: 18px; font-weight: 800; line-height: 1.3; }
+.fbe-curation p { margin-top: 8px; color: #514449; font-size: 16px; }
+.fbe-content-detail { max-width: 720px; margin-inline: auto !important; font-size: 13px; color: var(--fbe-muted); }
+.fbe-buy-inline { margin-top: 25px; }
+.fbe-note { padding: 60px 0; background: #f8f4f1; }
+.fbe-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin: 34px auto 0 !important; padding: 0; list-style: none; }
+.fbe-steps strong { display: grid; width: 52px; height: 52px; margin: 0 auto 10px; place-items: center; border-radius: 50%; border: 1px solid var(--fbe-gold); background: linear-gradient(135deg, #fff7df, #edce86); font-size: 25px; color: #6d4913; font-weight: 800; }
+.fbe-steps h3 { margin: 5px 0 8px; font-size: 20px; font-weight: 800; }
+.fbe-steps p { color: var(--fbe-muted); font-size: 16px; }
+.fbe-offer { padding: 65px 0; }
+.fbe-offer-action { max-width: 580px; margin: 33px auto 0; padding: 30px 32px; border: 2px solid var(--fbe-gold); border-top-width: 7px; background: linear-gradient(#fff9e9, #fffdfa 52%); border-radius: 8px; box-shadow: 0 12px 30px #946b1d14; }
+.fbe-offer-action h3 { font-size: 28px; font-weight: 800; }
+.fbe-offer-action ul { padding: 20px 0; margin: 0 0 22px; border-bottom: 1px solid #e8d7d0; list-style: none; text-align: left; }
+.fbe-offer-action li { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; font-size: 16px; }
+.fbe-offer-action li svg { flex: 0 0 18px; margin-top: 3px; color: var(--fbe-wine); }
+.fbe-price { display: block; color: var(--fbe-action); font-size: 96px; font-weight: 800; line-height: 1.12; letter-spacing: -.07em; }
+.fbe-price span { font-size: 33px; letter-spacing: -.02em; }
+.fbe-price small { font-size: 31px; letter-spacing: -.02em; }
+.fbe-offer-unit { display: inline-block; padding: 5px 12px; border-radius: 4px; background: var(--fbe-gold-surface); color: var(--fbe-gold-dark); font-size: 17px; font-weight: 800; }
+.fbe-payment { margin-top: 7px !important; color: var(--fbe-muted); font-size: 13px; }
+.fbe-buy-offer { width: 100%; margin-top: 23px; }
+.fbe-offer-action > small { display: block; margin-top: 16px; color: var(--fbe-muted); font-size: 12px; }
+.fbe-guarantee { padding: 52px 0; background: #f5e9e4; }
+.fbe-guarantee svg { display: block; box-sizing: content-box; padding: 12px; border-radius: 50%; background: linear-gradient(135deg, #fff9e8, #edcf88); border: 2px solid var(--fbe-gold); color: var(--fbe-gold-dark); margin: 0 auto 16px; }
+.fbe-guarantee h2 { font-size: 32px; }
+.fbe-guarantee p { max-width: 720px; margin: 18px auto 0 !important; font-size: 17px; }
+.fbe-guarantee .fbe-content-detail { font-size: 13px; }
+.fbe-faq { padding: 60px 0; }
+.fbe-faq-items { max-width: 800px; margin: 29px auto 0; text-align: left; border-top: 1px solid #dfd0cb; }
+.fbe-faq details { border-bottom: 1px solid #dfd0cb; }
+.fbe-faq summary { display: flex; min-height: 60px; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 2px; font-size: 17px; font-weight: 700; list-style: none; cursor: pointer; }
+.fbe-faq summary::-webkit-details-marker { display: none; }
+.fbe-faq summary span { color: var(--fbe-wine); font-size: 26px; font-weight: 400; line-height: 1; }
+.fbe-faq details[open] summary span { transform: rotate(45deg); }
+.fbe-faq details p { padding: 0 0 20px; color: var(--fbe-muted); font-size: 16px; }
+.fbe-closing { padding: 50px 0 55px; background: #f8f0ec; }
+.fbe-closing > div > p { margin: 18px auto 23px; font-size: 17px; }
+.fbe-closing .fbe-content-detail { margin-top: 18px; margin-bottom: 0; font-size: 12px; }
+.fbe-footer { max-width: 1000px; margin: 0 auto; padding: 24px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.fbe-footer .fbe-wordmark { font-size: 22px; }
+.fbe-footer-brand { display: block; flex-shrink: 0; width: 100px; height: 86.4px; overflow: hidden; }
+.fbe-footer > span:not(.fbe-wordmark), .fbe-footer a { color: var(--fbe-muted); font-size: 12px; }
+.fbe-footer a { display: inline-flex; align-items: center; gap: 5px; }
+
+@media (max-width: 600px) {
+  .fbe-wrap { width: calc(100% - 36px); }
+  .fbe-header { padding: 5px 14px; }
+  .fbe-cover-brand img { width: 285px; }
+  .fbe-wordmark { font-size: 25px; }
+  .fbe-header p { font-size: 9px; }
+  .fbe-pain-strip { padding: 8px 14px; font-size: 15px; line-height: 1.25; }
+  .fbe-hero { padding-top: 14px; }
+  .fbe-hero h1 { font-size: clamp(25px, 6.5vw, 32px); line-height: 1.16; letter-spacing: -.035em; }
+  .fbe-hero-description { margin-top: 10px !important; font-size: 16px; line-height: 1.45; }
+  .fbe-shortcut { margin-top: 8px !important; font-size: 13px; }
+  .fbe-hero-action { margin-top: 17px; }
+  .fbe-buy { width: 100%; padding: 14px 17px; font-size: 16px; gap: 10px; }
+  .fbe-hero-action > p { font-size: 11px; }
+  .fbe-demonstration { margin-top: 18px; }
+  .fbe-label { font-size: 10px; letter-spacing: .06em; }
+  .fbe-pages { grid-template-columns: .55fr 1.45fr; gap: 10px; margin-top: 12px; }
+  .fbe-pages figure > span { font-size: 10px; letter-spacing: 0; padding: 7px 3px; }
+  .fbe-interior-zoom { aspect-ratio: 2.05; background-size: 300% auto; background-position: 9% 30%; }
+  .fbe-pages figcaption { padding-top: 9px; font-size: 10px; }
+  .fbe-demo-note { margin-top: 9px !important; font-size: 10px; }
+  .fbe-intro, .fbe-content, .fbe-note, .fbe-offer, .fbe-faq { padding-block: 44px; }
+  .fbe h2 { font-size: 29px; }
+  .fbe-lead { font-size: 16px; }
+  .fbe-intro-contrast { grid-template-columns: 1fr; margin-top: 24px; }
+  .fbe-intro-contrast > div { padding: 21px; }
+  .fbe-intro-contrast > div + div { border-left: 0; border-top: 1px solid #dcc6bf; }
+  .fbe-transition { font-size: 21px; }
+  .fbe-deliverables { margin-top: 20px !important; }
+  .fbe-deliverables h3 { font-size: 18px; }
+  .fbe-curation { margin-block: 20px 16px; padding: 17px 16px; }
+  .fbe-curation p { font-size: 15px; }
+  .fbe-steps { grid-template-columns: 1fr; gap: 21px; margin-top: 26px !important; }
+  .fbe-steps li { padding-bottom: 21px; border-bottom: 1px solid #e6d7d0; }
+  .fbe-steps li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .fbe-offer-action { padding: 25px 18px; }
+  .fbe-offer-action h3 { font-size: 25px; }
+  .fbe-offer-action li { font-size: 15px; }
+  .fbe-price { font-size: 85px; }
+  .fbe-offer-unit { font-size: 16px; }
+  .fbe-guarantee { padding-block: 40px; }
+  .fbe-footer { flex-wrap: wrap; justify-content: center; text-align: center; }
+}

@@ -1,5 +1,40 @@
 # Sprint 1 — Inbox WhatsApp "funcional de verdade" (2 semanas)
 
+## Sessão 2026-10-16 — LP Fornecedores Beauty, direção editorial v3
+
+Premissas: preservar a capa e a prévia protegida do PDF, oferta 36 fornecedores por R$33, checkout/UTMs e entrega Kiwify; retirar clichês visuais e reduzir a copy genérica. Não publicar sem avaliação de Marcelo.
+
+- [x] Salvar a v2 para rollback → `git ls-remote origin refs/heads/feat/fornecedor-lp-visual-v2` == `43cdf488604eebe379937910184d050fc872f96a`.
+- [x] Recriar a página numa direção editorial distinta → capturas desktop/mobile mostram composição sem faixa promocional, selos, chips ou passos numerados.
+- [x] Preservar informações e compra → testes verificaram 36 fornecedores, R$33, 7 dias e URL Kiwify com UTMs.
+- [x] Rodar build, lint e inspeção visual em 320/390/1440 px → Vite build e ESLint saíram 0; 320/390/768/1440 px sem erro de execução ou overflow horizontal.
+
+### Review
+
+V2 preservada no remoto em `feat/fornecedor-lp-visual-v2` (SHA `43cdf488604eebe379937910184d050fc872f96a`, confirmado por `git ls-remote`). V3 na branch separada `feat/fornecedor-lp-editorial-v3`, prévia `http://lpfornecedores.localhost:4174/fornecedores.html?utm_source=meta&utm_content=criativo_02` (HTTP 200). As imagens do PDF carregam, os dois CTAs mantêm Kiwify e UTMs, e a FAQ abre. Produção não alterada. Pixel PageView em produção continua pendente de verificação separada antes de iniciar anúncios.
+
+Revisão independente encontrou compressão da oferta em 721 px e contraste insuficiente em textos pequenos; ambos corrigidos. A oferta passa a uma coluna em até 900 px (721 px: título em 3 linhas, sem overflow); o tom secundário único `#675b5e` mede 6,07:1 no fundo da página e 4,73:1 no fundo da capa. A prévia interna perdeu a moldura duplicada. Reteste pós-correção: 320/390/720/721/768/900/901/1440 px, imagens carregadas, CTAs com `utm_source=meta` e `utm_content=criativo_02`, sem pageerror ou overflow; ESLint e Vite build saíram 0.
+
+---
+
+## Sessão 2026-10-16 — LP Fornecedores Beauty, revisão visual
+
+Premissas: manter oferta de 36 fornecedores por R$33, checkout e entrega pela Kiwify, e parâmetros de atribuição existentes; não alterar a configuração DNS do Mac. A revisão visual não cria provas de resultado ou depoimentos.
+
+- [x] Substituir capa simulada pela capa real do PDF e melhorar a primeira dobra → capturas desktop/mobile mostram produto, oferta e CTA.
+- [x] Redesenhar ritmo, hierarquia e seções com exemplos visuais fiéis → captura completa revista; prévia interna publicada apenas em versão pixelizada.
+- [x] Preservar checkout e UTMs → Playwright confirmou ambos os parâmetros nos dois CTAs.
+- [x] Executar lint/build e inspeção visual em viewport desktop/mobile → Vite build e ESLint saíram 0; 320/390/768/1440 px sem overflow.
+
+### Review
+
+Prévia isolada: `http://lpfornecedores.localhost:4174/fornecedores.html?utm_source=meta&utm_content=criativo_02`.
+Produção permanece na versão anterior até aprovação visual. DNS público voltou a resolver sem alteração da configuração local (curl HTTPS 200, certificado válido).
+Rastreamento: UTM do CTA verificada; Pixel PageView na Meta ainda não comprovado por chamada de rede no smoke público. Não iniciar tráfego até verificação separada.
+Segunda revisão independente: sem bloqueio crítico no diff, nos CTAs/UTMs ou nas imagens; não equivale a auditoria completa de severidades menores.
+
+---
+
 > **Source:** `tasks/auditoria-inbox/auditoria-sales-spark-vs-nexvyoficinas.md`
 > **Objetivo:** operador troca mídia, atende em mobile, conversa flui sem bugs.
 > **Branch:** `main` (commits diretos; rollback via git revert por commit atômico)

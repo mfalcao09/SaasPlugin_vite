@@ -2,8 +2,6 @@
 // Captura ref (afiliado/canal) + UTMs + cupom. Cookie 1st-party, last-click,
 // janela 60 dias (não eterno). Clique ?ref= incrementa via RPC record_affiliate_click.
 
-import { supabase } from '@/integrations/supabase/client';
-
 const COOKIE = 'nxv_track';
 const MAX_AGE = 60 * 60 * 24 * 60; // 60 dias — política pública last-click
 
@@ -66,6 +64,7 @@ function writeCookie(t: Tracking) {
 
 async function hydrateAffiliateFromRef(ref: string): Promise<void> {
   try {
+    const { supabase } = await import('@/integrations/supabase/client');
     if (!sessionHasClick(ref)) {
       sessionStorage.setItem(clickKey(ref), '1');
       await (supabase as any).rpc('record_affiliate_click', { p_ref: ref });
