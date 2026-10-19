@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, ExternalLink } from 'lucide-react';
 import { captureTrackingFromUrl, getTracking } from '@/lib/tracking';
-import './fornecedores-beauty.css';
+import './fornecedores-beauty-v4.css';
 
 const CHECKOUT = 'https://pay.kiwify.com.br/F8vRJVm';
 const KIWIFY_PARAMS = [
@@ -67,25 +67,26 @@ export default function FornecedoresBeautyLandingPage() {
           nexvy<span>beauty</span>
         </a>
         <nav aria-label="Navegação da página">
-          <a href="#conteudo">O que vem na lista</a>
+          <a href="#conteudo">Veja a lista</a>
           <a href="#perguntas">Dúvidas</a>
         </nav>
-        <a className="fbe-header-price" href="#preco">Ver preço <ArrowUpRight size={16} aria-hidden="true" /></a>
+        <a className="fbe-header-price" href="#preco">Ver oferta <ArrowUpRight size={16} aria-hidden="true" /></a>
       </header>
 
       <section className="fbe-hero" id="inicio" aria-labelledby="fbe-title">
         <div className="fbe-hero-copy">
-          <p className="fbe-label">LISTA DE FORNECEDORES / BEAUTY</p>
-          <h1 id="fbe-title">Seu próximo fornecedor <span>não precisa ser o de sempre.</span></h1>
+          <p className="fbe-label">FORNECEDORES BEAUTY PARA O SEU PRÓXIMO PEDIDO</p>
+          <h1 id="fbe-title">Pare de depender sempre dos <span>mesmos fornecedores.</span></h1>
           <p className="fbe-hero-description">
-            Reunimos <strong>36 fornecedores Beauty</strong> em um PDF simples de consultar.
-            Abra, escolha alguns contatos e compare antes de fazer seu próximo pedido.
+            Encontre <strong>36 fornecedores Beauty</strong> reunidos em um PDF digital.
+            Abra novas opções, peça cotações e compare antes de comprar.
           </p>
+          <p className="fbe-hero-facts">36 fornecedores <span aria-hidden="true">·</span> contatos e canais de compra <span aria-hidden="true">·</span> PDF digital</p>
           <div className="fbe-hero-buy">
-            {buyLink('Acessar a lista por R$33')}
-            <p>Pagamento único. Entrega pela Kiwify.</p>
+            <p><span>Pagamento único</span><strong>R$33<small>,00</small></strong></p>
+            {buyLink('Quero acessar a lista')}
           </div>
-          <p className="fbe-hero-footnote">Menos de R$1 por fornecedor organizado.</p>
+          <p className="fbe-hero-footnote">Entrega pela Kiwify após a compra · 7 dias para solicitar reembolso</p>
         </div>
         <figure className="fbe-cover">
           <img
@@ -93,77 +94,77 @@ export default function FornecedoresBeautyLandingPage() {
             alt="Capa real do PDF Beauty Lista de fornecedores"
             width="708"
             height="1000"
-            fetchPriority="high"
+            loading="eager"
           />
-          <figcaption>Capa do material entregue após a compra</figcaption>
+          <figcaption>Esta é a capa do material que você vai receber.</figcaption>
         </figure>
       </section>
 
       <section className="fbe-intro" aria-labelledby="fbe-intro-title">
-        <div className="fbe-intro-number" aria-label="36 fornecedores">36<span>fornecedores<br />na lista</span></div>
         <div className="fbe-intro-copy">
-          <h2 id="fbe-intro-title">Você conhece os fornecedores de sempre. <span>E os outros?</span></h2>
-          <p>
-            Pesquisar perfil por perfil toma tempo. Com a lista, você já tem outras portas
-            para abrir quando precisar repor material, testar um produto ou pesquisar
-            opções para revenda.
-          </p>
-          <p className="fbe-intro-aside">A decisão continua sua: peça preço, confirme as condições e compare.</p>
+          <p className="fbe-label">A COMPRA QUE VOCÊ FAZ TODA SEMANA</p>
+          <h2 id="fbe-intro-title">Comprar dos mesmos lugares por conveniência pode custar mais do que parece.</h2>
+          <div className="fbe-intro-contrast">
+            <p><strong>Sem outras opções à mão:</strong> você repete o pedido, aceita o preço disponível e deixa a pesquisa para depois.</p>
+            <p><strong>Com a lista aberta:</strong> você escolhe contatos, pede cotações e compara as condições antes de decidir.</p>
+          </div>
+          <p className="fbe-intro-aside">A lista não define onde você deve comprar. Ela encurta o caminho até outras possibilidades.</p>
         </div>
       </section>
 
       <section className="fbe-content" id="conteudo" aria-labelledby="fbe-content-title">
         <div className="fbe-content-copy">
-          <p className="fbe-label">POR DENTRO DO PDF</p>
-          <h2 id="fbe-content-title">Um PDF de contatos. <span>Direto ao ponto.</span></h2>
-          <p>
-            Os fornecedores estão numerados, com seus canais de contato reunidos no mesmo
-            lugar. Você abre os links e começa a cotar com quem fizer sentido para a sua compra.
-          </p>
+          <p className="fbe-label">VEJA O QUE VOCÊ RECEBE</p>
+          <h2 id="fbe-content-title">Não é um curso. É a lista que você abre para começar a cotar.</h2>
+          <p>São 36 fornecedores organizados num PDF, com nomes e canais de contato reunidos no mesmo lugar.</p>
           <dl className="fbe-content-list">
-            <div><dt>Para encontrar</dt><dd>36 fornecedores Beauty organizados</dd></div>
-            <div><dt>Para entrar em contato</dt><dd>Links de vendas, catálogos, lojas ou redes sociais</dd></div>
-            <div><dt>Para se orientar</dt><dd>Endereços quando disponíveis no material</dd></div>
+            <div><dt>36 fornecedores</dt><dd>Opções Beauty para pesquisar antes do próximo pedido.</dd></div>
+            <div><dt>Canais de compra</dt><dd>Links de WhatsApp, Instagram, site ou catálogo, conforme o fornecedor.</dd></div>
+            <div><dt>Informações úteis</dt><dd>Endereços quando disponíveis no material.</dd></div>
           </dl>
-          <p className="fbe-content-detail">Os links foram conferidos manualmente na preparação da lista.</p>
+          <p className="fbe-content-detail">Os links foram conferidos manualmente na preparação da lista. Preço, estoque, entrega e pedido mínimo devem ser confirmados com cada fornecedor.</p>
+          {buyLink('Acessar os 36 fornecedores por R$33', 'fbe-buy-inline')}
         </div>
         <figure className="fbe-interior">
           <img
-            src="/fornecedores-interior-obscured.webp"
-            alt="Prévia protegida do interior do PDF, com os contatos ocultos"
+            src="/fornecedores-interior-preview.webp"
+            alt="Página real do PDF mostrando a organização por fornecedor e canais, com nomes, endereços e contatos ocultos"
             width="660"
             height="930"
           />
-          <figcaption>Prévia do interior. Os contatos estão ocultos nesta imagem.</figcaption>
+          <figcaption>Página real do PDF. Nomes, endereços e contatos ocultos nesta amostra.</figcaption>
         </figure>
       </section>
 
       <section className="fbe-note" aria-labelledby="fbe-note-title">
-        <h2 id="fbe-note-title">Para quem compra para trabalhar. <span>Ou quer começar a revender.</span></h2>
+        <p className="fbe-label">COMO VOCÊ USA</p>
+        <h2 id="fbe-note-title">Abra. Escolha. Compare.</h2>
         <p>
-          Pensada principalmente para nail designers, lash designers, manicures, esteticistas
-          e profissionais de salão. Também pode ajudar quem quer pesquisar fornecedores
-          para revenda. Você não precisa comprar de todos — precisa conhecer opções.
+          Na próxima reposição de material, abra o PDF, selecione fornecedores que fazem sentido
+          para o que você precisa e peça cotações. Você já parte de uma lista organizada,
+          sem refazer a pesquisa do zero.
         </p>
+        <p className="fbe-note-audience">Pensada principalmente para nail designers, lash designers, manicures, esteticistas e profissionais de salão. Também serve a quem pesquisa produtos para revenda.</p>
       </section>
 
       <section className="fbe-offer" id="preco" aria-labelledby="fbe-offer-title">
         <div className="fbe-offer-copy">
+          <p className="fbe-label">A LISTA COMPLETA</p>
           <h2 id="fbe-offer-title">Uma cotação mais vantajosa já pode compensar o valor da lista.</h2>
-          <p>Novas opções à mão para a próxima vez que você for comprar.</p>
+          <p>36 fornecedores Beauty para você ter mais opções quando for comprar para trabalhar ou revender.</p>
         </div>
         <div className="fbe-offer-action">
           <p>PDF digital · pagamento único</p>
           <strong><span>R$</span>33<small>,00</small></strong>
-          <p className="fbe-offer-unit">R$0,92 por fornecedor organizado</p>
+          <p className="fbe-offer-unit">Menos de R$1 por fornecedor organizado</p>
           {buyLink('Quero acessar os 36 fornecedores', 'fbe-buy-offer')}
-          <small>Checkout Kiwify · 7 dias para solicitar reembolso</small>
+          <small>Checkout seguro na Kiwify · 7 dias para solicitar reembolso</small>
         </div>
       </section>
 
       <section className="fbe-faq" id="perguntas" aria-labelledby="fbe-faq-title">
         <div>
-          <h2 id="fbe-faq-title">Ainda tem alguma dúvida?</h2>
+          <h2 id="fbe-faq-title">Perguntas antes de comprar</h2>
         </div>
         <div className="fbe-faq-items">
           {faqs.map(({ q, a }) => (

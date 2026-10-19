@@ -1,0 +1,43 @@
+{
+  "01": {
+    "design_id": "DAHYSq0O4oQ",
+    "operations": [
+      {"type":"replace_text","element_id":"PBXTjcD4jFFRnJ3G-LBvyGXRp4V1hj9Hm","text":"Encontre 36 fornecedores\nBeauty organizados para\nter mais opções na hora\nde cotar."}
+    ]
+  },
+  "04": {
+    "design_id": "DAHYS378y1I",
+    "operations": [
+      {"type":"replace_text","element_id":"PBTQYVQcwjN2h1dh-LBTmgBxRhCtPGRcJ","text":"Abra o PDF digital, escolha contatos e comece suas cotações."},
+      {"type":"replace_text","element_id":"PBTQYVQcwjN2h1dh-LBxpG7db04J1D5ZB","text":"Pare de\nprocurar\nfornecedores\nno escuro."},
+      {"type":"format_text","element_id":"PBTQYVQcwjN2h1dh-LBxpG7db04J1D5ZB","formatting":{"font_size":66}},
+      {"type":"delete_element","element_id":"PBTQYVQcwjN2h1dh-LBlMq9nZ4kKMGgFN"},
+      {"type":"insert_fill","page_id":"PBTQYVQcwjN2h1dh","asset_id":"MAHYS0hIjHc","asset_type":"image","alt_text":"Tablet em bancada Beauty","left":0,"top":470,"width":610,"height":915},
+      {"type":"insert_fill","page_id":"PBTQYVQcwjN2h1dh","asset_id":"MAHYS_cpeoI","asset_type":"image","alt_text":"Capa real do PDF na tela do tablet","left":117,"top":616,"width":390,"height":551}
+    ]
+  },
+  "05": {
+    "design_id": "DAHYS9JAufs",
+    "operations": [
+      {"type":"replace_text","element_id":"PB562Fg6Gs2WK527-LBrL7C9gdJ707C56","text":"Você pode estar\npagando caro por\ncomprar sempre nos\nmesmos lugares."},
+      {"type":"format_text","element_id":"PB562Fg6Gs2WK527-LBrL7C9gdJ707C56","formatting":{"font_size":76}}
+    ]
+  },
+  "07": {
+    "design_id": "DAHYS3RzfZ4",
+    "operations": [
+      {"type":"replace_text","element_id":"PBFj9WlfHx8DH65j-LBcXcZDHXQYMGzfp","text":"Comprar melhor começa por ter mais opções para cotar."},
+      {"type":"replace_text","element_id":"PBFj9WlfHx8DH65j-LBMt3r1Hb5WvxBLG","text":"Um PDF digital para pesquisar, comparar e pedir cotações."},
+      {"type":"update_fill","element_id":"PBFj9WlfHx8DH65j-LBRjKJMJy0KqPR29","asset_id":"MAHYS9McHJo","asset_type":"image","alt_text":"Celular na bancada Beauty"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LBq3sD114bClGFNR"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LBfT9HYptgS81FPF"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LBKshgb72k9fkHkp"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LB1PrS3ly0yhnkhJ"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LBNMh7VqL68Q6PWV"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LBrGM8wcKGqtkGKJ"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LB7qWwl6bCM0hMc6"},
+      {"type":"delete_element","element_id":"PBFj9WlfHx8DH65j-LB3jBRF8v2vmhzc2"},
+      {"type":"insert_fill","page_id":"PBFj9WlfHx8DH65j","asset_id":"MAHYS_cpeoI","asset_type":"image","alt_text":"Capa verdadeira do PDF na tela do celular","left":759,"top":795,"width":257,"height":363}
+    ]
+  }
+}
